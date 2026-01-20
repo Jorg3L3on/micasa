@@ -22,6 +22,8 @@ type Transaction = {
   category: string
   paymentMethod: string
   type: 'income' | 'expense'
+  is_paid: boolean
+  user: string
 }
 
 async function getTransactions(searchParams: {
@@ -53,24 +55,24 @@ async function TransactionsContent({
 
   return (
     <>
-      <Suspense fallback={<div>Loading filters...</div>}>
+      <Suspense fallback={<div>Cargando filtros...</div>}>
         <TransactionFilters />
       </Suspense>
 
       <Card>
         <CardContent className="pt-6">
           {transactions.length === 0 ? (
-            <EmptyState message="No transactions found" />
+            <EmptyState message="No se encontraron transacciones" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Concepto</TableHead>
+                  <TableHead>Método de pago</TableHead>
+                  <TableHead>Tipo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,8 +128,8 @@ export default async function TransactionsPage({
 }) {
   return (
     <>
-      <PageHeader title="Transactions" />
-      <Suspense fallback={<div>Loading...</div>}>
+      <PageHeader title="Transacciones" />
+      <Suspense fallback={<div>Cargando transacciones...</div>}>
         <TransactionsContent searchParams={searchParams} />
       </Suspense>
     </>

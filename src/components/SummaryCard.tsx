@@ -12,9 +12,9 @@ export default function SummaryCard({ title, amount, variant = 'balance' }: Summ
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'MXN',
     }).format(value)
   }
 

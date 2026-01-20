@@ -3,8 +3,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from '@/components/ui/table'
 import { formatCurrency } from '@/lib/utils'
@@ -25,7 +23,6 @@ export default function SummaryBlock({
   libre,
   userIncome = [],
 }: SummaryBlockProps) {
-  // Determine Libre card color based on value
   const getLibreColorClasses = () => {
     if (libre > 1000) {
       return {

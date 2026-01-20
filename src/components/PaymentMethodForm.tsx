@@ -24,8 +24,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 const paymentMethodSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  type: z.enum(['CARD', 'CASH']).optional(),
+  name: z.string().min(1, 'Nombre es requerido'),
+  type: z.enum(['CARD', 'CASH']).nullable(),
 })
 
 export type PaymentMethodFormValues = z.infer<typeof paymentMethodSchema>
@@ -51,7 +51,7 @@ export default function PaymentMethodForm({
     resolver: zodResolver(paymentMethodSchema),
     defaultValues: defaultValues || {
       name: '',
-      type: 'CARD',
+      type: null,
     },
   })
 
@@ -61,19 +61,18 @@ export default function PaymentMethodForm({
     } else if (open && !defaultValues) {
       form.reset({
         name: '',
-        type: 'CARD',
+        type: null,
       })
     }
   }, [open, defaultValues, form])
 
   const handleSubmit = async (data: PaymentMethodFormValues) => {
     try {
-      // Ensure type is always sent (default to CARD if not provided)
-      await onSubmit({ ...data, type: data.type || 'CARD' })
+      await onSubmit({ ...data, type: data.type ?? null })
       form.reset()
       onOpenChange(false)
     } catch (error) {
-      // Error handling is done in the parent component
+      console.error('Error al enviar el formulario de método de pago:', error)
     }
   }
 
@@ -89,12 +88,12 @@ export default function PaymentMethodForm({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {mode === 'create' ? 'Add Payment Method' : 'Edit Payment Method'}
+            {mode === 'create' ? 'Agregar método de pago' : 'Editar método de pago'}
           </DialogTitle>
           <DialogDescription>
             {mode === 'create'
-              ? 'Create a new payment method for your transactions.'
-              : 'Update the payment method information.'}
+              ? 'Crea un nuevo método de pago para tus transacciones.'
+              : 'Actualiza la información del método de pago.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -109,9 +108,9 @@ export default function PaymentMethodForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Nombre</FormLabel>
                   <FormControl>
-                    <Input placeholder="Payment method name" {...field} />
+                    <Input placeholder="Nombre del método de pago" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -119,9 +118,9 @@ export default function PaymentMethodForm({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
+                Cancelar
               </Button>
-              <Button type="submit">{mode === 'create' ? 'Create' : 'Update'}</Button>
+              <Button type="submit">{mode === 'create' ? 'Crear' : 'Actualizar'}</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -6,9 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 
 type Expense = {
   id: number
@@ -33,18 +33,12 @@ export default function ExpenseTable({ date, expenses }: ExpenseTableProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-xs font-medium">
-          {formatDate(date)}
-        </CardTitle>
-      </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">Pagado</TableHead>
-              <TableHead>Persona</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead>Concepto</TableHead>
               <TableHead className="text-right">Monto</TableHead>
             </TableRow>
           </TableHeader>
@@ -62,7 +56,6 @@ export default function ExpenseTable({ date, expenses }: ExpenseTableProps) {
                     <TableCell>
                       <Checkbox checked={expense.is_paid} disabled />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">{expense.user}</TableCell>
                     <TableCell className="text-sm">{expense.description}</TableCell>
                     <TableCell className="text-right font-medium text-sm">
                       {formatCurrency(Number(expense.amount))}
@@ -70,7 +63,7 @@ export default function ExpenseTable({ date, expenses }: ExpenseTableProps) {
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell colSpan={3} className="text-right text-sm">
+                  <TableCell colSpan={2} className="text-right text-sm">
                     Total:
                   </TableCell>
                   <TableCell className="text-right text-sm">

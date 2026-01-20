@@ -54,7 +54,10 @@ export default function PaymentMethodsPage() {
   const handleCreate = async (data: PaymentMethodFormValues) => {
     try {
       setFormError(null)
-      await createPaymentMethod(data)
+      await createPaymentMethod({
+        name: data.name,
+        type: data.type ?? undefined,
+      })
       await fetchPaymentMethods()
       setCreateDialogOpen(false)
     } catch (err) {
@@ -68,7 +71,10 @@ export default function PaymentMethodsPage() {
     if (!selectedPaymentMethod) return
     try {
       setFormError(null)
-      await updatePaymentMethod(selectedPaymentMethod.id, data)
+      await updatePaymentMethod(selectedPaymentMethod.id, {
+        name: data.name,
+        type: data.type ?? undefined,
+      })
       await fetchPaymentMethods()
       setEditDialogOpen(false)
       setSelectedPaymentMethod(null)
@@ -112,8 +118,8 @@ export default function PaymentMethodsPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Payment Methods" />
-        <Button onClick={() => setCreateDialogOpen(true)}>Add Payment Method</Button>
+        <PageHeader title="Métodos de pago" />
+        <Button onClick={() => setCreateDialogOpen(true)}>Agregar método de pago</Button>
       </div>
 
       {error && !deleteDialogOpen && (
@@ -125,15 +131,15 @@ export default function PaymentMethodsPage() {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Loading...</div>
+            <div className="py-8 text-center text-muted-foreground">Cargando...</div>
           ) : paymentMethods.length === 0 ? (
-            <EmptyState message="No payment methods found" />
+            <EmptyState message="No se encontraron métodos de pago" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,6 +196,7 @@ export default function PaymentMethodsPage() {
             mode="edit"
             defaultValues={{
               name: selectedPaymentMethod.name,
+              type: (selectedPaymentMethod.type as 'CARD' | 'CASH') || null,
             }}
             error={formError && editDialogOpen ? formError : null}
           />
@@ -204,8 +211,8 @@ export default function PaymentMethodsPage() {
               }
             }}
             onConfirm={handleDelete}
-            title="Delete Payment Method"
-            description="Are you sure you want to delete this payment method? This action cannot be undone."
+            title="Eliminar método de pago"
+            description="¿Estás seguro de querer eliminar este método de pago? Esta acción no puede ser deshecha."
             itemName={selectedPaymentMethod.name}
           />
         </>
