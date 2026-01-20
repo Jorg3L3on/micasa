@@ -15,13 +15,11 @@ export default function FortnightHeader({
   period,
   label,
 }: FortnightHeaderProps) {
-  // Calculate previous fortnight
   let prevYear = year
   let prevMonth = month
   let prevPeriod: 'FIRST' | 'SECOND' = 'FIRST'
 
   if (period === 'FIRST') {
-    // Previous is SECOND of previous month
     prevPeriod = 'SECOND'
     if (month === 1) {
       prevMonth = 12
@@ -30,20 +28,16 @@ export default function FortnightHeader({
       prevMonth = month - 1
     }
   } else {
-    // Previous is FIRST of same month
     prevPeriod = 'FIRST'
   }
 
-  // Calculate next fortnight
   let nextYear = year
   let nextMonth = month
   let nextPeriod: 'FIRST' | 'SECOND' = 'SECOND'
 
   if (period === 'FIRST') {
-    // Next is SECOND of same month
     nextPeriod = 'SECOND'
   } else {
-    // Next is FIRST of next month
     nextPeriod = 'FIRST'
     if (month === 12) {
       nextMonth = 1

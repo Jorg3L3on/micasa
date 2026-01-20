@@ -19,7 +19,6 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         ref={ref}
         checked={checked}
         disabled={disabled}
-        readOnly
         {...props}
       />
     )

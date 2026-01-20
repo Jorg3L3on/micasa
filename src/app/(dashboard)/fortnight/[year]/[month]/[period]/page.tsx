@@ -88,6 +88,7 @@ async function getSummary(
       totalPaid: 0,
       totalUnpaid: 0,
       balance: 0,
+      userIncome: [],
     }
   }
 }

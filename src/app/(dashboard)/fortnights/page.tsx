@@ -13,114 +13,121 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
 import PageHeader from '@/components/PageHeader'
-import CategoryForm, { CategoryFormValues } from '@/components/CategoryForm'
+import FortnightForm, { FortnightFormValues } from '@/components/FortnightForm'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
-import { clientFetchFromApi, createCategory, updateCategory, deleteCategory } from '@/lib/api'
+import {
+  clientFetchFromApi,
+  createFortnight,
+  updateFortnight,
+  deleteFortnight,
+} from '@/lib/api'
 import { Pencil, Trash2 } from 'lucide-react'
 
-type Category = {
+type Fortnight = {
   id: number
   name: string
-  group: string | null
+  startDay: number
+  endDay: number
+  active: boolean
+  year?: number
+  month?: number
+  period?: string
 }
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([])
+export default function FortnightsPage() {
+  const [fortnights, setFortnights] = useState<Fortnight[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [selectedFortnight, setSelectedFortnight] = useState<Fortnight | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const fetchCategories = async () => {
+  const fetchFortnights = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await clientFetchFromApi<Category[]>('/api/categories')
-      setCategories(data)
+      const data = await clientFetchFromApi<Fortnight[]>('/api/fortnights')
+      setFortnights(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch categories')
+      setError(err instanceof Error ? err.message : 'Failed to fetch fortnights')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchCategories()
+    fetchFortnights()
   }, [])
 
-  const handleCreate = async (data: CategoryFormValues) => {
+  const handleCreate = async (data: FortnightFormValues) => {
     try {
       setFormError(null)
-      await createCategory(data)
-      await fetchCategories()
+      await createFortnight(data)
+      await fetchFortnights()
       setCreateDialogOpen(false)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create category'
+      const message = err instanceof Error ? err.message : 'Failed to create fortnight'
       setFormError(message)
       throw err
     }
   }
 
-  const handleEdit = async (data: CategoryFormValues) => {
-    if (!selectedCategory) return
+  const handleEdit = async (data: FortnightFormValues) => {
+    if (!selectedFortnight) return
     try {
       setFormError(null)
-      await updateCategory(selectedCategory.id, data)
-      await fetchCategories()
+      await updateFortnight(selectedFortnight.id, data)
+      await fetchFortnights()
       setEditDialogOpen(false)
-      setSelectedCategory(null)
+      setSelectedFortnight(null)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update category'
+      const message = err instanceof Error ? err.message : 'Failed to update fortnight'
       setFormError(message)
       throw err
     }
   }
 
   const handleDelete = async () => {
-    if (!selectedCategory) return
+    if (!selectedFortnight) return
     try {
       setError(null)
-      await deleteCategory(selectedCategory.id)
-      await fetchCategories()
+      await deleteFortnight(selectedFortnight.id)
+      await fetchFortnights()
       setDeleteDialogOpen(false)
-      setSelectedCategory(null)
+      setSelectedFortnight(null)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete category'
-      if (message.includes('409') || message.includes('in use') || message.includes('Conflict')) {
-        setError('Category is in use and cannot be deleted')
+      const message = err instanceof Error ? err.message : 'Failed to delete fortnight'
+      if (
+        message.includes('409') ||
+        message.includes('in use') ||
+        message.includes('Conflict')
+      ) {
+        setError('Fortnight is in use and cannot be deleted')
       } else {
         setError(message)
       }
     }
   }
 
-  const openEditDialog = (category: Category) => {
-    setSelectedCategory(category)
+  const openEditDialog = (fortnight: Fortnight) => {
+    setSelectedFortnight(fortnight)
     setEditDialogOpen(true)
     setFormError(null)
   }
 
-  const openDeleteDialog = (category: Category) => {
-    setSelectedCategory(category)
+  const openDeleteDialog = (fortnight: Fortnight) => {
+    setSelectedFortnight(fortnight)
     setDeleteDialogOpen(true)
     setError(null)
-  }
-
-  const getTypeDisplay = (group: string | null) => {
-    // The API returns 'group' but we're working with 'type' in the form
-    // For now, we'll show the group or default to 'expense'
-    if (!group) return 'expense'
-    return group.toLowerCase()
   }
 
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Categorías" />
-        <Button onClick={() => setCreateDialogOpen(true)}>Agregar categoría</Button>
+        <PageHeader title="Quincenas" />
+        <Button onClick={() => setCreateDialogOpen(true)}>Agregar quincena</Button>
       </div>
 
       {error && !deleteDialogOpen && (
@@ -133,37 +140,49 @@ export default function CategoriesPage() {
         <CardContent className="pt-6">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">Cargando...</div>
-          ) : categories.length === 0 ? (
-            <EmptyState message="No se encontraron categorías" />
+          ) : fortnights.length === 0 ? (
+            <EmptyState message="No se encontraron quincenas" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead>Inicio</TableHead>
+                  <TableHead>Fin</TableHead>
+                  <TableHead>Activo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="text-muted-foreground capitalize">
-                      {getTypeDisplay(category.group)}
+                {fortnights.map((fortnight) => (
+                  <TableRow key={fortnight.id}>
+                    <TableCell className="font-medium">{fortnight.name}</TableCell>
+                    <TableCell>{fortnight.startDay}</TableCell>
+                    <TableCell>{fortnight.endDay}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          fortnight.active
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                        }`}
+                      >
+                        {fortnight.active ? 'Activo' : 'Inactivo'}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openEditDialog(category)}
+                          onClick={() => openEditDialog(fortnight)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openDeleteDialog(category)}
+                          onClick={() => openDeleteDialog(fortnight)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -177,7 +196,7 @@ export default function CategoriesPage() {
         </CardContent>
       </Card>
 
-      <CategoryForm
+      <FortnightForm
         open={createDialogOpen}
         onOpenChange={(open) => {
           setCreateDialogOpen(open)
@@ -188,20 +207,22 @@ export default function CategoriesPage() {
         error={formError && createDialogOpen ? formError : null}
       />
 
-      {selectedCategory && (
+      {selectedFortnight && (
         <>
-          <CategoryForm
+          <FortnightForm
             open={editDialogOpen}
             onOpenChange={(open) => {
               setEditDialogOpen(open)
-              setSelectedCategory(null)
+              setSelectedFortnight(null)
               setFormError(null)
             }}
             onSubmit={handleEdit}
             mode="edit"
             defaultValues={{
-              name: selectedCategory.name,
-              type: getTypeDisplay(selectedCategory.group) as 'income' | 'expense',
+              name: selectedFortnight.name,
+              startDay: selectedFortnight.startDay,
+              endDay: selectedFortnight.endDay,
+              active: selectedFortnight.active,
             }}
             error={formError && editDialogOpen ? formError : null}
           />
@@ -211,18 +232,17 @@ export default function CategoriesPage() {
             onOpenChange={(open) => {
               setDeleteDialogOpen(open)
               if (!open) {
-                setSelectedCategory(null)
+                setSelectedFortnight(null)
                 setError(null)
               }
             }}
             onConfirm={handleDelete}
-            title="Delete Category"
-            description="Are you sure you want to delete this category? This action cannot be undone."
-            itemName={selectedCategory.name}
+            title="Eliminar quincena"
+            description="¿Estás seguro de querer eliminar esta quincena? Esta acción no puede ser deshecha."
+            itemName={selectedFortnight.name}
           />
         </>
       )}
-
     </>
   )
 }

@@ -25,10 +25,8 @@ import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
 const categorySchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  type: z.enum(['income', 'expense'], {
-    required_error: 'Type is required',
-  }),
+  name: z.string().min(1, 'Nombre es requerido'),
+  type: z.enum(['income', 'expense']),
 })
 
 export type CategoryFormValues = z.infer<typeof categorySchema>
@@ -75,7 +73,7 @@ export default function CategoryForm({
       form.reset()
       onOpenChange(false)
     } catch (error) {
-      // Error handling is done in the parent component
+      console.error('Error al enviar el formulario de categoría:', error)
     }
   }
 
@@ -90,11 +88,11 @@ export default function CategoryForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Add Category' : 'Edit Category'}</DialogTitle>
+          <DialogTitle>{mode === 'create' ? 'Agregar categoría' : 'Editar categoría'}</DialogTitle>
           <DialogDescription>
             {mode === 'create'
-              ? 'Create a new category for your transactions.'
-              : 'Update the category information.'}
+              ? 'Crea una nueva categoría para tus transacciones.'
+              : 'Actualiza la información de la categoría.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -109,9 +107,9 @@ export default function CategoryForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Nombre</FormLabel>
                   <FormControl>
-                    <Input placeholder="Category name" {...field} />
+                    <Input placeholder="Nombre de la categoría" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -122,15 +120,15 @@ export default function CategoryForm({
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
+                  <FormLabel>Tipo</FormLabel>
                   <FormControl>
                     <Select
                       value={field.value}
                       onChange={(e) => field.onChange(e.target.value)}
                       onBlur={field.onBlur}
                     >
-                      <option value="expense">Expense</option>
-                      <option value="income">Income</option>
+                      <option value="expense">Gasto</option>
+                      <option value="income">Ingreso</option>
                     </Select>
                   </FormControl>
                   <FormMessage />
@@ -139,9 +137,9 @@ export default function CategoryForm({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
+                Cancelar
               </Button>
-              <Button type="submit">{mode === 'create' ? 'Create' : 'Update'}</Button>
+              <Button type="submit">{mode === 'create' ? 'Crear' : 'Actualizar'}</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -10,6 +10,9 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  FileText,
+  Layers,
+  CalendarDays,
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -31,7 +34,7 @@ export default function Sidebar() {
 
   const navigation = [
     {
-      title: 'Main',
+      title: 'Dashboard',
       items: [
         {
           title: 'Dashboard',
@@ -41,35 +44,50 @@ export default function Sidebar() {
       ],
     },
     {
-      title: 'Catalogs',
+      title: 'Catálogos',
       items: [
         {
-          title: 'Categories',
+          title: 'Categorías',
           href: '/categories',
           icon: FolderTree,
         },
         {
-          title: 'Payment Methods',
+          title: 'Métodos de pago',
           href: '/payment-methods',
           icon: CreditCard,
+        },
+        {
+          title: 'Gastos',
+          href: '/expenses',
+          icon: FileText,
+        },
+        {
+          title: 'Plantillas de gastos',
+          href: '/expense-templates',
+          icon: Layers,
+        },
+        {
+          title: 'Quincenas',
+          href: '/fortnights',
+          icon: CalendarDays,
         },
       ],
     },
     {
-      title: 'Operations',
+      title: 'Operaciones',
       items: [
         {
-          title: 'Transactions',
+          title: 'Transacciones',
           href: '/transactions',
           icon: Receipt,
         },
       ],
     },
     {
-      title: 'Monthly View',
+      title: 'Planificación',
       items: [
         {
-          title: 'Monthly Control',
+          title: 'Control mensual',
           href: getCurrentMonthHref(),
           icon: Calendar,
         },
@@ -78,7 +96,6 @@ export default function Sidebar() {
   ]
 
   useEffect(() => {
-    // Load sidebar state from localStorage
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
     if (stored !== null) {
       setCollapsed(JSON.parse(stored))
@@ -104,7 +121,7 @@ export default function Sidebar() {
           size="icon"
           onClick={toggleSidebar}
           className="ml-auto"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />

@@ -1,20 +1,6 @@
 import { fetchFromApi } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
-import ExpenseTable from '@/components/ExpenseTable'
-import SummaryBlock from '@/components/SummaryBlock'
-import PaymentBreakdownTable from '@/components/PaymentBreakdownTable'
-import BalanceTable from '@/components/BalanceTable'
-import SectionCard from '@/components/SectionCard'
-import EmptyState from '@/components/EmptyState'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import FortnightColumn from '@/components/FortnightColumn'
 
 type Transaction = {
   id: number
@@ -33,16 +19,12 @@ type Summary = {
   totalPaid: number
   totalUnpaid: number
   balance: number
+  userIncome?: Array<{ user: string; amount: number }>
 }
 
-type PaymentMethodTotal = {
-  method: string
-  total: number
-}
-
-type PersonTotal = {
-  person: string
-  total: number
+type FortnightInfo = {
+  label: string
+  period: 'FIRST' | 'SECOND'
 }
 
 function getMonthName(month: number): string {
@@ -63,67 +45,59 @@ function getMonthName(month: number): string {
   return months[month - 1] || ''
 }
 
-function groupTransactionsByDate(transactions: Transaction[]): Record<string, Transaction[]> {
-  return transactions.reduce((acc, transaction) => {
-    const date = new Date(transaction.date).toISOString().split('T')[0]
-    if (!acc[date]) {
-      acc[date] = []
+async function getFortnightInfo(
+  year: string,
+  month: string,
+  period: 'FIRST' | 'SECOND'
+): Promise<FortnightInfo | null> {
+  try {
+    const response = await fetchFromApi<{ label: string }>(
+      `/api/fortnights?year=${year}&month=${month}&period=${period}`
+    )
+    return {
+      label: response.label,
+      period,
     }
-    acc[date].push(transaction)
-    return acc
-  }, {} as Record<string, Transaction[]>)
+  } catch (error) {
+    console.error(`Error fetching fortnight ${period}:`, error)
+    return null
+  }
 }
 
-async function getTransactions(year: string, month: string): Promise<Transaction[]> {
+async function getTransactions(
+  year: string,
+  month: string,
+  period: 'FIRST' | 'SECOND'
+): Promise<Transaction[]> {
   try {
     return await fetchFromApi<Transaction[]>(
-      `/api/transactions?year=${year}&month=${month}`
+      `/api/transactions?year=${year}&month=${month}&period=${period}`
     )
   } catch (error) {
-    console.error('Error fetching transactions:', error)
+    console.error(`Error fetching transactions for ${period}:`, error)
     return []
   }
 }
 
-async function getSummary(year: string, month: string): Promise<Summary> {
+async function getSummary(
+  year: string,
+  month: string,
+  period: 'FIRST' | 'SECOND'
+): Promise<Summary> {
   try {
     return await fetchFromApi<Summary>(
-      `/api/reports?type=summary&year=${year}&month=${month}`
+      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}`
     )
   } catch (error) {
-    console.error('Error fetching summary:', error)
+    console.error(`Error fetching summary for ${period}:`, error)
     return {
       totalIncome: 0,
       totalExpense: 0,
       totalPaid: 0,
       totalUnpaid: 0,
       balance: 0,
+      userIncome: [],
     }
-  }
-}
-
-async function getPaymentMethodBreakdown(
-  year: string,
-  month: string
-): Promise<PaymentMethodTotal[]> {
-  try {
-    return await fetchFromApi<PaymentMethodTotal[]>(
-      `/api/reports?type=by-payment-method&year=${year}&month=${month}`
-    )
-  } catch (error) {
-    console.error('Error fetching payment method breakdown:', error)
-    return []
-  }
-}
-
-async function getPersonBreakdown(year: string, month: string): Promise<PersonTotal[]> {
-  try {
-    return await fetchFromApi<PersonTotal[]>(
-      `/api/reports?type=by-person&year=${year}&month=${month}`
-    )
-  } catch (error) {
-    console.error('Error fetching person breakdown:', error)
-    return []
   }
 }
 
@@ -137,87 +111,41 @@ export default async function MonthlyPage({
   const month = parseInt(monthParam, 10)
   const monthName = getMonthName(month)
 
-  const [transactions, summary, paymentMethods, personBalances] = await Promise.all([
-    getTransactions(yearParam, monthParam),
-    getSummary(yearParam, monthParam),
-    getPaymentMethodBreakdown(yearParam, monthParam),
-    getPersonBreakdown(yearParam, monthParam),
+  const [
+    firstFortnightInfo,
+    secondFortnightInfo,
+    firstTransactions,
+    secondTransactions,
+    firstSummary,
+    secondSummary,
+  ] = await Promise.all([
+    getFortnightInfo(yearParam, monthParam, 'FIRST'),
+    getFortnightInfo(yearParam, monthParam, 'SECOND'),
+    getTransactions(yearParam, monthParam, 'FIRST'),
+    getTransactions(yearParam, monthParam, 'SECOND'),
+    getSummary(yearParam, monthParam, 'FIRST'),
+    getSummary(yearParam, monthParam, 'SECOND'),
   ])
 
-  const transactionsByDate = groupTransactionsByDate(transactions)
-  const sortedDates = Object.keys(transactionsByDate).sort()
-
-  const tenemos = summary.totalIncome
-  const total = summary.totalExpense
-  const libre = summary.balance
-
-  // Convert personBalances to userIncome format
-  const userIncome = personBalances.map((p) => ({
-    user: p.person,
-    amount: p.total,
-  }))
+  const firstLabel = firstFortnightInfo?.label || `1–15 ${monthName} ${year}`
+  const secondLabel = secondFortnightInfo?.label || `16–${new Date(year, month, 0).getDate()} ${monthName} ${year}`
 
   return (
     <>
       <MonthlyHeader year={year} month={month} monthName={monthName} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT COLUMN - Expense Tables */}
-        <div className="lg:col-span-2 space-y-6">
-          {sortedDates.length === 0 ? (
-            <EmptyState message="No hay transacciones para este mes" />
-          ) : (
-            sortedDates.map((date) => (
-              <ExpenseTable
-                key={date}
-                date={date}
-                expenses={transactionsByDate[date]}
-              />
-            ))
-          )}
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FortnightColumn
+          label={firstLabel}
+          transactions={firstTransactions}
+          summary={firstSummary}
+        />
 
-        {/* RIGHT COLUMN - Summary Cards */}
-        <div className="space-y-6">
-          <SummaryBlock tenemos={tenemos} libre={libre} userIncome={userIncome} />
-
-          <PaymentBreakdownTable methods={paymentMethods} />
-
-          <SectionCard
-            title="Tenemos – Por Pagar"
-            amount={summary.totalUnpaid}
-            variant="warning"
-            description="Monto aún sin pagar"
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Por Gastar / Ahorrar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Concepto</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="text-muted-foreground">
-                      (Sección para gastos planificados)
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      -
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <BalanceTable title="Debemos Tener" balances={personBalances} />
-        </div>
+        <FortnightColumn
+          label={secondLabel}
+          transactions={secondTransactions}
+          summary={secondSummary}
+        />
       </div>
     </>
   )
