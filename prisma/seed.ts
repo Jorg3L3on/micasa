@@ -1,7 +1,12 @@
 import 'dotenv/config'
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient, FortnightPeriod, CategoryGroup } from '../src/generated/prisma/client'
+import {
+  PrismaClient,
+  PaymentMethodType,
+  CategoryGroup,
+  FortnightPeriod,
+} from '../src/generated/prisma/client'
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const adapter = new PrismaPg(pool)
@@ -9,86 +14,81 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   /**
+   * CLEAN DATABASE (ORDER MATTERS)
+   */
+  await prisma.expense.deleteMany()
+  await prisma.fortnightIncome.deleteMany()
+  await prisma.expenseTemplate.deleteMany()
+  await prisma.card.deleteMany()
+  await prisma.paymentMethod.deleteMany()
+  await prisma.category.deleteMany()
+  await prisma.fortnight.deleteMany()
+  await prisma.user.deleteMany()
+
+  /**
    * USERS
    */
-  const jorge = await prisma.user.upsert({
-    where: { name: 'Jorge' },
-    update: {},
-    create: { name: 'Jorge' },
+  const jorge = await prisma.user.create({ data: { name: 'Jorge' } })
+  const carmen = await prisma.user.create({ data: { name: 'Carmen' } })
+
+  /**
+   * PAYMENT METHODS
+   */
+  const tarjeta = await prisma.paymentMethod.create({
+    data: { name: 'Tarjeta', type: PaymentMethodType.CARD },
   })
 
-  const carmen = await prisma.user.upsert({
-    where: { name: 'Carmen' },
-    update: {},
-    create: { name: 'Carmen' },
+  const efectivo = await prisma.paymentMethod.create({
+    data: { name: 'Efectivo', type: PaymentMethodType.CASH },
   })
 
   /**
-   * CATEGORIES - Create unique categories for each expense type
+   * CARDS
    */
-  const categories: Array<{ name: string; group: CategoryGroup }> = [
-    { name: 'Renta', group: CategoryGroup.FIXED },
-    { name: 'TELMEX', group: CategoryGroup.FIXED },
-    { name: 'AT&T Jorge', group: CategoryGroup.FIXED },
-    { name: 'AT&T Carmen', group: CategoryGroup.FIXED },
-    { name: 'SKY', group: CategoryGroup.FIXED },
-    { name: 'Mercado Pago', group: CategoryGroup.VARIABLE },
-    { name: 'Súper', group: CategoryGroup.VARIABLE },
-    { name: 'Sears', group: CategoryGroup.VARIABLE },
-    { name: 'Sartén', group: CategoryGroup.VARIABLE },
-    { name: 'Liverpool Carmen', group: CategoryGroup.VARIABLE },
-    { name: 'Liverpool Jorge', group: CategoryGroup.VARIABLE },
-    { name: 'C&A Efectivo', group: CategoryGroup.VARIABLE },
-    { name: 'C&A Departamental', group: CategoryGroup.VARIABLE },
-    { name: 'Mercado Libre', group: CategoryGroup.VARIABLE },
-  ]
+  const liverpoolJorge = await prisma.card.create({
+    data: {
+      name: 'Liverpool Jorge',
+      payment_method_id: tarjeta.id,
+    },
+  })
 
-  const categoryMap: Record<string, { id: number }> = {}
-  for (const cat of categories) {
-    const category = await prisma.category.upsert({
-      where: { name: cat.name },
-      update: {},
-      create: { name: cat.name, group: cat.group },
-    })
-    categoryMap[cat.name] = category
-  }
+  const liverpoolCarmen = await prisma.card.create({
+    data: {
+      name: 'Liverpool Carmen',
+      payment_method_id: tarjeta.id,
+    },
+  })
+
+  const telmexCard = await prisma.card.create({
+    data: {
+      name: 'TELMEX',
+      payment_method_id: tarjeta.id,
+    },
+  })
+
+  const skyCard = await prisma.card.create({
+    data: {
+      name: 'SKY',
+      payment_method_id: tarjeta.id,
+    },
+  })
 
   /**
-   * EXPENSE TEMPLATES
+   * CATEGORIES
    */
-  const templates = await prisma.expenseTemplate.createMany({
-    data: [
-      { name: 'Renta', category_id: categoryMap['Renta'].id, is_recurring: true, applies_first_fortnight: true, applies_second_fortnight: true },
-      { name: 'TELMEX', category_id: categoryMap['TELMEX'].id, is_recurring: true, applies_second_fortnight: true },
-      { name: 'AT&T Jorge', category_id: categoryMap['AT&T Jorge'].id, is_recurring: true, applies_second_fortnight: true },
-      { name: 'AT&T Carmen', category_id: categoryMap['AT&T Carmen'].id, is_recurring: true, applies_second_fortnight: true },
-      { name: 'Mercado Pago', category_id: categoryMap['Mercado Pago'].id, applies_second_fortnight: true },
-      { name: 'Súper', category_id: categoryMap['Súper'].id, applies_first_fortnight: true, applies_second_fortnight: true },
-      { name: 'Sears', category_id: categoryMap['Sears'].id, applies_second_fortnight: true },
-      { name: 'Sartén', category_id: categoryMap['Sartén'].id, applies_first_fortnight: true, applies_second_fortnight: true },
-      { name: 'Liverpool Carmen', category_id: categoryMap['Liverpool Carmen'].id, applies_first_fortnight: true },
-      { name: 'Liverpool Jorge', category_id: categoryMap['Liverpool Jorge'].id, applies_first_fortnight: true },
-      { name: 'C&A Efectivo', category_id: categoryMap['C&A Efectivo'].id, applies_first_fortnight: true },
-      { name: 'C&A Departamental', category_id: categoryMap['C&A Departamental'].id, applies_first_fortnight: true },
-      { name: 'SKY', category_id: categoryMap['SKY'].id, applies_first_fortnight: true },
-      { name: 'Mercado Libre', category_id: categoryMap['Mercado Libre'].id, applies_first_fortnight: true },
-    ],
-    skipDuplicates: true,
+  const fixed = await prisma.category.create({
+    data: { name: 'Fijo', group: CategoryGroup.FIXED },
+  })
+
+  const variable = await prisma.category.create({
+    data: { name: 'Variable', group: CategoryGroup.VARIABLE },
   })
 
   /**
    * FORTNIGHTS
    */
-  const firstFortnight = await prisma.fortnight.upsert({
-    where: {
-      year_month_period: {
-        year: 2026,
-        month: 1,
-        period: FortnightPeriod.FIRST,
-      },
-    },
-    update: {},
-    create: {
+  const firstFortnight = await prisma.fortnight.create({
+    data: {
       year: 2026,
       month: 1,
       period: FortnightPeriod.FIRST,
@@ -98,16 +98,8 @@ async function main() {
     },
   })
 
-  const secondFortnight = await prisma.fortnight.upsert({
-    where: {
-      year_month_period: {
-        year: 2026,
-        month: 1,
-        period: FortnightPeriod.SECOND,
-      },
-    },
-    update: {},
-    create: {
+  const secondFortnight = await prisma.fortnight.create({
+    data: {
       year: 2026,
       month: 1,
       period: FortnightPeriod.SECOND,
@@ -118,151 +110,76 @@ async function main() {
   })
 
   /**
-   * PAYMENT METHODS
+   * EXPENSE TEMPLATES
    */
-  const card = await prisma.paymentMethod.upsert({
-    where: { name: 'Tarjeta' },
-    update: {},
-    create: { name: 'Tarjeta', type: 'CARD' },
+  const templates = await prisma.expenseTemplate.createMany({
+    data: [
+      { name: 'Renta', category_id: fixed.id, is_recurring: true, applies_first_fortnight: true, applies_second_fortnight: true },
+      { name: 'TELMEX', category_id: fixed.id, default_card_id: telmexCard.id, is_recurring: true, applies_second_fortnight: true },
+      { name: 'AT&T Jorge', category_id: fixed.id, is_recurring: true, applies_second_fortnight: true },
+      { name: 'AT&T Carmen', category_id: fixed.id, is_recurring: true, applies_second_fortnight: true },
+      { name: 'Mercado Pago', category_id: variable.id, applies_second_fortnight: true },
+      { name: 'Súper', category_id: variable.id, applies_first_fortnight: true, applies_second_fortnight: true },
+      { name: 'Sears', category_id: variable.id, applies_second_fortnight: true },
+      { name: 'Sartén', category_id: variable.id, applies_first_fortnight: true, applies_second_fortnight: true },
+      { name: 'Liverpool Carmen', category_id: variable.id, applies_first_fortnight: true },
+      { name: 'Liverpool Jorge', category_id: variable.id, applies_first_fortnight: true },
+      { name: 'C&A Efectivo', category_id: variable.id, applies_first_fortnight: true },
+      { name: 'C&A Departamental', category_id: variable.id, applies_first_fortnight: true },
+      { name: 'Mercado Libre', category_id: variable.id, applies_first_fortnight: true },
+      { name: 'SKY', category_id: fixed.id, default_card_id: skyCard.id, applies_first_fortnight: true },
+    ],
   })
 
-  const cash = await prisma.paymentMethod.upsert({
-    where: { name: 'Efectivo' },
-    update: {},
-    create: { name: 'Efectivo', type: 'CASH' },
-  })
-
-  /**
-   * CARDS
-   */
-  const jorgeCard = await prisma.card.upsert({
-    where: { name: 'Liverpool Jorge' },
-    update: {},
-    create: {
-      name: 'Liverpool Jorge',
-      payment_method_id: card.id,
-    },
-  })
-
-  const carmenCard = await prisma.card.upsert({
-    where: { name: 'Liverpool Carmen' },
-    update: {},
-    create: {
-      name: 'Liverpool Carmen',
-      payment_method_id: card.id,
-    },
-  })
+  const templateMap = Object.fromEntries(
+    (await prisma.expenseTemplate.findMany()).map(t => [t.name, t])
+  )
 
   /**
    * INCOME
    */
-  // Delete existing income for these fortnights
-  await prisma.fortnightIncome.deleteMany({
-    where: {
-      fortnight_id: {
-        in: [firstFortnight.id, secondFortnight.id],
-      },
-    },
-  })
-
-  await prisma.fortnightIncome.create({
-    data: {
-      fortnight_id: firstFortnight.id,
-      amount: 27000, // Combined income for the fortnight
-      source: 'Salary',
-    },
-  })
-
-  await prisma.fortnightIncome.create({
-    data: {
-      fortnight_id: secondFortnight.id,
-      amount: 27000, // Combined income for the fortnight
-      source: 'Salary',
-    },
+  await prisma.fortnightIncome.createMany({
+    data: [
+      { fortnight_id: firstFortnight.id, user_id: jorge.id, amount: 12207.27, source: 'SALARY' },
+      { fortnight_id: firstFortnight.id, user_id: carmen.id, amount: 4256.32, source: 'SALARY' },
+      { fortnight_id: secondFortnight.id, user_id: jorge.id, amount: 12207.27, source: 'SALARY' },
+      { fortnight_id: secondFortnight.id, user_id: carmen.id, amount: 4256.32, source: 'SALARY' },
+    ],
   })
 
   /**
-   * EXPENSES PER FORTNIGHT
+   * EXPENSES (FULLY INCLUDED)
    */
-  const expenseTemplates = await prisma.expenseTemplate.findMany()
+  await prisma.expense.createMany({
+    data: [
+      // FIRST FORTNIGHT
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'Liverpool Jorge', amount: 1888.87, expense_template_id: templateMap['Liverpool Jorge'].id, card_id: liverpoolJorge.id },
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'Mercado Libre', amount: 1520, expense_template_id: templateMap['Mercado Libre'].id },
+      { fortnight_id: firstFortnight.id, category_id: fixed.id, description: 'AT&T Jorge', amount: 1100, expense_template_id: templateMap['AT&T Jorge'].id },
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'C&A Efectivo', amount: 1000, expense_template_id: templateMap['C&A Efectivo'].id },
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'Liverpool Carmen', amount: 1500, expense_template_id: templateMap['Liverpool Carmen'].id, card_id: liverpoolCarmen.id },
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'Sartén', amount: 520, expense_template_id: templateMap['Sartén'].id },
+      { fortnight_id: firstFortnight.id, category_id: fixed.id, description: 'Renta', amount: 1000, expense_template_id: templateMap['Renta'].id },
+      { fortnight_id: firstFortnight.id, category_id: fixed.id, description: 'SKY', amount: 269, expense_template_id: templateMap['SKY'].id },
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'C&A Departamental', amount: 385, expense_template_id: templateMap['C&A Departamental'].id, card_id: liverpoolJorge.id },
+      { fortnight_id: firstFortnight.id, category_id: variable.id, description: 'Súper', amount: 2000, expense_template_id: templateMap['Súper'].id },
 
-  // Sample expense amounts
-  const expenseAmounts: Record<string, number> = {
-    Renta: 8000,
-    TELMEX: 500,
-    'AT&T Jorge': 300,
-    'AT&T Carmen': 300,
-    'Mercado Pago': 1500,
-    Súper: 2000,
-    Sears: 800,
-    Sartén: 1200,
-    'Liverpool Carmen': 1500,
-    'Liverpool Jorge': 2000,
-    'C&A Efectivo': 600,
-    'C&A Departamental': 800,
-    SKY: 400,
-    'Mercado Libre': 1000,
-  }
-
-  // Card mapping for expenses
-  const expenseCards: Record<string, number> = {
-    'Liverpool Jorge': jorgeCard.id,
-    'Liverpool Carmen': carmenCard.id,
-    'C&A Departamental': jorgeCard.id,
-    Sears: jorgeCard.id,
-  }
-
-  // Delete existing expenses for these fortnights to avoid duplicates
-  await prisma.expense.deleteMany({
-    where: {
-      fortnight_id: {
-        in: [firstFortnight.id, secondFortnight.id],
-      },
-    },
+      // SECOND FORTNIGHT
+      { fortnight_id: secondFortnight.id, category_id: fixed.id, description: 'Renta', amount: 8000, expense_template_id: templateMap['Renta'].id },
+      { fortnight_id: secondFortnight.id, category_id: fixed.id, description: 'AT&T Jorge', amount: 300, expense_template_id: templateMap['AT&T Jorge'].id },
+      { fortnight_id: secondFortnight.id, category_id: fixed.id, description: 'AT&T Carmen', amount: 300, expense_template_id: templateMap['AT&T Carmen'].id },
+      { fortnight_id: secondFortnight.id, category_id: variable.id, description: 'Mercado Pago', amount: 1500, expense_template_id: templateMap['Mercado Pago'].id },
+      { fortnight_id: secondFortnight.id, category_id: variable.id, description: 'Súper', amount: 2000, expense_template_id: templateMap['Súper'].id },
+      { fortnight_id: secondFortnight.id, category_id: variable.id, description: 'Sartén', amount: 520, expense_template_id: templateMap['Sartén'].id },
+      { fortnight_id: secondFortnight.id, category_id: variable.id, description: 'Sears', amount: 403.83, expense_template_id: templateMap['Sears'].id, card_id: liverpoolJorge.id },
+      { fortnight_id: secondFortnight.id, category_id: fixed.id, description: 'TELMEX', amount: 658, expense_template_id: templateMap['TELMEX'].id, card_id: telmexCard.id },
+    ],
   })
 
-  for (const template of expenseTemplates) {
-    const amount = expenseAmounts[template.name] || 0
-    const cardId = expenseCards[template.name] || null
-
-    if (template.applies_first_fortnight) {
-      await prisma.expense.create({
-        data: {
-          description: template.name,
-          amount: amount,
-          fortnight_id: firstFortnight.id,
-          category_id: template.category_id,
-          expense_template_id: template.id,
-          card_id: cardId,
-          is_paid: Math.random() > 0.3, // 70% paid
-        },
-      })
-    }
-
-    if (template.applies_second_fortnight) {
-      await prisma.expense.create({
-        data: {
-          description: template.name,
-          amount: amount,
-          fortnight_id: secondFortnight.id,
-          category_id: template.category_id,
-          expense_template_id: template.id,
-          card_id: cardId,
-          is_paid: Math.random() > 0.3, // 70% paid
-        },
-      })
-    }
-  }
-
-  console.log('✅ Seed data created successfully!')
+  console.log('✅ Database fully seeded')
 }
 
 main()
-  .then(async () => {
+  .finally(async () => {
     await prisma.$disconnect()
-  })
-  .catch(async (e) => {
-    console.error(e)
-    await prisma.$disconnect()
-    process.exit(1)
   })
