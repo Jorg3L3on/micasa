@@ -216,3 +216,20 @@ export async function updateExpenseAmount(id: number, amount: number) {
     body: JSON.stringify({ amount }),
   })
 }
+
+// Create expense transaction helper
+export async function createExpenseTransaction(data: {
+  fortnight_id: number
+  category_id: number
+  description: string
+  amount: number
+  payment_method_id: number
+  is_paid?: boolean
+  payment_date?: string | null
+  expense_template_id?: number | null
+}) {
+  return clientFetchFromApi('/api/transactions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}

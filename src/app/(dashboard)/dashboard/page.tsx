@@ -53,7 +53,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Income
+              Ingresos
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Expenses
+              Gastos
             </CardTitle>
           </CardHeader>
           <CardContent>

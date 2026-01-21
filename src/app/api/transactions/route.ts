@@ -5,11 +5,13 @@ import prisma from '@/lib/prisma'
 const createTransactionSchema = z.object({
   fortnight_id: z.number().int().positive(),
   card_id: z.number().int().positive().nullable().optional(),
+  payment_method_id: z.number().int().positive().optional(), // Alternative to card_id
   category_id: z.number().int().positive(),
   description: z.string().min(1, 'Description is required'),
   amount: z.number().positive('Amount must be greater than 0'),
   is_paid: z.boolean().optional().default(false),
   payment_date: z.string().datetime().nullable().optional(),
+  expense_template_id: z.number().int().positive().optional(), // For linking to template
 })
 
 const updateTransactionSchema = z.object({
@@ -82,17 +84,25 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const transactions = expenses.map((expense) => ({
-      id: expense.id,
-      date: expense.created_at,
-      description: expense.description,
-      amount: expense.amount,
-      category: expense.category.name,
-      paymentMethod: expense.card?.payment_method?.name || 'Efectivo',
-      type: 'expense',
-      is_paid: expense.is_paid,
-      payment_date: expense.payment_date,
-    }))
+    const transactions = expenses.map((expense) => {
+      // Normalize date to ISO string format for consistent grouping
+      const dateValue = expense.payment_date || expense.created_at
+      const dateStr = dateValue instanceof Date 
+        ? dateValue.toISOString().split('T')[0] 
+        : new Date(dateValue).toISOString().split('T')[0]
+      
+      return {
+        id: expense.id,
+        date: dateStr,
+        description: expense.description,
+        amount: expense.amount,
+        category: expense.category.name,
+        paymentMethod: expense.card?.payment_method?.name || 'Efectivo',
+        type: 'expense',
+        is_paid: expense.is_paid,
+        payment_date: expense.payment_date,
+      }
+    })
 
     let filteredTransactions = transactions
     if (type) {
@@ -132,9 +142,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (validatedData.card_id) {
+    // Resolve card_id from payment_method_id if provided
+    let cardId: number | null = validatedData.card_id || null
+    if (validatedData.payment_method_id && !cardId) {
+      const paymentMethod = await prisma.paymentMethod.findUnique({
+        where: { id: validatedData.payment_method_id },
+      })
+
+      if (!paymentMethod) {
+        return NextResponse.json(
+          { error: 'Payment method not found' },
+          { status: 404 }
+        )
+      }
+
+      if (paymentMethod.type === 'CARD') {
+        // Find or create a card for this payment method
+        // Use description as card name if it matches a pattern, otherwise find first active card
+        const card = await prisma.card.findFirst({
+          where: {
+            payment_method_id: validatedData.payment_method_id,
+            active: true,
+          },
+        })
+
+        if (card) {
+          cardId = card.id
+        } else {
+          // Create a default card for this payment method
+          const newCard = await prisma.card.create({
+            data: {
+              name: `${paymentMethod.name} - ${validatedData.description}`,
+              payment_method_id: validatedData.payment_method_id,
+              active: true,
+            },
+          })
+          cardId = newCard.id
+        }
+      } else {
+        // CASH payment method, card_id should be null
+        cardId = null
+      }
+    }
+
+    if (cardId) {
       const card = await prisma.card.findUnique({
-        where: { id: validatedData.card_id },
+        where: { id: cardId },
         include: {
           payment_method: true,
         },
@@ -142,7 +195,7 @@ export async function POST(request: NextRequest) {
 
       if (!card) {
         return NextResponse.json(
-          { error: 'Payment method not found' },
+          { error: 'Card not found' },
           { status: 404 }
         )
       }
@@ -151,12 +204,13 @@ export async function POST(request: NextRequest) {
     const expense = await prisma.expense.create({
       data: {
         fortnight_id: validatedData.fortnight_id,
-        card_id: validatedData.card_id || null,
+        card_id: cardId,
         category_id: validatedData.category_id,
         description: validatedData.description,
         amount: validatedData.amount,
         is_paid: validatedData.is_paid,
         payment_date: validatedData.payment_date ? new Date(validatedData.payment_date) : null,
+        expense_template_id: validatedData.expense_template_id || null,
       },
       include: {
         category: {
@@ -176,9 +230,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Normalize date to ISO string format for consistent grouping
+    const dateValue = expense.payment_date || expense.created_at
+    const dateStr = dateValue instanceof Date 
+      ? dateValue.toISOString().split('T')[0] 
+      : new Date(dateValue).toISOString().split('T')[0]
+
     const transaction = {
       id: expense.id,
-      date: expense.created_at,
+      date: dateStr,
       description: expense.description,
       amount: expense.amount,
       category: expense.category.name,
@@ -285,9 +345,15 @@ export async function PUT(request: NextRequest) {
       },
     })
 
+    // Normalize date to ISO string format for consistent grouping
+    const dateValue = expense.payment_date || expense.created_at
+    const dateStr = dateValue instanceof Date 
+      ? dateValue.toISOString().split('T')[0] 
+      : new Date(dateValue).toISOString().split('T')[0]
+
     const transaction = {
       id: expense.id,
-      date: expense.created_at,
+      date: dateStr,
       description: expense.description,
       amount: expense.amount,
       category: expense.category.name,
