@@ -44,6 +44,26 @@ export default function Sidebar() {
       ],
     },
     {
+      title: 'Planificación',
+      items: [
+        {
+          title: 'Control mensual',
+          href: getCurrentMonthHref(),
+          icon: Calendar,
+        },
+      ],
+    },
+    {
+      title: 'Operaciones',
+      items: [
+        {
+          title: 'Transacciones',
+          href: '/transactions',
+          icon: Receipt,
+        },
+      ],
+    },
+    {
       title: 'Catálogos',
       items: [
         {
@@ -72,27 +92,7 @@ export default function Sidebar() {
           icon: CalendarDays,
         },
       ],
-    },
-    {
-      title: 'Operaciones',
-      items: [
-        {
-          title: 'Transacciones',
-          href: '/transactions',
-          icon: Receipt,
-        },
-      ],
-    },
-    {
-      title: 'Planificación',
-      items: [
-        {
-          title: 'Control mensual',
-          href: getCurrentMonthHref(),
-          icon: Calendar,
-        },
-      ],
-    },
+    }
   ]
 
   useEffect(() => {

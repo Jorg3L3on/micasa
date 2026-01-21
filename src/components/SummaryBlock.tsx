@@ -52,7 +52,7 @@ export default function SummaryBlock({
       <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900">
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-medium text-purple-900 dark:text-purple-100">
-            Tenemos
+            Ingresos
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">

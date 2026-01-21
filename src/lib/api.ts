@@ -185,3 +185,34 @@ export async function deleteFortnight(id: number) {
     method: 'DELETE',
   })
 }
+
+// Expense paid status helpers
+export async function updateExpensePaidStatus(id: number, paid: boolean) {
+  return clientFetchFromApi(`/api/expenses/${id}/paid`, {
+    method: 'PATCH',
+    body: JSON.stringify({ paid }),
+  })
+}
+
+// Fortnight override amount helpers
+export async function updateFortnightOverrideAmount(
+  id: number,
+  data: {
+    amount: number
+    year: number
+    month: number
+  }
+) {
+  return clientFetchFromApi(`/api/fortnights/${id}/override-amount`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+// Transaction/Expense amount helpers
+export async function updateExpenseAmount(id: number, amount: number) {
+  return clientFetchFromApi(`/api/transactions?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ amount }),
+  })
+}
