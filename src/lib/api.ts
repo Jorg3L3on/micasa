@@ -217,6 +217,13 @@ export async function updateExpenseAmount(id: number, amount: number) {
   })
 }
 
+// Delete expense transaction helper
+export async function deleteTransaction(id: number) {
+  return clientFetchFromApi(`/api/transactions?id=${id}`, {
+    method: 'DELETE',
+  })
+}
+
 // Create expense transaction helper
 export async function createExpenseTransaction(data: {
   fortnight_id: number

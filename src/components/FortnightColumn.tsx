@@ -236,6 +236,8 @@ export default function FortnightColumn({
 
   const tenemos = summary.totalIncome
   const libre = summary.balance
+  const pagado = summary.totalPaid
+  const pendiente = summary.totalUnpaid
 
   // Filter user income for this specific fortnight
   const currentFortnightUserIncome = summary.userIncome && summary.userIncome.length > 0
@@ -269,6 +271,8 @@ export default function FortnightColumn({
         <SummaryBlock
           tenemos={tenemos}
           libre={libre}
+          pagado={pagado}
+          pendiente={pendiente}
           userIncome={currentFortnightUserIncome}
         />
 
