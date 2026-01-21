@@ -28,7 +28,7 @@ type Expense = {
 }
 
 type ExpenseTableProps = {
-  date: string
+  date?: string
   expenses: Expense[]
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void
   fortnightLabel?: string
@@ -41,9 +41,21 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
-  // Sync local state with props when expenses change
+  // Sync local state with props when expenses change and sort them
   useEffect(() => {
-    setLocalExpenses(expenses)
+    // Sort expenses: unpaid first (by amount descending), then paid (by amount descending)
+    const sorted = [...expenses].sort((a, b) => {
+      // First, separate paid and unpaid
+      if (a.is_paid !== b.is_paid) {
+        // Unpaid (false) comes before paid (true)
+        return a.is_paid ? 1 : -1
+      }
+      // Within the same paid status, sort by amount descending
+      const amountA = Number(a.amount)
+      const amountB = Number(b.amount)
+      return amountB - amountA
+    })
+    setLocalExpenses(sorted)
   }, [expenses])
 
   const handlePaidToggle = async (expense: Expense, newPaidStatus: boolean) => {
