@@ -8,7 +8,6 @@ const createExpenseSchema = z.object({
   defaultAmount: z.number().positive().optional(),
   paymentMethodId: z.number().int().positive(),
   active: z.boolean().optional().default(true),
-  userId: z.number().int().positive().optional(),
 })
 
 const updateExpenseSchema = z.object({
@@ -17,7 +16,6 @@ const updateExpenseSchema = z.object({
   defaultAmount: z.number().positive().optional().nullable(),
   paymentMethodId: z.number().int().positive().optional(),
   active: z.boolean().optional(),
-  userId: z.number().int().positive().optional(),
 })
 
 export async function GET() {
@@ -89,33 +87,16 @@ export async function POST(request: NextRequest) {
     })
 
     if (paymentMethod?.type === 'CARD') {
-      // Get default user if not provided
-      let userId = validatedData.userId
-      if (!userId) {
-        const users = await prisma.user.findMany({ where: { active: true }, take: 1 })
-        userId = users[0]?.id
-        if (!userId) {
-          return NextResponse.json(
-            { error: 'No active user found. Please create a user first.' },
-            { status: 400 }
-          )
-        }
-      }
-
       // Create or get a card for this expense
       const card = await prisma.card.upsert({
         where: {
-          user_id_name: {
-            user_id: userId,
-            name: validatedData.name,
-          },
+          name: validatedData.name,
         },
         update: {
           payment_method_id: validatedData.paymentMethodId,
           active: validatedData.active ?? true,
         },
         create: {
-          user_id: userId,
           name: validatedData.name,
           payment_method_id: validatedData.paymentMethodId,
           active: validatedData.active ?? true,
@@ -261,28 +242,20 @@ export async function PUT(request: NextRequest) {
 
       if (paymentMethod?.type === 'CARD') {
         // Get or create card
-        const users = await prisma.user.findMany({ where: { active: true }, take: 1 })
-        const userId = users[0]?.id
-        if (userId) {
-          const card = await prisma.card.upsert({
-            where: {
-              user_id_name: {
-                user_id: userId,
-                name: template.name,
-              },
-            },
-            update: {
-              payment_method_id: validatedData.paymentMethodId,
-            },
-            create: {
-              user_id: userId,
-              name: template.name,
-              payment_method_id: validatedData.paymentMethodId,
-              active: true,
-            },
-          })
-          updateData.default_card_id = card.id
-        }
+        const card = await prisma.card.upsert({
+          where: {
+            name: template.name,
+          },
+          update: {
+            payment_method_id: validatedData.paymentMethodId,
+          },
+          create: {
+            name: template.name,
+            payment_method_id: validatedData.paymentMethodId,
+            active: true,
+          },
+        })
+        updateData.default_card_id = card.id
       } else {
         updateData.default_card_id = null
       }

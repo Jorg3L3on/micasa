@@ -65,23 +65,10 @@ export async function PUT(
       },
     })
 
-    // Create override entry (using first user as placeholder - override applies to total)
-    const firstUser = await prisma.user.findFirst({
-      where: { active: true },
-      orderBy: { id: 'asc' },
-    })
-
-    if (!firstUser) {
-      return NextResponse.json(
-        { error: 'No active user found' },
-        { status: 400 }
-      )
-    }
-
+    // Create override entry (override applies to total)
     await prisma.fortnightIncome.create({
       data: {
         fortnight_id: Number(id),
-        user_id: firstUser.id,
         amount: validatedData.amount.toString(),
         source: '__OVERRIDE__',
       },

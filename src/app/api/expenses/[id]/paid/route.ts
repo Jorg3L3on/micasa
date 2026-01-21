@@ -35,11 +35,6 @@ export async function PATCH(
             name: true,
           },
         },
-        user: {
-          select: {
-            name: true,
-          },
-        },
         card: {
           select: {
             payment_method: {
@@ -61,7 +56,6 @@ export async function PATCH(
         category: expense.category.name,
         paymentMethod: expense.card?.payment_method?.name || 'Efectivo',
         is_paid: expense.is_paid,
-        user: expense.user.name,
       },
       { status: 200 }
     )

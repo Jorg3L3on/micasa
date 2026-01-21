@@ -25,7 +25,6 @@ type Expense = {
   category: string
   paymentMethod: string
   is_paid: boolean
-  user: string
 }
 
 type ExpenseTableProps = {
@@ -132,7 +131,6 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">Pagado</TableHead>
-              <TableHead>Persona</TableHead>
               <TableHead>Concepto</TableHead>
               <TableHead className="text-right">Monto</TableHead>
               <TableHead className="w-12"></TableHead>
@@ -141,7 +139,7 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
           <TableBody>
             {localExpenses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   Sin gastos
                 </TableCell>
               </TableRow>
@@ -159,7 +157,6 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
                         }}
                       />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">{expense.user}</TableCell>
                     <TableCell className="text-sm">{expense.description}</TableCell>
                     <TableCell className="text-right font-medium text-sm">
                       {formatCurrency(Number(expense.amount))}
@@ -179,7 +176,7 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell colSpan={4} className="text-right text-sm">
+                  <TableCell colSpan={3} className="text-right text-sm">
                     Total:
                   </TableCell>
                   <TableCell className="text-right text-sm">

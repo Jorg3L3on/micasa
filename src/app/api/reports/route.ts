@@ -83,13 +83,6 @@ export async function GET(request: NextRequest) {
 
       const income = await prisma.fortnightIncome.findMany({
         where: incomeWhere,
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
-          },
-        },
       })
 
       const totalExpense = expenses.reduce((sum, expense) => {
@@ -115,22 +108,111 @@ export async function GET(request: NextRequest) {
             return sum + Number(inc.amount)
           }, 0)
 
-      // Group income by user (excluding override)
-      const incomeByUser = regularIncome.reduce((acc: Record<string, number>, inc) => {
-        const userName = inc.user.name
-        if (!acc[userName]) {
-          acc[userName] = 0
-        }
-        acc[userName] += Number(inc.amount)
-        return acc
-      }, {})
-
-      const userIncome = Object.entries(incomeByUser).map(([user, amount]) => ({
-        user,
-        amount,
-      }))
-
       const balance = totalIncome - totalExpense
+
+      // Fetch user income data from FortnightIncome using the user_id relationship
+      let userIncomeData: Array<{
+        fortnightId: number
+        userIncome: Array<{ userId: number; userName: string; income: number }>
+      }> = []
+
+      if (month || year || period) {
+        const fortnightWhere: any = {}
+        if (month) {
+          fortnightWhere.month = parseInt(month, 10)
+        }
+        if (year) {
+          fortnightWhere.year = parseInt(year, 10)
+        }
+        if (period) {
+          fortnightWhere.period = period
+        }
+        
+        const fortnights = await prisma.fortnight.findMany({
+          where: fortnightWhere,
+          select: { id: true },
+        })
+        
+        const fortnightIds = fortnights.map((f) => f.id)
+        
+        if (fortnightIds.length > 0) {
+          try {
+            // First, try to fetch with user relationship (if migration has been applied)
+            // Use raw query to check if user_id column exists
+            const tableInfo = await prisma.$queryRaw<Array<{ column_name: string }>>`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'FortnightIncome' 
+              AND column_name = 'user_id'
+            `
+            
+            if (tableInfo && tableInfo.length > 0) {
+              // user_id column exists, fetch with relationship
+              const fortnightIncomes = await prisma.fortnightIncome.findMany({
+                where: {
+                  fortnight_id: { in: fortnightIds },
+                  source: { not: '__OVERRIDE__' },
+                },
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              })
+
+              // Group income by fortnight_id and user_id
+              const incomeByFortnight: Record<number, Record<number, number>> = {}
+              
+              fortnightIncomes.forEach((inc) => {
+                const fortnightId = inc.fortnight_id
+                const userId = (inc as any).user_id
+                if (userId) {
+                  const amount = Number(inc.amount)
+
+                  if (!incomeByFortnight[fortnightId]) {
+                    incomeByFortnight[fortnightId] = {}
+                  }
+                  if (!incomeByFortnight[fortnightId][userId]) {
+                    incomeByFortnight[fortnightId][userId] = 0
+                  }
+                  incomeByFortnight[fortnightId][userId] += amount
+                }
+              })
+
+              // Convert to the expected format
+              userIncomeData = Object.entries(incomeByFortnight).map(([fortnightId, userAmounts]) => {
+                const userIncome = Object.entries(userAmounts).map(([userId, amount]) => {
+                  // Find the user from the first income entry that matches this userId
+                  const incomeEntry = fortnightIncomes.find(
+                    (inc) => inc.fortnight_id === parseInt(fortnightId, 10) && (inc as any).user_id === parseInt(userId, 10)
+                  )
+                  return {
+                    userId: parseInt(userId, 10),
+                    userName: (incomeEntry as any)?.user?.name || 'Unknown',
+                    income: amount,
+                  }
+                })
+                return {
+                  fortnightId: parseInt(fortnightId, 10),
+                  userIncome,
+                }
+              })
+            } else {
+              // user_id column doesn't exist yet, return empty array
+              console.warn('user_id column does not exist in FortnightIncome table. Migration may not be applied yet.')
+              userIncomeData = []
+            }
+          } catch (userIncomeError) {
+            // If there's any error, just return empty array
+            // This allows the API to work before the migration is run
+            console.warn('Could not fetch user income (migration may not be applied yet):', userIncomeError)
+            userIncomeData = []
+          }
+        }
+      }
 
       return NextResponse.json(
         {
@@ -139,7 +221,7 @@ export async function GET(request: NextRequest) {
           totalPaid,
           totalUnpaid,
           balance,
-          userIncome,
+          userIncome: userIncomeData,
         },
         { status: 200 }
       )
@@ -212,67 +294,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(result, { status: 200 })
     }
 
-    if (reportType === 'by-person') {
-      const where = await buildWhereClause(month, year, period)
-
-      const expenses = await prisma.expense.findMany({
-        where,
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
-          },
-          card: {
-            select: {
-              payment_method: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      })
-
-      const personTotals: Record<string, number> = {}
-
-      expenses.forEach((expense) => {
-        const personName = expense.user.name
-        if (!personTotals[personName]) {
-          personTotals[personName] = 0
-        }
-        personTotals[personName] += Number(expense.amount)
-      })
-
-      // Add cash as a separate entry
-      const cashExpenses = expenses.filter(
-        (e) => !e.card || e.card.payment_method.name === 'Efectivo'
-      )
-      const cashTotal = cashExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
-      if (cashTotal > 0) {
-        personTotals['Efectivo'] = (personTotals['Efectivo'] || 0) + cashTotal
-      }
-
-      const result = Object.entries(personTotals).map(([person, total]) => ({
-        person,
-        total,
-      }))
-
-      return NextResponse.json(result, { status: 200 })
-    }
-
     return NextResponse.json(
       {
         error:
-          'Invalid report type. Use ?type=summary, ?type=by-category, ?type=by-payment-method, or ?type=by-person',
+          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method',
       },
       { status: 400 }
     )
   } catch (error) {
     console.error('Error generating report:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate report'
     return NextResponse.json(
-      { error: 'Failed to generate report' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

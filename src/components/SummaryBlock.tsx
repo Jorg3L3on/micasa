@@ -7,21 +7,19 @@ import {
 } from '@/components/ui/table'
 import { formatCurrency } from '@/lib/utils'
 
-type UserIncome = {
-  user: string
-  amount: number
-}
-
 type SummaryBlockProps = {
   tenemos: number
   libre: number
-  userIncome: UserIncome[]
+  userIncome?: Array<{
+    fortnightId: number
+    userIncome: Array<{ userId: number; userName: string; income: number }>
+  }>
 }
 
 export default function SummaryBlock({
   tenemos,
   libre,
-  userIncome = [],
+  userIncome,
 }: SummaryBlockProps) {
   const getLibreColorClasses = () => {
     if (libre > 1000) {
@@ -47,6 +45,9 @@ export default function SummaryBlock({
 
   const libreColors = getLibreColorClasses()
 
+  // Calculate total from user income if available, otherwise use tenemos
+  const hasUserIncome = userIncome && userIncome.length > 0 && userIncome.some(fi => fi.userIncome && fi.userIncome.length > 0)
+
   return (
     <div className="grid grid-cols-2 gap-4">
       <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900">
@@ -56,30 +57,35 @@ export default function SummaryBlock({
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          {userIncome.length > 0 ? (
+          {hasUserIncome ? (
             <div className="space-y-2">
-              <Table>
-                <TableBody>
-                  {userIncome.map((item) => (
-                    <TableRow key={item.user} className="border-0">
-                      <TableCell className="py-1 px-0 text-xs text-purple-900 dark:text-purple-100">
-                        {item.user}
-                      </TableCell>
-                      <TableCell className="py-1 px-0 text-right text-xs font-medium text-purple-700 dark:text-purple-300">
-                        {formatCurrency(item.amount)}
-                      </TableCell>
-                    </TableRow>
+              {userIncome.map((fortnightIncome) => (
+                <div key={fortnightIncome.fortnightId} className="space-y-1.5">
+                  {fortnightIncome.userIncome.map((userInc) => (
+                    <div
+                      key={userInc.userId}
+                      className="flex justify-between items-center text-sm"
+                    >
+                      <span className="text-purple-600 dark:text-purple-400 text-xs">
+                        {userInc.userName}:
+                      </span>
+                      <span className="font-semibold text-purple-700 dark:text-purple-300 text-xs">
+                        {formatCurrency(userInc.income)}
+                      </span>
+                    </div>
                   ))}
-                  <TableRow className="border-t border-purple-300 dark:border-purple-800">
-                    <TableCell className="py-1 px-0 text-xs font-semibold text-purple-900 dark:text-purple-100">
-                      Total
-                    </TableCell>
-                    <TableCell className="py-1 px-0 text-right text-xs font-bold text-purple-700 dark:text-purple-300">
-                      {formatCurrency(tenemos)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                </div>
+              ))}
+              <div className="pt-2 border-t border-purple-200 dark:border-purple-800 mt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-purple-900 dark:text-purple-100">
+                    Total:
+                  </span>
+                  <span className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                    {formatCurrency(tenemos)}
+                  </span>
+                </div>
+              </div>
             </div>
           ) : (
             <p className="text-lg font-bold text-purple-700 dark:text-purple-300">
