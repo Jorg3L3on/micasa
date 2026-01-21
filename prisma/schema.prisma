@@ -27,7 +27,7 @@ enum FortnightPeriod {
   SECOND // 16–end of month
 }
 
-// 1. Users - Represents the people involved in the budget
+// 1. Users - Represents the people involved in the budget (kept for backward compatibility, not actively used)
 model User {
   id         Int      @id @default(autoincrement())
   name       String
@@ -35,11 +35,8 @@ model User {
   created_at DateTime @default(now())
 
   // Relationships
-  cards             Card[]
-  expenses          Expense[]
-  income            FortnightIncome[]
-  summaries         UserFortnightSummary[]
-  expense_templates ExpenseTemplate[]
+  summaries UserFortnightSummary[]
+  income    FortnightIncome[]
 
   @@unique([name])
   @@index([active])
@@ -82,23 +79,20 @@ model PaymentMethod {
   @@unique([name])
 }
 
-// 4. Cards - Represents credit/debit cards and who owns them
+// 4. Cards - Represents credit/debit cards (no longer tied to users)
 model Card {
   id                Int      @id @default(autoincrement())
-  user_id           Int
   name              String // e.g., Liverpool Jorge, AT&T Carmen
   payment_method_id Int
   active            Boolean  @default(true)
   created_at        DateTime @default(now())
 
   // Relationships
-  user              User              @relation(fields: [user_id], references: [id])
   payment_method    PaymentMethod     @relation(fields: [payment_method_id], references: [id])
   expenses          Expense[]
   expense_templates ExpenseTemplate[]
 
-  @@unique([user_id, name])
-  @@index([user_id])
+  @@unique([name])
   @@index([active])
 }
 
@@ -122,7 +116,6 @@ model Category {
 model ExpenseTemplate {
   id                       Int      @id @default(autoincrement())
   name                     String // Renta, TELMEX, AT&T Jorge, etc.
-  user_id                  Int? // Nullable - can be shared or user-specific
   category_id              Int
   default_card_id          Int? // Nullable
   suggested_amount         Decimal? @db.Decimal(10, 2)
@@ -133,13 +126,11 @@ model ExpenseTemplate {
   created_at               DateTime @default(now())
 
   // Relationships
-  user         User?     @relation(fields: [user_id], references: [id])
   category     Category  @relation(fields: [category_id], references: [id])
   default_card Card?     @relation(fields: [default_card_id], references: [id])
   expenses     Expense[]
 
   @@unique([name])
-  @@index([user_id])
   @@index([category_id])
   @@index([default_card_id])
   @@index([active])
@@ -149,7 +140,6 @@ model ExpenseTemplate {
 model Expense {
   id                  Int       @id @default(autoincrement())
   fortnight_id        Int
-  user_id             Int
   card_id             Int? // Nullable for cash
   category_id         Int
   expense_template_id Int? // Nullable
@@ -161,25 +151,23 @@ model Expense {
 
   // Relationships
   fortnight        Fortnight        @relation(fields: [fortnight_id], references: [id])
-  user             User             @relation(fields: [user_id], references: [id])
   card             Card?            @relation(fields: [card_id], references: [id])
   category         Category         @relation(fields: [category_id], references: [id])
   expense_template ExpenseTemplate? @relation(fields: [expense_template_id], references: [id])
 
   @@index([fortnight_id])
-  @@index([user_id])
   @@index([card_id])
   @@index([category_id])
   @@index([is_paid])
 }
 
-// 7. Fortnight Income - Represents "Tenemos" (how much money exists per person)
+// 7. Fortnight Income - Represents "Tenemos" (how much money exists for the fortnight)
 model FortnightIncome {
   id           Int      @id @default(autoincrement())
   fortnight_id Int
   user_id      Int
   amount       Decimal  @db.Decimal(10, 2)
-  source       String? // Salary, Transfer, etc.
+  source       String? // Salary, Transfer, __OVERRIDE__, etc.
   created_at   DateTime @default(now())
 
   // Relationships

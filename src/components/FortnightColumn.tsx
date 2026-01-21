@@ -17,7 +17,6 @@ type Transaction = {
   category: string
   paymentMethod: string
   is_paid: boolean
-  user: string
 }
 
 type Summary = {
@@ -26,7 +25,10 @@ type Summary = {
   totalPaid: number
   totalUnpaid: number
   balance: number
-  userIncome?: Array<{ user: string; amount: number }>
+  userIncome?: Array<{
+    fortnightId: number
+    userIncome: Array<{ userId: number; userName: string; income: number }>
+  }>
 }
 
 type FortnightColumnProps = {
@@ -120,7 +122,11 @@ export default function FortnightColumn({
 
   const tenemos = summary.totalIncome
   const libre = summary.balance
-  const userIncome = summary.userIncome || []
+
+  // Filter user income for this specific fortnight
+  const currentFortnightUserIncome = summary.userIncome && summary.userIncome.length > 0
+    ? summary.userIncome.filter((ui) => ui.fortnightId === fortnightId)
+    : undefined
 
   return (
     <>
@@ -133,7 +139,11 @@ export default function FortnightColumn({
         </Card>
 
         {/* Summary Cards */}
-        <SummaryBlock tenemos={tenemos} libre={libre} userIncome={userIncome} />
+        <SummaryBlock
+          tenemos={tenemos}
+          libre={libre}
+          userIncome={currentFortnightUserIncome}
+        />
 
         {/* Expense Tables */}
         <div className="space-y-4">

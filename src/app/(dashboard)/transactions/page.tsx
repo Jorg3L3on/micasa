@@ -23,7 +23,6 @@ type Transaction = {
   paymentMethod: string
   type: 'income' | 'expense'
   is_paid: boolean
-  user: string
 }
 
 async function getTransactions(searchParams: {

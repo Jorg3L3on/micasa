@@ -12,12 +12,6 @@ type Transaction = {
   category: string
   paymentMethod: string
   is_paid: boolean
-  user: string
-}
-
-type UserIncome = {
-  user: string
-  amount: number
 }
 
 type Summary = {
@@ -26,7 +20,10 @@ type Summary = {
   totalPaid: number
   totalUnpaid: number
   balance: number
-  userIncome: UserIncome[]
+  userIncome?: Array<{
+    fortnightId: number
+    userIncome: Array<{ userId: number; userName: string; income: number }>
+  }>
 }
 
 function groupTransactionsByDate(transactions: Transaction[]): Record<string, Transaction[]> {
@@ -88,7 +85,6 @@ async function getSummary(
       totalPaid: 0,
       totalUnpaid: 0,
       balance: 0,
-      userIncome: [],
     }
   }
 }
@@ -131,7 +127,6 @@ export default async function FortnightPage({
         <SummaryBlock
           tenemos={tenemos}
           libre={libre}
-          userIncome={summary.userIncome || []}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}

@@ -10,7 +10,6 @@ type Transaction = {
   category: string
   paymentMethod: string
   is_paid: boolean
-  user: string
 }
 
 type Summary = {
@@ -19,7 +18,10 @@ type Summary = {
   totalPaid: number
   totalUnpaid: number
   balance: number
-  userIncome?: Array<{ user: string; amount: number }>
+  userIncome?: Array<{
+    fortnightId: number
+    userIncome: Array<{ userId: number; userName: string; income: number }>
+  }>
 }
 
 type FortnightInfo = {
@@ -103,7 +105,6 @@ async function getSummary(
       totalPaid: 0,
       totalUnpaid: 0,
       balance: 0,
-      userIncome: [],
     }
   }
 }

@@ -136,20 +136,18 @@ async function main() {
    * CARDS
    */
   const jorgeCard = await prisma.card.upsert({
-    where: { user_id_name: { user_id: jorge.id, name: 'Liverpool Jorge' } },
+    where: { name: 'Liverpool Jorge' },
     update: {},
     create: {
-      user_id: jorge.id,
       name: 'Liverpool Jorge',
       payment_method_id: card.id,
     },
   })
 
   const carmenCard = await prisma.card.upsert({
-    where: { user_id_name: { user_id: carmen.id, name: 'Liverpool Carmen' } },
+    where: { name: 'Liverpool Carmen' },
     update: {},
     create: {
-      user_id: carmen.id,
       name: 'Liverpool Carmen',
       payment_method_id: card.id,
     },
@@ -170,17 +168,7 @@ async function main() {
   await prisma.fortnightIncome.create({
     data: {
       fortnight_id: firstFortnight.id,
-      user_id: jorge.id,
-      amount: 15000,
-      source: 'Salary',
-    },
-  })
-
-  await prisma.fortnightIncome.create({
-    data: {
-      fortnight_id: firstFortnight.id,
-      user_id: carmen.id,
-      amount: 12000,
+      amount: 27000, // Combined income for the fortnight
       source: 'Salary',
     },
   })
@@ -188,17 +176,7 @@ async function main() {
   await prisma.fortnightIncome.create({
     data: {
       fortnight_id: secondFortnight.id,
-      user_id: jorge.id,
-      amount: 15000,
-      source: 'Salary',
-    },
-  })
-
-  await prisma.fortnightIncome.create({
-    data: {
-      fortnight_id: secondFortnight.id,
-      user_id: carmen.id,
-      amount: 12000,
+      amount: 27000, // Combined income for the fortnight
       source: 'Salary',
     },
   })
@@ -253,7 +231,6 @@ async function main() {
           description: template.name,
           amount: amount,
           fortnight_id: firstFortnight.id,
-          user_id: jorge.id,
           category_id: template.category_id,
           expense_template_id: template.id,
           card_id: cardId,
@@ -268,7 +245,6 @@ async function main() {
           description: template.name,
           amount: amount,
           fortnight_id: secondFortnight.id,
-          user_id: jorge.id,
           category_id: template.category_id,
           expense_template_id: template.id,
           card_id: cardId,

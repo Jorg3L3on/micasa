@@ -4,7 +4,6 @@ import prisma from '@/lib/prisma'
 
 const createTransactionSchema = z.object({
   fortnight_id: z.number().int().positive(),
-  user_id: z.number().int().positive(),
   card_id: z.number().int().positive().nullable().optional(),
   category_id: z.number().int().positive(),
   description: z.string().min(1, 'Description is required'),
@@ -15,7 +14,6 @@ const createTransactionSchema = z.object({
 
 const updateTransactionSchema = z.object({
   fortnight_id: z.number().int().positive().optional(),
-  user_id: z.number().int().positive().optional(),
   card_id: z.number().int().positive().nullable().optional(),
   category_id: z.number().int().positive().optional(),
   description: z.string().min(1).optional(),
@@ -69,11 +67,6 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
-        user: {
-          select: {
-            name: true,
-          },
-        },
         card: {
           select: {
             payment_method: {
@@ -99,7 +92,6 @@ export async function GET(request: NextRequest) {
       type: 'expense',
       is_paid: expense.is_paid,
       payment_date: expense.payment_date,
-      user: expense.user.name,
     }))
 
     let filteredTransactions = transactions
@@ -159,7 +151,6 @@ export async function POST(request: NextRequest) {
     const expense = await prisma.expense.create({
       data: {
         fortnight_id: validatedData.fortnight_id,
-        user_id: validatedData.user_id,
         card_id: validatedData.card_id || null,
         category_id: validatedData.category_id,
         description: validatedData.description,
@@ -264,7 +255,6 @@ export async function PUT(request: NextRequest) {
 
     const updateData: any = {}
     if (validatedData.fortnight_id !== undefined) updateData.fortnight_id = validatedData.fortnight_id
-    if (validatedData.user_id !== undefined) updateData.user_id = validatedData.user_id
     if (validatedData.card_id !== undefined) updateData.card_id = validatedData.card_id
     if (validatedData.category_id !== undefined) updateData.category_id = validatedData.category_id
     if (validatedData.description !== undefined) updateData.description = validatedData.description
