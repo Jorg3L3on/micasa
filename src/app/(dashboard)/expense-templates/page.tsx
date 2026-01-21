@@ -28,11 +28,10 @@ type ExpenseTemplate = {
   id: number
   name: string
   category: string
-  defaultAmount: number | null
+  suggestedAmount: number | null
   paymentMethod: string | null
   active: boolean
   totalEstimatedAmount: number
-  expenseIds: number[]
 }
 
 type Category = {
@@ -45,17 +44,10 @@ type PaymentMethod = {
   name: string
 }
 
-type Expense = {
-  id: number
-  name: string
-  defaultAmount: number | null
-}
-
 export default function ExpenseTemplatesPage() {
   const [templates, setTemplates] = useState<ExpenseTemplate[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -68,24 +60,15 @@ export default function ExpenseTemplatesPage() {
     try {
       setLoading(true)
       setError(null)
-      const [templatesData, categoriesData, paymentMethodsData, expensesData] =
+      const [templatesData, categoriesData, paymentMethodsData] =
         await Promise.all([
           clientFetchFromApi<ExpenseTemplate[]>('/api/expense-templates'),
           clientFetchFromApi<Category[]>('/api/categories'),
           clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
-          clientFetchFromApi<Expense[]>('/api/expenses'),
         ])
       setTemplates(templatesData)
       setCategories(categoriesData)
       setPaymentMethods(paymentMethodsData)
-      // Map expenses to the format needed by the form
-      setExpenses(
-        expensesData.map((e) => ({
-          id: e.id,
-          name: e.name,
-          defaultAmount: e.defaultAmount,
-        }))
-      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
     } finally {
@@ -245,7 +228,6 @@ export default function ExpenseTemplatesPage() {
         error={formError && createDialogOpen ? formError : null}
         categories={categories}
         paymentMethods={paymentMethods}
-        expenses={expenses}
       />
 
       {selectedTemplate && (
@@ -262,17 +244,21 @@ export default function ExpenseTemplatesPage() {
             defaultValues={{
               name: selectedTemplate.name,
               categoryId: categories.find((c) => c.name === selectedTemplate.category)?.id || 0,
-              defaultAmount: selectedTemplate.defaultAmount,
+              suggestedAmount: selectedTemplate.suggestedAmount ?? null,
               paymentMethodId:
                 paymentMethods.find((pm) => pm.name === selectedTemplate.paymentMethod)?.id ||
                 null,
               active: selectedTemplate.active,
-              expenseIds: selectedTemplate.expenseIds,
+              dueDay: 1,
+              cutoffDay: 1,
+              isRecurring: false,
+              appliesFirstFortnight: false,
+              appliesSecondFortnight: false,
+              isSubscription: false,
             }}
             error={formError && editDialogOpen ? formError : null}
             categories={categories}
             paymentMethods={paymentMethods}
-            expenses={expenses}
           />
 
           <ConfirmDeleteDialog

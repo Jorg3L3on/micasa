@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 const createExpenseTemplateSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   categoryId: z.number().int().positive(),
-  defaultAmount: z.number().positive().optional(),
+  suggestedAmount: z.number().positive().optional(),
   paymentMethodId: z.number().int().positive().optional(),
   active: z.boolean().optional().default(true),
   expenseIds: z.array(z.number().int().positive()).optional().default([]),
@@ -14,7 +14,7 @@ const createExpenseTemplateSchema = z.object({
 const updateExpenseTemplateSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   categoryId: z.number().int().positive().optional(),
-  defaultAmount: z.number().positive().optional(),
+  suggestedAmount: z.number().positive().optional(),
   paymentMethodId: z.number().int().positive().optional().nullable(),
   active: z.boolean().optional(),
   expenseIds: z.array(z.number().int().positive()).optional(),
@@ -60,7 +60,7 @@ export async function GET() {
         id: template.id,
         name: template.name,
         category: template.category.name,
-        defaultAmount: template.suggested_amount ? Number(template.suggested_amount) : null,
+        suggestedAmount: template.suggested_amount ? Number(template.suggested_amount) : null,
         paymentMethod: template.default_card?.payment_method?.name || null,
         active: template.active,
         totalEstimatedAmount: totalAmount,
@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       data: {
         name: validatedData.name,
         category_id: validatedData.categoryId,
-        suggested_amount: validatedData.defaultAmount
-          ? validatedData.defaultAmount.toString()
+        suggested_amount: validatedData.suggestedAmount
+          ? validatedData.suggestedAmount.toString()
           : null,
         default_card_id: defaultCardId,
         active: validatedData.active ?? true,
@@ -181,8 +181,8 @@ export async function PUT(request: NextRequest) {
     if (validatedData.categoryId !== undefined) {
       updateData.category_id = validatedData.categoryId
     }
-    if (validatedData.defaultAmount !== undefined) {
-      updateData.suggested_amount = validatedData.defaultAmount.toString()
+    if (validatedData.suggestedAmount !== undefined) {
+      updateData.suggested_amount = validatedData.suggestedAmount.toString()
     }
     if (validatedData.active !== undefined) {
       updateData.active = validatedData.active
@@ -238,7 +238,7 @@ export async function PUT(request: NextRequest) {
         id: template.id,
         name: template.name,
         category: template.category.name,
-        defaultAmount: template.suggested_amount ? Number(template.suggested_amount) : null,
+        suggestedAmount: template.suggested_amount ? Number(template.suggested_amount) : null,
         paymentMethod: template.default_card?.payment_method?.name || null,
         active: template.active,
         totalEstimatedAmount: totalAmount || (template.suggested_amount ? Number(template.suggested_amount) : 0),

@@ -81,11 +81,14 @@ model PaymentMethod {
 
 // 4. Cards - Represents credit/debit cards (no longer tied to users)
 model Card {
-  id                Int      @id @default(autoincrement())
+  id                Int    @id @default(autoincrement())
   name              String // e.g., Liverpool Jorge, AT&T Carmen
   payment_method_id Int
-  active            Boolean  @default(true)
-  created_at        DateTime @default(now())
+  cutoff_day        Int?
+  due_day           Int?
+
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
 
   // Relationships
   payment_method    PaymentMethod     @relation(fields: [payment_method_id], references: [id])
@@ -122,8 +125,12 @@ model ExpenseTemplate {
   is_recurring             Boolean  @default(false)
   applies_first_fortnight  Boolean  @default(false)
   applies_second_fortnight Boolean  @default(false)
-  active                   Boolean  @default(true)
-  created_at               DateTime @default(now())
+  is_subscription          Boolean  @default(false)
+  due_day                  Int?
+  cutoff_day               Int?
+
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
 
   // Relationships
   category     Category  @relation(fields: [category_id], references: [id])
@@ -163,12 +170,15 @@ model Expense {
 
 // 7. Fortnight Income - Represents "Tenemos" (how much money exists for the fortnight)
 model FortnightIncome {
-  id           Int      @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   fortnight_id Int
   user_id      Int
-  amount       Decimal  @db.Decimal(10, 2)
+  amount       Decimal @db.Decimal(10, 2)
   source       String? // Salary, Transfer, __OVERRIDE__, etc.
-  created_at   DateTime @default(now())
+  is_deduction Boolean @default(false)
+  related_loan String? // Loan name, if applicable
+
+  created_at DateTime @default(now())
 
   // Relationships
   fortnight Fortnight @relation(fields: [fortnight_id], references: [id])

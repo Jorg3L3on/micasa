@@ -37,7 +37,7 @@ export default function TransactionFilters() {
     <div className="mb-6 flex gap-4 flex-wrap items-end">
       <div className="flex flex-col gap-2">
         <label htmlFor="month" className="text-sm font-medium">
-          Month
+          Mes
         </label>
         <Select
           id="month"
@@ -45,10 +45,10 @@ export default function TransactionFilters() {
           onChange={(e) => handleChange('month', e.target.value)}
           className="w-[180px]"
         >
-          <option value="">All</option>
+          <option value="">Todos</option>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
             <option key={m} value={m}>
-              {new Date(2000, m - 1).toLocaleString('en-US', { month: 'long' })}
+              {new Date(2000, m - 1).toLocaleString('es-MX', { month: 'long' })}
             </option>
           ))}
         </Select>
@@ -56,7 +56,7 @@ export default function TransactionFilters() {
 
       <div className="flex flex-col gap-2">
         <label htmlFor="year" className="text-sm font-medium">
-          Year
+          Año
         </label>
         <Select
           id="year"
@@ -64,7 +64,7 @@ export default function TransactionFilters() {
           onChange={(e) => handleChange('year', e.target.value)}
           className="w-[180px]"
         >
-          <option value="">All</option>
+          <option value="">Todos</option>
           {Array.from({ length: 5 }, (_, i) => currentYear - 2 + i).map((y) => (
             <option key={y} value={y}>
               {y}
@@ -75,7 +75,7 @@ export default function TransactionFilters() {
 
       <div className="flex flex-col gap-2">
         <label htmlFor="type" className="text-sm font-medium">
-          Type
+          Tipo
         </label>
         <Select
           id="type"
@@ -83,9 +83,9 @@ export default function TransactionFilters() {
           onChange={(e) => handleChange('type', e.target.value)}
           className="w-[180px]"
         >
-          <option value="">All</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+          <option value="">Todos</option>
+          <option value="income">Ingreso</option>
+          <option value="expense">Gasto</option>
         </Select>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,27 +13,43 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from './ui/checkbox'
+import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { formatCurrency } from '@/lib/utils'
 
 const expenseTemplateSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
   categoryId: z.number().int().positive('Concepto es requerido'),
-  defaultAmount: z.number().positive().optional().nullable(),
+  suggestedAmount: z.number().positive().optional().nullable(),
   paymentMethodId: z.number().int().positive().optional().nullable(),
   active: z.boolean(),
-  expenseIds: z.array(z.number().int().positive()),
+  dueDay: z.number().int().positive(),
+  cutoffDay: z.number().int().positive(),
+  isRecurring: z.boolean(),
+  appliesFirstFortnight: z.boolean(),
+  appliesSecondFortnight: z.boolean(),
+  isSubscription: z.boolean(),
 })
 
 export type ExpenseTemplateFormValues = z.infer<typeof expenseTemplateSchema>
@@ -48,12 +64,6 @@ type PaymentMethod = {
   name: string
 }
 
-type Expense = {
-  id: number
-  name: string
-  defaultAmount: number | null
-}
-
 type ExpenseTemplateFormProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -63,7 +73,6 @@ type ExpenseTemplateFormProps = {
   error?: string | null
   categories: Category[]
   paymentMethods: PaymentMethod[]
-  expenses: Expense[]
 }
 
 export default function ExpenseTemplateForm({
@@ -75,65 +84,75 @@ export default function ExpenseTemplateForm({
   error,
   categories,
   paymentMethods,
-  expenses,
 }: ExpenseTemplateFormProps) {
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [pendingData, setPendingData] = useState<ExpenseTemplateFormValues | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const form = useForm<ExpenseTemplateFormValues>({
     resolver: zodResolver(expenseTemplateSchema),
     defaultValues: {
       name: defaultValues?.name || '',
-      categoryId: defaultValues?.categoryId || 0,
-      defaultAmount: defaultValues?.defaultAmount ?? null,
+      categoryId: defaultValues?.categoryId ?? 0,
+      suggestedAmount: defaultValues?.suggestedAmount ?? null,
       paymentMethodId: defaultValues?.paymentMethodId ?? null,
       active: defaultValues?.active ?? true,
-      expenseIds: defaultValues?.expenseIds || [],
+      dueDay: defaultValues?.dueDay ?? 1,
+      cutoffDay: defaultValues?.cutoffDay ?? 1,
+      isRecurring: defaultValues?.isRecurring ?? false,
+      appliesFirstFortnight: defaultValues?.appliesFirstFortnight ?? false,
+      appliesSecondFortnight: defaultValues?.appliesSecondFortnight ?? false,
+      isSubscription: defaultValues?.isSubscription ?? false,
     },
   })
-
-  const selectedExpenseIds = form.watch('expenseIds')
-
-  const totalEstimatedAmount = useMemo(() => {
-    const selectedExpenses = expenses.filter((exp) => selectedExpenseIds.includes(exp.id))
-    return selectedExpenses.reduce((sum, exp) => {
-      return sum + (exp.defaultAmount || 0)
-    }, 0)
-  }, [selectedExpenseIds, expenses])
 
   useEffect(() => {
     if (open) {
       form.reset({
         name: defaultValues?.name || '',
         categoryId: defaultValues?.categoryId || 0,
-        defaultAmount: defaultValues?.defaultAmount ?? null,
+        suggestedAmount: defaultValues?.suggestedAmount ?? null,
         paymentMethodId: defaultValues?.paymentMethodId ?? null,
         active: defaultValues?.active ?? true,
-        expenseIds: defaultValues?.expenseIds || [],
+        dueDay: defaultValues?.dueDay ?? 1,
+        cutoffDay: defaultValues?.cutoffDay ?? 1,
+        isRecurring: defaultValues?.isRecurring ?? false,
+        appliesFirstFortnight: defaultValues?.appliesFirstFortnight ?? false,
+        appliesSecondFortnight: defaultValues?.appliesSecondFortnight ?? false,
+        isSubscription: defaultValues?.isSubscription ?? false,
       })
     }
   }, [open, defaultValues, form])
 
-  const handleSubmit = async (data: ExpenseTemplateFormValues) => {
-    try {
-      await onSubmit(data)
-      form.reset()
-      onOpenChange(false)
-    } catch (error) {
-      console.error('Error al enviar el formulario de plantilla de gasto:', error)
-    }
-  }
-
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       form.reset()
+      setConfirmDialogOpen(false)
+      setPendingData(null)
     }
     onOpenChange(newOpen)
   }
 
-  const toggleExpense = (expenseId: number) => {
-    const currentIds = form.getValues('expenseIds')
-    const newIds = currentIds.includes(expenseId)
-      ? currentIds.filter((id) => id !== expenseId)
-      : [...currentIds, expenseId]
-    form.setValue('expenseIds', newIds)
+  const handleFormSubmit = (data: ExpenseTemplateFormValues) => {
+    setPendingData(data)
+    setConfirmDialogOpen(true)
+  }
+
+  const handleConfirmSubmit = async () => {
+    if (!pendingData) return
+    
+    try {
+      setIsSubmitting(true)
+      await onSubmit(pendingData)
+      setConfirmDialogOpen(false)
+      setPendingData(null)
+      handleOpenChange(false)
+    } catch (error) {
+      // Error is handled by parent component
+      setConfirmDialogOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -150,7 +169,8 @@ export default function ExpenseTemplateForm({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4" id="expense-template-form">
+            <ScrollArea className="max-h-[60vh] pr-4">
             {error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
@@ -198,7 +218,7 @@ export default function ExpenseTemplateForm({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="defaultAmount"
+                name="suggestedAmount"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Monto por defecto (opcional)</FormLabel>
@@ -245,82 +265,200 @@ export default function ExpenseTemplateForm({
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="expenseIds"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Gastos</FormLabel>
-                  <FormControl>
-                    <ScrollArea className="h-48 rounded-md border p-4">
-                      <div className="space-y-2">
-                        {expenses.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No hay gastos disponibles</p>
-                        ) : (
-                          expenses.map((expense) => (
-                            <div
-                              key={expense.id}
-                              className="flex items-center space-x-2 cursor-pointer hover:bg-accent p-2 rounded"
-                              onClick={() => toggleExpense(expense.id)}
-                            >
-                              <Checkbox
-                                checked={selectedExpenseIds.includes(expense.id)}
-                                onChange={(e) => {
-                                  e.preventDefault()
-                                  toggleExpense(expense.id)
-                                }}
-                              />
-                              <div className="flex-1 flex justify-between items-center">
-                                <span className="text-sm">{expense.name}</span>
-                                {expense.defaultAmount && (
-                                  <span className="text-sm text-muted-foreground">
-                                    {formatCurrency(expense.defaultAmount)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="rounded-md bg-muted p-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Total estimado:</span>
-                <span className="text-lg font-bold">
-                  {formatCurrency(totalEstimatedAmount)}
-                </span>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="dueDay"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Día de vencimiento</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        max="31"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cutoffDay"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Día de corte</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        max="31"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
+            
+            {/* Active Status */}
             <FormField
               control={form.control}
               name="active"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                   <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
-                    />
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>Activo</FormLabel>
+                    <FormLabel className="text-base font-medium">
+                      Activo
+                    </FormLabel>
+                    <FormDescription>
+                      Las plantillas activas se pueden usar para crear gastos
+                    </FormDescription>
                   </div>
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit">{mode === 'create' ? 'Crear' : 'Actualizar'}</Button>
-            </DialogFooter>
+            
+            <Separator className="my-4" />
+            
+            {/* Recurring Section */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium mb-3">Configuración de recurrencia</h3>
+                <FormField
+                  control={form.control}
+                  name="isRecurring"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-base font-medium">
+                          Es recurrente
+                        </FormLabel>
+                        <FormDescription>
+                          Marca esta opción si el gasto se repite periódicamente
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Fortnight Application Section */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Aplicación por quincena</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="appliesFirstFortnight"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium">
+                            Primera quincena
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Aplica en días 1-15
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="appliesSecondFortnight"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium">
+                            Segunda quincena
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Aplica en días 16-31
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Subscription Section */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Tipo de gasto</h3>
+                <FormField
+                  control={form.control}
+                  name="isSubscription"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-base font-medium">
+                          Es una suscripción
+                        </FormLabel>
+                        <FormDescription>
+                          Marca esta opción si es un gasto de suscripción (ej: Netflix, Spotify)
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+            </ScrollArea>
           </form>
+          
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="expense-template-form" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear' : 'Actualizar'}
+            </Button>
+          </DialogFooter>
         </Form>
+
+        {/* Confirmation Dialog */}
+        <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {mode === 'create' ? '¿Crear plantilla de gasto?' : '¿Actualizar plantilla de gasto?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {mode === 'create'
+                  ? '¿Estás seguro de que deseas crear esta plantilla de gasto? Esta acción guardará los datos en la base de datos.'
+                  : '¿Estás seguro de que deseas actualizar esta plantilla de gasto? Los cambios se guardarán en la base de datos.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear' : 'Actualizar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   )
