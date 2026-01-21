@@ -112,6 +112,8 @@ export default async function FortnightPage({
 
   const tenemos = summary.totalIncome
   const libre = summary.balance
+  const pagado = summary.totalPaid
+  const pendiente = summary.totalUnpaid
 
   return (
     <>
@@ -127,6 +129,8 @@ export default async function FortnightPage({
         <SummaryBlock
           tenemos={tenemos}
           libre={libre}
+          pagado={pagado}
+          pendiente={pendiente}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}

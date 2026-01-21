@@ -12,10 +12,17 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { formatCurrency } from '@/lib/utils'
-import { updateExpensePaidStatus, updateExpenseAmount } from '@/lib/api'
-import { Pencil } from 'lucide-react'
+import { updateExpensePaidStatus, updateExpenseAmount, deleteTransaction } from '@/lib/api'
+import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import EditExpenseAmountDialog, { ExpenseAmountFormValues } from '@/components/EditExpenseAmountDialog'
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
 
 type Expense = {
   id: number
@@ -40,6 +47,8 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Sync local state with props when expenses change and sort them
   useEffect(() => {
@@ -132,6 +141,39 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
     }
   }
 
+  const handleDeleteExpense = async () => {
+    if (!deletingExpense) return
+
+    const expenseId = deletingExpense.id
+    setUpdatingIds((prev) => new Set(prev).add(expenseId))
+
+    // Optimistic update - remove from local state
+    const updatedExpenses = localExpenses.filter((e) => e.id !== expenseId)
+    setLocalExpenses(updatedExpenses)
+
+    try {
+      await deleteTransaction(expenseId)
+      // Notify parent to refresh summary
+      if (onExpenseUpdate) {
+        // Trigger a refresh by calling with the same paid status
+        onExpenseUpdate(expenseId, deletingExpense.is_paid)
+      }
+      setDeleteDialogOpen(false)
+      setDeletingExpense(null)
+    } catch (error) {
+      // Revert on error
+      setLocalExpenses(expenses)
+      console.error('Error deleting expense:', error)
+      alert('Error al eliminar el gasto. Por favor, intenta de nuevo.')
+    } finally {
+      setUpdatingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(expenseId)
+        return next
+      })
+    }
+  }
+
   const total = localExpenses.reduce((sum, expense) => {
     return sum + Number(expense.amount)
   }, 0)
@@ -163,9 +205,8 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
                       <Checkbox
                         checked={expense.is_paid}
                         disabled={updatingIds.has(expense.id)}
-                        onChange={(e) => {
-                          e.preventDefault()
-                          handlePaidToggle(expense, !expense.is_paid)
+                        onCheckedChange={(checked) => {
+                          handlePaidToggle(expense, checked === true)
                         }}
                       />
                     </TableCell>
@@ -174,16 +215,45 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
                       {formatCurrency(Number(expense.amount))}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleEditAmount(expense)}
-                        disabled={updatingIds.has(expense.id)}
-                        title="Modificar monto"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={updatingIds.has(expense.id)}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handlePaidToggle(expense, !expense.is_paid)}
+                            disabled={updatingIds.has(expense.id)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            {expense.is_paid ? 'Marcar como no pagado' : 'Pagar gasto'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEditAmount(expense)}
+                            disabled={updatingIds.has(expense.id)}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Modificar monto
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setDeletingExpense(expense)
+                              setDeleteDialogOpen(true)
+                            }}
+                            disabled={updatingIds.has(expense.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -217,6 +287,23 @@ export default function ExpenseTable({ date, expenses, onExpenseUpdate, fortnigh
           expenseDescription={editingExpense.description}
           fortnightLabel={fortnightLabel}
           error={editError && editDialogOpen ? editError : null}
+        />
+      )}
+
+      {/* Delete Expense Confirmation Dialog */}
+      {deletingExpense && (
+        <ConfirmDeleteDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open)
+            if (!open) {
+              setDeletingExpense(null)
+            }
+          }}
+          onConfirm={handleDeleteExpense}
+          title="Eliminar gasto"
+          description="¿Estás seguro de que deseas eliminar este gasto? Esta acción solo eliminará el gasto de esta quincena."
+          itemName={deletingExpense.description}
         />
       )}
     </Card>
