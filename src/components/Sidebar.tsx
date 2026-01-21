@@ -67,6 +67,21 @@ export default function Sidebar() {
       title: 'Catálogos',
       items: [
         {
+          title: 'Plantillas de gastos',
+          href: '/expense-templates',
+          icon: Layers,
+        },
+        {
+          title: 'Gastos',
+          href: '/expenses',
+          icon: FileText,
+        },
+        {
+          title: 'Quincenas',
+          href: '/fortnights',
+          icon: CalendarDays,
+        },
+        {
           title: 'Categorías',
           href: '/categories',
           icon: FolderTree,
@@ -75,22 +90,7 @@ export default function Sidebar() {
           title: 'Métodos de pago',
           href: '/payment-methods',
           icon: CreditCard,
-        },
-        {
-          title: 'Gastos',
-          href: '/expenses',
-          icon: FileText,
-        },
-        {
-          title: 'Plantillas de gastos',
-          href: '/expense-templates',
-          icon: Layers,
-        },
-        {
-          title: 'Quincenas',
-          href: '/fortnights',
-          icon: CalendarDays,
-        },
+        }
       ],
     }
   ]

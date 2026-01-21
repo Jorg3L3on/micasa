@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
 
     const where: any = {}
+    
+    const isPaid = searchParams.get('is_paid')
+    if (isPaid) {
+      where.is_paid = isPaid === 'true'
+    }
+
+
 
     if (month || year || period) {
       const fortnightWhere: any = {}

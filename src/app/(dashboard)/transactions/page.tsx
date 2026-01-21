@@ -36,6 +36,8 @@ async function getTransactions(searchParams: {
     if (searchParams.year) params.append('year', searchParams.year)
     if (searchParams.type) params.append('type', searchParams.type)
 
+    params.append('is_paid', 'true');
+
     const endpoint = `/api/transactions${params.toString() ? `?${params.toString()}` : ''}`
     return await fetchFromApi<Transaction[]>(endpoint)
   } catch (error) {
