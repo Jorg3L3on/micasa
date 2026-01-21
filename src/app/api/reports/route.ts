@@ -104,12 +104,19 @@ export async function GET(request: NextRequest) {
 
       const totalUnpaid = totalExpense - totalPaid
 
-      const totalIncome = income.reduce((sum, inc) => {
-        return sum + Number(inc.amount)
-      }, 0)
+      // Check for override amount (marked with source = '__OVERRIDE__')
+      const overrideIncome = income.find((inc) => inc.source === '__OVERRIDE__')
+      const regularIncome = income.filter((inc) => inc.source !== '__OVERRIDE__')
 
-      // Group income by user
-      const incomeByUser = income.reduce((acc: Record<string, number>, inc) => {
+      // If override exists, use it; otherwise calculate from regular income
+      const totalIncome = overrideIncome
+        ? Number(overrideIncome.amount)
+        : regularIncome.reduce((sum, inc) => {
+            return sum + Number(inc.amount)
+          }, 0)
+
+      // Group income by user (excluding override)
+      const incomeByUser = regularIncome.reduce((acc: Record<string, number>, inc) => {
         const userName = inc.user.name
         if (!acc[userName]) {
           acc[userName] = 0

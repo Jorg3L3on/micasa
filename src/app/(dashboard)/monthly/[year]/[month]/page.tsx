@@ -24,6 +24,7 @@ type Summary = {
 
 type FortnightInfo = {
   label: string
+  id: number
   period: 'FIRST' | 'SECOND'
 }
 
@@ -49,14 +50,20 @@ async function getFortnightInfo(
   year: string,
   month: string,
   period: 'FIRST' | 'SECOND'
-): Promise<FortnightInfo | null> {
+): Promise<{ label: string; id: number; period: 'FIRST' | 'SECOND' } | null> {
   try {
-    const response = await fetchFromApi<{ label: string }>(
-      `/api/fortnights?year=${year}&month=${month}&period=${period}`
-    )
+    const response = await fetchFromApi<{
+      id: number
+      label: string
+      year: number
+      month: number
+      period: string
+    }>(`/api/fortnights?year=${year}&month=${month}&period=${period}`)
+    
     return {
       label: response.label,
-      period,
+      id: response.id,
+      period: period,
     }
   } catch (error) {
     console.error(`Error fetching fortnight ${period}:`, error)
@@ -129,6 +136,8 @@ export default async function MonthlyPage({
 
   const firstLabel = firstFortnightInfo?.label || `1–15 ${monthName} ${year}`
   const secondLabel = secondFortnightInfo?.label || `16–${new Date(year, month, 0).getDate()} ${monthName} ${year}`
+  const firstFortnightId = firstFortnightInfo?.id || 0
+  const secondFortnightId = secondFortnightInfo?.id || 0
 
   return (
     <>
@@ -139,12 +148,20 @@ export default async function MonthlyPage({
           label={firstLabel}
           transactions={firstTransactions}
           summary={firstSummary}
+          fortnightId={firstFortnightId}
+          year={year}
+          month={month}
+          period="FIRST"
         />
 
         <FortnightColumn
           label={secondLabel}
           transactions={secondTransactions}
           summary={secondSummary}
+          fortnightId={secondFortnightId}
+          year={year}
+          month={month}
+          period="SECOND"
         />
       </div>
     </>

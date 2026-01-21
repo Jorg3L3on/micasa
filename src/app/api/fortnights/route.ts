@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
             period: period.toUpperCase() as 'FIRST' | 'SECOND',
           },
         },
-        select: { label: true },
+        select: { id: true, label: true, year: true, month: true, period: true },
       })
 
       if (!fortnight) {
@@ -43,7 +43,16 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      return NextResponse.json({ label: fortnight.label }, { status: 200 })
+      return NextResponse.json(
+        {
+          id: fortnight.id,
+          label: fortnight.label,
+          year: fortnight.year,
+          month: fortnight.month,
+          period: fortnight.period,
+        },
+        { status: 200 }
+      )
     }
 
     // Otherwise return all fortnights for catalog
