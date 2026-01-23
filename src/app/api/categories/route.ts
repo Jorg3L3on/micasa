@@ -4,12 +4,12 @@ import prisma from '@/lib/prisma'
 
 const createCategorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  type: z.enum(['income', 'expense']),
+  description: z.string().optional(),
 })
 
 const updateCategorySchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
-  type: z.enum(['income', 'expense']).optional(),
+  description: z.string().optional(),
 })
 
 export async function GET() {
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const category = await prisma.category.create({
       data: {
         name: validatedData.name,
+        description: validatedData.description || null,
       },
     })
 
@@ -80,9 +81,12 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const validatedData = updateCategorySchema.parse(body)
 
-    const updateData: { name?: string } = {}
+    const updateData: { name?: string; description?: string | null } = {}
     if (validatedData.name) {
       updateData.name = validatedData.name
+    }
+    if (validatedData.description !== undefined) {
+      updateData.description = validatedData.description || null
     }
 
     const category = await prisma.category.update({
