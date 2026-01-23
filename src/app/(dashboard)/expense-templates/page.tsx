@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -8,145 +8,165 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import EmptyState from '@/components/EmptyState'
-import PageHeader from '@/components/PageHeader'
-import ExpenseTemplateForm, { ExpenseTemplateFormValues } from '@/components/ExpenseTemplateForm'
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/EmptyState';
+import PageHeader from '@/components/PageHeader';
+import ExpenseTemplateForm, {
+  ExpenseTemplateFormValues,
+} from '@/components/ExpenseTemplateForm';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
   clientFetchFromApi,
   createExpenseTemplate,
   updateExpenseTemplate,
   deleteExpenseTemplate,
-} from '@/lib/api'
-import { Pencil, Trash2 } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+} from '@/lib/api';
+import { Pencil, Trash2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 type ExpenseTemplate = {
-  id: number
-  name: string
-  category: string
-  suggestedAmount: number | null
-  paymentMethod: string | null
-  active: boolean
-  totalEstimatedAmount: number
-}
+  id: number;
+  name: string;
+  category: string;
+  suggestedAmount: number | null;
+  paymentMethod: string | null;
+  active: boolean;
+  totalEstimatedAmount: number;
+  dueDay: number | null;
+  cutoffDay: number | null;
+  isRecurring: boolean;
+  appliesFirstFortnight: boolean;
+  appliesSecondFortnight: boolean;
+  isSubscription: boolean;
+};
 
 type Category = {
-  id: number
-  name: string
-}
+  id: number;
+  name: string;
+};
 
 type PaymentMethod = {
-  id: number
-  name: string
-}
+  id: number;
+  name: string;
+};
 
 export default function ExpenseTemplatesPage() {
-  const [templates, setTemplates] = useState<ExpenseTemplate[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<ExpenseTemplate | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ExpenseTemplate | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       const [templatesData, categoriesData, paymentMethodsData] =
         await Promise.all([
           clientFetchFromApi<ExpenseTemplate[]>('/api/expense-templates'),
           clientFetchFromApi<Category[]>('/api/categories'),
           clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
-        ])
-      setTemplates(templatesData)
-      setCategories(categoriesData)
-      setPaymentMethods(paymentMethodsData)
+        ]);
+      setTemplates(templatesData);
+      setCategories(categoriesData);
+      setPaymentMethods(paymentMethodsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data')
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   const handleCreate = async (data: ExpenseTemplateFormValues) => {
     try {
-      setFormError(null)
-      await createExpenseTemplate(data)
-      await fetchData()
-      setCreateDialogOpen(false)
+      setFormError(null);
+      await createExpenseTemplate(data);
+      await fetchData();
+      setCreateDialogOpen(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create expense template'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to create expense template';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleEdit = async (data: ExpenseTemplateFormValues) => {
-    if (!selectedTemplate) return
+    if (!selectedTemplate) return;
     try {
-      setFormError(null)
-      await updateExpenseTemplate(selectedTemplate.id, data)
-      await fetchData()
-      setEditDialogOpen(false)
-      setSelectedTemplate(null)
+      setFormError(null);
+      await updateExpenseTemplate(selectedTemplate.id, data);
+      await fetchData();
+      setEditDialogOpen(false);
+      setSelectedTemplate(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update expense template'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to update expense template';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!selectedTemplate) return
+    if (!selectedTemplate) return;
     try {
-      setError(null)
-      await deleteExpenseTemplate(selectedTemplate.id)
-      await fetchData()
-      setDeleteDialogOpen(false)
-      setSelectedTemplate(null)
+      setError(null);
+      await deleteExpenseTemplate(selectedTemplate.id);
+      await fetchData();
+      setDeleteDialogOpen(false);
+      setSelectedTemplate(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete expense template'
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete expense template';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Expense template is in use and cannot be deleted')
+        setError('Expense template is in use and cannot be deleted');
       } else {
-        setError(message)
+        setError(message);
       }
     }
-  }
+  };
 
   const openEditDialog = (template: ExpenseTemplate) => {
-    setSelectedTemplate(template)
-    setEditDialogOpen(true)
-    setFormError(null)
-  }
+    setSelectedTemplate(template);
+    setEditDialogOpen(true);
+    setFormError(null);
+  };
 
   const openDeleteDialog = (template: ExpenseTemplate) => {
-    setSelectedTemplate(template)
-    setDeleteDialogOpen(true)
-    setError(null)
-  }
+    setSelectedTemplate(template);
+    setDeleteDialogOpen(true);
+    setError(null);
+  };
 
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
         <PageHeader title="Plantillas de gastos" />
-        <Button onClick={() => setCreateDialogOpen(true)}>Agregar plantilla de gastos</Button>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          Agregar plantilla de gastos
+        </Button>
       </div>
 
       {error && !deleteDialogOpen && (
@@ -158,7 +178,9 @@ export default function ExpenseTemplatesPage() {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+            <div className="py-8 text-center text-muted-foreground">
+              Cargando...
+            </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de gastos" />
           ) : (
@@ -166,8 +188,12 @@ export default function ExpenseTemplatesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Concepto</TableHead>
+                  <TableHead>Categoría</TableHead>
                   <TableHead className="text-right">Total estimado</TableHead>
+                  <TableHead>Día de corte</TableHead>
+                  <TableHead>Día de pago</TableHead>
+                  <TableHead>Recurrente</TableHead>
+                  <TableHead>Es una suscripción</TableHead>
                   <TableHead>Activo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -175,10 +201,20 @@ export default function ExpenseTemplatesPage() {
               <TableBody>
                 {templates.map((template) => (
                   <TableRow key={template.id}>
-                    <TableCell className="font-medium">{template.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{template.category}</TableCell>
+                    <TableCell className="font-medium">
+                      {template.name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {template.category}
+                    </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(template.totalEstimatedAmount)}
+                    </TableCell>
+                    <TableCell>{template.cutoffDay}</TableCell>
+                    <TableCell>{template.dueDay}</TableCell>
+                    <TableCell>{template.isRecurring ? 'Sí' : 'No'}</TableCell>
+                    <TableCell>
+                      {template.isSubscription ? 'Sí' : 'No'}
                     </TableCell>
                     <TableCell>
                       <span
@@ -220,8 +256,8 @@ export default function ExpenseTemplatesPage() {
       <ExpenseTemplateForm
         open={createDialogOpen}
         onOpenChange={(open) => {
-          setCreateDialogOpen(open)
-          setFormError(null)
+          setCreateDialogOpen(open);
+          setFormError(null);
         }}
         onSubmit={handleCreate}
         mode="create"
@@ -235,19 +271,22 @@ export default function ExpenseTemplatesPage() {
           <ExpenseTemplateForm
             open={editDialogOpen}
             onOpenChange={(open) => {
-              setEditDialogOpen(open)
-              setSelectedTemplate(null)
-              setFormError(null)
+              setEditDialogOpen(open);
+              setSelectedTemplate(null);
+              setFormError(null);
             }}
             onSubmit={handleEdit}
             mode="edit"
             defaultValues={{
               name: selectedTemplate.name,
-              categoryId: categories.find((c) => c.name === selectedTemplate.category)?.id || 0,
+              categoryId:
+                categories.find((c) => c.name === selectedTemplate.category)
+                  ?.id || 0,
               suggestedAmount: selectedTemplate.suggestedAmount ?? null,
               paymentMethodId:
-                paymentMethods.find((pm) => pm.name === selectedTemplate.paymentMethod)?.id ||
-                null,
+                paymentMethods.find(
+                  (pm) => pm.name === selectedTemplate.paymentMethod,
+                )?.id || null,
               active: selectedTemplate.active,
               dueDay: 1,
               cutoffDay: 1,
@@ -264,10 +303,10 @@ export default function ExpenseTemplatesPage() {
           <ConfirmDeleteDialog
             open={deleteDialogOpen}
             onOpenChange={(open) => {
-              setDeleteDialogOpen(open)
+              setDeleteDialogOpen(open);
               if (!open) {
-                setSelectedTemplate(null)
-                setError(null)
+                setSelectedTemplate(null);
+                setError(null);
               }
             }}
             onConfirm={handleDelete}
@@ -278,5 +317,5 @@ export default function ExpenseTemplatesPage() {
         </>
       )}
     </>
-  )
+  );
 }

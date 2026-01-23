@@ -16,12 +16,6 @@ enum PaymentMethodType {
   CASH
 }
 
-enum CategoryGroup {
-  FIXED
-  VARIABLE
-  SAVINGS
-}
-
 enum FortnightPeriod {
   FIRST // 1–15
   SECOND // 16–end of month
@@ -35,8 +29,7 @@ model User {
   created_at DateTime @default(now())
 
   // Relationships
-  summaries UserFortnightSummary[]
-  income    FortnightIncome[]
+  income FortnightIncome[]
 
   @@unique([name])
   @@index([active])
@@ -55,11 +48,8 @@ model Fortnight {
   created_at DateTime        @default(now())
 
   // Relationships
-  expenses    Expense[]
-  income      FortnightIncome[]
-  allocations FortnightAllocation[]
-  balances    FortnightBalance?
-  summaries   UserFortnightSummary[]
+  expenses Expense[]
+  income   FortnightIncome[]
 
   @@unique([year, month, period])
   @@index([year, month])
@@ -81,8 +71,9 @@ model PaymentMethod {
 
 // 4. Cards - Represents credit/debit cards (no longer tied to users)
 model Card {
-  id                Int    @id @default(autoincrement())
-  name              String // e.g., Liverpool Jorge, AT&T Carmen
+  id                Int     @id @default(autoincrement())
+  name              String
+  description       String?
   payment_method_id Int
   cutoff_day        Int?
   due_day           Int?
@@ -95,24 +86,21 @@ model Card {
   expenses          Expense[]
   expense_templates ExpenseTemplate[]
 
-  @@unique([name])
   @@index([active])
 }
 
 // 5. Categories - Represents what the expense is for
 model Category {
-  id         Int            @id @default(autoincrement())
-  name       String
-  group      CategoryGroup? // Optional: FIXED, VARIABLE, SAVINGS
-  created_at DateTime       @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  created_at  DateTime @default(now())
 
   // Relationships
   expenses          Expense[]
-  allocations       FortnightAllocation[]
   expense_templates ExpenseTemplate[]
 
   @@unique([name])
-  @@index([group])
 }
 
 // Expense Templates - Reusable expense templates
@@ -184,59 +172,6 @@ model FortnightIncome {
   fortnight Fortnight @relation(fields: [fortnight_id], references: [id])
   user      User      @relation(fields: [user_id], references: [id])
 
-  @@index([fortnight_id])
-  @@index([user_id])
-}
-
-// 8. Fortnight Allocations - Represents planned spending or saving
-model FortnightAllocation {
-  id           Int      @id @default(autoincrement())
-  fortnight_id Int
-  category_id  Int
-  amount       Decimal  @db.Decimal(10, 2)
-  notes        String?
-  created_at   DateTime @default(now())
-
-  // Relationships
-  fortnight Fortnight @relation(fields: [fortnight_id], references: [id])
-  category  Category  @relation(fields: [category_id], references: [id])
-
-  @@unique([fortnight_id, category_id])
-  @@index([fortnight_id])
-  @@index([category_id])
-}
-
-// 9. Fortnight Balances - Stores snapshots of calculated totals
-model FortnightBalance {
-  id             Int      @id @default(autoincrement())
-  fortnight_id   Int      @unique
-  total_income   Decimal  @db.Decimal(10, 2)
-  total_expenses Decimal  @db.Decimal(10, 2)
-  total_paid     Decimal  @db.Decimal(10, 2)
-  total_unpaid   Decimal  @db.Decimal(10, 2)
-  remaining      Decimal  @db.Decimal(10, 2)
-  created_at     DateTime @default(now())
-
-  // Relationships
-  fortnight Fortnight @relation(fields: [fortnight_id], references: [id])
-}
-
-// 10. User Fortnight Summary - Represents per-user splits
-model UserFortnightSummary {
-  id             Int      @id @default(autoincrement())
-  fortnight_id   Int
-  user_id        Int
-  total_income   Decimal  @db.Decimal(10, 2)
-  total_expenses Decimal  @db.Decimal(10, 2)
-  paid           Decimal  @db.Decimal(10, 2)
-  unpaid         Decimal  @db.Decimal(10, 2)
-  created_at     DateTime @default(now())
-
-  // Relationships
-  fortnight Fortnight @relation(fields: [fortnight_id], references: [id])
-  user      User      @relation(fields: [user_id], references: [id])
-
-  @@unique([fortnight_id, user_id])
   @@index([fortnight_id])
   @@index([user_id])
 }
