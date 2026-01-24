@@ -137,6 +137,12 @@ export async function createExpenseTemplate(data: {
   paymentMethodId?: number | null;
   active?: boolean;
   expenseIds?: number[];
+  dueDay: number;
+  cutoffDay: number;
+  isRecurring: boolean;
+  appliesFirstFortnight: boolean;
+  appliesSecondFortnight: boolean;
+  isSubscription: boolean;
 }) {
   return clientFetchFromApi('/api/expense-templates', {
     method: 'POST',
@@ -153,8 +159,15 @@ export async function updateExpenseTemplate(
     paymentMethodId?: number | null;
     active?: boolean;
     expenseIds?: number[];
+    dueDay: number;
+    cutoffDay: number;
+    isRecurring: boolean;
+    appliesFirstFortnight: boolean;
+    appliesSecondFortnight: boolean;
+    isSubscription: boolean;
   },
 ) {
+  console.log('data', data);
   return clientFetchFromApi(`/api/expense-templates?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),

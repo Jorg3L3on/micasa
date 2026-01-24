@@ -1,27 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import {
   Form,
   FormControl,
@@ -34,9 +17,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from './ui/checkbox';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import PageHeader from '@/components/PageHeader';
+import { clientFetchFromApi, updateExpenseTemplate } from '@/lib/api';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 const expenseTemplateSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
@@ -54,6 +47,21 @@ const expenseTemplateSchema = z.object({
 
 export type ExpenseTemplateFormValues = z.infer<typeof expenseTemplateSchema>;
 
+type ExpenseTemplate = {
+  id: number;
+  name: string;
+  category: string;
+  suggestedAmount: number | null;
+  paymentMethod: string | null;
+  active: boolean;
+  dueDay: number | null;
+  cutoffDay: number | null;
+  isRecurring: boolean;
+  appliesFirstFortnight: boolean;
+  appliesSecondFortnight: boolean;
+  isSubscription: boolean;
+};
+
 type Category = {
   id: number;
   name: string;
@@ -64,126 +72,155 @@ type PaymentMethod = {
   name: string;
 };
 
-type ExpenseTemplateFormProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (data: ExpenseTemplateFormValues) => Promise<void>;
-  defaultValues?: ExpenseTemplateFormValues;
-  mode: 'create' | 'edit';
-  error?: string | null;
-  categories: Category[];
-  paymentMethods: PaymentMethod[];
-};
-
-export default function ExpenseTemplateForm({
-  open,
-  onOpenChange,
-  onSubmit,
-  defaultValues,
-  mode,
-  error,
-  categories,
-  paymentMethods,
-}: ExpenseTemplateFormProps) {
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [pendingData, setPendingData] =
-    useState<ExpenseTemplateFormValues | null>(null);
+export default function EditExpenseTemplatePage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = Number(params.id);
+  const [template, setTemplate] = useState<ExpenseTemplate | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<ExpenseTemplateFormValues>({
     resolver: zodResolver(expenseTemplateSchema),
     defaultValues: {
-      name: defaultValues?.name || '',
-      categoryId: defaultValues?.categoryId ?? 0,
-      suggestedAmount: defaultValues?.suggestedAmount ?? null,
-      paymentMethodId: defaultValues?.paymentMethodId ?? null,
-      active: defaultValues?.active ?? true,
-      dueDay: defaultValues?.dueDay ?? 1,
-      cutoffDay: defaultValues?.cutoffDay ?? 1,
-      isRecurring: defaultValues?.isRecurring ?? false,
-      appliesFirstFortnight: defaultValues?.appliesFirstFortnight ?? false,
-      appliesSecondFortnight: defaultValues?.appliesSecondFortnight ?? false,
-      isSubscription: defaultValues?.isSubscription ?? false,
+      name: '',
+      categoryId: 0,
+      suggestedAmount: null,
+      paymentMethodId: null,
+      active: true,
+      dueDay: 1,
+      cutoffDay: 1,
+      isRecurring: false,
+      appliesFirstFortnight: false,
+      appliesSecondFortnight: false,
+      isSubscription: false,
     },
   });
 
   useEffect(() => {
-    if (open) {
-      form.reset({
-        name: defaultValues?.name || '',
-        categoryId: defaultValues?.categoryId || 0,
-        suggestedAmount: defaultValues?.suggestedAmount ?? null,
-        paymentMethodId: defaultValues?.paymentMethodId ?? null,
-        active: defaultValues?.active ?? true,
-        dueDay: defaultValues?.dueDay ?? 1,
-        cutoffDay: defaultValues?.cutoffDay ?? 1,
-        isRecurring: defaultValues?.isRecurring ?? false,
-        appliesFirstFortnight: defaultValues?.appliesFirstFortnight ?? false,
-        appliesSecondFortnight: defaultValues?.appliesSecondFortnight ?? false,
-        isSubscription: defaultValues?.isSubscription ?? false,
-      });
-    }
-  }, [open, defaultValues, form]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [templatesData, categoriesData, paymentMethodsData] =
+          await Promise.all([
+            clientFetchFromApi<ExpenseTemplate[]>('/api/expense-templates'),
+            clientFetchFromApi<Category[]>('/api/categories'),
+            clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
+          ]);
 
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      form.reset();
-      setConfirmDialogOpen(false);
-      setPendingData(null);
-    }
-    onOpenChange(newOpen);
-  };
+        const foundTemplate = templatesData.find((t) => t.id === id);
+        if (!foundTemplate) {
+          setError('Plantilla no encontrada');
+          return;
+        }
 
-  const handleFormSubmit = (data: ExpenseTemplateFormValues) => {
-    setPendingData(data);
-    setConfirmDialogOpen(true);
-  };
+        setTemplate(foundTemplate);
+        setCategories(categoriesData);
+        setPaymentMethods(paymentMethodsData);
 
-  const handleConfirmSubmit = async () => {
-    if (!pendingData) return;
+        // Set form values
+        form.reset({
+          name: foundTemplate.name,
+          categoryId:
+            categoriesData.find((c) => c.name === foundTemplate.category)?.id ||
+            0,
+          suggestedAmount: foundTemplate.suggestedAmount ?? null,
+          paymentMethodId:
+            paymentMethodsData.find(
+              (pm) => pm.name === foundTemplate.paymentMethod,
+            )?.id || null,
+          active: foundTemplate.active,
+          dueDay: foundTemplate.dueDay ?? 1,
+          cutoffDay: foundTemplate.cutoffDay ?? 1,
+          isRecurring: foundTemplate.isRecurring ?? false,
+          appliesFirstFortnight: foundTemplate.appliesFirstFortnight ?? false,
+          appliesSecondFortnight: foundTemplate.appliesSecondFortnight ?? false,
+          isSubscription: foundTemplate.isSubscription ?? false,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id, form]);
 
+  const handleSubmit = async (data: ExpenseTemplateFormValues) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(pendingData);
-      setConfirmDialogOpen(false);
-      setPendingData(null);
-      handleOpenChange(false);
-    } catch (error) {
-      // Error is handled by parent component
-      setConfirmDialogOpen(false);
+      setError(null);
+      await updateExpenseTemplate(id, data);
+      router.push('/expense-templates');
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to update expense template';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+    );
+  }
+
+  if (!template) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/expense-templates">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <PageHeader title="Editar plantilla de gasto" />
+        </div>
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+          {error || 'Plantilla no encontrada'}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'create'
-              ? 'Agregar plantilla de gasto'
-              : 'Editar plantilla de gasto'}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'create'
-              ? 'Crea una nueva plantilla de gasto con múltiples gastos.'
-              : 'Actualiza la información de la plantilla de gasto.'}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleFormSubmit)}
-            className="space-y-4"
-            id="expense-template-form"
-          >
-            <ScrollArea className="max-h-[60vh] pr-4">
-              {error && (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4 mx-1.5">
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/expense-templates">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <PageHeader title="Editar plantilla de gasto" />
+      </div>
+
+      {error && (
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Información de la plantilla</CardTitle>
+          <CardDescription>
+            Actualiza la información de la plantilla de gasto.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -227,7 +264,7 @@ export default function ExpenseTemplateForm({
                   )}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4 mx-1.5">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="suggestedAmount"
@@ -285,29 +322,7 @@ export default function ExpenseTemplateForm({
                   )}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4 mx-1.5">
-                <FormField
-                  control={form.control}
-                  name="dueDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Día de vencimiento</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value) || 1)
-                          }
-                          onBlur={field.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="cutoffDay"
@@ -330,10 +345,32 @@ export default function ExpenseTemplateForm({
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="dueDay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Día de vencimiento</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={field.value || ''}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value) || 1)
+                          }
+                          onBlur={field.onBlur}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              <Separator className="my-4" />
-              {/* Active Status */}
+              <Separator />
+
               <FormField
                 control={form.control}
                 name="active"
@@ -357,9 +394,8 @@ export default function ExpenseTemplateForm({
                 )}
               />
 
-              <Separator className="my-4" />
+              <Separator />
 
-              {/* Recurring Section */}
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-medium mb-3">
@@ -390,7 +426,6 @@ export default function ExpenseTemplateForm({
                   />
                 </div>
 
-                {/* Fortnight Application Section */}
                 <div>
                   <h3 className="text-sm font-medium mb-3">
                     Aplicación por quincena
@@ -443,7 +478,6 @@ export default function ExpenseTemplateForm({
                   </div>
                 </div>
 
-                {/* Subscription Section */}
                 <div>
                   <h3 className="text-sm font-medium mb-3">Tipo de gasto</h3>
                   <FormField
@@ -471,68 +505,25 @@ export default function ExpenseTemplateForm({
                   />
                 </div>
               </div>
-            </ScrollArea>
-          </form>
 
-          <DialogFooter className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              form="expense-template-form"
-              disabled={isSubmitting}
-            >
-              {isSubmitting
-                ? 'Guardando...'
-                : mode === 'create'
-                  ? 'Crear'
-                  : 'Actualizar'}
-            </Button>
-          </DialogFooter>
-        </Form>
-
-        {/* Confirmation Dialog */}
-        <AlertDialog
-          open={confirmDialogOpen}
-          onOpenChange={setConfirmDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {mode === 'create'
-                  ? '¿Crear plantilla de gasto?'
-                  : '¿Actualizar plantilla de gasto?'}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {mode === 'create'
-                  ? '¿Estás seguro de que deseas crear esta plantilla de gasto? Esta acción guardará los datos en la base de datos.'
-                  : '¿Estás seguro de que deseas actualizar esta plantilla de gasto? Los cambios se guardarán en la base de datos.'}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>
-                Cancelar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting
-                  ? 'Guardando...'
-                  : mode === 'create'
-                    ? 'Crear'
-                    : 'Actualizar'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DialogContent>
-    </Dialog>
+              <div className="flex justify-end gap-4 pt-4">
+                <Link href="/expense-templates">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                  >
+                    Cancelar
+                  </Button>
+                </Link>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Guardando...' : 'Actualizar'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

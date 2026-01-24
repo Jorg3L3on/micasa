@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils"
 
 const ScrollArea = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, children, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { viewportClassName?: string }
+>(({ className, viewportClassName, children, ...props }, ref) => (
   <div
     ref={ref}
     className={cn("relative overflow-hidden", className)}
     {...props}
   >
-    <div className="h-full w-full rounded-[inherit] overflow-auto">
+    <div className={cn("min-h-0 w-full rounded-[inherit] overflow-auto", viewportClassName)}>
       {children}
     </div>
   </div>
@@ -30,9 +30,9 @@ const ScrollBar = React.forwardRef<
     className={cn(
       "flex touch-none select-none transition-colors",
       orientation === "vertical" &&
-        "h-full w-2.5 border-l border-l-transparent p-[1px]",
+        "h-full w-2.5 border-l border-l-transparent p-px",
       orientation === "horizontal" &&
-        "h-2.5 flex-col border-t border-t-transparent p-[1px]",
+        "h-2.5 flex-col border-t border-t-transparent p-px",
       className
     )}
     {...props}
