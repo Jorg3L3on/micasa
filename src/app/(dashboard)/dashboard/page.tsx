@@ -1,4 +1,4 @@
-import { fetchFromApi } from '@/lib/api-server'
+import { fetchFromApi } from '@/lib/api-server';
 import {
   Table,
   TableBody,
@@ -6,44 +6,44 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import EmptyState from '@/components/EmptyState'
-import PageHeader from '@/components/PageHeader'
-import { formatCurrency } from '@/lib/utils'
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import EmptyState from '@/components/EmptyState';
+import PageHeader from '@/components/PageHeader';
+import { formatCurrency } from '@/lib/utils';
 
 type Summary = {
-  totalIncome: number
-  totalExpense: number
-  balance: number
-}
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+};
 
 type CategoryTotal = {
-  category: string
-  total: number
-}
+  category: string;
+  total: number;
+};
 
 async function getSummary(): Promise<Summary> {
   try {
-    return await fetchFromApi<Summary>('/api/reports?type=summary')
+    return await fetchFromApi<Summary>('/api/reports?type=summary');
   } catch (error) {
-    console.error('Error fetching summary:', error)
-    return { totalIncome: 0, totalExpense: 0, balance: 0 }
+    console.error('Error fetching summary:', error);
+    return { totalIncome: 0, totalExpense: 0, balance: 0 };
   }
 }
 
 async function getByCategory(): Promise<CategoryTotal[]> {
   try {
-    return await fetchFromApi<CategoryTotal[]>('/api/reports?type=by-category')
+    return await fetchFromApi<CategoryTotal[]>('/api/reports?type=by-category');
   } catch (error) {
-    console.error('Error fetching category totals:', error)
-    return []
+    console.error('Error fetching category totals:', error);
+    return [];
   }
 }
 
 export default async function DashboardPage() {
-  const summary = await getSummary()
-  const byCategory = await getByCategory()
+  const summary = await getSummary();
+  const byCategory = await getByCategory();
 
   return (
     <>
@@ -96,23 +96,25 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Expenses by Category</CardTitle>
+          <CardTitle>Gastos por categoría</CardTitle>
         </CardHeader>
         <CardContent>
           {byCategory.length === 0 ? (
-            <EmptyState message="No category data available" />
+            <EmptyState message="No hay datos de categorías disponibles" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Total Amount</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {byCategory.map((item) => (
                   <TableRow key={item.category}>
-                    <TableCell className="font-medium">{item.category}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.category}
+                    </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(item.total)}
                     </TableCell>
@@ -124,5 +126,5 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
     </>
-  )
+  );
 }

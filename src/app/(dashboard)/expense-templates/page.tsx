@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -13,16 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
-import ExpenseTemplateForm, {
-  ExpenseTemplateFormValues,
-} from '@/components/ExpenseTemplateForm';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import {
-  clientFetchFromApi,
-  createExpenseTemplate,
-  updateExpenseTemplate,
-  deleteExpenseTemplate,
-} from '@/lib/api';
+import { clientFetchFromApi, deleteExpenseTemplate } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -53,31 +46,22 @@ type PaymentMethod = {
 };
 
 export default function ExpenseTemplatesPage() {
+  const router = useRouter();
   const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] =
     useState<ExpenseTemplate | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [templatesData, categoriesData, paymentMethodsData] =
-        await Promise.all([
-          clientFetchFromApi<ExpenseTemplate[]>('/api/expense-templates'),
-          clientFetchFromApi<Category[]>('/api/categories'),
-          clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
-        ]);
+      const templatesData = await clientFetchFromApi<ExpenseTemplate[]>(
+        '/api/expense-templates',
+      );
       setTemplates(templatesData);
-      setCategories(categoriesData);
-      setPaymentMethods(paymentMethodsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
@@ -88,40 +72,6 @@ export default function ExpenseTemplatesPage() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const handleCreate = async (data: ExpenseTemplateFormValues) => {
-    try {
-      setFormError(null);
-      await createExpenseTemplate(data);
-      await fetchData();
-      setCreateDialogOpen(false);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Failed to create expense template';
-      setFormError(message);
-      throw err;
-    }
-  };
-
-  const handleEdit = async (data: ExpenseTemplateFormValues) => {
-    if (!selectedTemplate) return;
-    try {
-      setFormError(null);
-      await updateExpenseTemplate(selectedTemplate.id, data);
-      await fetchData();
-      setEditDialogOpen(false);
-      setSelectedTemplate(null);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Failed to update expense template';
-      setFormError(message);
-      throw err;
-    }
-  };
 
   const handleDelete = async () => {
     if (!selectedTemplate) return;
@@ -149,9 +99,7 @@ export default function ExpenseTemplatesPage() {
   };
 
   const openEditDialog = (template: ExpenseTemplate) => {
-    setSelectedTemplate(template);
-    setEditDialogOpen(true);
-    setFormError(null);
+    router.push(`/expense-templates/${template.id}/edit`);
   };
 
   const openDeleteDialog = (template: ExpenseTemplate) => {
@@ -164,7 +112,7 @@ export default function ExpenseTemplatesPage() {
     <>
       <div className="mb-6 flex items-center justify-between">
         <PageHeader title="Plantillas de gastos" />
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => router.push('/expense-templates/new')}>
           Agregar plantilla de gastos
         </Button>
       </div>
@@ -193,6 +141,8 @@ export default function ExpenseTemplatesPage() {
                   <TableHead>Día de corte</TableHead>
                   <TableHead>Día de pago</TableHead>
                   <TableHead>Recurrente</TableHead>
+                  <TableHead>Primera quincena</TableHead>
+                  <TableHead>Segunda quincena</TableHead>
                   <TableHead>Es una suscripción</TableHead>
                   <TableHead>Activo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -212,7 +162,14 @@ export default function ExpenseTemplatesPage() {
                     </TableCell>
                     <TableCell>{template.cutoffDay}</TableCell>
                     <TableCell>{template.dueDay}</TableCell>
+
                     <TableCell>{template.isRecurring ? 'Sí' : 'No'}</TableCell>
+                    <TableCell>
+                      {template.appliesFirstFortnight ? 'Sí' : 'No'}
+                    </TableCell>
+                    <TableCell>
+                      {template.appliesSecondFortnight ? 'Sí' : 'No'}
+                    </TableCell>
                     <TableCell>
                       {template.isSubscription ? 'Sí' : 'No'}
                     </TableCell>
@@ -253,68 +210,21 @@ export default function ExpenseTemplatesPage() {
         </CardContent>
       </Card>
 
-      <ExpenseTemplateForm
-        open={createDialogOpen}
-        onOpenChange={(open) => {
-          setCreateDialogOpen(open);
-          setFormError(null);
-        }}
-        onSubmit={handleCreate}
-        mode="create"
-        error={formError && createDialogOpen ? formError : null}
-        categories={categories}
-        paymentMethods={paymentMethods}
-      />
-
       {selectedTemplate && (
-        <>
-          <ExpenseTemplateForm
-            open={editDialogOpen}
-            onOpenChange={(open) => {
-              setEditDialogOpen(open);
+        <ConfirmDeleteDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) {
               setSelectedTemplate(null);
-              setFormError(null);
-            }}
-            onSubmit={handleEdit}
-            mode="edit"
-            defaultValues={{
-              name: selectedTemplate.name,
-              categoryId:
-                categories.find((c) => c.name === selectedTemplate.category)
-                  ?.id || 0,
-              suggestedAmount: selectedTemplate.suggestedAmount ?? null,
-              paymentMethodId:
-                paymentMethods.find(
-                  (pm) => pm.name === selectedTemplate.paymentMethod,
-                )?.id || null,
-              active: selectedTemplate.active,
-              dueDay: 1,
-              cutoffDay: 1,
-              isRecurring: false,
-              appliesFirstFortnight: false,
-              appliesSecondFortnight: false,
-              isSubscription: false,
-            }}
-            error={formError && editDialogOpen ? formError : null}
-            categories={categories}
-            paymentMethods={paymentMethods}
-          />
-
-          <ConfirmDeleteDialog
-            open={deleteDialogOpen}
-            onOpenChange={(open) => {
-              setDeleteDialogOpen(open);
-              if (!open) {
-                setSelectedTemplate(null);
-                setError(null);
-              }
-            }}
-            onConfirm={handleDelete}
-            title="Eliminar plantilla de gastos"
-            description="¿Estás seguro de querer eliminar esta plantilla de gastos? Esta acción no puede ser deshecha."
-            itemName={selectedTemplate.name}
-          />
-        </>
+              setError(null);
+            }
+          }}
+          onConfirm={handleDelete}
+          title="Eliminar plantilla de gastos"
+          description="¿Estás seguro de querer eliminar esta plantilla de gastos? Esta acción no puede ser deshecha."
+          itemName={selectedTemplate.name}
+        />
       )}
     </>
   );
