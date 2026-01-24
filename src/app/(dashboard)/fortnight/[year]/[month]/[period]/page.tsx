@@ -12,6 +12,7 @@ type Transaction = {
   category: string;
   paymentMethod: string;
   is_paid: boolean;
+  due_day?: number | null;
 };
 
 type Summary = {
