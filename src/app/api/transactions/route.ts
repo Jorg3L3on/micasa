@@ -107,6 +107,7 @@ export async function GET(request: NextRequest) {
         type: 'expense',
         is_paid: expense.is_paid,
         payment_date: expense.payment_date,
+        due_day: (expense as any).due_day ?? null,
       };
     });
 
