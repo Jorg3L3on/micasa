@@ -259,36 +259,49 @@ export default function ExpenseTable({
 
     if (!dueDayValue || Number.isNaN(dueDayValue)) {
       return {
-        dueDay: '-',
+        hasDue: false,
+        dueDay: null as number | null,
+        daysRemaining: null as number | null,
         badgeVariant: 'default' as const,
       };
     }
 
-    // For now we only change badge color based on paid/unpaid,
-    // and avoid coloring the whole row red/yellow when unpaid.
+    const today = new Date();
+    const todayDay = today.getDate();
+    const daysRemaining = dueDayValue - todayDay;
+
+    // For now we only change badge color based on paid/unpaid.
     const badgeVariant = expense.is_paid
       ? ('success' as const)
       : ('warning' as const);
 
     return {
+      hasDue: true,
       dueDay: dueDayValue,
+      daysRemaining,
       badgeVariant,
     };
   };
 
   return (
-    <Card className="shadow-sm rounded-xl border border-border/60 overflow-hidden">
-      <CardContent className="pt-4 px-0 pb-0">
-        <div className="relative w-full overflow-x-auto">
-          <Table className="min-w-[560px]">
+    <Card className="shadow-sm rounded-lg border border-border/60 overflow-hidden">
+      <CardContent className="pt-2 px-0 pb-0">
+        <div className="relative w-full overflow-x-auto text-xs sm:text-sm">
+          <Table className="min-w-[520px]">
             <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
               <TableRow>
-                <TableHead className="w-12 text-center">Estado</TableHead>
-                <TableHead className="min-w-[200px]">Concepto</TableHead>
-                <TableHead className="text-right min-w-[160px]">
+                <TableHead className="w-10 text-center text-[11px] font-medium">
+                  Estado
+                </TableHead>
+                <TableHead className="min-w-[180px] text-[11px] font-medium">
+                  Concepto
+                </TableHead>
+                <TableHead className="text-right min-w-[140px] text-[11px] font-medium">
                   Monto
                 </TableHead>
-                <TableHead className="w-12 text-center">Acciones</TableHead>
+                <TableHead className="w-10 text-center text-[11px] font-medium">
+                  Acciones
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -296,7 +309,7 @@ export default function ExpenseTable({
                 <TableRow>
                   <TableCell
                     colSpan={4}
-                    className="py-8 text-center text-sm text-muted-foreground"
+                    className="py-6 text-center text-xs text-muted-foreground"
                   >
                     Sin gastos
                   </TableCell>
@@ -304,7 +317,8 @@ export default function ExpenseTable({
               ) : (
                 <>
                   {localExpenses.map((expense) => {
-                    const { dueDay, badgeVariant } = getDueInfo(expense);
+                    const { hasDue, daysRemaining, badgeVariant } =
+                      getDueInfo(expense);
                     const isUpdating = updatingIds.has(expense.id);
 
                     const baseRowClasses =
@@ -319,7 +333,7 @@ export default function ExpenseTable({
                         key={expense.id}
                         className={`${baseRowClasses} ${hoverClasses} ${paidAccent}`}
                       >
-                        <TableCell className="align-middle text-center">
+                        <TableCell className="align-middle text-center px-2">
                           {expense.is_paid ? (
                             <div className="flex items-center justify-center">
                               <CheckCircle
@@ -341,17 +355,17 @@ export default function ExpenseTable({
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm max-w-xs">
-                          <div className="flex flex-col gap-1">
+                        <TableCell className="text-xs sm:text-sm max-w-xs">
+                          <div className="flex flex-col gap-0.5">
                             <span className="font-medium text-foreground truncate sm:whitespace-normal sm:line-clamp-2">
                               {expense.description}
                             </span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-[10px] text-muted-foreground">
                               {expense.category} • {expense.paymentMethod}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right text-sm align-middle">
+                        <TableCell className="text-right text-xs sm:text-sm align-middle">
                           <div className="flex flex-col items-end gap-1">
                             <span
                               className={`font-mono tabular-nums ${
@@ -362,24 +376,29 @@ export default function ExpenseTable({
                             >
                               {formatCurrency(Number(expense.amount))}
                             </span>
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                              <Badge
-                                variant={badgeVariant}
-                                size="sm"
-                                className="uppercase tracking-wide"
-                              >
-                                Vence {dueDay}
-                              </Badge>
-                            </div>
+                            {hasDue && (
+                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <Badge
+                                  variant={badgeVariant}
+                                  size="sm"
+                                  className="uppercase tracking-wide"
+                                >
+                                  {daysRemaining !== null &&
+                                  daysRemaining >= 0
+                                    ? `Faltan ${daysRemaining} días`
+                                    : 'Vencido'}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center px-1">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-11 w-11 rounded-full hover:bg-accent/70"
+                                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-accent/70"
                                 disabled={isUpdating}
                                 aria-label="Más acciones"
                               >
