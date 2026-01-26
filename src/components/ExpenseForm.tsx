@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -19,42 +19,41 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 
 const expenseSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
-  categoryId: z.number().int().positive('Concepto es requerido'),
+  categoryId: z.number().int().positive('Categoría es requerida'),
   defaultAmount: z.number().positive().optional().nullable(),
   paymentMethodId: z.number().int().positive('Método de pago es requerido'),
   active: z.boolean(),
-})
+});
 
-export type ExpenseFormValues = z.infer<typeof expenseSchema>
+export type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
 type Category = {
-  id: number
-  name: string
-}
+  id: number;
+  name: string;
+};
 
 type PaymentMethod = {
-  id: number
-  name: string
-}
+  id: number;
+  name: string;
+};
 
 type ExpenseFormProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: ExpenseFormValues) => Promise<void>
-  defaultValues?: ExpenseFormValues
-  mode: 'create' | 'edit'
-  error?: string | null
-  categories: Category[]
-  paymentMethods: PaymentMethod[]
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: ExpenseFormValues) => Promise<void>;
+  defaultValues?: ExpenseFormValues;
+  mode: 'create' | 'edit';
+  error?: string | null;
+  categories: Category[];
+  paymentMethods: PaymentMethod[];
+};
 
 export default function ExpenseForm({
   open,
@@ -75,11 +74,11 @@ export default function ExpenseForm({
       paymentMethodId: 0,
       active: true,
     },
-  })
+  });
 
   useEffect(() => {
     if (open && defaultValues) {
-      form.reset(defaultValues)
+      form.reset(defaultValues);
     } else if (open && !defaultValues) {
       form.reset({
         name: '',
@@ -87,32 +86,34 @@ export default function ExpenseForm({
         defaultAmount: null,
         paymentMethodId: 0,
         active: true,
-      })
+      });
     }
-  }, [open, defaultValues, form])
+  }, [open, defaultValues, form]);
 
   const handleSubmit = async (data: ExpenseFormValues): Promise<void> => {
     try {
-      await onSubmit(data)
-      form.reset()
-      onOpenChange(false)
+      await onSubmit(data);
+      form.reset();
+      onOpenChange(false);
     } catch (error) {
-      console.error('Error al enviar el formulario de gasto:', error)
+      console.error('Error al enviar el formulario de gasto:', error);
     }
-  }
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      form.reset()
+      form.reset();
     }
-    onOpenChange(newOpen)
-  }
+    onOpenChange(newOpen);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Agregar gasto' : 'Editar gasto'}</DialogTitle>
+          <DialogTitle>
+            {mode === 'create' ? 'Agregar gasto' : 'Editar gasto'}
+          </DialogTitle>
           <DialogDescription>
             {mode === 'create'
               ? 'Crea una nueva definición de gasto para tus transacciones.'
@@ -120,7 +121,10 @@ export default function ExpenseForm({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             {error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
@@ -144,20 +148,23 @@ export default function ExpenseForm({
               name="categoryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Concepto</FormLabel>
+                  <FormLabel>Categoría</FormLabel>
                   <FormControl>
-                    <Select
+                    <select
                       value={field.value?.toString() || ''}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        field.onChange(parseInt(e.target.value, 10))
+                      }
                       onBlur={field.onBlur}
+                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <option value="">Selecciona un concepto</option>
+                      <option value="">Selecciona una categoría</option>
                       {categories.map((cat) => (
                         <option key={cat.id} value={cat.id}>
                           {cat.name}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -177,7 +184,9 @@ export default function ExpenseForm({
                       {...field}
                       value={field.value ?? ''}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? parseFloat(e.target.value) : null,
+                        )
                       }
                     />
                   </FormControl>
@@ -192,10 +201,13 @@ export default function ExpenseForm({
                 <FormItem>
                   <FormLabel>Método de pago</FormLabel>
                   <FormControl>
-                    <Select
+                    <select
                       value={field.value?.toString() || ''}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        field.onChange(parseInt(e.target.value, 10))
+                      }
                       onBlur={field.onBlur}
+                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="">Selecciona un método de pago</option>
                       {paymentMethods.map((pm) => (
@@ -203,7 +215,7 @@ export default function ExpenseForm({
                           {pm.name}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -217,7 +229,7 @@ export default function ExpenseForm({
                   <FormControl>
                     <Checkbox
                       checked={field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
@@ -227,14 +239,20 @@ export default function ExpenseForm({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit">{mode === 'create' ? 'Crear' : 'Actualizar'}</Button>
+              <Button type="submit">
+                {mode === 'create' ? 'Crear' : 'Actualizar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

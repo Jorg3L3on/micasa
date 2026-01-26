@@ -1,5 +1,5 @@
-import { Suspense } from 'react'
-import { fetchFromApi } from '@/lib/api-server'
+import { Suspense } from 'react';
+import { fetchFromApi } from '@/lib/api-server';
 import {
   Table,
   TableBody,
@@ -7,52 +7,51 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import EmptyState from '@/components/EmptyState'
-import TransactionFilters from '@/components/TransactionFilters'
-import PageHeader from '@/components/PageHeader'
-import { formatDate, formatCurrencySigned } from '@/lib/utils'
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import EmptyState from '@/components/EmptyState';
+import TransactionFilters from '@/components/TransactionFilters';
+import { formatDate, formatCurrencySigned } from '@/lib/utils';
 
 type Transaction = {
-  id: number
-  date: string
-  description: string
-  amount: number | string
-  category: string
-  paymentMethod: string
-  type: 'income' | 'expense'
-  is_paid: boolean
-}
+  id: number;
+  date: string;
+  description: string;
+  amount: number | string;
+  category: string;
+  paymentMethod: string;
+  type: 'income' | 'expense';
+  is_paid: boolean;
+};
 
 async function getTransactions(searchParams: {
-  month?: string
-  year?: string
-  type?: string
+  month?: string;
+  year?: string;
+  type?: string;
 }): Promise<Transaction[]> {
   try {
-    const params = new URLSearchParams()
-    if (searchParams.month) params.append('month', searchParams.month)
-    if (searchParams.year) params.append('year', searchParams.year)
-    if (searchParams.type) params.append('type', searchParams.type)
+    const params = new URLSearchParams();
+    if (searchParams.month) params.append('month', searchParams.month);
+    if (searchParams.year) params.append('year', searchParams.year);
+    if (searchParams.type) params.append('type', searchParams.type);
 
     params.append('is_paid', 'true');
 
-    const endpoint = `/api/transactions${params.toString() ? `?${params.toString()}` : ''}`
-    return await fetchFromApi<Transaction[]>(endpoint)
+    const endpoint = `/api/transactions${params.toString() ? `?${params.toString()}` : ''}`;
+    return await fetchFromApi<Transaction[]>(endpoint);
   } catch (error) {
-    console.error('Error fetching transactions:', error)
-    return []
+    console.error('Error fetching transactions:', error);
+    return [];
   }
 }
 
 async function TransactionsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string; type?: string }>
+  searchParams: Promise<{ month?: string; year?: string; type?: string }>;
 }) {
-  const resolvedSearchParams = await searchParams
-  const transactions = await getTransactions(resolvedSearchParams)
+  const resolvedSearchParams = await searchParams;
+  const transactions = await getTransactions(resolvedSearchParams);
 
   return (
     <>
@@ -91,7 +90,10 @@ async function TransactionsContent({
                             : 'text-green-600'
                         }`}
                       >
-                        {formatCurrencySigned(transaction.amount, transaction.type)}
+                        {formatCurrencySigned(
+                          transaction.amount,
+                          transaction.type,
+                        )}
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
@@ -108,7 +110,7 @@ async function TransactionsContent({
                             : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                         }`}
                       >
-                        {transaction.type}
+                        {transaction.type === 'expense' ? 'Gasto' : 'Ingreso'}
                       </span>
                     </TableCell>
                   </TableRow>
@@ -119,20 +121,19 @@ async function TransactionsContent({
         </CardContent>
       </Card>
     </>
-  )
+  );
 }
 
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string; type?: string }>
+  searchParams: Promise<{ month?: string; year?: string; type?: string }>;
 }) {
   return (
     <>
-      <PageHeader title="Transacciones" />
       <Suspense fallback={<div>Cargando transacciones...</div>}>
         <TransactionsContent searchParams={searchParams} />
       </Suspense>
     </>
-  )
+  );
 }

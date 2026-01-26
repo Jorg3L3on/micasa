@@ -12,7 +12,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
-import PageHeader from '@/components/PageHeader'
 import ExpenseForm, { ExpenseFormValues } from '@/components/ExpenseForm'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
 import {
@@ -93,16 +92,98 @@ export default function ExpensesPage() {
     }
   }
 
+  const getErrorMessage = (err: unknown): string => {
+    if (!(err instanceof Error)) {
+      return 'Error al actualizar el gasto';
+    }
+
+    // Check if error has details (validation errors)
+    const errorWithDetails = err as any;
+    if (errorWithDetails.details && Array.isArray(errorWithDetails.details) && errorWithDetails.details.length > 0) {
+      // Map field names to Spanish
+      const fieldNames: Record<string, string> = {
+        name: 'Nombre',
+        categoryId: 'Categoría',
+        defaultAmount: 'Monto por defecto',
+        paymentMethodId: 'Método de pago',
+        active: 'Activo',
+      };
+
+      // Format validation errors
+      const messages = errorWithDetails.details.map((issue: any) => {
+        const fieldName = fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
+        let message = issue.message || '';
+
+        // Translate common validation messages
+        if (message.includes('Required') || message.includes('required')) {
+          message = 'es requerido';
+        } else if (message.includes('Expected')) {
+          message = 'tiene un formato inválido';
+        } else if (message.includes('positive')) {
+          message = 'debe ser un número positivo';
+        } else if (message.includes('int')) {
+          message = 'debe ser un número entero';
+        } else if (message.includes('Invalid')) {
+          message = 'tiene un valor inválido';
+        }
+
+        return `${fieldName} ${message}`;
+      });
+
+      return messages.join('. ');
+    }
+
+    // Check for specific error messages and translate them
+    const errorMessage = err.message;
+    if (errorMessage.includes('Validation error')) {
+      return 'Por favor, verifica los campos del formulario';
+    }
+    if (errorMessage.includes('not found')) {
+      return 'El gasto no fue encontrado';
+    }
+    if (errorMessage.includes('Failed to update')) {
+      return 'Error al actualizar el gasto';
+    }
+
+    return errorMessage || 'Error al actualizar el gasto';
+  };
+
   const handleEdit = async (data: ExpenseFormValues) => {
     if (!selectedExpense) return
     try {
       setFormError(null)
-      await updateExpense(selectedExpense.id, data)
+      
+      // Build update data - always include name and active, only include other fields if valid
+      const updateData: {
+        name?: string
+        categoryId?: number
+        defaultAmount?: number | null
+        paymentMethodId?: number
+        active?: boolean
+      } = {
+        name: data.name,
+        active: data.active,
+      }
+      
+      // Only include categoryId if it's a valid positive number
+      if (data.categoryId && data.categoryId > 0) {
+        updateData.categoryId = data.categoryId
+      }
+      
+      // Only include paymentMethodId if it's a valid positive number
+      if (data.paymentMethodId && data.paymentMethodId > 0) {
+        updateData.paymentMethodId = data.paymentMethodId
+      }
+      
+      // Include defaultAmount (can be null)
+      updateData.defaultAmount = data.defaultAmount ?? null
+      
+      await updateExpense(selectedExpense.id, updateData)
       await fetchData()
       setEditDialogOpen(false)
       setSelectedExpense(null)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update expense'
+      const message = getErrorMessage(err)
       setFormError(message)
       throw err
     }
@@ -144,8 +225,7 @@ export default function ExpensesPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Gastos" />
+      <div className="mb-6 flex items-center justify-end">
         <Button onClick={() => setCreateDialogOpen(true)}>Agregar gasto</Button>
       </div>
 

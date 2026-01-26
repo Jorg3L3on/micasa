@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -19,28 +19,53 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const fortnightSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  startDay: z.number().int().min(1).max(31),
-  endDay: z.number().int().min(1).max(31),
-  active: z.boolean().default(true),
-})
+  name: z
+    .string()
+    .min(1, 'Nombre es requerido')
+    .max(255, 'El nombre debe tener menos de 255 caracteres'),
+  startDay: z
+    .number()
+    .int()
+    .min(1, 'El día de inicio debe estar entre 1 y 31')
+    .max(31, 'El día de inicio debe estar entre 1 y 31'),
+  endDay: z
+    .number()
+    .int()
+    .min(1, 'El día de fin debe estar entre 1 y 31')
+    .max(31, 'El día de fin debe estar entre 1 y 31'),
+  active: z.boolean(),
+  month: z.number().int().min(1).max(12, 'El mes debe estar entre 1 y 12'),
+  year: z
+    .number()
+    .int()
+    .min(2020)
+    .max(2030, 'El año debe estar entre 2020 y 2030'),
+  period: z.enum(['FIRST', 'SECOND'], { message: 'Período es requerido' }),
+});
 
-export type FortnightFormValues = z.infer<typeof fortnightSchema>
+export type FortnightFormValues = z.infer<typeof fortnightSchema>;
 
 type FortnightFormProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: FortnightFormValues) => Promise<void>
-  defaultValues?: FortnightFormValues
-  mode: 'create' | 'edit'
-  error?: string | null
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: FortnightFormValues) => Promise<void>;
+  defaultValues?: FortnightFormValues;
+  mode: 'create' | 'edit';
+  error?: string | null;
+};
 
 export default function FortnightForm({
   open,
@@ -51,58 +76,69 @@ export default function FortnightForm({
   error,
 }: FortnightFormProps) {
   const form = useForm<FortnightFormValues>({
-    resolver: zodResolver(fortnightSchema),
+    resolver: zodResolver(fortnightSchema) as any,
     defaultValues: defaultValues || {
       name: '',
       startDay: 1,
       endDay: 15,
       active: true,
+      month: 1,
+      year: new Date().getFullYear(),
+      period: 'FIRST',
     },
-  })
+  });
 
   useEffect(() => {
     if (open && defaultValues) {
-      form.reset(defaultValues)
+      form.reset(defaultValues);
     } else if (open && !defaultValues) {
       form.reset({
         name: '',
         startDay: 1,
         endDay: 15,
         active: true,
-      })
+        month: 1,
+        year: new Date().getFullYear(),
+        period: new Date().getMonth() < 6 ? 'FIRST' : 'SECOND',
+      });
     }
-  }, [open, defaultValues, form])
+  }, [open, defaultValues, form, new Date().getMonth()]);
 
   const handleSubmit = async (data: FortnightFormValues) => {
     try {
-      await onSubmit(data)
-      form.reset()
-      onOpenChange(false)
+      await onSubmit(data);
+      form.reset();
+      onOpenChange(false);
     } catch (error) {
       // Error handling is done in the parent component
     }
-  }
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      form.reset()
+      form.reset();
     }
-    onOpenChange(newOpen)
-  }
+    onOpenChange(newOpen);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Add Fortnight' : 'Edit Fortnight'}</DialogTitle>
+          <DialogTitle>
+            {mode === 'create' ? 'Agregar quincena' : 'Editar quincena'}
+          </DialogTitle>
           <DialogDescription>
             {mode === 'create'
-              ? 'Create a new fortnight period for budgeting.'
-              : 'Update the fortnight information.'}
+              ? 'Crea un nuevo período de quincena para la presupuestación.'
+              : 'Actualiza la información de la quincena.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit as any)}
+            className="space-y-4"
+          >
             {error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
@@ -113,29 +149,110 @@ export default function FortnightForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Nombre</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., First Fortnight" {...field} />
+                    <Input placeholder="Primera quincena" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="month"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mes</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={field.value ?? 1}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value, 10) || 1)
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Año</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="2010"
+                        max="2030"
+                        value={field.value ?? new Date().getFullYear()}
+                        onChange={(e) =>
+                          field.onChange(
+                            parseInt(e.target.value, 10) ||
+                              new Date().getFullYear(),
+                          )
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="period"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Período</FormLabel>
+                    <FormControl>
+                      <Select
+                        {...field}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="FIRST">
+                            Primera quincena
+                          </SelectItem>
+                          <SelectItem value="SECOND">
+                            Segunda quincena
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDay"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Day</FormLabel>
+                    <FormLabel>Día de inicio</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="1"
                         max="31"
-                        {...field}
-                        value={field.value}
-                        onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
+                        value={field.value ?? 1}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value, 10) || 1)
+                        }
+                        onBlur={field.onBlur}
                       />
                     </FormControl>
                     <FormMessage />
@@ -147,15 +264,17 @@ export default function FortnightForm({
                 name="endDay"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Day</FormLabel>
+                    <FormLabel>Día de fin</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="1"
                         max="31"
-                        {...field}
-                        value={field.value}
-                        onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
+                        value={field.value ?? 15}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value, 10) || 1)
+                        }
+                        onBlur={field.onBlur}
                       />
                     </FormControl>
                     <FormMessage />
@@ -171,24 +290,30 @@ export default function FortnightForm({
                   <FormControl>
                     <Checkbox
                       checked={field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>Active</FormLabel>
+                    <FormLabel>Activo</FormLabel>
                   </div>
                 </FormItem>
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+              >
+                Cancelar
               </Button>
-              <Button type="submit">{mode === 'create' ? 'Create' : 'Update'}</Button>
+              <Button type="submit">
+                {mode === 'create' ? 'Crear' : 'Actualizar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

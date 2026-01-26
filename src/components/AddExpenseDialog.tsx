@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,7 +21,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { clientFetchFromApi } from '@/lib/api'
@@ -32,9 +31,9 @@ const addExpenseSchema = z.object({
   amount: z.number().positive('El monto debe ser mayor a 0'),
   paymentMethodId: z.number().int().positive('El método de pago es requerido'),
   date: z.string().min(1, 'La fecha es requerida'),
-  isPaid: z.boolean().default(false),
-  isRecurring: z.boolean().default(false),
-  applyToBothFortnights: z.boolean().default(false),
+  isPaid: z.boolean(),
+  isRecurring: z.boolean(),
+  applyToBothFortnights: z.boolean(),
 }).refine(
   (data) => {
     // "Aplicar a ambas quincenas" can only be true if "Es recurrente" is true
@@ -115,7 +114,7 @@ export default function AddExpenseDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<AddExpenseFormValues>({
-    resolver: zodResolver(addExpenseSchema),
+    resolver: zodResolver(addExpenseSchema) as any,
     defaultValues: {
       name: '',
       categoryId: 0,
@@ -169,7 +168,7 @@ export default function AddExpenseDialog({
     }
   }, [open, defaultDate, year, month, period, form])
 
-  const handleSubmit = async (data: AddExpenseFormValues): Promise<void> => {
+  const handleSubmit = async (data: AddExpenseFormValues) => {
     try {
       setIsSubmitting(true)
       await onSubmit(data)
@@ -204,7 +203,7 @@ export default function AddExpenseDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit as any)} className="space-y-4">
             {error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
@@ -230,11 +229,12 @@ export default function AddExpenseDialog({
                 <FormItem>
                   <FormLabel>Categoría</FormLabel>
                   <FormControl>
-                    <Select
+                    <select
                       value={field.value?.toString() || ''}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => field.onChange(parseInt(e.target.value, 10))}
                       onBlur={field.onBlur}
                       disabled={loading}
+                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="">Selecciona una categoría</option>
                       {expenseCategories.map((cat) => (
@@ -242,7 +242,7 @@ export default function AddExpenseDialog({
                           {cat.name}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -276,11 +276,12 @@ export default function AddExpenseDialog({
                 <FormItem>
                   <FormLabel>Método de pago</FormLabel>
                   <FormControl>
-                    <Select
+                    <select
                       value={field.value?.toString() || ''}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => field.onChange(parseInt(e.target.value, 10))}
                       onBlur={field.onBlur}
                       disabled={loading}
+                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="">Selecciona un método de pago</option>
                       {paymentMethods.map((pm) => (
@@ -288,7 +289,7 @@ export default function AddExpenseDialog({
                           {pm.name}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

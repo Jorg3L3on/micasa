@@ -12,7 +12,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
-import PageHeader from '@/components/PageHeader'
 import PaymentMethodForm, { PaymentMethodFormValues } from '@/components/PaymentMethodForm'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
 import { clientFetchFromApi, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } from '@/lib/api'
@@ -117,8 +116,7 @@ export default function PaymentMethodsPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Métodos de pago" />
+      <div className="mb-6 flex items-center justify-end">
         <Button onClick={() => setCreateDialogOpen(true)}>Agregar método de pago</Button>
       </div>
 

@@ -12,7 +12,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
-import PageHeader from '@/components/PageHeader';
 import CategoryForm, { CategoryFormValues } from '@/components/CategoryForm';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
@@ -127,8 +126,7 @@ export default function CategoriesPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Categorías" />
+      <div className="mb-6 flex items-center justify-end">
         <Button onClick={() => setCreateDialogOpen(true)}>
           Agregar categoría
         </Button>

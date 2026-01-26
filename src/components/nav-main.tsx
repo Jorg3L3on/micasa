@@ -30,6 +30,8 @@ export function NavMain({
     items?: {
       title: string
       url: string
+      isActive?: boolean
+      hasActiveIndicator?: boolean
     }[]
   }[]
 }) {
@@ -59,9 +61,12 @@ export function NavMain({
                     <SidebarMenuSub>
                       {item.items.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <Link href={subItem.url}>
+                          <SidebarMenuSubButton asChild isActive={subItem.isActive}>
+                            <Link href={subItem.url} className="flex items-center justify-between w-full">
                               <span>{subItem.title}</span>
+                              {subItem.hasActiveIndicator && (
+                                <span className="ml-auto h-2 w-2 rounded-full bg-primary shrink-0" />
+                              )}
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>

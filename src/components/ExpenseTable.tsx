@@ -547,24 +547,6 @@ export default function ExpenseTable({
                                     <CheckCircle2 className="mr-2 h-4 w-4" />
                                     Deshacer pago
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEditAmount(expense)}
-                                    disabled={isUpdating}
-                                  >
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Modificar monto
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setDeletingExpense(expense);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                    disabled={isUpdating}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Eliminar
-                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -767,10 +749,10 @@ export default function ExpenseTable({
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6">
           <div
-            className={`pointer-events-auto flex items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-lg bg-background/95 backdrop-blur ${
+            className={`pointer-events-auto flex items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur ${
               toast.type === 'success'
-                ? 'border-emerald-300 text-emerald-900 dark:border-emerald-800 dark:text-emerald-50'
-                : 'border-destructive/70 text-destructive dark:border-destructive'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-900/90 dark:border-emerald-800 dark:text-emerald-50'
+                : 'bg-destructive/10 border-destructive/70 text-destructive dark:bg-destructive/20 dark:border-destructive dark:text-destructive'
             }`}
           >
             {toast.type === 'success' ? (
@@ -778,7 +760,7 @@ export default function ExpenseTable({
             ) : (
               <AlertCircle className="h-4 w-4" />
             )}
-            <span>{toast.message}</span>
+            <span className="font-medium">{toast.message}</span>
           </div>
         </div>
       )}

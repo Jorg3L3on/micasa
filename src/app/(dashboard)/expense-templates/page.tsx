@@ -13,7 +13,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
-import PageHeader from '@/components/PageHeader';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { clientFetchFromApi, deleteExpenseTemplate } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -25,6 +24,7 @@ type ExpenseTemplate = {
   category: string;
   suggestedAmount: number | null;
   paymentMethod: string | null;
+  paymentMethodId: number | null;
   active: boolean;
   totalEstimatedAmount: number;
   dueDay: number | null;
@@ -110,8 +110,7 @@ export default function ExpenseTemplatesPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Plantillas de gastos" />
+      <div className="mb-6 flex items-center justify-end">
         <Button onClick={() => router.push('/expense-templates/new')}>
           Agregar plantilla de gastos
         </Button>
