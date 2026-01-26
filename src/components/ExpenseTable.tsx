@@ -293,16 +293,24 @@ export default function ExpenseTable({
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
-  const totalPaid = paidExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  const totalPending = pendingExpenses.reduce(
-    (sum, e) => sum + Number(e.amount),
-    0,
-  );
-  const total = localExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  // Calculate totals, ensuring amounts are properly converted to numbers
+  const totalPaid = paidExpenses.reduce((sum, e) => {
+    const amount = typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount);
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
+  
+  const totalPending = pendingExpenses.reduce((sum, e) => {
+    const amount = typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount);
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
+  
+  const total = totalPaid + totalPending;
 
-  // Calculate progress percentage
+  // Calculate progress percentage based on COUNT of expenses, not amount
+  const totalExpenseCount = localExpenses.length;
+  const paidExpenseCount = paidExpenses.length;
   const progressPercentage =
-    totalIncome > 0 ? Math.min((totalPaid / totalIncome) * 100, 100) : 0;
+    totalExpenseCount > 0 ? Math.round((paidExpenseCount / totalExpenseCount) * 100) : 0;
 
   return (
     <>
@@ -325,7 +333,7 @@ export default function ExpenseTable({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Progress Bar */}
-          {totalIncome > 0 && (
+          {total > 0 && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Progreso de pago</span>
