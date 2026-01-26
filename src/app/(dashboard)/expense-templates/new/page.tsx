@@ -31,12 +31,25 @@ import Link from 'next/link';
 
 const expenseTemplateSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
-  categoryId: z.number().int().positive('Concepto es requerido'),
-  suggestedAmount: z.number().positive().max(99999999.99, 'El monto es demasiado grande').optional().nullable(),
+  categoryId: z.number().int().positive('Categoría es requerida'),
+  suggestedAmount: z
+    .number()
+    .positive()
+    .max(99999999.99, 'El monto es demasiado grande')
+    .optional()
+    .nullable(),
   paymentMethodId: z.number().int().positive().optional().nullable(),
   active: z.boolean(),
-  dueDay: z.number().int().min(1, 'El día de vencimiento debe estar entre 1 y 31').max(31, 'El día de vencimiento debe estar entre 1 y 31'),
-  cutoffDay: z.number().int().min(1, 'El día de corte debe estar entre 1 y 31').max(31, 'El día de corte debe estar entre 1 y 31'),
+  dueDay: z
+    .number()
+    .int()
+    .min(1, 'El día de vencimiento debe estar entre 1 y 31')
+    .max(31, 'El día de vencimiento debe estar entre 1 y 31'),
+  cutoffDay: z
+    .number()
+    .int()
+    .min(1, 'El día de corte debe estar entre 1 y 31')
+    .max(31, 'El día de corte debe estar entre 1 y 31'),
   isRecurring: z.boolean(),
   appliesFirstFortnight: z.boolean(),
   appliesSecondFortnight: z.boolean(),
@@ -119,9 +132,7 @@ export default function NewExpenseTemplatePage() {
         setPaymentMethods(paymentMethodsData);
       } catch (err) {
         const message =
-          err instanceof Error
-            ? err.message
-            : 'Error al cargar los datos';
+          err instanceof Error ? err.message : 'Error al cargar los datos';
         showToast(message, 'error');
       } finally {
         setLoading(false);
@@ -137,7 +148,11 @@ export default function NewExpenseTemplatePage() {
 
     // Check if error has details (validation errors)
     const errorWithDetails = err as any;
-    if (errorWithDetails.details && Array.isArray(errorWithDetails.details) && errorWithDetails.details.length > 0) {
+    if (
+      errorWithDetails.details &&
+      Array.isArray(errorWithDetails.details) &&
+      errorWithDetails.details.length > 0
+    ) {
       // Map field names to Spanish
       const fieldNames: Record<string, string> = {
         name: 'Nombre',
@@ -154,7 +169,8 @@ export default function NewExpenseTemplatePage() {
 
       // Format validation errors
       const messages = errorWithDetails.details.map((issue: any) => {
-        const fieldName = fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
+        const fieldName =
+          fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
         let message = issue.message || '';
 
         // Translate common validation messages

@@ -70,7 +70,7 @@ async function TransactionsContent({
                   <TableHead>Fecha</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
-                  <TableHead>Concepto</TableHead>
+                  <TableHead>Categoría</TableHead>
                   <TableHead>Método de pago</TableHead>
                   <TableHead>Tipo</TableHead>
                 </TableRow>

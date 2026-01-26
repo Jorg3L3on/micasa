@@ -294,10 +294,7 @@ export default function ExpenseTable({
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
-  const totalPaid = paidExpenses.reduce(
-    (sum, e) => sum + Number(e.amount),
-    0,
-  );
+  const totalPaid = paidExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const totalPending = pendingExpenses.reduce(
     (sum, e) => sum + Number(e.amount),
     0,
@@ -353,7 +350,7 @@ export default function ExpenseTable({
                     Estado
                   </TableHead>
                   <TableHead className="min-w-[200px] text-xs font-medium">
-                    Concepto
+                    Categoría
                   </TableHead>
                   <TableHead className="text-right min-w-[120px] text-xs font-medium">
                     Monto
@@ -412,7 +409,8 @@ export default function ExpenseTable({
                                   </span>
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-xs text-muted-foreground">
-                                      {expense.category} • {expense.paymentMethod}
+                                      {expense.category} •{' '}
+                                      {expense.paymentMethod}
                                     </span>
                                     {hasDue && (
                                       <Badge
@@ -474,10 +472,7 @@ export default function ExpenseTable({
                         })}
                         {paidExpenses.length > 0 && (
                           <TableRow>
-                            <TableCell
-                              colSpan={4}
-                              className="py-2 bg-muted/30"
-                            >
+                            <TableCell colSpan={4} className="py-2 bg-muted/30">
                               <Separator />
                             </TableCell>
                           </TableRow>
