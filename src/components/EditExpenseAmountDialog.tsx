@@ -3,7 +3,6 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import {
   Dialog,
   DialogContent,
@@ -23,12 +22,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
-
-const expenseAmountSchema = z.object({
-  amount: z.number().min(0.01, 'El monto debe ser mayor a 0'),
-})
-
-export type ExpenseAmountFormValues = z.infer<typeof expenseAmountSchema>
+import {
+  expenseAmountSchema,
+  ExpenseAmountFormValues,
+} from '@/schemas/expense.schema'
 
 type EditExpenseAmountDialogProps = {
   open: boolean

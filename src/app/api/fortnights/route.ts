@@ -1,63 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-
-const createFortnightSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Nombre es requerido')
-    .max(255, 'El nombre debe tener menos de 255 caracteres'),
-  startDay: z
-    .number()
-    .int()
-    .min(1)
-    .max(31, 'El día de inicio debe estar entre 1 y 31'),
-  endDay: z
-    .number()
-    .int()
-    .min(1)
-    .max(31, 'El día de fin debe estar entre 1 y 31'),
-  active: z.boolean().optional().default(true),
-  year: z
-    .number()
-    .int()
-    .min(2020)
-    .max(2030, 'El año debe estar entre 2020 y 2030'),
-  month: z.number().int().min(1).max(12, 'El mes debe estar entre 1 y 12'),
-  period: z.enum(['FIRST', 'SECOND'], { message: 'Período es requerido' }),
-});
-
-const updateFortnightSchema = z.object({
-  name: z.string().min(1, 'Nombre es requerido').optional(),
-  startDay: z
-    .number()
-    .int()
-    .min(1)
-    .max(31, 'El día de inicio debe estar entre 1 y 31')
-    .optional(),
-  endDay: z
-    .number()
-    .int()
-    .min(1)
-    .max(31, 'El día de fin debe estar entre 1 y 31')
-    .optional(),
-  active: z.boolean().optional(),
-  year: z
-    .number()
-    .int()
-    .min(2020)
-    .max(2030, 'El año debe estar entre 2020 y 2030')
-    .optional(),
-  month: z
-    .number()
-    .int()
-    .min(1)
-    .max(12, 'El mes debe estar entre 1 y 12')
-    .optional(),
-  period: z
-    .enum(['FIRST', 'SECOND'], { message: 'Período es requerido' })
-    .optional(),
-});
+import {
+  createFortnightSchema,
+  updateFortnightSchema,
+} from '@/schemas/fortnight.schema';
 
 export async function GET(request: NextRequest) {
   try {

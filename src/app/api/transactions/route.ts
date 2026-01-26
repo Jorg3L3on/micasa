@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-
-const createTransactionSchema = z.object({
-  fortnight_id: z.number().int().positive(),
-  card_id: z.number().int().positive().nullable().optional(),
-  payment_method_id: z.number().int().positive().optional(), // Alternative to card_id
-  category_id: z.number().int().positive(),
-  description: z.string().min(1, 'Description is required'),
-  amount: z.number().positive('Amount must be greater than 0'),
-  is_paid: z.boolean().optional().default(false),
-  payment_date: z.string().datetime().nullable().optional(),
-  expense_template_id: z.number().int().positive().optional(), // For linking to template
-});
-
-const updateTransactionSchema = z.object({
-  fortnight_id: z.number().int().positive().optional(),
-  card_id: z.number().int().positive().nullable().optional(),
-  category_id: z.number().int().positive().optional(),
-  description: z.string().min(1).optional(),
-  amount: z.number().positive().optional(),
-  is_paid: z.boolean().optional(),
-  payment_date: z.string().datetime().nullable().optional(),
-});
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+} from '@/schemas/transaction.schema';
 
 export async function GET(request: NextRequest) {
   try {

@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -22,13 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-
-const categorySchema = z.object({
-  name: z.string().min(1, 'Nombre es requerido'),
-  description: z.string().optional(),
-});
-
-export type CategoryFormValues = z.infer<typeof categorySchema>;
+import { categorySchema, CategoryFormValues } from '@/schemas/category.schema';
 
 type CategoryFormProps = {
   open: boolean;

@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
-
-const createCategorySchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
-})
-
-const updateCategorySchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  description: z.string().optional(),
-})
+import {
+  createCategorySchema,
+  updateCategorySchema,
+} from '@/schemas/category.schema'
 
 export async function GET() {
   try {

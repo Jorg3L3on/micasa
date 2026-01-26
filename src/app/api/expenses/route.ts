@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
-
-const createExpenseSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  categoryId: z.number().int().positive(),
-  defaultAmount: z.number().positive().optional(),
-  paymentMethodId: z.number().int().positive(),
-  active: z.boolean().optional().default(true),
-})
-
-const updateExpenseSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  categoryId: z.number().int().positive().optional(),
-  defaultAmount: z.number().positive().optional().nullable(),
-  paymentMethodId: z.number().int().positive().optional(),
-  active: z.boolean().optional(),
-})
+import {
+  createExpenseSchema,
+  updateExpenseSchema,
+} from '@/schemas/expense.schema'
 
 export async function GET() {
   try {

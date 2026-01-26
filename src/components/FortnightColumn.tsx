@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
-import EditFortnightAmountDialog, {
-  OverrideAmountFormValues,
-} from '@/components/EditFortnightAmountDialog';
-import AddExpenseDialog, {
-  AddExpenseFormValues,
-} from '@/components/AddExpenseDialog';
+import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
+import AddExpenseDialog from '@/components/AddExpenseDialog';
+import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
+import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {

@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
-
-const overrideAmountSchema = z.object({
-  amount: z.number().min(0, 'Amount must be greater than or equal to 0'),
-  year: z.number().int().positive(),
-  month: z.number().int().min(1).max(12),
-})
+import { overrideAmountSchema } from '@/schemas/fortnight.schema'
 
 export async function PUT(
   request: NextRequest,
@@ -57,6 +52,19 @@ export async function PUT(
     //
     // TODO: Add proper schema support for override amounts
 
+    // Get the first active user (override applies to total, not per-user)
+    const firstUser = await prisma.user.findFirst({
+      where: { active: true },
+      select: { id: true },
+    })
+
+    if (!firstUser) {
+      return NextResponse.json(
+        { error: 'No active user found' },
+        { status: 404 }
+      )
+    }
+
     // Delete existing override (marked with source = '__OVERRIDE__')
     await prisma.fortnightIncome.deleteMany({
       where: {
@@ -69,6 +77,7 @@ export async function PUT(
     await prisma.fortnightIncome.create({
       data: {
         fortnight_id: Number(id),
+        user_id: firstUser.id,
         amount: validatedData.amount.toString(),
         source: '__OVERRIDE__',
       },

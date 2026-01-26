@@ -32,7 +32,7 @@ export async function clientFetchFromApi<T>(
       if (error.details && Array.isArray(error.details)) {
         errorDetails = error.details;
         // If we have details, use them for the message, but also preserve them
-        if (errorDetails.length > 0) {
+        if (errorDetails && errorDetails.length > 0) {
           errorMessage = error.details.map((d: any) => d.message || d).join(', ');
         }
       }

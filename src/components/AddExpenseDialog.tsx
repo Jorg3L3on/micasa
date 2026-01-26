@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import {
   Dialog,
   DialogContent,
@@ -24,31 +23,10 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { clientFetchFromApi } from '@/lib/api'
-
-const addExpenseSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
-  categoryId: z.number().int().positive('La categoría es requerida'),
-  amount: z.number().positive('El monto debe ser mayor a 0'),
-  paymentMethodId: z.number().int().positive('El método de pago es requerido'),
-  date: z.string().min(1, 'La fecha es requerida'),
-  isPaid: z.boolean(),
-  isRecurring: z.boolean(),
-  applyToBothFortnights: z.boolean(),
-}).refine(
-  (data) => {
-    // "Aplicar a ambas quincenas" can only be true if "Es recurrente" is true
-    if (data.applyToBothFortnights && !data.isRecurring) {
-      return false
-    }
-    return true
-  },
-  {
-    message: 'Debe marcar "Es recurrente" para aplicar a ambas quincenas',
-    path: ['applyToBothFortnights'],
-  }
-)
-
-export type AddExpenseFormValues = z.infer<typeof addExpenseSchema>
+import {
+  addExpenseSchema,
+  AddExpenseFormValues,
+} from '@/schemas/transaction.schema'
 
 type Category = {
   id: number

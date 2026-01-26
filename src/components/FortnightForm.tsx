@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -30,33 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const fortnightSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Nombre es requerido')
-    .max(255, 'El nombre debe tener menos de 255 caracteres'),
-  startDay: z
-    .number()
-    .int()
-    .min(1, 'El día de inicio debe estar entre 1 y 31')
-    .max(31, 'El día de inicio debe estar entre 1 y 31'),
-  endDay: z
-    .number()
-    .int()
-    .min(1, 'El día de fin debe estar entre 1 y 31')
-    .max(31, 'El día de fin debe estar entre 1 y 31'),
-  active: z.boolean(),
-  month: z.number().int().min(1).max(12, 'El mes debe estar entre 1 y 12'),
-  year: z
-    .number()
-    .int()
-    .min(2020)
-    .max(2030, 'El año debe estar entre 2020 y 2030'),
-  period: z.enum(['FIRST', 'SECOND'], { message: 'Período es requerido' }),
-});
-
-export type FortnightFormValues = z.infer<typeof fortnightSchema>;
+import { fortnightSchema, FortnightFormValues } from '@/schemas/fortnight.schema';
 
 type FortnightFormProps = {
   open: boolean;

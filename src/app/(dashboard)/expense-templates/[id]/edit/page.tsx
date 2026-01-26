@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Form,
   FormControl,
@@ -27,22 +26,10 @@ import {
 } from '@/components/ui/card';
 import { clientFetchFromApi, updateExpenseTemplate } from '@/lib/api';
 import Link from 'next/link';
-
-const expenseTemplateSchema = z.object({
-  name: z.string().min(1, 'Nombre es requerido'),
-  categoryId: z.number().int().positive('Categoría es requerida'),
-  suggestedAmount: z.number().positive().optional().nullable(),
-  paymentMethodId: z.number().int().positive().optional().nullable(),
-  active: z.boolean(),
-  dueDay: z.number().int().positive(),
-  cutoffDay: z.number().int().positive(),
-  isRecurring: z.boolean(),
-  appliesFirstFortnight: z.boolean(),
-  appliesSecondFortnight: z.boolean(),
-  isSubscription: z.boolean(),
-});
-
-export type ExpenseTemplateFormValues = z.infer<typeof expenseTemplateSchema>;
+import {
+  expenseTemplateSchema,
+  ExpenseTemplateFormValues,
+} from '@/schemas/expense-template.schema';
 
 type ExpenseTemplate = {
   id: number;
