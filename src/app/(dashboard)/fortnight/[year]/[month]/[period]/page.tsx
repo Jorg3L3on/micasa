@@ -158,6 +158,8 @@ export default async function FortnightPage({
           month={month}
           period={period}
           expenseCount={transactions.length}
+          paidExpenseCount={transactions.filter((t) => t.is_paid).length}
+          unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}

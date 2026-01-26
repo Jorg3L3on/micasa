@@ -325,6 +325,8 @@ export default function FortnightColumn({
           month={month}
           period={period}
           expenseCount={transactions.length}
+          paidExpenseCount={transactions.filter((t) => t.is_paid).length}
+          unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
         />
 
         {/* Single Expense Table for all expenses */}

@@ -27,6 +27,8 @@ type SummaryBlockProps = {
   month?: number;
   period?: 'FIRST' | 'SECOND';
   expenseCount?: number;
+  paidExpenseCount?: number;
+  unpaidExpenseCount?: number;
 };
 
 export default function SummaryBlock({
@@ -39,6 +41,8 @@ export default function SummaryBlock({
   month,
   period,
   expenseCount = 0,
+  paidExpenseCount = 0,
+  unpaidExpenseCount = 0,
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
@@ -145,7 +149,7 @@ export default function SummaryBlock({
             </span>
             <span className="text-[10px] text-muted-foreground">
               {expenseCount > 0
-                ? `${Math.round((pagado / tenemos) * 100)}% del total`
+                ? `${Math.round((paidExpenseCount / expenseCount) * 100)}% de gastos`
                 : '—'}
             </span>
           </div>
@@ -162,7 +166,9 @@ export default function SummaryBlock({
               {formatCurrency(pendiente)}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              {expenseCount} gasto{expenseCount !== 1 ? 's' : ''}
+              {expenseCount > 0
+                ? `${Math.round((unpaidExpenseCount / expenseCount) * 100)}% de gastos`
+                : '—'}
             </span>
           </div>
         </div>
