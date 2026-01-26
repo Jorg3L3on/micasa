@@ -44,9 +44,8 @@ import {
   CheckCircle,
   Filter,
 } from 'lucide-react';
-import EditExpenseAmountDialog, {
-  ExpenseAmountFormValues,
-} from '@/components/EditExpenseAmountDialog';
+import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
+import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 type Expense = {

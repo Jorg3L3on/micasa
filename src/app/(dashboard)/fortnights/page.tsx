@@ -12,7 +12,8 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
-import FortnightForm, { FortnightFormValues } from '@/components/FortnightForm';
+import FortnightForm from '@/components/FortnightForm';
+import { FortnightFormValues } from '@/schemas/fortnight.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
   clientFetchFromApi,

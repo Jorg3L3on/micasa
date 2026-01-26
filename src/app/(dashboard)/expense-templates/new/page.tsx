@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Form,
   FormControl,
@@ -28,35 +27,10 @@ import {
 } from '@/components/ui/card';
 import { clientFetchFromApi, createExpenseTemplate } from '@/lib/api';
 import Link from 'next/link';
-
-const expenseTemplateSchema = z.object({
-  name: z.string().min(1, 'Nombre es requerido'),
-  categoryId: z.number().int().positive('Categoría es requerida'),
-  suggestedAmount: z
-    .number()
-    .positive()
-    .max(99999999.99, 'El monto es demasiado grande')
-    .optional()
-    .nullable(),
-  paymentMethodId: z.number().int().positive().optional().nullable(),
-  active: z.boolean(),
-  dueDay: z
-    .number()
-    .int()
-    .min(1, 'El día de vencimiento debe estar entre 1 y 31')
-    .max(31, 'El día de vencimiento debe estar entre 1 y 31'),
-  cutoffDay: z
-    .number()
-    .int()
-    .min(1, 'El día de corte debe estar entre 1 y 31')
-    .max(31, 'El día de corte debe estar entre 1 y 31'),
-  isRecurring: z.boolean(),
-  appliesFirstFortnight: z.boolean(),
-  appliesSecondFortnight: z.boolean(),
-  isSubscription: z.boolean(),
-});
-
-export type ExpenseTemplateFormValues = z.infer<typeof expenseTemplateSchema>;
+import {
+  expenseTemplateSchema,
+  ExpenseTemplateFormValues,
+} from '@/schemas/expense-template.schema';
 
 type Category = {
   id: number;

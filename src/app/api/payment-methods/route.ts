@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
-
-const createPaymentMethodSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  type: z.enum(['CARD', 'CASH']),
-})
-
-const updatePaymentMethodSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  type: z.enum(['CARD', 'CASH']).optional(),
-})
+import {
+  createPaymentMethodSchema,
+  updatePaymentMethodSchema,
+} from '@/schemas/payment-method.schema'
 
 export async function GET() {
   try {

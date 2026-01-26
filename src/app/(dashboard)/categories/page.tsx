@@ -12,7 +12,8 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
-import CategoryForm, { CategoryFormValues } from '@/components/CategoryForm';
+import CategoryForm from '@/components/CategoryForm';
+import { CategoryFormValues } from '@/schemas/category.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
   clientFetchFromApi,

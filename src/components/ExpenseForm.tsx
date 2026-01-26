@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -23,16 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-
-const expenseSchema = z.object({
-  name: z.string().min(1, 'Nombre es requerido'),
-  categoryId: z.number().int().positive('Categoría es requerida'),
-  defaultAmount: z.number().positive().optional().nullable(),
-  paymentMethodId: z.number().int().positive('Método de pago es requerido'),
-  active: z.boolean(),
-});
-
-export type ExpenseFormValues = z.infer<typeof expenseSchema>;
+import { expenseSchema, ExpenseFormValues } from '@/schemas/expense.schema';
 
 type Category = {
   id: number;

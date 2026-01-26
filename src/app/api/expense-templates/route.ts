@@ -1,36 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-
-const createExpenseTemplateSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  categoryId: z.number().int().positive(),
-  suggestedAmount: z.number().positive().max(99999999.99).optional(),
-  paymentMethodId: z.number().int().positive().optional(),
-  active: z.boolean().optional().default(true),
-  expenseIds: z.array(z.number().int().positive()).optional().default([]),
-  dueDay: z.number().int().min(1).max(31),
-  cutoffDay: z.number().int().min(1).max(31),
-  isRecurring: z.boolean(),
-  appliesFirstFortnight: z.boolean(),
-  appliesSecondFortnight: z.boolean(),
-  isSubscription: z.boolean(),
-});
-
-const updateExpenseTemplateSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  categoryId: z.number().int().positive().optional(),
-  suggestedAmount: z.number().positive().optional(),
-  paymentMethodId: z.number().int().positive().optional().nullable(),
-  active: z.boolean().optional(),
-  expenseIds: z.array(z.number().int().positive()).optional(),
-  dueDay: z.number().int().positive().optional(),
-  cutoffDay: z.number().int().positive().optional(),
-  isRecurring: z.boolean().optional(),
-  appliesFirstFortnight: z.boolean().optional(),
-  appliesSecondFortnight: z.boolean().optional(),
-  isSubscription: z.boolean().optional(),
-});
+import {
+  createExpenseTemplateSchema,
+  updateExpenseTemplateSchema,
+} from '@/schemas/expense-template.schema';
 
 export async function GET() {
   try {

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
-
-const updatePaidSchema = z.object({
-  paid: z.boolean(),
-})
+import { updatePaidSchema } from '@/schemas/transaction.schema'
 
 export async function PATCH(
   request: NextRequest,
