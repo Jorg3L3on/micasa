@@ -23,18 +23,25 @@ export async function clientFetchFromApi<T>(
 
   if (!res.ok) {
     let errorMessage = `Failed to fetch from ${endpoint}`;
+    let errorDetails: any[] | undefined;
     try {
       const error = await res.json();
       if (error.error) {
         errorMessage = error.error;
-      } else if (error.details && Array.isArray(error.details)) {
-        errorMessage = error.details.map((d: any) => d.message || d).join(', ');
+      }
+      if (error.details && Array.isArray(error.details)) {
+        errorDetails = error.details;
+        // If we have details, use them for the message, but also preserve them
+        if (errorDetails.length > 0) {
+          errorMessage = error.details.map((d: any) => d.message || d).join(', ');
+        }
       }
     } catch {
       // If JSON parsing fails, use default message
     }
     const error = new Error(errorMessage);
     (error as any).status = res.status;
+    (error as any).details = errorDetails;
     throw error;
   }
 

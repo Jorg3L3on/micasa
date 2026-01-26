@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,7 +16,6 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -26,19 +26,17 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import PageHeader from '@/components/PageHeader';
 import { clientFetchFromApi, createExpenseTemplate } from '@/lib/api';
-import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 const expenseTemplateSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
   categoryId: z.number().int().positive('Concepto es requerido'),
-  suggestedAmount: z.number().positive().optional().nullable(),
+  suggestedAmount: z.number().positive().max(99999999.99, 'El monto es demasiado grande').optional().nullable(),
   paymentMethodId: z.number().int().positive().optional().nullable(),
   active: z.boolean(),
-  dueDay: z.number().int().positive(),
-  cutoffDay: z.number().int().positive(),
+  dueDay: z.number().int().min(1, 'El día de vencimiento debe estar entre 1 y 31').max(31, 'El día de vencimiento debe estar entre 1 y 31'),
+  cutoffDay: z.number().int().min(1, 'El día de corte debe estar entre 1 y 31').max(31, 'El día de corte debe estar entre 1 y 31'),
   isRecurring: z.boolean(),
   appliesFirstFortnight: z.boolean(),
   appliesSecondFortnight: z.boolean(),
@@ -63,7 +61,34 @@ export default function NewExpenseTemplatePage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' = 'success',
+  ) => {
+    setToast({ message, type });
+
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const form = useForm<ExpenseTemplateFormValues>({
     resolver: zodResolver(expenseTemplateSchema),
@@ -93,7 +118,11 @@ export default function NewExpenseTemplatePage() {
         setCategories(categoriesData);
         setPaymentMethods(paymentMethodsData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Error al cargar los datos';
+        showToast(message, 'error');
       } finally {
         setLoading(false);
       }
@@ -101,18 +130,79 @@ export default function NewExpenseTemplatePage() {
     fetchData();
   }, []);
 
+  const getErrorMessage = (err: unknown): string => {
+    if (!(err instanceof Error)) {
+      return 'Error al crear la plantilla de gasto';
+    }
+
+    // Check if error has details (validation errors)
+    const errorWithDetails = err as any;
+    if (errorWithDetails.details && Array.isArray(errorWithDetails.details) && errorWithDetails.details.length > 0) {
+      // Map field names to Spanish
+      const fieldNames: Record<string, string> = {
+        name: 'Nombre',
+        categoryId: 'Categoría',
+        suggestedAmount: 'Monto por defecto',
+        paymentMethodId: 'Método de pago',
+        dueDay: 'Día de vencimiento',
+        cutoffDay: 'Día de corte',
+        isRecurring: 'Recurrente',
+        appliesFirstFortnight: 'Primera quincena',
+        appliesSecondFortnight: 'Segunda quincena',
+        isSubscription: 'Suscripción',
+      };
+
+      // Format validation errors
+      const messages = errorWithDetails.details.map((issue: any) => {
+        const fieldName = fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
+        let message = issue.message || '';
+
+        // Translate common validation messages
+        if (message.includes('Required') || message.includes('required')) {
+          message = 'es requerido';
+        } else if (message.includes('Expected')) {
+          message = 'tiene un formato inválido';
+        } else if (message.includes('positive')) {
+          message = 'debe ser un número positivo';
+        } else if (message.includes('int')) {
+          message = 'debe ser un número entero';
+        } else if (message.includes('Invalid')) {
+          message = 'tiene un valor inválido';
+        }
+
+        return `${fieldName} ${message}`;
+      });
+
+      return messages.join('. ');
+    }
+
+    // Check for specific error messages and translate them
+    const errorMessage = err.message;
+    if (errorMessage.includes('Validation error')) {
+      return 'Por favor, verifica los campos del formulario';
+    }
+    if (errorMessage.includes('already exists')) {
+      return 'Ya existe una plantilla con este nombre';
+    }
+    if (errorMessage.includes('Failed to create')) {
+      return 'Error al crear la plantilla de gasto';
+    }
+
+    return errorMessage || 'Error al crear la plantilla de gasto';
+  };
+
   const handleSubmit = async (data: ExpenseTemplateFormValues) => {
     try {
       setIsSubmitting(true);
-      setError(null);
       await createExpenseTemplate(data);
-      router.push('/expense-templates');
+      showToast('Plantilla de gasto creada exitosamente', 'success');
+      // Wait a bit before redirecting to show the success toast
+      setTimeout(() => {
+        router.push('/expense-templates');
+      }, 500);
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Failed to create expense template';
-      setError(message);
+      const message = getErrorMessage(err);
+      showToast(message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -126,21 +216,6 @@ export default function NewExpenseTemplatePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/expense-templates">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <PageHeader title="Agregar plantilla de gasto" />
-      </div>
-
-      {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Información de la plantilla</CardTitle>
@@ -178,12 +253,13 @@ export default function NewExpenseTemplatePage() {
                     <FormItem>
                       <FormLabel>Categoría</FormLabel>
                       <FormControl>
-                        <Select
+                        <select
                           value={field.value?.toString() || ''}
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             field.onChange(parseInt(e.target.value, 10))
                           }
                           onBlur={field.onBlur}
+                          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <option value="">Selecciona una categoría</option>
                           {categories.map((cat) => (
@@ -191,7 +267,7 @@ export default function NewExpenseTemplatePage() {
                               {cat.name}
                             </option>
                           ))}
-                        </Select>
+                        </select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -232,9 +308,9 @@ export default function NewExpenseTemplatePage() {
                     <FormItem>
                       <FormLabel>Método de pago (opcional)</FormLabel>
                       <FormControl>
-                        <Select
+                        <select
                           value={field.value?.toString() || ''}
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             field.onChange(
                               e.target.value
                                 ? parseInt(e.target.value, 10)
@@ -242,6 +318,7 @@ export default function NewExpenseTemplatePage() {
                             )
                           }
                           onBlur={field.onBlur}
+                          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <option value="">Selecciona un método de pago</option>
                           {paymentMethods.map((pm) => (
@@ -249,7 +326,7 @@ export default function NewExpenseTemplatePage() {
                               {pm.name}
                             </option>
                           ))}
-                        </Select>
+                        </select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -269,9 +346,17 @@ export default function NewExpenseTemplatePage() {
                           min="1"
                           max="31"
                           value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value) || 1)
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              field.onChange(1);
+                            } else {
+                              const num = parseInt(value, 10);
+                              if (!isNaN(num) && num >= 1 && num <= 31) {
+                                field.onChange(num);
+                              }
+                            }
+                          }}
                           onBlur={field.onBlur}
                         />
                       </FormControl>
@@ -291,9 +376,17 @@ export default function NewExpenseTemplatePage() {
                           min="1"
                           max="31"
                           value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value) || 1)
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              field.onChange(1);
+                            } else {
+                              const num = parseInt(value, 10);
+                              if (!isNaN(num) && num >= 1 && num <= 31) {
+                                field.onChange(num);
+                              }
+                            }
+                          }}
                           onBlur={field.onBlur}
                         />
                       </FormControl>
@@ -458,6 +551,26 @@ export default function NewExpenseTemplatePage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Toast feedback */}
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6">
+          <div
+            className={`pointer-events-auto flex items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur ${
+              toast.type === 'success'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-900/90 dark:border-emerald-800 dark:text-emerald-50'
+                : 'bg-destructive/10 border-destructive/70 text-destructive dark:bg-destructive/20 dark:border-destructive dark:text-destructive'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <span className="font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

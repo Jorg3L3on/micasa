@@ -36,3 +36,15 @@ export function formatCurrencySigned(
     type === 'expense' ? -Math.abs(numAmount) : Math.abs(numAmount);
   return formatCurrency(signedAmount);
 }
+
+export function formatMonth(month: number): string {
+  return new Date(0, month - 1).toLocaleString('es-MX', { month: 'long' });
+}
+
+export function formatYear(year: number): string {
+  return year.toString();
+}
+
+export function formatPeriod(period: 'FIRST' | 'SECOND'): string {
+  return period === 'FIRST' ? 'Primera' : 'Segunda';
+}

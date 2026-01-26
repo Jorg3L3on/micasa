@@ -87,21 +87,32 @@ export async function POST(request: NextRequest) {
     })
 
     if (paymentMethod?.type === 'CARD') {
-      // Create or get a card for this expense
-      const card = await prisma.card.upsert({
+      // Find existing card with same name and payment method, or create new one
+      let card = await prisma.card.findFirst({
         where: {
           name: validatedData.name,
-        },
-        update: {
           payment_method_id: validatedData.paymentMethodId,
-          active: validatedData.active ?? true,
-        },
-        create: {
-          name: validatedData.name,
-          payment_method_id: validatedData.paymentMethodId,
-          active: validatedData.active ?? true,
+          active: true,
         },
       })
+
+      if (!card) {
+        card = await prisma.card.create({
+          data: {
+            name: validatedData.name,
+            payment_method_id: validatedData.paymentMethodId,
+            active: validatedData.active ?? true,
+          },
+        })
+      } else {
+        // Update existing card if needed
+        card = await prisma.card.update({
+          where: { id: card.id },
+          data: {
+            active: validatedData.active ?? true,
+          },
+        })
+      }
       defaultCardId = card.id
     }
 
@@ -241,21 +252,36 @@ export async function PUT(request: NextRequest) {
       })
 
       if (paymentMethod?.type === 'CARD') {
-        // Get or create card
-        const card = await prisma.card.upsert({
-          where: {
-            name: template.name,
-          },
-          update: {
-            payment_method_id: validatedData.paymentMethodId,
-          },
-          create: {
-            name: template.name,
-            payment_method_id: validatedData.paymentMethodId,
-            active: true,
-          },
-        })
-        updateData.default_card_id = card.id
+        // If template already has a card, update it
+        if (template.default_card_id) {
+          await prisma.card.update({
+            where: { id: template.default_card_id },
+            data: {
+              payment_method_id: validatedData.paymentMethodId,
+            },
+          })
+          updateData.default_card_id = template.default_card_id
+        } else {
+          // Find existing card with same name and payment method, or create new one
+          let card = await prisma.card.findFirst({
+            where: {
+              name: template.name,
+              payment_method_id: validatedData.paymentMethodId,
+              active: true,
+            },
+          })
+
+          if (!card) {
+            card = await prisma.card.create({
+              data: {
+                name: template.name,
+                payment_method_id: validatedData.paymentMethodId,
+                active: true,
+              },
+            })
+          }
+          updateData.default_card_id = card.id
+        }
       } else {
         updateData.default_card_id = null
       }

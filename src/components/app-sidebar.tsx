@@ -1,101 +1,126 @@
-"use client"
+'use client';
 
-import * as React from "react"
+import * as React from 'react';
 import {
   LayoutDashboard,
   FolderTree,
-  CreditCard,
   Receipt,
   Calendar,
-  FileText,
-  Layers,
-  CalendarDays,
   Home,
-} from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+} from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { TeamSwitcher } from "@/components/team-switcher"
-import { NavUser } from "@/components/nav-user"
-import { NavMain } from "@/components/nav-main"
+import { TeamSwitcher } from '@/components/team-switcher';
+import { NavUser } from '@/components/nav-user';
+import { NavMain } from '@/components/nav-main';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar';
+import { clientFetchFromApi } from '@/lib/api';
 
 function getCurrentMonthHref(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  return `/monthly/${year}/${month}`
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `/monthly/${year}/${month}`;
 }
 
+type Fortnight = {
+  id: number;
+  name: string;
+  active: boolean;
+};
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const [fortnights, setFortnights] = useState<Fortnight[]>([]);
+  const [hasActiveFortnight, setHasActiveFortnight] = useState(false);
+
+  useEffect(() => {
+    const fetchFortnights = async () => {
+      try {
+        const data = await clientFetchFromApi<Fortnight[]>('/api/fortnights');
+        setFortnights(data);
+        setHasActiveFortnight(data.some((f) => f.active));
+      } catch (error) {
+        console.error('Error fetching fortnights for sidebar:', error);
+      }
+    };
+    fetchFortnights();
+  }, []);
 
   const navItems = [
     {
-      title: "Dashboard",
-      url: "/dashboard",
+      title: 'Dashboard',
+      url: '/dashboard',
       icon: LayoutDashboard,
-      isActive: pathname === "/dashboard" || pathname.startsWith("/dashboard/"),
+      isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),
     },
     {
-      title: "Planificación",
+      title: 'Planificación',
       url: getCurrentMonthHref(),
       icon: Calendar,
-      isActive: pathname.startsWith("/monthly/"),
+      isActive: pathname.startsWith('/monthly/'),
     },
     {
-      title: "Operaciones",
-      url: "/transactions",
+      title: 'Operaciones',
+      url: '/transactions',
       icon: Receipt,
-      isActive: pathname === "/transactions" || pathname.startsWith("/transactions/"),
+      isActive:
+        pathname === '/transactions' || pathname.startsWith('/transactions/'),
     },
     {
-      title: "Catálogos",
-      url: "#",
+      title: 'Catálogos',
+      url: '#',
       icon: FolderTree,
-      isActive: pathname.startsWith("/expense-templates") ||
-        pathname.startsWith("/expenses") ||
-        pathname.startsWith("/fortnights") ||
-        pathname.startsWith("/categories") ||
-        pathname.startsWith("/payment-methods"),
+      isActive:
+        pathname.startsWith('/expense-templates') ||
+        pathname.startsWith('/expenses') ||
+        pathname.startsWith('/fortnights') ||
+        pathname.startsWith('/categories') ||
+        pathname.startsWith('/payment-methods'),
       items: [
         {
-          title: "Plantillas de gastos",
-          url: "/expense-templates",
+          title: 'Plantillas de gastos',
+          url: '/expense-templates',
+          isActive: pathname.startsWith('/expense-templates'),
         },
         {
-          title: "Gastos",
-          url: "/expenses",
+          title: 'Gastos',
+          url: '/expenses',
+          isActive: pathname.startsWith('/expenses'),
         },
         {
-          title: "Quincenas",
-          url: "/fortnights",
+          title: 'Quincenas',
+          url: '/fortnights',
+          isActive: pathname.startsWith('/fortnights'),
         },
         {
-          title: "Categorías",
-          url: "/categories",
+          title: 'Categorías',
+          url: '/categories',
+          isActive: pathname.startsWith('/categories'),
         },
         {
-          title: "Métodos de pago",
-          url: "/payment-methods",
+          title: 'Métodos de pago',
+          url: '/payment-methods',
+          isActive: pathname.startsWith('/payment-methods'),
         },
       ],
     },
-  ]
+  ];
 
   const teams = [
     {
-      name: "MiCasa",
+      name: 'MiCasa',
       logo: Home,
-      plan: "Gestión Financiera",
+      plan: 'Gestión Financiera',
     },
-  ]
+  ];
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -108,13 +133,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <NavUser
           user={{
-            name: "Usuario",
-            email: "usuario@ejemplo.com",
-            avatar: "/avatars/user.jpg",
+            name: 'Usuario',
+            email: 'usuario@ejemplo.com',
+            avatar: '/avatars/user.jpg',
           }}
         />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

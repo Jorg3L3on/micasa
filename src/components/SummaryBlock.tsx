@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -41,24 +41,29 @@ export default function SummaryBlock({
   expenseCount = 0,
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
-  // Calculate days remaining in fortnight
-  const getDaysRemaining = (): number | null => {
-    if (!year || !month || !period) return null;
+  // Calculate days remaining in fortnight (client-only to avoid hydration mismatch)
+  useEffect(() => {
+    if (!year || !month || !period) {
+      setDaysRemaining(null);
+      return;
+    }
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + 1;
     const currentDay = today.getDate();
 
     // Only calculate if we're in the current month/year
-    if (year !== currentYear || month !== currentMonth) return null;
+    if (year !== currentYear || month !== currentMonth) {
+      setDaysRemaining(null);
+      return;
+    }
 
     const endDay = period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
-    const daysRemaining = endDay - currentDay;
-    return daysRemaining >= 0 ? daysRemaining : null;
-  };
-
-  const daysRemaining = getDaysRemaining();
+    const remaining = endDay - currentDay;
+    setDaysRemaining(remaining >= 0 ? remaining : null);
+  }, [year, month, period]);
   const hasUserIncome =
     userIncome &&
     userIncome.length > 0 &&

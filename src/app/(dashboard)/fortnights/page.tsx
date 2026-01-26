@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -8,126 +8,134 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import EmptyState from '@/components/EmptyState'
-import PageHeader from '@/components/PageHeader'
-import FortnightForm, { FortnightFormValues } from '@/components/FortnightForm'
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/EmptyState';
+import FortnightForm, { FortnightFormValues } from '@/components/FortnightForm';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
   clientFetchFromApi,
   createFortnight,
   updateFortnight,
   deleteFortnight,
-} from '@/lib/api'
-import { Pencil, Trash2 } from 'lucide-react'
+} from '@/lib/api';
+import { Pencil, Trash2 } from 'lucide-react';
+import { formatMonth, formatYear, formatPeriod } from '@/lib/utils';
 
 type Fortnight = {
-  id: number
-  name: string
-  startDay: number
-  endDay: number
-  active: boolean
-  year?: number
-  month?: number
-  period?: string
-}
+  id: number;
+  name: string;
+  startDay: number;
+  endDay: number;
+  active: boolean;
+  year: number;
+  month: number;
+  period: 'FIRST' | 'SECOND';
+};
 
 export default function FortnightsPage() {
-  const [fortnights, setFortnights] = useState<Fortnight[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedFortnight, setSelectedFortnight] = useState<Fortnight | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [fortnights, setFortnights] = useState<Fortnight[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedFortnight, setSelectedFortnight] = useState<Fortnight | null>(
+    null,
+  );
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchFortnights = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const data = await clientFetchFromApi<Fortnight[]>('/api/fortnights')
-      setFortnights(data)
+      setLoading(true);
+      setError(null);
+      const data = await clientFetchFromApi<Fortnight[]>('/api/fortnights');
+      setFortnights(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch fortnights')
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch fortnights',
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchFortnights()
-  }, [])
+    fetchFortnights();
+  }, []);
 
   const handleCreate = async (data: FortnightFormValues) => {
     try {
-      setFormError(null)
-      await createFortnight(data)
-      await fetchFortnights()
-      setCreateDialogOpen(false)
+      setFormError(null);
+      await createFortnight(data);
+      await fetchFortnights();
+      setCreateDialogOpen(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create fortnight'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error ? err.message : 'Failed to create fortnight';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleEdit = async (data: FortnightFormValues) => {
-    if (!selectedFortnight) return
+    if (!selectedFortnight) return;
     try {
-      setFormError(null)
-      await updateFortnight(selectedFortnight.id, data)
-      await fetchFortnights()
-      setEditDialogOpen(false)
-      setSelectedFortnight(null)
+      setFormError(null);
+      await updateFortnight(selectedFortnight.id, data);
+      await fetchFortnights();
+      setEditDialogOpen(false);
+      setSelectedFortnight(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update fortnight'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error ? err.message : 'Failed to update fortnight';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!selectedFortnight) return
+    if (!selectedFortnight) return;
     try {
-      setError(null)
-      await deleteFortnight(selectedFortnight.id)
-      await fetchFortnights()
-      setDeleteDialogOpen(false)
-      setSelectedFortnight(null)
+      setError(null);
+      await deleteFortnight(selectedFortnight.id);
+      await fetchFortnights();
+      setDeleteDialogOpen(false);
+      setSelectedFortnight(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete fortnight'
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete fortnight';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Fortnight is in use and cannot be deleted')
+        setError('Fortnight is in use and cannot be deleted');
       } else {
-        setError(message)
+        setError(message);
       }
     }
-  }
+  };
 
   const openEditDialog = (fortnight: Fortnight) => {
-    setSelectedFortnight(fortnight)
-    setEditDialogOpen(true)
-    setFormError(null)
-  }
+    setSelectedFortnight(fortnight);
+    setEditDialogOpen(true);
+    setFormError(null);
+  };
 
   const openDeleteDialog = (fortnight: Fortnight) => {
-    setSelectedFortnight(fortnight)
-    setDeleteDialogOpen(true)
-    setError(null)
-  }
+    setSelectedFortnight(fortnight);
+    setDeleteDialogOpen(true);
+    setError(null);
+  };
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <PageHeader title="Quincenas" />
-        <Button onClick={() => setCreateDialogOpen(true)}>Agregar quincena</Button>
+      <div className="mb-6 flex items-center justify-end">
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          Agregar quincena
+        </Button>
       </div>
 
       {error && !deleteDialogOpen && (
@@ -139,7 +147,9 @@ export default function FortnightsPage() {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+            <div className="py-8 text-center text-muted-foreground">
+              Cargando...
+            </div>
           ) : fortnights.length === 0 ? (
             <EmptyState message="No se encontraron quincenas" />
           ) : (
@@ -149,6 +159,9 @@ export default function FortnightsPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Inicio</TableHead>
                   <TableHead>Fin</TableHead>
+                  <TableHead>Mes</TableHead>
+                  <TableHead>Año</TableHead>
+                  <TableHead>Período</TableHead>
                   <TableHead>Activo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -156,9 +169,14 @@ export default function FortnightsPage() {
               <TableBody>
                 {fortnights.map((fortnight) => (
                   <TableRow key={fortnight.id}>
-                    <TableCell className="font-medium">{fortnight.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {fortnight.name}
+                    </TableCell>
                     <TableCell>{fortnight.startDay}</TableCell>
                     <TableCell>{fortnight.endDay}</TableCell>
+                    <TableCell>{formatMonth(fortnight.month)}</TableCell>
+                    <TableCell>{formatYear(fortnight.year)}</TableCell>
+                    <TableCell>{formatPeriod(fortnight.period)}</TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -199,8 +217,8 @@ export default function FortnightsPage() {
       <FortnightForm
         open={createDialogOpen}
         onOpenChange={(open) => {
-          setCreateDialogOpen(open)
-          setFormError(null)
+          setCreateDialogOpen(open);
+          setFormError(null);
         }}
         onSubmit={handleCreate}
         mode="create"
@@ -212,9 +230,9 @@ export default function FortnightsPage() {
           <FortnightForm
             open={editDialogOpen}
             onOpenChange={(open) => {
-              setEditDialogOpen(open)
-              setSelectedFortnight(null)
-              setFormError(null)
+              setEditDialogOpen(open);
+              setSelectedFortnight(null);
+              setFormError(null);
             }}
             onSubmit={handleEdit}
             mode="edit"
@@ -223,6 +241,9 @@ export default function FortnightsPage() {
               startDay: selectedFortnight.startDay,
               endDay: selectedFortnight.endDay,
               active: selectedFortnight.active,
+              month: selectedFortnight.month,
+              year: selectedFortnight.year,
+              period: selectedFortnight.period,
             }}
             error={formError && editDialogOpen ? formError : null}
           />
@@ -230,10 +251,10 @@ export default function FortnightsPage() {
           <ConfirmDeleteDialog
             open={deleteDialogOpen}
             onOpenChange={(open) => {
-              setDeleteDialogOpen(open)
+              setDeleteDialogOpen(open);
               if (!open) {
-                setSelectedFortnight(null)
-                setError(null)
+                setSelectedFortnight(null);
+                setError(null);
               }
             }}
             onConfirm={handleDelete}
@@ -244,5 +265,5 @@ export default function FortnightsPage() {
         </>
       )}
     </>
-  )
+  );
 }

@@ -5,12 +5,12 @@ import prisma from '@/lib/prisma';
 const createExpenseTemplateSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   categoryId: z.number().int().positive(),
-  suggestedAmount: z.number().positive().optional(),
+  suggestedAmount: z.number().positive().max(99999999.99).optional(),
   paymentMethodId: z.number().int().positive().optional(),
   active: z.boolean().optional().default(true),
   expenseIds: z.array(z.number().int().positive()).optional().default([]),
-  dueDay: z.number().int().positive(),
-  cutoffDay: z.number().int().positive(),
+  dueDay: z.number().int().min(1).max(31),
+  cutoffDay: z.number().int().min(1).max(31),
   isRecurring: z.boolean(),
   appliesFirstFortnight: z.boolean(),
   appliesSecondFortnight: z.boolean(),
@@ -45,6 +45,7 @@ export async function GET() {
           select: {
             payment_method: {
               select: {
+                id: true,
                 name: true,
               },
             },
@@ -76,6 +77,7 @@ export async function GET() {
           ? Number(template.suggested_amount)
           : null,
         paymentMethod: template.default_card?.payment_method?.name || null,
+        paymentMethodId: template.default_card?.payment_method?.id || null,
         active: template.active,
         totalEstimatedAmount: totalAmount,
         expenseIds: [], // Will be populated from form selections in UI
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest) {
           select: {
             payment_method: {
               select: {
+                id: true,
                 name: true,
               },
             },
@@ -158,6 +161,7 @@ export async function POST(request: NextRequest) {
           ? Number(template.suggested_amount)
           : null,
         paymentMethod: template.default_card?.payment_method?.name || null,
+        paymentMethodId: template.default_card?.payment_method?.id || null,
         active: template.active,
         totalEstimatedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
@@ -275,6 +279,7 @@ export async function PUT(request: NextRequest) {
           select: {
             payment_method: {
               select: {
+                id: true,
                 name: true,
               },
             },
@@ -303,6 +308,7 @@ export async function PUT(request: NextRequest) {
           ? Number(template.suggested_amount)
           : null,
         paymentMethod: template.default_card?.payment_method?.name || null,
+        paymentMethodId: template.default_card?.payment_method?.id || null,
         active: template.active,
         totalEstimatedAmount:
           totalAmount ||

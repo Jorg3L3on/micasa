@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +15,6 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -26,9 +25,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import PageHeader from '@/components/PageHeader';
 import { clientFetchFromApi, updateExpenseTemplate } from '@/lib/api';
-import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 const expenseTemplateSchema = z.object({
@@ -53,6 +50,7 @@ type ExpenseTemplate = {
   category: string;
   suggestedAmount: number | null;
   paymentMethod: string | null;
+  paymentMethodId: number | null;
   active: boolean;
   dueDay: number | null;
   cutoffDay: number | null;
@@ -128,10 +126,7 @@ export default function EditExpenseTemplatePage() {
             categoriesData.find((c) => c.name === foundTemplate.category)?.id ||
             0,
           suggestedAmount: foundTemplate.suggestedAmount ?? null,
-          paymentMethodId:
-            paymentMethodsData.find(
-              (pm) => pm.name === foundTemplate.paymentMethod,
-            )?.id || null,
+          paymentMethodId: foundTemplate.paymentMethodId ?? null,
           active: foundTemplate.active,
           dueDay: foundTemplate.dueDay ?? 1,
           cutoffDay: foundTemplate.cutoffDay ?? 1,
@@ -175,14 +170,6 @@ export default function EditExpenseTemplatePage() {
   if (!template) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href="/expense-templates">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <PageHeader title="Editar plantilla de gasto" />
-        </div>
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error || 'Plantilla no encontrada'}
         </div>
@@ -192,15 +179,6 @@ export default function EditExpenseTemplatePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/expense-templates">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <PageHeader title="Editar plantilla de gasto" />
-      </div>
-
       {error && (
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
@@ -244,12 +222,13 @@ export default function EditExpenseTemplatePage() {
                     <FormItem>
                       <FormLabel>Categoría</FormLabel>
                       <FormControl>
-                        <Select
+                        <select
                           value={field.value?.toString() || ''}
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             field.onChange(parseInt(e.target.value, 10))
                           }
                           onBlur={field.onBlur}
+                          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <option value="">Selecciona una categoría</option>
                           {categories.map((cat) => (
@@ -257,7 +236,7 @@ export default function EditExpenseTemplatePage() {
                               {cat.name}
                             </option>
                           ))}
-                        </Select>
+                        </select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -298,9 +277,9 @@ export default function EditExpenseTemplatePage() {
                     <FormItem>
                       <FormLabel>Método de pago (opcional)</FormLabel>
                       <FormControl>
-                        <Select
+                        <select
                           value={field.value?.toString() || ''}
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             field.onChange(
                               e.target.value
                                 ? parseInt(e.target.value, 10)
@@ -308,6 +287,7 @@ export default function EditExpenseTemplatePage() {
                             )
                           }
                           onBlur={field.onBlur}
+                          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <option value="">Selecciona un método de pago</option>
                           {paymentMethods.map((pm) => (
@@ -315,7 +295,7 @@ export default function EditExpenseTemplatePage() {
                               {pm.name}
                             </option>
                           ))}
-                        </Select>
+                        </select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
