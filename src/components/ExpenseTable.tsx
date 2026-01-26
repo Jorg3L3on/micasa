@@ -9,10 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,9 +39,10 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  CheckCircle,
-  AlertCircle,
   CheckCircle2,
+  AlertCircle,
+  CheckCircle,
+  Filter,
 } from 'lucide-react';
 import EditExpenseAmountDialog, {
   ExpenseAmountFormValues,
@@ -64,6 +65,7 @@ type ExpenseTableProps = {
   expenses: Expense[];
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void;
   fortnightLabel?: string;
+  totalIncome?: number;
 };
 
 export default function ExpenseTable({
@@ -71,6 +73,7 @@ export default function ExpenseTable({
   expenses,
   onExpenseUpdate,
   fortnightLabel = '',
+  totalIncome = 0,
 }: ExpenseTableProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
   const [localExpenses, setLocalExpenses] = useState<Expense[]>(expenses);
@@ -81,6 +84,7 @@ export default function ExpenseTable({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [payingExpense, setPayingExpense] = useState<Expense | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error';
@@ -110,16 +114,14 @@ export default function ExpenseTable({
     };
   }, []);
 
-  // Sync local state with props when expenses change and sort them
+  // Sync local state with props when expenses change
   useEffect(() => {
-    // Sort expenses: unpaid first (by amount descending), then paid (by amount descending)
     const sorted = [...expenses].sort((a, b) => {
-      // First, separate paid and unpaid
+      // Unpaid first, then paid
       if (a.is_paid !== b.is_paid) {
-        // Unpaid (false) comes before paid (true)
         return a.is_paid ? 1 : -1;
       }
-      // Within the same paid status, sort by amount descending
+      // Within same status, sort by amount descending
       const amountA = Number(a.amount);
       const amountB = Number(b.amount);
       return amountB - amountA;
@@ -129,9 +131,12 @@ export default function ExpenseTable({
 
   const handlePaidToggle = async (expense: Expense, newPaidStatus: boolean) => {
     const expenseId = expense.id;
-    setUpdatingIds((prev) => new Set(prev).add(expenseId));
+    setUpdatingIds((prev) => {
+      const next = new Set(prev);
+      next.add(expenseId);
+      return next;
+    });
 
-    // Optimistic update
     const updatedExpenses = localExpenses.map((e) =>
       e.id === expenseId ? { ...e, is_paid: newPaidStatus } : e,
     );
@@ -139,7 +144,6 @@ export default function ExpenseTable({
 
     try {
       await updateExpensePaidStatus(expenseId, newPaidStatus);
-      // Notify parent to refresh summary
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, newPaidStatus);
       }
@@ -150,7 +154,6 @@ export default function ExpenseTable({
         'success',
       );
     } catch (error) {
-      // Revert on error
       setLocalExpenses(expenses);
       console.error('Error updating expense paid status:', error);
       showToast(
@@ -176,9 +179,12 @@ export default function ExpenseTable({
     if (!editingExpense) return;
 
     const expenseId = editingExpense.id;
-    setUpdatingIds((prev) => new Set(prev).add(expenseId));
+    setUpdatingIds((prev) => {
+      const next = new Set(prev);
+      next.add(expenseId);
+      return next;
+    });
 
-    // Optimistic update
     const updatedExpenses = localExpenses.map((e) =>
       e.id === expenseId ? { ...e, amount: data.amount } : e,
     );
@@ -187,16 +193,13 @@ export default function ExpenseTable({
     try {
       setEditError(null);
       await updateExpenseAmount(expenseId, data.amount);
-      // Notify parent to refresh summary
       if (onExpenseUpdate) {
-        // Trigger a refresh by calling with the same paid status
         onExpenseUpdate(expenseId, editingExpense.is_paid);
       }
       setEditDialogOpen(false);
       setEditingExpense(null);
       showToast('Monto del gasto actualizado.', 'success');
     } catch (error) {
-      // Revert on error
       setLocalExpenses(expenses);
       const message =
         error instanceof Error ? error.message : 'Error al actualizar el monto';
@@ -217,24 +220,24 @@ export default function ExpenseTable({
     if (!deletingExpense) return;
 
     const expenseId = deletingExpense.id;
-    setUpdatingIds((prev) => new Set(prev).add(expenseId));
+    setUpdatingIds((prev) => {
+      const next = new Set(prev);
+      next.add(expenseId);
+      return next;
+    });
 
-    // Optimistic update - remove from local state
     const updatedExpenses = localExpenses.filter((e) => e.id !== expenseId);
     setLocalExpenses(updatedExpenses);
 
     try {
       await deleteTransaction(expenseId);
-      // Notify parent to refresh summary
       if (onExpenseUpdate) {
-        // Trigger a refresh by calling with the same paid status
         onExpenseUpdate(expenseId, deletingExpense.is_paid);
       }
       setDeleteDialogOpen(false);
       setDeletingExpense(null);
       showToast('Gasto eliminado.', 'success');
     } catch (error) {
-      // Revert on error
       setLocalExpenses(expenses);
       console.error('Error deleting expense:', error);
       showToast(
@@ -250,19 +253,14 @@ export default function ExpenseTable({
     }
   };
 
-  const total = localExpenses.reduce((sum, expense) => {
-    return sum + Number(expense.amount);
-  }, 0);
-
   const getDueInfo = (expense: Expense) => {
     const dueDayValue = expense.due_day;
-
     if (!dueDayValue || Number.isNaN(dueDayValue)) {
       return {
         hasDue: false,
         dueDay: null as number | null,
         daysRemaining: null as number | null,
-        badgeVariant: 'default' as const,
+        badgeColor: 'default' as const,
       };
     }
 
@@ -270,168 +268,291 @@ export default function ExpenseTable({
     const todayDay = today.getDate();
     const daysRemaining = dueDayValue - todayDay;
 
-    // For now we only change badge color based on paid/unpaid.
-    const badgeVariant = expense.is_paid
-      ? ('success' as const)
-      : ('warning' as const);
+    // Standardized badge colors
+    let badgeColor: 'default' | 'destructive' | 'secondary' = 'default';
+    if (daysRemaining < 0) {
+      badgeColor = 'destructive'; // Overdue - red
+    } else if (daysRemaining <= 3) {
+      badgeColor = 'destructive'; // Urgent - red
+    } else if (daysRemaining <= 7) {
+      badgeColor = 'secondary'; // Warning - yellow/orange
+    }
 
     return {
       hasDue: true,
       dueDay: dueDayValue,
       daysRemaining,
-      badgeVariant,
+      badgeColor,
     };
   };
 
+  // Filter expenses
+  const displayedExpenses = showOnlyPending
+    ? localExpenses.filter((e) => !e.is_paid)
+    : localExpenses;
+
+  const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
+  const paidExpenses = localExpenses.filter((e) => e.is_paid);
+
+  const totalPaid = paidExpenses.reduce(
+    (sum, e) => sum + Number(e.amount),
+    0,
+  );
+  const totalPending = pendingExpenses.reduce(
+    (sum, e) => sum + Number(e.amount),
+    0,
+  );
+  const total = localExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+  // Calculate progress percentage
+  const progressPercentage =
+    totalIncome > 0 ? Math.min((totalPaid / totalIncome) * 100, 100) : 0;
+
   return (
-    <Card className="shadow-sm rounded-lg border border-border/60 overflow-hidden">
-      <CardContent className="pt-2 px-0 pb-0">
-        <div className="relative w-full overflow-x-auto text-xs sm:text-sm">
-          <Table className="min-w-[520px]">
-            <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
-              <TableRow>
-                <TableHead className="w-10 text-center text-[11px] font-medium">
-                  Estado
-                </TableHead>
-                <TableHead className="min-w-[180px] text-[11px] font-medium">
-                  Concepto
-                </TableHead>
-                <TableHead className="text-right min-w-[140px] text-[11px] font-medium">
-                  Monto
-                </TableHead>
-                <TableHead className="w-10 text-center text-[11px] font-medium">
-                  Acciones
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {localExpenses.length === 0 ? (
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold">
+              {date ? new Date(date).toLocaleDateString('es-MX') : 'Gastos'}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowOnlyPending(!showOnlyPending)}
+              className="h-8 gap-2"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              {showOnlyPending ? 'Mostrar todos' : 'Solo pendientes'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Progress Bar */}
+          {totalIncome > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Progreso de pago</span>
+                <span>{Math.round(progressPercentage)}%</span>
+              </div>
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Expenses Table */}
+          <div className="relative w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="py-6 text-center text-xs text-muted-foreground"
-                  >
-                    Sin gastos
-                  </TableCell>
+                  <TableHead className="w-12 text-center text-xs font-medium">
+                    Estado
+                  </TableHead>
+                  <TableHead className="min-w-[200px] text-xs font-medium">
+                    Concepto
+                  </TableHead>
+                  <TableHead className="text-right min-w-[120px] text-xs font-medium">
+                    Monto
+                  </TableHead>
+                  <TableHead className="w-20 text-center text-xs font-medium">
+                    Acciones
+                  </TableHead>
                 </TableRow>
-              ) : (
-                <>
-                  {localExpenses.map((expense) => {
-                    const { hasDue, daysRemaining, badgeVariant } =
-                      getDueInfo(expense);
-                    const isUpdating = updatingIds.has(expense.id);
+              </TableHeader>
+              <TableBody>
+                {displayedExpenses.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      {showOnlyPending
+                        ? 'No hay gastos pendientes'
+                        : 'Sin gastos'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <>
+                    {/* Pending Expenses Section */}
+                    {!showOnlyPending && pendingExpenses.length > 0 && (
+                      <>
+                        {pendingExpenses.map((expense) => {
+                          const { hasDue, daysRemaining, badgeColor } =
+                            getDueInfo(expense);
+                          const isUpdating = updatingIds.has(expense.id);
 
-                    const baseRowClasses =
-                      'transition-colors duration-200 border-b last:border-b-0';
-                    const hoverClasses = 'hover:bg-muted/60 cursor-default';
-                    const paidAccent =
-                      expense.is_paid &&
-                      'bg-emerald-50/70 dark:bg-emerald-900/20';
-
-                    return (
-                      <TableRow
-                        key={expense.id}
-                        className={`${baseRowClasses} ${hoverClasses} ${paidAccent}`}
-                      >
-                        <TableCell className="align-middle text-center px-2">
-                          {expense.is_paid ? (
-                            <div className="flex items-center justify-center">
-                              <CheckCircle
-                                className="h-5 w-5 text-emerald-500"
-                                aria-label="Pagado"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center">
-                              <Checkbox
-                                checked={false}
-                                disabled={isUpdating}
-                                onCheckedChange={() => {
-                                  setPayingExpense(expense);
-                                  setPayDialogOpen(true);
-                                }}
-                                className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 transition-colors"
-                              />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm max-w-xs">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium text-foreground truncate sm:whitespace-normal sm:line-clamp-2">
-                              {expense.description}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {expense.category} • {expense.paymentMethod}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right text-xs sm:text-sm align-middle">
-                          <div className="flex flex-col items-end gap-1">
-                            <span
-                              className={`font-mono tabular-nums ${
-                                expense.is_paid
-                                  ? 'text-muted-foreground line-through'
-                                  : 'font-semibold text-foreground'
-                              }`}
+                          return (
+                            <TableRow
+                              key={expense.id}
+                              className="hover:bg-muted/50 transition-colors"
                             >
-                              {formatCurrency(Number(expense.amount))}
-                            </span>
-                            {hasDue && (
-                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                <Badge
-                                  variant={badgeVariant}
-                                  size="sm"
-                                  className="uppercase tracking-wide"
-                                >
-                                  {daysRemaining !== null &&
-                                  daysRemaining >= 0
-                                    ? `Faltan ${daysRemaining} días`
-                                    : 'Vencido'}
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center px-1">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-accent/70"
-                                disabled={isUpdating}
-                                aria-label="Más acciones"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                              {expense.is_paid ? (
-                                <DropdownMenuItem
-                                  onClick={() => handlePaidToggle(expense, false)}
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    setPayingExpense(expense);
+                                    setPayDialogOpen(true);
+                                  }}
                                   disabled={isUpdating}
+                                  aria-label="Marcar como pagado"
                                 >
-                                  <CheckCircle2 className="mr-2" />
-                                  <span>Deshacer pago</span>
-                                </DropdownMenuItem>
-                              ) : (
-                                <>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setPayingExpense(expense);
-                                      setPayDialogOpen(true);
-                                    }}
+                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-medium text-sm">
+                                    {expense.description}
+                                  </span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs text-muted-foreground">
+                                      {expense.category} • {expense.paymentMethod}
+                                    </span>
+                                    {hasDue && (
+                                      <Badge
+                                        variant={badgeColor}
+                                        className="text-[10px] h-5"
+                                      >
+                                        {daysRemaining !== null &&
+                                        daysRemaining >= 0
+                                          ? `Vence en ${daysRemaining} día${
+                                              daysRemaining !== 1 ? 's' : ''
+                                            }`
+                                          : 'Vencido'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span className="font-semibold font-mono tabular-nums text-sm">
+                                  {formatCurrency(Number(expense.amount))}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      disabled={isUpdating}
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => handleEditAmount(expense)}
+                                      disabled={isUpdating}
+                                    >
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      Modificar monto
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setDeletingExpense(expense);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      disabled={isUpdating}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Eliminar
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {paidExpenses.length > 0 && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={4}
+                              className="py-2 bg-muted/30"
+                            >
+                              <Separator />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    )}
+
+                    {/* Paid Expenses Section */}
+                    {!showOnlyPending &&
+                      paidExpenses.map((expense) => {
+                        const { hasDue, daysRemaining, badgeColor } =
+                          getDueInfo(expense);
+                        const isUpdating = updatingIds.has(expense.id);
+
+                        return (
+                          <TableRow
+                            key={expense.id}
+                            className="bg-muted/30 opacity-75 hover:bg-muted/40"
+                          >
+                            <TableCell className="text-center">
+                              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mx-auto" />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium text-sm text-muted-foreground line-through">
+                                  {expense.description}
+                                </span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">
+                                    {expense.category} • {expense.paymentMethod}
+                                  </span>
+                                  {hasDue && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] h-5 opacity-60"
+                                    >
+                                      Pagado
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="font-mono tabular-nums text-sm text-muted-foreground line-through">
+                                {formatCurrency(Number(expense.amount))}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
                                     disabled={isUpdating}
                                   >
-                                    <CheckCircle2 className="mr-2" />
-                                    <span>Pagar gasto</span>
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handlePaidToggle(expense, false)
+                                    }
+                                    disabled={isUpdating}
+                                  >
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    Deshacer pago
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleEditAmount(expense)}
                                     disabled={isUpdating}
                                   >
-                                    <Pencil className="mr-2" />
-                                    <span>Modificar monto</span>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Modificar monto
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => {
@@ -439,34 +560,130 @@ export default function ExpenseTable({
                                       setDeleteDialogOpen(true);
                                     }}
                                     disabled={isUpdating}
-                                    className="text-destructive focus:text-destructive"
+                                    className="text-destructive"
                                   >
-                                    <Trash2 className="mr-2" />
-                                    <span>Eliminar</span>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  <TableRow className="bg-muted/70 font-semibold">
-                    <TableCell colSpan={2} className="text-right text-sm">
-                      Total:
-                    </TableCell>
-                    <TableCell className="text-right text-sm">
-                      {formatCurrency(total)}
-                    </TableCell>
-                    <TableCell />
-                  </TableRow>
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+
+                    {/* Show only pending when filtered */}
+                    {showOnlyPending &&
+                      pendingExpenses.map((expense) => {
+                        const { hasDue, daysRemaining, badgeColor } =
+                          getDueInfo(expense);
+                        const isUpdating = updatingIds.has(expense.id);
+
+                        return (
+                          <TableRow
+                            key={expense.id}
+                            className="hover:bg-muted/50 transition-colors"
+                          >
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setPayingExpense(expense);
+                                  setPayDialogOpen(true);
+                                }}
+                                disabled={isUpdating}
+                                aria-label="Marcar como pagado"
+                              >
+                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium text-sm">
+                                  {expense.description}
+                                </span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">
+                                    {expense.category} • {expense.paymentMethod}
+                                  </span>
+                                  {hasDue && (
+                                    <Badge
+                                      variant={badgeColor}
+                                      className="text-[10px] h-5"
+                                    >
+                                      {daysRemaining !== null &&
+                                      daysRemaining >= 0
+                                        ? `Vence en ${daysRemaining} día${
+                                            daysRemaining !== 1 ? 's' : ''
+                                          }`
+                                        : 'Vencido'}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="font-semibold font-mono tabular-nums text-sm">
+                                {formatCurrency(Number(expense.amount))}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    disabled={isUpdating}
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => handleEditAmount(expense)}
+                                    disabled={isUpdating}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Modificar monto
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setDeletingExpense(expense);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    disabled={isUpdating}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+
+                    {/* Totals Row */}
+                    <TableRow className="bg-muted/50 font-semibold">
+                      <TableCell colSpan={2} className="text-right text-sm">
+                        Total:
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-mono">
+                        {formatCurrency(total)}
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Edit Expense Amount Dialog */}
       {editingExpense && (
@@ -503,6 +720,7 @@ export default function ExpenseTable({
           itemName={deletingExpense.description}
         />
       )}
+
       {/* Pay Expense Confirmation Dialog */}
       {payingExpense && (
         <AlertDialog
@@ -545,7 +763,7 @@ export default function ExpenseTable({
         </AlertDialog>
       )}
 
-      {/* Local toast feedback */}
+      {/* Toast feedback */}
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6">
           <div
@@ -564,6 +782,6 @@ export default function ExpenseTable({
           </div>
         </div>
       )}
-    </Card>
+    </>
   );
 }

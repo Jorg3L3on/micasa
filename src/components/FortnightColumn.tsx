@@ -153,6 +153,11 @@ export default function FortnightColumn({
         })
       } else if (data.isRecurring && !data.applyToBothFortnights) {
         // Case 2: Recurring, single fortnight - create expense + template
+        // Extract day from date for dueDay
+        const dateObj = data.date ? new Date(data.date) : new Date(year, month - 1, period === 'FIRST' ? 1 : 16)
+        const dueDay = dateObj.getDate()
+        const cutoffDay = period === 'FIRST' ? 15 : new Date(year, month, 0).getDate()
+        
         // First create the template
         const templateResponse = await createExpenseTemplate({
           name: data.name,
@@ -160,6 +165,12 @@ export default function FortnightColumn({
           defaultAmount: data.amount,
           paymentMethodId: data.paymentMethodId,
           active: true,
+          dueDay,
+          cutoffDay,
+          isRecurring: true,
+          appliesFirstFortnight: period === 'FIRST',
+          appliesSecondFortnight: period === 'SECOND',
+          isSubscription: false,
         })
         const template = templateResponse as { id: number }
 
@@ -181,6 +192,11 @@ export default function FortnightColumn({
           throw new Error('No se pudo obtener la información de la otra quincena')
         }
 
+        // Extract day from date for dueDay
+        const dateObj = data.date ? new Date(data.date) : new Date(year, month - 1, period === 'FIRST' ? 1 : 16)
+        const dueDay = dateObj.getDate()
+        const cutoffDay = period === 'FIRST' ? 15 : new Date(year, month, 0).getDate()
+        
         // First create the template
         const templateResponse = await createExpenseTemplate({
           name: data.name,
@@ -188,6 +204,12 @@ export default function FortnightColumn({
           defaultAmount: data.amount,
           paymentMethodId: data.paymentMethodId,
           active: true,
+          dueDay,
+          cutoffDay,
+          isRecurring: true,
+          appliesFirstFortnight: true,
+          appliesSecondFortnight: true,
+          isSubscription: false,
         })
         const template = templateResponse as { id: number }
 
@@ -274,6 +296,10 @@ export default function FortnightColumn({
           pagado={pagado}
           pendiente={pendiente}
           userIncome={currentFortnightUserIncome}
+          year={year}
+          month={month}
+          period={period}
+          expenseCount={transactions.length}
         />
 
         {/* Single Expense Table for all expenses */}
@@ -285,6 +311,7 @@ export default function FortnightColumn({
               expenses={sortedTransactions}
               onExpenseUpdate={handleExpenseUpdate}
               fortnightLabel={label}
+              totalIncome={tenemos}
             />
           )}
         </div>

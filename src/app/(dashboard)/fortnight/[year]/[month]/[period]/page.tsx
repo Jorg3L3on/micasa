@@ -139,6 +139,10 @@ export default async function FortnightPage({
           libre={libre}
           pagado={pagado}
           pendiente={pendiente}
+          year={year}
+          month={month}
+          period={period}
+          expenseCount={transactions.length}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}
@@ -151,6 +155,7 @@ export default async function FortnightPage({
                 key={date}
                 date={date}
                 expenses={transactionsByDate[date]}
+                totalIncome={tenemos}
               />
             ))
           )}
