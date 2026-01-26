@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -8,89 +8,91 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import EmptyState from '@/components/EmptyState'
-import ExpenseForm, { ExpenseFormValues } from '@/components/ExpenseForm'
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/EmptyState';
+import ExpenseForm, { ExpenseFormValues } from '@/components/ExpenseForm';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
   clientFetchFromApi,
   createExpense,
   updateExpense,
   deleteExpense,
-} from '@/lib/api'
-import { Pencil, Trash2 } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+} from '@/lib/api';
+import { Pencil, Trash2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 type Expense = {
-  id: number
-  name: string
-  category: string
-  categoryId: number | null
-  defaultAmount: number | null
-  paymentMethod: string
-  paymentMethodId: number
-  active: boolean
-}
+  id: number;
+  name: string;
+  category: string;
+  categoryId: number | null;
+  defaultAmount: number | null;
+  paymentMethod: string;
+  paymentMethodId: number;
+  active: boolean;
+};
 
 type Category = {
-  id: number
-  name: string
-}
+  id: number;
+  name: string;
+};
 
 type PaymentMethod = {
-  id: number
-  name: string
-}
+  id: number;
+  name: string;
+};
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const [expensesData, categoriesData, paymentMethodsData] = await Promise.all([
-        clientFetchFromApi<Expense[]>('/api/expenses'),
-        clientFetchFromApi<Category[]>('/api/categories'),
-        clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
-      ])
-      setExpenses(expensesData)
-      setCategories(categoriesData)
-      setPaymentMethods(paymentMethodsData)
+      setLoading(true);
+      setError(null);
+      const [expensesData, categoriesData, paymentMethodsData] =
+        await Promise.all([
+          clientFetchFromApi<Expense[]>('/api/expenses'),
+          clientFetchFromApi<Category[]>('/api/categories'),
+          clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
+        ]);
+      setExpenses(expensesData);
+      setCategories(categoriesData);
+      setPaymentMethods(paymentMethodsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data')
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   const handleCreate = async (data: ExpenseFormValues) => {
     try {
-      setFormError(null)
-      await createExpense(data)
-      await fetchData()
-      setCreateDialogOpen(false)
+      setFormError(null);
+      await createExpense(data);
+      await fetchData();
+      setCreateDialogOpen(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create expense'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error ? err.message : 'Failed to create expense';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const getErrorMessage = (err: unknown): string => {
     if (!(err instanceof Error)) {
@@ -99,7 +101,11 @@ export default function ExpensesPage() {
 
     // Check if error has details (validation errors)
     const errorWithDetails = err as any;
-    if (errorWithDetails.details && Array.isArray(errorWithDetails.details) && errorWithDetails.details.length > 0) {
+    if (
+      errorWithDetails.details &&
+      Array.isArray(errorWithDetails.details) &&
+      errorWithDetails.details.length > 0
+    ) {
       // Map field names to Spanish
       const fieldNames: Record<string, string> = {
         name: 'Nombre',
@@ -111,7 +117,8 @@ export default function ExpensesPage() {
 
       // Format validation errors
       const messages = errorWithDetails.details.map((issue: any) => {
-        const fieldName = fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
+        const fieldName =
+          fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
         let message = issue.message || '';
 
         // Translate common validation messages
@@ -149,79 +156,80 @@ export default function ExpensesPage() {
   };
 
   const handleEdit = async (data: ExpenseFormValues) => {
-    if (!selectedExpense) return
+    if (!selectedExpense) return;
     try {
-      setFormError(null)
-      
+      setFormError(null);
+
       // Build update data - always include name and active, only include other fields if valid
       const updateData: {
-        name?: string
-        categoryId?: number
-        defaultAmount?: number | null
-        paymentMethodId?: number
-        active?: boolean
+        name?: string;
+        categoryId?: number;
+        defaultAmount?: number | null;
+        paymentMethodId?: number;
+        active?: boolean;
       } = {
         name: data.name,
         active: data.active,
-      }
-      
+      };
+
       // Only include categoryId if it's a valid positive number
       if (data.categoryId && data.categoryId > 0) {
-        updateData.categoryId = data.categoryId
+        updateData.categoryId = data.categoryId;
       }
-      
+
       // Only include paymentMethodId if it's a valid positive number
       if (data.paymentMethodId && data.paymentMethodId > 0) {
-        updateData.paymentMethodId = data.paymentMethodId
+        updateData.paymentMethodId = data.paymentMethodId;
       }
-      
+
       // Include defaultAmount (can be null)
-      updateData.defaultAmount = data.defaultAmount ?? null
-      
-      await updateExpense(selectedExpense.id, updateData)
-      await fetchData()
-      setEditDialogOpen(false)
-      setSelectedExpense(null)
+      updateData.defaultAmount = data.defaultAmount ?? null;
+
+      await updateExpense(selectedExpense.id, updateData);
+      await fetchData();
+      setEditDialogOpen(false);
+      setSelectedExpense(null);
     } catch (err) {
-      const message = getErrorMessage(err)
-      setFormError(message)
-      throw err
+      const message = getErrorMessage(err);
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!selectedExpense) return
+    if (!selectedExpense) return;
     try {
-      setError(null)
-      await deleteExpense(selectedExpense.id)
-      await fetchData()
-      setDeleteDialogOpen(false)
-      setSelectedExpense(null)
+      setError(null);
+      await deleteExpense(selectedExpense.id);
+      await fetchData();
+      setDeleteDialogOpen(false);
+      setSelectedExpense(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete expense'
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete expense';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Expense is in use and cannot be deleted')
+        setError('Expense is in use and cannot be deleted');
       } else {
-        setError(message)
+        setError(message);
       }
     }
-  }
+  };
 
   const openEditDialog = (expense: Expense) => {
-    setSelectedExpense(expense)
-    setEditDialogOpen(true)
-    setFormError(null)
-  }
+    setSelectedExpense(expense);
+    setEditDialogOpen(true);
+    setFormError(null);
+  };
 
   const openDeleteDialog = (expense: Expense) => {
-    setSelectedExpense(expense)
-    setDeleteDialogOpen(true)
-    setError(null)
-  }
+    setSelectedExpense(expense);
+    setDeleteDialogOpen(true);
+    setError(null);
+  };
 
   return (
     <>
@@ -238,7 +246,9 @@ export default function ExpensesPage() {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+            <div className="py-8 text-center text-muted-foreground">
+              Cargando...
+            </div>
           ) : expenses.length === 0 ? (
             <EmptyState message="No se encontraron gastos" />
           ) : (
@@ -246,7 +256,7 @@ export default function ExpensesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Concepto</TableHead>
+                  <TableHead>Categoría</TableHead>
                   <TableHead>Monto por defecto</TableHead>
                   <TableHead>Método de pago</TableHead>
                   <TableHead>Activo</TableHead>
@@ -256,10 +266,16 @@ export default function ExpensesPage() {
               <TableBody>
                 {expenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell className="font-medium">{expense.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{expense.category}</TableCell>
+                    <TableCell className="font-medium">
+                      {expense.name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {expense.category}
+                    </TableCell>
                     <TableCell className="text-right">
-                      {expense.defaultAmount ? formatCurrency(expense.defaultAmount) : '-'}
+                      {expense.defaultAmount
+                        ? formatCurrency(expense.defaultAmount)
+                        : '-'}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {expense.paymentMethod}
@@ -304,8 +320,8 @@ export default function ExpensesPage() {
       <ExpenseForm
         open={createDialogOpen}
         onOpenChange={(open) => {
-          setCreateDialogOpen(open)
-          setFormError(null)
+          setCreateDialogOpen(open);
+          setFormError(null);
         }}
         onSubmit={handleCreate}
         mode="create"
@@ -319,9 +335,9 @@ export default function ExpensesPage() {
           <ExpenseForm
             open={editDialogOpen}
             onOpenChange={(open) => {
-              setEditDialogOpen(open)
-              setSelectedExpense(null)
-              setFormError(null)
+              setEditDialogOpen(open);
+              setSelectedExpense(null);
+              setFormError(null);
             }}
             onSubmit={handleEdit}
             mode="edit"
@@ -340,10 +356,10 @@ export default function ExpensesPage() {
           <ConfirmDeleteDialog
             open={deleteDialogOpen}
             onOpenChange={(open) => {
-              setDeleteDialogOpen(open)
+              setDeleteDialogOpen(open);
               if (!open) {
-                setSelectedExpense(null)
-                setError(null)
+                setSelectedExpense(null);
+                setError(null);
               }
             }}
             onConfirm={handleDelete}
@@ -354,5 +370,5 @@ export default function ExpensesPage() {
         </>
       )}
     </>
-  )
+  );
 }

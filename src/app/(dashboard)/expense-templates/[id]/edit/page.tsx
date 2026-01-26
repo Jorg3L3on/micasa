@@ -30,7 +30,7 @@ import Link from 'next/link';
 
 const expenseTemplateSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
-  categoryId: z.number().int().positive('Concepto es requerido'),
+  categoryId: z.number().int().positive('Categoría es requerida'),
   suggestedAmount: z.number().positive().optional().nullable(),
   paymentMethodId: z.number().int().positive().optional().nullable(),
   active: z.boolean(),
