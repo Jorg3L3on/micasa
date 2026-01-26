@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
-import { Select } from '@/components/ui/select'
+import React from 'react'
 
 export default function TransactionFilters() {
   const router = useRouter()
@@ -39,11 +39,11 @@ export default function TransactionFilters() {
         <label htmlFor="month" className="text-sm font-medium">
           Mes
         </label>
-        <Select
+        <select
           id="month"
           value={month}
-          onChange={(e) => handleChange('month', e.target.value)}
-          className="w-[180px]"
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('month', e.target.value)}
+          className="w-[180px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
         >
           <option value="">Todos</option>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -51,18 +51,18 @@ export default function TransactionFilters() {
               {new Date(2000, m - 1).toLocaleString('es-MX', { month: 'long' })}
             </option>
           ))}
-        </Select>
+        </select>
       </div>
 
       <div className="flex flex-col gap-2">
         <label htmlFor="year" className="text-sm font-medium">
           Año
         </label>
-        <Select
+        <select
           id="year"
           value={year}
-          onChange={(e) => handleChange('year', e.target.value)}
-          className="w-[180px]"
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('year', e.target.value)}
+          className="w-[180px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
         >
           <option value="">Todos</option>
           {Array.from({ length: 5 }, (_, i) => currentYear - 2 + i).map((y) => (
@@ -70,23 +70,23 @@ export default function TransactionFilters() {
               {y}
             </option>
           ))}
-        </Select>
+        </select>
       </div>
 
       <div className="flex flex-col gap-2">
         <label htmlFor="type" className="text-sm font-medium">
           Tipo
         </label>
-        <Select
+        <select
           id="type"
           value={type}
-          onChange={(e) => handleChange('type', e.target.value)}
-          className="w-[180px]"
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('type', e.target.value)}
+          className="w-[180px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
         >
           <option value="">Todos</option>
           <option value="income">Ingreso</option>
           <option value="expense">Gasto</option>
-        </Select>
+        </select>
       </div>
     </div>
   )

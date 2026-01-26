@@ -1,17 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/utils'
-import { CheckCircle2, Clock } from 'lucide-react'
+'use client';
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
+import {
+  Wallet,
+  TrendingUp,
+  CheckCircle2,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 
 type SummaryBlockProps = {
-  tenemos: number
-  libre: number
-  pagado: number
-  pendiente: number
+  tenemos: number;
+  libre: number;
+  pagado: number;
+  pendiente: number;
   userIncome?: Array<{
-    fortnightId: number
-    userIncome: Array<{ userId: number; userName: string; income: number }>
-  }>
-}
+    fortnightId: number;
+    userIncome: Array<{ userId: number; userName: string; income: number }>;
+  }>;
+  year?: number;
+  month?: number;
+  period?: 'FIRST' | 'SECOND';
+  expenseCount?: number;
+};
 
 export default function SummaryBlock({
   tenemos,
@@ -19,132 +35,162 @@ export default function SummaryBlock({
   pagado,
   pendiente,
   userIncome,
+  year,
+  month,
+  period,
+  expenseCount = 0,
 }: SummaryBlockProps) {
-  const getLibreColorClasses = () => {
-    if (libre > 1000) {
-      return {
-        card: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900',
-        title: 'text-green-900 dark:text-green-100',
-        amount: 'text-green-700 dark:text-green-300',
-      }
-    } else if (libre >= 0) {
-      return {
-        card: 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900',
-        title: 'text-yellow-900 dark:text-yellow-100',
-        amount: 'text-yellow-700 dark:text-yellow-300',
-      }
-    } else {
-      return {
-        card: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900',
-        title: 'text-red-900 dark:text-red-100',
-        amount: 'text-red-700 dark:text-red-300',
-      }
-    }
-  }
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const libreColors = getLibreColorClasses()
+  // Calculate days remaining in fortnight
+  const getDaysRemaining = (): number | null => {
+    if (!year || !month || !period) return null;
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
 
-  // Calculate total from user income if available, otherwise use tenemos
-  const hasUserIncome = userIncome && userIncome.length > 0 && userIncome.some(fi => fi.userIncome && fi.userIncome.length > 0)
+    // Only calculate if we're in the current month/year
+    if (year !== currentYear || month !== currentMonth) return null;
+
+    const endDay = period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
+    const daysRemaining = endDay - currentDay;
+    return daysRemaining >= 0 ? daysRemaining : null;
+  };
+
+  const daysRemaining = getDaysRemaining();
+  const hasUserIncome =
+    userIncome &&
+    userIncome.length > 0 &&
+    userIncome.some((fi) => fi.userIncome && fi.userIncome.length > 0);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-      {/* LEFT COLUMN - Tenemos */}
-      <Card className="bg-purple-50/80 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-900/70 shadow-sm rounded-lg">
-        <CardHeader className="pb-1.5 px-3 pt-2">
-          <CardTitle className="text-[11px] font-semibold uppercase tracking-wide text-purple-900 dark:text-purple-100">
-            Ingresos
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold">
+            Estado de la quincena
           </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 px-3 pb-2.5">
-          {hasUserIncome ? (
-            <div className="space-y-1.5 text-xs">
-              {userIncome.map((fortnightIncome) => (
-                <div key={fortnightIncome.fortnightId} className="space-y-1">
-                  {fortnightIncome.userIncome.map((userInc) => (
-                    <div
-                      key={userInc.userId}
-                      className="flex justify-between items-center"
-                    >
-                      <span className="text-purple-600 dark:text-purple-400 text-[11px]">
-                        {userInc.userName}:
-                      </span>
-                      <span className="font-semibold text-purple-700 dark:text-purple-300 text-[11px] font-mono tabular-nums">
-                        {formatCurrency(userInc.income)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-              <div className="pt-1.5 border-t border-purple-200/80 dark:border-purple-800/70 mt-1.5">
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-medium text-purple-900 dark:text-purple-100">
-                    Total:
-                  </span>
-                  <span className="text-base md:text-lg font-bold text-purple-700 dark:text-purple-300 font-mono tabular-nums">
-                    {formatCurrency(tenemos)}
-                  </span>
-                </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="h-8 w-8 p-0"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Primary Metric - Libre */}
+        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Libre
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-3xl font-bold font-mono tabular-nums">
+              {formatCurrency(libre)}
+            </span>
+            {daysRemaining !== null && (
+              <span className="text-xs text-muted-foreground">
+                {daysRemaining} días restantes
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Secondary Metrics Grid */}
+        <div className="grid grid-cols-3 gap-3">
+          {/* Ingresos */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Ingresos
+              </span>
+            </div>
+            <span className="text-lg font-bold font-mono tabular-nums">
+              {formatCurrency(tenemos)}
+            </span>
+            {hasUserIncome && (
+              <span className="text-[10px] text-muted-foreground">
+                {userIncome[0]?.userIncome.length || 0} fuente
+                {(userIncome[0]?.userIncome.length || 0) !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {/* Pagado */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Pagado
+              </span>
+            </div>
+            <span className="text-lg font-bold font-mono tabular-nums">
+              {formatCurrency(pagado)}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {expenseCount > 0
+                ? `${Math.round((pagado / tenemos) * 100)}% del total`
+                : '—'}
+            </span>
+          </div>
+
+          {/* Pendiente */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Pendiente
+              </span>
+            </div>
+            <span className="text-lg font-bold font-mono tabular-nums">
+              {formatCurrency(pendiente)}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {expenseCount} gasto{expenseCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Expandable Breakdown */}
+        {isExpanded && hasUserIncome && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">Desglose de ingresos</h4>
+              <div className="space-y-2 text-sm">
+                {userIncome.map((fortnightIncome) => (
+                  <div key={fortnightIncome.fortnightId} className="space-y-1">
+                    {fortnightIncome.userIncome.map((userInc) => (
+                      <div
+                        key={userInc.userId}
+                        className="flex justify-between items-center"
+                      >
+                        <span className="text-muted-foreground">
+                          {userInc.userName}:
+                        </span>
+                        <span className="font-semibold font-mono tabular-nums">
+                          {formatCurrency(userInc.income)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
-          ) : (
-            <p className="text-base md:text-lg font-bold text-purple-700 dark:text-purple-300 font-mono tabular-nums">
-              {formatCurrency(tenemos)}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* RIGHT COLUMN - Libre, Pagado, Pendiente (stacked) */}
-      <div className="flex flex-col gap-2.5 md:gap-3">
-        {/* Libre */}
-        <Card className={`${libreColors.card} shadow-sm rounded-lg`}>
-          <CardHeader className="pb-1.5 px-3 pt-2">
-            <CardTitle
-              className={`text-[11px] font-semibold uppercase tracking-wide ${libreColors.title}`}
-            >
-              Libre
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-3 pb-2.5">
-            <p
-              className={`text-base md:text-lg font-bold font-mono tabular-nums ${libreColors.amount}`}
-            >
-              {formatCurrency(libre)}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Pagado */}
-        <Card className="bg-green-50/80 dark:bg-green-950/30 border-green-200/80 dark:border-green-900/70 shadow-sm rounded-lg">
-          <CardHeader className="pb-1.5 px-3 pt-2">
-            <CardTitle className="text-[11px] font-semibold text-green-900 dark:text-green-100 flex items-center gap-1.5 uppercase tracking-wide">
-              <CheckCircle2 className="h-3 w-3" />
-              Pagado
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-3 pb-2.5">
-            <p className="text-base md:text-lg font-bold text-green-700 dark:text-green-300 font-mono tabular-nums">
-              {formatCurrency(pagado)}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Pendiente */}
-        <Card className="bg-yellow-50/80 dark:bg-yellow-950/30 border-yellow-200/80 dark:border-yellow-900/70 shadow-sm rounded-lg">
-          <CardHeader className="pb-1.5 px-3 pt-2">
-            <CardTitle className="text-[11px] font-semibold text-yellow-900 dark:text-yellow-100 flex items-center gap-1.5 uppercase tracking-wide">
-              <Clock className="h-3 w-3" />
-              Pendiente
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-3 pb-2.5">
-            <p className="text-base md:text-lg font-bold text-yellow-700 dark:text-yellow-300 font-mono tabular-nums">
-              {formatCurrency(pendiente)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
