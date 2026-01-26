@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   FolderTree,
@@ -13,24 +13,24 @@ import {
   FileText,
   Layers,
   CalendarDays,
-} from 'lucide-react'
-import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Button } from '@/components/ui/button'
-import SidebarItem from '@/components/SidebarItem'
+} from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import SidebarItem from '@/components/SidebarItem';
 
-const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
+const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed';
 
 function getCurrentMonthHref(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `/monthly/${year}/${month}`
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `/monthly/${year}/${month}`;
 }
 
 export default function Sidebar() {
-  const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
 
   const navigation = [
     {
@@ -90,23 +90,23 @@ export default function Sidebar() {
           title: 'Métodos de pago',
           href: '/payment-methods',
           icon: CreditCard,
-        }
+        },
       ],
-    }
-  ]
+    },
+  ];
 
   useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (stored !== null) {
-      setCollapsed(JSON.parse(stored))
+      setCollapsed(JSON.parse(stored));
     }
-  }, [])
+  }, []);
 
   const toggleSidebar = () => {
-    const newCollapsed = !collapsed
-    setCollapsed(newCollapsed)
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(newCollapsed))
-  }
+    const newCollapsed = !collapsed;
+    setCollapsed(newCollapsed);
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(newCollapsed));
+  };
 
   return (
     <div
@@ -121,7 +121,9 @@ export default function Sidebar() {
           size="icon"
           onClick={toggleSidebar}
           className="ml-auto"
-          aria-label={collapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'}
+          aria-label={
+            collapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'
+          }
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -142,8 +144,9 @@ export default function Sidebar() {
                 )}
                 <div className="space-y-1">
                   {section.items.map((item, itemIndex) => {
-                    const href = item.href
-                    const isActive = pathname === href || pathname.startsWith(href + '/')
+                    const href = item.href;
+                    const isActive =
+                      pathname === href || pathname.startsWith(href + '/');
                     return (
                       <SidebarItem
                         key={`${section.title}-${item.title}-${itemIndex}`}
@@ -153,7 +156,7 @@ export default function Sidebar() {
                         isActive={isActive}
                         collapsed={collapsed}
                       />
-                    )
+                    );
                   })}
                 </div>
                 {!collapsed && <Separator className="my-4" />}
@@ -163,5 +166,5 @@ export default function Sidebar() {
         </div>
       </ScrollArea>
     </div>
-  )
+  );
 }
