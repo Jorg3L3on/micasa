@@ -21,21 +21,28 @@ enum FortnightPeriod {
   SECOND // 16–end of month
 }
 
-// 1. Users - Represents the people involved in the budget (kept for backward compatibility, not actively used)
+enum HouseRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
 model User {
-  id         Int      @id @default(autoincrement())
-  name       String
-  active     Boolean  @default(true)
+  id       Int     @id @default(autoincrement())
+  name     String
+  active   Boolean @default(true)
+  email    String  @unique
+  password String
+
   created_at DateTime @default(now())
 
   // Relationships
-  income FortnightIncome[]
-
-  @@unique([name])
-  @@index([active])
+  income      FortnightIncome[]
+  memberships HouseMember[]
+  houses      House[]
 }
 
-// 2. Fortnights - Represents each budgeting period
 model Fortnight {
   id         Int             @id @default(autoincrement())
   start_date DateTime
@@ -45,70 +52,63 @@ model Fortnight {
   year       Int
   period     FortnightPeriod
   closed     Boolean         @default(false)
-  created_at DateTime        @default(now())
+
+  house_id Int?
+
+  created_at DateTime @default(now())
 
   // Relationships
   expenses Expense[]
   income   FortnightIncome[]
-
-  @@unique([year, month, period])
-  @@index([year, month])
-  @@index([closed])
+  house    House?            @relation(fields: [house_id], references: [id])
 }
 
-// 3. Payment Methods - Represents how something is paid
 model PaymentMethod {
-  id         Int               @id @default(autoincrement())
-  name       String // Tarjeta, Efectivo
-  type       PaymentMethodType
-  created_at DateTime          @default(now())
+  id   Int               @id @default(autoincrement())
+  name String            @unique
+  type PaymentMethodType
 
-  // Relationships
-  cards Card[]
-
-  @@unique([name])
-}
-
-// 4. Cards - Represents credit/debit cards (no longer tied to users)
-model Card {
-  id                Int     @id @default(autoincrement())
-  name              String
-  description       String?
-  payment_method_id Int
-  cutoff_day        Int?
-  due_day           Int?
-
-  active     Boolean  @default(true)
   created_at DateTime @default(now())
 
   // Relationships
-  payment_method    PaymentMethod     @relation(fields: [payment_method_id], references: [id])
-  expenses          Expense[]
-  expense_templates ExpenseTemplate[]
-
-  @@index([active])
+  cards Card[]
 }
 
-// 5. Categories - Represents what the expense is for
-model Category {
-  id          Int      @id @default(autoincrement())
+model Card {
+  id          Int     @id @default(autoincrement())
   name        String
   description String?
-  created_at  DateTime @default(now())
+  cutoff_day  Int?
+  due_day     Int?
+  active      Boolean @default(true)
+
+  payment_method_id Int
+  house_id          Int?
+
+  created_at DateTime @default(now())
 
   // Relationships
   expenses          Expense[]
   expense_templates ExpenseTemplate[]
-
-  @@unique([name])
+  payment_method    PaymentMethod     @relation(fields: [payment_method_id], references: [id])
+  house             House?            @relation(fields: [house_id], references: [id])
 }
 
-// Expense Templates - Reusable expense templates
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  expenses          Expense[]
+  expense_templates ExpenseTemplate[]
+}
+
 model ExpenseTemplate {
   id                       Int      @id @default(autoincrement())
-  name                     String // Renta, TELMEX, AT&T Jorge, etc.
-  category_id              Int
-  default_card_id          Int? // Nullable
+  name                     String
   suggested_amount         Decimal? @db.Decimal(10, 2)
   is_recurring             Boolean  @default(false)
   applies_first_fortnight  Boolean  @default(false)
@@ -116,63 +116,90 @@ model ExpenseTemplate {
   is_subscription          Boolean  @default(false)
   due_day                  Int?
   cutoff_day               Int?
+  active                   Boolean  @default(true)
 
-  active     Boolean  @default(true)
+  category_id     Int?
+  default_card_id Int?
+  house_id        Int?
+
   created_at DateTime @default(now())
 
   // Relationships
-  category     Category  @relation(fields: [category_id], references: [id])
-  default_card Card?     @relation(fields: [default_card_id], references: [id])
   expenses     Expense[]
-
-  @@unique([name])
-  @@index([category_id])
-  @@index([default_card_id])
-  @@index([active])
+  category     Category? @relation(fields: [category_id], references: [id])
+  default_card Card?     @relation(fields: [default_card_id], references: [id])
+  house        House?    @relation(fields: [house_id], references: [id])
 }
 
-// 6. Expenses - Core transactional table (each row in your left tables)
 model Expense {
-  id                  Int       @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
+  description  String
+  amount       Decimal   @db.Decimal(10, 2)
+  is_paid      Boolean   @default(false)
+  payment_date DateTime?
+  due_day      Int?
+
+  house_id            Int?
   fortnight_id        Int
-  card_id             Int? // Nullable for cash
+  card_id             Int?
   category_id         Int
-  expense_template_id Int? // Nullable
-  description         String // e.g., Liverpool Jorge, TELMEX
-  amount              Decimal   @db.Decimal(10, 2)
-  is_paid             Boolean   @default(false)
-  payment_date        DateTime?
-  due_day             Int?
-  created_at          DateTime  @default(now())
+  expense_template_id Int?
+
+  created_at DateTime @default(now())
 
   // Relationships
   fortnight        Fortnight        @relation(fields: [fortnight_id], references: [id])
   card             Card?            @relation(fields: [card_id], references: [id])
   category         Category         @relation(fields: [category_id], references: [id])
   expense_template ExpenseTemplate? @relation(fields: [expense_template_id], references: [id])
-
-  @@index([fortnight_id])
-  @@index([card_id])
-  @@index([category_id])
-  @@index([is_paid])
+  house            House?           @relation(fields: [house_id], references: [id])
 }
 
-// 7. Fortnight Income - Represents "Tenemos" (how much money exists for the fortnight)
 model FortnightIncome {
   id           Int     @id @default(autoincrement())
+  amount       Decimal @db.Decimal(10, 2)
+  source       String?
+  is_deduction Boolean @default(false)
+  related_loan String?
+
   fortnight_id Int
   user_id      Int
-  amount       Decimal @db.Decimal(10, 2)
-  source       String? // Salary, Transfer, __OVERRIDE__, etc.
-  is_deduction Boolean @default(false)
-  related_loan String? // Loan name, if applicable
+  house_id     Int
 
   created_at DateTime @default(now())
 
   // Relationships
   fortnight Fortnight @relation(fields: [fortnight_id], references: [id])
   user      User      @relation(fields: [user_id], references: [id])
+  house     House     @relation(fields: [house_id], references: [id])
+}
 
-  @@index([fortnight_id])
-  @@index([user_id])
+model House {
+  id       Int    @id @default(autoincrement())
+  name     String
+  owner_id Int?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  members          HouseMember[]
+  fortnights       Fortnight[]
+  expenses         Expense[]
+  expenseTemplates ExpenseTemplate[]
+  cards            Card[]
+  incomes          FortnightIncome[]
+  owner            User?             @relation(fields: [owner_id], references: [id])
+}
+
+model HouseMember {
+  id       Int       @id @default(autoincrement())
+  house_id Int
+  user_id  Int
+  role     HouseRole
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  house House @relation(fields: [house_id], references: [id])
+  user  User  @relation(fields: [user_id], references: [id])
 }
