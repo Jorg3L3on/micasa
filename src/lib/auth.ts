@@ -26,7 +26,7 @@ export const {
           return null;
         }
 
-        // Dynamic import: db/Prisma only run in Node (auth API route), never in Edge (middleware)
+        // Dynamic import: db/Prisma only run in Node (auth API route), never in proxy
         const { db } = await import('./db');
 
         const user = await db.user.findUnique({

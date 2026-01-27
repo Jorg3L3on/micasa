@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 import { TeamSwitcher } from '@/components/team-switcher';
 import { NavUser } from '@/components/nav-user';
@@ -38,6 +39,7 @@ type Fortnight = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [fortnights, setFortnights] = useState<Fortnight[]>([]);
   const [hasActiveFortnight, setHasActiveFortnight] = useState(false);
 
@@ -133,9 +135,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <NavUser
           user={{
-            name: 'Usuario',
-            email: 'usuario@ejemplo.com',
-            avatar: '/avatars/user.jpg',
+            name: session?.user?.name ?? 'Usuario',
+            email: session?.user?.email ?? '',
+            avatar: session?.user?.image ?? '',
           }}
         />
       </SidebarFooter>

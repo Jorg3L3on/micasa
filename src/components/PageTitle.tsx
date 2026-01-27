@@ -74,6 +74,7 @@ function getPageTitle(pathname: string): { title: string; breadcrumbs: Array<{ l
 
   // Handle other pages
   const pageTitles: Record<string, string> = {
+    account: 'Cuenta',
     categories: 'Categorías',
     'payment-methods': 'Métodos de pago',
     expenses: 'Gastos',
