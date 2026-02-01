@@ -1,5 +1,6 @@
 import { fetchFromApi } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
+import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import FortnightColumn from '@/components/FortnightColumn'
 
 type Transaction = {
@@ -60,8 +61,12 @@ async function getFortnightInfo(
       year: number
       month: number
       period: string
-    }>(`/api/fortnights?year=${year}&month=${month}&period=${period}`)
-    
+    } | null>(`/api/fortnights?year=${year}&month=${month}&period=${period}`)
+
+    if (response === null) {
+      return null
+    }
+
     return {
       label: response.label,
       id: response.id,
@@ -119,6 +124,13 @@ export default async function MonthlyPage({
   const month = parseInt(monthParam, 10)
   const monthName = getMonthName(month)
 
+  const prevMonth = month === 1 ? 12 : month - 1
+  const prevYear = month === 1 ? year - 1 : year
+  const nextMonth = month === 12 ? 1 : month + 1
+  const nextYear = month === 12 ? year + 1 : year
+  const prevMonthStr = prevMonth.toString().padStart(2, '0')
+  const nextMonthStr = nextMonth.toString().padStart(2, '0')
+
   const [
     firstFortnightInfo,
     secondFortnightInfo,
@@ -126,6 +138,10 @@ export default async function MonthlyPage({
     secondTransactions,
     firstSummary,
     secondSummary,
+    prevFirstInfo,
+    prevSecondInfo,
+    nextFirstInfo,
+    nextSecondInfo,
   ] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, 'FIRST'),
     getFortnightInfo(yearParam, monthParam, 'SECOND'),
@@ -133,7 +149,26 @@ export default async function MonthlyPage({
     getTransactions(yearParam, monthParam, 'SECOND'),
     getSummary(yearParam, monthParam, 'FIRST'),
     getSummary(yearParam, monthParam, 'SECOND'),
+    getFortnightInfo(String(prevYear), prevMonthStr, 'FIRST'),
+    getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND'),
+    getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST'),
+    getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND'),
   ])
+
+  const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null
+  const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null
+
+  const prevMonthLabel = `${getMonthName(prevMonth)} ${prevYear}`
+  const nextMonthLabel = `${getMonthName(nextMonth)} ${nextYear}`
+
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null
+  const canCreateNextMonth =
+    nextYear === currentYear &&
+    nextMonth > currentMonth &&
+    !nextMonthAlreadyCreated
 
   const firstLabel = firstFortnightInfo?.label || `1–15 ${monthName} ${year}`
   const secondLabel = secondFortnightInfo?.label || `16–${new Date(year, month, 0).getDate()} ${monthName} ${year}`
@@ -142,7 +177,25 @@ export default async function MonthlyPage({
 
   return (
     <>
-      <MonthlyHeader year={year} month={month} monthName={monthName} />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <MonthlyHeader
+          year={year}
+          month={month}
+          monthName={monthName}
+          hasPrevMonth={hasPrevMonth}
+          hasNextMonth={hasNextMonth}
+          prevHref={`/monthly/${prevYear}/${prevMonthStr}`}
+          nextHref={`/monthly/${nextYear}/${nextMonthStr}`}
+          prevMonthLabel={prevMonthLabel}
+          nextMonthLabel={nextMonthLabel}
+        />
+        <CreateNextMonthButton
+          nextYear={nextYear}
+          nextMonth={nextMonth}
+          nextMonthLabel={nextMonthLabel}
+          canCreate={canCreateNextMonth}
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <FortnightColumn

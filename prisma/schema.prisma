@@ -38,9 +38,10 @@ model User {
   created_at DateTime @default(now())
 
   // Relationships
-  income      FortnightIncome[]
-  memberships HouseMember[]
-  houses      House[]
+  income           FortnightIncome[]
+  income_templates IncomeTemplate[]
+  memberships      HouseMember[]
+  houses           House[]
 }
 
 model Fortnight {
@@ -162,16 +163,38 @@ model FortnightIncome {
   is_deduction Boolean @default(false)
   related_loan String?
 
-  fortnight_id Int
-  user_id      Int
-  house_id     Int
+  fortnight_id        Int
+  user_id             Int
+  house_id            Int
+  income_template_id  Int?
 
   created_at DateTime @default(now())
 
   // Relationships
-  fortnight Fortnight @relation(fields: [fortnight_id], references: [id])
-  user      User      @relation(fields: [user_id], references: [id])
-  house     House     @relation(fields: [house_id], references: [id])
+  fortnight       Fortnight      @relation(fields: [fortnight_id], references: [id])
+  user            User           @relation(fields: [user_id], references: [id])
+  house           House          @relation(fields: [house_id], references: [id])
+  income_template IncomeTemplate? @relation(fields: [income_template_id], references: [id])
+}
+
+model IncomeTemplate {
+  id                       Int      @id @default(autoincrement())
+  name                     String
+  suggested_amount         Decimal? @db.Decimal(10, 2)
+  source                   String?
+  applies_first_fortnight  Boolean  @default(false)
+  applies_second_fortnight Boolean  @default(false)
+  active                   Boolean  @default(true)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  fortnight_incomes FortnightIncome[]
+  user              User?  @relation(fields: [user_id], references: [id])
+  house             House? @relation(fields: [house_id], references: [id])
 }
 
 model House {
@@ -185,7 +208,8 @@ model House {
   members          HouseMember[]
   fortnights       Fortnight[]
   expenses         Expense[]
-  expenseTemplates ExpenseTemplate[]
+  expenseTemplates  ExpenseTemplate[]
+  incomeTemplates  IncomeTemplate[]
   cards            Card[]
   incomes          FortnightIncome[]
   owner            User?             @relation(fields: [owner_id], references: [id])

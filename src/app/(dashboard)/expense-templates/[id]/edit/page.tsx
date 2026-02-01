@@ -87,13 +87,18 @@ export default function EditExpenseTemplatePage() {
         setPaymentMethods(paymentMethodsData);
 
         // Set form values
+        const paymentMethodId =
+          foundTemplate.paymentMethodId != null
+            ? Number(foundTemplate.paymentMethodId)
+            : null;
+
         form.reset({
           name: foundTemplate.name,
           categoryId:
             categoriesData.find((c) => c.name === foundTemplate.category)?.id ||
             0,
           suggestedAmount: foundTemplate.suggestedAmount ?? null,
-          paymentMethodId: foundTemplate.paymentMethodId ?? null,
+          paymentMethodId,
           active: foundTemplate.active,
           dueDay: foundTemplate.dueDay ?? 1,
           cutoffDay: foundTemplate.cutoffDay ?? 1,
@@ -246,7 +251,9 @@ export default function EditExpenseTemplatePage() {
                       <FormLabel>Método de pago (opcional)</FormLabel>
                       <FormControl>
                         <select
-                          value={field.value?.toString() || ''}
+                          value={
+                            field.value != null ? String(field.value) : ''
+                          }
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             field.onChange(
                               e.target.value
@@ -259,7 +266,7 @@ export default function EditExpenseTemplatePage() {
                         >
                           <option value="">Selecciona un método de pago</option>
                           {paymentMethods.map((pm) => (
-                            <option key={pm.id} value={pm.id}>
+                            <option key={pm.id} value={String(pm.id)}>
                               {pm.name}
                             </option>
                           ))}

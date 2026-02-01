@@ -115,6 +115,12 @@ export default function FortnightColumn({
     try {
       setAddExpenseError(null);
 
+      if (!fortnightId || fortnightId <= 0) {
+        setAddExpenseError(
+          'No se pudo cargar la quincena. Recarga la página o vuelve al plan mensual.',
+        );
+        throw new Error('Quincena no disponible');
+      }
       if (!data.amount || data.amount <= 0) {
         setAddExpenseError('El monto debe ser mayor a 0.');
         throw new Error('El monto debe ser mayor a 0.');
@@ -352,7 +358,13 @@ export default function FortnightColumn({
           <Button
             variant="outline"
             onClick={() => setAddExpenseDialogOpen(true)}
+            disabled={!fortnightId || fortnightId <= 0}
             className="w-full"
+            title={
+              !fortnightId || fortnightId <= 0
+                ? 'La quincena no está disponible. Recarga la página.'
+                : undefined
+            }
           >
             + Agregar gasto
           </Button>
