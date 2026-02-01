@@ -1,12 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,7 +23,7 @@ export default function IncomeBreakdownCard({
   const { byPerson, totalIncome } = data.incomeBreakdown;
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader>
         <CardTitle className="text-base font-medium">
           Desglose de ingresos

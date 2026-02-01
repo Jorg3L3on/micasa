@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, AlertCircle, Info } from 'lucide-react';
@@ -31,14 +26,12 @@ const severityConfig = {
   },
 };
 
-export default function AlertsWarningsCard({
-  data,
-}: AlertsWarningsCardProps) {
+export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
   const alerts = data.alerts;
 
   if (alerts.length === 0) {
     return (
-      <Card>
+      <Card className="card-glass rounded-lg border-border/50">
         <CardHeader>
           <CardTitle className="text-base font-medium">
             Alertas y avisos
@@ -54,7 +47,7 @@ export default function AlertsWarningsCard({
   }
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">
           Alertas y avisos

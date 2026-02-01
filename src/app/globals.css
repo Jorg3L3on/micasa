@@ -1,134 +1,158 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* ==========================================================================
+   OKLCH Design System – theme_tokens from .cursorrules
+   Light: neutral base; Dark: strictly applied per rules
+   ========================================================================== */
+
 :root {
-  --radius: 0.625rem;
-  /* Light mode - White background with dark text */
+  --radius: 0.75rem;
+  /* Light – theme_tokens.cssVars.light */
   --background: oklch(1 0 0);
-  --foreground: oklch(0.05 0.05 280);
+  --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.05 0.05 280);
+  --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.05 0.05 280);
-  /* Primary - Electric Violet #7940FD */
-  --primary: oklch(0.55 0.25 280);
-  --primary-foreground: oklch(1 0 0);
-  /* Secondary - Light purple variant */
-  --secondary: oklch(0.95 0.05 280);
-  --secondary-foreground: oklch(0.55 0.25 280);
-  /* Muted - Very light purple */
-  --muted: oklch(0.96 0.02 280);
-  --muted-foreground: oklch(0.45 0.15 280);
-  /* Accent - Spring Green #53FDA9 */
-  --accent: oklch(0.85 0.20 160);
-  --accent-foreground: oklch(0.05 0.05 280);
-  /* Destructive - Keep red for errors */
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.96 0.005 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.96 0.005 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.96 0.01 250);
+  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(1 0 0);
-  /* Borders and inputs */
-  --border: oklch(0.90 0.02 280);
-  --input: oklch(0.90 0.02 280);
-  --ring: oklch(0.55 0.25 280);
-  /* Charts - Using purple palette */
-  --chart-1: oklch(0.55 0.25 280);
-  --chart-2: oklch(0.65 0.22 280);
-  --chart-3: oklch(0.70 0.20 300);
-  --chart-4: oklch(0.85 0.20 160);
-  --chart-5: oklch(0.75 0.22 320);
-  /* Sidebar */
-  --sidebar: oklch(0.98 0.01 280);
-  --sidebar-foreground: oklch(0.05 0.05 280);
-  --sidebar-primary: oklch(0.55 0.25 280);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.95 0.05 280);
-  --sidebar-accent-foreground: oklch(0.55 0.25 280);
-  --sidebar-border: oklch(0.90 0.02 280);
-  --sidebar-ring: oklch(0.55 0.25 280);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.92 0.005 0);
+  --input: oklch(0.92 0.005 0);
+  --ring: oklch(0.205 0 0);
+  --chart-1: oklch(0.45 0 0);
+  --chart-2: oklch(0.55 0 0);
+  --chart-3: oklch(0.65 0 0);
+  --chart-4: oklch(0.75 0 0);
+  --chart-5: oklch(0.85 0 0);
+  --sidebar: oklch(0.98 0.005 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.96 0.01 250);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.92 0.005 0);
+  --sidebar-ring: oklch(0.205 0 0);
 }
 
 .dark {
-  /* Dark mode - Xiketic #04001A background */
-  --background: oklch(0.05 0.05 280);
-  --foreground: oklch(1 0 0);
-  /* Card - Dark Purple #19152B */
-  --card: oklch(0.12 0.05 280);
-  --card-foreground: oklch(1 0 0);
-  --popover: oklch(0.12 0.05 280);
-  --popover-foreground: oklch(1 0 0);
-  /* Primary - Electric Violet #7940FD (lighter for dark mode) */
-  --primary: oklch(0.65 0.25 280);
-  --primary-foreground: oklch(0.05 0.05 280);
-  /* Secondary - Medium purple */
-  --secondary: oklch(0.20 0.08 280);
-  --secondary-foreground: oklch(1 0 0);
-  /* Muted - Dark purple */
-  --muted: oklch(0.20 0.08 280);
-  --muted-foreground: oklch(0.70 0.15 280);
-  /* Accent - Spring Green #53FDA9 (bright for dark mode) */
-  --accent: oklch(0.85 0.20 160);
-  --accent-foreground: oklch(0.05 0.05 280);
-  /* Destructive */
+  /* Dark – theme_tokens.cssVars.dark (strict) */
+  --background: oklch(0.1 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.12 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.12 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.25 0 0);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(1 0 0);
-  /* Borders and inputs */
-  --border: oklch(1 0 0 / 15%);
-  --input: oklch(1 0 0 / 20%);
-  --ring: oklch(0.65 0.25 280);
-  /* Charts - Purple palette for dark mode */
-  --chart-1: oklch(0.65 0.25 280);
-  --chart-2: oklch(0.70 0.22 280);
-  --chart-3: oklch(0.75 0.20 300);
-  --chart-4: oklch(0.85 0.20 160);
-  --chart-5: oklch(0.80 0.22 320);
-  /* Sidebar */
-  --sidebar: oklch(0.12 0.05 280);
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(0.65 0.25 280);
-  --sidebar-primary-foreground: oklch(0.05 0.05 280);
-  --sidebar-accent: oklch(0.20 0.08 280);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(1 0 0 / 15%);
-  --sidebar-ring: oklch(0.65 0.25 280);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.2 0 0);
+  --input: oklch(0.2 0 0);
+  --ring: oklch(0.5 0 0);
+  --chart-1: oklch(0.65 0 0);
+  --chart-2: oklch(0.72 0 0);
+  --chart-3: oklch(0.78 0 0);
+  --chart-4: oklch(0.85 0 0);
+  --chart-5: oklch(0.92 0 0);
+  --sidebar: oklch(0.12 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.985 0 0);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.2 0 0);
+  --sidebar-ring: oklch(0.5 0 0);
 }
 
 @theme inline {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.05 0.05 280);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.05 0.05 280);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.05 0.05 280);
-  --color-primary: oklch(0.55 0.25 280);
-  --color-primary-foreground: oklch(1 0 0);
-  --color-secondary: oklch(0.95 0.05 280);
-  --color-secondary-foreground: oklch(0.55 0.25 280);
-  --color-muted: oklch(0.96 0.02 280);
-  --color-muted-foreground: oklch(0.45 0.15 280);
-  --color-accent: oklch(0.85 0.20 160);
-  --color-accent-foreground: oklch(0.05 0.05 280);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(1 0 0);
-  --color-border: oklch(0.90 0.02 280);
-  --color-input: oklch(0.90 0.02 280);
-  --color-ring: oklch(0.55 0.25 280);
-  --color-chart-1: oklch(0.55 0.25 280);
-  --color-chart-2: oklch(0.65 0.22 280);
-  --color-chart-3: oklch(0.70 0.20 300);
-  --color-chart-4: oklch(0.85 0.20 160);
-  --color-chart-5: oklch(0.75 0.22 320);
-  --color-sidebar: oklch(0.98 0.01 280);
-  --color-sidebar-foreground: oklch(0.05 0.05 280);
-  --color-sidebar-primary: oklch(0.55 0.25 280);
-  --color-sidebar-primary-foreground: oklch(1 0 0);
-  --color-sidebar-accent: oklch(0.95 0.05 280);
-  --color-sidebar-accent-foreground: oklch(0.55 0.25 280);
-  --color-sidebar-border: oklch(0.90 0.02 280);
-  --color-sidebar-ring: oklch(0.55 0.25 280);
+  /* Map Tailwind theme to CSS variables so light/dark switch works */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+}
+
+/* ==========================================================================
+   Fintech dashboard – card depth, glass, and glow utilities
+   ========================================================================== */
+
+@layer components {
+  /* Glass card: premium layered feel on dark background */
+  .card-glass {
+    @apply border border-border/50 backdrop-blur-xl bg-card/60!;
+  }
+
+  /* Inner depth: inset shadow + subtle inset ring (tactile, 3D) */
+  .card-depth {
+    box-shadow: inset 0 1px 2px 0 rgb(0 0 0 / 0.06);
+    @apply ring-1 ring-inset ring-white/5;
+  }
+
+  /* Orange glow for active/highlighted elements (e.g. Mes selector, active badges) */
+  .glow-orange {
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.15);
+    @apply border-orange-500/50 border;
+  }
+
+  /* Status glow: red (Vencido) – keep destructive color, add glow */
+  .glow-status-destructive {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    @apply border border-destructive/50;
+  }
+
+  /* Status glow: green (Pagado) – keep success color, add glow */
+  .glow-status-success {
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+    @apply border border-green-500/50;
+  }
 }
 
 @layer base {

@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
@@ -26,7 +21,7 @@ export default function PeriodComparisonCard({
   } = data.periodComparison;
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader>
         <CardTitle className="text-base font-medium">
           Comparación de periodos
@@ -43,7 +38,10 @@ export default function PeriodComparisonCard({
               {incomeDiff >= 0 ? (
                 <ArrowUpRight className="h-4 w-4 text-chart-4" aria-hidden />
               ) : (
-                <ArrowDownRight className="h-4 w-4 text-destructive" aria-hidden />
+                <ArrowDownRight
+                  className="h-4 w-4 text-destructive"
+                  aria-hidden
+                />
               )}
               <Badge
                 variant={incomeDiff >= 0 ? 'default' : 'destructive'}
@@ -63,7 +61,10 @@ export default function PeriodComparisonCard({
               {expenseDiff <= 0 ? (
                 <ArrowDownRight className="h-4 w-4 text-chart-4" aria-hidden />
               ) : (
-                <ArrowUpRight className="h-4 w-4 text-destructive" aria-hidden />
+                <ArrowUpRight
+                  className="h-4 w-4 text-destructive"
+                  aria-hidden
+                />
               )}
               <Badge
                 variant={expenseDiff <= 0 ? 'default' : 'destructive'}

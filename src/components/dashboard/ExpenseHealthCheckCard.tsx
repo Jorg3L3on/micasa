@@ -21,7 +21,7 @@ export default function ExpenseHealthCheckCard({
     data.expenseHealth;
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader>
         <CardTitle className="text-base font-medium">Salud de gastos</CardTitle>
       </CardHeader>
