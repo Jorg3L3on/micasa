@@ -187,17 +187,98 @@ export async function deleteExpenseTemplate(id: number) {
   });
 }
 
+// Income template helpers
+export async function createIncomeTemplate(data: {
+  name: string;
+  suggestedAmount?: number | null;
+  source?: string | null;
+  appliesFirstFortnight: boolean;
+  appliesSecondFortnight: boolean;
+  active?: boolean;
+  userId?: number | null;
+  houseId?: number | null;
+}) {
+  return clientFetchFromApi('/api/income-templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateIncomeTemplate(
+  id: number,
+  data: {
+    name?: string;
+    suggestedAmount?: number | null;
+    source?: string | null;
+    appliesFirstFortnight?: boolean;
+    appliesSecondFortnight?: boolean;
+    active?: boolean;
+    userId?: number | null;
+    houseId?: number | null;
+  },
+) {
+  return clientFetchFromApi(`/api/income-templates?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteIncomeTemplate(id: number) {
+  return clientFetchFromApi(`/api/income-templates?id=${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // Fortnight catalog helpers
 export async function createFortnight(data: {
   name: string;
   startDay: number;
   endDay: number;
   active?: boolean;
+  year: number;
+  month: number;
+  period: 'FIRST' | 'SECOND';
 }) {
   return clientFetchFromApi('/api/fortnights', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export type CreateMonthFortnightsResult = {
+  message: string;
+  created: Array<{ id: number; label: string; period: string }>;
+  year: number;
+  month: number;
+  expensesCreated?: {
+    firstFortnight: { count: number; names: string[] };
+    secondFortnight: { count: number; names: string[] };
+    total: number;
+  };
+  incomeCreated?: {
+    firstFortnight: number;
+    secondFortnight: number;
+    total: number;
+  };
+};
+
+export type CreatedMonth = { year: number; month: number };
+
+export async function getCreatedMonths(): Promise<CreatedMonth[]> {
+  return clientFetchFromApi<CreatedMonth[]>('/api/fortnights/created-months');
+}
+
+export async function createMonthFortnights(
+  year: number,
+  month: number,
+): Promise<CreateMonthFortnightsResult> {
+  return clientFetchFromApi<CreateMonthFortnightsResult>(
+    '/api/fortnights/create-month',
+    {
+      method: 'POST',
+      body: JSON.stringify({ year, month }),
+    },
+  );
 }
 
 export async function updateFortnight(

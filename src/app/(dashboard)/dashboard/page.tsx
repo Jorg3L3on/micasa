@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import EmptyState from '@/components/EmptyState';
+import CreateMonthCard from '@/components/CreateMonthCard';
 import { formatCurrency } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -96,6 +97,10 @@ export default async function DashboardPage() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mb-8">
+        <CreateMonthCard />
       </div>
 
       <Card>

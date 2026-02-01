@@ -82,6 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: FolderTree,
       isActive:
         pathname.startsWith('/expense-templates') ||
+        pathname.startsWith('/income-templates') ||
         pathname.startsWith('/expenses') ||
         pathname.startsWith('/fortnights') ||
         pathname.startsWith('/categories') ||
@@ -91,6 +92,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: 'Plantillas de gastos',
           url: '/expense-templates',
           isActive: pathname.startsWith('/expense-templates'),
+        },
+        {
+          title: 'Plantillas de ingresos',
+          url: '/income-templates',
+          isActive: pathname.startsWith('/income-templates'),
         },
         {
           title: 'Gastos',

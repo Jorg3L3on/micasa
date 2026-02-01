@@ -13,15 +13,13 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month');
     const period = searchParams.get('period');
 
-    // If specific params provided, return that fortnight
+    // If specific params provided, return that fortnight (or null if not found)
     if (year && month && period) {
-      const fortnight = await prisma.fortnight.findUnique({
+      const fortnight = await prisma.fortnight.findFirst({
         where: {
-          year_month_period: {
-            year: parseInt(year, 10),
-            month: parseInt(month, 10),
-            period: period.toUpperCase() as 'FIRST' | 'SECOND',
-          },
+          year: parseInt(year, 10),
+          month: parseInt(month, 10),
+          period: period.toUpperCase() as 'FIRST' | 'SECOND',
         },
         select: {
           id: true,
@@ -33,10 +31,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (!fortnight) {
-        return NextResponse.json(
-          { error: 'Quincena no encontrada' },
-          { status: 404 },
-        );
+        return NextResponse.json(null, { status: 200 });
       }
 
       return NextResponse.json(

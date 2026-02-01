@@ -65,3 +65,16 @@ export type ExpenseTemplateListItem = {
   appliesSecondFortnight: boolean;
   isSubscription: boolean;
 };
+
+export type IncomeTemplateListItem = {
+  id: number;
+  name: string;
+  suggestedAmount: number | null;
+  source: string | null;
+  appliesFirstFortnight: boolean;
+  appliesSecondFortnight: boolean;
+  active: boolean;
+  userId: number | null;
+  houseId: number | null;
+  userName: string | null;
+};
