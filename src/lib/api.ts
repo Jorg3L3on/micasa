@@ -1,5 +1,7 @@
 'use client';
 
+import { WalletFormValues } from "@/schemas/wallet.schema";
+
 // Client-side API helpers
 export function getClientApiBaseUrl(): string {
   if (typeof window === 'undefined') {
@@ -293,6 +295,36 @@ export async function updateFortnight(
   return clientFetchFromApi(`/api/fortnights?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Wallets
+ */
+
+/** Create Wallet **/
+export async function createWallet(data: WalletFormValues) {
+  return clientFetchFromApi('/api/wallets', {
+    method: 'POST',
+    body: JSON.stringify({ ...data }),
+  });
+}
+
+/** Update Wallet **/
+export async function updateWallet(
+  id: number,
+  data: WalletFormValues,
+) {
+  return clientFetchFromApi(`/api/wallets?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Delete Wallet **/
+export async function deleteWallet(id: number) {
+  return clientFetchFromApi(`/api/wallets?id=${id}`, {
+    method: 'DELETE',
   });
 }
 

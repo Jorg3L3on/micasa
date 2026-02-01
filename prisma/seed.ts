@@ -5,7 +5,8 @@ import {
   PrismaClient,
   PaymentMethodType,
   FortnightPeriod,
-} from '../src/generated/prisma/client';
+} from '@/generated/prisma/client';
+import { hash } from "bcryptjs";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -27,14 +28,28 @@ async function main() {
   /**
    * USERS
    */
-  const jorge = await prisma.user.create({ data: { name: 'Jorge' } });
-  const carmen = await prisma.user.create({ data: { name: 'Carmen' } });
+
+  const hashedPassword = await hash('temp1234', 10);
+
+  const jorge = await prisma.user.create({ data: { name: 'Jorge', email: 'jorge@gmail.com', password: hashedPassword } });
+  const carmen = await prisma.user.create({ data: { name: 'Carmen', email: 'carmen@gmail.com', password: hashedPassword } });
+
+  /**
+   * HOUSES
+   */
+
+  const mainHouse = await prisma.house.create({
+    data: {
+      name: `Casa de ${jorge.name}`,
+      owner_id: jorge.id,
+    }
+  });
 
   /**
    * PAYMENT METHODS
    */
   const tarjeta = await prisma.paymentMethod.create({
-    data: { name: 'Tarjeta', type: PaymentMethodType.CARD },
+    data: { name: 'Tarjeta', type: PaymentMethodType.CASH },
   });
 
   const efectivo = await prisma.paymentMethod.create({
@@ -209,24 +224,28 @@ async function main() {
         user_id: jorge.id,
         amount: 12207.27,
         source: 'SALARY',
+        house_id: mainHouse.id
       },
       {
         fortnight_id: firstFortnight.id,
         user_id: carmen.id,
         amount: 4256.32,
         source: 'SALARY',
+        house_id: mainHouse.id
       },
       {
         fortnight_id: secondFortnight.id,
         user_id: jorge.id,
         amount: 12207.27,
         source: 'SALARY',
+        house_id: mainHouse.id
       },
       {
         fortnight_id: secondFortnight.id,
         user_id: carmen.id,
         amount: 4256.32,
         source: 'SALARY',
+        house_id: mainHouse.id
       },
     ],
   });

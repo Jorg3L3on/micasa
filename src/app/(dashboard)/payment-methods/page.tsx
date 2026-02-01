@@ -126,6 +126,10 @@ export default function PaymentMethodsPage() {
         </div>
       )}
 
+      <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        Deprecated
+      </div>
+
       <Card>
         <CardContent className="pt-6">
           {loading ? (

@@ -114,6 +114,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           isActive: pathname.startsWith('/categories'),
         },
         {
+          title: 'Carteras',
+          url: '/wallets',
+          isActive: pathname.startsWith('/wallets'),
+        },
+        /**
+         * TODO: Delete this view (Deprecated)
+         */
+        {
           title: 'Métodos de pago',
           url: '/payment-methods',
           isActive: pathname.startsWith('/payment-methods'),
