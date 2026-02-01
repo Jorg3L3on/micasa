@@ -3,17 +3,7 @@ import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
-
-type Transaction = {
-  id: number;
-  date: string;
-  description: string;
-  amount: number | string;
-  category: string;
-  paymentMethod: string;
-  is_paid: boolean;
-  due_day?: number | null;
-};
+import type { TransactionRow } from '@/types/catalog';
 
 type Summary = {
   totalIncome: number;
@@ -28,8 +18,8 @@ type Summary = {
 };
 
 function groupTransactionsByDate(
-  transactions: Transaction[],
-): Record<string, Transaction[]> {
+  transactions: TransactionRow[],
+): Record<string, TransactionRow[]> {
   return transactions.reduce(
     (acc, transaction) => {
       const date = new Date(transaction.date).toISOString().split('T')[0];
@@ -39,7 +29,7 @@ function groupTransactionsByDate(
       acc[date].push(transaction);
       return acc;
     },
-    {} as Record<string, Transaction[]>,
+    {} as Record<string, TransactionRow[]>,
   );
 }
 
@@ -63,9 +53,9 @@ async function getTransactions(
   year: string,
   month: string,
   period: string,
-): Promise<Transaction[]> {
+): Promise<TransactionRow[]> {
   try {
-    return await fetchFromApi<Transaction[]>(
+    return await fetchFromApi<TransactionRow[]>(
       `/api/transactions?year=${year}&month=${month}&period=${period}`,
     );
   } catch (error) {

@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
@@ -23,16 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { expenseSchema, ExpenseFormValues } from '@/schemas/expense.schema';
-
-type Category = {
-  id: number;
-  name: string;
-};
-
-type PaymentMethod = {
-  id: number;
-  name: string;
-};
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 
 type ExpenseFormProps = {
   open: boolean;
@@ -41,8 +33,8 @@ type ExpenseFormProps = {
   defaultValues?: ExpenseFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
-  categories: Category[];
-  paymentMethods: PaymentMethod[];
+  categories: CategoryOption[];
+  paymentMethods: PaymentMethodOption[];
 };
 
 export default function ExpenseForm({
@@ -236,8 +228,17 @@ export default function ExpenseForm({
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {mode === 'create' ? 'Crear' : 'Actualizar'}
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === 'create' ? 'Creando...' : 'Actualizando...'}
+                  </>
+                ) : mode === 'create' ? (
+                  'Crear'
+                ) : (
+                  'Actualizar'
+                )}
               </Button>
             </DialogFooter>
           </form>

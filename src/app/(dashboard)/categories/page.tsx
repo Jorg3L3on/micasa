@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -22,21 +23,16 @@ import {
   deleteCategory,
 } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
-
-type Category = {
-  id: number;
-  name: string;
-  description: string;
-};
+import type { CategoryOption } from '@/types/catalog';
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+  const [selectedCategory, setSelectedCategory] = useState<CategoryOption | null>(
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
@@ -45,11 +41,11 @@ export default function CategoriesPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await clientFetchFromApi<Category[]>('/api/categories');
+      const data = await clientFetchFromApi<CategoryOption[]>('/api/categories');
       setCategories(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to fetch categories',
+        err instanceof Error ? err.message : 'Error al cargar las categorías',
       );
     } finally {
       setLoading(false);
@@ -64,11 +60,12 @@ export default function CategoriesPage() {
     try {
       setFormError(null);
       await createCategory(data);
+      toast.success('Categoría creada');
       await fetchCategories();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to create category';
+        err instanceof Error ? err.message : 'Error al crear la categoría';
       setFormError(message);
       throw err;
     }
@@ -79,6 +76,7 @@ export default function CategoriesPage() {
     try {
       setFormError(null);
       await updateCategory(selectedCategory.id, data);
+      toast.success('Categoría actualizada');
       await fetchCategories();
       setEditDialogOpen(false);
       setSelectedCategory(null);
@@ -95,6 +93,7 @@ export default function CategoriesPage() {
     try {
       setError(null);
       await deleteCategory(selectedCategory.id);
+      toast.success('Categoría eliminada');
       await fetchCategories();
       setDeleteDialogOpen(false);
       setSelectedCategory(null);
@@ -106,20 +105,20 @@ export default function CategoriesPage() {
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Category is in use and cannot be deleted');
+        setError('La categoría está en uso y no puede eliminarse');
       } else {
         setError(message);
       }
     }
   };
 
-  const openEditDialog = (category: Category) => {
+  const openEditDialog = (category: CategoryOption) => {
     setSelectedCategory(category);
     setEditDialogOpen(true);
     setFormError(null);
   };
 
-  const openDeleteDialog = (category: Category) => {
+  const openDeleteDialog = (category: CategoryOption) => {
     setSelectedCategory(category);
     setDeleteDialogOpen(true);
     setError(null);

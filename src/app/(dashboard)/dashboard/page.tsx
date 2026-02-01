@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { fetchFromApi } from '@/lib/api-server';
 import {
   Table,
@@ -10,6 +11,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import EmptyState from '@/components/EmptyState';
 import { formatCurrency } from '@/lib/utils';
+
+export const metadata: Metadata = {
+  title: 'Dashboard | MiCasa',
+  description: 'Resumen de ingresos, gastos y balance por categoría.',
+};
 
 type Summary = {
   totalIncome: number;
@@ -55,7 +61,7 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-3xl font-bold text-chart-4">
               {formatCurrency(summary.totalIncome)}
             </p>
           </CardContent>
@@ -68,7 +74,7 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-red-600">
+            <p className="text-3xl font-bold text-destructive">
               {formatCurrency(summary.totalExpense)}
             </p>
           </CardContent>
@@ -83,7 +89,7 @@ export default async function DashboardPage() {
           <CardContent>
             <p
               className={`text-3xl font-bold ${
-                summary.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                summary.balance >= 0 ? 'text-chart-4' : 'text-destructive'
               }`}
             >
               {formatCurrency(summary.balance)}

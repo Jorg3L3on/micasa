@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -30,40 +31,19 @@ import {
   expenseTemplateSchema,
   ExpenseTemplateFormValues,
 } from '@/schemas/expense-template.schema';
-
-type ExpenseTemplate = {
-  id: number;
-  name: string;
-  category: string;
-  suggestedAmount: number | null;
-  paymentMethod: string | null;
-  paymentMethodId: number | null;
-  active: boolean;
-  dueDay: number | null;
-  cutoffDay: number | null;
-  isRecurring: boolean;
-  appliesFirstFortnight: boolean;
-  appliesSecondFortnight: boolean;
-  isSubscription: boolean;
-};
-
-type Category = {
-  id: number;
-  name: string;
-};
-
-type PaymentMethod = {
-  id: number;
-  name: string;
-};
+import type {
+  ExpenseTemplateListItem,
+  CategoryOption,
+  PaymentMethodOption,
+} from '@/types/catalog';
 
 export default function EditExpenseTemplatePage() {
   const router = useRouter();
   const params = useParams();
   const id = Number(params.id);
-  const [template, setTemplate] = useState<ExpenseTemplate | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [template, setTemplate] = useState<ExpenseTemplateListItem | null>(null);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,9 +71,9 @@ export default function EditExpenseTemplatePage() {
         setLoading(true);
         const [templatesData, categoriesData, paymentMethodsData] =
           await Promise.all([
-            clientFetchFromApi<ExpenseTemplate[]>('/api/expense-templates'),
-            clientFetchFromApi<Category[]>('/api/categories'),
-            clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
+            clientFetchFromApi<ExpenseTemplateListItem[]>('/api/expense-templates'),
+            clientFetchFromApi<CategoryOption[]>('/api/categories'),
+            clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
           ]);
 
         const foundTemplate = templatesData.find((t) => t.id === id);
@@ -123,7 +103,7 @@ export default function EditExpenseTemplatePage() {
           isSubscription: foundTemplate.isSubscription ?? false,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        setError(err instanceof Error ? err.message : 'Error al cargar los datos');
       } finally {
         setLoading(false);
       }
@@ -136,12 +116,13 @@ export default function EditExpenseTemplatePage() {
       setIsSubmitting(true);
       setError(null);
       await updateExpenseTemplate(id, data);
+      toast.success('Plantilla de gasto actualizada');
       router.push('/expense-templates');
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : 'Failed to update expense template';
+          : 'Error al actualizar la plantilla de gasto';
       setError(message);
     } finally {
       setIsSubmitting(false);

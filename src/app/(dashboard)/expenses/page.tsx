@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import ExpenseForm from '@/components/ExpenseForm';
 import { ExpenseFormValues } from '@/schemas/expense.schema';
@@ -23,38 +25,22 @@ import {
 } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-
-type Expense = {
-  id: number;
-  name: string;
-  category: string;
-  categoryId: number | null;
-  defaultAmount: number | null;
-  paymentMethod: string;
-  paymentMethodId: number;
-  active: boolean;
-};
-
-type Category = {
-  id: number;
-  name: string;
-};
-
-type PaymentMethod = {
-  id: number;
-  name: string;
-};
+import type {
+  ExpenseListItem,
+  CategoryOption,
+  PaymentMethodOption,
+} from '@/types/catalog';
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseListItem[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseListItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -63,15 +49,15 @@ export default function ExpensesPage() {
       setError(null);
       const [expensesData, categoriesData, paymentMethodsData] =
         await Promise.all([
-          clientFetchFromApi<Expense[]>('/api/expenses'),
-          clientFetchFromApi<Category[]>('/api/categories'),
-          clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
+          clientFetchFromApi<ExpenseListItem[]>('/api/expenses'),
+          clientFetchFromApi<CategoryOption[]>('/api/categories'),
+          clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
         ]);
       setExpenses(expensesData);
       setCategories(categoriesData);
       setPaymentMethods(paymentMethodsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
     } finally {
       setLoading(false);
     }
@@ -85,11 +71,12 @@ export default function ExpensesPage() {
     try {
       setFormError(null);
       await createExpense(data);
+      toast.success('Gasto creado');
       await fetchData();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to create expense';
+        err instanceof Error ? err.message : 'Error al crear el gasto';
       setFormError(message);
       throw err;
     }
@@ -187,6 +174,7 @@ export default function ExpensesPage() {
       updateData.defaultAmount = data.defaultAmount ?? null;
 
       await updateExpense(selectedExpense.id, updateData);
+      toast.success('Gasto actualizado');
       await fetchData();
       setEditDialogOpen(false);
       setSelectedExpense(null);
@@ -202,6 +190,7 @@ export default function ExpensesPage() {
     try {
       setError(null);
       await deleteExpense(selectedExpense.id);
+      toast.success('Gasto eliminado');
       await fetchData();
       setDeleteDialogOpen(false);
       setSelectedExpense(null);
@@ -213,20 +202,20 @@ export default function ExpensesPage() {
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Expense is in use and cannot be deleted');
+        setError('El gasto está en uso y no puede eliminarse');
       } else {
         setError(message);
       }
     }
   };
 
-  const openEditDialog = (expense: Expense) => {
+  const openEditDialog = (expense: ExpenseListItem) => {
     setSelectedExpense(expense);
     setEditDialogOpen(true);
     setFormError(null);
   };
 
-  const openDeleteDialog = (expense: Expense) => {
+  const openDeleteDialog = (expense: ExpenseListItem) => {
     setSelectedExpense(expense);
     setDeleteDialogOpen(true);
     setError(null);
@@ -282,15 +271,11 @@ export default function ExpensesPage() {
                       {expense.paymentMethod}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          expense.active
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        }`}
+                      <Badge
+                        variant={expense.active ? 'default' : 'secondary'}
                       >
                         {expense.active ? 'Activo' : 'Inactivo'}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

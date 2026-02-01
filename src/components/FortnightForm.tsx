@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
@@ -280,8 +281,17 @@ export default function FortnightForm({
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {mode === 'create' ? 'Crear' : 'Actualizar'}
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === 'create' ? 'Creando...' : 'Actualizando...'}
+                  </>
+                ) : mode === 'create' ? (
+                  'Crear'
+                ) : (
+                  'Actualizar'
+                )}
               </Button>
             </DialogFooter>
           </form>
