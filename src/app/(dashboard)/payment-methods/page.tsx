@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -17,31 +18,26 @@ import { PaymentMethodFormValues } from '@/schemas/payment-method.schema'
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
 import { clientFetchFromApi, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } from '@/lib/api'
 import { Pencil, Trash2 } from 'lucide-react'
-
-type PaymentMethod = {
-  id: number
-  name: string
-  type: string
-}
+import type { PaymentMethodOption } from '@/types/catalog'
 
 export default function PaymentMethodsPage() {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodOption | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const fetchPaymentMethods = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await clientFetchFromApi<PaymentMethod[]>('/api/payment-methods')
+      const data = await clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods')
       setPaymentMethods(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch payment methods')
+      setError(err instanceof Error ? err.message : 'Error al cargar los métodos de pago')
     } finally {
       setLoading(false)
     }
@@ -58,10 +54,11 @@ export default function PaymentMethodsPage() {
         name: data.name,
         type: data.type ?? undefined,
       })
+      toast.success('Método de pago creado')
       await fetchPaymentMethods()
       setCreateDialogOpen(false)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create payment method'
+      const message = err instanceof Error ? err.message : 'Error al crear el método de pago'
       setFormError(message)
       throw err
     }
@@ -75,6 +72,7 @@ export default function PaymentMethodsPage() {
         name: data.name,
         type: data.type ?? undefined,
       })
+      toast.success('Método de pago actualizado')
       await fetchPaymentMethods()
       setEditDialogOpen(false)
       setSelectedPaymentMethod(null)
@@ -90,26 +88,27 @@ export default function PaymentMethodsPage() {
     try {
       setError(null)
       await deletePaymentMethod(selectedPaymentMethod.id)
+      toast.success('Método de pago eliminado')
       await fetchPaymentMethods()
       setDeleteDialogOpen(false)
       setSelectedPaymentMethod(null)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete payment method'
+      const message = err instanceof Error ? err.message : 'Error al eliminar el método de pago'
       if (message.includes('409') || message.includes('in use') || message.includes('Conflict') || message.includes('related')) {
-        setError('Payment method is in use and cannot be deleted')
+        setError('El método de pago está en uso y no puede eliminarse')
       } else {
         setError(message)
       }
     }
   }
 
-  const openEditDialog = (paymentMethod: PaymentMethod) => {
+  const openEditDialog = (paymentMethod: PaymentMethodOption) => {
     setSelectedPaymentMethod(paymentMethod)
     setEditDialogOpen(true)
     setFormError(null)
   }
 
-  const openDeleteDialog = (paymentMethod: PaymentMethod) => {
+  const openDeleteDialog = (paymentMethod: PaymentMethodOption) => {
     setSelectedPaymentMethod(paymentMethod)
     setDeleteDialogOpen(true)
     setError(null)

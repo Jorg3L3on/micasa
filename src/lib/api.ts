@@ -15,6 +15,7 @@ export async function clientFetchFromApi<T>(
   const baseUrl = getClientApiBaseUrl();
   const res = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -174,7 +175,6 @@ export async function updateExpenseTemplate(
     isSubscription: boolean;
   },
 ) {
-  console.log('data', data);
   return clientFetchFromApi(`/api/expense-templates?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),

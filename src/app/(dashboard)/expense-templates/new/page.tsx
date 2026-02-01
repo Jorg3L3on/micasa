@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -31,51 +31,14 @@ import {
   expenseTemplateSchema,
   ExpenseTemplateFormValues,
 } from '@/schemas/expense-template.schema';
-
-type Category = {
-  id: number;
-  name: string;
-};
-
-type PaymentMethod = {
-  id: number;
-  name: string;
-};
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 
 export default function NewExpenseTemplatePage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const showToast = (
-    message: string,
-    type: 'success' | 'error' = 'success',
-  ) => {
-    setToast({ message, type });
-
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-
-    toastTimeoutRef.current = setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) {
-        clearTimeout(toastTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const form = useForm<ExpenseTemplateFormValues>({
     resolver: zodResolver(expenseTemplateSchema),
@@ -99,15 +62,15 @@ export default function NewExpenseTemplatePage() {
       try {
         setLoading(true);
         const [categoriesData, paymentMethodsData] = await Promise.all([
-          clientFetchFromApi<Category[]>('/api/categories'),
-          clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
+          clientFetchFromApi<CategoryOption[]>('/api/categories'),
+          clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
         ]);
         setCategories(categoriesData);
         setPaymentMethods(paymentMethodsData);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Error al cargar los datos';
-        showToast(message, 'error');
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -185,14 +148,13 @@ export default function NewExpenseTemplatePage() {
     try {
       setIsSubmitting(true);
       await createExpenseTemplate(data);
-      showToast('Plantilla de gasto creada exitosamente', 'success');
-      // Wait a bit before redirecting to show the success toast
+      toast.success('Plantilla de gasto creada exitosamente');
       setTimeout(() => {
         router.push('/expense-templates');
       }, 500);
     } catch (err) {
       const message = getErrorMessage(err);
-      showToast(message, 'error');
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -542,25 +504,6 @@ export default function NewExpenseTemplatePage() {
         </CardContent>
       </Card>
 
-      {/* Toast feedback */}
-      {toast && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6">
-          <div
-            className={`pointer-events-auto flex items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur ${
-              toast.type === 'success'
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-900/90 dark:border-emerald-800 dark:text-emerald-50'
-                : 'bg-destructive/10 border-destructive/70 text-destructive dark:bg-destructive/20 dark:border-destructive dark:text-destructive'
-            }`}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <AlertCircle className="h-4 w-4" />
-            )}
-            <span className="font-medium">{toast.message}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

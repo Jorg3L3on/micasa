@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -23,26 +24,16 @@ import {
 } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatMonth, formatYear, formatPeriod } from '@/lib/utils';
-
-type Fortnight = {
-  id: number;
-  name: string;
-  startDay: number;
-  endDay: number;
-  active: boolean;
-  year: number;
-  month: number;
-  period: 'FIRST' | 'SECOND';
-};
+import type { FortnightListItem } from '@/types/catalog';
 
 export default function FortnightsPage() {
-  const [fortnights, setFortnights] = useState<Fortnight[]>([]);
+  const [fortnights, setFortnights] = useState<FortnightListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedFortnight, setSelectedFortnight] = useState<Fortnight | null>(
+  const [selectedFortnight, setSelectedFortnight] = useState<FortnightListItem | null>(
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
@@ -55,7 +46,7 @@ export default function FortnightsPage() {
       setFortnights(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to fetch fortnights',
+        err instanceof Error ? err.message : 'Error al cargar las quincenas',
       );
     } finally {
       setLoading(false);
@@ -70,11 +61,12 @@ export default function FortnightsPage() {
     try {
       setFormError(null);
       await createFortnight(data);
+      toast.success('Quincena creada');
       await fetchFortnights();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to create fortnight';
+        err instanceof Error ? err.message : 'Error al crear la quincena';
       setFormError(message);
       throw err;
     }
@@ -85,6 +77,7 @@ export default function FortnightsPage() {
     try {
       setFormError(null);
       await updateFortnight(selectedFortnight.id, data);
+      toast.success('Quincena actualizada');
       await fetchFortnights();
       setEditDialogOpen(false);
       setSelectedFortnight(null);
@@ -101,31 +94,32 @@ export default function FortnightsPage() {
     try {
       setError(null);
       await deleteFortnight(selectedFortnight.id);
+      toast.success('Quincena eliminada');
       await fetchFortnights();
       setDeleteDialogOpen(false);
       setSelectedFortnight(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to delete fortnight';
+        err instanceof Error ? err.message : 'Error al eliminar la quincena';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Fortnight is in use and cannot be deleted');
+        setError('La quincena está en uso y no puede eliminarse');
       } else {
         setError(message);
       }
     }
   };
 
-  const openEditDialog = (fortnight: Fortnight) => {
+  const openEditDialog = (fortnight: FortnightListItem) => {
     setSelectedFortnight(fortnight);
     setEditDialogOpen(true);
     setFormError(null);
   };
 
-  const openDeleteDialog = (fortnight: Fortnight) => {
+  const openDeleteDialog = (fortnight: FortnightListItem) => {
     setSelectedFortnight(fortnight);
     setDeleteDialogOpen(true);
     setError(null);

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { fetchFromApi } from '@/lib/api-server';
 import {
@@ -9,20 +10,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import TransactionFilters from '@/components/TransactionFilters';
 import { formatDate, formatCurrencySigned } from '@/lib/utils';
 
-type Transaction = {
-  id: number;
-  date: string;
-  description: string;
-  amount: number | string;
-  category: string;
-  paymentMethod: string;
-  type: 'income' | 'expense';
-  is_paid: boolean;
+export const metadata: Metadata = {
+  title: 'Transacciones | MiCasa',
+  description: 'Historial de transacciones y operaciones.',
 };
+
+import type { TransactionRow } from '@/types/catalog';
 
 async function getTransactions(searchParams: {
   month?: string;
@@ -38,7 +36,7 @@ async function getTransactions(searchParams: {
     params.append('is_paid', 'true');
 
     const endpoint = `/api/transactions${params.toString() ? `?${params.toString()}` : ''}`;
-    return await fetchFromApi<Transaction[]>(endpoint);
+    return await fetchFromApi<TransactionRow[]>(endpoint);
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return [];
@@ -86,8 +84,8 @@ async function TransactionsContent({
                       <span
                         className={`font-medium ${
                           transaction.type === 'expense'
-                            ? 'text-red-600'
-                            : 'text-green-600'
+                            ? 'text-destructive'
+                            : 'text-chart-4'
                         }`}
                       >
                         {formatCurrencySigned(
@@ -103,15 +101,15 @@ async function TransactionsContent({
                       {transaction.paymentMethod}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          transaction.type === 'income'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        }`}
+                      <Badge
+                        variant={
+                          transaction.type === 'expense'
+                            ? 'destructive'
+                            : 'default'
+                        }
                       >
                         {transaction.type === 'expense' ? 'Gasto' : 'Ingreso'}
-                      </span>
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

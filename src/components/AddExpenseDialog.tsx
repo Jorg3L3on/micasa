@@ -27,17 +27,7 @@ import {
   addExpenseSchema,
   AddExpenseFormValues,
 } from '@/schemas/transaction.schema'
-
-type Category = {
-  id: number
-  name: string
-}
-
-type PaymentMethod = {
-  id: number
-  name: string
-  type: 'CARD' | 'CASH'
-}
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog'
 
 type AddExpenseDialogProps = {
   open: boolean
@@ -86,8 +76,8 @@ export default function AddExpenseDialog({
   defaultDate,
   error,
 }: AddExpenseDialogProps) {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([])
   const [loading, setLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -114,8 +104,8 @@ export default function AddExpenseDialog({
         try {
           setLoading(true)
           const [categoriesData, paymentMethodsData] = await Promise.all([
-            clientFetchFromApi<Category[]>('/api/categories'),
-            clientFetchFromApi<PaymentMethod[]>('/api/payment-methods'),
+            clientFetchFromApi<CategoryOption[]>('/api/categories'),
+            clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
           ])
           setCategories(categoriesData)
           setPaymentMethods(paymentMethodsData)

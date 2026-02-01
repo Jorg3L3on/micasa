@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SessionProvider } from '@/components/session-provider';
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -16,6 +17,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'MiCasa',
+  description:
+    'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+  openGraph: {
+    title: 'MiCasa',
+    description:
+      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+  },
 };
 
 export default function RootLayout({
@@ -36,6 +44,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <Toaster richColors position="top-center" />
           </ThemeProvider>
         </SessionProvider>
       </body>

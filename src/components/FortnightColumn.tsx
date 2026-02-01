@@ -17,16 +17,7 @@ import {
   createExpenseTransaction,
   createExpenseTemplate,
 } from '@/lib/api';
-
-type Transaction = {
-  id: number;
-  date: string;
-  description: string;
-  amount: number | string;
-  category: string;
-  paymentMethod: string;
-  is_paid: boolean;
-};
+import type { TransactionRow } from '@/types/catalog';
 
 type Summary = {
   totalIncome: number;
@@ -42,7 +33,7 @@ type Summary = {
 
 type FortnightColumnProps = {
   label: string;
-  transactions: Transaction[];
+  transactions: TransactionRow[];
   summary: Summary;
   fortnightId: number;
   year: number;
@@ -61,7 +52,7 @@ export default function FortnightColumn({
 }: FortnightColumnProps) {
   const router = useRouter();
   const [transactions, setTransactions] =
-    useState<Transaction[]>(initialTransactions);
+    useState<TransactionRow[]>(initialTransactions);
   const [summary, setSummary] = useState<Summary>(initialSummary);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
@@ -73,7 +64,7 @@ export default function FortnightColumn({
     try {
       setIsRefreshing(true);
       const [transactionsData, summaryData] = await Promise.all([
-        clientFetchFromApi<Transaction[]>(
+        clientFetchFromApi<TransactionRow[]>(
           `/api/transactions?year=${year}&month=${String(month).padStart(2, '0')}&period=${period}`,
         ),
         clientFetchFromApi<Summary>(
@@ -123,6 +114,19 @@ export default function FortnightColumn({
   const handleAddExpense = async (data: AddExpenseFormValues) => {
     try {
       setAddExpenseError(null);
+
+      if (!data.amount || data.amount <= 0) {
+        setAddExpenseError('El monto debe ser mayor a 0.');
+        throw new Error('El monto debe ser mayor a 0.');
+      }
+      if (!data.categoryId || data.categoryId <= 0) {
+        setAddExpenseError('Selecciona una categoría.');
+        throw new Error('Selecciona una categoría.');
+      }
+      if (!data.paymentMethodId || data.paymentMethodId <= 0) {
+        setAddExpenseError('Selecciona un método de pago.');
+        throw new Error('Selecciona un método de pago.');
+      }
 
       // Helper to get the other fortnight ID
       const getOtherFortnightId = async (): Promise<number | null> => {

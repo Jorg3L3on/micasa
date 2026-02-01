@@ -51,13 +51,6 @@ export const {
           return null;
         }
 
-        console.log('Authorized user:', {
-          id: String(user.id),
-          email: user.email,
-          name: user.name,
-          houses: user.houses,
-        });
-
         return {
           id: String(user.id),
           email: user.email,
@@ -70,22 +63,18 @@ export const {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        console.log('JWT Callback - User:', user);
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
       }
-      console.log('JWT Callback - Token:', token);
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        console.log('Session Callback - Token:', token);
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
       }
-      console.log('Session Callback - Session:', session);
       return session;
     },
   },

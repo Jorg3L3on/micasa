@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
   Table,
@@ -17,53 +18,27 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { clientFetchFromApi, deleteExpenseTemplate } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-
-type ExpenseTemplate = {
-  id: number;
-  name: string;
-  category: string;
-  suggestedAmount: number | null;
-  paymentMethod: string | null;
-  paymentMethodId: number | null;
-  active: boolean;
-  totalEstimatedAmount: number;
-  dueDay: number | null;
-  cutoffDay: number | null;
-  isRecurring: boolean;
-  appliesFirstFortnight: boolean;
-  appliesSecondFortnight: boolean;
-  isSubscription: boolean;
-};
-
-type Category = {
-  id: number;
-  name: string;
-};
-
-type PaymentMethod = {
-  id: number;
-  name: string;
-};
+import type { ExpenseTemplateListItem } from '@/types/catalog';
 
 export default function ExpenseTemplatesPage() {
   const router = useRouter();
-  const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
+  const [templates, setTemplates] = useState<ExpenseTemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] =
-    useState<ExpenseTemplate | null>(null);
+    useState<ExpenseTemplateListItem | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const templatesData = await clientFetchFromApi<ExpenseTemplate[]>(
+      const templatesData = await clientFetchFromApi<ExpenseTemplateListItem[]>(
         '/api/expense-templates',
       );
       setTemplates(templatesData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
     } finally {
       setLoading(false);
     }
@@ -78,6 +53,7 @@ export default function ExpenseTemplatesPage() {
     try {
       setError(null);
       await deleteExpenseTemplate(selectedTemplate.id);
+      toast.success('Plantilla de gasto eliminada');
       await fetchData();
       setDeleteDialogOpen(false);
       setSelectedTemplate(null);
@@ -85,24 +61,24 @@ export default function ExpenseTemplatesPage() {
       const message =
         err instanceof Error
           ? err.message
-          : 'Failed to delete expense template';
+          : 'Error al eliminar la plantilla de gasto';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict')
       ) {
-        setError('Expense template is in use and cannot be deleted');
+        setError('La plantilla de gasto está en uso y no puede eliminarse');
       } else {
         setError(message);
       }
     }
   };
 
-  const openEditDialog = (template: ExpenseTemplate) => {
+  const openEditDialog = (template: ExpenseTemplateListItem) => {
     router.push(`/expense-templates/${template.id}/edit`);
   };
 
-  const openDeleteDialog = (template: ExpenseTemplate) => {
+  const openDeleteDialog = (template: ExpenseTemplateListItem) => {
     setSelectedTemplate(template);
     setDeleteDialogOpen(true);
     setError(null);
@@ -157,7 +133,7 @@ export default function ExpenseTemplatesPage() {
                       {template.category}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(template.totalEstimatedAmount)}
+                      {formatCurrency(template.totalEstimatedAmount ?? 0)}
                     </TableCell>
                     <TableCell>{template.cutoffDay}</TableCell>
                     <TableCell>{template.dueDay}</TableCell>

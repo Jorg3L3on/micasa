@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -47,21 +48,11 @@ import {
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-
-type Expense = {
-  id: number;
-  date: string;
-  description: string;
-  amount: number | string;
-  category: string;
-  paymentMethod: string;
-  is_paid: boolean;
-  due_day?: number | null;
-};
+import type { TransactionRow } from '@/types/catalog';
 
 type ExpenseTableProps = {
   date?: string;
-  expenses: Expense[];
+  expenses: TransactionRow[];
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void;
   fortnightLabel?: string;
   totalIncome?: number;
@@ -75,43 +66,15 @@ export default function ExpenseTable({
   totalIncome = 0,
 }: ExpenseTableProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
-  const [localExpenses, setLocalExpenses] = useState<Expense[]>(expenses);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [localExpenses, setLocalExpenses] = useState<TransactionRow[]>(expenses);
+  const [editingExpense, setEditingExpense] = useState<TransactionRow | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<TransactionRow | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [payingExpense, setPayingExpense] = useState<Expense | null>(null);
+  const [payingExpense, setPayingExpense] = useState<TransactionRow | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [showOnlyPending, setShowOnlyPending] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const showToast = (
-    message: string,
-    type: 'success' | 'error' = 'success',
-  ) => {
-    setToast({ message, type });
-
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-
-    toastTimeoutRef.current = setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) {
-        clearTimeout(toastTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Sync local state with props when expenses change
   useEffect(() => {
@@ -128,7 +91,7 @@ export default function ExpenseTable({
     setLocalExpenses(sorted);
   }, [expenses]);
 
-  const handlePaidToggle = async (expense: Expense, newPaidStatus: boolean) => {
+  const handlePaidToggle = async (expense: TransactionRow, newPaidStatus: boolean) => {
     const expenseId = expense.id;
     setUpdatingIds((prev) => {
       const next = new Set(prev);
@@ -146,18 +109,16 @@ export default function ExpenseTable({
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, newPaidStatus);
       }
-      showToast(
+      toast.success(
         newPaidStatus
           ? 'Gasto marcado como pagado.'
           : 'Gasto marcado como no pagado.',
-        'success',
       );
     } catch (error) {
       setLocalExpenses(expenses);
       console.error('Error updating expense paid status:', error);
-      showToast(
+      toast.error(
         'Error al actualizar el estado de pago. Por favor, intenta de nuevo.',
-        'error',
       );
     } finally {
       setUpdatingIds((prev) => {
@@ -168,7 +129,7 @@ export default function ExpenseTable({
     }
   };
 
-  const handleEditAmount = (expense: Expense) => {
+  const handleEditAmount = (expense: TransactionRow) => {
     setEditingExpense(expense);
     setEditDialogOpen(true);
     setEditError(null);
@@ -197,14 +158,14 @@ export default function ExpenseTable({
       }
       setEditDialogOpen(false);
       setEditingExpense(null);
-      showToast('Monto del gasto actualizado.', 'success');
+      toast.success('Monto del gasto actualizado.');
     } catch (error) {
       setLocalExpenses(expenses);
       const message =
         error instanceof Error ? error.message : 'Error al actualizar el monto';
       setEditError(message);
       console.error('Error updating expense amount:', error);
-      showToast(message, 'error');
+      toast.error(message);
       throw error;
     } finally {
       setUpdatingIds((prev) => {
@@ -235,13 +196,12 @@ export default function ExpenseTable({
       }
       setDeleteDialogOpen(false);
       setDeletingExpense(null);
-      showToast('Gasto eliminado.', 'success');
+      toast.success('Gasto eliminado.');
     } catch (error) {
       setLocalExpenses(expenses);
       console.error('Error deleting expense:', error);
-      showToast(
+      toast.error(
         'Error al eliminar el gasto. Por favor, intenta de nuevo.',
-        'error',
       );
     } finally {
       setUpdatingIds((prev) => {
@@ -252,7 +212,7 @@ export default function ExpenseTable({
     }
   };
 
-  const getDueInfo = (expense: Expense) => {
+  const getDueInfo = (expense: TransactionRow) => {
     const dueDayValue = expense.due_day;
     if (!dueDayValue || Number.isNaN(dueDayValue)) {
       return {
@@ -747,25 +707,6 @@ export default function ExpenseTable({
         </AlertDialog>
       )}
 
-      {/* Toast feedback */}
-      {toast && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:justify-end sm:px-6">
-          <div
-            className={`pointer-events-auto flex items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur ${
-              toast.type === 'success'
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-900/90 dark:border-emerald-800 dark:text-emerald-50'
-                : 'bg-destructive/10 border-destructive/70 text-destructive dark:bg-destructive/20 dark:border-destructive dark:text-destructive'
-            }`}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <AlertCircle className="h-4 w-4" />
-            )}
-            <span className="font-medium">{toast.message}</span>
-          </div>
-        </div>
-      )}
     </>
   );
 }
