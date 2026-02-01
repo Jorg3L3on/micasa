@@ -164,9 +164,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (month <= currentMonth) {
+    if (month < currentMonth) {
       return NextResponse.json(
-        { error: 'Solo se pueden crear meses posteriores al actual' },
+        { error: 'No se pueden crear meses ya pasados. Solo el mes actual o futuros.' },
         { status: 400 },
       );
     }

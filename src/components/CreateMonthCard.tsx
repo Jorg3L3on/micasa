@@ -32,7 +32,7 @@ export default function CreateMonthCard() {
       createdMonths.map((m) => `${m.year}-${m.month}`),
     );
     const options: { value: string; label: string; year: number; month: number }[] = [];
-    for (let m = currentMonth + 1; m <= 12; m++) {
+    for (let m = currentMonth; m <= 12; m++) {
       const key = `${currentYear}-${m}`;
       if (!createdSet.has(key)) {
         options.push({
@@ -111,9 +111,7 @@ export default function CreateMonthCard() {
     : '';
 
   const emptyState =
-    !loadingMonths &&
-    availableOptions.length === 0 &&
-    currentMonth < 12;
+    !loadingMonths && availableOptions.length === 0;
 
   return (
     <Card className="border-primary/20 bg-primary/5">
@@ -123,7 +121,7 @@ export default function CreateMonthCard() {
           Crear mes (dos quincenas)
         </CardTitle>
         <CardDescription>
-          Crea la primera y segunda quincena para un mes futuro del año {currentYear}. Solo se listan meses posteriores al actual que aún no tienen quincenas.
+          Crea la primera y segunda quincena para el mes actual o futuros del año {currentYear}. Solo se listan meses que aún no tienen quincenas creadas.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -147,9 +145,9 @@ export default function CreateMonthCard() {
                   placeholder={
                     loadingMonths
                       ? 'Cargando...'
-                      : availableOptions.length === 0
+                      :                     availableOptions.length === 0
                         ? emptyState
-                          ? `No hay más meses futuros en ${currentYear}`
+                          ? `No hay meses por crear en ${currentYear}`
                           : 'Selecciona un mes'
                         : 'Selecciona un mes'
                   }
