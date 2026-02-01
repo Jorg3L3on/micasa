@@ -1,12 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,12 +49,17 @@ export default function UpcomingObligationsCard({
   };
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">
           Próximas obligaciones
         </CardTitle>
-        <Button variant="ghost" size="icon-xs" asChild aria-label="Ver detalles">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          asChild
+          aria-label="Ver detalles"
+        >
           <Link href="/transactions">
             <ChevronRight className="h-4 w-4" />
           </Link>
@@ -92,7 +92,7 @@ export default function UpcomingObligationsCard({
                       {overdue && (
                         <Badge
                           variant="destructive"
-                          className="ml-2 text-xs"
+                          className="ml-2 text-xs glow-status-destructive"
                         >
                           Vencido
                         </Badge>
@@ -115,9 +115,7 @@ export default function UpcomingObligationsCard({
                             <Check className="h-4 w-4 text-chart-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          Marcar como pagado
-                        </TooltipContent>
+                        <TooltipContent>Marcar como pagado</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>

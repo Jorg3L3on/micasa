@@ -1,12 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -25,12 +20,24 @@ type CurrentPeriodSummaryCardProps = {
 const periodLabel = (data: DashboardData): string => {
   const { view, year, month, period } = data.period;
   const monthNames = [
-    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
   ];
   const m = monthNames[month - 1] ?? '';
   if (view === 'month') return `${m} ${year}`;
-  return period === 'FIRST' ? `1-15 ${m} ${year}` : `16-${new Date(year, month, 0).getDate()} ${m} ${year}`;
+  return period === 'FIRST'
+    ? `1-15 ${m} ${year}`
+    : `16-${new Date(year, month, 0).getDate()} ${m} ${year}`;
 };
 
 export default function CurrentPeriodSummaryCard({
@@ -57,15 +64,19 @@ export default function CurrentPeriodSummaryCard({
 
   const view = searchParams.get('view') ?? data.period.view;
 
+  const isMonthView = view === 'month';
+
   return (
-    <Card>
+    <Card className="card-glass card-depth rounded-lg border-border/50">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">
           Resumen del periodo actual
         </CardTitle>
         <Select value={view} onValueChange={handleViewChange}>
           <SelectTrigger
-            className="w-[130px]"
+            className={`w-[130px] transition-all ${
+              isMonthView ? 'glow-orange' : ''
+            }`}
             aria-label="Seleccionar vista de periodo"
           >
             <SelectValue placeholder="Periodo" />
@@ -78,7 +89,9 @@ export default function CurrentPeriodSummaryCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Badge variant="secondary">{periodLabel(data)}</Badge>
+          <Badge variant="secondary" className="glow-orange">
+            {periodLabel(data)}
+          </Badge>
         </div>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
@@ -90,17 +103,13 @@ export default function CurrentPeriodSummaryCard({
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">
-              Gastos
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">Gastos</p>
             <p className="text-lg font-bold text-destructive">
               {formatCurrency(summary.totalExpense)}
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">
-              Balance
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">Balance</p>
             <p
               className={`text-lg font-bold ${
                 summary.balance >= 0 ? 'text-chart-4' : 'text-destructive'

@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
@@ -19,7 +14,7 @@ export default function FixedVsVariableCard({
   const total = totalFixed + totalVariable;
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader>
         <CardTitle className="text-base font-medium">
           Fijos vs variables

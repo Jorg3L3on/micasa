@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Receipt, TrendingUp } from 'lucide-react';
@@ -19,13 +14,11 @@ const typeLabel = (type: string): string => {
   return type;
 };
 
-export default function RecentActivityCard({
-  data,
-}: RecentActivityCardProps) {
+export default function RecentActivityCard({ data }: RecentActivityCardProps) {
   const activities = data.recentActivity;
 
   return (
-    <Card className="min-w-0">
+    <Card className="card-glass min-w-0 rounded-lg border-border/50">
       <CardHeader>
         <CardTitle className="text-base font-medium">
           Actividad reciente
@@ -48,7 +41,10 @@ export default function RecentActivityCard({
                     {act.type === 'expense_added' ? (
                       <Receipt className="h-4 w-4" aria-hidden />
                     ) : (
-                      <TrendingUp className="h-4 w-4 text-chart-4" aria-hidden />
+                      <TrendingUp
+                        className="h-4 w-4 text-chart-4"
+                        aria-hidden
+                      />
                     )}
                   </span>
                   <div className="min-w-0 flex-1 overflow-hidden">

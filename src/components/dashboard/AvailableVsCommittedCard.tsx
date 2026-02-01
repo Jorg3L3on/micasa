@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -21,12 +16,17 @@ export default function AvailableVsCommittedCard({
   const { libre, pagado, pendiente } = data.availableVsCommitted;
 
   return (
-    <Card>
+    <Card className="card-glass rounded-lg border-border/50">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">
           Disponible vs comprometido
         </CardTitle>
-        <Button variant="ghost" size="icon-xs" asChild aria-label="Ver detalles">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          asChild
+          aria-label="Ver detalles"
+        >
           <Link href="/transactions">
             <ChevronRight className="h-4 w-4" />
           </Link>
@@ -39,7 +39,7 @@ export default function AvailableVsCommittedCard({
             {formatCurrency(libre)}
           </span>
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
+        <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2 glow-status-success">
           <span className="text-sm font-medium text-green-700 dark:text-green-400">
             Pagado
           </span>
