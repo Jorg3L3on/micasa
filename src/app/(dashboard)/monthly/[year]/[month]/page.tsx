@@ -167,7 +167,7 @@ export default async function MonthlyPage({
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null
   const canCreateNextMonth =
     nextYear === currentYear &&
-    nextMonth > currentMonth &&
+    nextMonth >= currentMonth &&
     !nextMonthAlreadyCreated
 
   const firstLabel = firstFortnightInfo?.label || `1–15 ${monthName} ${year}`
