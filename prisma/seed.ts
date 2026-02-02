@@ -6,7 +6,7 @@ import {
   PaymentMethodType,
   FortnightPeriod,
 } from '@/generated/prisma/client';
-import { hash } from "bcryptjs";
+import { hash } from 'bcryptjs';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -24,6 +24,7 @@ async function main() {
   await prisma.category.deleteMany();
   await prisma.fortnight.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.incomeTemplate.deleteMany();
 
   /**
    * USERS
@@ -31,8 +32,13 @@ async function main() {
 
   const hashedPassword = await hash('temp1234', 10);
 
-  const jorge = await prisma.user.create({ data: { name: 'Jorge', email: 'jorge@gmail.com', password: hashedPassword } });
-  const carmen = await prisma.user.create({ data: { name: 'Carmen', email: 'carmen@gmail.com', password: hashedPassword } });
+  const john = await prisma.user.create({
+    data: {
+      name: 'john doe',
+      email: 'john@gmail.com',
+      password: hashedPassword,
+    },
+  });
 
   /**
    * HOUSES
@@ -40,9 +46,24 @@ async function main() {
 
   const mainHouse = await prisma.house.create({
     data: {
-      name: `Casa de ${jorge.name}`,
-      owner_id: jorge.id,
-    }
+      name: `Casa de ${john.name}`,
+      owner_id: john.id,
+    },
+  });
+
+  /**
+   * INCOME TEMPLATES
+   */
+  const salaryTemplate = await prisma.incomeTemplate.create({
+    data: {
+      name: 'Salario',
+      suggested_amount: 12207.27,
+      source: 'SALARY',
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      active: true,
+      user_id: john.id,
+    },
   });
 
   /**
@@ -59,16 +80,16 @@ async function main() {
   /**
    * CARDS
    */
-  const liverpoolJorge = await prisma.card.create({
+  const liverpoolJohn = await prisma.card.create({
     data: {
-      name: 'Liverpool Jorge',
+      name: 'Liverpool John',
       payment_method_id: tarjeta.id,
     },
   });
 
-  const liverpoolCarmen = await prisma.card.create({
+  const liverpoolJane = await prisma.card.create({
     data: {
-      name: 'Liverpool Carmen',
+      name: 'Liverpool Jane',
       payment_method_id: tarjeta.id,
     },
   });
@@ -143,13 +164,13 @@ async function main() {
         applies_second_fortnight: true,
       },
       {
-        name: 'AT&T Jorge',
+        name: 'AT&T John',
         category_id: fixed.id,
         is_recurring: true,
         applies_second_fortnight: true,
       },
       {
-        name: 'AT&T Carmen',
+        name: 'AT&T Jane',
         category_id: fixed.id,
         is_recurring: true,
         applies_second_fortnight: true,
@@ -177,12 +198,12 @@ async function main() {
         applies_second_fortnight: true,
       },
       {
-        name: 'Liverpool Carmen',
+        name: 'Liverpool Jane',
         category_id: variable.id,
         applies_first_fortnight: true,
       },
       {
-        name: 'Liverpool Jorge',
+        name: 'Liverpool John',
         category_id: variable.id,
         applies_first_fortnight: true,
       },
@@ -221,31 +242,19 @@ async function main() {
     data: [
       {
         fortnight_id: firstFortnight.id,
-        user_id: jorge.id,
+        user_id: john.id,
         amount: 12207.27,
         source: 'SALARY',
-        house_id: mainHouse.id
-      },
-      {
-        fortnight_id: firstFortnight.id,
-        user_id: carmen.id,
-        amount: 4256.32,
-        source: 'SALARY',
-        house_id: mainHouse.id
+        house_id: mainHouse.id,
+        income_template_id: salaryTemplate.id,
       },
       {
         fortnight_id: secondFortnight.id,
-        user_id: jorge.id,
+        user_id: john.id,
         amount: 12207.27,
         source: 'SALARY',
-        house_id: mainHouse.id
-      },
-      {
-        fortnight_id: secondFortnight.id,
-        user_id: carmen.id,
-        amount: 4256.32,
-        source: 'SALARY',
-        house_id: mainHouse.id
+        house_id: mainHouse.id,
+        income_template_id: salaryTemplate.id,
       },
     ],
   });
@@ -259,10 +268,10 @@ async function main() {
       {
         fortnight_id: firstFortnight.id,
         category_id: variable.id,
-        description: 'Liverpool Jorge',
+        description: 'Liverpool John',
         amount: 1888.87,
-        expense_template_id: templateMap['Liverpool Jorge'].id,
-        card_id: liverpoolJorge.id,
+        expense_template_id: templateMap['Liverpool John'].id,
+        card_id: liverpoolJohn.id,
       },
       {
         fortnight_id: firstFortnight.id,
@@ -274,9 +283,9 @@ async function main() {
       {
         fortnight_id: firstFortnight.id,
         category_id: fixed.id,
-        description: 'AT&T Jorge',
+        description: 'AT&T John',
         amount: 1100,
-        expense_template_id: templateMap['AT&T Jorge'].id,
+        expense_template_id: templateMap['AT&T John'].id,
       },
       {
         fortnight_id: firstFortnight.id,
@@ -288,10 +297,10 @@ async function main() {
       {
         fortnight_id: firstFortnight.id,
         category_id: variable.id,
-        description: 'Liverpool Carmen',
+        description: 'Liverpool Jane',
         amount: 1500,
-        expense_template_id: templateMap['Liverpool Carmen'].id,
-        card_id: liverpoolCarmen.id,
+        expense_template_id: templateMap['Liverpool Jane'].id,
+        card_id: liverpoolJane.id,
       },
       {
         fortnight_id: firstFortnight.id,
@@ -320,7 +329,7 @@ async function main() {
         description: 'C&A Departamental',
         amount: 385,
         expense_template_id: templateMap['C&A Departamental'].id,
-        card_id: liverpoolJorge.id,
+        card_id: liverpoolJohn.id,
       },
       {
         fortnight_id: firstFortnight.id,
@@ -341,16 +350,16 @@ async function main() {
       {
         fortnight_id: secondFortnight.id,
         category_id: fixed.id,
-        description: 'AT&T Jorge',
+        description: 'AT&T John',
         amount: 300,
-        expense_template_id: templateMap['AT&T Jorge'].id,
+        expense_template_id: templateMap['AT&T John'].id,
       },
       {
         fortnight_id: secondFortnight.id,
         category_id: fixed.id,
-        description: 'AT&T Carmen',
+        description: 'AT&T Jane',
         amount: 300,
-        expense_template_id: templateMap['AT&T Carmen'].id,
+        expense_template_id: templateMap['AT&T Jane'].id,
       },
       {
         fortnight_id: secondFortnight.id,
@@ -379,7 +388,7 @@ async function main() {
         description: 'Sears',
         amount: 403.83,
         expense_template_id: templateMap['Sears'].id,
-        card_id: liverpoolJorge.id,
+        card_id: liverpoolJohn.id,
       },
       {
         fortnight_id: secondFortnight.id,
