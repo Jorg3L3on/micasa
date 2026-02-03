@@ -7,10 +7,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
+import { DASHBOARD_CARD_CLASS } from './constants';
 
 type IncomeBreakdownCardProps = {
   data: DashboardData;
@@ -23,58 +23,64 @@ export default function IncomeBreakdownCard({
   const { byPerson, totalIncome } = data.incomeBreakdown;
 
   return (
-    <Card className="card-glass rounded-lg border-border/50">
+    <Card className={DASHBOARD_CARD_CLASS}>
       <CardHeader>
         <CardTitle className="text-base font-medium">
           Desglose de ingresos
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-          <span className="text-sm font-medium text-muted-foreground">
-            Total ingresos
-          </span>
-          <span className="font-bold text-chart-4">
+      <CardContent className="space-y-6">
+        <div className="flex flex-col items-center gap-1 pt-2 pb-2">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <TrendingUp className="size-3.5 shrink-0" aria-hidden />
+            <span className="text-xs font-medium">Total ingresos</span>
+          </div>
+          <p className="text-2xl font-semibold tracking-tight text-chart-4">
             {formatCurrency(totalIncome)}
-          </span>
+          </p>
         </div>
-        <Collapsible open={open} onOpenChange={setOpen}>
-          <CollapsibleTrigger
-            className="flex w-full items-center justify-between rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted/50"
-            aria-label={open ? 'Ocultar detalles' : 'Ver detalles por persona'}
-          >
-            <span>
-              {byPerson.length === 0
-                ? 'Sin desglose por persona'
-                : `Ingresos por persona (${byPerson.length})`}
-            </span>
-            {open ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <ul className="mt-2 space-y-2">
-              {byPerson.map((p) => (
-                <li
-                  key={p.userId}
-                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
-                >
-                  <span className="font-medium">{p.userName}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-chart-4">
-                      {formatCurrency(p.amount)}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {p.percentage.toFixed(1)}%
-                    </Badge>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CollapsibleContent>
-        </Collapsible>
+
+        <div className="border-t border-border/60 pt-4">
+          <Collapsible open={open} onOpenChange={setOpen}>
+            <CollapsibleTrigger
+              className="flex w-full items-center justify-between rounded-md py-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
+              aria-label={
+                open ? 'Ocultar detalles' : 'Ver detalles por persona'
+              }
+            >
+              <span>
+                {byPerson.length === 0
+                  ? 'Sin desglose por persona'
+                  : `Por persona (${byPerson.length})`}
+              </span>
+              {open ? (
+                <ChevronUp className="size-4 shrink-0" aria-hidden />
+              ) : (
+                <ChevronDown className="size-4 shrink-0" aria-hidden />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ul className="mt-2 space-y-2" role="list">
+                {byPerson.map((p) => (
+                  <li
+                    key={p.userId}
+                    className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium">{p.userName}</span>
+                    <div className="flex items-center gap-2 tabular-nums">
+                      <span className="text-chart-4">
+                        {formatCurrency(p.amount)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {p.percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </CardContent>
     </Card>
   );
