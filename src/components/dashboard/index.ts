@@ -8,3 +8,4 @@ export { default as FixedVsVariableCard } from './FixedVsVariableCard';
 export { default as QuickActionsCard } from './QuickActionsCard';
 export { default as AlertsWarningsCard } from './AlertsWarningsCard';
 export { default as PeriodComparisonCard } from './PeriodComparisonCard';
+export { default as DashboardTabs } from './DashboardTabs';
