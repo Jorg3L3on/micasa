@@ -12,7 +12,12 @@ function getCurrentPeriod() {
   return { year, month, period };
 }
 
-function getPreviousPeriod(view: PeriodView, year: number, month: number, period: 'FIRST' | 'SECOND') {
+function getPreviousPeriod(
+  view: PeriodView,
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+) {
   if (view === 'month') {
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
@@ -34,15 +39,21 @@ export async function GET(request: NextRequest) {
     const yearParam = searchParams.get('year');
     const periodParam = searchParams.get('period') as 'FIRST' | 'SECOND' | null;
 
-    const current = monthParam && yearParam
-      ? {
-          year: parseInt(yearParam, 10),
-          month: parseInt(monthParam, 10),
-          period: periodParam || (view === 'biweekly' ? 'FIRST' : 'FIRST'),
-        }
-      : getCurrentPeriod();
+    const current =
+      monthParam && yearParam
+        ? {
+            year: parseInt(yearParam, 10),
+            month: parseInt(monthParam, 10),
+            period: periodParam || (view === 'biweekly' ? 'FIRST' : 'FIRST'),
+          }
+        : getCurrentPeriod();
 
-    const prev = getPreviousPeriod(view, current.year, current.month, current.period);
+    const prev = getPreviousPeriod(
+      view,
+      current.year,
+      current.month,
+      current.period,
+    );
 
     const fortnightWhereCurrent =
       view === 'month'
@@ -56,7 +67,14 @@ export async function GET(request: NextRequest) {
     const [fortnightsCurrent, fortnightsPrev] = await Promise.all([
       prisma.fortnight.findMany({
         where: fortnightWhereCurrent,
-        select: { id: true, start_date: true, end_date: true, month: true, year: true, period: true },
+        select: {
+          id: true,
+          start_date: true,
+          end_date: true,
+          month: true,
+          year: true,
+          period: true,
+        },
       }),
       prisma.fortnight.findMany({
         where: fortnightWherePrev,
@@ -85,7 +103,7 @@ export async function GET(request: NextRequest) {
           expense_template: { select: { is_recurring: true } },
         },
       }),
-      prisma.fortnightIncome.findMany({
+      prisma.income.findMany({
         where: {
           fortnight_id: { in: currentFortnightIds },
           source: { not: '__OVERRIDE__' },
@@ -96,7 +114,7 @@ export async function GET(request: NextRequest) {
         where: { fortnight_id: { in: prevFortnightIds } },
         select: { amount: true, is_paid: true },
       }),
-      prisma.fortnightIncome.findMany({
+      prisma.income.findMany({
         where: {
           fortnight_id: { in: prevFortnightIds },
           source: { not: '__OVERRIDE__' },
@@ -106,12 +124,19 @@ export async function GET(request: NextRequest) {
       prisma.expense.findMany({
         where: { fortnight_id: { in: currentFortnightIds } },
         include: {
-          fortnight: { select: { start_date: true, end_date: true, month: true, year: true } },
+          fortnight: {
+            select: {
+              start_date: true,
+              end_date: true,
+              month: true,
+              year: true,
+            },
+          },
           category: { select: { name: true } },
         },
         orderBy: { created_at: 'desc' },
       }),
-      prisma.fortnightIncome.findMany({
+      prisma.income.findMany({
         where: {
           fortnight_id: { in: currentFortnightIds },
           source: { not: '__OVERRIDE__' },
@@ -120,20 +145,33 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const overrideIncome = incomeCurrent.find((i) => i.source === '__OVERRIDE__');
-    const regularIncome = incomeCurrent.filter((i) => i.source !== '__OVERRIDE__');
+    const overrideIncome = incomeCurrent.find(
+      (i) => i.source === '__OVERRIDE__',
+    );
+    const regularIncome = incomeCurrent.filter(
+      (i) => i.source !== '__OVERRIDE__',
+    );
     const totalIncomeCurrent = overrideIncome
       ? Number(overrideIncome.amount)
       : regularIncome.reduce((s, i) => s + Number(i.amount), 0);
-    const totalExpenseCurrent = expensesCurrent.reduce((s, e) => s + Number(e.amount), 0);
+    const totalExpenseCurrent = expensesCurrent.reduce(
+      (s, e) => s + Number(e.amount),
+      0,
+    );
     const totalPaidCurrent = expensesCurrent
       .filter((e) => e.is_paid)
       .reduce((s, e) => s + Number(e.amount), 0);
     const totalUnpaidCurrent = totalExpenseCurrent - totalPaidCurrent;
     const balanceCurrent = totalIncomeCurrent - totalExpenseCurrent;
 
-    const totalIncomePrev = incomePrev.reduce((s, i) => s + Number(i.amount), 0);
-    const totalExpensePrev = expensesPrev.reduce((s, e) => s + Number(e.amount), 0);
+    const totalIncomePrev = incomePrev.reduce(
+      (s, i) => s + Number(i.amount),
+      0,
+    );
+    const totalExpensePrev = expensesPrev.reduce(
+      (s, e) => s + Number(e.amount),
+      0,
+    );
 
     const userIncomeMap: Record<number, { name: string; amount: number }> = {};
     incomeWithUser.forEach((inc) => {
@@ -145,19 +183,26 @@ export async function GET(request: NextRequest) {
         userIncomeMap[uid].amount += Number(inc.amount);
       }
     });
-    const incomeBreakdown = Object.entries(userIncomeMap).map(([userId, data]) => ({
-      userId: parseInt(userId, 10),
-      userName: data.name,
-      amount: data.amount,
-      percentage: totalIncomeCurrent > 0 ? (data.amount / totalIncomeCurrent) * 100 : 0,
-    }));
+    const incomeBreakdown = Object.entries(userIncomeMap).map(
+      ([userId, data]) => ({
+        userId: parseInt(userId, 10),
+        userName: data.name,
+        amount: data.amount,
+        percentage:
+          totalIncomeCurrent > 0 ? (data.amount / totalIncomeCurrent) * 100 : 0,
+      }),
+    );
 
     const upcomingWithDue = allExpensesUpcoming
       .map((e) => {
         const fort = e.fortnight;
         const dueDay = (e as { due_day?: number | null }).due_day ?? null;
         if (!dueDay || !fort) return null;
-        const dueDate = new Date(fort.year, fort.month - 1, Math.min(dueDay, 28));
+        const dueDate = new Date(
+          fort.year,
+          fort.month - 1,
+          Math.min(dueDay, 28),
+        );
         return {
           id: e.id,
           description: e.description,
@@ -191,7 +236,7 @@ export async function GET(request: NextRequest) {
         fortnight: { select: { label: true, month: true, year: true } },
       },
     });
-    const recentIncomes = await prisma.fortnightIncome.findMany({
+    const recentIncomes = await prisma.income.findMany({
       where: { source: { not: '__OVERRIDE__' } },
       take: 10,
       orderBy: { created_at: 'desc' },
@@ -220,17 +265,23 @@ export async function GET(request: NextRequest) {
         meta: i.fortnight?.label ?? '',
       })),
     ]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      )
       .slice(0, 15);
 
     const fixedExpenses = expensesCurrent.filter(
-      (e) => e.expense_template?.is_recurring === true
+      (e) => e.expense_template?.is_recurring === true,
     );
     const variableExpenses = expensesCurrent.filter(
-      (e) => !e.expense_template || e.expense_template.is_recurring === false
+      (e) => !e.expense_template || e.expense_template.is_recurring === false,
     );
     const totalFixed = fixedExpenses.reduce((s, e) => s + Number(e.amount), 0);
-    const totalVariable = variableExpenses.reduce((s, e) => s + Number(e.amount), 0);
+    const totalVariable = variableExpenses.reduce(
+      (s, e) => s + Number(e.amount),
+      0,
+    );
 
     const overdueInCurrent = upcomingWithDue.filter((o) => {
       if (o.is_paid) return false;
@@ -238,22 +289,37 @@ export async function GET(request: NextRequest) {
       d.setHours(0, 0, 0, 0);
       return d < today;
     });
-    const totalOverdueAmount = overdueInCurrent.reduce((s, o) => s + o.amount, 0);
+    const totalOverdueAmount = overdueInCurrent.reduce(
+      (s, o) => s + o.amount,
+      0,
+    );
     const percentCommitted =
-      totalIncomeCurrent > 0 ? (totalExpenseCurrent / totalIncomeCurrent) * 100 : 0;
+      totalIncomeCurrent > 0
+        ? (totalExpenseCurrent / totalIncomeCurrent) * 100
+        : 0;
     const largestExpense =
       expensesCurrent.length > 0
         ? expensesCurrent.reduce((max, e) =>
-            Number(e.amount) > Number(max.amount) ? e : max
+            Number(e.amount) > Number(max.amount) ? e : max,
           )
         : null;
 
-    const alerts: Array<{ type: string; title: string; description: string; severity: 'error' | 'warning' | 'info' }> = [];
+    const alerts: Array<{
+      type: string;
+      title: string;
+      description: string;
+      severity: 'error' | 'warning' | 'info';
+    }> = [];
     if (overdueInCurrent.length > 0) {
       alerts.push({
         type: 'overdue',
         title: 'Gastos vencidos',
-        description: `${overdueInCurrent.length} gasto(s) vencido(s) por ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalOverdueAmount)}`,
+        description: `${
+          overdueInCurrent.length
+        } gasto(s) vencido(s) por ${new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN',
+        }).format(totalOverdueAmount)}`,
         severity: 'error',
       });
     }
@@ -261,7 +327,9 @@ export async function GET(request: NextRequest) {
       alerts.push({
         type: 'high_commitment',
         title: 'Compromiso alto',
-        description: `El ${Math.round(percentCommitted)}% de tus ingresos está comprometido en gastos.`,
+        description: `El ${Math.round(
+          percentCommitted,
+        )}% de tus ingresos está comprometido en gastos.`,
         severity: 'warning',
       });
     }
@@ -318,8 +386,8 @@ export async function GET(request: NextRequest) {
             totalVariable > 0
               ? (totalFixed / totalVariable).toFixed(1)
               : totalFixed > 0
-                ? '∞'
-                : '0',
+              ? '∞'
+              : '0',
         },
         periodComparison: {
           currentIncome: totalIncomeCurrent,
@@ -331,13 +399,13 @@ export async function GET(request: NextRequest) {
         },
         alerts,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error('Dashboard API error:', error);
     return NextResponse.json(
       { error: 'Failed to load dashboard data' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

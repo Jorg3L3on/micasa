@@ -32,16 +32,17 @@ export default function CategoriesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryOption | null>(
-    null,
-  );
+  const [selectedCategory, setSelectedCategory] =
+    useState<CategoryOption | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await clientFetchFromApi<CategoryOption[]>('/api/categories');
+      const data = await clientFetchFromApi<CategoryOption[]>(
+        '/api/categories',
+      );
       setCategories(data);
     } catch (err) {
       setError(
@@ -82,7 +83,7 @@ export default function CategoriesPage() {
       setSelectedCategory(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to update category';
+        err instanceof Error ? err.message : 'Error al actualizar la categoría';
       setFormError(message);
       throw err;
     }
@@ -99,7 +100,7 @@ export default function CategoriesPage() {
       setSelectedCategory(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to delete category';
+        err instanceof Error ? err.message : 'Error al eliminar la categoría';
       if (
         message.includes('409') ||
         message.includes('in use') ||
@@ -168,6 +169,7 @@ export default function CategoriesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(category)}
+                          aria-label={`Editar ${category.name}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -175,6 +177,7 @@ export default function CategoriesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openDeleteDialog(category)}
+                          aria-label={`Eliminar ${category.name}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -228,7 +231,7 @@ export default function CategoriesPage() {
             }}
             onConfirm={handleDelete}
             title="Eliminar categoría"
-            description="¿Estás seguro de querer eliminar esta categoría? Esta acción no puede ser deshecha."
+            description="¿Estás seguro de querer eliminar esta categoría? Esta acción no puede deshacerse."
             itemName={selectedCategory.name}
           />
         </>

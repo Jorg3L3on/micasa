@@ -15,14 +15,10 @@ export async function GET() {
             name: true,
           },
         },
-        default_card: {
+        wallet: {
           select: {
-            payment_method: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            id: true,
+            name: true,
           },
         },
         expenses: {
@@ -46,12 +42,12 @@ export async function GET() {
       return {
         id: template.id,
         name: template.name,
-        category: template.category.name,
+        category: template.category?.name ?? null,
         suggestedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
           : null,
-        paymentMethod: template.default_card?.payment_method?.name || null,
-        paymentMethodId: template.default_card?.payment_method?.id || null,
+        paymentMethod: template.wallet?.name || null,
+        paymentMethodId: template.wallet?.id || null,
         active: template.active,
         totalEstimatedAmount: totalAmount,
         expenseIds: [], // Will be populated from form selections in UI
@@ -79,18 +75,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createExpenseTemplateSchema.parse(body);
 
-    // Get a card for the payment method if provided
-    let defaultCardId = null;
-    if (validatedData.paymentMethodId) {
-      const card = await prisma.card.findFirst({
-        where: {
-          payment_method_id: validatedData.paymentMethodId,
-          active: true,
-        },
-      });
-      defaultCardId = card?.id || null;
-    }
-
     const template = await prisma.expenseTemplate.create({
       data: {
         name: validatedData.name,
@@ -98,7 +82,7 @@ export async function POST(request: NextRequest) {
         suggested_amount: validatedData.suggestedAmount
           ? validatedData.suggestedAmount.toString()
           : null,
-        default_card_id: defaultCardId,
+        wallet_id: validatedData.paymentMethodId ?? undefined,
         active: validatedData.active ?? true,
         due_day: validatedData.dueDay,
         cutoff_day: validatedData.cutoffDay,
@@ -113,14 +97,10 @@ export async function POST(request: NextRequest) {
             name: true,
           },
         },
-        default_card: {
+        wallet: {
           select: {
-            payment_method: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            id: true,
+            name: true,
           },
         },
       },
@@ -130,12 +110,12 @@ export async function POST(request: NextRequest) {
       {
         id: template.id,
         name: template.name,
-        category: template.category.name,
+        category: template.category?.name ?? null,
         defaultAmount: template.suggested_amount
           ? Number(template.suggested_amount)
           : null,
-        paymentMethod: template.default_card?.payment_method?.name || null,
-        paymentMethodId: template.default_card?.payment_method?.id || null,
+        paymentMethod: template.wallet?.name || null,
+        paymentMethodId: template.wallet?.id || null,
         active: template.active,
         totalEstimatedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
@@ -207,17 +187,7 @@ export async function PUT(request: NextRequest) {
       updateData.active = validatedData.active;
     }
     if (validatedData.paymentMethodId !== undefined) {
-      if (validatedData.paymentMethodId === null) {
-        updateData.default_card_id = null;
-      } else {
-        const card = await prisma.card.findFirst({
-          where: {
-            payment_method_id: validatedData.paymentMethodId,
-            active: true,
-          },
-        });
-        updateData.default_card_id = card?.id || null;
-      }
+      updateData.wallet_id = validatedData.paymentMethodId ?? null;
     }
 
     if (validatedData.dueDay !== undefined) {
@@ -249,14 +219,10 @@ export async function PUT(request: NextRequest) {
             name: true,
           },
         },
-        default_card: {
+        wallet: {
           select: {
-            payment_method: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            id: true,
+            name: true,
           },
         },
         expenses: {
@@ -277,12 +243,12 @@ export async function PUT(request: NextRequest) {
       {
         id: template.id,
         name: template.name,
-        category: template.category.name,
+        category: template.category?.name ?? null,
         suggestedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
           : null,
-        paymentMethod: template.default_card?.payment_method?.name || null,
-        paymentMethodId: template.default_card?.payment_method?.id || null,
+        paymentMethod: template.wallet?.name || null,
+        paymentMethodId: template.wallet?.id || null,
         active: template.active,
         totalEstimatedAmount:
           totalAmount ||
@@ -344,7 +310,9 @@ export async function DELETE(request: NextRequest) {
 
     if (relatedExpenses) {
       return NextResponse.json(
-        { error: 'Expense template is in use and cannot be deleted' },
+        {
+          error: 'La plantilla de gastos está en uso y no puede eliminarse',
+        },
         { status: 409 },
       );
     }

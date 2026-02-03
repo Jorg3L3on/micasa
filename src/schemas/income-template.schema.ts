@@ -16,7 +16,6 @@ export const createIncomeTemplateSchema = z.object({
   appliesSecondFortnight: z.boolean(),
   active: defaultBooleanSchema,
   userId: positiveIntSchema.optional().nullable(),
-  houseId: positiveIntSchema.optional().nullable(),
 });
 
 export const updateIncomeTemplateSchema = z.object({
@@ -27,7 +26,6 @@ export const updateIncomeTemplateSchema = z.object({
   appliesSecondFortnight: z.boolean().optional(),
   active: optionalBooleanSchema,
   userId: positiveIntSchema.optional().nullable(),
-  houseId: positiveIntSchema.optional().nullable(),
 });
 
 export const incomeTemplateSchema = z.object({
@@ -43,9 +41,12 @@ export const incomeTemplateSchema = z.object({
   appliesSecondFortnight: z.boolean(),
   active: z.boolean(),
   userId: z.number().int().positive().optional().nullable(),
-  houseId: z.number().int().positive().optional().nullable(),
 });
 
-export type CreateIncomeTemplateInput = z.infer<typeof createIncomeTemplateSchema>;
-export type UpdateIncomeTemplateInput = z.infer<typeof updateIncomeTemplateSchema>;
+export type CreateIncomeTemplateInput = z.infer<
+  typeof createIncomeTemplateSchema
+>;
+export type UpdateIncomeTemplateInput = z.infer<
+  typeof updateIncomeTemplateSchema
+>;
 export type IncomeTemplateFormValues = z.infer<typeof incomeTemplateSchema>;

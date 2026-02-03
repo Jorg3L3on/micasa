@@ -1,6 +1,7 @@
 'use client';
 
-import { WalletFormValues } from "@/schemas/wallet.schema";
+import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
+import { WalletFormValues } from '@/schemas/wallet.schema';
 
 // Client-side API helpers
 export function getClientApiBaseUrl(): string {
@@ -36,7 +37,9 @@ export async function clientFetchFromApi<T>(
         errorDetails = error.details;
         // If we have details, use them for the message, but also preserve them
         if (errorDetails && errorDetails.length > 0) {
-          errorMessage = error.details.map((d: any) => d.message || d).join(', ');
+          errorMessage = error.details
+            .map((d: any) => d.message || d)
+            .join(', ');
         }
       }
     } catch {
@@ -77,30 +80,14 @@ export async function deleteCategory(id: number) {
   });
 }
 
-export async function createPaymentMethod(data: {
-  name: string;
-  type?: 'CARD' | 'CASH';
-}) {
-  return clientFetchFromApi('/api/payment-methods', {
-    method: 'POST',
-    body: JSON.stringify({ ...data, type: data.type || 'CARD' }),
-  });
-}
-
-export async function updatePaymentMethod(
-  id: number,
-  data: { name?: string; type?: 'CARD' | 'CASH' },
-) {
-  return clientFetchFromApi(`/api/payment-methods?id=${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deletePaymentMethod(id: number) {
-  return clientFetchFromApi(`/api/payment-methods?id=${id}`, {
-    method: 'DELETE',
-  });
+/** Fetches active wallets as payment method options for dropdowns (expenses, templates). */
+export async function getPaymentMethodOptions(): Promise<
+  PaymentMethodOption[]
+> {
+  const wallets = await clientFetchFromApi<WalletListItem[]>('/api/wallets');
+  return wallets
+    .filter((w) => w.active)
+    .map((w) => ({ id: w.id, name: w.name, type: w.type }));
 }
 
 // Expense catalog helpers
@@ -198,7 +185,6 @@ export async function createIncomeTemplate(data: {
   appliesSecondFortnight: boolean;
   active?: boolean;
   userId?: number | null;
-  houseId?: number | null;
 }) {
   return clientFetchFromApi('/api/income-templates', {
     method: 'POST',
@@ -216,7 +202,6 @@ export async function updateIncomeTemplate(
     appliesSecondFortnight?: boolean;
     active?: boolean;
     userId?: number | null;
-    houseId?: number | null;
   },
 ) {
   return clientFetchFromApi(`/api/income-templates?id=${id}`, {
@@ -311,10 +296,7 @@ export async function createWallet(data: WalletFormValues) {
 }
 
 /** Update Wallet **/
-export async function updateWallet(
-  id: number,
-  data: WalletFormValues,
-) {
+export async function updateWallet(id: number, data: WalletFormValues) {
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),

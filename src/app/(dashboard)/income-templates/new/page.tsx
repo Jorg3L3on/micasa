@@ -46,7 +46,6 @@ export default function NewIncomeTemplatePage() {
       appliesSecondFortnight: false,
       active: true,
       userId: null,
-      houseId: null,
     },
   });
 
@@ -81,7 +80,7 @@ export default function NewIncomeTemplatePage() {
           <CardTitle>Nueva plantilla de ingresos</CardTitle>
           <CardDescription>
             Crea una plantilla de ingresos recurrente. Se usará al crear un mes
-            para generar FortnightIncome en las quincenas indicadas.
+            para generar ingresos (Income) en las quincenas indicadas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -157,9 +156,7 @@ export default function NewIncomeTemplatePage() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">
-                  Aplicación por quincena
-                </h3>
+                <h3 className="text-sm font-medium">Aplicación por quincena</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <FormField
                     control={form.control}

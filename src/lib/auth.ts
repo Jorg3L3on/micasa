@@ -34,7 +34,7 @@ export const {
             email: credentials.email as string,
           },
           include: {
-            houses: true,
+            ownedHouses: true,
           },
         });
 
@@ -55,7 +55,7 @@ export const {
           id: String(user.id),
           email: user.email,
           name: user.name,
-          houses: user.houses,
+          houses: user.ownedHouses,
         };
       },
     }),

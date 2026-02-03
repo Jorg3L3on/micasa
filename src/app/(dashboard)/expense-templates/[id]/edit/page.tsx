@@ -25,7 +25,11 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { clientFetchFromApi, updateExpenseTemplate } from '@/lib/api';
+import {
+  clientFetchFromApi,
+  getPaymentMethodOptions,
+  updateExpenseTemplate,
+} from '@/lib/api';
 import Link from 'next/link';
 import {
   expenseTemplateSchema,
@@ -41,9 +45,13 @@ export default function EditExpenseTemplatePage() {
   const router = useRouter();
   const params = useParams();
   const id = Number(params.id);
-  const [template, setTemplate] = useState<ExpenseTemplateListItem | null>(null);
+  const [template, setTemplate] = useState<ExpenseTemplateListItem | null>(
+    null,
+  );
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +79,11 @@ export default function EditExpenseTemplatePage() {
         setLoading(true);
         const [templatesData, categoriesData, paymentMethodsData] =
           await Promise.all([
-            clientFetchFromApi<ExpenseTemplateListItem[]>('/api/expense-templates'),
+            clientFetchFromApi<ExpenseTemplateListItem[]>(
+              '/api/expense-templates',
+            ),
             clientFetchFromApi<CategoryOption[]>('/api/categories'),
-            clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
+            getPaymentMethodOptions(),
           ]);
 
         const foundTemplate = templatesData.find((t) => t.id === id);
@@ -108,7 +118,9 @@ export default function EditExpenseTemplatePage() {
           isSubscription: foundTemplate.isSubscription ?? false,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al cargar los datos');
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar los datos',
+        );
       } finally {
         setLoading(false);
       }
@@ -251,9 +263,7 @@ export default function EditExpenseTemplatePage() {
                       <FormLabel>Método de pago (opcional)</FormLabel>
                       <FormControl>
                         <select
-                          value={
-                            field.value != null ? String(field.value) : ''
-                          }
+                          value={field.value != null ? String(field.value) : ''}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             field.onChange(
                               e.target.value

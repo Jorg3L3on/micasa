@@ -56,13 +56,9 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
-        card: {
+        wallet: {
           select: {
-            payment_method: {
-              select: {
-                name: true,
-              },
-            },
+            name: true,
           },
         },
       },
@@ -84,12 +80,12 @@ export async function GET(request: NextRequest) {
         date: dateStr,
         description: expense.description,
         amount: expense.amount,
-        category: expense.category.name,
-        paymentMethod: expense.card?.payment_method?.name || 'Efectivo',
+        category: expense.category?.name ?? '',
+        paymentMethod: expense.wallet?.name || 'Efectivo',
         type: 'expense',
         is_paid: expense.is_paid,
         payment_date: expense.payment_date,
-        due_day: (expense as any).due_day ?? null,
+        due_day: (expense as { due_day?: number | null }).due_day ?? null,
       };
     });
 
@@ -131,66 +127,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve card_id from payment_method_id if provided
-    let cardId: number | null = validatedData.card_id || null;
-    if (validatedData.payment_method_id && !cardId) {
-      const paymentMethod = await prisma.paymentMethod.findUnique({
-        where: { id: validatedData.payment_method_id },
-      });
+    // Resolve wallet_id from payment_method_id (wallet id) or card_id if provided
+    const walletId =
+      (validatedData as { wallet_id?: number | null }).wallet_id ??
+      validatedData.payment_method_id ??
+      validatedData.card_id ??
+      null;
 
-      if (!paymentMethod) {
+    if (walletId) {
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: walletId },
+      });
+      if (!wallet) {
         return NextResponse.json(
-          { error: 'Payment method not found' },
+          { error: 'Wallet not found' },
           { status: 404 },
         );
-      }
-
-      if (paymentMethod.type === 'CARD') {
-        // Find or create a card for this payment method
-        // Use description as card name if it matches a pattern, otherwise find first active card
-        const card = await prisma.card.findFirst({
-          where: {
-            payment_method_id: validatedData.payment_method_id,
-            active: true,
-          },
-        });
-
-        if (card) {
-          cardId = card.id;
-        } else {
-          // Create a default card for this payment method
-          const newCard = await prisma.card.create({
-            data: {
-              name: `${paymentMethod.name} - ${validatedData.description}`,
-              payment_method_id: validatedData.payment_method_id,
-              active: true,
-            },
-          });
-          cardId = newCard.id;
-        }
-      } else {
-        // CASH payment method, card_id should be null
-        cardId = null;
-      }
-    }
-
-    if (cardId) {
-      const card = await prisma.card.findUnique({
-        where: { id: cardId },
-        include: {
-          payment_method: true,
-        },
-      });
-
-      if (!card) {
-        return NextResponse.json({ error: 'Card not found' }, { status: 404 });
       }
     }
 
     const expense = await prisma.expense.create({
       data: {
         fortnight_id: validatedData.fortnight_id,
-        card_id: cardId,
+        wallet_id: walletId ?? undefined,
         category_id: validatedData.category_id,
         description: validatedData.description,
         amount: validatedData.amount,
@@ -206,13 +165,9 @@ export async function POST(request: NextRequest) {
             name: true,
           },
         },
-        card: {
+        wallet: {
           select: {
-            payment_method: {
-              select: {
-                name: true,
-              },
-            },
+            name: true,
           },
         },
       },
@@ -230,8 +185,8 @@ export async function POST(request: NextRequest) {
       date: dateStr,
       description: expense.description,
       amount: expense.amount,
-      category: expense.category.name,
-      paymentMethod: expense.card?.payment_method?.name || 'Cash',
+      category: expense.category?.name ?? '',
+      paymentMethod: expense.wallet?.name || 'Efectivo',
       type: 'expense',
       is_paid: expense.is_paid,
       payment_date: expense.payment_date,
@@ -289,24 +244,32 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    if (validatedData.card_id) {
-      const card = await prisma.card.findUnique({
-        where: { id: validatedData.card_id },
+    const walletId =
+      (validatedData as { wallet_id?: number | null }).wallet_id ??
+      validatedData.card_id;
+    if (walletId !== undefined) {
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: walletId ?? 0 },
       });
-
-      if (!card) {
+      if (walletId != null && walletId !== 0 && !wallet) {
         return NextResponse.json(
-          { error: 'Payment method not found' },
+          { error: 'Wallet not found' },
           { status: 404 },
         );
       }
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (validatedData.fortnight_id !== undefined)
       updateData.fortnight_id = validatedData.fortnight_id;
-    if (validatedData.card_id !== undefined)
-      updateData.card_id = validatedData.card_id;
+    if (
+      (validatedData as { wallet_id?: number | null }).wallet_id !== undefined
+    )
+      updateData.wallet_id = (
+        validatedData as { wallet_id?: number | null }
+      ).wallet_id;
+    else if (validatedData.card_id !== undefined)
+      updateData.wallet_id = validatedData.card_id;
     if (validatedData.category_id !== undefined)
       updateData.category_id = validatedData.category_id;
     if (validatedData.description !== undefined)
@@ -330,13 +293,9 @@ export async function PUT(request: NextRequest) {
             name: true,
           },
         },
-        card: {
+        wallet: {
           select: {
-            payment_method: {
-              select: {
-                name: true,
-              },
-            },
+            name: true,
           },
         },
       },
@@ -354,8 +313,8 @@ export async function PUT(request: NextRequest) {
       date: dateStr,
       description: expense.description,
       amount: expense.amount,
-      category: expense.category.name,
-      paymentMethod: expense.card?.payment_method?.name || 'Cash',
+      category: expense.category?.name ?? '',
+      paymentMethod: expense.wallet?.name || 'Efectivo',
       type: 'expense',
       is_paid: expense.is_paid,
       payment_date: expense.payment_date,

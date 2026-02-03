@@ -52,7 +52,6 @@ export default function EditIncomeTemplatePage() {
       appliesSecondFortnight: false,
       active: true,
       userId: null,
-      houseId: null,
     },
   });
 
@@ -77,7 +76,6 @@ export default function EditIncomeTemplatePage() {
           appliesSecondFortnight: found.appliesSecondFortnight,
           active: found.active,
           userId: found.userId ?? null,
-          houseId: found.houseId ?? null,
         });
       } catch (err) {
         setError(

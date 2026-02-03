@@ -38,7 +38,9 @@ export default function ExpenseTemplatesPage() {
       );
       setTemplates(templatesData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar los datos',
+      );
     } finally {
       setLoading(false);
     }
@@ -165,6 +167,7 @@ export default function ExpenseTemplatesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(template)}
+                          aria-label={`Editar ${template.name}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -172,6 +175,7 @@ export default function ExpenseTemplatesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openDeleteDialog(template)}
+                          aria-label={`Eliminar ${template.name}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -197,7 +201,7 @@ export default function ExpenseTemplatesPage() {
           }}
           onConfirm={handleDelete}
           title="Eliminar plantilla de gastos"
-          description="¿Estás seguro de querer eliminar esta plantilla de gastos? Esta acción no puede ser deshecha."
+          description="¿Estás seguro de querer eliminar esta plantilla de gastos? Esta acción no puede deshacerse."
           itemName={selectedTemplate.name}
         />
       )}

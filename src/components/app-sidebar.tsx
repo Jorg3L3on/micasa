@@ -85,8 +85,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         pathname.startsWith('/income-templates') ||
         pathname.startsWith('/expenses') ||
         pathname.startsWith('/fortnights') ||
-        pathname.startsWith('/categories') ||
-        pathname.startsWith('/payment-methods'),
+        pathname.startsWith('/categories'),
       items: [
         {
           title: 'Plantillas de gastos',
@@ -117,14 +116,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: 'Carteras',
           url: '/wallets',
           isActive: pathname.startsWith('/wallets'),
-        },
-        /**
-         * TODO: Delete this view (Deprecated)
-         */
-        {
-          title: 'Métodos de pago',
-          url: '/payment-methods',
-          isActive: pathname.startsWith('/payment-methods'),
         },
       ],
     },

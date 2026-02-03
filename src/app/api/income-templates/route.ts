@@ -33,7 +33,6 @@ export async function GET() {
       appliesSecondFortnight: template.applies_second_fortnight,
       active: template.active,
       userId: template.user_id,
-      houseId: template.house_id,
       userName: template.user?.name ?? null,
     }));
 
@@ -63,7 +62,6 @@ export async function POST(request: NextRequest) {
         applies_second_fortnight: validatedData.appliesSecondFortnight,
         active: validatedData.active ?? true,
         user_id: validatedData.userId ?? null,
-        house_id: validatedData.houseId ?? null,
       },
       include: {
         user: {
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
         appliesSecondFortnight: template.applies_second_fortnight,
         active: template.active,
         userId: template.user_id,
-        houseId: template.house_id,
         userName: template.user?.name ?? null,
       },
       { status: 201 },
@@ -143,15 +140,17 @@ export async function PUT(request: NextRequest) {
           ? null
           : validatedData.suggestedAmount.toString();
     }
-    if (validatedData.source !== undefined) updateData.source = validatedData.source;
+    if (validatedData.source !== undefined)
+      updateData.source = validatedData.source;
     if (validatedData.appliesFirstFortnight !== undefined)
       updateData.applies_first_fortnight = validatedData.appliesFirstFortnight;
     if (validatedData.appliesSecondFortnight !== undefined)
       updateData.applies_second_fortnight =
         validatedData.appliesSecondFortnight;
-    if (validatedData.active !== undefined) updateData.active = validatedData.active;
-    if (validatedData.userId !== undefined) updateData.user_id = validatedData.userId;
-    if (validatedData.houseId !== undefined) updateData.house_id = validatedData.houseId;
+    if (validatedData.active !== undefined)
+      updateData.active = validatedData.active;
+    if (validatedData.userId !== undefined)
+      updateData.user_id = validatedData.userId;
 
     const template = await prisma.incomeTemplate.update({
       where: { id: Number(id) },
@@ -178,7 +177,6 @@ export async function PUT(request: NextRequest) {
         appliesSecondFortnight: template.applies_second_fortnight,
         active: template.active,
         userId: template.user_id,
-        houseId: template.house_id,
         userName: template.user?.name ?? null,
       },
       { status: 200 },
@@ -223,15 +221,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const relatedIncome = await prisma.fortnightIncome.findFirst({
+    const relatedIncome = await prisma.income.findFirst({
       where: { income_template_id: Number(id) },
     });
 
     if (relatedIncome) {
       return NextResponse.json(
         {
-          error:
-            'La plantilla de ingresos está en uso y no puede eliminarse',
+          error: 'La plantilla de ingresos está en uso y no puede eliminarse',
         },
         { status: 409 },
       );

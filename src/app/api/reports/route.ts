@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const income = await prisma.fortnightIncome.findMany({
+      const income = await prisma.income.findMany({
         where: incomeWhere,
       });
 
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
 
       const balance = totalIncome - totalExpense;
 
-      // Fetch user income data from FortnightIncome using the user_id relationship
+      // Fetch user income data from Income using the user_id relationship
       let userIncomeData: Array<{
         fortnightId: number;
         userIncome: Array<{ userId: number; userName: string; income: number }>;
@@ -140,97 +140,63 @@ export async function GET(request: NextRequest) {
         const fortnightIds = fortnights.map((f) => f.id);
 
         if (fortnightIds.length > 0) {
-          try {
-            // First, try to fetch with user relationship (if migration has been applied)
-            // Use raw query to check if user_id column exists
-            const tableInfo = await prisma.$queryRaw<
-              Array<{ column_name: string }>
-            >`
-              SELECT column_name 
-              FROM information_schema.columns 
-              WHERE table_name = 'FortnightIncome' 
-              AND column_name = 'user_id'
-            `;
-
-            if (tableInfo && tableInfo.length > 0) {
-              // user_id column exists, fetch with relationship
-              const fortnightIncomes = await prisma.fortnightIncome.findMany({
-                where: {
-                  fortnight_id: { in: fortnightIds },
-                  source: { not: '__OVERRIDE__' },
+          const incomes = await prisma.income.findMany({
+            where: {
+              fortnight_id: { in: fortnightIds },
+              source: { not: '__OVERRIDE__' },
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
                 },
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                },
-              });
+              },
+            },
+          });
 
-              // Group income by fortnight_id and user_id
-              const incomeByFortnight: Record<
-                number,
-                Record<number, number>
-              > = {};
+          // Group income by fortnight_id and user_id
+          const incomeByFortnight: Record<number, Record<number, number>> = {};
 
-              fortnightIncomes.forEach((inc) => {
-                const fortnightId = inc.fortnight_id;
-                const userId = (inc as any).user_id;
-                if (userId) {
-                  const amount = Number(inc.amount);
+          incomes.forEach((inc) => {
+            const fortnightId = inc.fortnight_id;
+            const userId = inc.user_id;
+            if (userId) {
+              const amount = Number(inc.amount);
 
-                  if (!incomeByFortnight[fortnightId]) {
-                    incomeByFortnight[fortnightId] = {};
-                  }
-                  if (!incomeByFortnight[fortnightId][userId]) {
-                    incomeByFortnight[fortnightId][userId] = 0;
-                  }
-                  incomeByFortnight[fortnightId][userId] += amount;
-                }
-              });
+              if (!incomeByFortnight[fortnightId]) {
+                incomeByFortnight[fortnightId] = {};
+              }
+              if (!incomeByFortnight[fortnightId][userId]) {
+                incomeByFortnight[fortnightId][userId] = 0;
+              }
+              incomeByFortnight[fortnightId][userId] += amount;
+            }
+          });
 
-              // Convert to the expected format
-              userIncomeData = Object.entries(incomeByFortnight).map(
-                ([fortnightId, userAmounts]) => {
-                  const userIncome = Object.entries(userAmounts).map(
-                    ([userId, amount]) => {
-                      // Find the user from the first income entry that matches this userId
-                      const incomeEntry = fortnightIncomes.find(
-                        (inc) =>
-                          inc.fortnight_id === parseInt(fortnightId, 10) &&
-                          (inc as any).user_id === parseInt(userId, 10),
-                      );
-                      return {
-                        userId: parseInt(userId, 10),
-                        userName: (incomeEntry as any)?.user?.name || 'Unknown',
-                        income: amount,
-                      };
-                    },
+          // Convert to the expected format
+          userIncomeData = Object.entries(incomeByFortnight).map(
+            ([fortnightId, userAmounts]) => {
+              const userIncome = Object.entries(userAmounts).map(
+                ([userId, amount]) => {
+                  const incomeEntry = incomes.find(
+                    (inc) =>
+                      inc.fortnight_id === parseInt(fortnightId, 10) &&
+                      inc.user_id === parseInt(userId, 10),
                   );
                   return {
-                    fortnightId: parseInt(fortnightId, 10),
-                    userIncome,
+                    userId: parseInt(userId, 10),
+                    userName: incomeEntry?.user?.name || 'Unknown',
+                    income: amount,
                   };
                 },
               );
-            } else {
-              // user_id column doesn't exist yet, return empty array
-              console.warn(
-                'user_id column does not exist in FortnightIncome table. Migration may not be applied yet.',
-              );
-              userIncomeData = [];
-            }
-          } catch (userIncomeError) {
-            // If there's any error, just return empty array
-            // This allows the API to work before the migration is run
-            console.warn(
-              'Could not fetch user income (migration may not be applied yet):',
-              userIncomeError,
-            );
-            userIncomeData = [];
-          }
+              return {
+                fortnightId: parseInt(fortnightId, 10),
+                userIncome,
+              };
+            },
+          );
         }
       }
 
@@ -263,7 +229,7 @@ export async function GET(request: NextRequest) {
 
       const categoryTotals = expenses.reduce(
         (acc: Record<string, number>, expense) => {
-          const categoryName = expense.category.name;
+          const categoryName = expense.category?.name ?? 'Sin categoría';
           if (!acc[categoryName]) {
             acc[categoryName] = 0;
           }
@@ -289,13 +255,9 @@ export async function GET(request: NextRequest) {
       const expenses = await prisma.expense.findMany({
         where,
         include: {
-          card: {
+          wallet: {
             select: {
-              payment_method: {
-                select: {
-                  name: true,
-                },
-              },
+              name: true,
             },
           },
         },
@@ -304,7 +266,7 @@ export async function GET(request: NextRequest) {
       const methodTotals: Record<string, number> = {};
 
       expenses.forEach((expense) => {
-        const methodName = expense.card?.payment_method?.name || 'Efectivo';
+        const methodName = expense.wallet?.name || 'Efectivo';
         if (!methodTotals[methodName]) {
           methodTotals[methodName] = 0;
         }
