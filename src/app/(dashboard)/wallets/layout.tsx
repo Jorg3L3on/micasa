@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Métodos de pago | MiCasa',
-  description: 'Gestiona métodos de pago y tarjetas.',
+  title: 'Carteras | MiCasa',
+  description: 'Gestiona carteras y métodos de pago.',
 };
 
-export default function PaymentMethodsLayout({
+export default function WalletsLayout({
   children,
 }: {
   children: React.ReactNode;

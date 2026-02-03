@@ -75,6 +75,15 @@ export type IncomeTemplateListItem = {
   appliesSecondFortnight: boolean;
   active: boolean;
   userId: number | null;
-  houseId: number | null;
   userName: string | null;
+};
+
+export type WalletListItem = {
+  id: number;
+  name: string;
+  amount: number;
+  type: string;
+  active: boolean;
+  cutoff_day: number | null;
+  due_day: number | null;
 };

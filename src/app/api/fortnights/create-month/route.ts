@@ -8,8 +8,18 @@ const createMonthSchema = z.object({
 });
 
 const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ];
 
 const DEFAULT_AMOUNT = 0.01;
@@ -19,21 +29,23 @@ async function createIncomeFromTemplatesForFortnight(
   fortnightId: number,
   period: 'FIRST' | 'SECOND',
 ): Promise<{ count: number; names: string[] }> {
-  const appliesField =
-    period === 'FIRST' ? 'applies_first_fortnight' : 'applies_second_fortnight';
+  const fortnight = await prisma.fortnight.findUnique({
+    where: { id: fortnightId },
+    select: { start_date: true },
+  });
+  if (!fortnight) return { count: 0, names: [] };
 
   const templates = await prisma.incomeTemplate.findMany({
-    where: {
-      active: true,
-      [appliesField]: true,
-    },
+    where:
+      period === 'FIRST'
+        ? { active: true, applies_first_fortnight: true }
+        : { active: true, applies_second_fortnight: true },
     select: {
       id: true,
       name: true,
       suggested_amount: true,
       source: true,
       user_id: true,
-      house_id: true,
     },
   });
 
@@ -48,7 +60,7 @@ async function createIncomeFromTemplatesForFortnight(
   const created: string[] = [];
 
   for (const template of templates) {
-    const existing = await prisma.fortnightIncome.findFirst({
+    const existing = await prisma.income.findFirst({
       where: {
         fortnight_id: fortnightId,
         income_template_id: template.id,
@@ -58,23 +70,22 @@ async function createIncomeFromTemplatesForFortnight(
     if (existing) continue;
 
     const userId = template.user_id ?? defaultUser?.id;
-    const houseId = template.house_id ?? defaultHouse?.id;
-    if (userId == null || houseId == null) continue;
+    const houseId = defaultHouse?.id;
+    if (userId == null) continue;
 
     const amount =
-      template.suggested_amount != null &&
-      Number(template.suggested_amount) > 0
+      template.suggested_amount != null && Number(template.suggested_amount) > 0
         ? Number(template.suggested_amount)
         : INCOME_TEMPLATE_DEFAULT_AMOUNT;
 
-    await prisma.fortnightIncome.create({
+    await prisma.income.create({
       data: {
         fortnight_id: fortnightId,
         user_id: userId,
-        house_id: houseId,
+        house_id: houseId ?? undefined,
         amount: String(amount),
-        source: template.source,
-        is_deduction: false,
+        source: template.source ?? undefined,
+        received_at: fortnight.start_date,
         income_template_id: template.id,
       },
     });
@@ -103,7 +114,7 @@ async function createExpensesFromTemplatesForFortnight(
       name: true,
       suggested_amount: true,
       category_id: true,
-      default_card_id: true,
+      wallet_id: true,
       due_day: true,
     },
   });
@@ -124,8 +135,7 @@ async function createExpensesFromTemplatesForFortnight(
     if (existing) continue;
 
     const amount =
-      template.suggested_amount != null &&
-      Number(template.suggested_amount) > 0
+      template.suggested_amount != null && Number(template.suggested_amount) > 0
         ? Number(template.suggested_amount)
         : DEFAULT_AMOUNT;
 
@@ -135,9 +145,9 @@ async function createExpensesFromTemplatesForFortnight(
         category_id: categoryId,
         description: template.name,
         amount: String(amount),
-        card_id: template.default_card_id,
+        wallet_id: template.wallet_id ?? undefined,
         expense_template_id: template.id,
-        due_day: template.due_day,
+        due_day: template.due_day ?? undefined,
         is_paid: false,
       },
     });
@@ -166,7 +176,10 @@ export async function POST(request: NextRequest) {
 
     if (month < currentMonth) {
       return NextResponse.json(
-        { error: 'No se pueden crear meses ya pasados. Solo el mes actual o futuros.' },
+        {
+          error:
+            'No se pueden crear meses ya pasados. Solo el mes actual o futuros.',
+        },
         { status: 400 },
       );
     }
@@ -251,6 +264,20 @@ export async function POST(request: NextRequest) {
         await createIncomeFromTemplatesForFortnight(second.id, 'SECOND');
     }
 
+    // When one fortnight already existed, we didn't run template income for it.
+    // Run it now so templates with "applies to both" get income in both fortnights.
+    if (existingFirst) {
+      incomeTemplatesByPeriod.FIRST =
+        await createIncomeFromTemplatesForFortnight(existingFirst.id, 'FIRST');
+    }
+    if (existingSecond) {
+      incomeTemplatesByPeriod.SECOND =
+        await createIncomeFromTemplatesForFortnight(
+          existingSecond.id,
+          'SECOND',
+        );
+    }
+
     const totalExpenses =
       expensesByPeriod.FIRST.count + expensesByPeriod.SECOND.count;
     const totalIncomeFromTemplates =
@@ -262,7 +289,9 @@ export async function POST(request: NextRequest) {
         message:
           created.length === 2
             ? 'Mes creado: ambas quincenas creadas'
-            : `Quincena(s) creada(s): ${created.map((c) => c.label).join(', ')}`,
+            : `Quincena(s) creada(s): ${created
+                .map((c) => c.label)
+                .join(', ')}`,
         created,
         year,
         month,
@@ -287,7 +316,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Año y mes son requeridos (año 2010-2030, mes 1-12)', details: error.issues },
+        {
+          error: 'Año y mes son requeridos (año 2010-2030, mes 1-12)',
+          details: error.issues,
+        },
         { status: 400 },
       );
     }

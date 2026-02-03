@@ -8,21 +8,23 @@ import {
   defaultBooleanSchema,
 } from './common.schema';
 
-// Transaction schemas
+// Transaction schemas (wallet_id = Wallet model; card_id/payment_method_id kept for backward compat)
 export const createTransactionSchema = z.object({
   fortnight_id: positiveIntSchema,
+  wallet_id: positiveIntSchema.nullable().optional(),
   card_id: positiveIntSchema.nullable().optional(),
-  payment_method_id: positiveIntSchema.optional(), // Alternative to card_id
+  payment_method_id: positiveIntSchema.optional(),
   category_id: positiveIntSchema,
   description: z.string().min(1, 'Description is required'),
   amount: positiveAmountSchema,
   is_paid: defaultBooleanSchema,
   payment_date: dateStringSchema.nullable().optional(),
-  expense_template_id: positiveIntSchema.optional(), // For linking to template
+  expense_template_id: positiveIntSchema.optional(),
 });
 
 export const updateTransactionSchema = z.object({
   fortnight_id: positiveIntSchema.optional(),
+  wallet_id: positiveIntSchema.nullable().optional(),
   card_id: positiveIntSchema.nullable().optional(),
   category_id: positiveIntSchema.optional(),
   description: z.string().min(1).optional(),
@@ -40,7 +42,10 @@ export const addExpenseSchema = z
     name: z.string().min(1, 'El nombre es requerido'),
     categoryId: z.number().int().positive('La categoría es requerida'),
     amount: z.number().positive('El monto debe ser mayor a 0'),
-    paymentMethodId: z.number().int().positive('El método de pago es requerido'),
+    paymentMethodId: z
+      .number()
+      .int()
+      .positive('El método de pago es requerido'),
     date: z.string().min(1, 'La fecha es requerida'),
     isPaid: z.boolean(),
     isRecurring: z.boolean(),
@@ -57,7 +62,7 @@ export const addExpenseSchema = z
     {
       message: 'Debe marcar "Es recurrente" para aplicar a ambas quincenas',
       path: ['applyToBothFortnights'],
-    }
+    },
   );
 
 // Type exports

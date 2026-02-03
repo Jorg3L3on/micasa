@@ -30,20 +30,31 @@ enum HouseRole {
   VIEWER
 }
 
+enum TransferType {
+  USER_TO_HOUSE
+}
+
 model User {
   id       Int     @id @default(autoincrement())
   name     String
-  active   Boolean @default(true)
   email    String  @unique
   password String
+  active   Boolean @default(true)
 
   created_at DateTime @default(now())
 
-  // Relationships
-  income           FortnightIncome[]
-  memberships      HouseMember[]
-  houses           House[]
-  income_templates IncomeTemplate[]
+  // Personal finance
+  fortnights       Fortnight[]
+  incomes          Income[]
+  expenses         Expense[]
+  expenseTemplates ExpenseTemplate[]
+  incomeTemplates  IncomeTemplate[]
+  wallets          Wallet[]
+
+  // Shared
+  memberships HouseMember[]
+  ownedHouses House[]
+  transfers   Transfer[]
 }
 
 model Fortnight {
@@ -56,45 +67,17 @@ model Fortnight {
   period     FortnightPeriod
   closed     Boolean         @default(false)
 
+  user_id  Int?
   house_id Int?
 
   created_at DateTime @default(now())
 
   // Relationships
+  house House? @relation(fields: [house_id], references: [id])
+  user  User?  @relation(fields: [user_id], references: [id])
+
   expenses Expense[]
-  income   FortnightIncome[]
-  house    House?            @relation(fields: [house_id], references: [id])
-}
-
-model PaymentMethod {
-  id   Int               @id @default(autoincrement())
-  name String            @unique
-  type PaymentMethodType
-
-  created_at DateTime @default(now())
-
-  // Relationships
-  cards Card[]
-}
-
-model Card {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  cutoff_day  Int?
-  due_day     Int?
-  active      Boolean @default(true)
-
-  payment_method_id Int
-  house_id          Int?
-
-  created_at DateTime @default(now())
-
-  // Relationships
-  expenses          Expense[]
-  expense_templates ExpenseTemplate[]
-  payment_method    PaymentMethod     @relation(fields: [payment_method_id], references: [id])
-  house             House?            @relation(fields: [house_id], references: [id])
+  incomes  Income[]
 }
 
 model Category {
@@ -121,17 +104,19 @@ model ExpenseTemplate {
   cutoff_day               Int?
   active                   Boolean  @default(true)
 
-  category_id     Int?
-  default_card_id Int?
-  house_id        Int?
+  category_id Int?
+  house_id    Int?
+  user_id     Int?
+  wallet_id   Int?
 
   created_at DateTime @default(now())
 
   // Relationships
-  expenses     Expense[]
-  category     Category? @relation(fields: [category_id], references: [id])
-  default_card Card?     @relation(fields: [default_card_id], references: [id])
-  house        House?    @relation(fields: [house_id], references: [id])
+  expenses Expense[]
+  category Category? @relation(fields: [category_id], references: [id])
+  house    House?    @relation(fields: [house_id], references: [id])
+  user     User?     @relation(fields: [user_id], references: [id])
+  wallet   Wallet?   @relation(fields: [wallet_id], references: [id])
 }
 
 model Expense {
@@ -144,38 +129,59 @@ model Expense {
 
   house_id            Int?
   fortnight_id        Int
-  card_id             Int?
-  category_id         Int
+  category_id         Int?
   expense_template_id Int?
+  user_id             Int?
+  wallet_id           Int?
 
   created_at DateTime @default(now())
 
   // Relationships
   fortnight        Fortnight        @relation(fields: [fortnight_id], references: [id])
-  card             Card?            @relation(fields: [card_id], references: [id])
-  category         Category         @relation(fields: [category_id], references: [id])
+  user             User?            @relation(fields: [user_id], references: [id])
+  wallet           Wallet?          @relation(fields: [wallet_id], references: [id])
+  category         Category?        @relation(fields: [category_id], references: [id])
   expense_template ExpenseTemplate? @relation(fields: [expense_template_id], references: [id])
   house            House?           @relation(fields: [house_id], references: [id])
 }
 
-model FortnightIncome {
-  id           Int     @id @default(autoincrement())
-  amount       Decimal @db.Decimal(10, 2)
-  source       String?
-  is_deduction Boolean @default(false)
-  related_loan String?
+model Income {
+  id          Int      @id @default(autoincrement())
+  amount      Decimal  @db.Decimal(10, 2)
+  source      String?
+  received_at DateTime
 
+  user_id            Int?
+  house_id           Int?
   fortnight_id       Int
-  user_id            Int
-  house_id           Int
   income_template_id Int?
   created_at         DateTime @default(now())
 
   // Relationships
   fortnight       Fortnight       @relation(fields: [fortnight_id], references: [id])
-  user            User            @relation(fields: [user_id], references: [id])
-  house           House           @relation(fields: [house_id], references: [id])
+  user            User?           @relation(fields: [user_id], references: [id])
   income_template IncomeTemplate? @relation(fields: [income_template_id], references: [id])
+  house           House?          @relation(fields: [house_id], references: [id])
+}
+
+model IncomeTemplate {
+  id                       Int      @id @default(autoincrement())
+  name                     String
+  suggested_amount         Decimal? @db.Decimal(10, 2)
+  source                   String?
+  applies_first_fortnight  Boolean  @default(false)
+  applies_second_fortnight Boolean  @default(false)
+  active                   Boolean  @default(true)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  incomes Income[]
+  user    User?    @relation(fields: [user_id], references: [id])
+  house   House?   @relation(fields: [house_id], references: [id])
 }
 
 model House {
@@ -186,13 +192,15 @@ model House {
   created_at DateTime @default(now())
 
   // Relationships
+  owner            User?             @relation(fields: [owner_id], references: [id])
   members          HouseMember[]
   fortnights       Fortnight[]
   expenses         Expense[]
   expenseTemplates ExpenseTemplate[]
-  cards            Card[]
-  incomes          FortnightIncome[]
-  owner            User?             @relation(fields: [owner_id], references: [id])
+  wallets          Wallet[]
+  transfersIn      Transfer[]
+  incomes          Income[]
+  incomeTemplates  IncomeTemplate[]
 }
 
 model HouseMember {
@@ -209,30 +217,44 @@ model HouseMember {
 }
 
 model Wallet {
-  id         Int               @id @default(autoincrement())
-  name       String
-  amount     Decimal           @default(0) @db.Decimal(10, 2)
-  type       PaymentMethodType
-  status     Boolean           @default(true)
-  cutoff_day Int?
-  due_day    Int?
-  created_at DateTime          @default(now())
-}
+  id          Int               @id @default(autoincrement())
+  name        String
+  description String?
+  amount      Decimal           @default(0) @db.Decimal(10, 2)
+  type        PaymentMethodType
+  cutoff_day  Int?
+  due_day     Int?
+  active      Boolean           @default(true)
 
-model IncomeTemplate {
-  id                       Int      @id @default(autoincrement())
-  name                     String
-  suggested_amount         Decimal? @db.Decimal(10, 2)
-  source                   String?
-  applies_first_fortnight  Boolean  @default(false)
-  applies_second_fortnight Boolean  @default(false)
-  active                   Boolean  @default(true)
-
-  user_id Int?
+  user_id  Int?
+  house_id Int?
 
   created_at DateTime @default(now())
 
   // Relationships
-  fortnight_incomes FortnightIncome[]
-  user              User?             @relation(fields: [user_id], references: [id])
+  user  User?  @relation(fields: [user_id], references: [id])
+  house House? @relation(fields: [house_id], references: [id])
+
+  expenses          Expense[]
+  expense_templates ExpenseTemplate[]
+}
+
+/**
+ * =========================
+ * TRANSFERS
+ * =========================
+ */
+
+model Transfer {
+  id       Int          @id @default(autoincrement())
+  amount   Decimal      @db.Decimal(10, 2)
+  type     TransferType
+  user_id  Int
+  house_id Int
+  note     String?
+
+  created_at DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [id])
+  house House @relation(fields: [house_id], references: [id])
 }

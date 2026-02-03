@@ -20,8 +20,9 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
   clientFetchFromApi,
   createExpense,
-  updateExpense,
   deleteExpense,
+  getPaymentMethodOptions,
+  updateExpense,
 } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -34,13 +35,16 @@ import type {
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseListItem[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<ExpenseListItem | null>(null);
+  const [selectedExpense, setSelectedExpense] =
+    useState<ExpenseListItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -51,13 +55,15 @@ export default function ExpensesPage() {
         await Promise.all([
           clientFetchFromApi<ExpenseListItem[]>('/api/expenses'),
           clientFetchFromApi<CategoryOption[]>('/api/categories'),
-          clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
+          getPaymentMethodOptions(),
         ]);
       setExpenses(expensesData);
       setCategories(categoriesData);
       setPaymentMethods(paymentMethodsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar los datos',
+      );
     } finally {
       setLoading(false);
     }
@@ -196,7 +202,7 @@ export default function ExpensesPage() {
       setSelectedExpense(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to delete expense';
+        err instanceof Error ? err.message : 'Error al eliminar el gasto';
       if (
         message.includes('409') ||
         message.includes('in use') ||
@@ -271,9 +277,7 @@ export default function ExpensesPage() {
                       {expense.paymentMethod}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={expense.active ? 'default' : 'secondary'}
-                      >
+                      <Badge variant={expense.active ? 'default' : 'secondary'}>
                         {expense.active ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </TableCell>
@@ -283,6 +287,7 @@ export default function ExpensesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(expense)}
+                          aria-label={`Editar ${expense.name}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -290,6 +295,7 @@ export default function ExpensesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openDeleteDialog(expense)}
+                          aria-label={`Eliminar ${expense.name}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -350,7 +356,7 @@ export default function ExpensesPage() {
             }}
             onConfirm={handleDelete}
             title="Eliminar gasto"
-            description="¿Estás seguro de querer eliminar este gasto? Esta acción no puede ser deshecha."
+            description="¿Estás seguro de querer eliminar este gasto? Esta acción no puede deshacerse."
             itemName={selectedExpense.name}
           />
         </>

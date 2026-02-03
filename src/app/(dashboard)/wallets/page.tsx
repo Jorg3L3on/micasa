@@ -1,6 +1,7 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -8,132 +9,146 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import EmptyState from '@/components/EmptyState'
-import WalletForm from '@/components/WalletForm'
-import { WalletFormValues } from '@/schemas/wallet.schema'
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog'
-import { clientFetchFromApi, createWallet, updateWallet, deleteWallet } from '@/lib/api'
-import { BadgeCheck, BookmarkIcon, Pencil, Trash2, WalletIcon } from 'lucide-react'
-import { PaymentMethodType, PAYMENT_METHOD_LABELS } from "@/domain/payment-method";
-import { Badge } from "@/components/ui/badge";
-
-type Wallet = {
-  id: number
-  name: string
-  amount: number
-  type: PaymentMethodType
-  status: boolean
-  cutoff_day: number
-  due_day: number
-}
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/EmptyState';
+import WalletForm from '@/components/WalletForm';
+import { WalletFormValues } from '@/schemas/wallet.schema';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import {
+  clientFetchFromApi,
+  createWallet,
+  updateWallet,
+  deleteWallet,
+} from '@/lib/api';
+import {
+  BadgeCheck,
+  BookmarkIcon,
+  Pencil,
+  Trash2,
+  WalletIcon,
+} from 'lucide-react';
+import {
+  type PaymentMethodType,
+  PAYMENT_METHOD_LABELS,
+} from '@/domain/payment-method';
+import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/lib/utils';
+import type { WalletListItem } from '@/types/catalog';
 
 export default function WalletsPage() {
-  const [wallets, setWallets] = useState<Wallet[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [wallets, setWallets] = useState<WalletListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(
+    null,
+  );
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchWallets = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const data = await clientFetchFromApi<Wallet[]>('/api/wallets')
-      setWallets(data)
+      setLoading(true);
+      setError(null);
+      const data = await clientFetchFromApi<WalletListItem[]>('/api/wallets');
+      setWallets(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch wallets.')
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar las carteras',
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchWallets()
-  }, [])
+    fetchWallets();
+  }, []);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
-      setFormError(null)
+      setFormError(null);
       await createWallet({
         name: data.name,
         amount: data.amount || 0,
         type: data.type,
-        status: true,
+        active: data.active || true,
         cutoff_day: data.cutoff_day || null,
         due_day: data.due_day || null,
-      })
-      await fetchWallets()
-      setCreateDialogOpen(false)
+      });
+      toast.success('Cartera creada');
+      await fetchWallets();
+      setCreateDialogOpen(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create wallet'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error ? err.message : 'Error al crear la cartera';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleEdit = async (data: WalletFormValues) => {
-    if (!selectedWallet) return
+    if (!selectedWallet) return;
     try {
-      setFormError(null)
-      await updateWallet(selectedWallet.id, data)
-      await fetchWallets()
-      setEditDialogOpen(false)
-      setSelectedWallet(null)
+      setFormError(null);
+      await updateWallet(selectedWallet.id, data);
+      toast.success('Cartera actualizada');
+      await fetchWallets();
+      setEditDialogOpen(false);
+      setSelectedWallet(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update wallet'
-      setFormError(message)
-      throw err
+      const message =
+        err instanceof Error ? err.message : 'Error al actualizar la cartera';
+      setFormError(message);
+      throw err;
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!selectedWallet) return
+    if (!selectedWallet) return;
     try {
-      setError(null)
-      await deleteWallet(selectedWallet.id)
-      await fetchWallets()
-      setDeleteDialogOpen(false)
-      setSelectedWallet(null)
+      setError(null);
+      await deleteWallet(selectedWallet.id);
+      toast.success('Cartera eliminada');
+      await fetchWallets();
+      setDeleteDialogOpen(false);
+      setSelectedWallet(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete wallet'
-      if (message.includes('409') || message.includes('in use') || message.includes('Conflict') || message.includes('related')) {
-        setError('Wallet is in use and cannot be deleted')
+      const message =
+        err instanceof Error ? err.message : 'Error al eliminar la cartera';
+      if (
+        message.includes('409') ||
+        message.includes('in use') ||
+        message.includes('Conflict') ||
+        message.includes('related')
+      ) {
+        setError('La cartera está en uso y no puede eliminarse');
       } else {
-        setError(message)
+        setError(message);
       }
     }
-  }
+  };
 
-  const openEditDialog = (wallet: Wallet) => {
-    setSelectedWallet(wallet)
-    setEditDialogOpen(true)
-    setFormError(null)
-  }
+  const openEditDialog = (wallet: WalletListItem) => {
+    setSelectedWallet(wallet);
+    setEditDialogOpen(true);
+    setFormError(null);
+  };
 
-  const openDeleteDialog = (wallet: Wallet) => {
-    setSelectedWallet(wallet)
-    setDeleteDialogOpen(true)
-    setError(null)
-  }
-
-  const formatAmount = (amount: number): string => {
-    return Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(amount);
-  }
+  const openDeleteDialog = (wallet: WalletListItem) => {
+    setSelectedWallet(wallet);
+    setDeleteDialogOpen(true);
+    setError(null);
+  };
 
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
         <Button onClick={() => setCreateDialogOpen(true)}>
-          <WalletIcon/>
+          <WalletIcon />
           Agregar cartera
         </Button>
       </div>
@@ -147,9 +162,11 @@ export default function WalletsPage() {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+            <div className="py-8 text-center text-muted-foreground">
+              Cargando...
+            </div>
           ) : wallets.length === 0 ? (
-            <EmptyState message="No se encontraron carteras"/>
+            <EmptyState message="No se encontraron carteras" />
           ) : (
             <Table>
               <TableHeader>
@@ -162,23 +179,28 @@ export default function WalletsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {wallets.map((wallet: Wallet) => (
-                  <TableRow key={wallet.id} className={wallet.status ? '' : 'text-slate-900/50'}>
+                {wallets.map((wallet) => (
+                  <TableRow
+                    key={wallet.id}
+                    className={wallet.active ? '' : 'text-slate-900/50'}
+                  >
                     <TableCell className="font-medium">{wallet.name}</TableCell>
-                    <TableCell>{formatAmount(wallet.amount)}</TableCell>
-                    <TableCell>{PAYMENT_METHOD_LABELS[wallet.type]}</TableCell>
+                    <TableCell>{formatCurrency(wallet.amount)}</TableCell>
                     <TableCell>
-                      {wallet.status ? (
+                      {PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType]}
+                    </TableCell>
+                    <TableCell>
+                      {wallet.active ? (
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">
                             <BadgeCheck data-icon="inline-start" />
-                            Active
+                            Activo
                           </Badge>
                         </div>
                       ) : (
                         <Badge variant="outline">
                           <BookmarkIcon data-icon="inline-end" />
-                          Archive
+                          Inactivo
                         </Badge>
                       )}
                     </TableCell>
@@ -188,15 +210,17 @@ export default function WalletsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(wallet)}
+                          aria-label={`Editar ${wallet.name}`}
                         >
-                          <Pencil className="h-4 w-4"/>
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => openDeleteDialog(wallet)}
+                          aria-label={`Eliminar ${wallet.name}`}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive"/>
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -211,8 +235,8 @@ export default function WalletsPage() {
       <WalletForm
         open={createDialogOpen}
         onOpenChange={(open) => {
-          setCreateDialogOpen(open)
-          setFormError(null)
+          setCreateDialogOpen(open);
+          setFormError(null);
         }}
         onSubmit={handleCreate}
         mode="create"
@@ -224,32 +248,39 @@ export default function WalletsPage() {
           <WalletForm
             open={editDialogOpen}
             onOpenChange={(open) => {
-              setEditDialogOpen(open)
-              setSelectedWallet(null)
-              setFormError(null)
+              setEditDialogOpen(open);
+              setSelectedWallet(null);
+              setFormError(null);
             }}
             onSubmit={handleEdit}
             mode="edit"
-            defaultValues={selectedWallet}
+            defaultValues={{
+              name: selectedWallet.name,
+              amount: selectedWallet.amount,
+              type: selectedWallet.type as PaymentMethodType,
+              active: selectedWallet.active,
+              cutoff_day: selectedWallet.cutoff_day,
+              due_day: selectedWallet.due_day,
+            }}
             error={formError && editDialogOpen ? formError : null}
           />
 
           <ConfirmDeleteDialog
             open={deleteDialogOpen}
             onOpenChange={(open) => {
-              setDeleteDialogOpen(open)
+              setDeleteDialogOpen(open);
               if (!open) {
-                setSelectedWallet(null)
-                setError(null)
+                setSelectedWallet(null);
+                setError(null);
               }
             }}
             onConfirm={handleDelete}
             title="Eliminar cartera"
-            description="¿Estás seguro de querer eliminar esta cartera? Esta acción no puede ser deshecha."
+            description="¿Estás seguro de querer eliminar esta cartera? Esta acción no puede deshacerse."
             itemName={selectedWallet.name}
           />
         </>
       )}
     </>
-  )
+  );
 }

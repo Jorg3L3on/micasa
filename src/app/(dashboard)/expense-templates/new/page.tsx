@@ -25,7 +25,11 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { clientFetchFromApi, createExpenseTemplate } from '@/lib/api';
+import {
+  clientFetchFromApi,
+  createExpenseTemplate,
+  getPaymentMethodOptions,
+} from '@/lib/api';
 import Link from 'next/link';
 import {
   expenseTemplateSchema,
@@ -36,7 +40,9 @@ import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 export default function NewExpenseTemplatePage() {
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -63,7 +69,7 @@ export default function NewExpenseTemplatePage() {
         setLoading(true);
         const [categoriesData, paymentMethodsData] = await Promise.all([
           clientFetchFromApi<CategoryOption[]>('/api/categories'),
-          clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
+          getPaymentMethodOptions(),
         ]);
         setCategories(categoriesData);
         setPaymentMethods(paymentMethodsData);
@@ -503,7 +509,6 @@ export default function NewExpenseTemplatePage() {
           </Form>
         </CardContent>
       </Card>
-
     </div>
   );
 }

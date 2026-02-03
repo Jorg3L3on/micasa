@@ -33,16 +33,17 @@ export default function FortnightsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedFortnight, setSelectedFortnight] = useState<FortnightListItem | null>(
-    null,
-  );
+  const [selectedFortnight, setSelectedFortnight] =
+    useState<FortnightListItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchFortnights = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await clientFetchFromApi<Fortnight[]>('/api/fortnights');
+      const data = await clientFetchFromApi<FortnightListItem[]>(
+        '/api/fortnights',
+      );
       setFortnights(data);
     } catch (err) {
       setError(
@@ -83,7 +84,7 @@ export default function FortnightsPage() {
       setSelectedFortnight(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to update fortnight';
+        err instanceof Error ? err.message : 'Error al actualizar la quincena';
       setFormError(message);
       throw err;
     }
@@ -169,9 +170,11 @@ export default function FortnightsPage() {
                     </TableCell>
                     <TableCell>{fortnight.startDay}</TableCell>
                     <TableCell>{fortnight.endDay}</TableCell>
-                    <TableCell>{formatMonth(fortnight.month)}</TableCell>
-                    <TableCell>{formatYear(fortnight.year)}</TableCell>
-                    <TableCell>{formatPeriod(fortnight.period)}</TableCell>
+                    <TableCell>{formatMonth(fortnight.month ?? 0)}</TableCell>
+                    <TableCell>{formatYear(fortnight.year ?? 0)}</TableCell>
+                    <TableCell>
+                      {formatPeriod(fortnight.period ?? 'FIRST')}
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -189,6 +192,7 @@ export default function FortnightsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(fortnight)}
+                          aria-label={`Editar ${fortnight.name}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -196,6 +200,7 @@ export default function FortnightsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openDeleteDialog(fortnight)}
+                          aria-label={`Eliminar ${fortnight.name}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -236,9 +241,9 @@ export default function FortnightsPage() {
               startDay: selectedFortnight.startDay,
               endDay: selectedFortnight.endDay,
               active: selectedFortnight.active,
-              month: selectedFortnight.month,
-              year: selectedFortnight.year,
-              period: selectedFortnight.period,
+              month: selectedFortnight.month ?? 1,
+              year: selectedFortnight.year ?? new Date().getFullYear(),
+              period: selectedFortnight.period ?? 'FIRST',
             }}
             error={formError && editDialogOpen ? formError : null}
           />
@@ -254,7 +259,7 @@ export default function FortnightsPage() {
             }}
             onConfirm={handleDelete}
             title="Eliminar quincena"
-            description="¿Estás seguro de querer eliminar esta quincena? Esta acción no puede ser deshecha."
+            description="¿Estás seguro de querer eliminar esta quincena? Esta acción no puede deshacerse."
             itemName={selectedFortnight.name}
           />
         </>

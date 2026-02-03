@@ -12,10 +12,13 @@ import {
 } from '@/components/ui/breadcrumb';
 import Link from 'next/link';
 
-function getPageTitle(pathname: string): { title: string; breadcrumbs: Array<{ label: string; href?: string }> } {
+function getPageTitle(pathname: string): {
+  title: string;
+  breadcrumbs: Array<{ label: string; href?: string }>;
+} {
   // Remove leading slash and split path
   const segments = pathname.split('/').filter(Boolean);
-  
+
   if (segments.length === 0 || segments[0] === 'dashboard') {
     return {
       title: 'Dashboard',
@@ -29,7 +32,10 @@ function getPageTitle(pathname: string): { title: string; breadcrumbs: Array<{ l
 
   // Handle expense-templates
   if (segments[0] === 'expense-templates') {
-    breadcrumbs.push({ label: 'Plantillas de gastos', href: '/expense-templates' });
+    breadcrumbs.push({
+      label: 'Plantillas de gastos',
+      href: '/expense-templates',
+    });
     if (segments[1] === 'new') {
       breadcrumbs.push({ label: 'Nueva plantilla' });
       return { title: 'Nueva plantilla', breadcrumbs };
@@ -46,8 +52,18 @@ function getPageTitle(pathname: string): { title: string; breadcrumbs: Array<{ l
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     const monthName = months[month - 1] || '';
     const title = `${monthName} ${year}`;
@@ -56,18 +72,36 @@ function getPageTitle(pathname: string): { title: string; breadcrumbs: Array<{ l
   }
 
   // Handle fortnight pages
-  if (segments[0] === 'fortnight' && segments[1] && segments[2] && segments[3]) {
+  if (
+    segments[0] === 'fortnight' &&
+    segments[1] &&
+    segments[2] &&
+    segments[3]
+  ) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
     const period = segments[3].toUpperCase();
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     const monthName = months[month - 1] || '';
     const periodLabel = period === 'FIRST' ? '1–15' : '16–31';
     const title = `${periodLabel} ${monthName} ${year}`;
-    breadcrumbs.push({ label: `${monthName} ${year}`, href: `/monthly/${year}/${segments[2]}` });
+    breadcrumbs.push({
+      label: `${monthName} ${year}`,
+      href: `/monthly/${year}/${segments[2]}`,
+    });
     breadcrumbs.push({ label: periodLabel });
     return { title, breadcrumbs };
   }
@@ -76,10 +110,10 @@ function getPageTitle(pathname: string): { title: string; breadcrumbs: Array<{ l
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',
     categories: 'Categorías',
-    'payment-methods': 'Métodos de pago',
     expenses: 'Gastos',
     fortnights: 'Quincenas',
     transactions: 'Transacciones',
+    wallets: 'Carteras',
   };
 
   const pageTitle = pageTitles[segments[0]] || segments[0];

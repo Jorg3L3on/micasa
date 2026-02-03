@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { fetchFromApi } from '@/lib/api-server';
 import {
@@ -14,19 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import TransactionFilters from '@/components/TransactionFilters';
 import { formatDate, formatCurrencySigned } from '@/lib/utils';
-
-export const metadata: Metadata = {
-  title: 'Transacciones | MiCasa',
-  description: 'Historial de transacciones y operaciones.',
-};
-
 import type { TransactionRow } from '@/types/catalog';
 
 async function getTransactions(searchParams: {
   month?: string;
   year?: string;
   type?: string;
-}): Promise<Transaction[]> {
+}): Promise<TransactionRow[]> {
   try {
     const params = new URLSearchParams();
     if (searchParams.month) params.append('month', searchParams.month);
@@ -35,7 +28,9 @@ async function getTransactions(searchParams: {
 
     params.append('is_paid', 'true');
 
-    const endpoint = `/api/transactions${params.toString() ? `?${params.toString()}` : ''}`;
+    const endpoint = `/api/transactions${
+      params.toString() ? `?${params.toString()}` : ''
+    }`;
     return await fetchFromApi<TransactionRow[]>(endpoint);
   } catch (error) {
     console.error('Error fetching transactions:', error);
@@ -90,7 +85,7 @@ async function TransactionsContent({
                       >
                         {formatCurrencySigned(
                           transaction.amount,
-                          transaction.type,
+                          transaction.type ?? 'expense',
                         )}
                       </span>
                     </TableCell>

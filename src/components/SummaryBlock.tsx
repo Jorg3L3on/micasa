@@ -149,7 +149,9 @@ export default function SummaryBlock({
             </span>
             <span className="text-[10px] text-muted-foreground">
               {expenseCount > 0
-                ? `${Math.round((paidExpenseCount / expenseCount) * 100)}% de gastos`
+                ? `${Math.round(
+                    (paidExpenseCount / expenseCount) * 100,
+                  )}% de gastos`
                 : '—'}
             </span>
           </div>
@@ -167,7 +169,9 @@ export default function SummaryBlock({
             </span>
             <span className="text-[10px] text-muted-foreground">
               {expenseCount > 0
-                ? `${Math.round((unpaidExpenseCount / expenseCount) * 100)}% de gastos`
+                ? `${Math.round(
+                    (unpaidExpenseCount / expenseCount) * 100,
+                  )}% de gastos`
                 : '—'}
             </span>
           </div>
@@ -180,9 +184,9 @@ export default function SummaryBlock({
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Desglose de ingresos</h4>
               <div className="space-y-2 text-sm">
-                {userIncome.map((fortnightIncome) => (
-                  <div key={fortnightIncome.fortnightId} className="space-y-1">
-                    {fortnightIncome.userIncome.map((userInc) => (
+                {userIncome.map((periodIncome) => (
+                  <div key={periodIncome.fortnightId} className="space-y-1">
+                    {periodIncome.userIncome.map((userInc) => (
                       <div
                         key={userInc.userId}
                         className="flex justify-between items-center"

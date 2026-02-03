@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import React, { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,50 +18,54 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
-import { clientFetchFromApi } from '@/lib/api'
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { clientFetchFromApi, getPaymentMethodOptions } from '@/lib/api';
 import {
   addExpenseSchema,
   AddExpenseFormValues,
-} from '@/schemas/transaction.schema'
-import type { CategoryOption, PaymentMethodOption } from '@/types/catalog'
+} from '@/schemas/transaction.schema';
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 
 type AddExpenseDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: AddExpenseFormValues) => Promise<void>
-  fortnightLabel: string
-  fortnightId: number
-  year: number
-  month: number
-  period: 'FIRST' | 'SECOND'
-  defaultDate?: string
-  error?: string | null
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: AddExpenseFormValues) => Promise<void>;
+  fortnightLabel: string;
+  fortnightId: number;
+  year: number;
+  month: number;
+  period: 'FIRST' | 'SECOND';
+  defaultDate?: string;
+  error?: string | null;
+};
 
 // Helper to get default date within fortnight
-function getDefaultDateForFortnight(year: number, month: number, period: 'FIRST' | 'SECOND'): string {
-  const today = new Date()
-  const currentYear = today.getFullYear()
-  const currentMonth = today.getMonth() + 1
+function getDefaultDateForFortnight(
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): string {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
 
   // If the requested month/year is the current month, use today's date if it's in the fortnight
   if (year === currentYear && month === currentMonth) {
-    const day = today.getDate()
+    const day = today.getDate();
     if (period === 'FIRST' && day >= 1 && day <= 15) {
-      return today.toISOString().split('T')[0]
+      return today.toISOString().split('T')[0];
     } else if (period === 'SECOND' && day >= 16) {
-      return today.toISOString().split('T')[0]
+      return today.toISOString().split('T')[0];
     }
   }
 
   // Otherwise, use the first day of the fortnight
-  const day = period === 'FIRST' ? 1 : 16
-  const date = new Date(year, month - 1, day)
-  return date.toISOString().split('T')[0]
+  const day = period === 'FIRST' ? 1 : 16;
+  const date = new Date(year, month - 1, day);
+  return date.toISOString().split('T')[0];
 }
 
 export default function AddExpenseDialog({
@@ -76,10 +80,12 @@ export default function AddExpenseDialog({
   defaultDate,
   error,
 }: AddExpenseDialogProps) {
-  const [categories, setCategories] = useState<CategoryOption[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([])
-  const [loading, setLoading] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<AddExpenseFormValues>({
     resolver: zodResolver(addExpenseSchema) as any,
@@ -93,36 +99,37 @@ export default function AddExpenseDialog({
       isRecurring: false,
       applyToBothFortnights: false,
     },
-  })
+  });
 
-  const isRecurring = form.watch('isRecurring')
+  const isRecurring = form.watch('isRecurring');
 
   // Fetch categories and payment methods
   useEffect(() => {
     if (open) {
       const fetchData = async () => {
         try {
-          setLoading(true)
+          setLoading(true);
           const [categoriesData, paymentMethodsData] = await Promise.all([
             clientFetchFromApi<CategoryOption[]>('/api/categories'),
-            clientFetchFromApi<PaymentMethodOption[]>('/api/payment-methods'),
-          ])
-          setCategories(categoriesData)
-          setPaymentMethods(paymentMethodsData)
+            getPaymentMethodOptions(),
+          ]);
+          setCategories(categoriesData);
+          setPaymentMethods(paymentMethodsData);
         } catch (err) {
-          console.error('Error fetching data:', err)
+          console.error('Error fetching data:', err);
         } finally {
-          setLoading(false)
+          setLoading(false);
         }
-      }
-      fetchData()
+      };
+      fetchData();
     }
-  }, [open])
+  }, [open]);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (open) {
-      const defaultDateValue = defaultDate || getDefaultDateForFortnight(year, month, period)
+      const defaultDateValue =
+        defaultDate || getDefaultDateForFortnight(year, month, period);
       form.reset({
         name: '',
         categoryId: 0,
@@ -132,34 +139,34 @@ export default function AddExpenseDialog({
         isPaid: false,
         isRecurring: false,
         applyToBothFortnights: false,
-      })
+      });
     }
-  }, [open, defaultDate, year, month, period, form])
+  }, [open, defaultDate, year, month, period, form]);
 
   const handleSubmit = async (data: AddExpenseFormValues) => {
     try {
-      setIsSubmitting(true)
-      await onSubmit(data)
-      form.reset()
-      onOpenChange(false)
+      setIsSubmitting(true);
+      await onSubmit(data);
+      form.reset();
+      onOpenChange(false);
     } catch (error) {
-      console.error('Error al enviar el formulario:', error)
-      throw error
+      console.error('Error al enviar el formulario:', error);
+      throw error;
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      form.reset()
+      form.reset();
     }
-    onOpenChange(newOpen)
-  }
+    onOpenChange(newOpen);
+  };
 
   // Filter categories to only show expense categories (assuming all are expense categories for now)
   // If you have income categories, you might need to filter them out
-  const expenseCategories = categories
+  const expenseCategories = categories;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -171,7 +178,10 @@ export default function AddExpenseDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit as any)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit as any)}
+            className="space-y-4"
+          >
             {error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
@@ -199,7 +209,9 @@ export default function AddExpenseDialog({
                   <FormControl>
                     <select
                       value={field.value?.toString() || ''}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        field.onChange(parseInt(e.target.value, 10))
+                      }
                       onBlur={field.onBlur}
                       disabled={loading}
                       className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -230,7 +242,9 @@ export default function AddExpenseDialog({
                       placeholder="0.00"
                       {...field}
                       value={field.value || ''}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value) || 0)
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -246,7 +260,9 @@ export default function AddExpenseDialog({
                   <FormControl>
                     <select
                       value={field.value?.toString() || ''}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        field.onChange(parseInt(e.target.value, 10))
+                      }
                       onBlur={field.onBlur}
                       disabled={loading}
                       className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -302,10 +318,10 @@ export default function AddExpenseDialog({
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={(checked) => {
-                        field.onChange(checked)
+                        field.onChange(checked);
                         // If unchecking "Es recurrente", also uncheck "Aplicar a ambas quincenas"
                         if (!checked) {
-                          form.setValue('applyToBothFortnights', false)
+                          form.setValue('applyToBothFortnights', false);
                         }
                       }}
                     />
@@ -351,5 +367,5 @@ export default function AddExpenseDialog({
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
