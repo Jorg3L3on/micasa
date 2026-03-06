@@ -180,22 +180,6 @@ export async function deleteIncomeTemplate(id: number) {
   });
 }
 
-// Fortnight catalog helpers
-export async function createFortnight(data: {
-  name: string;
-  startDay: number;
-  endDay: number;
-  active?: boolean;
-  year: number;
-  month: number;
-  period: 'FIRST' | 'SECOND';
-}) {
-  return clientFetchFromApi('/api/fortnights', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
 export type CreateMonthFortnightsResult = {
   message: string;
   created: Array<{ id: number; label: string; period: string }>;
@@ -232,21 +216,6 @@ export async function createMonthFortnights(
   );
 }
 
-export async function updateFortnight(
-  id: number,
-  data: {
-    name?: string;
-    startDay?: number;
-    endDay?: number;
-    active?: boolean;
-  },
-) {
-  return clientFetchFromApi(`/api/fortnights?id=${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
 /**
  * Wallets
  */
@@ -270,12 +239,6 @@ export async function updateWallet(id: number, data: WalletFormValues) {
 /** Delete Wallet **/
 export async function deleteWallet(id: number) {
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function deleteFortnight(id: number) {
-  return clientFetchFromApi(`/api/fortnights?id=${id}`, {
     method: 'DELETE',
   });
 }

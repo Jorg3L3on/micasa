@@ -15,7 +15,7 @@ It is intentionally high-level so it stays in sync with the existing architectur
 
 ### 2. Fortnights
 
-- **Periods**:
+- **Periods** (deterministic budgeting periods; not editable catalog records):
   - Days **1–15** → `FIRST`
   - Days **16–end of month** → `SECOND`
 - **Uniqueness**:
@@ -26,6 +26,17 @@ It is intentionally high-level so it stays in sync with the existing architectur
   - `getFortnightPeriodForDay(day)` decides `FIRST`/`SECOND`.
   - `resolveOrCreateFortnight({ ownerType, ownerId, year, month, period })`:
     - Finds existing fortnight for the owner or creates one with correct `start_date` / `end_date`.
+
+#### Fortnight lifecycle (deterministic, read-only)
+
+- **Creation**: Fortnights are **only** created via `resolveOrCreateFortnight(...)`. The application has no other code path that performs `prisma.fortnight.create`.
+- **Entry point**: `POST /api/fortnights/create-month` is the sole API that creates fortnights. It calls `resolveOrCreateFortnight` for FIRST and SECOND of a given `(year, month)` for the default user, then expands expense and income templates.
+- **Listing / lookup** (read-only):
+  - `GET /api/fortnights` — returns all fortnights (for UI listing).
+  - `GET /api/fortnights?year=...&month=...&period=...` — returns one fortnight by identity or `null`.
+  - `GET /api/fortnights/created-months` — returns `{ year, month }` pairs that have both fortnights.
+- **Overrides**: `PUT /api/fortnights/{id}/override-amount` stores a fortnight-specific amount override as a special `Income` row (`source = '__OVERRIDE__'`). It does **not** change the fortnight’s period or dates.
+- **No catalog-style mutations**: There are no APIs or services to create, update, or delete fortnights arbitrarily. Labels and date ranges are set at creation by `resolveOrCreateFortnight` and are not editable. This ensures fortnights cannot be changed in ways that would break accounting or period consistency.
 
 ### 3. Wallets
 
