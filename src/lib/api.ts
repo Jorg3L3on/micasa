@@ -90,42 +90,6 @@ export async function getPaymentMethodOptions(): Promise<
     .map((w) => ({ id: w.id, name: w.name, type: w.type }));
 }
 
-// Expense catalog helpers
-export async function createExpense(data: {
-  name: string;
-  categoryId: number;
-  defaultAmount?: number | null;
-  paymentMethodId: number;
-  active?: boolean;
-}) {
-  return clientFetchFromApi('/api/expenses', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateExpense(
-  id: number,
-  data: {
-    name?: string;
-    categoryId?: number;
-    defaultAmount?: number | null;
-    paymentMethodId?: number;
-    active?: boolean;
-  },
-) {
-  return clientFetchFromApi(`/api/expenses?id=${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteExpense(id: number) {
-  return clientFetchFromApi(`/api/expenses?id=${id}`, {
-    method: 'DELETE',
-  });
-}
-
 // ExpenseTemplate catalog helpers
 export async function createExpenseTemplate(data: {
   name: string;

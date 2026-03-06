@@ -5,19 +5,16 @@ import {
   createWalletSchema,
   updateWalletSchema,
 } from '@/schemas/wallet.schema';
+import {
+  listWallets,
+  createWalletForDefaultUser,
+  updateWalletMetadata,
+  deleteWalletIfUnused,
+} from '@/lib/finance/wallet.service';
 
 export async function GET() {
   try {
-    const wallets = await prisma.wallet.findMany({
-      orderBy: [
-        {
-          active: 'desc',
-        },
-        {
-          name: 'asc',
-        },
-      ],
-    });
+    const wallets = await listWallets();
     return NextResponse.json(wallets, { status: 200 });
   } catch (error) {
     console.error('Error fetching wallets:', error);
@@ -33,18 +30,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createWalletSchema.parse(body);
 
-    const wallet = await prisma.wallet.create({
-      data: {
-        name: validatedData.name,
-        amount: validatedData.amount,
-        type: validatedData.type,
-        active: validatedData.active,
-        cutoff_day: validatedData.cutoff_day,
-        due_day: validatedData.due_day,
-      },
-    });
-
-    return NextResponse.json(wallet, { status: 201 });
+    try {
+      const wallet = await createWalletForDefaultUser(validatedData);
+      return NextResponse.json(wallet, { status: 201 });
+    } catch (error: any) {
+      if (error.code === 'NO_DEFAULT_USER') {
+        return NextResponse.json(
+          { error: 'No active user found to own wallet' },
+          { status: 400 },
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -88,10 +85,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const parsedData = updateWalletSchema.parse(body);
 
-    const wallet = await prisma.wallet.update({
-      where: { id },
-      data: parsedData,
-    });
+    const wallet = await updateWalletMetadata(id, parsedData);
 
     return NextResponse.json(wallet, { status: 200 });
   } catch (error) {
@@ -143,25 +137,20 @@ export async function DELETE(request: NextRequest) {
     }
     const id = Number(idParam);
 
-    const relatedExpense = await prisma.expense.findFirst({
-      where: { wallet_id: id },
-    });
-    const relatedExpenseTemplate = await prisma.expenseTemplate.findFirst({
-      where: { wallet_id: id },
-    });
-    if (relatedExpense || relatedExpenseTemplate) {
-      return NextResponse.json(
-        {
-          error:
-            'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
-        },
-        { status: 409 },
-      );
+    try {
+      await deleteWalletIfUnused(id);
+    } catch (error: any) {
+      if (error.code === 'WALLET_IN_USE') {
+        return NextResponse.json(
+          {
+            error:
+              'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
+          },
+          { status: 409 },
+        );
+      }
+      throw error;
     }
-
-    await prisma.wallet.delete({
-      where: { id },
-    });
 
     return NextResponse.json(
       { message: 'Wallet deleted successfully' },

@@ -78,6 +78,11 @@ model Fortnight {
 
   expenses Expense[]
   incomes  Income[]
+
+  @@index([user_id])
+  @@index([house_id])
+  @@unique([user_id, month, year, period])
+  @@unique([house_id, month, year, period])
 }
 
 model Category {
@@ -117,6 +122,9 @@ model ExpenseTemplate {
   house    House?    @relation(fields: [house_id], references: [id])
   user     User?     @relation(fields: [user_id], references: [id])
   wallet   Wallet?   @relation(fields: [wallet_id], references: [id])
+
+  @@index([user_id])
+  @@index([house_id])
 }
 
 model Expense {
@@ -143,6 +151,14 @@ model Expense {
   category         Category?        @relation(fields: [category_id], references: [id])
   expense_template ExpenseTemplate? @relation(fields: [expense_template_id], references: [id])
   house            House?           @relation(fields: [house_id], references: [id])
+
+  transferAsUser Transfer? @relation("TransferUserExpense")
+
+  @@index([user_id])
+  @@index([house_id])
+  @@index([fortnight_id])
+  @@index([wallet_id])
+  @@index([expense_template_id])
 }
 
 model Income {
@@ -162,6 +178,12 @@ model Income {
   user            User?           @relation(fields: [user_id], references: [id])
   income_template IncomeTemplate? @relation(fields: [income_template_id], references: [id])
   house           House?          @relation(fields: [house_id], references: [id])
+
+  transferAsHouse Transfer? @relation("TransferHouseIncome")
+
+  @@index([user_id])
+  @@index([house_id])
+  @@index([fortnight_id])
 }
 
 model IncomeTemplate {
@@ -182,6 +204,9 @@ model IncomeTemplate {
   incomes Income[]
   user    User?    @relation(fields: [user_id], references: [id])
   house   House?   @relation(fields: [house_id], references: [id])
+
+  @@index([user_id])
+  @@index([house_id])
 }
 
 model House {
@@ -237,6 +262,9 @@ model Wallet {
 
   expenses          Expense[]
   expense_templates ExpenseTemplate[]
+
+  @@index([user_id])
+  @@index([house_id])
 }
 
 /**
@@ -255,6 +283,17 @@ model Transfer {
 
   created_at DateTime @default(now())
 
+  // Optional links to accounting entries created from this transfer
+  user_expense_id Int? @unique
+  house_income_id Int? @unique
+
+  user_expense Expense? @relation("TransferUserExpense", fields: [user_expense_id], references: [id])
+  house_income  Income?  @relation("TransferHouseIncome", fields: [house_income_id], references: [id])
+
   user  User  @relation(fields: [user_id], references: [id])
   house House @relation(fields: [house_id], references: [id])
+
+  @@index([user_id])
+  @@index([house_id])
+  @@index([created_at])
 }
