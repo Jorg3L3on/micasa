@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { updatePaidSchema } from '@/schemas/transaction.schema';
+import { toggleExpensePaid } from '@/lib/finance/expense.service';
 
 export async function PATCH(
   request: NextRequest,
@@ -20,24 +21,9 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updatePaidSchema.parse(body);
 
-    const expense = await prisma.expense.update({
-      where: { id: Number(id) },
-      data: {
-        is_paid: validatedData.paid,
-        payment_date: validatedData.paid ? new Date() : null,
-      },
-      include: {
-        category: {
-          select: {
-            name: true,
-          },
-        },
-        wallet: {
-          select: {
-            name: true,
-          },
-        },
-      },
+    const expense = await toggleExpensePaid({
+      id: Number(id),
+      paid: validatedData.paid,
     });
 
     return NextResponse.json(
@@ -67,6 +53,21 @@ export async function PATCH(
       error.code === 'P2025'
     ) {
       return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'EXPENSE_TRANSFER_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se puede cambiar el estado de pago de un gasto generado por una transferencia',
+        },
+        { status: 400 },
+      );
     }
 
     console.error('Error updating expense paid status:', error);

@@ -17,13 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import ExpenseForm from '@/components/ExpenseForm';
 import { ExpenseFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import {
-  clientFetchFromApi,
-  createExpense,
-  deleteExpense,
-  getPaymentMethodOptions,
-  updateExpense,
-} from '@/lib/api';
+import { clientFetchFromApi, getPaymentMethodOptions, createExpenseTemplate, deleteExpenseTemplate, updateExpenseTemplate } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type {
@@ -51,12 +45,11 @@ export default function ExpensesPage() {
     try {
       setLoading(true);
       setError(null);
-      const [expensesData, categoriesData, paymentMethodsData] =
-        await Promise.all([
-          clientFetchFromApi<ExpenseListItem[]>('/api/expenses'),
-          clientFetchFromApi<CategoryOption[]>('/api/categories'),
-          getPaymentMethodOptions(),
-        ]);
+      const [expensesData, categoriesData, paymentMethodsData] = await Promise.all([
+        clientFetchFromApi<ExpenseListItem[]>('/api/expense-templates'),
+        clientFetchFromApi<CategoryOption[]>('/api/categories'),
+        getPaymentMethodOptions(),
+      ]);
       setExpenses(expensesData);
       setCategories(categoriesData);
       setPaymentMethods(paymentMethodsData);
@@ -76,7 +69,20 @@ export default function ExpensesPage() {
   const handleCreate = async (data: ExpenseFormValues) => {
     try {
       setFormError(null);
-      await createExpense(data);
+      await createExpenseTemplate({
+        name: data.name,
+        categoryId: data.categoryId,
+        defaultAmount: data.defaultAmount ?? null,
+        paymentMethodId: data.paymentMethodId ?? null,
+        active: data.active,
+        expenseIds: [],
+        dueDay: 1,
+        cutoffDay: 1,
+        isRecurring: false,
+        appliesFirstFortnight: false,
+        appliesSecondFortnight: false,
+        isSubscription: false,
+      });
       toast.success('Gasto creado');
       await fetchData();
       setCreateDialogOpen(false);
@@ -155,31 +161,20 @@ export default function ExpensesPage() {
       setFormError(null);
 
       // Build update data - always include name and active, only include other fields if valid
-      const updateData: {
-        name?: string;
-        categoryId?: number;
-        defaultAmount?: number | null;
-        paymentMethodId?: number;
-        active?: boolean;
-      } = {
+      await updateExpenseTemplate(selectedExpense.id, {
         name: data.name,
+        categoryId: data.categoryId && data.categoryId > 0 ? data.categoryId : undefined,
+        defaultAmount: data.defaultAmount ?? null,
+        paymentMethodId: data.paymentMethodId && data.paymentMethodId > 0 ? data.paymentMethodId : undefined,
         active: data.active,
-      };
-
-      // Only include categoryId if it's a valid positive number
-      if (data.categoryId && data.categoryId > 0) {
-        updateData.categoryId = data.categoryId;
-      }
-
-      // Only include paymentMethodId if it's a valid positive number
-      if (data.paymentMethodId && data.paymentMethodId > 0) {
-        updateData.paymentMethodId = data.paymentMethodId;
-      }
-
-      // Include defaultAmount (can be null)
-      updateData.defaultAmount = data.defaultAmount ?? null;
-
-      await updateExpense(selectedExpense.id, updateData);
+        expenseIds: [],
+        dueDay: 1,
+        cutoffDay: 1,
+        isRecurring: false,
+        appliesFirstFortnight: false,
+        appliesSecondFortnight: false,
+        isSubscription: false,
+      });
       toast.success('Gasto actualizado');
       await fetchData();
       setEditDialogOpen(false);
@@ -195,7 +190,7 @@ export default function ExpensesPage() {
     if (!selectedExpense) return;
     try {
       setError(null);
-      await deleteExpense(selectedExpense.id);
+      await deleteExpenseTemplate(selectedExpense.id);
       toast.success('Gasto eliminado');
       await fetchData();
       setDeleteDialogOpen(false);

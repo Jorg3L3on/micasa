@@ -5,6 +5,10 @@ import {
   createTransactionSchema,
   updateTransactionSchema,
 } from '@/schemas/transaction.schema';
+import {
+  createExpense,
+  updateExpense,
+} from '@/lib/finance/expense.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -109,90 +113,59 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createTransactionSchema.parse(body);
 
-    if (validatedData.amount <= 0) {
-      return NextResponse.json(
-        { error: 'Amount must be greater than 0' },
-        { status: 400 },
-      );
-    }
-
-    const category = await prisma.category.findUnique({
-      where: { id: validatedData.category_id },
-    });
-
-    if (!category) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 },
-      );
-    }
-
-    // Resolve wallet_id from payment_method_id (wallet id) or card_id if provided
-    const walletId =
-      (validatedData as { wallet_id?: number | null }).wallet_id ??
-      validatedData.payment_method_id ??
-      validatedData.card_id ??
-      null;
-
-    if (walletId) {
-      const wallet = await prisma.wallet.findUnique({
-        where: { id: walletId },
+    try {
+      const transaction = await createExpense({
+        fortnightId: validatedData.fortnight_id,
+        categoryId: validatedData.category_id,
+        description: validatedData.description,
+        amount: validatedData.amount,
+        isPaid: validatedData.is_paid,
+        paymentDate: validatedData.payment_date ?? null,
+        expenseTemplateId: validatedData.expense_template_id ?? null,
+        walletId:
+          (validatedData as { wallet_id?: number | null }).wallet_id ??
+          validatedData.payment_method_id ??
+          validatedData.card_id ??
+          null,
       });
-      if (!wallet) {
+
+      return NextResponse.json(transaction, { status: 201 });
+    } catch (error: any) {
+      if (error.code === 'INVALID_AMOUNT') {
+        return NextResponse.json(
+          { error: 'Amount must be greater than 0' },
+          { status: 400 },
+        );
+      }
+      if (error.code === 'CATEGORY_NOT_FOUND') {
+        return NextResponse.json(
+          { error: 'Category not found' },
+          { status: 404 },
+        );
+      }
+      if (error.code === 'INVALID_FORTNIGHT') {
+        return NextResponse.json(
+          { error: 'Invalid fortnight for this transaction' },
+          { status: 400 },
+        );
+      }
+      if (error.code === 'WALLET_NOT_FOUND') {
         return NextResponse.json(
           { error: 'Wallet not found' },
           { status: 404 },
         );
       }
+      if (error.code === 'INVALID_WALLET_OWNER') {
+        return NextResponse.json(
+          {
+            error:
+              'Wallet does not belong to the same owner (user/house) as the fortnight',
+          },
+          { status: 400 },
+        );
+      }
+      throw error;
     }
-
-    const expense = await prisma.expense.create({
-      data: {
-        fortnight_id: validatedData.fortnight_id,
-        wallet_id: walletId ?? undefined,
-        category_id: validatedData.category_id,
-        description: validatedData.description,
-        amount: validatedData.amount,
-        is_paid: validatedData.is_paid,
-        payment_date: validatedData.payment_date
-          ? new Date(validatedData.payment_date)
-          : null,
-        expense_template_id: validatedData.expense_template_id || null,
-      },
-      include: {
-        category: {
-          select: {
-            name: true,
-          },
-        },
-        wallet: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Normalize date to ISO string format for consistent grouping
-    const dateValue = expense.payment_date || expense.created_at;
-    const dateStr =
-      dateValue instanceof Date
-        ? dateValue.toISOString().split('T')[0]
-        : new Date(dateValue).toISOString().split('T')[0];
-
-    const transaction = {
-      id: expense.id,
-      date: dateStr,
-      description: expense.description,
-      amount: expense.amount,
-      category: expense.category?.name ?? '',
-      paymentMethod: expense.wallet?.name || 'Efectivo',
-      type: 'expense',
-      is_paid: expense.is_paid,
-      payment_date: expense.payment_date,
-    };
-
-    return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -230,97 +203,57 @@ export async function PUT(request: NextRequest) {
         { status: 400 },
       );
     }
-
-    if (validatedData.category_id) {
-      const category = await prisma.category.findUnique({
-        where: { id: validatedData.category_id },
+    try {
+      const transaction = await updateExpense({
+        id: Number(id),
+        fortnightId: validatedData.fortnight_id,
+        categoryId: validatedData.category_id,
+        description: validatedData.description,
+        amount: validatedData.amount,
+        isPaid: validatedData.is_paid,
+        paymentDate: validatedData.payment_date ?? null,
+        walletId:
+          (validatedData as { wallet_id?: number | null }).wallet_id ??
+          validatedData.card_id ??
+          undefined,
       });
 
-      if (!category) {
+      return NextResponse.json(transaction, { status: 200 });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
         return NextResponse.json(
-          { error: 'Category not found' },
+          { error: 'Transaction not found' },
           { status: 404 },
         );
       }
-    }
-
-    const walletId =
-      (validatedData as { wallet_id?: number | null }).wallet_id ??
-      validatedData.card_id;
-    if (walletId !== undefined) {
-      const wallet = await prisma.wallet.findUnique({
-        where: { id: walletId ?? 0 },
-      });
-      if (walletId != null && walletId !== 0 && !wallet) {
+      if (error.code === 'EXPENSE_TRANSFER_LOCKED') {
         return NextResponse.json(
-          { error: 'Wallet not found' },
-          { status: 404 },
+          {
+            error:
+              'No se pueden actualizar gastos generados automáticamente por transferencias',
+          },
+          { status: 400 },
         );
       }
+      if (error.code === 'INVALID_FORTNIGHT') {
+        return NextResponse.json(
+          { error: 'Invalid fortnight for this transaction' },
+          { status: 400 },
+        );
+      }
+      if (
+        error.code === 'INVALID_WALLET_OWNER' ||
+        error.code === 'WALLET_NOT_FOUND'
+      ) {
+        const message =
+          error.code === 'WALLET_NOT_FOUND'
+            ? 'Wallet not found'
+            : error.message ?? 'Invalid wallet owner';
+        const status = error.code === 'WALLET_NOT_FOUND' ? 404 : 400;
+        return NextResponse.json({ error: message }, { status });
+      }
+      throw error;
     }
-
-    const updateData: Record<string, unknown> = {};
-    if (validatedData.fortnight_id !== undefined)
-      updateData.fortnight_id = validatedData.fortnight_id;
-    if (
-      (validatedData as { wallet_id?: number | null }).wallet_id !== undefined
-    )
-      updateData.wallet_id = (
-        validatedData as { wallet_id?: number | null }
-      ).wallet_id;
-    else if (validatedData.card_id !== undefined)
-      updateData.wallet_id = validatedData.card_id;
-    if (validatedData.category_id !== undefined)
-      updateData.category_id = validatedData.category_id;
-    if (validatedData.description !== undefined)
-      updateData.description = validatedData.description;
-    if (validatedData.amount !== undefined)
-      updateData.amount = validatedData.amount;
-    if (validatedData.is_paid !== undefined)
-      updateData.is_paid = validatedData.is_paid;
-    if (validatedData.payment_date !== undefined) {
-      updateData.payment_date = validatedData.payment_date
-        ? new Date(validatedData.payment_date)
-        : null;
-    }
-
-    const expense = await prisma.expense.update({
-      where: { id: Number(id) },
-      data: updateData,
-      include: {
-        category: {
-          select: {
-            name: true,
-          },
-        },
-        wallet: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Normalize date to ISO string format for consistent grouping
-    const dateValue = expense.payment_date || expense.created_at;
-    const dateStr =
-      dateValue instanceof Date
-        ? dateValue.toISOString().split('T')[0]
-        : new Date(dateValue).toISOString().split('T')[0];
-
-    const transaction = {
-      id: expense.id,
-      date: dateStr,
-      description: expense.description,
-      amount: expense.amount,
-      category: expense.category?.name ?? '',
-      paymentMethod: expense.wallet?.name || 'Efectivo',
-      type: 'expense',
-      is_paid: expense.is_paid,
-      payment_date: expense.payment_date,
-    };
-
-    return NextResponse.json(transaction, { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -338,6 +271,35 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'EXPENSE_TRANSFER_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden actualizar gastos generados automáticamente por transferencias',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'INVALID_FORTNIGHT' ||
+        error.code === 'INVALID_WALLET_OWNER' ||
+        error.code === 'WALLET_NOT_FOUND')
+    ) {
+      return NextResponse.json(
+        { error: (error as { message?: string }).message ?? 'Invalid data' },
+        { status: 400 },
       );
     }
 
