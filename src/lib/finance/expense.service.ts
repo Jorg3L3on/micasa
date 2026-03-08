@@ -55,6 +55,48 @@ async function mapExpenseToTransactionDto(expense: any) {
   };
 }
 
+export type ListExpensesOptions = {
+  fortnightIds?: number[];
+  is_paid?: boolean;
+};
+
+export async function listExpenses(
+  userId: number,
+  options?: ListExpensesOptions,
+) {
+  const memberships = await prisma.houseMember.findMany({
+    where: { user_id: userId },
+    select: { house_id: true },
+  });
+  const houseIds = memberships.map((m) => m.house_id);
+
+  const where: {
+    wallet: { OR: { user_id?: number; house_id?: { in: number[] } }[] };
+    fortnight_id?: { in: number[] };
+    is_paid?: boolean;
+  } = {
+    wallet: {
+      OR: [{ user_id: userId }, { house_id: { in: houseIds } }],
+    },
+  };
+
+  if (options?.fortnightIds !== undefined) {
+    where.fortnight_id = { in: options.fortnightIds };
+  }
+  if (options?.is_paid !== undefined) {
+    where.is_paid = options.is_paid;
+  }
+
+  return prisma.expense.findMany({
+    where,
+    include: {
+      category: { select: { name: true } },
+      wallet: { select: { name: true } },
+    },
+    orderBy: { created_at: 'desc' },
+  });
+}
+
 export async function createExpense(input: CreateExpenseInput) {
   const {
     fortnightId,

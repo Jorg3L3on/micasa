@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import {
   createCategorySchema,
   updateCategorySchema,
 } from '@/schemas/category.schema';
 
-export async function GET() {
+
+export async function GET(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+
     const categories = await prisma.category.findMany({
       orderBy: {
         name: 'asc',

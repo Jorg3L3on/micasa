@@ -1,75 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { listExpenses } from '@/lib/finance/expense.service';
 import {
   createTransactionSchema,
   updateTransactionSchema,
 } from '@/schemas/transaction.schema';
-import {
-  createExpense,
-  updateExpense,
-  deleteExpense,
-} from '@/lib/finance/expense.service';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+    const userId = Number(session.user.id);
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { error: 'Usuario inválido' },
+        { status: 400 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const period = searchParams.get('period');
     const type = searchParams.get('type');
+    const isPaidParam = searchParams.get('is_paid');
 
-    const where: any = {};
-
-    const isPaid = searchParams.get('is_paid');
-    if (isPaid) {
-      where.is_paid = isPaid === 'true';
-    }
-
+    let fortnightIds: number[] | undefined;
     if (month || year || period) {
-      const fortnightWhere: any = {};
-      if (month) {
-        fortnightWhere.month = parseInt(month, 10);
-      }
-      if (year) {
-        fortnightWhere.year = parseInt(year, 10);
-      }
-      if (period) {
-        fortnightWhere.period = period;
-      }
+      const memberships = await prisma.houseMember.findMany({
+        where: { user_id: userId },
+        select: { house_id: true },
+      });
+      const houseIds = memberships.map((m) => m.house_id);
 
-      // Find fortnights that match the month/year/period criteria
+      const base: { month?: number; year?: number; period?: 'FIRST' | 'SECOND' } = {};
+      if (month) base.month = parseInt(month, 10);
+      if (year) base.year = parseInt(year, 10);
+      if (period) base.period = period as 'FIRST' | 'SECOND';
+
       const fortnights = await prisma.fortnight.findMany({
-        where: fortnightWhere,
+        where: {
+          OR: [
+            { user_id: userId, house_id: null, ...base },
+            { house_id: { in: houseIds }, user_id: null, ...base },
+          ],
+        },
         select: { id: true },
       });
-
-      const fortnightIds = fortnights.map((f) => f.id);
-      if (fortnightIds.length > 0) {
-        where.fortnight_id = { in: fortnightIds };
-      } else {
-        // No matching fortnights, return empty result
-        where.fortnight_id = { in: [] };
-      }
+      fortnightIds = fortnights.map((f) => f.id);
+      if (fortnightIds.length === 0) fortnightIds = [];
     }
 
-    const expenses = await prisma.expense.findMany({
-      where,
-      include: {
-        category: {
-          select: {
-            name: true,
-          },
-        },
-        wallet: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
+    const is_paid =
+      isPaidParam === 'true'
+        ? true
+        : isPaidParam === 'false'
+          ? false
+          : undefined;
+
+    const expenses = await listExpenses(userId, {
+      fortnightIds,
+      is_paid,
     });
 
     const transactions = expenses.map((expense) => {
@@ -111,62 +107,144 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerType, ownerId } = context;
+
+    let ownerData: { user_id?: number; house_id?: number } = {};
+    if (ownerType === 'user') {
+      ownerData = { user_id: ownerId };
+    }
+    if (ownerType === 'house') {
+      ownerData = { house_id: ownerId };
+    }
+
     const body = await request.json();
     const validatedData = createTransactionSchema.parse(body);
 
-    try {
-      const transaction = await createExpense({
-        fortnightId: validatedData.fortnight_id,
-        categoryId: validatedData.category_id,
-        description: validatedData.description,
-        amount: validatedData.amount,
-        isPaid: validatedData.is_paid,
-        paymentDate: validatedData.payment_date ?? null,
-        expenseTemplateId: validatedData.expense_template_id ?? null,
-        walletId:
-          (validatedData as { wallet_id?: number | null }).wallet_id ??
-          validatedData.payment_method_id ??
-          validatedData.card_id ??
-          null,
-      });
+    if (validatedData.amount <= 0) {
+      return NextResponse.json(
+        { error: 'Amount must be greater than 0' },
+        { status: 400 },
+      );
+    }
 
-      return NextResponse.json(transaction, { status: 201 });
-    } catch (error: any) {
-      if (error.code === 'INVALID_AMOUNT') {
-        return NextResponse.json(
-          { error: 'Amount must be greater than 0' },
-          { status: 400 },
-        );
-      }
-      if (error.code === 'CATEGORY_NOT_FOUND') {
-        return NextResponse.json(
-          { error: 'Category not found' },
-          { status: 404 },
-        );
-      }
-      if (error.code === 'INVALID_FORTNIGHT') {
-        return NextResponse.json(
-          { error: 'Invalid fortnight for this transaction' },
-          { status: 400 },
-        );
-      }
-      if (error.code === 'WALLET_NOT_FOUND') {
+    const category = await prisma.category.findUnique({
+      where: { id: validatedData.category_id },
+    });
+    if (!category) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 },
+      );
+    }
+
+    const fortnight = await prisma.fortnight.findUnique({
+      where: { id: validatedData.fortnight_id },
+      select: { id: true, user_id: true, house_id: true },
+    });
+    if (
+      !fortnight ||
+      (fortnight.user_id == null && fortnight.house_id == null) ||
+      (fortnight.user_id != null && fortnight.house_id != null)
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid fortnight for this transaction' },
+        { status: 400 },
+      );
+    }
+
+    const walletId =
+      (validatedData as { wallet_id?: number | null }).wallet_id ??
+      validatedData.payment_method_id ??
+      validatedData.card_id ??
+      null;
+
+    if (walletId != null) {
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: walletId },
+        select: { id: true, user_id: true, house_id: true },
+      });
+      if (!wallet) {
         return NextResponse.json(
           { error: 'Wallet not found' },
           { status: 404 },
         );
       }
-      if (error.code === 'INVALID_WALLET_OWNER') {
-        return NextResponse.json(
-          {
-            error:
-              'Wallet does not belong to the same owner (user/house) as the fortnight',
-          },
-          { status: 400 },
-        );
+      if (ownerType === 'user') {
+        if (wallet.user_id !== ownerId || wallet.house_id != null) {
+          return NextResponse.json(
+            {
+              error:
+                'Wallet does not belong to the same owner (user/house) as the fortnight',
+            },
+            { status: 400 },
+          );
+        }
+      } else {
+        if (wallet.house_id !== ownerId || wallet.user_id != null) {
+          return NextResponse.json(
+            {
+              error:
+                'Wallet does not belong to the same owner (user/house) as the fortnight',
+            },
+            { status: 400 },
+          );
+        }
       }
-      throw error;
     }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const expense = await tx.expense.create({
+        data: {
+          fortnight_id: validatedData.fortnight_id,
+          category_id: validatedData.category_id,
+          description: validatedData.description,
+          amount: validatedData.amount,
+          is_paid: validatedData.is_paid ?? false,
+          payment_date: validatedData.payment_date
+            ? new Date(validatedData.payment_date)
+            : null,
+          expense_template_id: validatedData.expense_template_id ?? null,
+          wallet_id: walletId ?? undefined,
+          ...ownerData,
+        },
+        include: {
+          category: { select: { name: true } },
+          wallet: { select: { name: true } },
+        },
+      });
+
+      if (expense.is_paid && expense.wallet_id != null) {
+        await tx.wallet.update({
+          where: { id: expense.wallet_id },
+          data: { amount: { decrement: expense.amount } },
+        });
+      }
+
+      return expense;
+    });
+
+    const dateValue = created.payment_date || created.created_at;
+    const dateStr =
+      dateValue instanceof Date
+        ? dateValue.toISOString().split('T')[0]
+        : new Date(dateValue).toISOString().split('T')[0];
+
+    return NextResponse.json(
+      {
+        id: created.id,
+        date: dateStr,
+        description: created.description,
+        amount: created.amount,
+        category: created.category?.name ?? '',
+        paymentMethod: created.wallet?.name || 'Efectivo',
+        type: 'expense',
+        is_paid: created.is_paid,
+        payment_date: created.payment_date,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -185,6 +263,10 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -204,83 +286,22 @@ export async function PUT(request: NextRequest) {
         { status: 400 },
       );
     }
-    try {
-      const transaction = await updateExpense({
-        id: Number(id),
-        fortnightId: validatedData.fortnight_id,
-        categoryId: validatedData.category_id,
-        description: validatedData.description,
-        amount: validatedData.amount,
-        isPaid: validatedData.is_paid,
-        paymentDate: validatedData.payment_date ?? null,
-        walletId:
-          (validatedData as { wallet_id?: number | null }).wallet_id ??
-          validatedData.card_id ??
-          undefined,
-      });
 
-      return NextResponse.json(transaction, { status: 200 });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
-        return NextResponse.json(
-          { error: 'Transaction not found' },
-          { status: 404 },
-        );
-      }
-      if (error.code === 'EXPENSE_TRANSFER_LOCKED') {
-        return NextResponse.json(
-          {
-            error:
-              'No se pueden actualizar gastos generados automáticamente por transferencias',
-          },
-          { status: 400 },
-        );
-      }
-      if (error.code === 'INVALID_FORTNIGHT') {
-        return NextResponse.json(
-          { error: 'Invalid fortnight for this transaction' },
-          { status: 400 },
-        );
-      }
-      if (
-        error.code === 'INVALID_WALLET_OWNER' ||
-        error.code === 'WALLET_NOT_FOUND'
-      ) {
-        const message =
-          error.code === 'WALLET_NOT_FOUND'
-            ? 'Wallet not found'
-            : error.message ?? 'Invalid wallet owner';
-        const status = error.code === 'WALLET_NOT_FOUND' ? 404 : 400;
-        return NextResponse.json({ error: message }, { status });
-      }
-      throw error;
-    }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
-        { status: 400 },
-      );
-    }
+    const existing = await prisma.expense.findFirst({
+      where: { id: Number(id), ...ownerFilter },
+      include: {
+        transferAsUser: { select: { id: true } },
+      },
+    });
 
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      error.code === 'P2025'
-    ) {
+    if (!existing) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
       );
     }
 
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      error.code === 'EXPENSE_TRANSFER_LOCKED'
-    ) {
+    if (existing.transferAsUser != null) {
       return NextResponse.json(
         {
           error:
@@ -290,20 +311,81 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const updateData: {
+      fortnight_id?: number;
+      category_id?: number;
+      description?: string;
+      amount?: number;
+      is_paid?: boolean;
+      payment_date?: Date | null;
+      wallet_id?: number | null;
+    } = {};
+    if (validatedData.fortnight_id !== undefined)
+      updateData.fortnight_id = validatedData.fortnight_id;
+    if (validatedData.category_id !== undefined)
+      updateData.category_id = validatedData.category_id;
+    if (validatedData.description !== undefined)
+      updateData.description = validatedData.description;
+    if (validatedData.amount !== undefined) updateData.amount = validatedData.amount;
+    if (validatedData.is_paid !== undefined)
+      updateData.is_paid = validatedData.is_paid;
+    if (validatedData.payment_date !== undefined) {
+      updateData.payment_date = validatedData.payment_date
+        ? new Date(validatedData.payment_date)
+        : null;
+    }
+    const walletId =
+      (validatedData as { wallet_id?: number | null }).wallet_id ??
+      validatedData.card_id;
+    if (walletId !== undefined) updateData.wallet_id = walletId ?? null;
+
+    const transaction = await prisma.expense.update({
+      where: { id: Number(id), ...ownerFilter },
+      data: updateData,
+      include: {
+        category: { select: { name: true } },
+        wallet: { select: { name: true } },
+      },
+    });
+
+    const dateValue = transaction.payment_date || transaction.created_at;
+    const dateStr =
+      dateValue instanceof Date
+        ? dateValue.toISOString().split('T')[0]
+        : new Date(dateValue).toISOString().split('T')[0];
+
+    return NextResponse.json(
+      {
+        id: transaction.id,
+        date: dateStr,
+        description: transaction.description,
+        amount: transaction.amount,
+        category: transaction.category?.name ?? '',
+        paymentMethod: transaction.wallet?.name || 'Efectivo',
+        type: 'expense',
+        is_paid: transaction.is_paid,
+        payment_date: transaction.payment_date,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
     if (
       error &&
       typeof error === 'object' &&
       'code' in error &&
-      (error.code === 'INVALID_FORTNIGHT' ||
-        error.code === 'INVALID_WALLET_OWNER' ||
-        error.code === 'WALLET_NOT_FOUND')
+      (error as { code: string }).code === 'P2025'
     ) {
       return NextResponse.json(
-        { error: (error as { message?: string }).message ?? 'Invalid data' },
-        { status: 400 },
+        { error: 'Transaction not found' },
+        { status: 404 },
       );
     }
-
     console.error('Error updating transaction:', error);
     return NextResponse.json(
       { error: 'Failed to update transaction' },
@@ -314,6 +396,10 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -324,20 +410,27 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await deleteExpense({ id: Number(id) });
+    const expenseId = Number(id);
 
-    return NextResponse.json(
-      { message: 'Transaction deleted successfully' },
-      { status: 200 },
-    );
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
+    const existing = await prisma.expense.findFirst({
+      where: { id: expenseId, ...ownerFilter },
+      select: {
+        id: true,
+        wallet_id: true,
+        amount: true,
+        is_paid: true,
+        transferAsUser: { select: { id: true } },
+      },
+    });
+
+    if (!existing) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
       );
     }
-    if (error?.code === 'EXPENSE_TRANSFER_LOCKED') {
+
+    if (existing.transferAsUser != null) {
       return NextResponse.json(
         {
           error:
@@ -347,6 +440,34 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    await prisma.$transaction(async (tx) => {
+      if (existing.is_paid === true && existing.wallet_id != null) {
+        await tx.wallet.update({
+          where: { id: existing.wallet_id },
+          data: { amount: { increment: existing.amount } },
+        });
+      }
+      await tx.expense.delete({
+        where: { id: expenseId, ...ownerFilter },
+      });
+    });
+
+    return NextResponse.json(
+      { message: 'Transaction deleted successfully' },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'P2025'
+    ) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 },
+      );
+    }
     console.error('Error deleting transaction:', error);
     return NextResponse.json(
       { error: 'Failed to delete transaction' },

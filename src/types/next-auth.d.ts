@@ -10,6 +10,7 @@ declare module 'next-auth' {
       name: string;
       is_system: boolean;
     };
+    houses?: { id: number; name: string }[];
   }
 
   interface Session {
@@ -18,6 +19,7 @@ declare module 'next-auth' {
       company_id: number;
       company_name: string;
       company_is_system: boolean;
+      houses: { id: number; name: string }[];
     };
   }
 }
@@ -27,5 +29,6 @@ declare module 'next-auth/jwt' {
     company_id?: number;
     company_name?: string;
     company_is_system?: boolean;
+    houses?: { id: number; name: string }[];
   }
 }

@@ -27,7 +27,6 @@ enum HouseRole {
   OWNER
   ADMIN
   MEMBER
-  VIEWER
 }
 
 enum TransferType {
@@ -232,7 +231,7 @@ model HouseMember {
   id       Int       @id @default(autoincrement())
   house_id Int
   user_id  Int
-  role     HouseRole
+  role     HouseRole @default(MEMBER)
 
   created_at DateTime @default(now())
 

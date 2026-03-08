@@ -21,8 +21,8 @@ function getPageTitle(pathname: string): {
 
   if (segments.length === 0 || segments[0] === 'dashboard') {
     return {
-      title: 'Dashboard',
-      breadcrumbs: [{ label: 'Dashboard' }],
+      title: 'Panel',
+      breadcrumbs: [{ label: 'Panel' }],
     };
   }
 
@@ -113,7 +113,7 @@ function getPageTitle(pathname: string): {
     expenses: 'Gastos',
     fortnights: 'Quincenas',
     transactions: 'Transacciones',
-    wallets: 'Carteras',
+    wallets: 'Billeteras',
   };
 
   const pageTitle = pageTitles[segments[0]] || segments[0];

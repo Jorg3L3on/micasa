@@ -1,20 +1,34 @@
 import prisma from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { auth } from '@/lib/auth';
 import {
   createWalletSchema,
   updateWalletSchema,
 } from '@/schemas/wallet.schema';
 import {
   listWallets,
-  createWalletForDefaultUser,
+  createWalletForUser,
   updateWalletMetadata,
   deleteWalletIfUnused,
 } from '@/lib/finance/wallet.service';
 
 export async function GET() {
   try {
-    const wallets = await listWallets();
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const userId = Number(session.user.id);
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { error: 'Usuario inválido' },
+        { status: 400 },
+      );
+    }
+
+    const wallets = await listWallets(userId);
     return NextResponse.json(wallets, { status: 200 });
   } catch (error) {
     console.error('Error fetching wallets:', error);
@@ -27,21 +41,24 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const userId = Number(session.user.id);
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { error: 'Usuario inválido' },
+        { status: 400 },
+      );
+    }
+
     const body = await request.json();
     const validatedData = createWalletSchema.parse(body);
 
-    try {
-      const wallet = await createWalletForDefaultUser(validatedData);
-      return NextResponse.json(wallet, { status: 201 });
-    } catch (error: any) {
-      if (error.code === 'NO_DEFAULT_USER') {
-        return NextResponse.json(
-          { error: 'No active user found to own wallet' },
-          { status: 400 },
-        );
-      }
-      throw error;
-    }
+    const wallet = await createWalletForUser(userId, validatedData);
+    return NextResponse.json(wallet, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

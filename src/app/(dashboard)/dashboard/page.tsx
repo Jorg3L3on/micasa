@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 import { fetchFromApi } from '@/lib/api-server';
 import CreateMonthCard from '@/components/CreateMonthCard';
 import { DashboardTabs } from '@/components/dashboard';
 import type { DashboardData } from '@/types/dashboard';
 
 export const metadata: Metadata = {
-  title: 'Dashboard | MiCasa',
+  title: 'Panel | MiCasa',
   description: 'Resumen de ingresos, gastos y balance por categoría.',
 };
 
@@ -40,6 +43,23 @@ export default async function DashboardPage({
     period?: string;
   }>;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
+
+  const userId = Number(session.user.id);
+  const wallet = await prisma.wallet.findFirst({
+    where: {
+      user_id: userId,
+      house_id: null,
+    },
+  });
+
+  if (!wallet) {
+    redirect('/onboarding');
+  }
+
   const params = await searchParams;
   const dashboardData = await getDashboardData(params);
 
@@ -47,7 +67,7 @@ export default async function DashboardPage({
     return (
       <div className="space-y-6">
         <p className="text-destructive">
-          No se pudo cargar el dashboard. Revisa la conexión e intenta de nuevo.
+          No se pudo cargar el panel. Revisa la conexión e intenta de nuevo.
         </p>
         <CreateMonthCard />
       </div>
