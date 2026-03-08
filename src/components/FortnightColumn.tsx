@@ -315,15 +315,6 @@ export default function FortnightColumn({
   return (
     <>
       <div className="flex flex-col space-y-4">
-        {/* Fortnight Header */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold text-center">
-              {label}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
         {/* Summary Cards */}
         <SummaryBlock
           tenemos={tenemos}

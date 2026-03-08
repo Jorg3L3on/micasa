@@ -8,6 +8,7 @@ import {
 import {
   createExpense,
   updateExpense,
+  deleteExpense,
 } from '@/lib/finance/expense.service';
 
 export async function GET(request: NextRequest) {
@@ -323,24 +324,26 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.expense.delete({
-      where: { id: Number(id) },
-    });
+    await deleteExpense({ id: Number(id) });
 
     return NextResponse.json(
       { message: 'Transaction deleted successfully' },
       { status: 200 },
     );
-  } catch (error) {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      error.code === 'P2025'
-    ) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
+      );
+    }
+    if (error?.code === 'EXPENSE_TRANSFER_LOCKED') {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden eliminar gastos generados automáticamente por transferencias',
+        },
+        { status: 400 },
       );
     }
 
