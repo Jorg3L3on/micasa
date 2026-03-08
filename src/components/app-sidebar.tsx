@@ -58,7 +58,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const navItems = [
     {
-      title: 'Dashboard',
+      title: 'Panel',
       url: '/dashboard',
       icon: LayoutDashboard,
       isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),
@@ -113,7 +113,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           isActive: pathname.startsWith('/categories'),
         },
         {
-          title: 'Carteras',
+          title: 'Billeteras',
           url: '/wallets',
           isActive: pathname.startsWith('/wallets'),
         },

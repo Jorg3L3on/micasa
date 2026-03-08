@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 
 type PeriodView = 'month' | 'biweekly';
@@ -33,6 +34,10 @@ function getPreviousPeriod(
 
 export async function GET(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const view = (searchParams.get('view') as PeriodView) || 'month';
     const monthParam = searchParams.get('month');
@@ -57,12 +62,12 @@ export async function GET(request: NextRequest) {
 
     const fortnightWhereCurrent =
       view === 'month'
-        ? { month: current.month, year: current.year }
-        : { month: current.month, year: current.year, period: current.period };
+        ? { ...ownerFilter, month: current.month, year: current.year }
+        : { ...ownerFilter, month: current.month, year: current.year, period: current.period };
     const fortnightWherePrev =
       view === 'month'
-        ? { month: prev.month, year: prev.year }
-        : { month: prev.month, year: prev.year, period: prev.period };
+        ? { ...ownerFilter, month: prev.month, year: prev.year }
+        : { ...ownerFilter, month: prev.month, year: prev.year, period: prev.period };
 
     const [fortnightsCurrent, fortnightsPrev] = await Promise.all([
       prisma.fortnight.findMany({
@@ -229,6 +234,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 5);
 
     const recentExpenses = await prisma.expense.findMany({
+      where: ownerFilter,
       take: 10,
       orderBy: { created_at: 'desc' },
       include: {
@@ -237,7 +243,7 @@ export async function GET(request: NextRequest) {
       },
     });
     const recentIncomes = await prisma.income.findMany({
-      where: { source: { not: '__OVERRIDE__' } },
+      where: { ...ownerFilter, source: { not: '__OVERRIDE__' } },
       take: 10,
       orderBy: { created_at: 'desc' },
       include: {

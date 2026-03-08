@@ -66,6 +66,7 @@ export const {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.houses = user.houses?.map((h) => ({ id: h.id, name: h.name })) ?? [];
       }
       return token;
     },
@@ -74,6 +75,7 @@ export const {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
+        session.user.houses = token.houses ?? [];
       }
       return session;
     },

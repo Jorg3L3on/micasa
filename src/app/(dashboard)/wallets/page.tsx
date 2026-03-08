@@ -57,7 +57,7 @@ export default function WalletsPage() {
       setWallets(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Error al cargar las carteras',
+        err instanceof Error ? err.message : 'Error al cargar las billeteras',
       );
     } finally {
       setLoading(false);
@@ -79,12 +79,12 @@ export default function WalletsPage() {
         cutoff_day: data.cutoff_day || null,
         due_day: data.due_day || null,
       });
-      toast.success('Cartera creada');
+      toast.success('Billetera creada');
       await fetchWallets();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Error al crear la cartera';
+        err instanceof Error ? err.message : 'Error al crear la billetera';
       setFormError(message);
       throw err;
     }
@@ -95,13 +95,13 @@ export default function WalletsPage() {
     try {
       setFormError(null);
       await updateWallet(selectedWallet.id, data);
-      toast.success('Cartera actualizada');
+      toast.success('Billetera actualizada');
       await fetchWallets();
       setEditDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Error al actualizar la cartera';
+        err instanceof Error ? err.message : 'Error al actualizar la billetera';
       setFormError(message);
       throw err;
     }
@@ -112,20 +112,20 @@ export default function WalletsPage() {
     try {
       setError(null);
       await deleteWallet(selectedWallet.id);
-      toast.success('Cartera eliminada');
+      toast.success('Billetera eliminada');
       await fetchWallets();
       setDeleteDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Error al eliminar la cartera';
+        err instanceof Error ? err.message : 'Error al eliminar la billetera';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict') ||
         message.includes('related')
       ) {
-        setError('La cartera está en uso y no puede eliminarse');
+        setError('La billetera está en uso y no puede eliminarse');
       } else {
         setError(message);
       }
@@ -149,7 +149,7 @@ export default function WalletsPage() {
       <div className="mb-6 flex items-center justify-end">
         <Button onClick={() => setCreateDialogOpen(true)}>
           <WalletIcon />
-          Agregar cartera
+          Agregar billetera
         </Button>
       </div>
 
@@ -166,7 +166,7 @@ export default function WalletsPage() {
               Cargando...
             </div>
           ) : wallets.length === 0 ? (
-            <EmptyState message="No se encontraron carteras" />
+            <EmptyState message="No se encontraron billeteras" />
           ) : (
             <Table>
               <TableHeader>
@@ -174,7 +174,7 @@ export default function WalletsPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Monto</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -275,8 +275,8 @@ export default function WalletsPage() {
               }
             }}
             onConfirm={handleDelete}
-            title="Eliminar cartera"
-            description="¿Estás seguro de querer eliminar esta cartera? Esta acción no puede deshacerse."
+            title="Eliminar billetera"
+            description="¿Estás seguro de querer eliminar esta billetera? Esta acción no puede deshacerse."
             itemName={selectedWallet.name}
           />
         </>

@@ -4,8 +4,24 @@ import type {
   UpdateWalletInput,
 } from '@/schemas/wallet.schema';
 
-export async function listWallets() {
+export async function listWallets(userId: number) {
+  const memberships = await prisma.houseMember.findMany({
+    where: {
+      user_id: userId,
+    },
+    select: {
+      house_id: true,
+    },
+  });
+  const houseIds = memberships.map((m) => m.house_id);
+
   return prisma.wallet.findMany({
+    where: {
+      OR: [
+        { user_id: userId },
+        { house_id: { in: houseIds } },
+      ],
+    },
     orderBy: [
       { active: 'desc' },
       { name: 'asc' },
@@ -34,6 +50,24 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
       user_id: defaultUser.id,
+      house_id: null,
+    },
+  });
+}
+
+export async function createWalletForUser(
+  userId: number,
+  data: CreateWalletInput,
+) {
+  return prisma.wallet.create({
+    data: {
+      name: data.name,
+      amount: data.amount,
+      type: data.type,
+      active: data.active,
+      cutoff_day: data.cutoff_day,
+      due_day: data.due_day,
+      user_id: userId,
       house_id: null,
     },
   });

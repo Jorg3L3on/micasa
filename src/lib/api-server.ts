@@ -8,9 +8,12 @@ export async function getApiBaseUrl(): Promise<string> {
 }
 
 export async function fetchFromApi<T>(endpoint: string): Promise<T> {
+  const headersList = await headers()
   const baseUrl = await getApiBaseUrl()
+  const cookie = headersList.get('cookie')
   const res = await fetch(`${baseUrl}${endpoint}`, {
     cache: 'no-store',
+    headers: cookie ? { cookie } : undefined,
   })
 
   if (!res.ok) {

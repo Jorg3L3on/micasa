@@ -106,7 +106,7 @@ export default function WalletForm({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {mode === 'create' ? 'Agregar cartera' : 'Editar cartera'}
+            {mode === 'create' ? 'Agregar billetera' : 'Editar billetera'}
           </DialogTitle>
           <DialogDescription>
             {mode === 'create'
@@ -131,7 +131,7 @@ export default function WalletForm({
                 <FormItem>
                   <FormLabel>Nombre</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nombre de la cartera" {...field} />
+                    <Input placeholder="Nombre de la billetera" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

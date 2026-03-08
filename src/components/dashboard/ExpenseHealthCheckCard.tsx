@@ -32,7 +32,7 @@ export default function ExpenseHealthCheckCard({
           <div className="flex flex-col items-center gap-1 pt-2 pb-2">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Percent className="size-3.5 shrink-0" aria-hidden />
-              <span className="text-xs font-medium">Ingresos comprometido</span>
+              <span className="text-xs font-medium">Ingresos comprometidos</span>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
