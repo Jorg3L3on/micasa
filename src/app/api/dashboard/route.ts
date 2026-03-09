@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.income.findMany({
         where: {
+          ...ownerFilter,
           fortnight_id: { in: currentFortnightIds },
           source: { not: '__OVERRIDE__' },
         },
@@ -121,6 +122,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.income.findMany({
         where: {
+          ...ownerFilter,
           fortnight_id: { in: prevFortnightIds },
           source: { not: '__OVERRIDE__' },
         },
@@ -143,6 +145,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.income.findMany({
         where: {
+          ...ownerFilter,
           fortnight_id: { in: currentFortnightIds },
           source: { not: '__OVERRIDE__' },
         },

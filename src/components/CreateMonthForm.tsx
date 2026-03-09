@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights, getCreatedMonths } from '@/lib/api';
 import { formatMonth } from '@/lib/utils';
 
@@ -28,6 +30,9 @@ export default function CreateMonthForm({
   onSuccess,
   idPrefix = 'create-month',
 }: CreateMonthFormProps) {
+  const { context } = useFinanceContext();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [createdMonths, setCreatedMonths] = useState<
     Array<{ year: number; month: number }>
   >([]);
@@ -68,7 +73,7 @@ export default function CreateMonthForm({
     const fetchCreated = async () => {
       try {
         setLoadingMonths(true);
-        const list = await getCreatedMonths();
+        const list = await getCreatedMonths(context);
         setCreatedMonths(list);
       } catch {
         setCreatedMonths([]);
@@ -77,7 +82,7 @@ export default function CreateMonthForm({
       }
     };
     fetchCreated();
-  }, [lastCreated]);
+  }, [lastCreated, context]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +98,7 @@ export default function CreateMonthForm({
     try {
       setSubmitting(true);
       setLastCreated(null);
-      const result = await createMonthFortnights(y, m);
+      const result = await createMonthFortnights(y, m, context);
       setLastCreated({ year: y, month: m });
       setCreatedMonths((prev) => [...prev, { year: y, month: m }]);
       setSelectedKey('');
@@ -192,7 +197,7 @@ export default function CreateMonthForm({
         {lastCreated && (
           <Button variant="outline" size="sm" asChild>
             <Link
-              href={`/monthly/${lastCreated.year}/${monthPadded}`}
+              href={`/monthly/${lastCreated.year}/${monthPadded}${queryString ? `?${queryString}` : ''}`}
               aria-label={`Ver mes ${formatMonth(lastCreated.month)} ${
                 lastCreated.year
               }`}

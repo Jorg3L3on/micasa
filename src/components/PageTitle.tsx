@@ -111,7 +111,6 @@ function getPageTitle(pathname: string): {
     account: 'Cuenta',
     categories: 'Categorías',
     expenses: 'Gastos',
-    fortnights: 'Quincenas',
     transactions: 'Transacciones',
     wallets: 'Billeteras',
   };

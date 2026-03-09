@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -15,6 +18,9 @@ export default function FortnightHeader({
   period,
   label,
 }: FortnightHeaderProps) {
+  const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const suffix = queryString ? `?${queryString}` : ''
   let prevYear = year
   let prevMonth = month
   let prevPeriod: 'FIRST' | 'SECOND' = 'FIRST'
@@ -55,14 +61,14 @@ export default function FortnightHeader({
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" asChild>
           <Link
-            href={`/fortnight/${prevYear}/${prevMonth.toString().padStart(2, '0')}/${prevPeriod}`}
+            href={`/fortnight/${prevYear}/${prevMonth.toString().padStart(2, '0')}/${prevPeriod}${suffix}`}
           >
             <ChevronLeft className="h-4 w-4" />
           </Link>
         </Button>
         <Button variant="ghost" size="icon" asChild>
           <Link
-            href={`/fortnight/${nextYear}/${nextMonth.toString().padStart(2, '0')}/${nextPeriod}`}
+            href={`/fortnight/${nextYear}/${nextMonth.toString().padStart(2, '0')}/${nextPeriod}${suffix}`}
           >
             <ChevronRight className="h-4 w-4" />
           </Link>

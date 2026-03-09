@@ -1,34 +1,24 @@
-import prisma from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
 import {
   createWalletSchema,
   updateWalletSchema,
 } from '@/schemas/wallet.schema';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
-  listWallets,
-  createWalletForUser,
-  updateWalletMetadata,
-  deleteWalletIfUnused,
+  listWalletsByOwner,
+  createWalletForOwner,
+  updateWalletMetadataForOwner,
+  deleteWalletIfUnusedForOwner,
 } from '@/lib/finance/wallet.service';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
 
-    const userId = Number(session.user.id);
-    if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: 'Usuario inválido' },
-        { status: 400 },
-      );
-    }
-
-    const wallets = await listWallets(userId);
+    const wallets = await listWalletsByOwner(ownerFilter);
     return NextResponse.json(wallets, { status: 200 });
   } catch (error) {
     console.error('Error fetching wallets:', error);
@@ -41,23 +31,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const userId = Number(session.user.id);
-    if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: 'Usuario inválido' },
-        { status: 400 },
-      );
-    }
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerType, ownerId } = context;
 
     const body = await request.json();
     const validatedData = createWalletSchema.parse(body);
 
-    const wallet = await createWalletForUser(userId, validatedData);
+    const wallet = await createWalletForOwner(ownerType, ownerId, validatedData);
     return NextResponse.json(wallet, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -89,6 +70,10 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const idParam = searchParams.get('id');
     if (!idParam || isNaN(Number(idParam))) {
@@ -102,7 +87,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const parsedData = updateWalletSchema.parse(body);
 
-    const wallet = await updateWalletMetadata(id, parsedData);
+    const wallet = await updateWalletMetadataForOwner(id, parsedData, ownerFilter);
 
     return NextResponse.json(wallet, { status: 200 });
   } catch (error) {
@@ -144,6 +129,10 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const idParam = searchParams.get('id');
     if (!idParam || isNaN(Number(idParam))) {
@@ -155,7 +144,7 @@ export async function DELETE(request: NextRequest) {
     const id = Number(idParam);
 
     try {
-      await deleteWalletIfUnused(id);
+      await deleteWalletIfUnusedForOwner(id, ownerFilter);
     } catch (error: any) {
       if (error.code === 'WALLET_IN_USE') {
         return NextResponse.json(

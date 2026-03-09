@@ -1,27 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { listExpenses } from '@/lib/finance/expense.service';
 import {
   createTransactionSchema,
   updateTransactionSchema,
 } from '@/schemas/transaction.schema';
 
+function decimalToNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (
+    typeof value === 'object' &&
+    value != null &&
+    'toNumber' in value &&
+    typeof (value as { toNumber: () => number }).toNumber === 'function'
+  ) {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-    const userId = Number(session.user.id);
-    if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: 'Usuario inválido' },
-        { status: 400 },
-      );
-    }
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
 
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
@@ -32,24 +36,13 @@ export async function GET(request: NextRequest) {
 
     let fortnightIds: number[] | undefined;
     if (month || year || period) {
-      const memberships = await prisma.houseMember.findMany({
-        where: { user_id: userId },
-        select: { house_id: true },
-      });
-      const houseIds = memberships.map((m) => m.house_id);
-
       const base: { month?: number; year?: number; period?: 'FIRST' | 'SECOND' } = {};
       if (month) base.month = parseInt(month, 10);
       if (year) base.year = parseInt(year, 10);
       if (period) base.period = period as 'FIRST' | 'SECOND';
 
       const fortnights = await prisma.fortnight.findMany({
-        where: {
-          OR: [
-            { user_id: userId, house_id: null, ...base },
-            { house_id: { in: houseIds }, user_id: null, ...base },
-          ],
-        },
+        where: { ...ownerFilter, ...base },
         select: { id: true },
       });
       fortnightIds = fortnights.map((f) => f.id);
@@ -63,24 +56,30 @@ export async function GET(request: NextRequest) {
           ? false
           : undefined;
 
-    const expenses = await listExpenses(userId, {
-      fortnightIds,
-      is_paid,
+    const where: Record<string, unknown> = { ...ownerFilter };
+    if (fortnightIds !== undefined) where.fortnight_id = { in: fortnightIds };
+    if (is_paid !== undefined) where.is_paid = is_paid;
+
+    const expenses = await prisma.expense.findMany({
+      where,
+      include: {
+        category: { select: { name: true } },
+        wallet: { select: { name: true } },
+      },
+      orderBy: { created_at: 'desc' },
     });
 
     const transactions = expenses.map((expense) => {
-      // Normalize date to ISO string format for consistent grouping
       const dateValue = expense.payment_date || expense.created_at;
       const dateStr =
         dateValue instanceof Date
           ? dateValue.toISOString().split('T')[0]
           : new Date(dateValue).toISOString().split('T')[0];
-
       return {
         id: expense.id,
         date: dateStr,
         description: expense.description,
-        amount: expense.amount,
+        amount: decimalToNumber(expense.amount),
         category: expense.category?.name ?? '',
         paymentMethod: expense.wallet?.name || 'Efectivo',
         type: 'expense',
@@ -236,7 +235,7 @@ export async function POST(request: NextRequest) {
         id: created.id,
         date: dateStr,
         description: created.description,
-        amount: created.amount,
+        amount: decimalToNumber(created.amount),
         category: created.category?.name ?? '',
         paymentMethod: created.wallet?.name || 'Efectivo',
         type: 'expense',
@@ -359,7 +358,7 @@ export async function PUT(request: NextRequest) {
         id: transaction.id,
         date: dateStr,
         description: transaction.description,
-        amount: transaction.amount,
+        amount: decimalToNumber(transaction.amount),
         category: transaction.category?.name ?? '',
         paymentMethod: transaction.wallet?.name || 'Efectivo',
         type: 'expense',

@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function CreateWallet() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
 
   const handleCreateWallet = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/onboarding', { method: 'POST' });
       if (res.ok) {
-        router.push('/dashboard');
+        router.push(`/dashboard${queryString ? `?${queryString}` : ''}`);
         return;
       }
       alert('No se pudo crear la billetera');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,8 @@ import {
 import Link from 'next/link';
 import { Check, ChevronRight, ListTodo } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import { clientFetchFromApi } from '@/lib/api';
+import { useFinanceContext } from '@/context/finance-context';
+import { updateExpensePaidStatus } from '@/lib/api';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS } from './constants';
 
@@ -32,6 +33,9 @@ export default function UpcomingObligationsCard({
   data,
 }: UpcomingObligationsCardProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { context } = useFinanceContext();
+  const queryString = searchParams.toString();
   const obligations = data.upcomingObligations;
 
   const totalPendiente = obligations.reduce((sum, ob) => sum + ob.amount, 0);
@@ -40,10 +44,7 @@ export default function UpcomingObligationsCard({
     e.preventDefault();
     e.stopPropagation();
     try {
-      await clientFetchFromApi(`/api/expenses/${id}/paid`, {
-        method: 'PATCH',
-        body: JSON.stringify({ paid: true }),
-      });
+      await updateExpensePaidStatus(id, true, context);
       router.refresh();
     } catch (err) {
       console.error('Failed to mark as paid:', err);
@@ -56,16 +57,6 @@ export default function UpcomingObligationsCard({
         <CardTitle className="text-base font-medium">
           Próximas obligaciones
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          asChild
-          aria-label="Ver detalles"
-        >
-          <Link href="/transactions">
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
       </CardHeader>
       <CardContent className="space-y-6">
         {obligations.length === 0 ? (

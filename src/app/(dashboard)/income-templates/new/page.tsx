@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import { useFinanceContext } from '@/context/finance-context';
 import { createIncomeTemplate } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -33,7 +34,10 @@ import {
 } from '@/schemas/income-template.schema';
 
 export default function NewIncomeTemplatePage() {
+  const { context } = useFinanceContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<IncomeTemplateFormValues>({
@@ -52,17 +56,20 @@ export default function NewIncomeTemplatePage() {
   const handleSubmit = async (data: IncomeTemplateFormValues) => {
     try {
       setIsSubmitting(true);
-      await createIncomeTemplate({
-        name: data.name,
-        suggestedAmount: data.suggestedAmount ?? null,
-        source: data.source && data.source.trim() ? data.source.trim() : null,
-        appliesFirstFortnight: data.appliesFirstFortnight,
-        appliesSecondFortnight: data.appliesSecondFortnight,
-        active: data.active,
-      });
+      await createIncomeTemplate(
+        {
+          name: data.name,
+          suggestedAmount: data.suggestedAmount ?? null,
+          source: data.source && data.source.trim() ? data.source.trim() : null,
+          appliesFirstFortnight: data.appliesFirstFortnight,
+          appliesSecondFortnight: data.appliesSecondFortnight,
+          active: data.active,
+        },
+        context,
+      );
       toast.success('Plantilla de ingresos creada');
       setTimeout(() => {
-        router.push('/income-templates');
+        router.push(`/income-templates${queryString ? `?${queryString}` : ''}`);
       }, 500);
     } catch (err) {
       const message =
@@ -229,7 +236,7 @@ export default function NewIncomeTemplatePage() {
               />
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link href="/income-templates">
+                <Link href={`/income-templates${queryString ? `?${queryString}` : ''}`}>
                   <Button
                     type="button"
                     variant="outline"

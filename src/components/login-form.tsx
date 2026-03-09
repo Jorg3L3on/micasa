@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -17,6 +17,8 @@ export function LoginForm({
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function LoginForm({
         return;
       }
 
-      router.push('/dashboard');
+      router.push(`/dashboard${queryString ? `?${queryString}` : ''}`);
       router.refresh();
     } catch (e) {
       console.error(e);

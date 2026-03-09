@@ -11,6 +11,7 @@ import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
   updateFortnightOverrideAmount,
@@ -50,6 +51,7 @@ export default function FortnightColumn({
   month,
   period,
 }: FortnightColumnProps) {
+  const { context } = useFinanceContext();
   const router = useRouter();
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
@@ -66,9 +68,13 @@ export default function FortnightColumn({
       const [transactionsData, summaryData] = await Promise.all([
         clientFetchFromApi<TransactionRow[]>(
           `/api/transactions?year=${year}&month=${String(month).padStart(2, '0')}&period=${period}`,
+          undefined,
+          context,
         ),
         clientFetchFromApi<Summary>(
           `/api/reports?type=summary&year=${year}&month=${String(month).padStart(2, '0')}&period=${period}`,
+          undefined,
+          context,
         ),
       ]);
       setTransactions(transactionsData);
@@ -78,7 +84,7 @@ export default function FortnightColumn({
     } finally {
       setIsRefreshing(false);
     }
-  }, [year, month, period]);
+  }, [year, month, period, context]);
 
   const handleExpenseUpdate = useCallback(
     async (expenseId: number, isPaid: boolean) => {
@@ -96,11 +102,15 @@ export default function FortnightColumn({
   const handleOverrideAmount = async (data: OverrideAmountFormValues) => {
     try {
       setOverrideError(null);
-      await updateFortnightOverrideAmount(fortnightId, {
-        amount: data.amount,
-        year,
-        month,
-      });
+      await updateFortnightOverrideAmount(
+        fortnightId,
+        {
+          amount: data.amount,
+          year,
+          month,
+        },
+        context,
+      );
       await refreshData();
       setOverrideDialogOpen(false);
     } catch (err) {
@@ -146,6 +156,8 @@ export default function FortnightColumn({
             period: string;
           }>(
             `/api/fortnights?year=${year}&month=${String(month).padStart(2, '0')}&period=${otherPeriod}`,
+            undefined,
+            context,
           );
           return response.id;
         } catch (error) {
@@ -165,15 +177,18 @@ export default function FortnightColumn({
 
       if (!data.isRecurring) {
         // Case 1: Non-recurring expense - create only one expense
-        await createExpenseTransaction({
-          fortnight_id: fortnightId,
-          category_id: data.categoryId,
-          description: data.name,
-          amount: data.amount,
-          payment_method_id: data.paymentMethodId,
-          is_paid: data.isPaid,
-          payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
-        });
+        await createExpenseTransaction(
+          {
+            fortnight_id: fortnightId,
+            category_id: data.categoryId,
+            description: data.name,
+            amount: data.amount,
+            payment_method_id: data.paymentMethodId,
+            is_paid: data.isPaid,
+            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+          },
+          context,
+        );
       } else if (data.isRecurring && !data.applyToBothFortnights) {
         // Case 2: Recurring, single fortnight - create expense + template
         // Extract day from date for dueDay
@@ -185,32 +200,38 @@ export default function FortnightColumn({
           period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
 
         // First create the template
-        const templateResponse = await createExpenseTemplate({
-          name: data.name,
-          categoryId: data.categoryId,
-          defaultAmount: data.amount,
-          paymentMethodId: data.paymentMethodId,
-          active: true,
-          dueDay,
-          cutoffDay,
-          isRecurring: true,
-          appliesFirstFortnight: period === 'FIRST',
-          appliesSecondFortnight: period === 'SECOND',
-          isSubscription: false,
-        });
+        const templateResponse = await createExpenseTemplate(
+          {
+            name: data.name,
+            categoryId: data.categoryId,
+            defaultAmount: data.amount,
+            paymentMethodId: data.paymentMethodId,
+            active: true,
+            dueDay,
+            cutoffDay,
+            isRecurring: true,
+            appliesFirstFortnight: period === 'FIRST',
+            appliesSecondFortnight: period === 'SECOND',
+            isSubscription: false,
+          },
+          context,
+        );
         const template = templateResponse as { id: number };
 
         // Then create the expense linked to the template
-        await createExpenseTransaction({
-          fortnight_id: fortnightId,
-          category_id: data.categoryId,
-          description: data.name,
-          amount: data.amount,
-          payment_method_id: data.paymentMethodId,
-          is_paid: data.isPaid,
-          payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
-          expense_template_id: template.id,
-        });
+        await createExpenseTransaction(
+          {
+            fortnight_id: fortnightId,
+            category_id: data.categoryId,
+            description: data.name,
+            amount: data.amount,
+            payment_method_id: data.paymentMethodId,
+            is_paid: data.isPaid,
+            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            expense_template_id: template.id,
+          },
+          context,
+        );
       } else {
         // Case 3: Recurring, both fortnights - create two expenses + one template
         const otherFortnightId = await getOtherFortnightId();
@@ -229,46 +250,55 @@ export default function FortnightColumn({
           period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
 
         // First create the template
-        const templateResponse = await createExpenseTemplate({
-          name: data.name,
-          categoryId: data.categoryId,
-          defaultAmount: data.amount,
-          paymentMethodId: data.paymentMethodId,
-          active: true,
-          dueDay,
-          cutoffDay,
-          isRecurring: true,
-          appliesFirstFortnight: true,
-          appliesSecondFortnight: true,
-          isSubscription: false,
-        });
+        const templateResponse = await createExpenseTemplate(
+          {
+            name: data.name,
+            categoryId: data.categoryId,
+            defaultAmount: data.amount,
+            paymentMethodId: data.paymentMethodId,
+            active: true,
+            dueDay,
+            cutoffDay,
+            isRecurring: true,
+            appliesFirstFortnight: true,
+            appliesSecondFortnight: true,
+            isSubscription: false,
+          },
+          context,
+        );
         const template = templateResponse as { id: number };
 
         // Create expense for current fortnight
-        await createExpenseTransaction({
-          fortnight_id: fortnightId,
-          category_id: data.categoryId,
-          description: data.name,
-          amount: data.amount,
-          payment_method_id: data.paymentMethodId,
-          is_paid: data.isPaid,
-          payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
-          expense_template_id: template.id,
-        });
+        await createExpenseTransaction(
+          {
+            fortnight_id: fortnightId,
+            category_id: data.categoryId,
+            description: data.name,
+            amount: data.amount,
+            payment_method_id: data.paymentMethodId,
+            is_paid: data.isPaid,
+            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            expense_template_id: template.id,
+          },
+          context,
+        );
 
         // Create expense for the other fortnight
         const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
         const otherDate = getDateForFortnight(otherPeriod);
-        await createExpenseTransaction({
-          fortnight_id: otherFortnightId,
-          category_id: data.categoryId,
-          description: data.name,
-          amount: data.amount,
-          payment_method_id: data.paymentMethodId,
-          is_paid: data.isPaid,
-          payment_date: otherDate ? new Date(otherDate).toISOString() : null,
-          expense_template_id: template.id,
-        });
+        await createExpenseTransaction(
+          {
+            fortnight_id: otherFortnightId,
+            category_id: data.categoryId,
+            description: data.name,
+            amount: data.amount,
+            payment_method_id: data.paymentMethodId,
+            is_paid: data.isPaid,
+            payment_date: otherDate ? new Date(otherDate).toISOString() : null,
+            expense_template_id: template.id,
+          },
+          context,
+        );
       }
 
       // Refresh data

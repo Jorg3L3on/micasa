@@ -1,7 +1,10 @@
 import prisma from '@/lib/prisma';
+import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
-export async function listFortnightsForCatalog() {
+/** List fortnights for the given owner (user_id or house_id). Required for owner-scoped catalog. */
+export async function listFortnightsForCatalog(ownerFilter: OwnerFilter) {
   const fortnights = await prisma.fortnight.findMany({
+    where: ownerFilter,
     orderBy: [{ year: 'desc' }, { month: 'desc' }, { period: 'desc' }],
     select: {
       id: true,

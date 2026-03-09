@@ -1,7 +1,24 @@
 'use client';
 
+import type { FinanceContextType } from '@/types/finance-context';
 import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
 import { WalletFormValues } from '@/schemas/wallet.schema';
+
+/**
+ * Builds URLSearchParams for owner context (ownerType, ownerId).
+ * Returns empty params if context is missing.
+ */
+export function buildOwnerQuery(
+  context?: FinanceContextType,
+): URLSearchParams {
+  if (!context) {
+    return new URLSearchParams();
+  }
+  return new URLSearchParams({
+    ownerType: context.type,
+    ownerId: String(context.id),
+  });
+}
 
 // Client-side API helpers
 export function getClientApiBaseUrl(): string {
@@ -14,9 +31,17 @@ export function getClientApiBaseUrl(): string {
 export async function clientFetchFromApi<T>(
   endpoint: string,
   options?: RequestInit,
+  context?: FinanceContextType,
 ): Promise<T> {
+  let url = endpoint;
+  const ownerParams = buildOwnerQuery(context);
+  if (ownerParams.toString()) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    url = `${endpoint}${separator}${ownerParams.toString()}`;
+  }
+
   const baseUrl = getClientApiBaseUrl();
-  const res = await fetch(`${baseUrl}${endpoint}`, {
+  const res = await fetch(`${baseUrl}${url}`, {
     ...options,
     credentials: 'include',
     headers: {
@@ -54,68 +79,63 @@ export async function clientFetchFromApi<T>(
   return res.json();
 }
 
-export async function createCategory(data: {
-  name: string;
-  description?: string;
-}) {
-  return clientFetchFromApi('/api/categories', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+export async function createCategory(
+  data: { name: string; description?: string },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(
+    '/api/categories',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
 }
 
 export async function updateCategory(
   id: number,
   data: { name?: string; description?: string },
+  context?: FinanceContextType,
 ) {
-  return clientFetchFromApi(`/api/categories?id=${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
+  return clientFetchFromApi(
+    `/api/categories?id=${id}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
 }
 
-export async function deleteCategory(id: number) {
-  return clientFetchFromApi(`/api/categories?id=${id}`, {
-    method: 'DELETE',
-  });
+export async function deleteCategory(id: number, context?: FinanceContextType) {
+  return clientFetchFromApi(
+    `/api/categories?id=${id}`,
+    { method: 'DELETE' },
+    context,
+  );
 }
 
 /** Fetches active wallets as payment method options for dropdowns (expenses, templates). */
-export async function getPaymentMethodOptions(): Promise<
-  PaymentMethodOption[]
-> {
-  const wallets = await clientFetchFromApi<WalletListItem[]>('/api/wallets');
+export async function getPaymentMethodOptions(
+  context?: FinanceContextType,
+): Promise<PaymentMethodOption[]> {
+  const wallets = await clientFetchFromApi<WalletListItem[]>(
+    '/api/wallets',
+    undefined,
+    context,
+  );
   return wallets
     .filter((w) => w.active)
     .map((w) => ({ id: w.id, name: w.name, type: w.type }));
 }
 
-// ExpenseTemplate catalog helpers
-export async function createExpenseTemplate(data: {
-  name: string;
-  categoryId: number;
-  defaultAmount?: number | null;
-  paymentMethodId?: number | null;
-  active?: boolean;
-  expenseIds?: number[];
-  dueDay: number;
-  cutoffDay: number;
-  isRecurring: boolean;
-  appliesFirstFortnight: boolean;
-  appliesSecondFortnight: boolean;
-  isSubscription: boolean;
-}) {
-  return clientFetchFromApi('/api/expense-templates', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateExpenseTemplate(
-  id: number,
+// ExpenseTemplate catalog helpers (API expects suggestedAmount; defaultAmount is alias for callers)
+export async function createExpenseTemplate(
   data: {
-    name?: string;
-    categoryId?: number;
+    name: string;
+    categoryId: number;
+    suggestedAmount?: number | null;
     defaultAmount?: number | null;
     paymentMethodId?: number | null;
     active?: boolean;
@@ -127,33 +147,75 @@ export async function updateExpenseTemplate(
     appliesSecondFortnight: boolean;
     isSubscription: boolean;
   },
+  context?: FinanceContextType,
 ) {
-  return clientFetchFromApi(`/api/expense-templates?id=${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
+  const body = {
+    ...data,
+    suggestedAmount: data.suggestedAmount ?? data.defaultAmount ?? null,
+  };
+  return clientFetchFromApi('/api/expense-templates', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }, context);
 }
 
-export async function deleteExpenseTemplate(id: number) {
+export async function updateExpenseTemplate(
+  id: number,
+  data: {
+    name?: string;
+    categoryId?: number;
+    suggestedAmount?: number | null;
+    defaultAmount?: number | null;
+    paymentMethodId?: number | null;
+    active?: boolean;
+    expenseIds?: number[];
+    dueDay: number;
+    cutoffDay: number;
+    isRecurring: boolean;
+    appliesFirstFortnight: boolean;
+    appliesSecondFortnight: boolean;
+    isSubscription: boolean;
+  },
+  context?: FinanceContextType,
+) {
+  const body = {
+    ...data,
+    ...(data.suggestedAmount !== undefined || data.defaultAmount !== undefined
+      ? { suggestedAmount: data.suggestedAmount ?? data.defaultAmount ?? null }
+      : {}),
+  };
+  return clientFetchFromApi(`/api/expense-templates?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }, context);
+}
+
+export async function deleteExpenseTemplate(
+  id: number,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/expense-templates?id=${id}`, {
     method: 'DELETE',
-  });
+  }, context);
 }
 
 // Income template helpers
-export async function createIncomeTemplate(data: {
-  name: string;
-  suggestedAmount?: number | null;
-  source?: string | null;
-  appliesFirstFortnight: boolean;
-  appliesSecondFortnight: boolean;
-  active?: boolean;
-  userId?: number | null;
-}) {
+export async function createIncomeTemplate(
+  data: {
+    name: string;
+    suggestedAmount?: number | null;
+    source?: string | null;
+    appliesFirstFortnight: boolean;
+    appliesSecondFortnight: boolean;
+    active?: boolean;
+    userId?: number | null;
+  },
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi('/api/income-templates', {
     method: 'POST',
     body: JSON.stringify(data),
-  });
+  }, context);
 }
 
 export async function updateIncomeTemplate(
@@ -167,17 +229,21 @@ export async function updateIncomeTemplate(
     active?: boolean;
     userId?: number | null;
   },
+  context?: FinanceContextType,
 ) {
   return clientFetchFromApi(`/api/income-templates?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
-  });
+  }, context);
 }
 
-export async function deleteIncomeTemplate(id: number) {
+export async function deleteIncomeTemplate(
+  id: number,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/income-templates?id=${id}`, {
     method: 'DELETE',
-  });
+  }, context);
 }
 
 export type CreateMonthFortnightsResult = {
@@ -199,13 +265,20 @@ export type CreateMonthFortnightsResult = {
 
 export type CreatedMonth = { year: number; month: number };
 
-export async function getCreatedMonths(): Promise<CreatedMonth[]> {
-  return clientFetchFromApi<CreatedMonth[]>('/api/fortnights/created-months');
+export async function getCreatedMonths(
+  context?: FinanceContextType,
+): Promise<CreatedMonth[]> {
+  return clientFetchFromApi<CreatedMonth[]>(
+    '/api/fortnights/created-months',
+    undefined,
+    context,
+  );
 }
 
 export async function createMonthFortnights(
   year: number,
   month: number,
+  context?: FinanceContextType,
 ): Promise<CreateMonthFortnightsResult> {
   return clientFetchFromApi<CreateMonthFortnightsResult>(
     '/api/fortnights/create-month',
@@ -213,6 +286,7 @@ export async function createMonthFortnights(
       method: 'POST',
       body: JSON.stringify({ year, month }),
     },
+    context,
   );
 }
 
@@ -221,34 +295,48 @@ export async function createMonthFortnights(
  */
 
 /** Create Wallet **/
-export async function createWallet(data: WalletFormValues) {
+export async function createWallet(
+  data: WalletFormValues,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi('/api/wallets', {
     method: 'POST',
     body: JSON.stringify({ ...data }),
-  });
+  }, context);
 }
 
 /** Update Wallet **/
-export async function updateWallet(id: number, data: WalletFormValues) {
+export async function updateWallet(
+  id: number,
+  data: WalletFormValues,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
-  });
+  }, context);
 }
 
 /** Delete Wallet **/
-export async function deleteWallet(id: number) {
+export async function deleteWallet(
+  id: number,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'DELETE',
-  });
+  }, context);
 }
 
 // Expense paid status helpers
-export async function updateExpensePaidStatus(id: number, paid: boolean) {
+export async function updateExpensePaidStatus(
+  id: number,
+  paid: boolean,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/expenses/${id}/paid`, {
     method: 'PATCH',
     body: JSON.stringify({ paid }),
-  });
+  }, context);
 }
 
 // Fortnight override amount helpers
@@ -259,41 +347,52 @@ export async function updateFortnightOverrideAmount(
     year: number;
     month: number;
   },
+  context?: FinanceContextType,
 ) {
   return clientFetchFromApi(`/api/fortnights/${id}/override-amount`, {
     method: 'PUT',
     body: JSON.stringify(data),
-  });
+  }, context);
 }
 
 // Transaction/Expense amount helpers
-export async function updateExpenseAmount(id: number, amount: number) {
+export async function updateExpenseAmount(
+  id: number,
+  amount: number,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/transactions?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify({ amount }),
-  });
+  }, context);
 }
 
 // Delete expense transaction helper
-export async function deleteTransaction(id: number) {
+export async function deleteTransaction(
+  id: number,
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi(`/api/transactions?id=${id}`, {
     method: 'DELETE',
-  });
+  }, context);
 }
 
 // Create expense transaction helper
-export async function createExpenseTransaction(data: {
-  fortnight_id: number;
-  category_id: number;
-  description: string;
-  amount: number;
-  payment_method_id: number;
-  is_paid?: boolean;
-  payment_date?: string | null;
-  expense_template_id?: number | null;
-}) {
+export async function createExpenseTransaction(
+  data: {
+    fortnight_id: number;
+    category_id: number;
+    description: string;
+    amount: number;
+    payment_method_id: number;
+    is_paid?: boolean;
+    payment_date?: string | null;
+    expense_template_id?: number | null;
+  },
+  context?: FinanceContextType,
+) {
   return clientFetchFromApi('/api/transactions', {
     method: 'POST',
     body: JSON.stringify(data),
-  });
+  }, context);
 }

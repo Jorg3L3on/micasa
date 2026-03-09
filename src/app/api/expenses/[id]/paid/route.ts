@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updatePaidSchema } from '@/schemas/transaction.schema';
 import { toggleExpensePaid } from '@/lib/finance/expense.service';
 
@@ -9,6 +10,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { id } = await params;
 
     if (!id || isNaN(Number(id))) {
@@ -18,11 +23,19 @@ export async function PATCH(
       );
     }
 
+    const expenseId = Number(id);
+    const existing = await prisma.expense.findFirst({
+      where: { id: expenseId, ...ownerFilter },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     const validatedData = updatePaidSchema.parse(body);
 
     const expense = await toggleExpensePaid({
-      id: Number(id),
+      id: expenseId,
       paid: validatedData.paid,
     });
 

@@ -22,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, getPaymentMethodOptions } from '@/lib/api';
 import {
   addExpenseSchema,
@@ -80,6 +81,7 @@ export default function AddExpenseDialog({
   defaultDate,
   error,
 }: AddExpenseDialogProps) {
+  const { context } = useFinanceContext();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
     [],
@@ -110,8 +112,8 @@ export default function AddExpenseDialog({
         try {
           setLoading(true);
           const [categoriesData, paymentMethodsData] = await Promise.all([
-            clientFetchFromApi<CategoryOption[]>('/api/categories'),
-            getPaymentMethodOptions(),
+            clientFetchFromApi<CategoryOption[]>('/api/categories', undefined, context),
+            getPaymentMethodOptions(context),
           ]);
           setCategories(categoriesData);
           setPaymentMethods(paymentMethodsData);
@@ -123,7 +125,7 @@ export default function AddExpenseDialog({
       };
       fetchData();
     }
-  }, [open]);
+  }, [open, context]);
 
   // Reset form when dialog opens/closes
   useEffect(() => {

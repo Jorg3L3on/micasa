@@ -33,9 +33,13 @@ type EditExpenseAmountDialogProps = {
   onSubmit: (data: ExpenseAmountFormValues) => Promise<void>
   defaultAmount: number
   expenseDescription: string
+  expenseCategory?: string
   fortnightLabel: string
   error?: string | null
 }
+
+const safeAmount = (value: number): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
 
 export default function EditExpenseAmountDialog({
   open,
@@ -43,20 +47,23 @@ export default function EditExpenseAmountDialog({
   onSubmit,
   defaultAmount,
   expenseDescription,
+  expenseCategory = '',
   fortnightLabel,
   error,
 }: EditExpenseAmountDialogProps) {
+  const initialAmount = safeAmount(defaultAmount)
+
   const form = useForm<ExpenseAmountFormValues>({
     resolver: zodResolver(expenseAmountSchema),
     defaultValues: {
-      amount: defaultAmount,
+      amount: initialAmount,
     },
   })
 
   useEffect(() => {
     if (open) {
       form.reset({
-        amount: defaultAmount,
+        amount: safeAmount(defaultAmount),
       })
     }
   }, [open, defaultAmount, form])
@@ -82,8 +89,22 @@ export default function EditExpenseAmountDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Modificar monto del gasto</DialogTitle>
-          <DialogDescription>
-            Modificar el monto de "{expenseDescription}" para la quincena {fortnightLabel}
+          <DialogDescription asChild>
+            <div className="space-y-1">
+              <p>
+                Modificar el monto de &quot;{expenseDescription}&quot;
+                {expenseCategory ? (
+                  <>
+                    {' '}
+                    <span className="text-muted-foreground">(Categoría: {expenseCategory})</span>
+                  </>
+                ) : null}{' '}
+                para la quincena {fortnightLabel}.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Monto actual: {formatCurrency(initialAmount)}
+              </p>
+            </div>
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -106,14 +127,15 @@ export default function EditExpenseAmountDialog({
                       min="0.01"
                       placeholder="0.00"
                       {...field}
-                      value={field.value}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      value={typeof field.value === 'number' ? field.value : ''}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        const num = v === '' ? 0 : parseFloat(v)
+                        field.onChange(Number.isFinite(num) ? num : 0)
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
-                  <p className="text-sm text-muted-foreground">
-                    Monto actual: {formatCurrency(defaultAmount)}
-                  </p>
                 </FormItem>
               )}
             />

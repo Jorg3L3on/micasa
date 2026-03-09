@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
   createExpenseTemplate,
@@ -38,7 +39,10 @@ import {
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 
 export default function NewExpenseTemplatePage() {
+  const { context } = useFinanceContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
     [],
@@ -68,8 +72,8 @@ export default function NewExpenseTemplatePage() {
       try {
         setLoading(true);
         const [categoriesData, paymentMethodsData] = await Promise.all([
-          clientFetchFromApi<CategoryOption[]>('/api/categories'),
-          getPaymentMethodOptions(),
+          clientFetchFromApi<CategoryOption[]>('/api/categories', undefined, context),
+          getPaymentMethodOptions(context),
         ]);
         setCategories(categoriesData);
         setPaymentMethods(paymentMethodsData);
@@ -82,7 +86,7 @@ export default function NewExpenseTemplatePage() {
       }
     };
     fetchData();
-  }, []);
+  }, [context]);
 
   const getErrorMessage = (err: unknown): string => {
     if (!(err instanceof Error)) {
@@ -153,10 +157,10 @@ export default function NewExpenseTemplatePage() {
   const handleSubmit = async (data: ExpenseTemplateFormValues) => {
     try {
       setIsSubmitting(true);
-      await createExpenseTemplate(data);
+      await createExpenseTemplate(data, context);
       toast.success('Plantilla de gasto creada exitosamente');
       setTimeout(() => {
-        router.push('/expense-templates');
+        router.push(`/expense-templates${queryString ? `?${queryString}` : ''}`);
       }, 500);
     } catch (err) {
       const message = getErrorMessage(err);
@@ -492,7 +496,7 @@ export default function NewExpenseTemplatePage() {
               </div>
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link href="/expense-templates">
+                <Link href={`/expense-templates${queryString ? `?${queryString}` : ''}`}>
                   <Button
                     type="button"
                     variant="outline"

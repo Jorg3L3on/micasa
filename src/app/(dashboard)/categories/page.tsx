@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState';
 import CategoryForm from '@/components/CategoryForm';
 import { CategoryFormValues } from '@/schemas/category.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
   createCategory,
@@ -26,6 +27,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import type { CategoryOption } from '@/types/catalog';
 
 export default function CategoriesPage() {
+  const { context } = useFinanceContext();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,8 @@ export default function CategoriesPage() {
       setError(null);
       const data = await clientFetchFromApi<CategoryOption[]>(
         '/api/categories',
+        undefined,
+        context,
       );
       setCategories(data);
     } catch (err) {
@@ -55,12 +59,12 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [context]);
 
   const handleCreate = async (data: CategoryFormValues) => {
     try {
       setFormError(null);
-      await createCategory(data);
+      await createCategory(data, context);
       toast.success('Categoría creada');
       await fetchCategories();
       setCreateDialogOpen(false);
@@ -76,7 +80,7 @@ export default function CategoriesPage() {
     if (!selectedCategory) return;
     try {
       setFormError(null);
-      await updateCategory(selectedCategory.id, data);
+      await updateCategory(selectedCategory.id, data, context);
       toast.success('Categoría actualizada');
       await fetchCategories();
       setEditDialogOpen(false);
@@ -93,7 +97,7 @@ export default function CategoriesPage() {
     if (!selectedCategory) return;
     try {
       setError(null);
-      await deleteCategory(selectedCategory.id);
+      await deleteCategory(selectedCategory.id, context);
       toast.success('Categoría eliminada');
       await fetchCategories();
       setDeleteDialogOpen(false);

@@ -1,4 +1,4 @@
-import { fetchFromApi } from '@/lib/api-server';
+import { fetchFromApi, type OwnerContext } from '@/lib/api-server';
 import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
@@ -37,10 +37,12 @@ async function getFortnightLabel(
   year: string,
   month: string,
   period: string,
+  ownerContext?: OwnerContext,
 ): Promise<string> {
   try {
     const response = await fetchFromApi<{ label: string }>(
       `/api/fortnights?year=${year}&month=${month}&period=${period}`,
+      ownerContext,
     );
     return response.label;
   } catch (error) {
@@ -53,10 +55,12 @@ async function getTransactions(
   year: string,
   month: string,
   period: string,
+  ownerContext?: OwnerContext,
 ): Promise<TransactionRow[]> {
   try {
     return await fetchFromApi<TransactionRow[]>(
       `/api/transactions?year=${year}&month=${month}&period=${period}`,
+      ownerContext,
     );
   } catch (error) {
     console.error('Error fetching transactions:', error);
@@ -68,10 +72,12 @@ async function getSummary(
   year: string,
   month: string,
   period: string,
+  ownerContext?: OwnerContext,
 ): Promise<Summary> {
   try {
     return await fetchFromApi<Summary>(
       `/api/reports?type=summary&year=${year}&month=${month}&period=${period}`,
+      ownerContext,
     );
   } catch (error) {
     console.error('Error fetching summary:', error);
@@ -87,22 +93,33 @@ async function getSummary(
 
 export default async function FortnightPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ year: string; month: string; period: string }>;
+  searchParams: Promise<{ ownerType?: string; ownerId?: string }>;
 }) {
   const {
     year: yearParam,
     month: monthParam,
     period: periodParam,
   } = await params;
+  const resolvedSearchParams = await searchParams;
+  const ownerContext: OwnerContext | undefined =
+    resolvedSearchParams.ownerType && resolvedSearchParams.ownerId
+      ? {
+          ownerType: resolvedSearchParams.ownerType as 'user' | 'house',
+          ownerId: Number(resolvedSearchParams.ownerId),
+        }
+      : undefined;
+
   const year = parseInt(yearParam, 10);
   const month = parseInt(monthParam, 10);
   const period = periodParam.toUpperCase() as 'FIRST' | 'SECOND';
 
   const [fortnightLabel, transactions, summary] = await Promise.all([
-    getFortnightLabel(yearParam, monthParam, periodParam),
-    getTransactions(yearParam, monthParam, periodParam),
-    getSummary(yearParam, monthParam, periodParam),
+    getFortnightLabel(yearParam, monthParam, periodParam, ownerContext),
+    getTransactions(yearParam, monthParam, periodParam, ownerContext),
+    getSummary(yearParam, monthParam, periodParam, ownerContext),
   ]);
 
   const transactionsByDate = groupTransactionsByDate(transactions);

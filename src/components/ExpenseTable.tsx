@@ -30,7 +30,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, toDisplayAmount } from '@/lib/utils';
+import { useFinanceContext } from '@/context/finance-context';
 import {
   updateExpensePaidStatus,
   updateExpenseAmount,
@@ -65,6 +66,7 @@ export default function ExpenseTable({
   fortnightLabel = '',
   totalIncome = 0,
 }: ExpenseTableProps) {
+  const { context } = useFinanceContext();
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
   const [localExpenses, setLocalExpenses] = useState<TransactionRow[]>(expenses);
   const [editingExpense, setEditingExpense] = useState<TransactionRow | null>(null);
@@ -84,8 +86,8 @@ export default function ExpenseTable({
         return a.is_paid ? 1 : -1;
       }
       // Within same status, sort by amount descending
-      const amountA = Number(a.amount);
-      const amountB = Number(b.amount);
+      const amountA = toDisplayAmount(a.amount);
+      const amountB = toDisplayAmount(b.amount);
       return amountB - amountA;
     });
     setLocalExpenses(sorted);
@@ -105,7 +107,7 @@ export default function ExpenseTable({
     setLocalExpenses(updatedExpenses);
 
     try {
-      await updateExpensePaidStatus(expenseId, newPaidStatus);
+      await updateExpensePaidStatus(expenseId, newPaidStatus, context);
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, newPaidStatus);
       }
@@ -152,7 +154,7 @@ export default function ExpenseTable({
 
     try {
       setEditError(null);
-      await updateExpenseAmount(expenseId, data.amount);
+      await updateExpenseAmount(expenseId, data.amount, context);
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, editingExpense.is_paid);
       }
@@ -190,7 +192,7 @@ export default function ExpenseTable({
     setLocalExpenses(updatedExpenses);
 
     try {
-      await deleteTransaction(expenseId);
+      await deleteTransaction(expenseId, context);
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, deletingExpense.is_paid);
       }
@@ -253,16 +255,15 @@ export default function ExpenseTable({
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
-  // Calculate totals, ensuring amounts are properly converted to numbers
-  const totalPaid = paidExpenses.reduce((sum, e) => {
-    const amount = typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount);
-    return sum + (isNaN(amount) ? 0 : amount);
-  }, 0);
-  
-  const totalPending = pendingExpenses.reduce((sum, e) => {
-    const amount = typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount);
-    return sum + (isNaN(amount) ? 0 : amount);
-  }, 0);
+  // Calculate totals using safe amount coercion
+  const totalPaid = paidExpenses.reduce(
+    (sum, e) => sum + toDisplayAmount(e.amount),
+    0,
+  );
+  const totalPending = pendingExpenses.reduce(
+    (sum, e) => sum + toDisplayAmount(e.amount),
+    0,
+  );
   
   const total = totalPaid + totalPending;
 
@@ -397,7 +398,7 @@ export default function ExpenseTable({
                               </TableCell>
                               <TableCell className="text-right">
                                 <span className="font-semibold font-mono tabular-nums text-sm">
-                                  {formatCurrency(Number(expense.amount))}
+                                  {formatCurrency(toDisplayAmount(expense.amount))}
                                 </span>
                               </TableCell>
                               <TableCell className="text-center">
@@ -484,7 +485,7 @@ export default function ExpenseTable({
                             </TableCell>
                             <TableCell className="text-right">
                               <span className="font-mono tabular-nums text-sm text-muted-foreground line-through">
-                                {formatCurrency(Number(expense.amount))}
+                                {formatCurrency(toDisplayAmount(expense.amount))}
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
@@ -570,7 +571,7 @@ export default function ExpenseTable({
                             </TableCell>
                             <TableCell className="text-right">
                               <span className="font-semibold font-mono tabular-nums text-sm">
-                                {formatCurrency(Number(expense.amount))}
+                                {formatCurrency(toDisplayAmount(expense.amount))}
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
@@ -641,8 +642,9 @@ export default function ExpenseTable({
             }
           }}
           onSubmit={handleUpdateAmount}
-          defaultAmount={Number(editingExpense.amount)}
+          defaultAmount={toDisplayAmount(editingExpense.amount)}
           expenseDescription={editingExpense.description}
+          expenseCategory={editingExpense.category ?? ''}
           fortnightLabel={fortnightLabel}
           error={editError && editDialogOpen ? editError : null}
         />
@@ -686,7 +688,7 @@ export default function ExpenseTable({
                   {payingExpense.description}
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  {formatCurrency(Number(payingExpense.amount))}
+                  {formatCurrency(toDisplayAmount(payingExpense.amount))}
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>

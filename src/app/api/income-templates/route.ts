@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
   createIncomeTemplateSchema,
   updateIncomeTemplateSchema,
 } from '@/schemas/income-template.schema';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const templates = await prisma.incomeTemplate.findMany({
+      where: ownerFilter,
       include: {
         user: {
           select: {
@@ -48,6 +54,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerType, ownerId } = context;
+
     const body = await request.json();
     const validatedData = createIncomeTemplateSchema.parse(body);
 
@@ -61,7 +71,8 @@ export async function POST(request: NextRequest) {
         applies_first_fortnight: validatedData.appliesFirstFortnight,
         applies_second_fortnight: validatedData.appliesSecondFortnight,
         active: validatedData.active ?? true,
-        user_id: validatedData.userId ?? null,
+        user_id: ownerType === 'user' ? ownerId : null,
+        house_id: ownerType === 'house' ? ownerId : null,
       },
       include: {
         user: {
@@ -119,6 +130,10 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -153,7 +168,7 @@ export async function PUT(request: NextRequest) {
       updateData.user_id = validatedData.userId;
 
     const template = await prisma.incomeTemplate.update({
-      where: { id: Number(id) },
+      where: { id: Number(id), ...ownerFilter },
       data: updateData,
       include: {
         user: {
@@ -211,6 +226,10 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -221,8 +240,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const templateId = Number(id);
+    const existing = await prisma.incomeTemplate.findFirst({
+      where: { id: templateId, ...ownerFilter },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Plantilla de ingresos no encontrada' },
+        { status: 404 },
+      );
+    }
+
     const relatedIncome = await prisma.income.findFirst({
-      where: { income_template_id: Number(id) },
+      where: { income_template_id: templateId },
     });
 
     if (relatedIncome) {
@@ -235,7 +265,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.incomeTemplate.delete({
-      where: { id: Number(id) },
+      where: { id: templateId },
     });
 
     return NextResponse.json(

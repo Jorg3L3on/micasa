@@ -26,11 +26,18 @@ export async function expandIncomeTemplatesForFortnight(
     });
     if (!fortnight) return { count: 0, names: [] as string[] };
 
+    const ownerWhere =
+      fortnight.user_id != null
+        ? { user_id: fortnight.user_id, house_id: null }
+        : { user_id: null, house_id: fortnight.house_id! };
+
     const templates = await tx.incomeTemplate.findMany({
-      where:
-        period === 'FIRST'
+      where: {
+        ...ownerWhere,
+        ...(period === 'FIRST'
           ? { active: true, applies_first_fortnight: true }
-          : { active: true, applies_second_fortnight: true },
+          : { active: true, applies_second_fortnight: true }),
+      },
       select: {
         id: true,
         name: true,
@@ -55,10 +62,13 @@ export async function expandIncomeTemplatesForFortnight(
           ? Number(template.suggested_amount)
           : INCOME_TEMPLATE_DEFAULT_AMOUNT;
 
-      const userId = template.user_id ?? defaultUser?.id;
-      if (userId == null) continue;
-
       if (template.house_id == null) {
+        // User income template: need a user (template's or default in user context)
+        const userId =
+          template.user_id ??
+          (fortnight.user_id != null ? defaultUser?.id : null);
+        if (userId == null) continue;
+
         const existingIncome = await tx.income.findFirst({
           where: {
             fortnight_id: fortnightId,
@@ -79,58 +89,86 @@ export async function expandIncomeTemplatesForFortnight(
           },
         });
       } else {
+        // House income template
         const houseId = template.house_id;
 
-        const existingTransfer = await tx.transfer.findFirst({
-          where: {
-            type: TransferType.USER_TO_HOUSE,
-            user_id: userId,
-            house_id: houseId,
-            amount: String(amount),
-            created_at: {
-              gte: fortnight.start_date,
-              lte: fortnight.end_date,
+        if (template.user_id == null) {
+          // House-only income (no specific user): create Income directly for the house
+          const existingIncome = await tx.income.findFirst({
+            where: {
+              fortnight_id: fortnightId,
+              income_template_id: template.id,
             },
-          },
-        });
+          });
 
-        if (existingTransfer) continue;
+          if (existingIncome) continue;
 
-        let houseFortnight = await tx.fortnight.findFirst({
-          where: {
-            year: fortnight.year,
-            month: fortnight.month,
-            period: fortnight.period,
-            house_id: houseId,
-          },
-        });
-
-        if (!houseFortnight) {
-          houseFortnight = await tx.fortnight.create({
+          await tx.income.create({
             data: {
-              label: fortnight.label,
-              start_date: fortnight.start_date,
-              end_date: fortnight.end_date,
-              month: fortnight.month,
+              fortnight_id: fortnightId,
+              user_id: null,
+              house_id: houseId,
+              amount: String(amount),
+              source: template.source ?? undefined,
+              received_at: fortnight.start_date,
+              income_template_id: template.id,
+            },
+          });
+        } else {
+          // House template with user (transfer: user → house)
+          const userId = template.user_id;
+
+          const existingTransfer = await tx.transfer.findFirst({
+            where: {
+              type: TransferType.USER_TO_HOUSE,
+              user_id: userId,
+              house_id: houseId,
+              amount: String(amount),
+              created_at: {
+                gte: fortnight.start_date,
+                lte: fortnight.end_date,
+              },
+            },
+          });
+
+          if (existingTransfer) continue;
+
+          let houseFortnight = await tx.fortnight.findFirst({
+            where: {
               year: fortnight.year,
+              month: fortnight.month,
               period: fortnight.period,
-              closed: false,
               house_id: houseId,
             },
           });
-        }
 
-        await createUserToHouseTransferInTx(tx, {
-          userId,
-          houseId,
-          amount,
-          userWalletId: null,
-          houseWalletId: null,
-          userFortnightId: fortnightId,
-          houseFortnightId: houseFortnight.id,
-          note: template.name,
-          date: fortnight.start_date,
-        });
+          if (!houseFortnight) {
+            houseFortnight = await tx.fortnight.create({
+              data: {
+                label: fortnight.label,
+                start_date: fortnight.start_date,
+                end_date: fortnight.end_date,
+                month: fortnight.month,
+                year: fortnight.year,
+                period: fortnight.period,
+                closed: false,
+                house_id: houseId,
+              },
+            });
+          }
+
+          await createUserToHouseTransferInTx(tx, {
+            userId,
+            houseId,
+            amount,
+            userWalletId: null,
+            houseWalletId: null,
+            userFortnightId: fortnightId,
+            houseFortnightId: houseFortnight.id,
+            note: template.name,
+            date: fortnight.start_date,
+          });
+        }
       }
 
       created.push(template.name);
@@ -151,6 +189,11 @@ export async function expandExpenseTemplatesForFortnight(
     });
     if (!fortnight) return { count: 0, names: [] as string[] };
 
+    const ownerWhere =
+      fortnight.user_id != null
+        ? { user_id: fortnight.user_id, house_id: null }
+        : { user_id: null, house_id: fortnight.house_id! };
+
     const appliesField =
       period === 'FIRST'
         ? 'applies_first_fortnight'
@@ -158,6 +201,7 @@ export async function expandExpenseTemplatesForFortnight(
 
     const templates = await tx.expenseTemplate.findMany({
       where: {
+        ...ownerWhere,
         active: true,
         [appliesField]: true,
         category_id: { not: null },
