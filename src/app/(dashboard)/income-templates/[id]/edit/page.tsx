@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, updateIncomeTemplate } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -34,8 +35,11 @@ import {
 import type { IncomeTemplateListItem } from '@/types/catalog';
 
 export default function EditIncomeTemplatePage() {
+  const { context } = useFinanceContext();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const id = Number(params.id);
   const [template, setTemplate] = useState<IncomeTemplateListItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +65,8 @@ export default function EditIncomeTemplatePage() {
         setLoading(true);
         const data = await clientFetchFromApi<IncomeTemplateListItem[]>(
           '/api/income-templates',
+          undefined,
+          context,
         );
         const found = data.find((t) => t.id === id);
         if (!found) {
@@ -86,22 +92,26 @@ export default function EditIncomeTemplatePage() {
       }
     };
     fetchData();
-  }, [id, form]);
+  }, [id, form, context]);
 
   const handleSubmit = async (data: IncomeTemplateFormValues) => {
     try {
       setIsSubmitting(true);
       setError(null);
-      await updateIncomeTemplate(id, {
-        name: data.name,
-        suggestedAmount: data.suggestedAmount ?? null,
-        source: data.source && data.source.trim() ? data.source.trim() : null,
-        appliesFirstFortnight: data.appliesFirstFortnight,
-        appliesSecondFortnight: data.appliesSecondFortnight,
-        active: data.active,
-      });
+      await updateIncomeTemplate(
+        id,
+        {
+          name: data.name,
+          suggestedAmount: data.suggestedAmount ?? null,
+          source: data.source && data.source.trim() ? data.source.trim() : null,
+          appliesFirstFortnight: data.appliesFirstFortnight,
+          appliesSecondFortnight: data.appliesSecondFortnight,
+          active: data.active,
+        },
+        context,
+      );
       toast.success('Plantilla de ingresos actualizada');
-      router.push('/income-templates');
+      router.push(`/income-templates${queryString ? `?${queryString}` : ''}`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Error al actualizar la plantilla';
@@ -123,7 +133,7 @@ export default function EditIncomeTemplatePage() {
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error || 'Plantilla no encontrada'}
         </div>
-        <Link href="/income-templates">
+        <Link href={`/income-templates${queryString ? `?${queryString}` : ''}`}>
           <Button variant="outline">Volver a plantillas</Button>
         </Link>
       </div>
@@ -291,7 +301,7 @@ export default function EditIncomeTemplatePage() {
               />
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link href="/income-templates">
+                <Link href={`/income-templates${queryString ? `?${queryString}` : ''}`}>
                   <Button
                     type="button"
                     variant="outline"

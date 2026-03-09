@@ -19,6 +19,8 @@ async function getTransactions(searchParams: {
   month?: string;
   year?: string;
   type?: string;
+  ownerType?: string;
+  ownerId?: string;
 }): Promise<TransactionRow[]> {
   try {
     const params = new URLSearchParams();
@@ -31,7 +33,14 @@ async function getTransactions(searchParams: {
     const endpoint = `/api/transactions${
       params.toString() ? `?${params.toString()}` : ''
     }`;
-    return await fetchFromApi<TransactionRow[]>(endpoint);
+    const ownerContext =
+      searchParams.ownerType && searchParams.ownerId
+        ? {
+            ownerType: searchParams.ownerType as 'user' | 'house',
+            ownerId: Number(searchParams.ownerId),
+          }
+        : undefined;
+    return await fetchFromApi<TransactionRow[]>(endpoint, ownerContext);
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return [];
@@ -41,7 +50,13 @@ async function getTransactions(searchParams: {
 async function TransactionsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string; type?: string }>;
+  searchParams: Promise<{
+    month?: string;
+    year?: string;
+    type?: string;
+    ownerType?: string;
+    ownerId?: string;
+  }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const transactions = await getTransactions(resolvedSearchParams);
@@ -120,7 +135,13 @@ async function TransactionsContent({
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string; type?: string }>;
+  searchParams: Promise<{
+    month?: string;
+    year?: string;
+    type?: string;
+    ownerType?: string;
+    ownerId?: string;
+  }>;
 }) {
   return (
     <>

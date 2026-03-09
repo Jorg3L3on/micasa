@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { CalendarPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights } from '@/lib/api';
 
 type CreateNextMonthButtonProps = {
@@ -20,14 +21,17 @@ export default function CreateNextMonthButton({
   nextMonthLabel,
   canCreate,
 }: CreateNextMonthButtonProps) {
+  const { context } = useFinanceContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreate = async () => {
     if (!canCreate || submitting) return;
     try {
       setSubmitting(true);
-      const result = await createMonthFortnights(nextYear, nextMonth);
+      const result = await createMonthFortnights(nextYear, nextMonth, context);
       const totalExp = result.expensesCreated?.total ?? 0;
       const totalInc = result.incomeCreated?.total ?? 0;
       const parts: string[] = [];
@@ -39,7 +43,7 @@ export default function CreateNextMonthButton({
         toast.success(`Mes ${nextMonthLabel} creado`);
       }
       const monthPadded = String(nextMonth).padStart(2, '0');
-      router.push(`/monthly/${nextYear}/${monthPadded}`);
+      router.push(`/monthly/${nextYear}/${monthPadded}${queryString ? `?${queryString}` : ''}`);
       router.refresh();
     } catch (err) {
       const message =

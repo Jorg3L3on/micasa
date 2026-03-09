@@ -1,4 +1,4 @@
-import { fetchFromApi } from '@/lib/api-server'
+import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import FortnightColumn from '@/components/FortnightColumn'
@@ -52,7 +52,8 @@ function getMonthName(month: number): string {
 async function getFortnightInfo(
   year: string,
   month: string,
-  period: 'FIRST' | 'SECOND'
+  period: 'FIRST' | 'SECOND',
+  ownerContext?: OwnerContext
 ): Promise<{ label: string; id: number; period: 'FIRST' | 'SECOND' } | null> {
   try {
     const response = await fetchFromApi<{
@@ -61,7 +62,7 @@ async function getFortnightInfo(
       year: number
       month: number
       period: string
-    } | null>(`/api/fortnights?year=${year}&month=${month}&period=${period}`)
+    } | null>(`/api/fortnights?year=${year}&month=${month}&period=${period}`, ownerContext)
 
     if (response === null) {
       return null
@@ -81,11 +82,13 @@ async function getFortnightInfo(
 async function getTransactions(
   year: string,
   month: string,
-  period: 'FIRST' | 'SECOND'
+  period: 'FIRST' | 'SECOND',
+  ownerContext?: OwnerContext
 ): Promise<Transaction[]> {
   try {
     return await fetchFromApi<Transaction[]>(
-      `/api/transactions?year=${year}&month=${month}&period=${period}`
+      `/api/transactions?year=${year}&month=${month}&period=${period}`,
+      ownerContext
     )
   } catch (error) {
     console.error(`Error fetching transactions for ${period}:`, error)
@@ -96,11 +99,13 @@ async function getTransactions(
 async function getSummary(
   year: string,
   month: string,
-  period: 'FIRST' | 'SECOND'
+  period: 'FIRST' | 'SECOND',
+  ownerContext?: OwnerContext
 ): Promise<Summary> {
   try {
     return await fetchFromApi<Summary>(
-      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}`
+      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}`,
+      ownerContext
     )
   } catch (error) {
     console.error(`Error fetching summary for ${period}:`, error)
@@ -116,10 +121,21 @@ async function getSummary(
 
 export default async function MonthlyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ year: string; month: string }>
+  searchParams: Promise<{ ownerType?: string; ownerId?: string }>
 }) {
   const { year: yearParam, month: monthParam } = await params
+  const resolvedSearchParams = await searchParams
+  const ownerContext =
+    resolvedSearchParams.ownerType && resolvedSearchParams.ownerId
+      ? {
+          ownerType: resolvedSearchParams.ownerType as 'user' | 'house',
+          ownerId: Number(resolvedSearchParams.ownerId),
+        }
+      : undefined
+
   const year = parseInt(yearParam, 10)
   const month = parseInt(monthParam, 10)
   const monthName = getMonthName(month)
@@ -143,16 +159,16 @@ export default async function MonthlyPage({
     nextFirstInfo,
     nextSecondInfo,
   ] = await Promise.all([
-    getFortnightInfo(yearParam, monthParam, 'FIRST'),
-    getFortnightInfo(yearParam, monthParam, 'SECOND'),
-    getTransactions(yearParam, monthParam, 'FIRST'),
-    getTransactions(yearParam, monthParam, 'SECOND'),
-    getSummary(yearParam, monthParam, 'FIRST'),
-    getSummary(yearParam, monthParam, 'SECOND'),
-    getFortnightInfo(String(prevYear), prevMonthStr, 'FIRST'),
-    getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND'),
-    getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST'),
-    getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND'),
+    getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
+    getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
+    getTransactions(yearParam, monthParam, 'FIRST', ownerContext),
+    getTransactions(yearParam, monthParam, 'SECOND', ownerContext),
+    getSummary(yearParam, monthParam, 'FIRST', ownerContext),
+    getSummary(yearParam, monthParam, 'SECOND', ownerContext),
+    getFortnightInfo(String(prevYear), prevMonthStr, 'FIRST', ownerContext),
+    getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND', ownerContext),
+    getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST', ownerContext),
+    getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND', ownerContext),
   ])
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null

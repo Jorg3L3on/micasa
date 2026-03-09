@@ -38,17 +38,6 @@ export type TransactionRow = {
   due_day?: number | null;
 };
 
-export type FortnightListItem = {
-  id: number;
-  name: string;
-  startDay: number;
-  endDay: number;
-  active: boolean;
-  year?: number;
-  month?: number;
-  period?: 'FIRST' | 'SECOND';
-};
-
 export type ExpenseTemplateListItem = {
   id: number;
   name: string;

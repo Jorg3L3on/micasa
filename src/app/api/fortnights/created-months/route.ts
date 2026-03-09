@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 
 /**
  * Returns list of (year, month) that already have both fortnights (FIRST and SECOND).
  * Used to exclude them from the "Create month" selector so each month can be created only once.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const fortnights = await prisma.fortnight.findMany({
+      where: ownerFilter,
       select: { year: true, month: true, period: true },
     });
 

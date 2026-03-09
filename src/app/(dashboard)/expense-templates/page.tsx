@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -15,13 +15,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, deleteExpenseTemplate } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { ExpenseTemplateListItem } from '@/types/catalog';
 
 export default function ExpenseTemplatesPage() {
+  const { context } = useFinanceContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [templates, setTemplates] = useState<ExpenseTemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +39,8 @@ export default function ExpenseTemplatesPage() {
       setError(null);
       const templatesData = await clientFetchFromApi<ExpenseTemplateListItem[]>(
         '/api/expense-templates',
+        undefined,
+        context,
       );
       setTemplates(templatesData);
     } catch (err) {
@@ -48,13 +54,13 @@ export default function ExpenseTemplatesPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [context]);
 
   const handleDelete = async () => {
     if (!selectedTemplate) return;
     try {
       setError(null);
-      await deleteExpenseTemplate(selectedTemplate.id);
+      await deleteExpenseTemplate(selectedTemplate.id, context);
       toast.success('Plantilla de gasto eliminada');
       await fetchData();
       setDeleteDialogOpen(false);
@@ -77,7 +83,7 @@ export default function ExpenseTemplatesPage() {
   };
 
   const openEditDialog = (template: ExpenseTemplateListItem) => {
-    router.push(`/expense-templates/${template.id}/edit`);
+    router.push(`/expense-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`);
   };
 
   const openDeleteDialog = (template: ExpenseTemplateListItem) => {
@@ -89,7 +95,7 @@ export default function ExpenseTemplatesPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
-        <Button onClick={() => router.push('/expense-templates/new')}>
+        <Button onClick={() => router.push(`/expense-templates/new${queryString ? `?${queryString}` : ''}`)}>
           Agregar plantilla de gastos
         </Button>
       </div>

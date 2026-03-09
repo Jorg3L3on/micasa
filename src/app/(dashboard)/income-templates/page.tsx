@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -15,13 +15,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, deleteIncomeTemplate } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { IncomeTemplateListItem } from '@/types/catalog';
 
 export default function IncomeTemplatesPage() {
+  const { context } = useFinanceContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [templates, setTemplates] = useState<IncomeTemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +39,8 @@ export default function IncomeTemplatesPage() {
       setError(null);
       const data = await clientFetchFromApi<IncomeTemplateListItem[]>(
         '/api/income-templates',
+        undefined,
+        context,
       );
       setTemplates(data);
     } catch (err) {
@@ -48,13 +54,13 @@ export default function IncomeTemplatesPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [context]);
 
   const handleDelete = async () => {
     if (!selectedTemplate) return;
     try {
       setError(null);
-      await deleteIncomeTemplate(selectedTemplate.id);
+      await deleteIncomeTemplate(selectedTemplate.id, context);
       toast.success('Plantilla de ingresos eliminada');
       await fetchData();
       setDeleteDialogOpen(false);
@@ -77,7 +83,7 @@ export default function IncomeTemplatesPage() {
   };
 
   const handleEdit = (template: IncomeTemplateListItem) => {
-    router.push(`/income-templates/${template.id}/edit`);
+    router.push(`/income-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`);
   };
 
   const openDeleteDialog = (template: IncomeTemplateListItem) => {
@@ -89,7 +95,7 @@ export default function IncomeTemplatesPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
-        <Button onClick={() => router.push('/income-templates/new')}>
+        <Button onClick={() => router.push(`/income-templates/new${queryString ? `?${queryString}` : ''}`)}>
           Agregar plantilla de ingresos
         </Button>
       </div>

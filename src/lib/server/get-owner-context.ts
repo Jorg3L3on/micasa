@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
-export type OwnerFilter = { user_id: number } | { house_id: number };
+export type OwnerFilter =
+  | { user_id: number; house_id: null }
+  | { user_id: null; house_id: number };
 
 export type OwnerContextRole = 'owner' | 'admin' | 'member';
 
@@ -67,7 +69,7 @@ export async function getOwnerContext(
     return {
       ownerType: 'house',
       ownerId,
-      ownerFilter: { house_id: ownerId },
+      ownerFilter: { user_id: null, house_id: ownerId },
       role,
     };
   }
@@ -77,7 +79,7 @@ export async function getOwnerContext(
   return {
     ownerType: 'user',
     ownerId,
-    ownerFilter: { user_id: ownerId },
+    ownerFilter: { user_id: ownerId, house_id: null },
     role,
   };
 }

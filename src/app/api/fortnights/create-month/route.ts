@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { TransferType } from '@/generated/prisma/client';
-import { createUserToHouseTransfer } from '@/lib/transfers';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
   expandExpenseTemplatesForFortnight,
   expandIncomeTemplatesForFortnight,
@@ -29,25 +28,14 @@ const MONTH_NAMES = [
   'Diciembre',
 ];
 
-const DEFAULT_AMOUNT = 0.01;
-const INCOME_TEMPLATE_DEFAULT_AMOUNT = 0.01;
-
 export async function POST(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerType, ownerId, ownerFilter } = context;
+
     const body = await request.json();
     const { year, month } = createMonthSchema.parse(body);
-
-    const defaultUser = await prisma.user.findFirst({
-      where: { active: true },
-      select: { id: true },
-    });
-
-    if (!defaultUser) {
-      return NextResponse.json(
-        { error: 'No active user found to own fortnights' },
-        { status: 400 },
-      );
-    }
 
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -74,20 +62,18 @@ export async function POST(request: NextRequest) {
 
     const existingFirst = await prisma.fortnight.findFirst({
       where: {
+        ...ownerFilter,
         year,
         month,
         period: 'FIRST',
-        user_id: defaultUser.id,
-        house_id: null,
       },
     });
     const existingSecond = await prisma.fortnight.findFirst({
       where: {
+        ...ownerFilter,
         year,
         month,
         period: 'SECOND',
-        user_id: defaultUser.id,
-        house_id: null,
       },
     });
 
@@ -113,8 +99,8 @@ export async function POST(request: NextRequest) {
 
     if (!existingFirst) {
       const first = await resolveOrCreateFortnight({
-        ownerType: 'user',
-        ownerId: defaultUser.id,
+        ownerType,
+        ownerId,
         year,
         month,
         period: 'FIRST',
@@ -135,8 +121,8 @@ export async function POST(request: NextRequest) {
 
     if (!existingSecond) {
       const second = await resolveOrCreateFortnight({
-        ownerType: 'user',
-        ownerId: defaultUser.id,
+        ownerType,
+        ownerId,
         year,
         month,
         period: 'SECOND',

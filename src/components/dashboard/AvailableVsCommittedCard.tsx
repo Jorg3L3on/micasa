@@ -1,3 +1,6 @@
+'use client';
+
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -13,6 +16,8 @@ type AvailableVsCommittedCardProps = {
 export default function AvailableVsCommittedCard({
   data,
 }: AvailableVsCommittedCardProps) {
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const { libre, pagado, pendiente } = data.availableVsCommitted;
 
   return (
@@ -21,16 +26,6 @@ export default function AvailableVsCommittedCard({
         <CardTitle className="text-base font-medium">
           Disponible vs comprometido
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          asChild
-          aria-label="Ver detalles"
-        >
-          <Link href="/transactions">
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex flex-col items-center gap-1 pt-2 pb-2">

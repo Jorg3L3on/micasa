@@ -2,6 +2,7 @@
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
 import {
   Collapsible,
@@ -35,6 +36,12 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+
+  const hrefWithParams = (url: string) =>
+    url === "#" ? "#" : `${url}${queryString ? `?${queryString}` : ""}`
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Navegación</SidebarGroupLabel>
@@ -62,7 +69,7 @@ export function NavMain({
                       {item.items.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild isActive={subItem.isActive}>
-                            <Link href={subItem.url} className="flex items-center justify-between w-full">
+                            <Link href={hrefWithParams(subItem.url)} className="flex items-center justify-between w-full">
                               <span>{subItem.title}</span>
                               {subItem.hasActiveIndicator && (
                                 <span className="ml-auto h-2 w-2 rounded-full bg-primary shrink-0" />
@@ -81,7 +88,7 @@ export function NavMain({
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title} isActive={item.isActive}>
-                <Link href={item.url}>
+                <Link href={hrefWithParams(item.url)}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                 </Link>

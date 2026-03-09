@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronsUpDown, Home, Plus, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useFinanceContext } from '@/context/finance-context';
@@ -29,12 +30,25 @@ type TeamSwitcherProps = {
 
 export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { context, setUserContext, setHouseContext } = useFinanceContext();
 
+  const pushUrlWithOwnerContext = useCallback(
+    (ownerType: 'user' | 'house', ownerId: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('ownerType', ownerType);
+      params.set('ownerId', String(ownerId));
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [pathname, router, searchParams],
+  );
+
   const [createOpen, setCreateOpen] = useState(false);
   const [houses, setHouses] = useState<CreatedHouse[]>(
-    session?.user?.houses ?? []
+    session?.user?.houses ?? [],
   );
 
   useEffect(() => {
@@ -42,14 +56,12 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
   }, [session?.user?.houses]);
 
   const currentHouse =
-    context.type === 'house'
-      ? houses.find((h) => h.id === context.id)
-      : null;
+    context.type === 'house' ? houses.find((h) => h.id === context.id) : null;
 
   const displayLabel =
     context.type === 'user'
-      ? session?.user?.name ?? 'Personal'
-      : currentHouse?.name ?? 'Casa';
+      ? (session?.user?.name ?? 'Personal')
+      : (currentHouse?.name ?? 'Casa');
   const DisplayIcon = context.type === 'user' ? User : Home;
 
   const handleCreateHouse = useCallback(() => {
@@ -60,8 +72,9 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
     (house: CreatedHouse) => {
       setHouses((prev) => [...prev, house]);
       setHouseContext(house.id);
+      pushUrlWithOwnerContext('house', house.id);
     },
-    [setHouseContext]
+    [setHouseContext, pushUrlWithOwnerContext],
   );
 
   if (!session?.user) {
@@ -99,11 +112,14 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
               sideOffset={4}
             >
               <DropdownMenuLabel className="text-muted-foreground text-xs">
-                PERSONAL
+                Personal
               </DropdownMenuLabel>
               <DropdownMenuItem
                 className="gap-2 p-2"
-                onClick={() => setUserContext(userId)}
+                onClick={() => {
+                  setUserContext(userId);
+                  pushUrlWithOwnerContext('user', userId);
+                }}
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
                   <User className="size-3.5 shrink-0" />
@@ -113,13 +129,16 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
 
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-muted-foreground text-xs">
-                HOUSES
+                Casas
               </DropdownMenuLabel>
               {houses.map((house) => (
                 <DropdownMenuItem
                   key={house.id}
                   className="gap-2 p-2"
-                  onClick={() => setHouseContext(house.id)}
+                  onClick={() => {
+                    setHouseContext(house.id);
+                    pushUrlWithOwnerContext('house', house.id);
+                  }}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border">
                     <Home className="size-3.5 shrink-0" />
@@ -130,7 +149,7 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
 
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-muted-foreground text-xs">
-                ACTION
+                Acciones
               </DropdownMenuLabel>
               <DropdownMenuItem
                 className="gap-2 p-2"
@@ -140,7 +159,7 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
                   <Plus className="size-4" />
                 </div>
                 <div className="text-muted-foreground font-medium">
-                  Create House
+                  Crear casa
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>

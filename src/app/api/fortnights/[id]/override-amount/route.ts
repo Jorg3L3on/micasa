@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { overrideAmountSchema } from '@/schemas/fortnight.schema';
 
 export async function PUT(
@@ -8,6 +9,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { id } = await params;
 
     if (!id || isNaN(Number(id))) {
@@ -20,9 +25,8 @@ export async function PUT(
     const body = await request.json();
     const validatedData = overrideAmountSchema.parse(body);
 
-    // Find the fortnight
-    const fortnight = await prisma.fortnight.findUnique({
-      where: { id: Number(id) },
+    const fortnight = await prisma.fortnight.findFirst({
+      where: { id: Number(id), ...ownerFilter },
     });
 
     if (!fortnight) {
@@ -48,32 +52,23 @@ export async function PUT(
     // with a special source marker (__OVERRIDE__). The reports API checks
     // for this override when calculating "Tenemos".
 
-    // Get the first active user (override applies to total, not per-user)
-    const firstUser = await prisma.user.findFirst({
-      where: { active: true },
-      select: { id: true },
-    });
+    const fortnightId = Number(id);
+    const isUserContext = ownerFilter.user_id !== null;
+    const userIdForOverride = isUserContext ? ownerFilter.user_id : null;
+    const houseIdForOverride = !isUserContext ? ownerFilter.house_id : null;
 
-    if (!firstUser) {
-      return NextResponse.json(
-        { error: 'No active user found' },
-        { status: 404 },
-      );
-    }
-
-    // Delete existing override (marked with source = '__OVERRIDE__')
     await prisma.income.deleteMany({
       where: {
-        fortnight_id: Number(id),
+        fortnight_id: fortnightId,
         source: '__OVERRIDE__',
       },
     });
 
-    // Create override entry (override applies to total). Income requires received_at.
     await prisma.income.create({
       data: {
-        fortnight_id: Number(id),
-        user_id: firstUser.id,
+        fortnight_id: fortnightId,
+        user_id: userIdForOverride,
+        house_id: houseIdForOverride,
         amount: validatedData.amount.toString(),
         source: '__OVERRIDE__',
         received_at: fortnight.start_date,

@@ -22,7 +22,6 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { clientFetchFromApi } from '@/lib/api';
 
 function getCurrentMonthHref(): string {
   const now = new Date();
@@ -31,29 +30,13 @@ function getCurrentMonthHref(): string {
   return `/monthly/${year}/${month}`;
 }
 
-type Fortnight = {
-  id: number;
-  name: string;
-  active: boolean;
-};
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [fortnights, setFortnights] = useState<Fortnight[]>([]);
-  const [hasActiveFortnight, setHasActiveFortnight] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const fetchFortnights = async () => {
-      try {
-        const data = await clientFetchFromApi<Fortnight[]>('/api/fortnights');
-        setFortnights(data);
-        setHasActiveFortnight(data.some((f) => f.active));
-      } catch (error) {
-        console.error('Error fetching fortnights for sidebar:', error);
-      }
-    };
-    fetchFortnights();
+    setMounted(true);
   }, []);
 
   const navItems = [
@@ -83,8 +66,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive:
         pathname.startsWith('/expense-templates') ||
         pathname.startsWith('/income-templates') ||
-        pathname.startsWith('/expenses') ||
-        pathname.startsWith('/fortnights') ||
         pathname.startsWith('/categories'),
       items: [
         {
@@ -96,16 +77,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: 'Plantillas de ingresos',
           url: '/income-templates',
           isActive: pathname.startsWith('/income-templates'),
-        },
-        {
-          title: 'Gastos',
-          url: '/expenses',
-          isActive: pathname.startsWith('/expenses'),
-        },
-        {
-          title: 'Quincenas',
-          url: '/fortnights',
-          isActive: pathname.startsWith('/fortnights'),
         },
         {
           title: 'Categorías',
@@ -128,6 +99,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       plan: 'Gestión Financiera',
     },
   ];
+
+  if (!mounted) {
+    return (
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader>
+          <div className="flex h-10 w-full items-center rounded-lg px-2" aria-hidden />
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="flex flex-col gap-2 px-2 py-2" aria-hidden>
+            <div className="h-4 w-24 rounded bg-sidebar-accent/50 animate-pulse" />
+            <div className="h-4 w-24 rounded bg-sidebar-accent/50 animate-pulse" />
+            <div className="h-4 w-24 rounded bg-sidebar-accent/50 animate-pulse" />
+          </div>
+        </SidebarContent>
+        <SidebarFooter>
+          <div className="h-10 w-full rounded-lg px-2" aria-hidden />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>

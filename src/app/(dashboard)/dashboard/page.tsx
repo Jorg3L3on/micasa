@@ -12,20 +12,32 @@ export const metadata: Metadata = {
   description: 'Resumen de ingresos, gastos y balance por categoría.',
 };
 
-async function getDashboardData(searchParams: {
-  view?: string;
-  month?: string;
-  year?: string;
-  period?: string;
-}): Promise<DashboardData | null> {
+async function getDashboardData(
+  searchParams: {
+    view?: string;
+    month?: string;
+    year?: string;
+    period?: string;
+    ownerType?: string;
+    ownerId?: string;
+  },
+): Promise<DashboardData | null> {
   try {
     const query = new URLSearchParams();
     if (searchParams.view) query.set('view', searchParams.view);
     if (searchParams.month) query.set('month', searchParams.month);
     if (searchParams.year) query.set('year', searchParams.year);
     if (searchParams.period) query.set('period', searchParams.period);
+    const ownerContext =
+      searchParams.ownerType && searchParams.ownerId
+        ? {
+            ownerType: searchParams.ownerType as 'user' | 'house',
+            ownerId: Number(searchParams.ownerId),
+          }
+        : undefined;
     return await fetchFromApi<DashboardData>(
       `/api/dashboard?${query.toString()}`,
+      ownerContext,
     );
   } catch (error) {
     console.error('Error fetching dashboard:', error);
@@ -41,6 +53,8 @@ export default async function DashboardPage({
     month?: string;
     year?: string;
     period?: string;
+    ownerType?: string;
+    ownerId?: string;
   }>;
 }) {
   const session = await auth();

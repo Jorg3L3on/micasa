@@ -49,6 +49,7 @@ model User {
   expenseTemplates ExpenseTemplate[]
   incomeTemplates  IncomeTemplate[]
   wallets          Wallet[]
+  categories       Category[]
 
   // Shared
   memberships HouseMember[]
@@ -89,11 +90,19 @@ model Category {
   name        String
   description String?
 
+  user_id  Int?
+  house_id Int?
+
   created_at DateTime @default(now())
 
   // Relationships
-  expenses          Expense[]
+  user             User?    @relation(fields: [user_id], references: [id])
+  house            House?   @relation(fields: [house_id], references: [id])
+  expenses         Expense[]
   expense_templates ExpenseTemplate[]
+
+  @@index([user_id])
+  @@index([house_id])
 }
 
 model ExpenseTemplate {
@@ -225,6 +234,7 @@ model House {
   transfersIn      Transfer[]
   incomes          Income[]
   incomeTemplates  IncomeTemplate[]
+  categories       Category[]
 }
 
 model HouseMember {

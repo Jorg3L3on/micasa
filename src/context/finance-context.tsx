@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { FinanceContextType } from '@/types/finance-context';
 
@@ -55,10 +56,29 @@ const FinanceContext = createContext<FinanceContextValue | null>(null);
 const DEFAULT_CONTEXT: FinanceContextType = { type: 'user', id: 0 };
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [context, setContext] = useState<FinanceContextType>(DEFAULT_CONTEXT);
 
   useEffect(() => {
+    const ownerType = searchParams.get('ownerType');
+    const ownerIdRaw = searchParams.get('ownerId');
+    if (ownerType && ownerIdRaw != null && ownerIdRaw !== '') {
+      const ownerId = Number(ownerIdRaw);
+      if (
+        (ownerType === 'user' || ownerType === 'house') &&
+        !Number.isNaN(ownerId)
+      ) {
+        const urlContext: FinanceContextType = {
+          type: ownerType,
+          id: ownerId,
+        };
+        setContext(urlContext);
+        persist(urlContext);
+        return;
+      }
+    }
+
     const stored = parseStored();
     if (stored) {
       setContext(stored);
@@ -70,7 +90,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setContext(userContext);
       persist(userContext);
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, searchParams]);
 
   const setUserContext = useCallback((userId: number) => {
     const next: FinanceContextType = { type: 'user', id: userId };

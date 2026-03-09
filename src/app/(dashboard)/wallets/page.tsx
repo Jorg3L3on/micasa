@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
   createWallet,
@@ -38,6 +39,7 @@ import { formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 
 export default function WalletsPage() {
+  const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,11 @@ export default function WalletsPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await clientFetchFromApi<WalletListItem[]>('/api/wallets');
+      const data = await clientFetchFromApi<WalletListItem[]>(
+        '/api/wallets',
+        undefined,
+        context,
+      );
       setWallets(data);
     } catch (err) {
       setError(
@@ -66,19 +72,22 @@ export default function WalletsPage() {
 
   useEffect(() => {
     fetchWallets();
-  }, []);
+  }, [context]);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
       setFormError(null);
-      await createWallet({
-        name: data.name,
-        amount: data.amount || 0,
-        type: data.type,
-        active: data.active || true,
-        cutoff_day: data.cutoff_day || null,
-        due_day: data.due_day || null,
-      });
+      await createWallet(
+        {
+          name: data.name,
+          amount: data.amount || 0,
+          type: data.type,
+          active: data.active || true,
+          cutoff_day: data.cutoff_day || null,
+          due_day: data.due_day || null,
+        },
+        context,
+      );
       toast.success('Billetera creada');
       await fetchWallets();
       setCreateDialogOpen(false);
@@ -94,7 +103,7 @@ export default function WalletsPage() {
     if (!selectedWallet) return;
     try {
       setFormError(null);
-      await updateWallet(selectedWallet.id, data);
+      await updateWallet(selectedWallet.id, data, context);
       toast.success('Billetera actualizada');
       await fetchWallets();
       setEditDialogOpen(false);
@@ -111,7 +120,7 @@ export default function WalletsPage() {
     if (!selectedWallet) return;
     try {
       setError(null);
-      await deleteWallet(selectedWallet.id);
+      await deleteWallet(selectedWallet.id, context);
       toast.success('Billetera eliminada');
       await fetchWallets();
       setDeleteDialogOpen(false);

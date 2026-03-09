@@ -19,12 +19,28 @@ export function formatDate(dateString: string | Date): string {
   }
 }
 
+/** Coerces API amount (number, string, or Decimal-like) to a finite number for display. */
+export function toDisplayAmount(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') return parseFloat(value) || 0;
+  if (
+    typeof value === 'object' &&
+    value != null &&
+    'toNumber' in value &&
+    typeof (value as { toNumber: () => number }).toNumber === 'function'
+  ) {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function formatCurrency(amount: number | string): string {
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-  }).format(numAmount);
+  }).format(Number.isFinite(numAmount) ? numAmount : 0);
 }
 
 export function formatCurrencySigned(

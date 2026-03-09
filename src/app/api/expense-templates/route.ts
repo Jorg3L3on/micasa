@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
   createExpenseTemplateSchema,
   updateExpenseTemplateSchema,
 } from '@/schemas/expense-template.schema';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const templates = await prisma.expenseTemplate.findMany({
+      where: ownerFilter,
       include: {
         category: {
           select: {
@@ -72,6 +78,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerType, ownerId } = context;
+
     const body = await request.json();
     const validatedData = createExpenseTemplateSchema.parse(body);
 
@@ -90,6 +100,8 @@ export async function POST(request: NextRequest) {
         applies_first_fortnight: validatedData.appliesFirstFortnight,
         applies_second_fortnight: validatedData.appliesSecondFortnight,
         is_subscription: validatedData.isSubscription,
+        user_id: ownerType === 'user' ? ownerId : null,
+        house_id: ownerType === 'house' ? ownerId : null,
       },
       include: {
         category: {
@@ -160,6 +172,10 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -211,7 +227,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const template = await prisma.expenseTemplate.update({
-      where: { id: Number(id) },
+      where: { id: Number(id), ...ownerFilter },
       data: updateData,
       include: {
         category: {
@@ -293,6 +309,10 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -303,9 +323,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check for related expenses
+    const templateId = Number(id);
+    const existing = await prisma.expenseTemplate.findFirst({
+      where: { id: templateId, ...ownerFilter },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Expense template not found' },
+        { status: 404 },
+      );
+    }
+
     const relatedExpenses = await prisma.expense.findFirst({
-      where: { expense_template_id: Number(id) },
+      where: { expense_template_id: templateId },
     });
 
     if (relatedExpenses) {
@@ -318,7 +348,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.expenseTemplate.delete({
-      where: { id: Number(id) },
+      where: { id: templateId },
     });
 
     return NextResponse.json(
