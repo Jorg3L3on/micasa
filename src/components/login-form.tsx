@@ -93,7 +93,7 @@ export function LoginForm({
             {error && <div className="text-sm text-red-500">{error}</div>}
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full"
               disabled={isLoading}
             >
               {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
