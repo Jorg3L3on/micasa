@@ -133,7 +133,9 @@ export default function EditIncomeTemplatePage() {
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error || 'Plantilla no encontrada'}
         </div>
-        <Link href={`/income-templates${queryString ? `?${queryString}` : ''}`}>
+        <Link
+          href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+        >
           <Button variant="outline">Volver a plantillas</Button>
         </Link>
       </div>
@@ -301,7 +303,9 @@ export default function EditIncomeTemplatePage() {
               />
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link href={`/income-templates${queryString ? `?${queryString}` : ''}`}>
+                <Link
+                  href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+                >
                   <Button
                     type="button"
                     variant="outline"

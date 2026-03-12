@@ -56,24 +56,24 @@ export function LoginForm({
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <form onSubmit={onSubmit}>
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-col items-center gap-1">
             <a
               href="#"
               className="flex flex-col items-center gap-2 font-medium"
             >
-              <div className="flex h-20 w-20 items-center justify-center rounded-md">
+              <div className="flex h-60 w-60 items-center justify-center rounded-md">
                 <Image
-                  src="/favicon.ico"
+                  src="/logo-black.svg"
                   alt="MiCasa logo"
-                  width={80}
-                  height={80}
-                  className="size-20"
+                  width={240}
+                  height={240}
+                  className="size-60"
                 />
               </div>
               <span className="sr-only">MiCasa</span>
             </a>
-            <h1 className="text-xl font-bold">MiCasa</h1>
+            <h1 className="text-xl font-bold">Iniciar sesión</h1>
           </div>
           <div className="flex flex-col gap-6">
             <div className="grid gap-2">
@@ -91,16 +91,15 @@ export function LoginForm({
               <PasswordInput id="password" name="password" required />
             </div>
             {error && <div className="text-sm text-red-500">{error}</div>}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               ¿No tienes cuenta?{' '}
-              <Link href="/register" className="underline hover:text-foreground">
+              <Link
+                href="/register"
+                className="underline hover:text-foreground"
+              >
                 Crear cuenta
               </Link>
             </p>

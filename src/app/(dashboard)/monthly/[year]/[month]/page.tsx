@@ -147,6 +147,15 @@ export default async function MonthlyPage({
   const prevMonthStr = prevMonth.toString().padStart(2, '0')
   const nextMonthStr = nextMonth.toString().padStart(2, '0')
 
+  const ownerQuery =
+    ownerContext &&
+    typeof ownerContext.ownerId === 'number' &&
+    ownerContext.ownerType
+      ? `?ownerType=${ownerContext.ownerType}&ownerId=${ownerContext.ownerId}`
+      : ''
+  const prevHref = `/monthly/${prevYear}/${prevMonthStr}${ownerQuery}`
+  const nextHref = `/monthly/${nextYear}/${nextMonthStr}${ownerQuery}`
+
   const [
     firstFortnightInfo,
     secondFortnightInfo,
@@ -191,6 +200,10 @@ export default async function MonthlyPage({
   const firstFortnightId = firstFortnightInfo?.id || 0
   const secondFortnightId = secondFortnightInfo?.id || 0
 
+  const ownerKey = ownerContext
+    ? `${ownerContext.ownerType}-${ownerContext.ownerId}`
+    : 'user-default'
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -200,8 +213,8 @@ export default async function MonthlyPage({
           monthName={monthName}
           hasPrevMonth={hasPrevMonth}
           hasNextMonth={hasNextMonth}
-          prevHref={`/monthly/${prevYear}/${prevMonthStr}`}
-          nextHref={`/monthly/${nextYear}/${nextMonthStr}`}
+          prevHref={prevHref}
+          nextHref={nextHref}
           prevMonthLabel={prevMonthLabel}
           nextMonthLabel={nextMonthLabel}
         />
@@ -215,6 +228,7 @@ export default async function MonthlyPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <FortnightColumn
+          key={`${ownerKey}-${year}-${month}-FIRST`}
           label={firstLabel}
           transactions={firstTransactions}
           summary={firstSummary}
@@ -225,6 +239,7 @@ export default async function MonthlyPage({
         />
 
         <FortnightColumn
+          key={`${ownerKey}-${year}-${month}-SECOND`}
           label={secondLabel}
           transactions={secondTransactions}
           summary={secondSummary}

@@ -258,14 +258,16 @@ export default function WalletsPage() {
             open={editDialogOpen}
             onOpenChange={(open) => {
               setEditDialogOpen(open);
-              setSelectedWallet(null);
-              setFormError(null);
+              if (!open) {
+                setSelectedWallet(null);
+                setFormError(null);
+              }
             }}
             onSubmit={handleEdit}
             mode="edit"
             defaultValues={{
               name: selectedWallet.name,
-              amount: selectedWallet.amount,
+              amount: selectedWallet.amount ?? 0,
               type: selectedWallet.type as PaymentMethodType,
               active: selectedWallet.active,
               cutoff_day: selectedWallet.cutoff_day,

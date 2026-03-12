@@ -1,6 +1,4 @@
 'use client';
-
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,40 +54,20 @@ export default function WalletForm({
   const form = useForm<WalletFormInput>({
     resolver: zodResolver(walletSchema),
     defaultValues: {
-      name: '',
-      amount: 0,
-      type: 'CASH',
-      active: true,
-      cutoff_day: null,
-      due_day: null,
+      name: defaultValues?.name ?? '',
+      amount: defaultValues?.amount ?? 0,
+      type: defaultValues?.type ?? 'CASH',
+      active: defaultValues?.active ?? true,
+      cutoff_day: defaultValues?.cutoff_day ?? null,
+      due_day: defaultValues?.due_day ?? null,
     },
   });
 
-  useEffect(() => {
-    if (open && defaultValues) {
-      form.reset(defaultValues);
-    } else if (open && !defaultValues) {
-      form.reset({
-        name: '',
-        amount: 0,
-        type: 'CASH',
-        active: true,
-        cutoff_day: null,
-        due_day: null,
-      });
-    }
-  }, [open, defaultValues, form]);
-
   const handleSubmit = async (data: WalletFormInput) => {
-    try {
-      const parsedData = walletSchema.parse(data); // 🔥 aquí se normaliza
-
-      await onSubmit(parsedData);
-      form.reset();
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Error al enviar el formulario de cartera:', error);
-    }
+    const parsedData = walletSchema.parse(data);
+    await onSubmit(parsedData);
+    form.reset();
+    onOpenChange(false);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -141,21 +119,31 @@ export default function WalletForm({
             <FormField
               control={form.control}
               name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      {...field}
-                      value={typeof field.value === 'number' ? field.value : ''}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const numericValue =
+                  field.value === undefined || field.value === null || field.value === ''
+                    ? ''
+                    : Number(field.value);
+
+                return (
+                  <FormItem>
+                    <FormLabel>Monto</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={numericValue}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === '' ? '' : Number(e.target.value),
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField

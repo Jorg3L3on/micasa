@@ -236,7 +236,9 @@ export default function NewIncomeTemplatePage() {
               />
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link href={`/income-templates${queryString ? `?${queryString}` : ''}`}>
+                <Link
+                  href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+                >
                   <Button
                     type="button"
                     variant="outline"

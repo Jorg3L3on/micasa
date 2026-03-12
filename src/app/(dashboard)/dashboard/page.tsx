@@ -1,7 +1,4 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
 import { fetchFromApi } from '@/lib/api-server';
 import CreateMonthCard from '@/components/CreateMonthCard';
 import { DashboardTabs } from '@/components/dashboard';
@@ -57,23 +54,6 @@ export default async function DashboardPage({
     ownerId?: string;
   }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect('/login');
-  }
-
-  const userId = Number(session.user.id);
-  const wallet = await prisma.wallet.findFirst({
-    where: {
-      user_id: userId,
-      house_id: null,
-    },
-  });
-
-  if (!wallet) {
-    redirect('/onboarding');
-  }
-
   const params = await searchParams;
   const dashboardData = await getDashboardData(params);
 

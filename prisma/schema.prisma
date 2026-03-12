@@ -39,6 +39,7 @@ model User {
   email    String  @unique
   password String
   active   Boolean @default(true)
+  onboarding_completed Boolean @default(false)
 
   created_at DateTime @default(now())
 

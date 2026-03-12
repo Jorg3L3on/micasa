@@ -85,19 +85,19 @@ export function RegisterForm({
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <form onSubmit={onSubmit}>
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-col items-center gap-4">
             <a
               href="/"
               className="flex flex-col items-center gap-2 font-medium"
             >
-              <div className="flex h-20 w-20 items-center justify-center rounded-md">
+              <div className="flex h-60 w-60 items-center justify-center rounded-md">
                 <Image
-                  src="/favicon.ico"
+                  src="/logo-black.svg"
                   alt="MiCasa logo"
-                  width={80}
-                  height={80}
-                  className="size-20"
+                  width={240}
+                  height={240}
+                  className="size-60"
                 />
               </div>
               <span className="sr-only">MiCasa</span>
@@ -152,11 +152,7 @@ export function RegisterForm({
                 {error}
               </div>
             )}
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
             </Button>
             <p className="text-center text-sm text-muted-foreground">

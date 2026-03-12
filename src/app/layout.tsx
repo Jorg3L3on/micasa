@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: 'MiCasa',
   description:
     'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+  icons: {
+    icon: '/icon.ico',
+  },
   openGraph: {
     title: 'MiCasa',
     description:

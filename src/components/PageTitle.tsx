@@ -47,6 +47,23 @@ function getPageTitle(pathname: string): {
     return { title: 'Plantillas de gastos', breadcrumbs };
   }
 
+  // Handle income-templates
+  if (segments[0] === 'income-templates') {
+    breadcrumbs.push({
+      label: 'Plantillas de ingresos',
+      href: '/income-templates',
+    });
+    if (segments[1] === 'new') {
+      breadcrumbs.push({ label: 'Nueva plantilla' });
+      return { title: 'Nueva plantilla', breadcrumbs };
+    }
+    if (segments[2] === 'edit') {
+      breadcrumbs.push({ label: 'Editar' });
+      return { title: 'Editar plantilla', breadcrumbs };
+    }
+    return { title: 'Plantillas de ingresos', breadcrumbs };
+  }
+
   // Handle monthly pages
   if (segments[0] === 'monthly' && segments[1] && segments[2]) {
     const year = parseInt(segments[1], 10);

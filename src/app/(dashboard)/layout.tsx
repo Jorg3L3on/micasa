@@ -1,3 +1,6 @@
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 import { AppSidebar } from '@/components/app-sidebar';
 import {
   SidebarInset,
@@ -7,11 +10,26 @@ import {
 import { Separator } from '@/components/ui/separator';
 import PageTitle from '@/components/PageTitle';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
+
+  const userId = Number(session.user.id);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { onboarding_completed: true },
+  });
+
+  if (!user?.onboarding_completed) {
+    redirect('/onboarding');
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
