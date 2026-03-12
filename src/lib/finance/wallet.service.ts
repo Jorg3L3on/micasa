@@ -104,10 +104,9 @@ export async function createWalletForOwner(
 }
 
 export async function updateWalletMetadata(id: number, data: UpdateWalletInput) {
-  const { amount: _ignoredAmount, ...updateFields } = data;
   return prisma.wallet.update({
     where: { id },
-    data: updateFields,
+    data,
   });
 }
 
@@ -116,7 +115,6 @@ export async function updateWalletMetadataForOwner(
   data: UpdateWalletInput,
   ownerFilter: OwnerFilter,
 ) {
-  const { amount: _ignoredAmount, ...updateFields } = data;
   const existing = await prisma.wallet.findFirst({
     where: { id, ...ownerFilter },
   });
@@ -127,7 +125,7 @@ export async function updateWalletMetadataForOwner(
   }
   return prisma.wallet.update({
     where: { id },
-    data: updateFields,
+    data,
   });
 }
 

@@ -83,7 +83,9 @@ export default function IncomeTemplatesPage() {
   };
 
   const handleEdit = (template: IncomeTemplateListItem) => {
-    router.push(`/income-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`);
+    router.push(
+      `/income-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`,
+    );
   };
 
   const openDeleteDialog = (template: IncomeTemplateListItem) => {
@@ -95,7 +97,13 @@ export default function IncomeTemplatesPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
-        <Button onClick={() => router.push(`/income-templates/new${queryString ? `?${queryString}` : ''}`)}>
+        <Button
+          onClick={() =>
+            router.push(
+              `/income-templates/new${queryString ? `?${queryString}` : ''}`,
+            )
+          }
+        >
           Agregar plantilla de ingresos
         </Button>
       </div>

@@ -42,6 +42,7 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
       params.set('ownerType', ownerType);
       params.set('ownerId', String(ownerId));
       router.push(`${pathname}?${params.toString()}`);
+      router.refresh();
     },
     [pathname, router, searchParams],
   );

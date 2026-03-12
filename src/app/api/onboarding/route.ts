@@ -36,6 +36,10 @@ export async function POST() {
   });
 
   if (existingWallet) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { onboarding_completed: true },
+    });
     return NextResponse.json(
       { completed: true, walletCreated: false },
       { status: 200 },
@@ -49,6 +53,11 @@ export async function POST() {
     active: true,
     cutoff_day: null,
     due_day: null,
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { onboarding_completed: true },
   });
 
   return NextResponse.json(

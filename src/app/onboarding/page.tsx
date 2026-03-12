@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import CreateWallet from '@/components/onboarding/CreateWallet';
+import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 
 export default async function OnboardingPage() {
   const session = await auth();
@@ -9,17 +8,5 @@ export default async function OnboardingPage() {
     redirect('/login');
   }
 
-  const userId = Number(session.user.id);
-  const wallet = await prisma.wallet.findFirst({
-    where: {
-      user_id: userId,
-      house_id: null,
-    },
-  });
-
-  if (wallet) {
-    redirect('/dashboard');
-  }
-
-  return <CreateWallet />;
+  return <OnboardingWizard />;
 }
