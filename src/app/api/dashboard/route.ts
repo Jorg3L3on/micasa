@@ -112,7 +112,6 @@ export async function GET(request: NextRequest) {
         where: {
           ...ownerFilter,
           fortnight_id: { in: currentFortnightIds },
-          source: { not: '__OVERRIDE__' },
         },
         include: { user: { select: { id: true, name: true } } },
       }),
@@ -124,7 +123,6 @@ export async function GET(request: NextRequest) {
         where: {
           ...ownerFilter,
           fortnight_id: { in: prevFortnightIds },
-          source: { not: '__OVERRIDE__' },
         },
         select: { amount: true },
       }),
@@ -147,7 +145,6 @@ export async function GET(request: NextRequest) {
         where: {
           ...ownerFilter,
           fortnight_id: { in: currentFortnightIds },
-          source: { not: '__OVERRIDE__' },
         },
         include: { user: { select: { id: true, name: true } } },
       }),

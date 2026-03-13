@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { fetchFromApi } from '@/lib/api-server';
 import CreateMonthCard from '@/components/CreateMonthCard';
-import { DashboardTabs } from '@/components/dashboard';
+import { DashboardTabsWrapper } from '@/components/dashboard';
 import type { DashboardData } from '@/types/dashboard';
 
 export const metadata: Metadata = {
@@ -68,9 +68,5 @@ export default async function DashboardPage({
     );
   }
 
-  return (
-    <>
-      <DashboardTabs data={dashboardData} />
-    </>
-  );
+  return <DashboardTabsWrapper data={dashboardData} />;
 }

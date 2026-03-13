@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { FinanceContextType } from '@/types/finance-context';
 
@@ -77,10 +77,13 @@ const FinanceContext = createContext<FinanceContextValue | null>(null);
 const DEFAULT_CONTEXT: FinanceContextType = { type: 'user', id: 0 };
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [context, setContext] = useState<FinanceContextType>(DEFAULT_CONTEXT);
   const currentUserIdRef = useRef<number | null>(null);
+  const hasSyncedUrlRef = useRef(false);
 
   useEffect(() => {
     const userId =
@@ -102,6 +105,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         };
         setContext(urlContext);
         if (isUserIdValid) persist(urlContext, userId);
+        hasSyncedUrlRef.current = true;
         return;
       }
     }
@@ -113,15 +117,29 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       stored.userId === userId
     ) {
       setContext(stored.context);
+      // Sync URL to stored context so server components (e.g. dashboard) receive
+      // owner params and load the correct data for house vs user.
+      if (
+        !hasSyncedUrlRef.current &&
+        (stored.context.type === 'house' || stored.context.type === 'user')
+      ) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('ownerType', stored.context.type);
+        params.set('ownerId', String(stored.context.id));
+        const query = params.toString();
+        router.replace(`${pathname}${query ? `?${query}` : ''}`);
+        hasSyncedUrlRef.current = true;
+      }
       return;
     }
 
+    hasSyncedUrlRef.current = true;
     if (isUserIdValid) {
       const userContext: FinanceContextType = { type: 'user', id: userId };
       setContext(userContext);
       persist(userContext, userId);
     }
-  }, [session?.user?.id, searchParams]);
+  }, [session?.user?.id, searchParams, pathname, router]);
 
   const setUserContext = useCallback((userId: number) => {
     const next: FinanceContextType = { type: 'user', id: userId };
