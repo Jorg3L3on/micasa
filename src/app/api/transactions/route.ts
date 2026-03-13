@@ -56,12 +56,16 @@ export async function GET(request: NextRequest) {
           ? false
           : undefined;
 
-    const where: Record<string, unknown> = { ...ownerFilter };
-    if (fortnightIds !== undefined) where.fortnight_id = { in: fortnightIds };
-    if (is_paid !== undefined) where.is_paid = is_paid;
+    const expenseWhere: Record<string, unknown> = { ...ownerFilter };
+    if (fortnightIds !== undefined) {
+      expenseWhere.fortnight_id = { in: fortnightIds };
+    }
+    if (is_paid !== undefined) {
+      expenseWhere.is_paid = is_paid;
+    }
 
     const expenses = await prisma.expense.findMany({
-      where,
+      where: expenseWhere,
       include: {
         category: { select: { name: true } },
         wallet: { select: { name: true } },
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
       orderBy: { created_at: 'desc' },
     });
 
-    const transactions = expenses.map((expense) => {
+    const expenseTransactions = expenses.map((expense) => {
       const dateValue = expense.payment_date || expense.created_at;
       const dateStr =
         dateValue instanceof Date
@@ -89,12 +93,54 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    let filteredTransactions = transactions;
-    if (type) {
-      filteredTransactions = transactions.filter((t) => t.type === type);
+    const incomeWhere: Record<string, unknown> = {
+      ...ownerFilter,
+      source: { not: '__OVERRIDE__' },
+    };
+    if (fortnightIds !== undefined) {
+      incomeWhere.fortnight_id = { in: fortnightIds };
     }
 
-    return NextResponse.json(filteredTransactions, { status: 200 });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    incomeWhere.received_at = { lte: today };
+
+    const incomes = await prisma.income.findMany({
+      where: incomeWhere,
+      orderBy: { received_at: 'desc' },
+    });
+
+    const incomeTransactions = incomes.map((income) => {
+      const dateValue = income.received_at || income.created_at;
+      const dateStr =
+        dateValue instanceof Date
+          ? dateValue.toISOString().split('T')[0]
+          : new Date(dateValue).toISOString().split('T')[0];
+      return {
+        id: income.id,
+        date: dateStr,
+        description: income.source ?? 'Ingreso',
+        amount: decimalToNumber(income.amount),
+        category: '',
+        paymentMethod: 'Ingreso',
+        type: 'income' as const,
+        is_paid: true,
+        due_day: null,
+      };
+    });
+
+    let combined: ReturnType<typeof decimalToNumber>[] | any[] = [
+      ...expenseTransactions,
+      ...incomeTransactions,
+    ];
+
+    if (type === 'income' || type === 'expense') {
+      combined = combined.filter((t) => t.type === type);
+    }
+
+    combined.sort((a, b) => b.date.localeCompare(a.date));
+
+    return NextResponse.json(combined, { status: 200 });
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return NextResponse.json(

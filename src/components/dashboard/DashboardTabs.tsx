@@ -103,7 +103,7 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
           </Card>
         )}
         <div className="max-w-2xl">
-          <QuickActionsCard compact />
+          <QuickActionsCard compact period={data.period} />
         </div>
       </TabsContent>
 
