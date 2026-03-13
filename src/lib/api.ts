@@ -246,6 +246,21 @@ export async function deleteIncomeTemplate(
   }, context);
 }
 
+export async function createIncome(
+  data: {
+    fortnight_id: number;
+    amount: number;
+    source?: string | null;
+    received_at: string;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi('/api/incomes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, context);
+}
+
 export type CreateMonthFortnightsResult = {
   message: string;
   created: Array<{ id: number; label: string; period: string }>;

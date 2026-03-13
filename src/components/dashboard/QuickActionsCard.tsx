@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { CalendarPlus, Plus, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -12,36 +13,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { CalendarPlus, type LucideIcon, Plus, TrendingUp } from 'lucide-react';
 import CreateMonthForm from '@/components/CreateMonthForm';
+import { useFinanceContext } from '@/context/finance-context';
+import { clientFetchFromApi, createExpenseTransaction } from '@/lib/api';
+import type { DashboardData } from '@/types/dashboard';
+import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { DASHBOARD_CARD_CLASS } from './constants';
+import DashboardQuickIncomeDialog from './DashboardQuickIncomeDialog';
+import DashboardQuickExpenseDialog from './DashboardQuickExpenseDialog';
 
 type QuickActionsCardProps = {
   compact?: boolean;
+  period: DashboardData['period'];
 };
 
-const LINK_ACTIONS: Array<{
-  href: string;
+type FortnightMeta = {
+  id: number;
   label: string;
-  labelShort: string;
-  ariaLabel: string;
-  icon: LucideIcon;
-}> = [
-  {
-    href: '/transactions?action=add-expense',
-    label: 'Agregar gasto',
-    labelShort: 'Gasto',
-    ariaLabel: 'Agregar gasto',
-    icon: Plus,
-  },
-  {
-    href: '/transactions?action=add-income',
-    label: 'Agregar ingreso',
-    labelShort: 'Ingreso',
-    ariaLabel: 'Agregar ingreso',
-    icon: TrendingUp,
-  },
-];
+  year: number;
+  month: number;
+  period: 'FIRST' | 'SECOND';
+};
 
 const CREATE_MONTH_DIALOG = {
   title: 'Crear mes (dos quincenas)',
@@ -52,8 +44,16 @@ const CREATE_MONTH_DIALOG = {
 
 export default function QuickActionsCard({
   compact = false,
+  period,
 }: QuickActionsCardProps) {
+  const router = useRouter();
+  const { context } = useFinanceContext();
   const [createMonthOpen, setCreateMonthOpen] = useState(false);
+  const [fortnight, setFortnight] = useState<FortnightMeta | null>(null);
+  const [fortnightError, setFortnightError] = useState<string | null>(null);
+  const [isResolvingFortnight, setIsResolvingFortnight] = useState(false);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [incomeDialogOpen, setIncomeDialogOpen] = useState(false);
 
   const handleCreateMonthSuccess = () => setCreateMonthOpen(false);
 
@@ -61,6 +61,88 @@ export default function QuickActionsCard({
   const buttonFull = 'h-auto flex-col gap-1 py-3';
   const iconSizeCompact = 'size-3.5';
   const iconSizeFull = 'h-4 w-4';
+
+  const resolveCurrentFortnight = useCallback(async () => {
+    if (fortnight || isResolvingFortnight) {
+      return fortnight;
+    }
+
+    setIsResolvingFortnight(true);
+    setFortnightError(null);
+
+    try {
+      const paddedMonth = String(period.month).padStart(2, '0');
+      const result = await clientFetchFromApi<FortnightMeta | null>(
+        `/api/fortnights?year=${period.year}&month=${paddedMonth}&period=${period.period}`,
+        undefined,
+        context,
+      );
+
+      if (!result) {
+        setFortnightError(
+          'Primero crea el mes y las quincenas para poder registrar gastos e ingresos desde el panel.',
+        );
+        return null;
+      }
+
+      setFortnight(result);
+      return result;
+    } catch (error) {
+      console.error('Error al obtener la quincena actual desde el panel:', error);
+      setFortnightError(
+        'No se pudo obtener la quincena actual. Intenta de nuevo o usa la vista de planificación.',
+      );
+      return null;
+    } finally {
+      setIsResolvingFortnight(false);
+    }
+  }, [context, fortnight, isResolvingFortnight, period]);
+
+  const handleOpenExpenseDialog = useCallback(async () => {
+    const currentFortnight = await resolveCurrentFortnight();
+    if (!currentFortnight) {
+      return;
+    }
+    setExpenseDialogOpen(true);
+  }, [resolveCurrentFortnight]);
+
+  const handleOpenIncomeDialog = useCallback(async () => {
+    const currentFortnight = await resolveCurrentFortnight();
+    if (!currentFortnight) {
+      return;
+    }
+    setIncomeDialogOpen(true);
+  }, [resolveCurrentFortnight]);
+
+  const handleQuickExpenseSubmit = useCallback(
+    async (values: AddExpenseFormValues) => {
+      if (!fortnight) {
+        throw new Error('No hay una quincena activa para este periodo.');
+      }
+
+      await createExpenseTransaction(
+        {
+          fortnight_id: fortnight.id,
+          category_id: values.categoryId,
+          description: values.name,
+          amount: values.amount,
+          payment_method_id: values.paymentMethodId,
+          is_paid: values.isPaid,
+          payment_date: values.date
+            ? `${values.date}T00:00:00.000Z`
+            : null,
+        },
+        context,
+      );
+
+      router.refresh();
+    },
+    [context, fortnight, router],
+  );
+
+  const handleQuickIncomeCreated = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   return (
     <Card className={DASHBOARD_CARD_CLASS}>
@@ -76,28 +158,40 @@ export default function QuickActionsCard({
             : 'grid grid-cols-2 gap-2'
         }
       >
-        {LINK_ACTIONS.map(
-          ({ href, label, labelShort, ariaLabel, icon: Icon }) => (
-            <Button
-              key={href}
-              variant="outline"
-              size="sm"
-              asChild
-              className={compact ? buttonCompact : buttonFull}
-            >
-              <Link href={href} aria-label={ariaLabel}>
-                <Icon
-                  className={compact ? iconSizeCompact : iconSizeFull}
-                  aria-hidden
-                />
-                <span>{compact ? labelShort : label}</span>
-              </Link>
-            </Button>
-          ),
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={compact ? buttonCompact : buttonFull}
+          aria-label="Agregar gasto"
+          onClick={handleOpenExpenseDialog}
+          disabled={isResolvingFortnight}
+        >
+          <Plus
+            className={compact ? iconSizeCompact : iconSizeFull}
+            aria-hidden
+          />
+          <span>{compact ? 'Gasto' : 'Agregar gasto'}</span>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={compact ? buttonCompact : buttonFull}
+          aria-label="Agregar ingreso"
+          onClick={handleOpenIncomeDialog}
+          disabled={isResolvingFortnight}
+        >
+          <TrendingUp
+            className={compact ? iconSizeCompact : iconSizeFull}
+            aria-hidden
+          />
+          <span>{compact ? 'Ingreso' : 'Agregar ingreso'}</span>
+        </Button>
         <Dialog open={createMonthOpen} onOpenChange={setCreateMonthOpen}>
           <DialogTrigger asChild>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               className={
@@ -131,6 +225,27 @@ export default function QuickActionsCard({
             />
           </DialogContent>
         </Dialog>
+        {fortnightError && (
+          <p className="col-span-2 text-xs text-destructive">
+            {fortnightError}
+          </p>
+        )}
+        {fortnight && (
+          <>
+            <DashboardQuickExpenseDialog
+              open={expenseDialogOpen}
+              onOpenChange={setExpenseDialogOpen}
+              onSubmit={handleQuickExpenseSubmit}
+              fortnight={fortnight}
+            />
+            <DashboardQuickIncomeDialog
+              open={incomeDialogOpen}
+              onOpenChange={setIncomeDialogOpen}
+              fortnight={fortnight}
+              onCreated={handleQuickIncomeCreated}
+            />
+          </>
+        )}
       </CardContent>
     </Card>
   );
