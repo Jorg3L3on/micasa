@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { createUserToHouseTransfer } from '@/lib/finance/transfer.service';
 
 const createIncomeSchema = z.object({
   fortnight_id: z.number().int().positive(),
   amount: z.number().positive('Amount must be greater than 0'),
   source: z.string().optional().nullable(),
   received_at: z.string().min(1),
+  transfer_from_user_id: z.number().int().positive().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -26,7 +29,14 @@ export async function POST(request: NextRequest) {
 
     const fortnight = await prisma.fortnight.findUnique({
       where: { id: validated.fortnight_id },
-      select: { id: true, user_id: true, house_id: true },
+      select: {
+        id: true,
+        user_id: true,
+        house_id: true,
+        year: true,
+        month: true,
+        period: true,
+      },
     });
 
     if (
@@ -60,6 +70,64 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+    }
+
+    const transferFromUserId = validated.transfer_from_user_id;
+
+    if (
+      ownerType === 'house' &&
+      transferFromUserId != null
+    ) {
+      const membership = await prisma.houseMember.findFirst({
+        where: {
+          house_id: ownerId,
+          user_id: transferFromUserId,
+        },
+      });
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'User is not a member of this house' },
+          { status: 400 },
+        );
+      }
+
+      const userFortnight = await resolveOrCreateFortnight({
+        ownerType: 'user',
+        ownerId: transferFromUserId,
+        year: fortnight.year,
+        month: fortnight.month,
+        period: fortnight.period,
+      });
+
+      const transfer = await createUserToHouseTransfer({
+        userId: transferFromUserId,
+        houseId: ownerId,
+        amount: validated.amount,
+        userFortnightId: userFortnight.id,
+        houseFortnightId: validated.fortnight_id,
+        note:
+          validated.source && validated.source.length > 0
+            ? validated.source
+            : null,
+        date: new Date(validated.received_at),
+        userWalletId: null,
+        houseWalletId: null,
+      });
+
+      const houseIncome = (transfer as { house_income: { id: number; amount: unknown; source: string | null; received_at: Date; fortnight_id: number; house_id: number } }).house_income;
+      return NextResponse.json(
+        {
+          id: houseIncome.id,
+          amount: houseIncome.amount,
+          source: houseIncome.source,
+          received_at: houseIncome.received_at,
+          fortnight_id: houseIncome.fortnight_id,
+          house_id: houseIncome.house_id,
+          user_id: null,
+        },
+        { status: 201 },
+      );
     }
 
     const created = await prisma.income.create({

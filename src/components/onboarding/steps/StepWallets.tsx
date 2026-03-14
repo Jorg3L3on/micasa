@@ -72,6 +72,13 @@ export default function StepWallets() {
     setWallets(wallets.filter((w) => w.id !== id));
   };
 
+  const WALLET_NAME_PLACEHOLDER = 'Nombre de la billetera';
+  const handleWalletNameFocus = (id: string, currentName: string) => {
+    if (currentName === WALLET_NAME_PLACEHOLDER || currentName === 'Nueva billetera') {
+      handleNameChange(id, '');
+    }
+  };
+
   const canDelete = wallets.length > 1;
 
   return (
@@ -111,6 +118,7 @@ export default function StepWallets() {
                 type="text"
                 value={wallet.name}
                 onChange={(e) => handleNameChange(wallet.id, e.target.value)}
+                onFocus={() => handleWalletNameFocus(wallet.id, wallet.name)}
                 placeholder="Nombre de la billetera"
                 className="min-w-0 flex-1"
                 aria-label={`Nombre de billetera: ${wallet.name}`}

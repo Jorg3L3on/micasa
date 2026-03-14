@@ -15,6 +15,7 @@ import { useSession } from 'next-auth/react';
 import { TeamSwitcher } from '@/components/team-switcher';
 import { NavUser } from '@/components/nav-user';
 import { NavMain } from '@/components/nav-main';
+import { useFinanceContext } from '@/context/finance-context';
 import {
   Sidebar,
   SidebarContent,
@@ -33,11 +34,44 @@ function getCurrentMonthHref(): string {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { context } = useFinanceContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const catalogItems = [
+    {
+      title: 'Plantillas de gastos',
+      url: '/expense-templates',
+      isActive: pathname.startsWith('/expense-templates'),
+    },
+    {
+      title: 'Plantillas de ingresos',
+      url: '/income-templates',
+      isActive: pathname.startsWith('/income-templates'),
+    },
+    {
+      title: 'Categorías',
+      url: '/categories',
+      isActive: pathname.startsWith('/categories'),
+    },
+    {
+      title: 'Billeteras',
+      url: '/wallets',
+      isActive: pathname.startsWith('/wallets'),
+    },
+    ...(context.type === 'house'
+      ? [
+          {
+            title: 'Usuarios de la casa',
+            url: '/house-users',
+            isActive: pathname.startsWith('/house-users'),
+          },
+        ]
+      : []),
+  ];
 
   const navItems = [
     {
@@ -66,29 +100,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive:
         pathname.startsWith('/expense-templates') ||
         pathname.startsWith('/income-templates') ||
-        pathname.startsWith('/categories'),
-      items: [
-        {
-          title: 'Plantillas de gastos',
-          url: '/expense-templates',
-          isActive: pathname.startsWith('/expense-templates'),
-        },
-        {
-          title: 'Plantillas de ingresos',
-          url: '/income-templates',
-          isActive: pathname.startsWith('/income-templates'),
-        },
-        {
-          title: 'Categorías',
-          url: '/categories',
-          isActive: pathname.startsWith('/categories'),
-        },
-        {
-          title: 'Billeteras',
-          url: '/wallets',
-          isActive: pathname.startsWith('/wallets'),
-        },
-      ],
+        pathname.startsWith('/categories') ||
+        pathname.startsWith('/wallets') ||
+        pathname.startsWith('/house-users'),
+      items: catalogItems,
     },
   ];
 

@@ -73,6 +73,21 @@ export default function StepIncomeTemplates() {
     );
   };
 
+  const handleIncomeNameFocus = (id: string, currentName: string) => {
+    if (
+      currentName === 'Nombre del ingreso' ||
+      currentName === 'Nuevo ingreso'
+    ) {
+      handleNameChange(id, '');
+    }
+  };
+
+  const handleIncomeSourceFocus = (id: string, currentSource: string) => {
+    if (currentSource === 'Origen (empresa, cliente...)') {
+      handleSourceChange(id, '');
+    }
+  };
+
   const handleAdd = () => {
     setIncomeTemplates((prev: IncomeTemplateDraft[]) => [
       ...prev,
@@ -136,6 +151,7 @@ export default function StepIncomeTemplates() {
                 type="text"
                 value={income.name}
                 onChange={(e) => handleNameChange(income.id, e.target.value)}
+                onFocus={() => handleIncomeNameFocus(income.id, income.name)}
                 placeholder="Nombre del ingreso"
                 className="min-w-0 flex-1 basis-32"
                 aria-label={`Nombre del ingreso: ${income.name}`}
@@ -144,6 +160,9 @@ export default function StepIncomeTemplates() {
                 type="text"
                 value={income.source}
                 onChange={(e) => handleSourceChange(income.id, e.target.value)}
+                onFocus={() =>
+                  handleIncomeSourceFocus(income.id, income.source)
+                }
                 placeholder="Origen (empresa, cliente...)"
                 className="min-w-[8rem] max-w-[12rem] text-sm"
                 aria-label={`Origen del ingreso: ${income.source || income.name}`}

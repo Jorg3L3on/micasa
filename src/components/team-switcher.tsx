@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import { CreateHouseDialog } from '@/components/create-house-dialog';
 import type { CreatedHouse } from '@/components/create-house-dialog';
+import { clientFetchFromApi } from '@/lib/api';
 
 type TeamSwitcherProps = {
   /** @deprecated No longer used; context comes from session and useFinanceContext */
@@ -55,6 +56,19 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
   useEffect(() => {
     setHouses(session?.user?.houses ?? []);
   }, [session?.user?.houses]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const loadHouses = async () => {
+      try {
+        const list = await clientFetchFromApi<CreatedHouse[]>('/api/houses');
+        setHouses(list);
+      } catch {
+        // Keep current state on error (e.g. session houses)
+      }
+    };
+    loadHouses();
+  }, [session?.user?.id]);
 
   const currentHouse =
     context.type === 'house' ? houses.find((h) => h.id === context.id) : null;
