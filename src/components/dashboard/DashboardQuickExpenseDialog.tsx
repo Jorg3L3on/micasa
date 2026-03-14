@@ -334,24 +334,25 @@ export default function DashboardQuickExpenseDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="applyToBothFortnights"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={!isRecurring}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Aplicar a ambas quincenas</FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
+            {isRecurring && (
+              <FormField
+                control={form.control}
+                name="applyToBothFortnights"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Aplicar a ambas quincenas</FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button
                 type="button"

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    const { ownerType, ownerId, role } = context;
 
     if (ownerType !== 'house') {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       email: m.user.email,
     }));
 
-    return NextResponse.json(users, { status: 200 });
+    return NextResponse.json({ users, role }, { status: 200 });
   } catch (error) {
     console.error('Error fetching house users:', error);
     return NextResponse.json(
@@ -60,12 +60,19 @@ export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    const { ownerType, ownerId, role } = context;
 
     if (ownerType !== 'house') {
       return NextResponse.json(
         { error: 'House context required' },
         { status: 400 },
+      );
+    }
+
+    if (role !== 'owner') {
+      return NextResponse.json(
+        { error: 'Only the house owner can add users' },
+        { status: 403 },
       );
     }
 

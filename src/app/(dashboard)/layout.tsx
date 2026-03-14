@@ -44,7 +44,7 @@ export default async function DashboardLayout({
             <PageTitle />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-screen dark:bg-black">
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen dark:bg-black">
           <div className="container mx-auto">{children}</div>
         </div>
       </SidebarInset>

@@ -32,9 +32,15 @@ type HouseUserItem = {
   email: string;
 };
 
+type HouseUsersResponse = {
+  users: HouseUserItem[];
+  role: 'owner' | 'admin' | 'member';
+};
+
 export default function HouseUsersPage() {
   const { context } = useFinanceContext();
   const [users, setUsers] = useState<HouseUserItem[]>([]);
+  const [role, setRole] = useState<'owner' | 'admin' | 'member'>('member');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
@@ -43,17 +49,20 @@ export default function HouseUsersPage() {
   const [addUserError, setAddUserError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
+  const isOwner = role === 'owner';
+
   const fetchUsers = async () => {
     if (context.type !== 'house') return;
     try {
       setLoading(true);
       setError(null);
-      const data = await clientFetchFromApi<HouseUserItem[]>(
+      const data = await clientFetchFromApi<HouseUsersResponse>(
         '/api/house-users',
         undefined,
         context,
       );
-      setUsers(data);
+      setUsers(data.users);
+      setRole(data.role);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al cargar los usuarios',
@@ -140,12 +149,14 @@ export default function HouseUsersPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-end">
-        <Button onClick={() => setAddUserDialogOpen(true)}>
-          <UserPlus />
-          Agregar usuario
-        </Button>
-      </div>
+      {isOwner && (
+        <div className="mb-6 flex items-center justify-end">
+          <Button onClick={() => setAddUserDialogOpen(true)}>
+            <UserPlus />
+            Agregar usuario
+          </Button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
@@ -167,7 +178,9 @@ export default function HouseUsersPage() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  {isOwner && (
+                    <TableHead className="text-right">Acciones</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,19 +188,21 @@ export default function HouseUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemove(user.id)}
-                          disabled={removingId === user.id}
-                          aria-label={`Quitar ${user.name} del hogar`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {isOwner && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemove(user.id)}
+                            disabled={removingId === user.id}
+                            aria-label={`Quitar ${user.name} del hogar`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
