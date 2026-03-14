@@ -42,6 +42,10 @@ export type DataTableProps<TData> = {
   pagination?: boolean;
   columnVisibility?: boolean;
   emptyMessage?: string;
+  /** Renders in the toolbar row (e.g. "Add" button). Shown after filter and column visibility. */
+  toolbarExtra?: React.ReactNode;
+  /** Renders extra filter controls in the toolbar (e.g. category, type). Shown after the search input, before Columnas. */
+  filterSlot?: React.ReactNode;
 };
 
 export function DataTable<TData>({
@@ -52,6 +56,8 @@ export function DataTable<TData>({
   pagination = true,
   columnVisibility = false,
   emptyMessage = 'Sin resultados.',
+  toolbarExtra,
+  filterSlot,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -81,57 +87,68 @@ export function DataTable<TData>({
     (filterColumn && (table.getColumn(filterColumn)?.getFilterValue() as string)) ?? '';
 
   return (
-    <div className="w-full space-y-4">
-      {(filterColumn || columnVisibility) && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {filterColumn && (
-            <Input
-              placeholder={filterPlaceholder}
-              value={filterValue}
-              onChange={(e) =>
-                table.getColumn(filterColumn)?.setFilterValue(e.target.value)
-              }
-              className="max-w-sm"
-              aria-label={filterPlaceholder}
-            />
-          )}
-          {columnVisibility && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="ml-auto sm:ml-0">
-                  Columnas <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuGroup>
-                  {table
-                    .getAllColumns()
-                    .filter((col) => col.getCanHide())
-                    .map((col) => (
-                      <DropdownMenuCheckboxItem
-                        key={col.id}
-                        className="capitalize"
-                        checked={col.getIsVisible()}
-                        onCheckedChange={(value) => col.toggleVisibility(!!value)}
-                      >
-                        {typeof col.columnDef.header === 'string'
-                          ? col.columnDef.header
-                          : col.id}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+    <div className="w-full min-w-0 space-y-4">
+      {(filterColumn || filterSlot || columnVisibility || toolbarExtra) && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex flex-1 flex-wrap items-center gap-3 sm:gap-4">
+            {filterColumn && (
+              <Input
+                placeholder={filterPlaceholder}
+                value={filterValue}
+                onChange={(e) =>
+                  table.getColumn(filterColumn)?.setFilterValue(e.target.value)
+                }
+                className="max-w-xs"
+                aria-label={filterPlaceholder}
+              />
+            )}
+            {filterSlot}
+            {columnVisibility && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Columnas <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuGroup>
+                    {table
+                      .getAllColumns()
+                      .filter((col) => col.getCanHide())
+                      .map((col) => (
+                        <DropdownMenuCheckboxItem
+                          key={col.id}
+                          className="capitalize"
+                          checked={col.getIsVisible()}
+                          onCheckedChange={(value) => col.toggleVisibility(!!value)}
+                        >
+                          {typeof col.columnDef.header === 'string'
+                            ? col.columnDef.header
+                            : col.id}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          {toolbarExtra && (
+            <div className="shrink-0">{toolbarExtra}</div>
           )}
         </div>
       )}
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                {headerGroup.headers.map((header) => {
+                const minWidth = header.column.columnDef.minSize;
+                return (
+                  <TableHead
+                    key={header.id}
+                    style={minWidth != null ? { minWidth } : undefined}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -139,7 +156,8 @@ export function DataTable<TData>({
                           header.getContext()
                         )}
                   </TableHead>
-                ))}
+                );
+              })}
               </TableRow>
             ))}
           </TableHeader>
@@ -150,14 +168,20 @@ export function DataTable<TData>({
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                  {row.getVisibleCells().map((cell) => {
+                  const minWidth = cell.column.columnDef.minSize;
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      style={minWidth != null ? { minWidth } : undefined}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
                       )}
                     </TableCell>
-                  ))}
+                  );
+                })}
                 </TableRow>
               ))
             ) : (

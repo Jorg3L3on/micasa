@@ -7,11 +7,18 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, deleteExpenseTemplate } from '@/lib/api';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { ExpenseTemplateListItem } from '@/types/catalog';
 
@@ -26,6 +33,8 @@ export default function ExpenseTemplatesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] =
     useState<ExpenseTemplateListItem | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'recurring' | 'subscription'>('all');
 
   const fetchData = async () => {
     try {
@@ -86,10 +95,26 @@ export default function ExpenseTemplatesPage() {
     setError(null);
   };
 
+  const categories = useMemo(
+    () =>
+      [...new Set(templates.map((t) => t.category))].filter(Boolean).sort() as string[],
+    [templates],
+  );
+
+  const filteredTemplates = useMemo(() => {
+    return templates.filter((t) => {
+      if (categoryFilter && t.category !== categoryFilter) return false;
+      if (typeFilter === 'recurring' && !t.isRecurring) return false;
+      if (typeFilter === 'subscription' && !t.isSubscription) return false;
+      return true;
+    });
+  }, [templates, categoryFilter, typeFilter]);
+
   const columns = useMemo<ColumnDef<ExpenseTemplateListItem>[]>(
     () => [
       {
         accessorKey: 'name',
+        minSize: 140,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Nombre" />
         ),
@@ -99,6 +124,7 @@ export default function ExpenseTemplatesPage() {
       },
       {
         accessorKey: 'category',
+        minSize: 100,
         header: 'Categoría',
         cell: ({ row }) => (
           <span className="text-muted-foreground">{row.original.category}</span>
@@ -106,10 +132,11 @@ export default function ExpenseTemplatesPage() {
       },
       {
         accessorKey: 'totalEstimatedAmount',
+        minSize: 100,
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title="Total estimado"
+            title="Total est."
             className="text-right"
           />
         ),
@@ -121,62 +148,71 @@ export default function ExpenseTemplatesPage() {
       },
       {
         accessorKey: 'cutoffDay',
-        header: 'Día de corte',
+        minSize: 72,
+        header: 'Corte',
         cell: ({ row }) => row.original.cutoffDay ?? '—',
       },
       {
         accessorKey: 'dueDay',
-        header: 'Día de pago',
+        minSize: 72,
+        header: 'Pago',
         cell: ({ row }) => row.original.dueDay ?? '—',
       },
       {
         accessorKey: 'isRecurring',
-        header: 'Recurrente',
+        minSize: 72,
+        header: 'Recurr.',
         cell: ({ row }) => (row.original.isRecurring ? 'Sí' : 'No'),
       },
       {
         accessorKey: 'appliesFirstFortnight',
-        header: 'Primera quincena',
+        minSize: 72,
+        header: '1ª Q',
         cell: ({ row }) =>
           row.original.appliesFirstFortnight ? 'Sí' : 'No',
       },
       {
         accessorKey: 'appliesSecondFortnight',
-        header: 'Segunda quincena',
+        minSize: 72,
+        header: '2ª Q',
         cell: ({ row }) =>
           row.original.appliesSecondFortnight ? 'Sí' : 'No',
       },
       {
         accessorKey: 'isSubscription',
-        header: 'Es una suscripción',
+        minSize: 72,
+        header: 'Suscrip.',
         cell: ({ row }) => (row.original.isSubscription ? 'Sí' : 'No'),
       },
       {
         accessorKey: 'active',
+        minSize: 72,
         header: 'Activo',
         cell: ({ row }) => (
           <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+            className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
               row.original.active
                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                 : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
             }`}
           >
-            {row.original.active ? 'Activo' : 'Inactivo'}
+            {row.original.active ? 'Sí' : 'No'}
           </span>
         ),
       },
       {
         id: 'actions',
-        header: () => <span className="text-right">Acciones</span>,
+        minSize: 88,
+        header: () => <span className="sr-only">Acciones</span>,
         enableHiding: false,
         cell: ({ row }) => {
           const template = row.original;
           return (
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-1">
               <Button
                 variant="ghost"
                 size="icon"
+                className="size-8"
                 onClick={() => openEditDialog(template)}
                 aria-label={`Editar ${template.name}`}
               >
@@ -185,6 +221,7 @@ export default function ExpenseTemplatesPage() {
               <Button
                 variant="ghost"
                 size="icon"
+                className="size-8"
                 onClick={() => openDeleteDialog(template)}
                 aria-label={`Eliminar ${template.name}`}
               >
@@ -198,35 +235,76 @@ export default function ExpenseTemplatesPage() {
     [queryString, openEditDialog, openDeleteDialog]
   );
 
+  const addButton = (
+    <Button
+      size="sm"
+      onClick={() => router.push(`/expense-templates/new${queryString ? `?${queryString}` : ''}`)}
+      aria-label="Agregar plantilla de gastos"
+    >
+      <Plus className="mr-2 h-4 w-4" aria-hidden />
+      Agregar
+    </Button>
+  );
+
+  const filterSlot = (
+    <>
+      <Select
+        value={categoryFilter || 'all'}
+        onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}
+      >
+        <SelectTrigger size="sm" className="w-[180px]" aria-label="Filtrar por categoría">
+          <SelectValue placeholder="Categoría" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todas las categorías</SelectItem>
+          {categories.map((cat) => (
+            <SelectItem key={cat} value={cat}>
+              {cat}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={typeFilter}
+        onValueChange={(v) => setTypeFilter(v as 'all' | 'recurring' | 'subscription')}
+      >
+        <SelectTrigger size="sm" className="w-[140px]" aria-label="Filtrar por tipo">
+          <SelectValue placeholder="Tipo" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          <SelectItem value="recurring">Recurrentes</SelectItem>
+          <SelectItem value="subscription">Suscripciones</SelectItem>
+        </SelectContent>
+      </Select>
+    </>
+  );
+
   return (
     <>
-      <div className="mb-6 flex items-center justify-end">
-        <Button onClick={() => router.push(`/expense-templates/new${queryString ? `?${queryString}` : ''}`)}>
-          Agregar plantilla de gastos
-        </Button>
-      </div>
-
       {error && !deleteDialogOpen && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="overflow-hidden">
+        <CardContent className="p-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground">
               Cargando...
             </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de gastos" />
           ) : (
             <DataTable
-              data={templates}
+              data={filteredTemplates}
               columns={columns}
               filterColumn="name"
               filterPlaceholder="Filtrar por nombre..."
+              filterSlot={filterSlot}
               columnVisibility
+              toolbarExtra={addButton}
               emptyMessage="No se encontraron plantillas de gastos."
             />
           )}
