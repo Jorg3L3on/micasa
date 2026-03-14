@@ -79,6 +79,15 @@ export default function StepExpenseTemplates() {
     );
   };
 
+  const handleExpenseNameFocus = (id: string, currentName: string) => {
+    if (
+      currentName === 'Nombre del gasto' ||
+      currentName === 'Nuevo gasto'
+    ) {
+      handleNameChange(id, '');
+    }
+  };
+
   const handleAdd = () => {
     setExpenseTemplates((prev: ExpenseTemplateDraft[]) => [
       ...prev,
@@ -143,6 +152,9 @@ export default function StepExpenseTemplates() {
               type="text"
               value={expense.name}
               onChange={(e) => handleNameChange(expense.id, e.target.value)}
+              onFocus={() =>
+                handleExpenseNameFocus(expense.id, expense.name)
+              }
               placeholder="Nombre del gasto"
               className="min-w-0 flex-1 basis-28"
               aria-label={`Nombre del gasto: ${expense.name}`}

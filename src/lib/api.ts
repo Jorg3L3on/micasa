@@ -252,6 +252,7 @@ export async function createIncome(
     amount: number;
     source?: string | null;
     received_at: string;
+    transfer_from_user_id?: number;
   },
   context?: FinanceContextType,
 ) {

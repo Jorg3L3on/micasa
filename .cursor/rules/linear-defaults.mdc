@@ -1,0 +1,23 @@
+---
+description: Default Linear project and team when creating issues
+alwaysApply: true
+---
+
+# Linear issue defaults
+
+When creating or saving Linear issues via the Linear MCP (e.g. `save_issue`), always use these defaults unless the user specifies otherwise:
+
+- **project**: MiCasa (or id `c4f9a95e-1461-4a2a-be36-ab9b909b23c7`)
+- **team**: Jorg3 (or key `JOR`)
+
+Required when creating an issue: `title` and `team`. Always include `project` so all issues go to the MiCasa project.
+
+When listing issues (`list_issues`), always filter by **project**: MiCasa (or id `c4f9a95e-1461-4a2a-be36-ab9b909b23c7`) so only MiCasa issues are returned, unless the user asks for issues from another project or "all" issues.
+
+## Implementing Linear issues
+
+When the user asks to implement a Linear issue (e.g. "Implement JOR-5", "Do the issue about X", "Implement this Linear issue"):
+
+1. **Fetch the issue** with `get_issue` using the issue ID (e.g. JOR-5) or find it via `list_issues` if they describe it by title.
+2. **Use** the issue's `title` and `description` (and any checklist/acceptance criteria in the description) as the implementation spec.
+3. **Implement** the changes in the codebase, then confirm what was done and optionally mention the issue ID for reference.

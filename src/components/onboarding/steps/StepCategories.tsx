@@ -54,6 +54,17 @@ export default function StepCategories() {
     [handleCommitEdit],
   );
 
+  const handleCategoryNameFocus = useCallback(
+    (id: string, currentName: string) => {
+      if (currentName === 'Nueva categoría') {
+        setCategories((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, name: '' } : c)),
+        );
+      }
+    },
+    [],
+  );
+
   const handleAdd = useCallback(() => {
     const newCategory = {
       id: crypto.randomUUID(),
@@ -111,6 +122,7 @@ export default function StepCategories() {
                       c.id === category.id ? { ...c, name: e.target.value } : c,
                     ),
                   )}
+                onFocus={() => handleCategoryNameFocus(category.id, category.name)}
                 onBlur={() => handleCommitEdit(category.id, category.name)}
                 onKeyDown={(e) => handleKeyDown(category.id, e)}
                 className="h-7 min-w-[7rem] max-w-[12rem] border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"

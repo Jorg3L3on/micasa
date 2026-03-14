@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -22,8 +22,22 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFinanceContext } from '@/context/finance-context';
-import { createIncome } from '@/lib/api';
+import { clientFetchFromApi, createIncome } from '@/lib/api';
+
+type HouseUserItem = {
+  id: number;
+  name: string;
+  email: string;
+};
 
 const quickIncomeSchema = z.object({
   source: z.string().min(1, 'La descripción es requerida'),
@@ -83,6 +97,21 @@ export default function DashboardQuickIncomeDialog({
 }: DashboardQuickIncomeDialogProps) {
   const { context } = useFinanceContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTransferFromMember, setIsTransferFromMember] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [houseMembers, setHouseMembers] = useState<HouseUserItem[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  const isHouseContext = context.type === 'house';
+
+  useEffect(() => {
+    if (!open || !isHouseContext) return;
+    setLoadingMembers(true);
+    clientFetchFromApi<HouseUserItem[]>('/api/house-users', undefined, context)
+      .then(setHouseMembers)
+      .catch(() => setHouseMembers([]))
+      .finally(() => setLoadingMembers(false));
+  }, [open, isHouseContext, context]);
 
   const form = useForm<QuickIncomeFormValues>({
     resolver: zodResolver(quickIncomeSchema),
@@ -98,6 +127,9 @@ export default function DashboardQuickIncomeDialog({
   });
 
   const handleSubmit = async (values: QuickIncomeFormValues) => {
+    if (isHouseContext && isTransferFromMember && !selectedMemberId) {
+      return;
+    }
     setIsSubmitting(true);
     try {
       await createIncome(
@@ -106,6 +138,9 @@ export default function DashboardQuickIncomeDialog({
           amount: values.amount,
           source: values.source,
           received_at: `${values.date}T00:00:00.000Z`,
+          ...(isHouseContext && isTransferFromMember && selectedMemberId
+            ? { transfer_from_user_id: Number(selectedMemberId) }
+            : {}),
         },
         context,
       );
@@ -118,6 +153,8 @@ export default function DashboardQuickIncomeDialog({
           fortnight.period,
         ),
       });
+      setIsTransferFromMember(false);
+      setSelectedMemberId('');
       onOpenChange(false);
       onCreated();
     } finally {
@@ -136,6 +173,8 @@ export default function DashboardQuickIncomeDialog({
           fortnight.period,
         ),
       });
+      setIsTransferFromMember(false);
+      setSelectedMemberId('');
     }
     onOpenChange(nextOpen);
   };
@@ -154,6 +193,57 @@ export default function DashboardQuickIncomeDialog({
             onSubmit={form.handleSubmit(handleSubmit as any)}
             className="space-y-4"
           >
+            {isHouseContext && (
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="income-transfer-from-member"
+                    checked={isTransferFromMember}
+                    onCheckedChange={(checked) => {
+                      setIsTransferFromMember(checked === true);
+                      if (checked !== true) setSelectedMemberId('');
+                    }}
+                    aria-label="Es transferencia de un miembro"
+                  />
+                  <label
+                    htmlFor="income-transfer-from-member"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Es transferencia de un miembro
+                  </label>
+                </div>
+                {isTransferFromMember && (
+                  <div className="space-y-2">
+                    <FormLabel>Miembro que transfiere</FormLabel>
+                    <Select
+                      value={selectedMemberId}
+                      onValueChange={setSelectedMemberId}
+                      disabled={loadingMembers}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona un miembro" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {houseMembers.map((member) => (
+                          <SelectItem
+                            key={member.id}
+                            value={String(member.id)}
+                          >
+                            {member.name}
+                            {member.email ? ` (${member.email})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isTransferFromMember && !selectedMemberId && (
+                      <p className="text-destructive text-xs">
+                        Selecciona el miembro que transfiere a la casa.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <FormField
               control={form.control}
               name="source"
@@ -214,7 +304,13 @@ export default function DashboardQuickIncomeDialog({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting ||
+                  (isHouseContext && isTransferFromMember && !selectedMemberId)
+                }
+              >
                 {isSubmitting ? 'Guardando...' : 'Guardar'}
               </Button>
             </DialogFooter>

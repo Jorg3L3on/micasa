@@ -34,7 +34,7 @@ export const {
             email: credentials.email as string,
           },
           include: {
-            ownedHouses: true,
+            memberships: { include: { house: true } },
           },
         });
 
@@ -51,11 +51,16 @@ export const {
           return null;
         }
 
+        const houses = user.memberships.map((m) => ({
+          id: m.house.id,
+          name: m.house.name,
+        }));
+
         return {
           id: String(user.id),
           email: user.email,
           name: user.name,
-          houses: user.ownedHouses,
+          houses,
         };
       },
     }),
