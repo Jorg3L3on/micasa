@@ -1,18 +1,9 @@
 import { Suspense } from 'react';
 import { fetchFromApi } from '@/lib/api-server';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import TransactionFilters from '@/components/TransactionFilters';
-import { formatDate, formatCurrencySigned } from '@/lib/utils';
+import TransactionsDataTable from '@/components/TransactionsDataTable';
 import type { TransactionRow } from '@/types/catalog';
 
 async function getTransactions(searchParams: {
@@ -72,59 +63,7 @@ async function TransactionsContent({
           {transactions.length === 0 ? (
             <EmptyState message="No se encontraron transacciones" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Método de pago</TableHead>
-                  <TableHead>Tipo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {formatDate(transaction.date)}
-                    </TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                    <TableCell className="text-right">
-                      <span
-                        className={`font-medium ${
-                          transaction.type === 'expense'
-                            ? 'text-destructive'
-                            : 'text-chart-4'
-                        }`}
-                      >
-                        {formatCurrencySigned(
-                          transaction.amount,
-                          transaction.type ?? 'expense',
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {transaction.category}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {transaction.paymentMethod}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          transaction.type === 'expense'
-                            ? 'destructive'
-                            : 'default'
-                        }
-                      >
-                        {transaction.type === 'expense' ? 'Gasto' : 'Ingreso'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <TransactionsDataTable transactions={transactions} />
           )}
         </CardContent>
       </Card>

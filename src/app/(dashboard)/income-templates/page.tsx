@@ -1,16 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import type { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
@@ -94,6 +88,99 @@ export default function IncomeTemplatesPage() {
     setError(null);
   };
 
+  const columns = useMemo<ColumnDef<IncomeTemplateListItem>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Nombre" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.name}</span>
+        ),
+      },
+      {
+        accessorKey: 'suggestedAmount',
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title="Monto sugerido"
+            className="text-right"
+          />
+        ),
+        cell: ({ row }) =>
+          row.original.suggestedAmount != null
+            ? formatCurrency(row.original.suggestedAmount)
+            : '—',
+      },
+      {
+        accessorKey: 'source',
+        header: 'Origen',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {row.original.source ?? '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'appliesFirstFortnight',
+        header: 'Primera quincena',
+        cell: ({ row }) =>
+          row.original.appliesFirstFortnight ? 'Sí' : 'No',
+      },
+      {
+        accessorKey: 'appliesSecondFortnight',
+        header: 'Segunda quincena',
+        cell: ({ row }) =>
+          row.original.appliesSecondFortnight ? 'Sí' : 'No',
+      },
+      {
+        accessorKey: 'active',
+        header: 'Activo',
+        cell: ({ row }) => (
+          <span
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+              row.original.active
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+            }`}
+          >
+            {row.original.active ? 'Activo' : 'Inactivo'}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: () => <span className="text-right">Acciones</span>,
+        enableHiding: false,
+        cell: ({ row }) => {
+          const template = row.original;
+          return (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleEdit(template)}
+                aria-label={`Editar ${template.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openDeleteDialog(template)}
+                aria-label={`Eliminar ${template.name}`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [handleEdit, openDeleteDialog]
+  );
+
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
@@ -123,73 +210,14 @@ export default function IncomeTemplatesPage() {
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de ingresos" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead className="text-right">Monto sugerido</TableHead>
-                  <TableHead>Origen</TableHead>
-                  <TableHead>Primera quincena</TableHead>
-                  <TableHead>Segunda quincena</TableHead>
-                  <TableHead>Activo</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.map((template) => (
-                  <TableRow key={template.id}>
-                    <TableCell className="font-medium">
-                      {template.name}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {template.suggestedAmount != null
-                        ? formatCurrency(template.suggestedAmount)
-                        : '—'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {template.source ?? '—'}
-                    </TableCell>
-                    <TableCell>
-                      {template.appliesFirstFortnight ? 'Sí' : 'No'}
-                    </TableCell>
-                    <TableCell>
-                      {template.appliesSecondFortnight ? 'Sí' : 'No'}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          template.active
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        }`}
-                      >
-                        {template.active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(template)}
-                          aria-label={`Editar ${template.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openDeleteDialog(template)}
-                          aria-label={`Eliminar ${template.name}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              data={templates}
+              columns={columns}
+              filterColumn="name"
+              filterPlaceholder="Filtrar por nombre..."
+              columnVisibility
+              emptyMessage="No se encontraron plantillas de ingresos."
+            />
           )}
         </CardContent>
       </Card>

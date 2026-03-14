@@ -80,7 +80,7 @@ export const {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        session.user.houses = token.houses ?? [];
+        session.user.houses = (token.houses ?? []) as { id: number; name: string }[];
       }
       return session;
     },

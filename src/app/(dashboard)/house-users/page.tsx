@@ -1,15 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import type { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -135,6 +129,48 @@ export default function HouseUsersPage() {
     }
   };
 
+  const columns = useMemo<ColumnDef<HouseUserItem>[]>(() => {
+    const base: ColumnDef<HouseUserItem>[] = [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Nombre" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.name}</span>
+        ),
+      },
+      {
+        accessorKey: 'email',
+        header: 'Email',
+        cell: ({ row }) => row.original.email,
+      },
+    ];
+    if (isOwner) {
+      base.push({
+        id: 'actions',
+        header: () => <span className="text-right">Acciones</span>,
+        cell: ({ row }) => {
+          const user = row.original;
+          return (
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemove(user.id)}
+                disabled={removingId === user.id}
+                aria-label={`Quitar ${user.name} del hogar`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      });
+    }
+    return base;
+  }, [isOwner, removingId, handleRemove]);
+
   if (context.type !== 'house') {
     return (
       <Card>
@@ -173,40 +209,13 @@ export default function HouseUsersPage() {
           ) : users.length === 0 ? (
             <EmptyState message="No hay usuarios en este hogar" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Email</TableHead>
-                  {isOwner && (
-                    <TableHead className="text-right">Acciones</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    {isOwner && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemove(user.id)}
-                            disabled={removingId === user.id}
-                            aria-label={`Quitar ${user.name} del hogar`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              data={users}
+              columns={columns}
+              filterColumn="name"
+              filterPlaceholder="Filtrar por nombre..."
+              emptyMessage="No hay usuarios en este hogar."
+            />
           )}
         </CardContent>
       </Card>

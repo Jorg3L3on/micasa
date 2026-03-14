@@ -1,15 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import type { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
@@ -36,6 +30,7 @@ import {
 } from '@/domain/payment-method';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 
 export default function WalletsPage() {
@@ -153,6 +148,84 @@ export default function WalletsPage() {
     setError(null);
   };
 
+  const columns = useMemo<ColumnDef<WalletListItem>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Nombre" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              'font-medium',
+              !row.original.active && 'text-muted-foreground'
+            )}
+          >
+            {row.original.name}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'amount',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Monto" />
+        ),
+        cell: ({ row }) => formatCurrency(row.original.amount),
+      },
+      {
+        accessorKey: 'type',
+        header: 'Tipo',
+        cell: ({ row }) =>
+          PAYMENT_METHOD_LABELS[row.original.type as PaymentMethodType],
+      },
+      {
+        accessorKey: 'active',
+        header: 'Estado',
+        cell: ({ row }) =>
+          row.original.active ? (
+            <Badge variant="secondary">
+              <BadgeCheck data-icon="inline-start" />
+              Activo
+            </Badge>
+          ) : (
+            <Badge variant="outline">
+              <BookmarkIcon data-icon="inline-end" />
+              Inactivo
+            </Badge>
+          ),
+      },
+      {
+        id: 'actions',
+        header: () => <span className="text-right">Acciones</span>,
+        cell: ({ row }) => {
+          const wallet = row.original;
+          return (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openEditDialog(wallet)}
+                aria-label={`Editar ${wallet.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openDeleteDialog(wallet)}
+                aria-label={`Eliminar ${wallet.name}`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [openEditDialog, openDeleteDialog]
+  );
+
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
@@ -177,66 +250,13 @@ export default function WalletsPage() {
           ) : wallets.length === 0 ? (
             <EmptyState message="No se encontraron billeteras" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {wallets.map((wallet) => (
-                  <TableRow
-                    key={wallet.id}
-                    className={wallet.active ? '' : 'text-slate-900/50'}
-                  >
-                    <TableCell className="font-medium">{wallet.name}</TableCell>
-                    <TableCell>{formatCurrency(wallet.amount)}</TableCell>
-                    <TableCell>
-                      {PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType]}
-                    </TableCell>
-                    <TableCell>
-                      {wallet.active ? (
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary">
-                            <BadgeCheck data-icon="inline-start" />
-                            Activo
-                          </Badge>
-                        </div>
-                      ) : (
-                        <Badge variant="outline">
-                          <BookmarkIcon data-icon="inline-end" />
-                          Inactivo
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(wallet)}
-                          aria-label={`Editar ${wallet.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openDeleteDialog(wallet)}
-                          aria-label={`Eliminar ${wallet.name}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              data={wallets}
+              columns={columns}
+              filterColumn="name"
+              filterPlaceholder="Filtrar por nombre..."
+              emptyMessage="No se encontraron billeteras."
+            />
           )}
         </CardContent>
       </Card>

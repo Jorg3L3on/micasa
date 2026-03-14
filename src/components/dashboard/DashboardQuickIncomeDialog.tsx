@@ -43,8 +43,10 @@ const quickIncomeSchema = z.object({
   source: z.string().min(1, 'La descripción es requerida'),
   amount: z
     .number({
-      required_error: 'El monto es requerido',
-      invalid_type_error: 'El monto debe ser un número',
+      error: (issue) =>
+        issue.code === 'invalid_type'
+          ? 'El monto debe ser un número'
+          : 'El monto es requerido',
     })
     .positive('El monto debe ser mayor a 0'),
   date: z.string().min(1, 'La fecha es requerida'),
