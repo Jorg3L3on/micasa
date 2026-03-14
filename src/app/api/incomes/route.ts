@@ -115,7 +115,18 @@ export async function POST(request: NextRequest) {
         houseWalletId: null,
       });
 
-      const houseIncome = (transfer as { house_income: { id: number; amount: unknown; source: string | null; received_at: Date; fortnight_id: number; house_id: number } }).house_income;
+      type TransferWithHouseIncome = {
+        house_income: {
+          id: number;
+          amount: unknown;
+          source: string | null;
+          received_at: Date;
+          fortnight_id: number;
+          house_id: number;
+        };
+      };
+      const houseIncome = (transfer as unknown as TransferWithHouseIncome)
+        .house_income;
       return NextResponse.json(
         {
           id: houseIncome.id,

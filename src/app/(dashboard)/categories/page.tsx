@@ -1,15 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import type { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
@@ -129,6 +123,53 @@ export default function CategoriesPage() {
     setError(null);
   };
 
+  const columns = useMemo<ColumnDef<CategoryOption>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Nombre" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.name}</span>
+        ),
+      },
+      {
+        accessorKey: 'description',
+        header: 'Descripción',
+        cell: ({ row }) => row.original.description ?? '',
+      },
+      {
+        id: 'actions',
+        header: () => <span className="text-right">Acciones</span>,
+        cell: ({ row }) => {
+          const category = row.original;
+          return (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openEditDialog(category)}
+                aria-label={`Editar ${category.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openDeleteDialog(category)}
+                aria-label={`Eliminar ${category.name}`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [openEditDialog, openDeleteDialog]
+  );
+
   return (
     <>
       <div className="mb-6 flex items-center justify-end">
@@ -152,45 +193,13 @@ export default function CategoriesPage() {
           ) : categories.length === 0 ? (
             <EmptyState message="No se encontraron categorías" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">
-                      {category.name}
-                    </TableCell>
-                    <TableCell>{category.description}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(category)}
-                          aria-label={`Editar ${category.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openDeleteDialog(category)}
-                          aria-label={`Eliminar ${category.name}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              data={categories}
+              columns={columns}
+              filterColumn="name"
+              filterPlaceholder="Filtrar por nombre..."
+              emptyMessage="No se encontraron categorías."
+            />
           )}
         </CardContent>
       </Card>

@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  Suspense,
   type ReactNode,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -76,14 +77,23 @@ const FinanceContext = createContext<FinanceContextValue | null>(null);
 
 const DEFAULT_CONTEXT: FinanceContextType = { type: 'user', id: 0 };
 
-export function FinanceProvider({ children }: { children: ReactNode }) {
+/**
+ * Inner component that uses useSearchParams. Must be inside Suspense so static
+ * prerender (e.g. 404) does not trigger useSearchParams() without a boundary.
+ */
+function FinanceProviderSync({
+  setContext,
+  currentUserIdRef,
+  hasSyncedUrlRef,
+}: {
+  setContext: React.Dispatch<React.SetStateAction<FinanceContextType>>;
+  currentUserIdRef: React.MutableRefObject<number | null>;
+  hasSyncedUrlRef: React.MutableRefObject<boolean>;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  const [context, setContext] = useState<FinanceContextType>(DEFAULT_CONTEXT);
-  const currentUserIdRef = useRef<number | null>(null);
-  const hasSyncedUrlRef = useRef(false);
 
   useEffect(() => {
     const userId =
@@ -117,8 +127,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       stored.userId === userId
     ) {
       setContext(stored.context);
-      // Sync URL to stored context so server components (e.g. dashboard) receive
-      // owner params and load the correct data for house vs user.
       if (
         !hasSyncedUrlRef.current &&
         (stored.context.type === 'house' || stored.context.type === 'user')
@@ -139,7 +147,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setContext(userContext);
       persist(userContext, userId);
     }
-  }, [session?.user?.id, searchParams, pathname, router]);
+  }, [session?.user?.id, searchParams, pathname, router, setContext, currentUserIdRef, hasSyncedUrlRef]);
+
+  return null;
+}
+
+export function FinanceProvider({ children }: { children: ReactNode }) {
+  const [context, setContext] = useState<FinanceContextType>(DEFAULT_CONTEXT);
+  const currentUserIdRef = useRef<number | null>(null);
+  const hasSyncedUrlRef = useRef(false);
 
   const setUserContext = useCallback((userId: number) => {
     const next: FinanceContextType = { type: 'user', id: userId };
@@ -165,7 +181,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>
+    <FinanceContext.Provider value={value}>
+      <Suspense fallback={null}>
+        <FinanceProviderSync
+          setContext={setContext}
+          currentUserIdRef={currentUserIdRef}
+          hasSyncedUrlRef={hasSyncedUrlRef}
+        />
+      </Suspense>
+      {children}
+    </FinanceContext.Provider>
   );
 }
 
