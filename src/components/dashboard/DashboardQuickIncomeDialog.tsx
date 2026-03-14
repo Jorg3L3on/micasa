@@ -107,8 +107,8 @@ export default function DashboardQuickIncomeDialog({
   useEffect(() => {
     if (!open || !isHouseContext) return;
     setLoadingMembers(true);
-    clientFetchFromApi<HouseUserItem[]>('/api/house-users', undefined, context)
-      .then(setHouseMembers)
+    clientFetchFromApi<{ users: HouseUserItem[] }>('/api/house-users', undefined, context)
+      .then((data) => setHouseMembers(data.users))
       .catch(() => setHouseMembers([]))
       .finally(() => setLoadingMembers(false));
   }, [open, isHouseContext, context]);

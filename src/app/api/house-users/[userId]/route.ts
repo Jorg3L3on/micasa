@@ -14,12 +14,19 @@ export async function DELETE(
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    const { ownerType, ownerId, role } = context;
 
     if (ownerType !== 'house') {
       return NextResponse.json(
         { error: 'House context required' },
         { status: 400 },
+      );
+    }
+
+    if (role !== 'owner') {
+      return NextResponse.json(
+        { error: 'Only the house owner can remove users' },
+        { status: 403 },
       );
     }
 

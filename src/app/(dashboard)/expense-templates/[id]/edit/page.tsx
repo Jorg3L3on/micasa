@@ -77,6 +77,8 @@ export default function EditExpenseTemplatePage() {
     },
   });
 
+  const isRecurring = form.watch('isRecurring');
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -380,7 +382,14 @@ export default function EditExpenseTemplatePage() {
                         <FormControl>
                           <Checkbox
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              if (!checked) {
+                                form.setValue('appliesFirstFortnight', false);
+                                form.setValue('appliesSecondFortnight', false);
+                                form.setValue('isSubscription', false);
+                              }
+                            }}
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -397,84 +406,88 @@ export default function EditExpenseTemplatePage() {
                   />
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-medium mb-3">
-                    Aplicación por quincena
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="appliesFirstFortnight"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm font-medium">
-                              Primera quincena
-                            </FormLabel>
-                            <FormDescription className="text-xs">
-                              Aplica en días 1-15
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="appliesSecondFortnight"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm font-medium">
-                              Segunda quincena
-                            </FormLabel>
-                            <FormDescription className="text-xs">
-                              Aplica en días 16-31
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                {isRecurring && (
+                  <>
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">
+                        Aplicación por quincena
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="appliesFirstFortnight"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel className="text-sm font-medium">
+                                  Primera quincena
+                                </FormLabel>
+                                <FormDescription className="text-xs">
+                                  Aplica en días 1-15
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="appliesSecondFortnight"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel className="text-sm font-medium">
+                                  Segunda quincena
+                                </FormLabel>
+                                <FormDescription className="text-xs">
+                                  Aplica en días 16-31
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
 
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Tipo de gasto</h3>
-                  <FormField
-                    control={form.control}
-                    name="isSubscription"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-base font-medium">
-                            Es una suscripción
-                          </FormLabel>
-                          <FormDescription>
-                            Marca esta opción si es un gasto de suscripción (ej:
-                            Netflix, Spotify)
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Tipo de gasto</h3>
+                      <FormField
+                        control={form.control}
+                        name="isSubscription"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="text-base font-medium">
+                                Es una suscripción
+                              </FormLabel>
+                              <FormDescription>
+                                Marca esta opción si es un gasto de suscripción (ej:
+                                Netflix, Spotify)
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex justify-end gap-4 pt-4">
