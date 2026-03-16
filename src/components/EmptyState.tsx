@@ -1,11 +1,18 @@
-type EmptyStateProps = {
-  message: string
-}
+import { Inbox } from 'lucide-react';
 
-export default function EmptyState({ message }: EmptyStateProps) {
+type EmptyStateProps = {
+  message: string;
+};
+
+const EmptyState = ({ message }: EmptyStateProps) => {
   return (
-    <div className="text-center py-12">
-      <p className="text-muted-foreground text-lg">{message}</p>
+    <div className="flex flex-col items-center justify-center gap-3 py-12">
+      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60">
+        <Inbox className="h-6 w-6 text-muted-foreground/60" />
+      </span>
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
-  )
-}
+  );
+};
+
+export default EmptyState;

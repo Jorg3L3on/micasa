@@ -153,6 +153,15 @@
     box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
     @apply border border-green-500/50;
   }
+
+  /* Utility: hide scrollbar while keeping scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer base {

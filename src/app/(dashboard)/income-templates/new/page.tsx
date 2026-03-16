@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -26,12 +26,26 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useFinanceContext } from '@/context/finance-context';
-import { createIncomeTemplate } from '@/lib/api';
+import { clientFetchFromApi, createIncomeTemplate } from '@/lib/api';
 import Link from 'next/link';
 import {
   incomeTemplateSchema,
   type IncomeTemplateFormValues,
 } from '@/schemas/income-template.schema';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type HouseUserItem = {
+  id: number;
+  name: string;
+  email: string;
+};
 
 export default function NewIncomeTemplatePage() {
   const { context } = useFinanceContext();
@@ -39,6 +53,10 @@ export default function NewIncomeTemplatePage() {
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [houseMembers, setHouseMembers] = useState<HouseUserItem[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  const isHouseContext = context.type === 'house';
 
   const form = useForm<IncomeTemplateFormValues>({
     resolver: zodResolver(incomeTemplateSchema),
@@ -53,6 +71,22 @@ export default function NewIncomeTemplatePage() {
     },
   });
 
+  useEffect(() => {
+    if (!isHouseContext) {
+      setHouseMembers([]);
+      return;
+    }
+    setLoadingMembers(true);
+    clientFetchFromApi<{ users: HouseUserItem[] }>(
+      '/api/house-users',
+      undefined,
+      context,
+    )
+      .then((data) => setHouseMembers(data.users))
+      .catch(() => setHouseMembers([]))
+      .finally(() => setLoadingMembers(false));
+  }, [isHouseContext, context]);
+
   const handleSubmit = async (data: IncomeTemplateFormValues) => {
     try {
       setIsSubmitting(true);
@@ -64,6 +98,7 @@ export default function NewIncomeTemplatePage() {
           appliesFirstFortnight: data.appliesFirstFortnight,
           appliesSecondFortnight: data.appliesSecondFortnight,
           active: data.active,
+          userId: isHouseContext ? data.userId ?? null : null,
         },
         context,
       );
@@ -159,6 +194,52 @@ export default function NewIncomeTemplatePage() {
                   </FormItem>
                 )}
               />
+
+              {isHouseContext && (
+                <FormField
+                  control={form.control}
+                  name="userId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Miembro que transfiere a la casa (opcional)
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value ? String(field.value) : ''}
+                          onValueChange={(value) =>
+                            field.onChange(
+                              value ? Number(value) : null,
+                            )
+                          }
+                          disabled={loadingMembers || houseMembers.length === 0}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecciona un miembro (opcional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {houseMembers.map((member) => (
+                              <SelectItem
+                                key={member.id}
+                                value={String(member.id)}
+                              >
+                                {member.name}
+                                {member.email ? ` (${member.email})` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        Si seleccionas un miembro, este ingreso se registrará como
+                        transferencia de ese usuario hacia la casa (creando un gasto
+                        para el usuario y un ingreso para la casa).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <Separator />
 

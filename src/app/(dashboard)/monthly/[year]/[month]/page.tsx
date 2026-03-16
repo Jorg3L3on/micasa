@@ -2,10 +2,12 @@ import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import FortnightColumn from '@/components/FortnightColumn'
+import WalletBalanceStrip from '@/components/WalletBalanceStrip'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import type { WalletListItem } from '@/types/catalog'
 
 type Transaction = {
   id: number
@@ -123,6 +125,16 @@ async function getSummary(
   }
 }
 
+async function getWallets(ownerContext?: OwnerContext): Promise<WalletListItem[]> {
+  try {
+    const wallets = await fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext)
+    return wallets.filter((w) => w.active)
+  } catch (error) {
+    console.error('Error fetching wallets:', error)
+    return []
+  }
+}
+
 export default async function MonthlyPage({
   params,
   searchParams,
@@ -171,6 +183,7 @@ export default async function MonthlyPage({
     prevSecondInfo,
     nextFirstInfo,
     nextSecondInfo,
+    wallets,
   ] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
     getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
@@ -182,6 +195,7 @@ export default async function MonthlyPage({
     getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND', ownerContext),
     getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST', ownerContext),
     getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND', ownerContext),
+    getWallets(ownerContext),
   ])
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null
@@ -211,7 +225,7 @@ export default async function MonthlyPage({
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex items-center gap-2">
         <MonthlyHeader
           year={year}
           month={month}
@@ -220,7 +234,10 @@ export default async function MonthlyPage({
           prevHref={prevHref}
           prevMonthLabel={prevMonthLabel}
         />
-        <div className="flex items-center justify-end gap-2">
+
+        <WalletBalanceStrip wallets={wallets} />
+
+        <div className="shrink-0">
           {hasNextMonth ? (
             <Tooltip>
               <TooltipTrigger asChild>
