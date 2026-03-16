@@ -2,6 +2,10 @@ import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import FortnightColumn from '@/components/FortnightColumn'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Transaction = {
   id: number
@@ -191,6 +195,7 @@ export default async function MonthlyPage({
   const currentMonth = now.getMonth() + 1
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null
   const canCreateNextMonth =
+    !hasNextMonth &&
     nextYear === currentYear &&
     nextMonth >= currentMonth &&
     !nextMonthAlreadyCreated
@@ -212,18 +217,35 @@ export default async function MonthlyPage({
           month={month}
           monthName={monthName}
           hasPrevMonth={hasPrevMonth}
-          hasNextMonth={hasNextMonth}
           prevHref={prevHref}
-          nextHref={nextHref}
           prevMonthLabel={prevMonthLabel}
-          nextMonthLabel={nextMonthLabel}
         />
-        <CreateNextMonthButton
-          nextYear={nextYear}
-          nextMonth={nextMonth}
-          nextMonthLabel={nextMonthLabel}
-          canCreate={canCreateNextMonth}
-        />
+        <div className="flex items-center justify-end gap-2">
+          {hasNextMonth ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" asChild>
+                  <Link
+                    href={nextHref}
+                    aria-label={`Mes siguiente: ${nextMonthLabel}`}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={4}>
+                {`Mes siguiente: ${nextMonthLabel}`}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <CreateNextMonthButton
+              nextYear={nextYear}
+              nextMonth={nextMonth}
+              nextMonthLabel={nextMonthLabel}
+              canCreate={canCreateNextMonth}
+            />
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
