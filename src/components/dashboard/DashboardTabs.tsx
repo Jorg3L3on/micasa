@@ -78,6 +78,9 @@ export default function DashboardTabs({
       </TabsContent>
 
       <TabsContent value="actividad" className="mt-0 space-y-6">
+        <div className={DASHBOARD_GRID_CLASS}>
+          <QuickActionsCard compact period={data.period} />
+        </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <RecentActivityCard data={data} />
@@ -90,6 +93,7 @@ export default function DashboardTabs({
 
       <TabsContent value="analisis" className="mt-0 space-y-6">
         <div className={DASHBOARD_GRID_CLASS}>
+          <QuickActionsCard compact period={data.period} />
           <PeriodComparisonCard data={data} />
           <FixedVsVariableCard data={data} />
           <ExpenseHealthCheckCard data={data} />
