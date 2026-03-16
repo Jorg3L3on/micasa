@@ -1,6 +1,5 @@
 import type { WalletListItem } from '@/types/catalog';
-import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Banknote, CreditCard, Landmark, Store } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
