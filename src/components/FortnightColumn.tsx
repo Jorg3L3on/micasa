@@ -10,8 +10,8 @@ import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddExpenseDialog from '@/components/AddExpenseDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
@@ -468,7 +468,7 @@ export default function FortnightColumn({
         </div>
 
         {/* Single Expense Table for all expenses */}
-        <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+        <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
           {sortedTransactions.length === 0 ? (
             <EmptyState message="No hay transacciones para esta quincena" />
           ) : (
@@ -484,30 +484,35 @@ export default function FortnightColumn({
           )}
         </div>
 
-        {/* Add Expense Button */}
-        <div className="pt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Action bar */}
+        <div className="flex items-center gap-2 pt-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setAddExpenseDialogOpen(true)}
             disabled={!fortnightId || fortnightId <= 0}
-            className="w-full sm:w-auto"
+            className="gap-1.5"
+            aria-label="Agregar gasto a esta quincena"
             title={
               !fortnightId || fortnightId <= 0
                 ? 'La quincena no está disponible. Recarga la página.'
                 : undefined
             }
           >
-            + Agregar gasto
+            <Plus className="h-3.5 w-3.5" />
+            Agregar gasto
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleRegenerateFromTemplates}
             disabled={!fortnightId || fortnightId <= 0 || isRefreshing}
-            className="w-full sm:w-auto text-xs text-muted-foreground hover:text-foreground"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Regenerar gastos e ingresos desde plantillas"
             title="Regenera los gastos e ingresos de esta quincena a partir de las plantillas activas."
           >
-            Regenerar desde plantillas
+            <RefreshCw className="h-3 w-3" />
+            Regenerar
           </Button>
         </div>
       </div>

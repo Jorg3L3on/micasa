@@ -44,7 +44,7 @@ import {
   updateExpenseAmount,
   deleteTransaction,
 } from '@/lib/api';
-import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CheckCircle2, Receipt } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -315,6 +315,8 @@ export default function ExpenseTable({
   );
 
   const total = totalPaid + totalPending;
+  const paidPct = total > 0 ? (totalPaid / total) * 100 : 0;
+  const pendingPct = total > 0 ? (totalPending / total) * 100 : 0;
 
   const columns = useMemo<ColumnDef<TransactionRow>[]>(
     () => [
@@ -509,15 +511,66 @@ export default function ExpenseTable({
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">
-              {date ? new Date(date).toLocaleDateString('es-MX') : 'Gastos'}
-            </CardTitle>
+      <Card className="overflow-hidden border-border/60">
+        <CardHeader className="pb-2 pt-3 px-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+                <Receipt className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              </span>
+              <div>
+                <CardTitle className="text-sm font-semibold leading-none">
+                  {date ? new Date(date).toLocaleDateString('es-MX') : 'Gastos'}
+                </CardTitle>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
+                  {localExpenses.length} gasto{localExpenses.length !== 1 ? 's' : ''} registrado{localExpenses.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-lg font-bold font-mono tabular-nums leading-none">
+                {formatCurrency(total)}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
+                total
+              </p>
+            </div>
           </div>
+
+          {localExpenses.length > 0 && (
+            <div className="mt-3">
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+                <div
+                  className="h-full rounded-l-full bg-green-500 dark:bg-green-400 transition-all duration-500"
+                  style={{ width: `${paidPct}%` }}
+                />
+                <div
+                  className={cn(
+                    'h-full bg-amber-400 dark:bg-amber-500 transition-all duration-500',
+                    paidPct === 0 && 'rounded-l-full',
+                    paidPct + pendingPct >= 100 && 'rounded-r-full',
+                  )}
+                  style={{ width: `${pendingPct}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-3 mt-1.5">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400" />
+                  <span className="text-[9px] text-muted-foreground">
+                    {paidExpenses.length} pagado{paidExpenses.length !== 1 ? 's' : ''} • {formatCurrency(totalPaid)}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 dark:bg-amber-500" />
+                  <span className="text-[9px] text-muted-foreground">
+                    {pendingExpenses.length} pendiente{pendingExpenses.length !== 1 ? 's' : ''} • {formatCurrency(totalPending)}
+                  </span>
+                </span>
+              </div>
+            </div>
+          )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="px-4 pb-3 pt-1 space-y-0">
           {/* Expenses Table */}
           <div className="relative w-full overflow-x-auto">
             <Table>
@@ -590,14 +643,18 @@ export default function ExpenseTable({
                         ))}
                       </TableRow>
                     ))}
-                    <TableRow className="bg-muted/50 font-semibold">
-                      <TableCell colSpan={2} className="text-right text-sm">
-                        Total:
+                    <TableRow className="border-t-2 border-border/60 bg-muted/30">
+                      <TableCell colSpan={2} className="text-right py-2.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Total gastos
+                        </span>
                       </TableCell>
-                      <TableCell className="text-right text-sm font-mono">
-                        {formatCurrency(total)}
+                      <TableCell className="text-right py-2.5">
+                        <span className="text-sm font-bold font-mono tabular-nums">
+                          {formatCurrency(total)}
+                        </span>
                       </TableCell>
-                      <TableCell />
+                      <TableCell className="py-2.5" />
                     </TableRow>
                   </>
                 )}

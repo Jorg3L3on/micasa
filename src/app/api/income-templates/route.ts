@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         applies_first_fortnight: validatedData.appliesFirstFortnight,
         applies_second_fortnight: validatedData.appliesSecondFortnight,
         active: validatedData.active ?? true,
+        // Enforce single-owner rule: exactly one of user_id / house_id
         user_id: ownerType === 'user' ? ownerId : null,
         house_id: ownerType === 'house' ? ownerId : null,
       },

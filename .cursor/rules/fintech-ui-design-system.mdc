@@ -1,0 +1,113 @@
+---
+description: Fintech-grade UI design system for cards, metrics, tables, and data-dense components
+globs: src/components/**/*.tsx, src/app/**/*.tsx
+alwaysApply: false
+---
+
+# Fintech UI Design System
+
+When building or updating UI components, follow this premium fintech design language consistently.
+
+## Card Headers
+
+Every card gets an **icon badge** in a tinted pill + title + optional subtitle:
+
+```tsx
+<span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+  <Receipt className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+</span>
+```
+
+- Each card/section has its own accent color identity (emerald for balance, blue for income, violet for expenses, amber for pending)
+- Title: `text-sm font-semibold leading-none`
+- Subtitle: `text-[10px] text-muted-foreground`
+
+## Color-Accented Metric Cards
+
+Use colored left borders + tinted backgrounds per metric type:
+
+```tsx
+<div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+```
+
+Color mapping:
+- **Income / Bank**: blue (`blue-500`)
+- **Paid / Success**: green (`green-500`)
+- **Pending / Warning**: amber (`amber-500`)
+- **Balance / Available**: emerald (`emerald-500`)
+- **Expenses / Spending**: violet (`violet-500`)
+- **Negative / Overdue**: destructive (`destructive`)
+
+## Typography for Financial Data
+
+- Amounts: `font-mono tabular-nums` always
+- Large hero amounts: `text-2xl font-bold font-mono tabular-nums`
+- Card metric amounts: `text-sm font-bold font-mono tabular-nums`
+- Labels: `text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`
+- Sub-info: `text-[9px] text-muted-foreground`
+
+## Progress Bars (Segmented)
+
+For paid/pending/available breakdowns, use a segmented horizontal bar:
+
+```tsx
+<div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+  <div className="h-full rounded-l-full bg-green-500 dark:bg-green-400" style={{ width: `${paidPct}%` }} />
+  <div className="h-full bg-amber-400 dark:bg-amber-500" style={{ width: `${pendingPct}%` }} />
+</div>
+```
+
+Below the bar, add dot legends:
+
+```tsx
+<span className="flex items-center gap-1">
+  <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+  <span className="text-[9px] text-muted-foreground">Label</span>
+</span>
+```
+
+## Icon Badges in Tinted Pills
+
+Wrap icons in a small tinted container matching the section's accent:
+
+```tsx
+<span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15 shrink-0">
+  <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+</span>
+```
+
+## Scrollable Strips
+
+For horizontally scrollable content (e.g. wallet cards), use:
+- `overflow-x-auto scrollbar-hide` on the scroll container
+- `shrink-0` on each card
+- Edge fade gradients: `bg-linear-to-r from-background to-transparent` on both sides
+- Cards get `hover:shadow-md transition-shadow duration-200`
+
+## Table Footer Rows
+
+```tsx
+<TableRow className="border-t-2 border-border/60 bg-muted/30">
+  <TableCell className="text-right py-2.5">
+    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
+  </TableCell>
+  <TableCell className="text-right py-2.5">
+    <span className="text-sm font-bold font-mono tabular-nums">{formatCurrency(total)}</span>
+  </TableCell>
+</TableRow>
+```
+
+## Card Shells
+
+- Use `overflow-hidden border-border/60` on all Card components
+- Hero sections get subtle background decoration: `pointer-events-none absolute` blurred circles
+- Expandable sections use hover rows: `rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40`
+
+## General Principles
+
+- Use `cn()` for conditional classes
+- Negative amounts always get `text-destructive`
+- Paid/completed rows: `bg-muted/20 opacity-75`
+- Use `shrink-0` (not `flex-shrink-0`) per Tailwind v4
+- Dark mode: always provide `dark:` variants for accent colors (e.g. `text-blue-600 dark:text-blue-400`, `bg-blue-500/10 dark:bg-blue-500/15`)
+- Accessibility: always include `aria-label` on interactive elements and `role="region"` with `aria-label` on data sections
