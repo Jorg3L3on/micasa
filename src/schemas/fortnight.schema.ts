@@ -15,5 +15,10 @@ export const overrideAmountSchema = z.object({
   month: monthSchema,
 });
 
+/** Form-only schema for the edit-income dialog (year/month are added by the parent). */
+export const overrideAmountFormSchema = z.object({
+  amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
+});
+
 export type OverrideAmountInput = z.infer<typeof overrideAmountSchema>;
-export type OverrideAmountFormValues = z.infer<typeof overrideAmountSchema>;
+export type OverrideAmountFormValues = z.infer<typeof overrideAmountFormSchema>;

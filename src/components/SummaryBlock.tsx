@@ -12,7 +12,16 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from 'lucide-react';
+
+export type IncomeItemBySource = {
+  id: number;
+  amount: number;
+  source: string | null;
+  userName: string | null;
+  templateName: string | null;
+};
 
 type SummaryBlockProps = {
   tenemos: number;
@@ -23,12 +32,15 @@ type SummaryBlockProps = {
     fortnightId: number;
     userIncome: Array<{ userId: number; userName: string; income: number }>;
   }>;
+  incomeItems?: IncomeItemBySource[];
   year?: number;
   month?: number;
   period?: 'FIRST' | 'SECOND';
   expenseCount?: number;
   paidExpenseCount?: number;
   unpaidExpenseCount?: number;
+  onEditIncome?: () => void;
+  onEditIncomeSource?: (id: number, amount: number) => void;
 };
 
 export default function SummaryBlock({
@@ -37,12 +49,15 @@ export default function SummaryBlock({
   pagado,
   pendiente,
   userIncome,
+  incomeItems = [],
   year,
   month,
   period,
   expenseCount = 0,
   paidExpenseCount = 0,
   unpaidExpenseCount = 0,
+  onEditIncome,
+  onEditIncomeSource,
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
@@ -132,19 +147,34 @@ export default function SummaryBlock({
         {/* Secondary Metrics - single row, compact */}
         <div className="grid grid-cols-3 gap-2">
           <div className="flex flex-col gap-0.5 rounded border border-border/50 bg-muted/30 px-2 py-1.5">
-            <div className="flex items-center gap-1">
-              <Wallet className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                Ingresos
-              </span>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1 min-w-0">
+                <Wallet className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Ingresos
+                </span>
+              </div>
+              {onEditIncome && incomeItems.length === 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={onEditIncome}
+                  aria-label="Modificar ingresos de la quincena"
+                  tabIndex={0}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
             </div>
             <span className="text-sm font-bold font-mono tabular-nums leading-tight">
               {formatCurrency(tenemos)}
             </span>
-            {hasUserIncome && (
+            {(hasUserIncome || incomeItems.length > 0) && (
               <span className="text-[9px] text-muted-foreground">
-                {userIncome[0]?.userIncome.length || 0} fuente
-                {(userIncome[0]?.userIncome.length || 0) !== 1 ? 's' : ''}
+                {incomeItems.length > 0
+                  ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
+                  : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
               </span>
             )}
           </div>
@@ -182,31 +212,74 @@ export default function SummaryBlock({
           </div>
         </div>
 
-        {/* Expandable Breakdown */}
-        {isExpanded && hasUserIncome && (
+        {/* Expandable Breakdown - by source (editable) or by user */}
+        {isExpanded && (incomeItems.length > 0 || hasUserIncome) && (
           <>
             <Separator className="my-1.5" />
             <div className="space-y-1.5">
               <h4 className="text-xs font-semibold">Desglose de ingresos</h4>
-              <div className="space-y-1 text-xs">
-                {userIncome.map((periodIncome) => (
-                  <div key={periodIncome.fortnightId} className="space-y-0.5">
-                    {periodIncome.userIncome.map((userInc) => (
+              {incomeItems.length > 0 ? (
+                <div className="space-y-1 text-xs">
+                  {incomeItems.map((item) => {
+                    const label =
+                      item.source === '__OVERRIDE__'
+                        ? 'Ingreso manual'
+                        : item.templateName || item.source || 'Ingreso';
+                    const displayLabel = item.userName
+                      ? `${item.userName}: ${label}`
+                      : label;
+                    return (
                       <div
-                        key={userInc.userId}
-                        className="flex justify-between items-center gap-2"
+                        key={item.id}
+                        className="flex justify-between items-center gap-2 group"
                       >
-                        <span className="text-muted-foreground truncate">
-                          {userInc.userName}:
+                        <span className="text-muted-foreground truncate min-w-0">
+                          {displayLabel}
                         </span>
-                        <span className="font-semibold font-mono tabular-nums shrink-0">
-                          {formatCurrency(userInc.income)}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="font-semibold font-mono tabular-nums">
+                            {formatCurrency(item.amount)}
+                          </span>
+                          {onEditIncomeSource && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-70 group-hover:opacity-100"
+                              onClick={() =>
+                                onEditIncomeSource(item.id, item.amount)
+                              }
+                              aria-label={`Modificar ${displayLabel}`}
+                              tabIndex={0}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-1 text-xs">
+                  {userIncome?.map((periodIncome) => (
+                    <div key={periodIncome.fortnightId} className="space-y-0.5">
+                      {periodIncome.userIncome.map((userInc) => (
+                        <div
+                          key={userInc.userId}
+                          className="flex justify-between items-center gap-2"
+                        >
+                          <span className="text-muted-foreground truncate">
+                            {userInc.userName}:
+                          </span>
+                          <span className="font-semibold font-mono tabular-nums shrink-0">
+                            {formatCurrency(userInc.income)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

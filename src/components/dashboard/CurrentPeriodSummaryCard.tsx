@@ -48,14 +48,14 @@ export default function CurrentPeriodSummaryCard({
 
   return (
     <Card className={DASHBOARD_CARD_CLASS}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-semibold tracking-tight">
           Resumen del periodo
         </CardTitle>
         <Select value={view} onValueChange={handleViewChange}>
           <SelectTrigger
             className={cn(
-              'w-[130px] transition-all',
+              'h-8 w-[120px] text-xs transition-all',
               isMonthView && 'glow-orange',
             )}
             aria-label="Seleccionar vista de periodo"
@@ -68,22 +68,24 @@ export default function CurrentPeriodSummaryCard({
           </SelectContent>
         </Select>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5 pt-0">
         <p
-          className="text-xs text-muted-foreground"
+          className="text-xs font-medium text-muted-foreground/90"
           aria-label="Fecha del periodo"
         >
           {getPeriodLabel(data.period)}
         </p>
 
-        <div className="flex flex-col items-center gap-1 pt-2 pb-2">
+        <div className="flex flex-col items-center gap-1.5 py-1">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <BalanceIcon className="size-3.5 shrink-0" aria-hidden />
-            <span className="text-xs font-medium">Balance</span>
+            <span className="text-xs font-medium uppercase tracking-wider">
+              Balance
+            </span>
           </div>
           <p
             className={cn(
-              'text-2xl font-semibold tracking-tight',
+              'text-3xl font-bold tracking-tight tabular-nums',
               summary.balance >= 0 ? 'text-chart-4' : 'text-destructive',
             )}
           >
@@ -91,22 +93,22 @@ export default function CurrentPeriodSummaryCard({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
-          <div className="flex flex-col gap-0.5">
+        <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-5">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <TrendingUp className="size-3.5 shrink-0" aria-hidden />
               <span className="text-xs font-medium">Ingresos</span>
             </div>
-            <p className="text-base font-medium text-chart-4">
+            <p className="text-base font-semibold tabular-nums text-chart-4">
               {formatCurrency(summary.totalIncome)}
             </p>
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <TrendingDown className="size-3.5 shrink-0" aria-hidden />
               <span className="text-xs font-medium">Gastos</span>
             </div>
-            <p className="text-base font-medium text-destructive">
+            <p className="text-base font-semibold tabular-nums text-destructive">
               {formatCurrency(summary.totalExpense)}
             </p>
           </div>

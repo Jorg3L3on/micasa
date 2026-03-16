@@ -1,6 +1,6 @@
 /** Shared card className for dashboard metric cards. */
 export const DASHBOARD_CARD_CLASS =
-  'card-glass card-depth rounded-lg border-border/50';
+  'card-glass card-depth rounded-xl border-border/50 min-h-[200px] flex flex-col';
 
 /** Short month names (es) for period labels. */
 const MONTH_NAMES_SHORT = [
@@ -42,4 +42,4 @@ export function getPeriodLabel({
 
 /** Grid class for dashboard tab content (responsive 1/2/3 columns). */
 export const DASHBOARD_GRID_CLASS =
-  'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+  'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';

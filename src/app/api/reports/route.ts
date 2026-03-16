@@ -113,10 +113,18 @@ export async function GET(request: NextRequest) {
 
       const balance = totalIncome - totalExpense;
 
-      // Fetch user income data from Income using the user_id relationship
+      // Fetch user income data and income items (by source) for the period
       let userIncomeData: Array<{
         fortnightId: number;
         userIncome: Array<{ userId: number; userName: string; income: number }>;
+      }> = [];
+      const incomeItems: Array<{
+        fortnightId: number;
+        id: number;
+        amount: number;
+        source: string | null;
+        userName: string | null;
+        templateName: string | null;
       }> = [];
 
       if (month || year || period) {
@@ -147,6 +155,28 @@ export async function GET(request: NextRequest) {
                 },
               },
             },
+          });
+
+          // All income rows (including __OVERRIDE__) for edit-by-source UI
+          const incomesForItems = await prisma.income.findMany({
+            where: {
+              ...ownerFilter,
+              fortnight_id: { in: fortnightIds },
+            },
+            include: {
+              user: { select: { name: true } },
+              income_template: { select: { name: true } },
+            },
+          });
+          incomesForItems.forEach((inc) => {
+            incomeItems.push({
+              fortnightId: inc.fortnight_id,
+              id: inc.id,
+              amount: Number(inc.amount),
+              source: inc.source,
+              userName: inc.user?.name ?? null,
+              templateName: inc.income_template?.name ?? null,
+            });
           });
 
           // Group income by fortnight_id and user_id
@@ -202,6 +232,7 @@ export async function GET(request: NextRequest) {
           totalUnpaid,
           balance,
           userIncome: userIncomeData,
+          incomeItems,
         },
         { status: 200 },
       );
