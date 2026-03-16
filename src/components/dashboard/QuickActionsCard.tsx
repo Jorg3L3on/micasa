@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import CreateMonthForm from '@/components/CreateMonthForm';
+import { cn } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, createExpenseTransaction } from '@/lib/api';
 import type { DashboardData } from '@/types/dashboard';
@@ -146,23 +147,26 @@ export default function QuickActionsCard({
 
   return (
     <Card className={DASHBOARD_CARD_CLASS}>
-      <CardHeader className={compact ? 'pb-2' : undefined}>
-        <CardTitle className="text-base font-medium">
+      <CardHeader className={compact ? 'pb-3' : undefined}>
+        <CardTitle className="text-base font-semibold tracking-tight">
           Acciones rápidas
         </CardTitle>
       </CardHeader>
       <CardContent
         className={
           compact
-            ? 'grid grid-cols-2 gap-1.5 sm:grid-cols-3'
-            : 'grid grid-cols-2 gap-2'
+            ? 'grid grid-cols-3 gap-2 pt-1'
+            : 'grid grid-cols-2 gap-2 pt-1'
         }
       >
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className={compact ? buttonCompact : buttonFull}
+          className={cn(
+            compact ? buttonCompact : buttonFull,
+            'border-border/70 bg-muted/30 hover:bg-muted/50 hover:border-border',
+          )}
           aria-label="Agregar gasto"
           onClick={handleOpenExpenseDialog}
           disabled={isResolvingFortnight}
@@ -177,7 +181,10 @@ export default function QuickActionsCard({
           type="button"
           variant="outline"
           size="sm"
-          className={compact ? buttonCompact : buttonFull}
+          className={cn(
+            compact ? buttonCompact : buttonFull,
+            'border-border/70 bg-muted/30 hover:bg-muted/50 hover:border-border',
+          )}
           aria-label="Agregar ingreso"
           onClick={handleOpenIncomeDialog}
           disabled={isResolvingFortnight}
@@ -194,11 +201,11 @@ export default function QuickActionsCard({
               type="button"
               variant="outline"
               size="sm"
-              className={
-                compact
-                  ? `${buttonCompact} col-span-2 sm:col-span-1`
-                  : `${buttonFull} col-span-2`
-              }
+              className={cn(
+                compact ? buttonCompact : buttonFull,
+                'border-border/70 bg-muted/30 hover:bg-muted/50 hover:border-border',
+                compact ? '' : 'col-span-2',
+              )}
               aria-label={CREATE_MONTH_DIALOG.title}
             >
               <CalendarPlus

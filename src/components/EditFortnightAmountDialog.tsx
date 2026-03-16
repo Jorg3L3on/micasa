@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
-  overrideAmountSchema,
+  overrideAmountFormSchema,
   OverrideAmountFormValues,
 } from '@/schemas/fortnight.schema'
 
@@ -45,7 +45,7 @@ export default function EditFortnightAmountDialog({
   error,
 }: EditFortnightAmountDialogProps) {
   const form = useForm<OverrideAmountFormValues>({
-    resolver: zodResolver(overrideAmountSchema),
+    resolver: zodResolver(overrideAmountFormSchema),
     defaultValues: {
       amount: defaultAmount,
     },
@@ -79,9 +79,9 @@ export default function EditFortnightAmountDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modificar monto a pagar — {fortnightLabel}</DialogTitle>
+          <DialogTitle>Modificar ingresos — {fortnightLabel}</DialogTitle>
           <DialogDescription>
-            Este monto solo aplica a esta quincena
+            Este monto solo aplica a esta quincena.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -119,7 +119,9 @@ export default function EditFortnightAmountDialog({
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

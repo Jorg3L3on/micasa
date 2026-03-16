@@ -1,16 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  LayoutDashboard,
-} from 'lucide-react';
+import { Activity, BarChart3, LayoutDashboard } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
 import {
   CurrentPeriodSummaryCard,
@@ -21,13 +13,13 @@ import {
   ExpenseHealthCheckCard,
   FixedVsVariableCard,
   QuickActionsCard,
-  AlertsWarningsCard,
   PeriodComparisonCard,
 } from './index';
 import { DASHBOARD_GRID_CLASS } from './constants';
 
 type DashboardTabsProps = {
   data: DashboardData;
+  initialTab?: 'resumen' | 'actividad' | 'analisis';
 };
 
 const TAB_CONFIG = [
@@ -51,18 +43,24 @@ const TAB_CONFIG = [
   },
 ] as const;
 
-export default function DashboardTabs({ data }: DashboardTabsProps) {
-  const [tab, setTab] = useState<string>('resumen');
-  const hasAlerts = data.alerts.length > 0;
+const TAB_VALUES = ['resumen', 'actividad', 'analisis'] as const;
+
+export default function DashboardTabs({
+  data,
+  initialTab,
+}: DashboardTabsProps) {
+  const [tab, setTab] = useState<string>(
+    initialTab && TAB_VALUES.includes(initialTab) ? initialTab : 'resumen',
+  );
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="w-full">
-      <TabsList className="mb-6 w-full sm:w-auto flex flex-wrap h-auto gap-1 p-1">
+      <TabsList className="mb-6 w-full sm:w-auto flex flex-wrap h-auto gap-1 p-1.5 rounded-lg bg-muted/40">
         {TAB_CONFIG.map(({ value, label, ariaLabel, icon: Icon }) => (
           <TabsTrigger
             key={value}
             value={value}
-            className="gap-1.5 px-3 py-2"
+            className="gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors"
             aria-label={ariaLabel}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
@@ -73,37 +71,9 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
 
       <TabsContent value="resumen" className="mt-0 space-y-6">
         <div className={DASHBOARD_GRID_CLASS}>
+          <QuickActionsCard compact period={data.period} />
           <CurrentPeriodSummaryCard data={data} />
           <AvailableVsCommittedCard data={data} />
-        </div>
-        {hasAlerts && (
-          <Card
-            className={cn(
-              'card-glass card-depth rounded-lg border border-amber-500/40 dark:border-amber-500/40',
-            )}
-          >
-            <CardContent className="flex flex-row items-center justify-between gap-4 py-3 px-4">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="size-4 shrink-0" aria-hidden />
-                <span className="text-sm font-medium">
-                  {data.alerts.length}{' '}
-                  {data.alerts.length === 1 ? 'alerta' : 'alertas'} en este
-                  periodo
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setTab('actividad')}
-                aria-label="Ver alertas en pestaña Actividad"
-              >
-                Ver en Actividad
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-        <div className="max-w-2xl">
-          <QuickActionsCard compact period={data.period} />
         </div>
       </TabsContent>
 
@@ -114,7 +84,6 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
           </div>
           <div className="space-y-4">
             <UpcomingObligationsCard data={data} />
-            <AlertsWarningsCard data={data} />
           </div>
         </div>
       </TabsContent>

@@ -52,6 +52,7 @@ export default async function DashboardPage({
     period?: string;
     ownerType?: string;
     ownerId?: string;
+    tab?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -68,5 +69,14 @@ export default async function DashboardPage({
     );
   }
 
-  return <DashboardTabsWrapper data={dashboardData} />;
+  return (
+    <DashboardTabsWrapper
+      data={dashboardData}
+      initialTab={
+        params.tab === 'actividad' || params.tab === 'analisis'
+          ? params.tab
+          : undefined
+      }
+    />
+  );
 }

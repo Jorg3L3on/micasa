@@ -7,13 +7,17 @@ import DashboardTabsSkeleton from './DashboardTabsSkeleton';
 
 type DashboardTabsWrapperProps = {
   data: DashboardData;
+  initialTab?: 'resumen' | 'actividad' | 'analisis';
 };
 
 /**
  * Renders DashboardTabs only after client mount to avoid Radix UI hydration
  * mismatch (server vs client useId() differences for aria-controls/id).
  */
-export default function DashboardTabsWrapper({ data }: DashboardTabsWrapperProps) {
+export default function DashboardTabsWrapper({
+  data,
+  initialTab,
+}: DashboardTabsWrapperProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,5 +28,11 @@ export default function DashboardTabsWrapper({ data }: DashboardTabsWrapperProps
     return <DashboardTabsSkeleton />;
   }
 
-  return <DashboardTabs data={data} />;
+  return (
+    <DashboardTabs
+      key={initialTab ?? 'resumen'}
+      data={data}
+      initialTab={initialTab}
+    />
+  );
 }

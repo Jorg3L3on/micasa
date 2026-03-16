@@ -13,6 +13,60 @@ const createIncomeSchema = z.object({
   transfer_from_user_id: z.number().int().positive().optional(),
 });
 
+const updateIncomeAmountSchema = z.object({
+  amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
+});
+
+export async function PUT(request: NextRequest) {
+  try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
+    const { searchParams } = new URL(request.url);
+    const idRaw = searchParams.get('id');
+    const id = idRaw ? parseInt(idRaw, 10) : NaN;
+    if (Number.isNaN(id) || id < 1) {
+      return NextResponse.json(
+        { error: 'Valid id parameter is required' },
+        { status: 400 },
+      );
+    }
+
+    const body = await request.json();
+    const validated = updateIncomeAmountSchema.parse(body);
+
+    const income = await prisma.income.findFirst({
+      where: { id, ...ownerFilter },
+    });
+    if (!income) {
+      return NextResponse.json(
+        { error: 'Income not found' },
+        { status: 404 },
+      );
+    }
+
+    const updated = await prisma.income.update({
+      where: { id },
+      data: { amount: validated.amount },
+    });
+
+    return NextResponse.json(updated, { status: 200 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
+    console.error('Error updating income amount:', error);
+    return NextResponse.json(
+      { error: 'Failed to update income amount' },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);

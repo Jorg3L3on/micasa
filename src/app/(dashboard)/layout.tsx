@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import PageTitle from '@/components/PageTitle';
+import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 export default async function DashboardLayout({
@@ -44,7 +45,8 @@ export default async function DashboardLayout({
             />
             <PageTitle />
           </div>
-          <div className="shrink-0 px-4">
+          <div className="flex shrink-0 items-center gap-1 px-4">
+            <AlertsBell />
             <ThemeToggle />
           </div>
         </header>

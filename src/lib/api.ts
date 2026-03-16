@@ -6,12 +6,13 @@ import { WalletFormValues } from '@/schemas/wallet.schema';
 
 /**
  * Builds URLSearchParams for owner context (ownerType, ownerId).
- * Returns empty params if context is missing.
+ * Returns empty params if context is missing or invalid (e.g. id 0 before sync).
+ * When empty params are sent, the API uses the session user.
  */
 export function buildOwnerQuery(
   context?: FinanceContextType,
 ): URLSearchParams {
-  if (!context) {
+  if (!context || (context.type === 'user' && context.id === 0)) {
     return new URLSearchParams();
   }
   return new URLSearchParams({
@@ -259,6 +260,17 @@ export async function createIncome(
   return clientFetchFromApi('/api/incomes', {
     method: 'POST',
     body: JSON.stringify(data),
+  }, context);
+}
+
+export async function updateIncomeAmount(
+  id: number,
+  amount: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/incomes?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ amount }),
   }, context);
 }
 

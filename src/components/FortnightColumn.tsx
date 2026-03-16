@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
@@ -15,10 +16,20 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
   updateFortnightOverrideAmount,
+  updateIncomeAmount,
   createExpenseTransaction,
   createExpenseTemplate,
 } from '@/lib/api';
 import type { TransactionRow } from '@/types/catalog';
+
+type IncomeItemBySource = {
+  fortnightId: number;
+  id: number;
+  amount: number;
+  source: string | null;
+  userName: string | null;
+  templateName: string | null;
+};
 
 type Summary = {
   totalIncome: number;
@@ -30,6 +41,7 @@ type Summary = {
     fortnightId: number;
     userIncome: Array<{ userId: number; userName: string; income: number }>;
   }>;
+  incomeItems?: IncomeItemBySource[];
 };
 
 type FortnightColumnProps = {
@@ -58,6 +70,8 @@ export default function FortnightColumn({
   const [summary, setSummary] = useState<Summary>(initialSummary);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
+  const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
+  const [editingIncomeAmount, setEditingIncomeAmount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
@@ -102,23 +116,46 @@ export default function FortnightColumn({
   const handleOverrideAmount = async (data: OverrideAmountFormValues) => {
     try {
       setOverrideError(null);
-      await updateFortnightOverrideAmount(
-        fortnightId,
-        {
-          amount: data.amount,
-          year,
-          month,
-        },
-        context,
-      );
-      await refreshData();
-      setOverrideDialogOpen(false);
+      if (editingIncomeId != null) {
+        await updateIncomeAmount(editingIncomeId, data.amount, context);
+        await refreshData();
+        setOverrideDialogOpen(false);
+        setEditingIncomeId(null);
+        toast.success('Monto del ingreso actualizado.');
+      } else {
+        await updateFortnightOverrideAmount(
+          fortnightId,
+          {
+            amount: data.amount,
+            year,
+            month,
+          },
+          context,
+        );
+        await refreshData();
+        setOverrideDialogOpen(false);
+        toast.success('Ingresos actualizados para esta quincena.');
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Error al guardar el monto';
       setOverrideError(message);
+      toast.error(message);
       throw err;
     }
+  };
+
+  const handleOpenOverrideDialog = () => {
+    setEditingIncomeId(null);
+    setOverrideError(null);
+    setOverrideDialogOpen(true);
+  };
+
+  const handleOpenEditIncomeSource = (id: number, amount: number) => {
+    setEditingIncomeId(id);
+    setEditingIncomeAmount(amount);
+    setOverrideError(null);
+    setOverrideDialogOpen(true);
   };
 
   const handleAddExpense = async (data: AddExpenseFormValues) => {
@@ -352,12 +389,17 @@ export default function FortnightColumn({
           pagado={pagado}
           pendiente={pendiente}
           userIncome={currentFortnightUserIncome}
+          incomeItems={
+            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ?? []
+          }
           year={year}
           month={month}
           period={period}
           expenseCount={transactions.length}
           paidExpenseCount={transactions.filter((t) => t.is_paid).length}
           unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
+          onEditIncome={handleOpenOverrideDialog}
+          onEditIncomeSource={handleOpenEditIncomeSource}
         />
 
         {/* Single Expense Table for all expenses */}
@@ -397,10 +439,13 @@ export default function FortnightColumn({
         open={overrideDialogOpen}
         onOpenChange={(open) => {
           setOverrideDialogOpen(open);
+          if (!open) setEditingIncomeId(null);
           setOverrideError(null);
         }}
         onSubmit={handleOverrideAmount}
-        defaultAmount={tenemos}
+        defaultAmount={
+          editingIncomeId != null ? editingIncomeAmount : tenemos
+        }
         fortnightLabel={label}
         error={overrideError && overrideDialogOpen ? overrideError : null}
       />

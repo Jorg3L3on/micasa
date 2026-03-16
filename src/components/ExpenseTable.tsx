@@ -406,6 +406,13 @@ export default function ExpenseTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleEditAmount(expense)}
+                    disabled={isUpdating}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Modificar monto
+                  </DropdownMenuItem>
                   {expense.is_paid ? (
                     <DropdownMenuItem
                       onClick={() => handlePaidToggle(expense, false)}
@@ -415,26 +422,17 @@ export default function ExpenseTable({
                       Deshacer pago
                     </DropdownMenuItem>
                   ) : (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => handleEditAmount(expense)}
-                        disabled={isUpdating}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Modificar monto
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setDeletingExpense(expense);
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={isUpdating}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setDeletingExpense(expense);
+                        setDeleteDialogOpen(true);
+                      }}
+                      disabled={isUpdating}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Eliminar
+                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
