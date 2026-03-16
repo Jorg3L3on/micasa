@@ -50,6 +50,7 @@ export const addExpenseSchema = z
     isPaid: z.boolean(),
     isRecurring: z.boolean(),
     applyToBothFortnights: z.boolean(),
+    expenseTemplateId: z.number().int().positive().optional().nullable(),
   })
   .refine(
     (data) => {

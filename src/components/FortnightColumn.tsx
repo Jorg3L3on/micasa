@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -75,6 +75,17 @@ export default function FortnightColumn({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
+
+  const monthLabel = useMemo(() => {
+    if (!year || !month) {
+      return '';
+    }
+    const date = new Date(year, month - 1, 1);
+    return date.toLocaleDateString('es-MX', {
+      month: 'long',
+      year: 'numeric',
+    });
+  }, [year, month]);
 
   const refreshData = useCallback(async () => {
     try {
@@ -181,6 +192,10 @@ export default function FortnightColumn({
         throw new Error('Selecciona un método de pago.');
       }
 
+      const fromTemplateId =
+        (data as AddExpenseFormValues & { expenseTemplateId?: number | null })
+          .expenseTemplateId ?? null;
+
       // Helper to get the other fortnight ID
       const getOtherFortnightId = async (): Promise<number | null> => {
         const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
@@ -212,7 +227,21 @@ export default function FortnightColumn({
         return date.toISOString().split('T')[0];
       };
 
-      if (!data.isRecurring) {
+      if (fromTemplateId) {
+        await createExpenseTransaction(
+          {
+            fortnight_id: fortnightId,
+            category_id: data.categoryId,
+            description: data.name,
+            amount: data.amount,
+            payment_method_id: data.paymentMethodId,
+            is_paid: data.isPaid,
+            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            expense_template_id: fromTemplateId,
+          },
+          context,
+        );
+      } else if (!data.isRecurring) {
         // Case 1: Non-recurring expense - create only one expense
         await createExpenseTransaction(
           {
@@ -355,6 +384,39 @@ export default function FortnightColumn({
     }
   };
 
+  const handleRegenerateFromTemplates = async () => {
+    try {
+      setAddExpenseError(null);
+
+      if (!fortnightId || fortnightId <= 0) {
+        toast.error(
+          'No se pudo regenerar la quincena. Recarga la página o vuelve al plan mensual.',
+        );
+        return;
+      }
+
+      await clientFetchFromApi(
+        `/api/fortnights/${fortnightId}/regenerate-from-templates`,
+        {
+          method: 'POST',
+        },
+        context,
+      );
+
+      await refreshData();
+      router.refresh();
+      toast.success('Quincena regenerada desde plantillas.');
+    } catch (error) {
+      console.error('Error regenerating fortnight from templates:', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Error al regenerar la quincena desde plantillas';
+      setAddExpenseError(message);
+      toast.error(message);
+    }
+  };
+
   const tenemos = summary.totalIncome;
   const libre = summary.balance;
   const pagado = summary.totalPaid;
@@ -383,24 +445,27 @@ export default function FortnightColumn({
     <>
       <div className="flex flex-col space-y-4">
         {/* Summary Cards */}
-        <SummaryBlock
-          tenemos={tenemos}
-          libre={libre}
-          pagado={pagado}
-          pendiente={pendiente}
-          userIncome={currentFortnightUserIncome}
-          incomeItems={
-            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ?? []
-          }
-          year={year}
-          month={month}
-          period={period}
-          expenseCount={transactions.length}
-          paidExpenseCount={transactions.filter((t) => t.is_paid).length}
-          unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
-          onEditIncome={handleOpenOverrideDialog}
-          onEditIncomeSource={handleOpenEditIncomeSource}
-        />
+        <div className="sticky top-20 z-10">
+          <SummaryBlock
+            tenemos={tenemos}
+            libre={libre}
+            pagado={pagado}
+            pendiente={pendiente}
+            monthLabel={monthLabel}
+            userIncome={currentFortnightUserIncome}
+            incomeItems={
+              summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ?? []
+            }
+            year={year}
+            month={month}
+            period={period}
+            expenseCount={transactions.length}
+            paidExpenseCount={transactions.filter((t) => t.is_paid).length}
+            unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
+            onEditIncome={handleOpenOverrideDialog}
+            onEditIncomeSource={handleOpenEditIncomeSource}
+          />
+        </div>
 
         {/* Single Expense Table for all expenses */}
         <div className="space-y-4">
@@ -412,17 +477,20 @@ export default function FortnightColumn({
               onExpenseUpdate={handleExpenseUpdate}
               fortnightLabel={label}
               totalIncome={tenemos}
+              year={year}
+              month={month}
+              period={period}
             />
           )}
         </div>
 
         {/* Add Expense Button */}
-        <div className="pt-2">
+        <div className="pt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="outline"
             onClick={() => setAddExpenseDialogOpen(true)}
             disabled={!fortnightId || fortnightId <= 0}
-            className="w-full"
+            className="w-full sm:w-auto"
             title={
               !fortnightId || fortnightId <= 0
                 ? 'La quincena no está disponible. Recarga la página.'
@@ -430,6 +498,16 @@ export default function FortnightColumn({
             }
           >
             + Agregar gasto
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRegenerateFromTemplates}
+            disabled={!fortnightId || fortnightId <= 0 || isRefreshing}
+            className="w-full sm:w-auto text-xs text-muted-foreground hover:text-foreground"
+            title="Regenera los gastos e ingresos de esta quincena a partir de las plantillas activas."
+          >
+            Regenerar desde plantillas
           </Button>
         </div>
       </div>

@@ -242,12 +242,20 @@ export default function DashboardQuickExpenseDialog({
                       min="0.01"
                       placeholder="0.00"
                       {...field}
-                      value={field.value || ''}
-                      onChange={(event) =>
-                        field.onChange(
-                          parseFloat(event.target.value) || 0,
-                        )
+                      value={
+                        typeof field.value === 'number' && !Number.isNaN(field.value)
+                          ? field.value
+                          : ''
                       }
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        if (next === '') {
+                          field.onChange(NaN);
+                          return;
+                        }
+                        const parsed = Number.parseFloat(next);
+                        field.onChange(Number.isFinite(parsed) ? parsed : field.value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

@@ -65,6 +65,9 @@ type ExpenseTableProps = {
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void;
   fortnightLabel?: string;
   totalIncome?: number;
+  year?: number;
+  month?: number;
+  period?: 'FIRST' | 'SECOND';
 };
 
 export default function ExpenseTable({
@@ -73,6 +76,9 @@ export default function ExpenseTable({
   onExpenseUpdate,
   fortnightLabel = '',
   totalIncome = 0,
+  year,
+  month,
+  period,
 }: ExpenseTableProps) {
   const { context } = useFinanceContext();
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
@@ -229,28 +235,75 @@ export default function ExpenseTable({
         hasDue: false,
         dueDay: null as number | null,
         daysRemaining: null as number | null,
+        showCountdown: false,
         badgeColor: 'default' as const,
       };
     }
 
     const today = new Date();
     const todayDay = today.getDate();
-    const daysRemaining = dueDayValue - todayDay;
+
+    // Decide countdown / overdue behavior based on the calendar month:
+    // - Past months: always "Vencido"
+    // - Current month: "Vence en X días" if future, "Vencido" if past
+    // - Future months: neutral "Con fecha de pago"
+    let daysRemaining: number | null = null;
+    let showCountdown = false;
+    let isFutureMonth = false;
+
+    // Prefer explicit year/month props (from fortnight context); fall back to row date.
+    let expenseYear: number | null = null;
+    let expenseMonth: number | null = null;
+
+    if (year != null && month != null) {
+      expenseYear = year;
+      expenseMonth = month - 1; // JS Date month is 0-based
+    } else if (date) {
+      const expenseDate = new Date(date);
+      if (!Number.isNaN(expenseDate.getTime())) {
+        expenseYear = expenseDate.getFullYear();
+        expenseMonth = expenseDate.getMonth();
+      }
+    }
+
+    if (expenseYear != null && expenseMonth != null) {
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
+
+      if (
+        expenseYear < currentYear ||
+        (expenseYear === currentYear && expenseMonth < currentMonth)
+      ) {
+        // Any past month -> always overdue
+        daysRemaining = -1;
+        showCountdown = false;
+      } else if (expenseYear === currentYear && expenseMonth === currentMonth) {
+        // Current month -> countdown or overdue
+        daysRemaining = dueDayValue - todayDay;
+        showCountdown = daysRemaining >= 0;
+      } else {
+        // Future month -> no badge at all
+        daysRemaining = null;
+        showCountdown = false;
+        isFutureMonth = true;
+      }
+    }
 
     // Standardized badge colors
     let badgeColor: 'default' | 'destructive' | 'secondary' = 'default';
-    if (daysRemaining < 0) {
+    if (daysRemaining !== null && daysRemaining < 0) {
       badgeColor = 'destructive'; // Overdue - red
-    } else if (daysRemaining <= 3) {
+    } else if (daysRemaining !== null && daysRemaining <= 3) {
       badgeColor = 'destructive'; // Urgent - red
-    } else if (daysRemaining <= 7) {
+    } else if (daysRemaining !== null && daysRemaining <= 7) {
       badgeColor = 'secondary'; // Warning - yellow/orange
     }
 
     return {
-      hasDue: true,
+      hasDue: !isFutureMonth,
       dueDay: dueDayValue,
       daysRemaining,
+      showCountdown,
       badgeColor,
     };
   };
@@ -326,7 +379,8 @@ export default function ExpenseTable({
         ),
         cell: ({ row }) => {
           const expense = row.original;
-          const { hasDue, daysRemaining, badgeColor } = getDueInfo(expense);
+          const { hasDue, daysRemaining, showCountdown, badgeColor } =
+            getDueInfo(expense);
           return (
             <div className="flex flex-col gap-1 min-w-[200px]">
               <span
@@ -351,9 +405,13 @@ export default function ExpenseTable({
                   >
                     {expense.is_paid
                       ? 'Pagado'
-                      : daysRemaining !== null && daysRemaining >= 0
-                        ? `Vence en ${daysRemaining} día${daysRemaining !== 1 ? 's' : ''}`
-                        : 'Vencido'}
+                      : showCountdown && daysRemaining !== null && daysRemaining >= 0
+                        ? `Vence en ${daysRemaining} día${
+                            daysRemaining !== 1 ? 's' : ''
+                          }`
+                        : daysRemaining !== null && daysRemaining < 0
+                          ? 'Vencido'
+                          : 'Con fecha de pago'}
                   </Badge>
                 )}
               </div>

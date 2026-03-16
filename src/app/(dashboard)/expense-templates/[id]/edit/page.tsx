@@ -307,10 +307,22 @@ export default function EditExpenseTemplatePage() {
                           type="number"
                           min="1"
                           max="31"
-                          value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value) || 1)
+                          value={
+                            typeof field.value === 'number' && !Number.isNaN(field.value)
+                              ? field.value
+                              : ''
                           }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              field.onChange(NaN);
+                              return;
+                            }
+                            const num = Number.parseInt(value, 10);
+                            if (Number.isFinite(num) && num >= 1 && num <= 31) {
+                              field.onChange(num);
+                            }
+                          }}
                           onBlur={field.onBlur}
                         />
                       </FormControl>
@@ -329,10 +341,22 @@ export default function EditExpenseTemplatePage() {
                           type="number"
                           min="1"
                           max="31"
-                          value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value) || 1)
+                          value={
+                            typeof field.value === 'number' && !Number.isNaN(field.value)
+                              ? field.value
+                              : ''
                           }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              field.onChange(NaN);
+                              return;
+                            }
+                            const num = Number.parseInt(value, 10);
+                            if (Number.isFinite(num) && num >= 1 && num <= 31) {
+                              field.onChange(num);
+                            }
+                          }}
                           onBlur={field.onBlur}
                         />
                       </FormControl>
