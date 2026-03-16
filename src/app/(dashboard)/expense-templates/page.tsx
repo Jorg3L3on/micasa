@@ -288,6 +288,10 @@ export default function ExpenseTemplatesPage() {
         </div>
       )}
 
+      <div className="mb-4 flex justify-end">
+        {addButton}
+      </div>
+
       <Card className="overflow-hidden">
         <CardContent className="p-6">
           {loading ? (
@@ -304,7 +308,6 @@ export default function ExpenseTemplatesPage() {
               filterPlaceholder="Filtrar por nombre..."
               filterSlot={filterSlot}
               columnVisibility
-              toolbarExtra={addButton}
               emptyMessage="No se encontraron plantillas de gastos."
             />
           )}
