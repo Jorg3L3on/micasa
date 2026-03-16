@@ -445,7 +445,7 @@ export default function FortnightColumn({
     <>
       <div className="flex flex-col space-y-4">
         {/* Summary Cards */}
-        <div className="sticky top-20 z-10">
+        <div className="sticky top-16 z-10">
           <SummaryBlock
             tenemos={tenemos}
             libre={libre}
@@ -468,7 +468,7 @@ export default function FortnightColumn({
         </div>
 
         {/* Single Expense Table for all expenses */}
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
           {sortedTransactions.length === 0 ? (
             <EmptyState message="No hay transacciones para esta quincena" />
           ) : (

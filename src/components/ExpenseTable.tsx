@@ -44,13 +44,7 @@ import {
   updateExpenseAmount,
   deleteTransaction,
 } from '@/lib/api';
-import {
-  MoreVertical,
-  Pencil,
-  Trash2,
-  CheckCircle2,
-  Filter,
-} from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -90,7 +84,6 @@ export default function ExpenseTable({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [payingExpense, setPayingExpense] = useState<TransactionRow | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
-  const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   // Sync local state with props when expenses change
   useEffect(() => {
@@ -308,11 +301,6 @@ export default function ExpenseTable({
     };
   };
 
-  // Filter expenses
-  const displayedExpenses = showOnlyPending
-    ? localExpenses.filter((e) => !e.is_paid)
-    : localExpenses;
-
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
@@ -325,14 +313,8 @@ export default function ExpenseTable({
     (sum, e) => sum + toDisplayAmount(e.amount),
     0,
   );
-  
-  const total = totalPaid + totalPending;
 
-  // Calculate progress percentage based on COUNT of expenses, not amount
-  const totalExpenseCount = localExpenses.length;
-  const paidExpenseCount = paidExpenses.length;
-  const progressPercentage =
-    totalExpenseCount > 0 ? Math.round((paidExpenseCount / totalExpenseCount) * 100) : 0;
+  const total = totalPaid + totalPending;
 
   const columns = useMemo<ColumnDef<TransactionRow>[]>(
     () => [
@@ -517,7 +499,7 @@ export default function ExpenseTable({
   ]);
 
   const table = useReactTable({
-    data: displayedExpenses,
+    data: localExpenses,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -533,34 +515,9 @@ export default function ExpenseTable({
             <CardTitle className="text-base font-semibold">
               {date ? new Date(date).toLocaleDateString('es-MX') : 'Gastos'}
             </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowOnlyPending(!showOnlyPending)}
-              className="h-8 gap-2"
-            >
-              <Filter className="h-3.5 w-3.5" />
-              {showOnlyPending ? 'Mostrar todos' : 'Solo pendientes'}
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Progress Bar */}
-          {total > 0 && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Progreso de pago</span>
-                <span>{Math.round(progressPercentage)}%</span>
-              </div>
-              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${progressPercentage}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Expenses Table */}
           <div className="relative w-full overflow-x-auto">
             <Table>
@@ -598,9 +555,7 @@ export default function ExpenseTable({
                       colSpan={columns.length}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
-                      {showOnlyPending
-                        ? 'No hay gastos pendientes'
-                        : 'Sin gastos'}
+                      Sin gastos
                     </TableCell>
                   </TableRow>
                 ) : (

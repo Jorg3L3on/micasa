@@ -211,7 +211,7 @@ export default async function MonthlyPage({
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <MonthlyHeader
           year={year}
           month={month}
