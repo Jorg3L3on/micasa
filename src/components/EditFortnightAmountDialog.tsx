@@ -104,8 +104,20 @@ export default function EditFortnightAmountDialog({
                       min="0"
                       placeholder="0.00"
                       {...field}
-                      value={field.value}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      value={
+                        typeof field.value === 'number' && !Number.isNaN(field.value)
+                          ? field.value
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        if (next === '') {
+                          field.onChange(NaN);
+                          return;
+                        }
+                        const parsed = Number.parseFloat(next);
+                        field.onChange(Number.isFinite(parsed) ? parsed : field.value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

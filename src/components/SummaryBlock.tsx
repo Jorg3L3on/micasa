@@ -28,6 +28,7 @@ type SummaryBlockProps = {
   libre: number;
   pagado: number;
   pendiente: number;
+  monthLabel?: string;
   userIncome?: Array<{
     fortnightId: number;
     userIncome: Array<{ userId: number; userName: string; income: number }>;
@@ -48,6 +49,7 @@ export default function SummaryBlock({
   libre,
   pagado,
   pendiente,
+  monthLabel,
   userIncome,
   incomeItems = [],
   year,
@@ -101,12 +103,21 @@ export default function SummaryBlock({
       <CardHeader className="py-2 px-4 pb-1">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-semibold">
-            Estado de la quincena
-            {periodDayRange && (
-              <span className="ml-1.5 font-normal text-muted-foreground">
-                ({periodDayRange})
+            <div className="flex flex-col gap-0.5">
+              {monthLabel && (
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {monthLabel}
+                </span>
+              )}
+              <span>
+                Estado de la quincena
+                {periodDayRange && (
+                  <span className="ml-1.5 font-normal text-muted-foreground">
+                    ({periodDayRange})
+                  </span>
+                )}
               </span>
-            )}
+            </div>
           </CardTitle>
           <Button
             variant="ghost"

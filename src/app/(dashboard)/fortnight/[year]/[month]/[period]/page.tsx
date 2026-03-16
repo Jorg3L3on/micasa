@@ -180,6 +180,9 @@ export default async function FortnightPage({
                 date={date}
                 expenses={transactionsByDate[date]}
                 totalIncome={tenemos}
+                year={year}
+                month={month}
+                period={period}
               />
             ))
           )}

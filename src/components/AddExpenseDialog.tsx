@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -28,7 +28,11 @@ import {
   addExpenseSchema,
   AddExpenseFormValues,
 } from '@/schemas/transaction.schema';
-import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import type {
+  CategoryOption,
+  ExpenseTemplateListItem,
+  PaymentMethodOption,
+} from '@/types/catalog';
 
 type AddExpenseDialogProps = {
   open: boolean;
@@ -86,6 +90,7 @@ export default function AddExpenseDialog({
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
     [],
   );
+  const [templates, setTemplates] = useState<ExpenseTemplateListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -100,23 +105,32 @@ export default function AddExpenseDialog({
       isPaid: false,
       isRecurring: false,
       applyToBothFortnights: false,
+      expenseTemplateId: null,
     },
   });
 
   const isRecurring = form.watch('isRecurring');
+  const selectedTemplateId = form.watch('expenseTemplateId');
 
-  // Fetch categories and payment methods
+  // Fetch categories, payment methods and expense templates
   useEffect(() => {
     if (open) {
       const fetchData = async () => {
         try {
           setLoading(true);
-          const [categoriesData, paymentMethodsData] = await Promise.all([
+          const [categoriesData, paymentMethodsData, templatesData] =
+            await Promise.all([
             clientFetchFromApi<CategoryOption[]>('/api/categories', undefined, context),
             getPaymentMethodOptions(context),
-          ]);
+              clientFetchFromApi<ExpenseTemplateListItem[]>(
+                '/api/expense-templates',
+                undefined,
+                context,
+              ),
+            ]);
           setCategories(categoriesData);
           setPaymentMethods(paymentMethodsData);
+          setTemplates(templatesData);
         } catch (err) {
           console.error('Error fetching data:', err);
         } finally {
@@ -141,6 +155,7 @@ export default function AddExpenseDialog({
         isPaid: false,
         isRecurring: false,
         applyToBothFortnights: false,
+        expenseTemplateId: null,
       });
     }
   }, [open, defaultDate, year, month, period, form]);
@@ -166,9 +181,60 @@ export default function AddExpenseDialog({
     onOpenChange(newOpen);
   };
 
-  // Filter categories to only show expense categories (assuming all are expense categories for now)
-  // If you have income categories, you might need to filter them out
   const expenseCategories = categories;
+
+  const applicableTemplates = useMemo(() => {
+    return templates.filter((template) => {
+      if (!template.active) return false;
+      if (period === 'FIRST') {
+        return template.appliesFirstFortnight;
+      }
+      return template.appliesSecondFortnight;
+    });
+  }, [templates, period]);
+
+  const handleTemplateChange = (value: string) => {
+    if (!value) {
+      form.setValue('expenseTemplateId', null);
+      return;
+    }
+    const templateId = parseInt(value, 10);
+    const template = applicableTemplates.find((t) => t.id === templateId);
+    if (!template) {
+      form.setValue('expenseTemplateId', null);
+      return;
+    }
+
+    form.setValue('expenseTemplateId', template.id);
+
+    // Prefill form fields from template where possible
+    form.setValue('name', template.name);
+
+    if (template.suggestedAmount != null) {
+      form.setValue('amount', template.suggestedAmount);
+    }
+
+    if (template.paymentMethodId != null) {
+      form.setValue('paymentMethodId', Number(template.paymentMethodId));
+    }
+
+    const matchingCategory = expenseCategories.find(
+      (cat) => cat.name === template.category,
+    );
+    if (matchingCategory) {
+      form.setValue('categoryId', matchingCategory.id);
+    }
+
+    form.setValue('isRecurring', template.isRecurring);
+    if (template.isRecurring) {
+      form.setValue(
+        'applyToBothFortnights',
+        template.appliesFirstFortnight && template.appliesSecondFortnight,
+      );
+    } else {
+      form.setValue('applyToBothFortnights', false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -188,6 +254,36 @@ export default function AddExpenseDialog({
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
               </div>
+            )}
+            {applicableTemplates.length > 0 && (
+              <FormField
+                control={form.control}
+                name="expenseTemplateId"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Usar plantilla de gastos (opcional)</FormLabel>
+                    <FormControl>
+                      <select
+                        value={selectedTemplateId ? String(selectedTemplateId) : ''}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                          handleTemplateChange(e.target.value)
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">
+                          Selecciona una plantilla (opcional)
+                        </option>
+                        {applicableTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
             <FormField
               control={form.control}
@@ -243,10 +339,20 @@ export default function AddExpenseDialog({
                       min="0.01"
                       placeholder="0.00"
                       {...field}
-                      value={field.value || ''}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) || 0)
+                      value={
+                        typeof field.value === 'number' && !Number.isNaN(field.value)
+                          ? field.value
+                          : ''
                       }
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        if (next === '') {
+                          field.onChange(NaN);
+                          return;
+                        }
+                        const parsed = Number.parseFloat(next);
+                        field.onChange(Number.isFinite(parsed) ? parsed : field.value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

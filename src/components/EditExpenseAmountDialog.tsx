@@ -127,11 +127,19 @@ export default function EditExpenseAmountDialog({
                       min="0.01"
                       placeholder="0.00"
                       {...field}
-                      value={typeof field.value === 'number' ? field.value : ''}
+                      value={
+                        typeof field.value === 'number' && !Number.isNaN(field.value)
+                          ? field.value
+                          : ''
+                      }
                       onChange={(e) => {
-                        const v = e.target.value
-                        const num = v === '' ? 0 : parseFloat(v)
-                        field.onChange(Number.isFinite(num) ? num : 0)
+                        const next = e.target.value
+                        if (next === '') {
+                          field.onChange(NaN)
+                          return
+                        }
+                        const parsed = Number.parseFloat(next)
+                        field.onChange(Number.isFinite(parsed) ? parsed : field.value)
                       }}
                     />
                   </FormControl>

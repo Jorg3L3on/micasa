@@ -228,7 +228,10 @@ export default function WalletsPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-end">
+      <div
+        className="sticky top-20 z-20 mb-4 flex justify-end bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
+        aria-label="Acciones de billeteras"
+      >
         <Button onClick={() => setCreateDialogOpen(true)}>
           <WalletIcon />
           Agregar billetera
