@@ -53,9 +53,10 @@ const DEFAULT_THEME: WalletTheme = {
 
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
+  paidWalletIds?: number[];
 };
 
-const WalletBalanceStrip = ({ wallets }: WalletBalanceStripProps) => {
+const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripProps) => {
   if (wallets.length === 0) return null;
 
   const priority: Record<string, number> = {
@@ -110,8 +111,10 @@ const WalletBalanceStrip = ({ wallets }: WalletBalanceStripProps) => {
             const currentDay = today.getDate();
 
             const isFirstFortnight = currentDay <= 15;
+            const walletAlreadyPaid = paidWalletIds.includes(wallet.id);
             const dueInCurrentFortnight =
               isCreditType &&
+              !walletAlreadyPaid &&
               wallet.due_day != null &&
               (isFirstFortnight
                 ? wallet.due_day >= 1 && wallet.due_day <= 15

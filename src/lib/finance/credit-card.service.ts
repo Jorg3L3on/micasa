@@ -236,6 +236,14 @@ export async function createCreditCardPayment(
     await applyWalletAmountDelta(tx, sourceWallet.id, -input.amount);
     await applyWalletAmountDelta(tx, creditCardWallet.id, -input.amount);
 
+    const now = new Date();
+    const period = now.getDate() <= 15 ? 1 : 2;
+    const paidPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${period}`;
+    await tx.wallet.update({
+      where: { id: creditCardWallet.id },
+      data: { last_paid_period: paidPeriod },
+    });
+
     return {
       id: payment.id,
       amount: Number(payment.amount),

@@ -260,9 +260,10 @@ model Wallet {
   amount      Decimal           @default(0) @db.Decimal(10, 2)
   credit_limit Decimal?         @db.Decimal(10, 2)
   type        PaymentMethodType
-  cutoff_day  Int?
-  due_day     Int?
-  active      Boolean           @default(true)
+  cutoff_day       Int?
+  due_day          Int?
+  active           Boolean           @default(true)
+  last_paid_period String?
 
   user_id  Int?
   house_id Int?

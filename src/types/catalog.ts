@@ -85,6 +85,15 @@ export type CreditCardListItem = WalletListItem & {
   available_credit: number | null;
 };
 
+export type DuePaymentItem = {
+  walletId: number;
+  walletName: string;
+  walletType: string;
+  dueDay: number;
+  nextDuePayment: number;
+  statementDueDate: string;
+};
+
 export type CreditCardPaymentListItem = {
   id: number;
   amount: number;
