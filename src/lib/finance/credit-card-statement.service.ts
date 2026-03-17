@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { PaymentMethodType } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   getWalletAvailableCredit,
@@ -271,4 +272,61 @@ export async function getCreditCardStatementByOwner(
       credit_card_wallet_name: payment.credit_card_wallet.name,
     })),
   };
+}
+
+export async function getDuePaymentsForCurrentFortnight(
+  ownerFilter: OwnerFilter,
+) {
+  const now = new Date();
+  const currentDay = now.getDate();
+  const isFirstFortnight = currentDay <= 15;
+  const period = isFirstFortnight ? 1 : 2;
+  const currentPeriodString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${period}`;
+
+  const cards = await prisma.wallet.findMany({
+    where: {
+      ...ownerFilter,
+      active: true,
+      type: { in: [PaymentMethodType.CREDIT_CARD, PaymentMethodType.DEPARTMENT_STORE_CARD] },
+      cutoff_day: { not: null },
+      due_day: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      amount: true,
+      cutoff_day: true,
+      due_day: true,
+      last_paid_period: true,
+    },
+  });
+
+  const dueCards = cards.filter((card) => {
+    if (card.last_paid_period === currentPeriodString) return false;
+    if (Number(card.amount) <= 0) return false;
+    const dueDay = card.due_day!;
+    return isFirstFortnight
+      ? dueDay >= 1 && dueDay <= 15
+      : dueDay >= 16;
+  });
+
+  if (dueCards.length === 0) return [];
+
+  return dueCards.map((card) => {
+    const window = resolveCreditCardStatementWindow(
+      now,
+      card.cutoff_day!,
+      card.due_day!,
+    );
+
+    return {
+      walletId: card.id,
+      walletName: card.name,
+      walletType: card.type,
+      dueDay: card.due_day!,
+      nextDuePayment: Number(card.amount),
+      statementDueDate: toDateOnlyString(window.statementDueDate),
+    };
+  });
 }
