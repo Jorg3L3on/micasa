@@ -2,7 +2,7 @@ import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import FortnightColumn from '@/components/FortnightColumn'
-import WalletBalanceStrip from '@/components/WalletBalanceStrip'
+import WalletBalanceStrip from '../../../../../components/WalletBalanceStrip'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -128,7 +128,19 @@ async function getSummary(
 async function getWallets(ownerContext?: OwnerContext): Promise<WalletListItem[]> {
   try {
     const wallets = await fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext)
-    return wallets.filter((w) => w.active)
+    return wallets
+      .filter((w) => w.active)
+      .map((w) => {
+        if (w.type === 'CREDIT_CARD' || w.type === 'DEPARTMENT_STORE_CARD') {
+          const creditLimit = w.credit_limit ?? 0
+          const available = creditLimit - w.amount
+          return {
+            ...w,
+            amount: available,
+          }
+        }
+        return w
+      })
   } catch (error) {
     console.error('Error fetching wallets:', error)
     return []

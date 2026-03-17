@@ -435,6 +435,7 @@ export default function WalletsPage() {
             }}
             onSubmit={handleEdit}
             mode="edit"
+            showAmountField={!isCreditType(selectedWallet.type)}
             defaultValues={{
               name: selectedWallet.name,
               amount: selectedWallet.amount ?? 0,
@@ -445,7 +446,6 @@ export default function WalletsPage() {
               due_day: selectedWallet.due_day,
             }}
             error={formError && editDialogOpen ? formError : null}
-            showAmountField={false}
           />
 
           <ConfirmDeleteDialog

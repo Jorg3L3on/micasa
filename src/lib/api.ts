@@ -368,11 +368,9 @@ export async function updateWallet(
   data: WalletFormValues,
   context?: FinanceContextType,
 ) {
-  const { amount, ...metadata } = data;
-  void amount;
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'PUT',
-    body: JSON.stringify(metadata),
+    body: JSON.stringify(data),
   }, context);
 }
 
