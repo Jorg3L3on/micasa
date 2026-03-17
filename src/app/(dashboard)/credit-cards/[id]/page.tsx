@@ -1,10 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -187,16 +185,8 @@ export default function CreditCardDetailPage() {
 
   if (error || !card || !statement) {
     return (
-      <div className="space-y-4">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/wallets">
-            <ArrowLeft className="h-4 w-4" />
-            Volver a billeteras
-          </Link>
-        </Button>
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error ?? 'No se pudo cargar la tarjeta'}
-        </div>
+      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        {error ?? 'No se pudo cargar la tarjeta'}
       </div>
     );
   }
@@ -205,11 +195,6 @@ export default function CreditCardDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon" className="shrink-0">
-            <Link href="/wallets" aria-label="Volver a billeteras">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
             <CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           </span>

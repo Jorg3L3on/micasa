@@ -17,22 +17,26 @@ export default function FixedVsVariableCard({
     total > 0 ? ((totalFixed / total) * 100).toFixed(0) : '0';
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Fijos vs variables">
       <CardHeader>
-        <CardTitle className="text-base font-medium">
-          Fijos vs variables
-        </CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+            <PieChart className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Fijos vs variables
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex flex-col items-center gap-1 pt-2 pb-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <PieChart className="size-3.5 shrink-0" aria-hidden />
-            <span className="text-xs font-medium">Relación fijo/variable</span>
-          </div>
-          <p className="text-2xl font-semibold tracking-tight text-foreground">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Relación fijo/variable
+          </span>
+          <p className="text-2xl font-bold font-mono tabular-nums text-foreground">
             {ratio}
             {ratio !== '0' && ratio !== '∞' && (
-              <span className="ml-1.5 text-base font-normal text-muted-foreground">
+              <span className="ml-1.5 text-sm font-normal text-muted-foreground">
                 ({percentFixed}% fijos)
               </span>
             )}
@@ -40,19 +44,19 @@ export default function FixedVsVariableCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-medium text-muted-foreground">
+          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos fijos
             </span>
-            <p className="text-base font-medium tabular-nums">
+            <p className="text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400 mt-0.5">
               {formatCurrency(totalFixed)}
             </p>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-medium text-muted-foreground">
+          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/8 px-2.5 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos variables
             </span>
-            <p className="text-base font-medium tabular-nums">
+            <p className="text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400 mt-0.5">
               {formatCurrency(totalVariable)}
             </p>
           </div>
