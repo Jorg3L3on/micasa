@@ -108,19 +108,24 @@ const WalletBalanceStrip = ({ wallets }: WalletBalanceStripProps) => {
 
             const today = new Date();
             const currentDay = today.getDate();
-            const currentMonth = today.getMonth();
-            const currentYear = today.getFullYear();
+
+            const isFirstFortnight = currentDay <= 15;
+            const dueInCurrentFortnight =
+              isCreditType &&
+              wallet.due_day != null &&
+              (isFirstFortnight
+                ? wallet.due_day >= 1 && wallet.due_day <= 15
+                : wallet.due_day >= 16);
 
             const isDueNear = (() => {
-              if (!isCreditType || wallet.due_day == null) return false;
-              const dueDay = wallet.due_day;
-              const daysUntilDue = dueDay - currentDay;
+              if (!dueInCurrentFortnight) return false;
+              const daysUntilDue = wallet.due_day! - currentDay;
               return daysUntilDue >= 0 && daysUntilDue <= 5;
             })();
 
             const isDuePast = (() => {
-              if (!isCreditType || wallet.due_day == null) return false;
-              return wallet.due_day < currentDay;
+              if (!dueInCurrentFortnight) return false;
+              return wallet.due_day! < currentDay;
             })();
 
             const cardContent = (
