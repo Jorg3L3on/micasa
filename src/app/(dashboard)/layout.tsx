@@ -35,7 +35,7 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/80 bg-background shadow-sm transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex min-w-0 flex-1 items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1 shrink-0" />
@@ -50,7 +50,7 @@ export default async function DashboardLayout({
             <ThemeToggle />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen bg-muted/30">
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-muted/30">
           <div className="container mx-auto">{children}</div>
         </div>
       </SidebarInset>
