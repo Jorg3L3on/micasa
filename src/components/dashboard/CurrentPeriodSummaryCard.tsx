@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Scale, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { Scale, Wallet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -47,11 +47,21 @@ export default function CurrentPeriodSummaryCard({
   const BalanceIcon = summary.balance >= 0 ? Wallet : Scale;
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Resumen del periodo">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base font-semibold tracking-tight">
-          Resumen del periodo
-        </CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
+            <BalanceIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          </span>
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-semibold leading-none">
+              Resumen del periodo
+            </CardTitle>
+            <p className="text-[10px] text-muted-foreground" aria-hidden>
+              {getPeriodLabel(data.period)}
+            </p>
+          </div>
+        </div>
         <Select value={view} onValueChange={handleViewChange}>
           <SelectTrigger
             className={cn(
@@ -69,24 +79,14 @@ export default function CurrentPeriodSummaryCard({
         </Select>
       </CardHeader>
       <CardContent className="space-y-5 pt-0">
-        <p
-          className="text-xs font-medium text-muted-foreground/90"
-          aria-label="Fecha del periodo"
-        >
-          {getPeriodLabel(data.period)}
-        </p>
-
         <div className="flex flex-col items-center gap-1.5 py-1">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <BalanceIcon className="size-3.5 shrink-0" aria-hidden />
-            <span className="text-xs font-medium uppercase tracking-wider">
-              Balance
-            </span>
-          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Balance
+          </span>
           <p
             className={cn(
-              'text-3xl font-bold tracking-tight tabular-nums',
-              summary.balance >= 0 ? 'text-chart-4' : 'text-destructive',
+              'text-2xl font-bold font-mono tabular-nums',
+              summary.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
             )}
           >
             {formatCurrency(summary.balance)}
@@ -94,21 +94,19 @@ export default function CurrentPeriodSummaryCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-5">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <TrendingUp className="size-3.5 shrink-0" aria-hidden />
-              <span className="text-xs font-medium">Ingresos</span>
-            </div>
-            <p className="text-base font-semibold tabular-nums text-chart-4">
+          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Ingresos
+            </span>
+            <p className="text-sm font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400 mt-0.5">
               {formatCurrency(summary.totalIncome)}
             </p>
           </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <TrendingDown className="size-3.5 shrink-0" aria-hidden />
-              <span className="text-xs font-medium">Gastos</span>
-            </div>
-            <p className="text-base font-semibold tabular-nums text-destructive">
+          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Gastos
+            </span>
+            <p className="text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400 mt-0.5">
               {formatCurrency(summary.totalExpense)}
             </p>
           </div>

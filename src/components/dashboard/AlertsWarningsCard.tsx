@@ -33,7 +33,7 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
   const hasAlerts = alerts.length > 0;
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Alertas y avisos">
       <CardHeader
         className={
           hasAlerts
@@ -41,9 +41,14 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
             : undefined
         }
       >
-        <CardTitle className="text-base font-medium">
-          Alertas y avisos
-        </CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Alertas y avisos
+          </CardTitle>
+        </div>
         {hasAlerts && (
           <Badge variant="secondary" aria-label={`${alerts.length} alertas`}>
             {alerts.length}
@@ -52,7 +57,7 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
       </CardHeader>
       <CardContent className={hasAlerts ? 'space-y-3' : undefined}>
         {!hasAlerts ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[9px] text-muted-foreground">
             No hay alertas en este periodo.
           </p>
         ) : (

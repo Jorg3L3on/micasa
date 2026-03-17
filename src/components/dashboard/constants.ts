@@ -1,6 +1,6 @@
-/** Shared card className for dashboard metric cards. */
+/** Shared card className for dashboard metric cards (fintech design system: overflow-hidden border-border/60). */
 export const DASHBOARD_CARD_CLASS =
-  'card-glass card-depth rounded-xl border-border/50 min-h-[200px] flex flex-col';
+  'card-glass card-depth rounded-xl overflow-hidden border border-border/60 min-h-[200px] flex flex-col';
 
 /** Short month names (es) for period labels. */
 const MONTH_NAMES_SHORT = [
