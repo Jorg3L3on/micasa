@@ -1,0 +1,45 @@
+import { z } from 'zod';
+import { createTransactionSchema } from '@/schemas/transaction.schema';
+import { creditCardType, createWalletSchema, updateWalletSchema } from '@/schemas/wallet.schema';
+import {
+  dateStringSchema,
+  positiveAmountSchema,
+  positiveIntSchema,
+} from '@/schemas/common.schema';
+
+export const createCreditCardSchema = createWalletSchema.safeExtend({
+  type: creditCardType,
+});
+
+export const updateCreditCardSchema = updateWalletSchema.safeExtend({
+  type: creditCardType.optional(),
+});
+
+export const createCreditCardPurchaseSchema = createTransactionSchema.omit({
+  wallet_id: true,
+  card_id: true,
+  payment_method_id: true,
+  is_paid: true,
+});
+
+export const createCreditCardPaymentSchema = z.object({
+  source_wallet_id: positiveIntSchema,
+  amount: positiveAmountSchema.refine((value) => value > 0, {
+    message: 'El monto debe ser mayor a 0',
+  }),
+  paid_at: dateStringSchema,
+  note: z.string().trim().max(200).optional().nullable(),
+});
+
+export const creditCardStatementQuerySchema = z.object({
+  asOf: z.string().date().optional(),
+});
+
+export type CreateCreditCardInput = z.infer<typeof createCreditCardSchema>;
+export type UpdateCreditCardInput = z.infer<typeof updateCreditCardSchema>;
+export type CreateCreditCardPurchaseInput = z.infer<
+  typeof createCreditCardPurchaseSchema
+>;
+export type CreateCreditCardPaymentInput = z.infer<
+  typeof createCreditCardPaymentSchema
+>;

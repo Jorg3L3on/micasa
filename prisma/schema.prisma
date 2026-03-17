@@ -51,6 +51,7 @@ model User {
   incomeTemplates  IncomeTemplate[]
   wallets          Wallet[]
   categories       Category[]
+  creditCardPayments CreditCardPayment[]
 
   // Shared
   memberships HouseMember[]
@@ -236,6 +237,7 @@ model House {
   incomes          Income[]
   incomeTemplates  IncomeTemplate[]
   categories       Category[]
+  creditCardPayments CreditCardPayment[]
 }
 
 model HouseMember {
@@ -256,6 +258,7 @@ model Wallet {
   name        String
   description String?
   amount      Decimal           @default(0) @db.Decimal(10, 2)
+  credit_limit Decimal?         @db.Decimal(10, 2)
   type        PaymentMethodType
   cutoff_day  Int?
   due_day     Int?
@@ -272,9 +275,13 @@ model Wallet {
 
   expenses          Expense[]
   expense_templates ExpenseTemplate[]
+  credit_card_payments CreditCardPayment[] @relation("CreditCardWalletPayments")
+  source_card_payments CreditCardPayment[] @relation("CreditCardSourceWalletPayments")
 
   @@index([user_id])
   @@index([house_id])
+  @@index([user_id, type, active])
+  @@index([house_id, type, active])
 }
 
 /**
@@ -306,4 +313,26 @@ model Transfer {
   @@index([user_id])
   @@index([house_id])
   @@index([created_at])
+}
+
+model CreditCardPayment {
+  id                    Int      @id @default(autoincrement())
+  amount                Decimal  @db.Decimal(10, 2)
+  paid_at               DateTime
+  note                  String?
+  credit_card_wallet_id Int
+  source_wallet_id      Int
+  user_id               Int?
+  house_id              Int?
+  created_at            DateTime @default(now())
+
+  credit_card_wallet Wallet @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
+  source_wallet      Wallet @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
+  user               User?  @relation(fields: [user_id], references: [id])
+  house              House? @relation(fields: [house_id], references: [id])
+
+  @@index([credit_card_wallet_id, paid_at])
+  @@index([source_wallet_id, paid_at])
+  @@index([user_id, paid_at])
+  @@index([house_id, paid_at])
 }

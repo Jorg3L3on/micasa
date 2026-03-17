@@ -11,12 +11,22 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import Link from 'next/link';
+import { useFinanceContext } from '@/context/finance-context';
+import type { FinanceContextType } from '@/types/finance-context';
 
-function getPageTitle(pathname: string): {
+const buildOwnerSuffix = (context: FinanceContextType): string => {
+  if (context.type === 'user' && context.id === 0) return '';
+  return `?ownerType=${context.type}&ownerId=${context.id}`;
+};
+
+function getPageTitle(
+  pathname: string,
+  context: FinanceContextType,
+): {
   title: string;
   breadcrumbs: Array<{ label: string; href?: string }>;
 } {
-  // Remove leading slash and split path
+  const qs = buildOwnerSuffix(context);
   const segments = pathname.split('/').filter(Boolean);
 
   if (segments.length === 0 || segments[0] === 'dashboard') {
@@ -27,14 +37,14 @@ function getPageTitle(pathname: string): {
   }
 
   const breadcrumbs: Array<{ label: string; href?: string }> = [
-    { label: 'Inicio', href: '/dashboard' },
+    { label: 'Inicio', href: `/dashboard${qs}` },
   ];
 
   // Handle expense-templates
   if (segments[0] === 'expense-templates') {
     breadcrumbs.push({
       label: 'Plantillas de gastos',
-      href: '/expense-templates',
+      href: `/expense-templates${qs}`,
     });
     if (segments[1] === 'new') {
       breadcrumbs.push({ label: 'Nueva plantilla' });
@@ -51,7 +61,7 @@ function getPageTitle(pathname: string): {
   if (segments[0] === 'income-templates') {
     breadcrumbs.push({
       label: 'Plantillas de ingresos',
-      href: '/income-templates',
+      href: `/income-templates${qs}`,
     });
     if (segments[1] === 'new') {
       breadcrumbs.push({ label: 'Nueva plantilla' });
@@ -117,7 +127,7 @@ function getPageTitle(pathname: string): {
     const title = `${periodLabel} ${monthName} ${year}`;
     breadcrumbs.push({
       label: `${monthName} ${year}`,
-      href: `/monthly/${year}/${segments[2]}`,
+      href: `/monthly/${year}/${segments[2]}${qs}`,
     });
     breadcrumbs.push({ label: periodLabel });
     return { title, breadcrumbs };
@@ -132,6 +142,16 @@ function getPageTitle(pathname: string): {
     wallets: 'Billeteras',
   };
 
+  // Handle credit-cards (detail pages live under /credit-cards/[id])
+  if (segments[0] === 'credit-cards') {
+    breadcrumbs.push({
+      label: 'Billeteras',
+      href: `/wallets${qs}`,
+    });
+    breadcrumbs.push({ label: 'Estado de cuenta' });
+    return { title: 'Estado de cuenta', breadcrumbs };
+  }
+
   const pageTitle = pageTitles[segments[0]] || segments[0];
   breadcrumbs.push({ label: pageTitle });
   return { title: pageTitle, breadcrumbs };
@@ -139,7 +159,8 @@ function getPageTitle(pathname: string): {
 
 export default function PageTitle() {
   const pathname = usePathname();
-  const { title, breadcrumbs } = getPageTitle(pathname);
+  const { context } = useFinanceContext();
+  const { title, breadcrumbs } = getPageTitle(pathname, context);
 
   return (
     <Breadcrumb>

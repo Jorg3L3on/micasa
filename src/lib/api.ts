@@ -1,8 +1,27 @@
 'use client';
 
 import type { FinanceContextType } from '@/types/finance-context';
-import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
+import type {
+  CreditCardPaymentListItem,
+  CreditCardStatementResponse,
+  PaymentMethodOption,
+  WalletListItem,
+} from '@/types/catalog';
 import { WalletFormValues } from '@/schemas/wallet.schema';
+
+type ApiErrorDetail = {
+  message?: string;
+} | string;
+
+type ApiErrorResponse = {
+  error?: string;
+  details?: ApiErrorDetail[];
+};
+
+type ClientApiError = Error & {
+  status?: number;
+  details?: ApiErrorDetail[];
+};
 
 /**
  * Builds URLSearchParams for owner context (ownerType, ownerId).
@@ -53,9 +72,9 @@ export async function clientFetchFromApi<T>(
 
   if (!res.ok) {
     let errorMessage = `Failed to fetch from ${endpoint}`;
-    let errorDetails: any[] | undefined;
+    let errorDetails: ApiErrorDetail[] | undefined;
     try {
-      const error = await res.json();
+      const error = (await res.json()) as ApiErrorResponse;
       if (error.error) {
         errorMessage = error.error;
       }
@@ -64,16 +83,18 @@ export async function clientFetchFromApi<T>(
         // If we have details, use them for the message, but also preserve them
         if (errorDetails && errorDetails.length > 0) {
           errorMessage = error.details
-            .map((d: any) => d.message || d)
+            .map((detail) =>
+              typeof detail === 'string' ? detail : (detail.message ?? 'Error'),
+            )
             .join(', ');
         }
       }
     } catch {
       // If JSON parsing fails, use default message
     }
-    const error = new Error(errorMessage);
-    (error as any).status = res.status;
-    (error as any).details = errorDetails;
+    const error = new Error(errorMessage) as ClientApiError;
+    error.status = res.status;
+    error.details = errorDetails;
     throw error;
   }
 
@@ -128,7 +149,15 @@ export async function getPaymentMethodOptions(
   );
   return wallets
     .filter((w) => w.active)
-    .map((w) => ({ id: w.id, name: w.name, type: w.type }));
+    .map((w) => ({
+      id: w.id,
+      name: w.name,
+      type: w.type,
+      amount: w.amount,
+      credit_limit: w.credit_limit ?? null,
+      available_credit:
+        w.credit_limit != null ? w.credit_limit - w.amount : null,
+    }));
 }
 
 // ExpenseTemplate catalog helpers (API expects suggestedAmount; defaultAmount is alias for callers)
@@ -339,9 +368,11 @@ export async function updateWallet(
   data: WalletFormValues,
   context?: FinanceContextType,
 ) {
+  const { amount, ...metadata } = data;
+  void amount;
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: JSON.stringify(metadata),
   }, context);
 }
 
@@ -420,6 +451,69 @@ export async function createExpenseTransaction(
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi('/api/transactions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, context);
+}
+
+export async function createCreditCard(
+  data: WalletFormValues,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi('/api/credit-cards', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, context);
+}
+
+export async function updateCreditCard(
+  id: number,
+  data: WalletFormValues,
+  context?: FinanceContextType,
+) {
+  const { amount, ...metadata } = data;
+  void amount;
+  return clientFetchFromApi(`/api/credit-cards/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(metadata),
+  }, context);
+}
+
+export async function getCreditCardStatement(
+  id: number,
+  context?: FinanceContextType,
+  asOf?: string,
+) {
+  const query = asOf ? `?asOf=${encodeURIComponent(asOf)}` : '';
+  return clientFetchFromApi<CreditCardStatementResponse>(
+    `/api/credit-cards/${id}/statement${query}`,
+    undefined,
+    context,
+  );
+}
+
+export async function getCreditCardPayments(
+  id: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardPaymentListItem[]>(
+    `/api/credit-cards/${id}/payments`,
+    undefined,
+    context,
+  );
+}
+
+export async function createCreditCardPayment(
+  id: number,
+  data: {
+    source_wallet_id: number;
+    amount: number;
+    paid_at: string;
+    note?: string | null;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/credit-cards/${id}/payment`, {
     method: 'POST',
     body: JSON.stringify(data),
   }, context);

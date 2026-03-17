@@ -78,7 +78,6 @@ export default function AddExpenseDialog({
   onOpenChange,
   onSubmit,
   fortnightLabel,
-  fortnightId,
   year,
   month,
   period,
@@ -95,7 +94,7 @@ export default function AddExpenseDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<AddExpenseFormValues>({
-    resolver: zodResolver(addExpenseSchema) as any,
+    resolver: zodResolver(addExpenseSchema),
     defaultValues: {
       name: '',
       categoryId: 0,
@@ -111,6 +110,8 @@ export default function AddExpenseDialog({
 
   const isRecurring = form.watch('isRecurring');
   const selectedTemplateId = form.watch('expenseTemplateId');
+  const selectedPaymentMethodId = form.watch('paymentMethodId');
+  const selectedAmount = form.watch('amount');
 
   // Fetch categories, payment methods and expense templates
   useEffect(() => {
@@ -193,6 +194,43 @@ export default function AddExpenseDialog({
     });
   }, [templates, period]);
 
+  const selectedPaymentMethod = useMemo(
+    () =>
+      paymentMethods.find((method) => method.id === Number(selectedPaymentMethodId)),
+    [paymentMethods, selectedPaymentMethodId],
+  );
+
+  const isCreditCardPaymentMethod =
+    selectedPaymentMethod?.type === 'CREDIT_CARD' ||
+    selectedPaymentMethod?.type === 'DEPARTMENT_STORE_CARD';
+
+  const projectedCardDebt = useMemo(() => {
+    if (!isCreditCardPaymentMethod) return null;
+    return (selectedPaymentMethod?.amount ?? 0) + (selectedAmount || 0);
+  }, [isCreditCardPaymentMethod, selectedAmount, selectedPaymentMethod]);
+
+  const projectedAvailableCredit = useMemo(() => {
+    if (
+      !isCreditCardPaymentMethod ||
+      selectedPaymentMethod?.credit_limit == null ||
+      projectedCardDebt == null
+    ) {
+      return null;
+    }
+
+    return selectedPaymentMethod.credit_limit - projectedCardDebt;
+  }, [isCreditCardPaymentMethod, projectedCardDebt, selectedPaymentMethod]);
+
+  useEffect(() => {
+    if (!isCreditCardPaymentMethod) {
+      return;
+    }
+
+    if (!form.getValues('isPaid')) {
+      form.setValue('isPaid', true);
+    }
+  }, [form, isCreditCardPaymentMethod]);
+
   const handleTemplateChange = (value: string) => {
     if (!value) {
       form.setValue('expenseTemplateId', null);
@@ -247,7 +285,7 @@ export default function AddExpenseDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(handleSubmit as any)}
+            onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
           >
             {error && (
@@ -387,6 +425,28 @@ export default function AddExpenseDialog({
                 </FormItem>
               )}
             />
+            {selectedPaymentMethod && (
+              <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                {isCreditCardPaymentMethod ? (
+                  <>
+                    <p>
+                      Esta compra se registrará como pagada y aumentará la deuda
+                      actual de la tarjeta.
+                    </p>
+                    {projectedCardDebt != null && (
+                      <p className="mt-1 font-mono tabular-nums text-foreground">
+                        Deuda proyectada: {projectedCardDebt.toFixed(2)}
+                        {projectedAvailableCredit != null
+                          ? ` · Disponible proyectado: ${projectedAvailableCredit.toFixed(2)}`
+                          : ''}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p>Este gasto afectará directamente el saldo de la billetera.</p>
+                )}
+              </div>
+            )}
             <FormField
               control={form.control}
               name="date"
@@ -409,10 +469,15 @@ export default function AddExpenseDialog({
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      disabled={isCreditCardPaymentMethod}
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>Pagado</FormLabel>
+                    <FormLabel>
+                      {isCreditCardPaymentMethod
+                        ? 'Pagado al usar la tarjeta'
+                        : 'Pagado'}
+                    </FormLabel>
                   </div>
                 </FormItem>
               )}
