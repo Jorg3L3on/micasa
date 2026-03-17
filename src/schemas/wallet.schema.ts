@@ -97,6 +97,7 @@ export const createWalletSchema = z.object({
 
 export const updateWalletSchema = z.object({
   name: requiredStringSchema.optional(),
+  amount: nonNegativeAmountSchema.optional(),
   credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType.optional(),
   active: z.boolean().optional(),

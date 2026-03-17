@@ -104,12 +104,14 @@ export default function FortnightColumn({
       ]);
       setTransactions(transactionsData);
       setSummary(summaryData);
+      // Also refresh the page to update server-rendered data like wallet balances
+      router.refresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [year, month, period, context]);
+  }, [year, month, period, context, router]);
 
   const handleExpenseUpdate = useCallback(
     async (expenseId: number, isPaid: boolean) => {
