@@ -1,24 +1,27 @@
 import { Suspense } from 'react';
 import { fetchFromApi } from '@/lib/api-server';
-import { Card, CardContent } from '@/components/ui/card';
-import EmptyState from '@/components/EmptyState';
-import TransactionFilters from '@/components/TransactionFilters';
+import { Skeleton } from '@/components/ui/skeleton';
 import TransactionsDataTable from '@/components/TransactionsDataTable';
 import type { TransactionRow } from '@/types/catalog';
 
-async function getTransactions(searchParams: {
+type TransactionSearchParams = {
   month?: string;
   year?: string;
+  period?: string;
   type?: string;
   ownerType?: string;
   ownerId?: string;
-}): Promise<TransactionRow[]> {
+};
+
+async function getTransactions(
+  searchParams: TransactionSearchParams,
+): Promise<TransactionRow[]> {
   try {
     const params = new URLSearchParams();
     if (searchParams.month) params.append('month', searchParams.month);
     if (searchParams.year) params.append('year', searchParams.year);
+    if (searchParams.period) params.append('period', searchParams.period);
     if (searchParams.type) params.append('type', searchParams.type);
-
     params.append('is_paid', 'true');
 
     const endpoint = `/api/transactions${
@@ -38,55 +41,37 @@ async function getTransactions(searchParams: {
   }
 }
 
+function TransactionsLoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[88px] rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="h-[500px] rounded-xl" />
+    </div>
+  );
+}
+
 async function TransactionsContent({
   searchParams,
 }: {
-  searchParams: Promise<{
-    month?: string;
-    year?: string;
-    type?: string;
-    ownerType?: string;
-    ownerId?: string;
-  }>;
+  searchParams: Promise<TransactionSearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
   const transactions = await getTransactions(resolvedSearchParams);
-
-  return (
-    <>
-      <Suspense fallback={<div>Cargando filtros...</div>}>
-        <TransactionFilters />
-      </Suspense>
-
-      <Card>
-        <CardContent className="pt-6">
-          {transactions.length === 0 ? (
-            <EmptyState message="No se encontraron transacciones" />
-          ) : (
-            <TransactionsDataTable transactions={transactions} />
-          )}
-        </CardContent>
-      </Card>
-    </>
-  );
+  return <TransactionsDataTable transactions={transactions} />;
 }
 
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    month?: string;
-    year?: string;
-    type?: string;
-    ownerType?: string;
-    ownerId?: string;
-  }>;
+  searchParams: Promise<TransactionSearchParams>;
 }) {
   return (
-    <>
-      <Suspense fallback={<div>Cargando transacciones...</div>}>
-        <TransactionsContent searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<TransactionsLoadingSkeleton />}>
+      <TransactionsContent searchParams={searchParams} />
+    </Suspense>
   );
 }
