@@ -1,6 +1,16 @@
 'use client';
 import { useForm, useWatch } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
+import {
+  Loader2,
+  Wallet,
+  Banknote,
+  Landmark,
+  CreditCard,
+  Store,
+  CalendarDays,
+  DollarSign,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
@@ -33,6 +43,41 @@ import {
   WalletFormInput,
 } from '@/schemas/wallet.schema';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+
+type TypeMeta = {
+  label: string;
+  icon: LucideIcon;
+  accent: string;
+  iconBg: string;
+};
+
+const TYPE_META: Record<WalletFormValues['type'], TypeMeta> = {
+  CASH: {
+    label: 'Efectivo',
+    icon: Banknote,
+    accent: 'text-emerald-600 dark:text-emerald-400',
+    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
+  },
+  DEBIT_CARD: {
+    label: 'Tarjeta de débito',
+    icon: Landmark,
+    accent: 'text-blue-600 dark:text-blue-400',
+    iconBg: 'bg-blue-500/10 dark:bg-blue-500/15',
+  },
+  CREDIT_CARD: {
+    label: 'Tarjeta de crédito',
+    icon: CreditCard,
+    accent: 'text-violet-600 dark:text-violet-400',
+    iconBg: 'bg-violet-500/10 dark:bg-violet-500/15',
+  },
+  DEPARTMENT_STORE_CARD: {
+    label: 'Tienda departamental',
+    icon: Store,
+    accent: 'text-amber-600 dark:text-amber-400',
+    iconBg: 'bg-amber-500/10 dark:bg-amber-500/15',
+  },
+};
 
 type WalletFormProps = {
   open: boolean;
@@ -86,6 +131,7 @@ export default function WalletForm({
     control: form.control,
     name: 'type',
   });
+
   const typeOptions = allowedTypes ?? [
     'CASH',
     'DEBIT_CARD',
@@ -93,44 +139,120 @@ export default function WalletForm({
     'DEPARTMENT_STORE_CARD',
   ];
 
-  const typeLabels: Record<WalletFormValues['type'], string> = {
-    CASH: 'Efectivo',
-    DEBIT_CARD: 'Tarjeta de débito',
-    CREDIT_CARD: 'Tarjeta de crédito',
-    DEPARTMENT_STORE_CARD: 'Tienda departamental',
-  };
+  const isCreditType =
+    type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
+
+  const currentMeta = TYPE_META[type] ?? TYPE_META.CASH;
+  const HeaderIcon = currentMeta.icon;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'create' ? 'Agregar billetera' : 'Editar billetera'}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'create'
-              ? 'Crea una nueva cartera para tus transacciones.'
-              : 'Actualiza la información de la cartera.'}
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                'flex h-9 w-9 items-center justify-center rounded-xl shrink-0',
+                currentMeta.iconBg,
+              )}
+            >
+              <HeaderIcon className={cn('h-4.5 w-4.5', currentMeta.accent)} />
+            </span>
+            <div>
+              <DialogTitle className="text-base">
+                {mode === 'create' ? 'Nueva billetera' : 'Editar billetera'}
+              </DialogTitle>
+              <DialogDescription className="text-xs mt-0.5">
+                {mode === 'create'
+                  ? 'Crea una nueva cartera para tus transacciones.'
+                  : 'Actualiza la información de la cartera.'}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
+
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
+            className="space-y-5 pt-1"
           >
             {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                <span className="shrink-0 text-destructive">!</span>
                 {error}
               </div>
             )}
+
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej. Banorte, Efectivo…" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="active"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 pb-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        aria-label="Billetera activa"
+                      />
+                    </FormControl>
+                    <FormLabel className="mt-0! text-xs text-muted-foreground cursor-pointer">
+                      Activa
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="name"
+              name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre</FormLabel>
+                  <FormLabel>Tipo de billetera</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nombre de la billetera" {...field} />
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger aria-label="Tipo de billetera">
+                        <SelectValue placeholder="Selecciona un tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typeOptions.map((value) => {
+                          const meta = TYPE_META[value];
+                          const Icon = meta.icon;
+                          return (
+                            <SelectItem key={value} value={value}>
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className={cn(
+                                    'flex h-5 w-5 items-center justify-center rounded-md shrink-0',
+                                    meta.iconBg,
+                                  )}
+                                >
+                                  <Icon
+                                    className={cn('h-3 w-3', meta.accent)}
+                                  />
+                                </span>
+                                {meta.label}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,28 +265,37 @@ export default function WalletForm({
                 name="amount"
                 render={({ field }) => {
                   const numericValue =
-                    field.value === undefined || field.value === null || field.value === ''
+                    field.value === undefined ||
+                    field.value === null ||
+                    field.value === ''
                       ? ''
                       : Number(field.value);
 
                   return (
                     <FormItem>
                       <FormLabel>
-                        {type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD'
-                          ? 'Saldo actual'
-                          : 'Monto'}
+                        {isCreditType ? 'Saldo actual' : 'Monto'}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={numericValue}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === '' ? '' : Number(e.target.value),
-                            )
-                          }
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                            $
+                          </span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="pl-7 font-mono tabular-nums"
+                            value={numericValue}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ''
+                                  ? ''
+                                  : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -173,50 +304,17 @@ export default function WalletForm({
               />
             )}
 
-            <FormField
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Activo</FormLabel>
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isCreditType && (
+              <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
+                    <DollarSign className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+                  </span>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Datos de crédito
+                  </p>
+                </div>
 
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {typeOptions.map((value) => (
-                          <SelectItem key={value} value={value}>
-                            {typeLabels[value]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {(type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') && (
-              <>
                 <FormField
                   control={form.control}
                   name="credit_limit"
@@ -224,99 +322,113 @@ export default function WalletForm({
                     <FormItem>
                       <FormLabel>Línea de crédito</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={
-                            field.value != null &&
-                            typeof field.value === 'number'
-                              ? field.value
-                              : ''
-                          }
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ''
-                                ? null
-                                : Number(e.target.value),
-                            )
-                          }
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                            $
+                          </span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="pl-7 font-mono tabular-nums"
+                            value={
+                              field.value != null &&
+                              typeof field.value === 'number'
+                                ? field.value
+                                : ''
+                            }
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ''
+                                  ? null
+                                  : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Cutoff Day */}
-                <FormField
-                  control={form.control}
-                  name="cutoff_day"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Día de corte</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={31}
-                          step="1"
-                          value={
-                            field.value != null &&
-                            typeof field.value === 'number'
-                              ? field.value
-                              : ''
-                          }
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ''
-                                ? null
-                                : Number(e.target.value),
-                            )
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="cutoff_day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          Día de corte
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={31}
+                            step="1"
+                            placeholder="1–31"
+                            value={
+                              field.value != null &&
+                              typeof field.value === 'number'
+                                ? field.value
+                                : ''
+                            }
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ''
+                                  ? null
+                                  : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                {/* Due Date */}
-                <FormField
-                  control={form.control}
-                  name="due_day"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Día de pago</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={31}
-                          step="1"
-                          value={
-                            field.value != null &&
-                            typeof field.value === 'number'
-                              ? field.value
-                              : ''
-                          }
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ''
-                                ? null
-                                : Number(e.target.value),
-                            )
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+                  <FormField
+                    control={form.control}
+                    name="due_day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          Día de pago
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={31}
+                            step="1"
+                            placeholder="1–31"
+                            value={
+                              field.value != null &&
+                              typeof field.value === 'number'
+                                ? field.value
+                                : ''
+                            }
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ''
+                                  ? null
+                                  : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
@@ -328,12 +440,12 @@ export default function WalletForm({
                 {form.formState.isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {mode === 'create' ? 'Creando…' : 'Actualizando…'}
+                    {mode === 'create' ? 'Creando…' : 'Guardando…'}
                   </>
                 ) : mode === 'create' ? (
-                  'Crear'
+                  'Crear billetera'
                 ) : (
-                  'Actualizar'
+                  'Guardar cambios'
                 )}
               </Button>
             </DialogFooter>

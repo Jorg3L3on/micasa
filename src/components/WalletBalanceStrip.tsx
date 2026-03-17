@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { WalletListItem } from '@/types/catalog';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Banknote, CreditCard, Landmark, Store } from 'lucide-react';
@@ -57,9 +58,21 @@ type WalletBalanceStripProps = {
 const WalletBalanceStrip = ({ wallets }: WalletBalanceStripProps) => {
   if (wallets.length === 0) return null;
 
+  const priority: Record<string, number> = {
+    CASH: 0,
+    DEBIT_CARD: 1,
+  };
+
+  const sortedWallets = [...wallets].sort((a, b) => {
+    const pa = priority[a.type] ?? 2;
+    const pb = priority[b.type] ?? 2;
+    if (pa !== pb) return pa - pb;
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div
-      className="relative flex-1 min-w-0"
+      className="relative flex-1 min-w-0 overflow-hidden"
       role="region"
       aria-label="Saldos de billeteras"
     >
@@ -68,46 +81,125 @@ const WalletBalanceStrip = ({ wallets }: WalletBalanceStripProps) => {
 
       <div className="overflow-x-auto scrollbar-hide px-2">
         <div className="flex gap-2 py-0.5">
-          {wallets.map((wallet) => {
+          {sortedWallets.map((wallet) => {
             const theme = WALLET_THEMES[wallet.type] ?? DEFAULT_THEME;
             const Icon = theme.icon;
 
-            return (
-              <div
-                key={wallet.id}
-                className={cn(
-                  'group shrink-0 rounded-lg border border-l-[3px] px-3 py-1.5',
-                  'transition-shadow duration-200 hover:shadow-md',
-                  'bg-card dark:bg-card/80',
-                  theme.border,
-                  theme.bg,
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span
+            const isCreditType =
+              wallet.type === 'CREDIT_CARD' ||
+              wallet.type === 'DEPARTMENT_STORE_CARD';
+
+            const creditLimit = wallet.credit_limit ?? 0;
+            const availableForCredit =
+              isCreditType && creditLimit > 0
+                ? Math.max(0, creditLimit - wallet.amount)
+                : null;
+
+            const percentAvailable = (() => {
+              if (isCreditType) {
+                if (!creditLimit || creditLimit <= 0) return 0;
+                return Math.max(
+                  0,
+                  Math.min(100, (availableForCredit! / creditLimit) * 100),
+                );
+              }
+              return wallet.amount > 0 ? 100 : 0;
+            })();
+
+            const today = new Date();
+            const currentDay = today.getDate();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+
+            const isDueNear = (() => {
+              if (!isCreditType || wallet.due_day == null) return false;
+              const dueDay = wallet.due_day;
+              const daysUntilDue = dueDay - currentDay;
+              return daysUntilDue >= 0 && daysUntilDue <= 5;
+            })();
+
+            const isDuePast = (() => {
+              if (!isCreditType || wallet.due_day == null) return false;
+              return wallet.due_day < currentDay;
+            })();
+
+            const cardContent = (
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
+                    theme.iconBg,
+                  )}
+                >
+                  <Icon className={cn('h-3.5 w-3.5', theme.accent)} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate max-w-[100px] leading-none mb-0.5">
+                    {wallet.name}
+                  </p>
+                  <p
                     className={cn(
-                      'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
-                      theme.iconBg,
+                      'text-sm font-bold font-mono tabular-nums leading-none',
+                      wallet.amount < 0
+                        ? 'text-destructive'
+                        : 'text-foreground',
                     )}
                   >
-                    <Icon className={cn('h-3.5 w-3.5', theme.accent)} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate max-w-[100px] leading-none mb-0.5">
-                      {wallet.name}
-                    </p>
-                    <p
-                      className={cn(
-                        'text-sm font-bold font-mono tabular-nums leading-none',
-                        wallet.amount < 0
-                          ? 'text-destructive'
-                          : 'text-foreground',
-                      )}
-                    >
-                      {formatCurrency(wallet.amount)}
-                    </p>
+                    {formatCurrency(wallet.amount)}
+                  </p>
+                  {isCreditType && (
+                  <div className="mt-1 space-y-0.5">
+                    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+                      <div
+                        className="h-full rounded-full transition-all bg-emerald-500 dark:bg-emerald-400"
+                        style={{ width: `${percentAvailable}%` }}
+                        aria-hidden
+                      />
+                    </div>
+                    {wallet.cutoff_day != null && wallet.due_day != null && (
+                      <p className="text-[9px] text-muted-foreground leading-tight">
+                        Corte {wallet.cutoff_day} ·{' '}
+                        <span
+                          className={cn(
+                            'font-semibold',
+                            (isDueNear || isDuePast) && 'text-destructive',
+                          )}
+                        >
+                          Pago {wallet.due_day}
+                        </span>
+                      </p>
+                    )}
                   </div>
+                  )}
                 </div>
+              </div>
+            );
+
+            const cardClasses = cn(
+              'group shrink-0 rounded-lg border border-l-[3px] px-3 py-1.5',
+              'transition-shadow duration-200 hover:shadow-md',
+              'bg-card dark:bg-card/80',
+              theme.border,
+              theme.bg,
+              isCreditType && 'cursor-pointer',
+            );
+
+            if (isCreditType) {
+              return (
+                <Link
+                  key={wallet.id}
+                  href={`/credit-cards/${wallet.id}`}
+                  className={cardClasses}
+                  aria-label={`Ver estado de cuenta de ${wallet.name}`}
+                >
+                  {cardContent}
+                </Link>
+              );
+            }
+
+            return (
+              <div key={wallet.id} className={cardClasses}>
+                {cardContent}
               </div>
             );
           })}

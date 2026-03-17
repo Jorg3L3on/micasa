@@ -359,7 +359,7 @@ export default function ExpenseTable({
       {
         accessorKey: 'description',
         header: () => (
-          <span className="text-xs font-medium">Categoría</span>
+          <span className="text-xs font-medium">Gasto</span>
         ),
         cell: ({ row }) => {
           const expense = row.original;
@@ -512,67 +512,8 @@ export default function ExpenseTable({
   return (
     <>
       <Card className="overflow-hidden border-border/60">
-        <CardHeader className="pb-2 pt-3 px-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-                <Receipt className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              </span>
-              <div>
-                <CardTitle className="text-sm font-semibold leading-none">
-                  {date ? new Date(date).toLocaleDateString('es-MX') : 'Gastos'}
-                </CardTitle>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
-                  {localExpenses.length} gasto{localExpenses.length !== 1 ? 's' : ''} registrado{localExpenses.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-lg font-bold font-mono tabular-nums leading-none">
-                {formatCurrency(total)}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
-                total
-              </p>
-            </div>
-          </div>
-
-          {localExpenses.length > 0 && (
-            <div className="mt-3">
-              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
-                <div
-                  className="h-full rounded-l-full bg-green-500 dark:bg-green-400 transition-all duration-500"
-                  style={{ width: `${paidPct}%` }}
-                />
-                <div
-                  className={cn(
-                    'h-full bg-amber-400 dark:bg-amber-500 transition-all duration-500',
-                    paidPct === 0 && 'rounded-l-full',
-                    paidPct + pendingPct >= 100 && 'rounded-r-full',
-                  )}
-                  style={{ width: `${pendingPct}%` }}
-                />
-              </div>
-              <div className="flex items-center gap-3 mt-1.5">
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400" />
-                  <span className="text-[9px] text-muted-foreground">
-                    {paidExpenses.length} pagado{paidExpenses.length !== 1 ? 's' : ''} • {formatCurrency(totalPaid)}
-                  </span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 dark:bg-amber-500" />
-                  <span className="text-[9px] text-muted-foreground">
-                    {pendingExpenses.length} pendiente{pendingExpenses.length !== 1 ? 's' : ''} • {formatCurrency(totalPending)}
-                  </span>
-                </span>
-              </div>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="px-4 pb-3 pt-1 space-y-0">
-          {/* Expenses Table */}
-          <div className="relative w-full overflow-x-auto">
+        <CardContent className="px-0 pb-3 pt-0 space-y-0">
+          <div className="relative w-full">
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -601,6 +542,10 @@ export default function ExpenseTable({
                   </TableRow>
                 ))}
               </TableHeader>
+            </Table>
+          </div>
+          <div className="relative w-full max-h-[380px] overflow-y-auto">
+            <Table>
               <TableBody>
                 {table.getRowModel().rows?.length === 0 ? (
                   <TableRow>
