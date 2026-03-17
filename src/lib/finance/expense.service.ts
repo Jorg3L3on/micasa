@@ -1,4 +1,22 @@
 import prisma from '@/lib/prisma';
+import { PaymentMethodType } from '@/generated/prisma/client';
+import {
+  applyWalletAmountDelta,
+  getPaidExpenseWalletDelta,
+} from '@/lib/finance/wallet-accounting';
+
+type ExpenseServiceError = Error & { code?: string };
+
+type ExpenseTransactionDtoSource = {
+  id: number;
+  description: string;
+  amount: unknown;
+  is_paid: boolean;
+  payment_date: Date | string | null;
+  created_at: Date | string;
+  category?: { name: string | null } | null;
+  wallet?: { name: string | null } | null;
+};
 
 type CreateExpenseInput = {
   fortnightId: number;
@@ -35,7 +53,7 @@ export type ExpenseWithMeta = Awaited<
   ReturnType<typeof mapExpenseToTransactionDto>
 >;
 
-async function mapExpenseToTransactionDto(expense: any) {
+async function mapExpenseToTransactionDto(expense: ExpenseTransactionDtoSource) {
   const dateValue = expense.payment_date || expense.created_at;
   const dateStr =
     dateValue instanceof Date
@@ -110,8 +128,8 @@ export async function createExpense(input: CreateExpenseInput) {
   } = input;
 
   if (amount <= 0) {
-    const error = new Error('Amount must be greater than 0');
-    (error as any).code = 'INVALID_AMOUNT';
+    const error = new Error('Amount must be greater than 0') as ExpenseServiceError;
+    error.code = 'INVALID_AMOUNT';
     throw error;
   }
 
@@ -119,8 +137,8 @@ export async function createExpense(input: CreateExpenseInput) {
     where: { id: categoryId },
   });
   if (!category) {
-    const error = new Error('Category not found');
-    (error as any).code = 'CATEGORY_NOT_FOUND';
+    const error = new Error('Category not found') as ExpenseServiceError;
+    error.code = 'CATEGORY_NOT_FOUND';
     throw error;
   }
 
@@ -134,43 +152,45 @@ export async function createExpense(input: CreateExpenseInput) {
     (fortnight.user_id == null && fortnight.house_id == null) ||
     (fortnight.user_id != null && fortnight.house_id != null)
   ) {
-    const error = new Error('Invalid fortnight for this transaction');
-    (error as any).code = 'INVALID_FORTNIGHT';
+    const error = new Error('Invalid fortnight for this transaction') as ExpenseServiceError;
+    error.code = 'INVALID_FORTNIGHT';
     throw error;
   }
 
-  let effectiveWalletId: number | null = walletId ?? null;
+  const effectiveWalletId: number | null = walletId ?? null;
   let walletOwnerUserId: number | null = null;
   let walletOwnerHouseId: number | null = null;
+  let walletType: PaymentMethodType | null = null;
 
   if (effectiveWalletId) {
     const wallet = await prisma.wallet.findUnique({
       where: { id: effectiveWalletId },
-      select: { id: true, user_id: true, house_id: true },
+      select: { id: true, user_id: true, house_id: true, type: true },
     });
     if (!wallet) {
-      const error = new Error('Wallet not found');
-      (error as any).code = 'WALLET_NOT_FOUND';
+      const error = new Error('Wallet not found') as ExpenseServiceError;
+      error.code = 'WALLET_NOT_FOUND';
       throw error;
     }
 
     walletOwnerUserId = wallet.user_id;
     walletOwnerHouseId = wallet.house_id;
+    walletType = wallet.type;
 
     if (fortnight.user_id != null) {
       if (walletOwnerUserId !== fortnight.user_id || walletOwnerHouseId !== null) {
         const error = new Error(
           'Wallet does not belong to the same user as the fortnight',
-        );
-        (error as any).code = 'INVALID_WALLET_OWNER';
+        ) as ExpenseServiceError;
+        error.code = 'INVALID_WALLET_OWNER';
         throw error;
       }
     } else if (fortnight.house_id != null) {
       if (walletOwnerHouseId !== fortnight.house_id || walletOwnerUserId !== null) {
         const error = new Error(
           'Wallet does not belong to the same house as the fortnight',
-        );
-        (error as any).code = 'INVALID_WALLET_OWNER';
+        ) as ExpenseServiceError;
+        error.code = 'INVALID_WALLET_OWNER';
         throw error;
       }
     }
@@ -196,11 +216,12 @@ export async function createExpense(input: CreateExpenseInput) {
       },
     });
 
-    if (expense.is_paid && expense.wallet_id != null) {
-      await tx.wallet.update({
-        where: { id: expense.wallet_id },
-        data: { amount: { decrement: expense.amount } },
-      });
+    if (expense.is_paid && expense.wallet_id != null && walletType != null) {
+      await applyWalletAmountDelta(
+        tx,
+        expense.wallet_id,
+        getPaidExpenseWalletDelta(walletType, Number(expense.amount)),
+      );
     }
 
     return expense;
@@ -214,8 +235,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
     input;
 
   if (amount !== undefined && amount <= 0) {
-    const error = new Error('Amount must be greater than 0');
-    (error as any).code = 'INVALID_AMOUNT';
+    const error = new Error('Amount must be greater than 0') as ExpenseServiceError;
+    error.code = 'INVALID_AMOUNT';
     throw error;
   }
 
@@ -224,8 +245,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
       where: { id: categoryId },
     });
     if (!category) {
-      const error = new Error('Category not found');
-      (error as any).code = 'CATEGORY_NOT_FOUND';
+      const error = new Error('Category not found') as ExpenseServiceError;
+      error.code = 'CATEGORY_NOT_FOUND';
       throw error;
     }
   }
@@ -235,24 +256,26 @@ export async function updateExpense(input: UpdateExpenseInput) {
       where: { id },
       include: {
         category: { select: { name: true } },
-        wallet: { select: { id: true, name: true } },
+        wallet: { select: { id: true, name: true, type: true } },
         fortnight: { select: { id: true, user_id: true, house_id: true } },
       },
     });
 
     if (!existing) {
-      const error = new Error('Transaction not found');
-      (error as any).code = 'P2025';
+      const error = new Error('Transaction not found') as ExpenseServiceError;
+      error.code = 'P2025';
       throw error;
     }
 
     const linkedTransfer = await tx.transfer.findFirst({
-      where: { user_expense_id: id } as any,
+      where: { user_expense_id: id },
     });
 
     if (linkedTransfer) {
-      const error = new Error('Cannot update expenses generated by transfers');
-      (error as any).code = 'EXPENSE_TRANSFER_LOCKED';
+      const error = new Error(
+        'Cannot update expenses generated by transfers',
+      ) as ExpenseServiceError;
+      error.code = 'EXPENSE_TRANSFER_LOCKED';
       throw error;
     }
 
@@ -270,8 +293,10 @@ export async function updateExpense(input: UpdateExpenseInput) {
         (ft.user_id == null && ft.house_id == null) ||
         (ft.user_id != null && ft.house_id != null)
       ) {
-        const error = new Error('Invalid fortnight for this transaction');
-        (error as any).code = 'INVALID_FORTNIGHT';
+        const error = new Error(
+          'Invalid fortnight for this transaction',
+        ) as ExpenseServiceError;
+        error.code = 'INVALID_FORTNIGHT';
         throw error;
       }
 
@@ -279,18 +304,20 @@ export async function updateExpense(input: UpdateExpenseInput) {
     }
 
     const currentWalletId = existing.wallet_id;
+    const currentWalletType = existing.wallet?.type ?? null;
     const requestedWalletId = walletId ?? currentWalletId;
-    let newWalletId = requestedWalletId ?? null;
+    const newWalletId = requestedWalletId ?? null;
+    let newWalletType = currentWalletType;
 
     if (requestedWalletId !== undefined && requestedWalletId !== null) {
       const wallet = await tx.wallet.findUnique({
         where: { id: requestedWalletId },
-        select: { id: true, user_id: true, house_id: true },
+        select: { id: true, user_id: true, house_id: true, type: true },
       });
 
       if (!wallet) {
-        const error = new Error('Wallet not found');
-        (error as any).code = 'WALLET_NOT_FOUND';
+        const error = new Error('Wallet not found') as ExpenseServiceError;
+        error.code = 'WALLET_NOT_FOUND';
         throw error;
       }
 
@@ -298,19 +325,21 @@ export async function updateExpense(input: UpdateExpenseInput) {
         if (wallet.user_id !== newFortnight.user_id || wallet.house_id !== null) {
           const error = new Error(
             'Wallet does not belong to the same user as the fortnight',
-          );
-          (error as any).code = 'INVALID_WALLET_OWNER';
+          ) as ExpenseServiceError;
+          error.code = 'INVALID_WALLET_OWNER';
           throw error;
         }
       } else if (newFortnight.house_id != null) {
         if (wallet.house_id !== newFortnight.house_id || wallet.user_id !== null) {
           const error = new Error(
             'Wallet does not belong to the same house as the fortnight',
-          );
-          (error as any).code = 'INVALID_WALLET_OWNER';
+          ) as ExpenseServiceError;
+          error.code = 'INVALID_WALLET_OWNER';
           throw error;
         }
       }
+
+      newWalletType = wallet.type;
     }
 
     const currentIsPaid = existing.is_paid;
@@ -327,27 +356,23 @@ export async function updateExpense(input: UpdateExpenseInput) {
       deltas[walletIdNum] = (deltas[walletIdNum] ?? 0) + delta;
     };
 
-    if (currentIsPaid && currentWalletId != null) {
-      addDelta(currentWalletId, Number(currentAmount));
+    if (currentIsPaid && currentWalletId != null && currentWalletType != null) {
+      addDelta(
+        currentWalletId,
+        -getPaidExpenseWalletDelta(currentWalletType, Number(currentAmount)),
+      );
     }
 
-    if (newIsPaid && newWalletId != null) {
-      addDelta(newWalletId, -Number(newAmount));
+    if (newIsPaid && newWalletId != null && newWalletType != null) {
+      addDelta(
+        newWalletId,
+        getPaidExpenseWalletDelta(newWalletType, Number(newAmount)),
+      );
     }
 
     for (const [walletIdStr, delta] of Object.entries(deltas)) {
       const walletIdNum = Number(walletIdStr);
-      if (delta === 0) continue;
-
-      await tx.wallet.update({
-        where: { id: walletIdNum },
-        data: {
-          amount:
-            delta > 0
-              ? { increment: delta }
-              : { decrement: Math.abs(delta) },
-        },
-      });
+      await applyWalletAmountDelta(tx, walletIdNum, delta);
     }
 
     const updateData: Record<string, unknown> = {};
@@ -369,7 +394,7 @@ export async function updateExpense(input: UpdateExpenseInput) {
       data: updateData,
       include: {
         category: { select: { name: true } },
-        wallet: { select: { name: true } },
+        wallet: { select: { name: true, type: true } },
       },
     });
 
@@ -387,40 +412,41 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
       where: { id },
       include: {
         category: { select: { name: true } },
-        wallet: { select: { id: true, name: true } },
+        wallet: { select: { id: true, name: true, type: true } },
       },
     });
 
     if (!existing) {
-      const error = new Error('Expense not found');
-      (error as any).code = 'P2025';
+      const error = new Error('Expense not found') as ExpenseServiceError;
+      error.code = 'P2025';
       throw error;
     }
 
     const linkedTransfer = await tx.transfer.findFirst({
-      where: { user_expense_id: id } as any,
+      where: { user_expense_id: id },
     });
 
     if (linkedTransfer) {
-      const error = new Error('Cannot change paid status for transfer expenses');
-      (error as any).code = 'EXPENSE_TRANSFER_LOCKED';
+      const error = new Error(
+        'Cannot change paid status for transfer expenses',
+      ) as ExpenseServiceError;
+      error.code = 'EXPENSE_TRANSFER_LOCKED';
       throw error;
     }
 
     const wasPaid = existing.is_paid;
     const willBePaid = paid;
 
-    if (existing.wallet_id != null && wasPaid !== willBePaid) {
+    if (existing.wallet_id != null && existing.wallet?.type != null && wasPaid !== willBePaid) {
+      const expenseDelta = getPaidExpenseWalletDelta(
+        existing.wallet.type,
+        Number(existing.amount),
+      );
+
       if (willBePaid) {
-        await tx.wallet.update({
-          where: { id: existing.wallet_id },
-          data: { amount: { decrement: existing.amount } },
-        });
+        await applyWalletAmountDelta(tx, existing.wallet_id, expenseDelta);
       } else {
-        await tx.wallet.update({
-          where: { id: existing.wallet_id },
-          data: { amount: { increment: existing.amount } },
-        });
+        await applyWalletAmountDelta(tx, existing.wallet_id, -expenseDelta);
       }
     }
 
@@ -432,7 +458,7 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
       },
       include: {
         category: { select: { name: true } },
-        wallet: { select: { name: true } },
+        wallet: { select: { name: true, type: true } },
       },
     });
 
@@ -453,29 +479,36 @@ export async function deleteExpense(input: DeleteExpenseInput) {
         wallet_id: true,
         amount: true,
         is_paid: true,
+        wallet: { select: { type: true } },
         transferAsUser: { select: { id: true } },
       },
     });
 
     if (!expense) {
-      const error = new Error('Transaction not found');
-      (error as any).code = 'P2025';
+      const error = new Error('Transaction not found') as ExpenseServiceError;
+      error.code = 'P2025';
       throw error;
     }
 
     if (expense.transferAsUser != null) {
       const error = new Error(
         'Cannot delete expenses generated by transfers',
-      );
-      (error as any).code = 'EXPENSE_TRANSFER_LOCKED';
+      ) as ExpenseServiceError;
+      error.code = 'EXPENSE_TRANSFER_LOCKED';
       throw error;
     }
 
-    if (expense.is_paid === true && expense.wallet_id != null) {
-      await tx.wallet.update({
-        where: { id: expense.wallet_id },
-        data: { amount: { increment: expense.amount } },
-      });
+    if (
+      expense.is_paid === true &&
+      expense.wallet_id != null &&
+      expense.wallet?.type != null
+    ) {
+      const expenseDelta = getPaidExpenseWalletDelta(
+        expense.wallet.type,
+        Number(expense.amount),
+      );
+
+      await applyWalletAmountDelta(tx, expense.wallet_id, -expenseDelta);
     }
 
     await tx.expense.delete({

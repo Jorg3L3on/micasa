@@ -1,5 +1,5 @@
 'use client';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -41,6 +41,8 @@ type WalletFormProps = {
   defaultValues?: WalletFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
+  allowedTypes?: WalletFormValues['type'][];
+  showAmountField?: boolean;
 };
 
 export default function WalletForm({
@@ -50,12 +52,15 @@ export default function WalletForm({
   defaultValues,
   mode,
   error,
+  allowedTypes,
+  showAmountField = true,
 }: WalletFormProps) {
   const form = useForm<WalletFormInput>({
     resolver: zodResolver(walletSchema),
     defaultValues: {
       name: defaultValues?.name ?? '',
       amount: defaultValues?.amount ?? 0,
+      credit_limit: defaultValues?.credit_limit ?? null,
       type: defaultValues?.type ?? 'CASH',
       active: defaultValues?.active ?? true,
       cutoff_day: defaultValues?.cutoff_day ?? null,
@@ -77,7 +82,23 @@ export default function WalletForm({
     onOpenChange(newOpen);
   };
 
-  const type = form.watch('type');
+  const type = useWatch({
+    control: form.control,
+    name: 'type',
+  });
+  const typeOptions = allowedTypes ?? [
+    'CASH',
+    'DEBIT_CARD',
+    'CREDIT_CARD',
+    'DEPARTMENT_STORE_CARD',
+  ];
+
+  const typeLabels: Record<WalletFormValues['type'], string> = {
+    CASH: 'Efectivo',
+    DEBIT_CARD: 'Tarjeta de débito',
+    CREDIT_CARD: 'Tarjeta de crédito',
+    DEPARTMENT_STORE_CARD: 'Tienda departamental',
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -116,35 +137,41 @@ export default function WalletForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => {
-                const numericValue =
-                  field.value === undefined || field.value === null || field.value === ''
-                    ? ''
-                    : Number(field.value);
+            {showAmountField && (
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => {
+                  const numericValue =
+                    field.value === undefined || field.value === null || field.value === ''
+                      ? ''
+                      : Number(field.value);
 
-                return (
-                  <FormItem>
-                    <FormLabel>Monto</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={numericValue}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === '' ? '' : Number(e.target.value),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+                  return (
+                    <FormItem>
+                      <FormLabel>
+                        {type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD'
+                          ? 'Saldo actual'
+                          : 'Monto'}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={numericValue}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === '' ? '' : Number(e.target.value),
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -175,16 +202,11 @@ export default function WalletForm({
                         <SelectValue placeholder="Selecciona un tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CASH">Efectivo</SelectItem>
-                        <SelectItem value="DEBIT_CARD">
-                          Tarjeta de débito
-                        </SelectItem>
-                        <SelectItem value="CREDIT_CARD">
-                          Tarjeta de crédito
-                        </SelectItem>
-                        <SelectItem value="DEPARTMENT_STORE_CARD">
-                          Tienda departamental
-                        </SelectItem>
+                        {typeOptions.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {typeLabels[value]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -195,6 +217,37 @@ export default function WalletForm({
 
             {(type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') && (
               <>
+                <FormField
+                  control={form.control}
+                  name="credit_limit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Línea de crédito</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={
+                            field.value != null &&
+                            typeof field.value === 'number'
+                              ? field.value
+                              : ''
+                          }
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ''
+                                ? null
+                                : Number(e.target.value),
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 {/* Cutoff Day */}
                 <FormField
                   control={form.control}

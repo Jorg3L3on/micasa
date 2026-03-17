@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   nullablePositiveInt,
+  nonNegativeAmountSchema,
   positiveAmountSchema,
   requiredStringSchema,
 } from '@/schemas/common.schema';
@@ -8,57 +9,126 @@ import { PAYMENT_METHODS } from '@/domain/payment-method';
 
 // Payment method type enum
 export const paymentMethodType = z.enum(PAYMENT_METHODS);
+export const creditCardType = z.enum(['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']);
+
+const nullableCreditLimitSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === '' || value === null) return null;
+    return Number(value);
+  },
+  nonNegativeAmountSchema.nullable(),
+);
+
+const applyWalletBusinessRules = (
+  data: {
+    type: (typeof PAYMENT_METHODS)[number];
+    cutoff_day: number | null;
+    due_day: number | null;
+    credit_limit?: number | null;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const isCard =
+    data.type === 'CREDIT_CARD' || data.type === 'DEPARTMENT_STORE_CARD';
+
+  if (isCard) {
+    if (data.credit_limit == null || data.credit_limit <= 0) {
+      ctx.addIssue({
+        path: ['credit_limit'],
+        message: 'La línea de crédito es obligatoria para tarjetas',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+
+    if (!data.cutoff_day) {
+      ctx.addIssue({
+        path: ['cutoff_day'],
+        message: 'El día de corte es obligatorio para tarjetas de crédito',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+
+    if (!data.due_day) {
+      ctx.addIssue({
+        path: ['due_day'],
+        message: 'La fecha de pago es obligatoria para tarjetas de crédito',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+
+    return;
+  }
+
+  if (data.credit_limit != null) {
+    ctx.addIssue({
+      path: ['credit_limit'],
+      message: 'La línea de crédito solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
+
+  if (data.cutoff_day != null) {
+    ctx.addIssue({
+      path: ['cutoff_day'],
+      message: 'El día de corte solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
+
+  if (data.due_day != null) {
+    ctx.addIssue({
+      path: ['due_day'],
+      message: 'El día de pago solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
+};
 
 // Wallet Schemas
 export const createWalletSchema = z.object({
   name: requiredStringSchema,
   amount: positiveAmountSchema.default(0),
+  credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType,
   active: z.boolean().default(true),
   cutoff_day: nullablePositiveInt,
   due_day: nullablePositiveInt,
-});
+}).superRefine(applyWalletBusinessRules);
 
 export const updateWalletSchema = z.object({
   name: requiredStringSchema.optional(),
-  amount: positiveAmountSchema.optional(),
+  credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType.optional(),
   active: z.boolean().optional(),
   cutoff_day: nullablePositiveInt.optional(),
   due_day: nullablePositiveInt.optional(),
+}).superRefine((data, ctx) => {
+  const type = data.type;
+  if (!type) return;
+
+  applyWalletBusinessRules(
+    {
+      type,
+      cutoff_day: data.cutoff_day ?? null,
+      due_day: data.due_day ?? null,
+      credit_limit: data.credit_limit ?? null,
+    },
+    ctx,
+  );
 });
 
 export const walletSchema = z
   .object({
     name: requiredStringSchema,
     amount: positiveAmountSchema.optional(),
+    credit_limit: nullableCreditLimitSchema.default(null),
     type: paymentMethodType,
     active: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,
   })
 
-  .superRefine((data, ctx) => {
-    if (data.type === 'CREDIT_CARD' || data.type === 'DEPARTMENT_STORE_CARD') {
-      // cutoff_day requerida
-      if (!data.cutoff_day) {
-        ctx.addIssue({
-          path: ['cutoff_day'],
-          message: 'El día de corte es obligatorio para tarjetas de crédito',
-          code: z.ZodIssueCode.custom,
-        });
-      }
-
-      // due_day requerida
-      if (!data.due_day) {
-        ctx.addIssue({
-          path: ['due_day'],
-          message: 'La fecha de pago es obligatoria para tarjetas de crédito',
-          code: z.ZodIssueCode.custom,
-        });
-      }
-    }
-  });
+  .superRefine(applyWalletBusinessRules);
 
 export type WalletFormInput = z.input<typeof walletSchema>;
 export type WalletFormValues = z.infer<typeof walletSchema>;

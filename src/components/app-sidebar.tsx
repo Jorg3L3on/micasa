@@ -9,7 +9,6 @@ import {
   Home,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
 import { TeamSwitcher } from '@/components/team-switcher';
@@ -35,11 +34,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { context } = useFinanceContext();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const catalogItems = [
     {
@@ -60,7 +54,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: 'Billeteras',
       url: '/wallets',
-      isActive: pathname.startsWith('/wallets'),
+      isActive:
+        pathname.startsWith('/wallets') ||
+        pathname.startsWith('/credit-cards'),
     },
     ...(context.type === 'house'
       ? [
@@ -102,6 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         pathname.startsWith('/income-templates') ||
         pathname.startsWith('/categories') ||
         pathname.startsWith('/wallets') ||
+        pathname.startsWith('/credit-cards') ||
         pathname.startsWith('/house-users'),
       items: catalogItems,
     },
@@ -114,27 +111,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       plan: 'Gestión Financiera',
     },
   ];
-
-  if (!mounted) {
-    return (
-      <Sidebar collapsible="icon" {...props}>
-        <SidebarHeader>
-          <div className="flex h-10 w-full items-center rounded-lg px-2" aria-hidden />
-        </SidebarHeader>
-        <SidebarContent>
-          <div className="flex flex-col gap-2 px-2 py-2" aria-hidden>
-            <div className="h-4 w-24 rounded bg-sidebar-accent/50 animate-pulse" />
-            <div className="h-4 w-24 rounded bg-sidebar-accent/50 animate-pulse" />
-            <div className="h-4 w-24 rounded bg-sidebar-accent/50 animate-pulse" />
-          </div>
-        </SidebarContent>
-        <SidebarFooter>
-          <div className="h-10 w-full rounded-lg px-2" aria-hidden />
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
-    );
-  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
