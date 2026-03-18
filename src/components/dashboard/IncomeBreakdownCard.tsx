@@ -23,19 +23,23 @@ export default function IncomeBreakdownCard({
   const { byPerson, totalIncome } = data.incomeBreakdown;
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Desglose de ingresos">
       <CardHeader>
-        <CardTitle className="text-base font-medium">
-          Desglose de ingresos
-        </CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
+            <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Desglose de ingresos
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex flex-col items-center gap-1 pt-2 pb-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <TrendingUp className="size-3.5 shrink-0" aria-hidden />
-            <span className="text-xs font-medium">Total ingresos</span>
-          </div>
-          <p className="text-2xl font-semibold tracking-tight text-chart-4">
+        <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Total ingresos
+          </span>
+          <p className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400 mt-0.5">
             {formatCurrency(totalIncome)}
           </p>
         </div>
@@ -43,7 +47,7 @@ export default function IncomeBreakdownCard({
         <div className="border-t border-border/60 pt-4">
           <Collapsible open={open} onOpenChange={setOpen}>
             <CollapsibleTrigger
-              className="flex w-full items-center justify-between rounded-md py-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
+              className="flex w-full items-center justify-between rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
               aria-label={
                 open ? 'Ocultar detalles' : 'Ver detalles por persona'
               }
@@ -64,14 +68,14 @@ export default function IncomeBreakdownCard({
                 {byPerson.map((p) => (
                   <li
                     key={p.userId}
-                    className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40 text-sm"
                   >
                     <span className="font-medium">{p.userName}</span>
-                    <div className="flex items-center gap-2 tabular-nums">
-                      <span className="text-chart-4">
+                    <div className="flex items-center gap-2 font-mono tabular-nums">
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                         {formatCurrency(p.amount)}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[9px] text-muted-foreground">
                         {p.percentage.toFixed(1)}%
                       </span>
                     </div>

@@ -52,31 +52,32 @@ export default function UpcomingObligationsCard({
   };
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">
-          Próximas obligaciones
-        </CardTitle>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Próximas obligaciones">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
+            <ListTodo className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Próximas obligaciones
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {obligations.length === 0 ? (
           <p
-            className="text-sm text-muted-foreground py-6 text-center"
+            className="text-[9px] text-muted-foreground py-6 text-center"
             aria-label="Sin obligaciones pendientes"
           >
             No hay obligaciones pendientes en este periodo.
           </p>
         ) : (
           <>
-            <div className="flex flex-col items-center gap-1 pt-2 pb-2">
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <ListTodo className="size-3.5 shrink-0" aria-hidden />
-                <span className="text-xs font-medium">
-                  {obligations.length}{' '}
-                  {obligations.length === 1 ? 'obligación' : 'obligaciones'}
-                </span>
-              </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground">
+            <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-2.5 py-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {obligations.length} {obligations.length === 1 ? 'obligación' : 'obligaciones'}
+              </span>
+              <p className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400 mt-0.5">
                 {formatCurrency(totalPendiente)}
               </p>
             </div>
@@ -90,17 +91,15 @@ export default function UpcomingObligationsCard({
                       <li
                         key={ob.id}
                         className={cn(
-                          'flex items-center justify-between rounded-md border px-3 py-2',
-                          overdue
-                            ? 'border-destructive/50 bg-destructive/5'
-                            : 'border-border/60',
+                          'flex items-center justify-between rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40',
+                          overdue && 'bg-destructive/5',
                         )}
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">
                             {ob.description}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[9px] text-muted-foreground">
                             Vence: {formatDate(ob.dueDate)}
                             {overdue && (
                               <span className="ml-2 text-destructive">
@@ -110,7 +109,7 @@ export default function UpcomingObligationsCard({
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-sm font-medium tabular-nums">
+                          <span className="text-sm font-bold font-mono tabular-nums">
                             {formatCurrency(ob.amount)}
                           </span>
                           <Tooltip>
@@ -122,7 +121,7 @@ export default function UpcomingObligationsCard({
                                 aria-label={`Marcar ${ob.description} como pagado`}
                               >
                                 <Check
-                                  className="h-4 w-4 text-chart-4"
+                                  className="h-4 w-4 text-green-600 dark:text-green-400"
                                   aria-hidden
                                 />
                               </Button>

@@ -6,6 +6,11 @@ import {
   createTransactionSchema,
   updateTransactionSchema,
 } from '@/schemas/transaction.schema';
+import {
+  createExpense,
+  deleteExpense,
+  updateExpense,
+} from '@/lib/finance/expense.service';
 
 function decimalToNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -129,7 +134,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    let combined: ReturnType<typeof decimalToNumber>[] | any[] = [
+    let combined: Array<
+      (typeof expenseTransactions)[number] | (typeof incomeTransactions)[number]
+    > = [
       ...expenseTransactions,
       ...incomeTransactions,
     ];
@@ -154,15 +161,7 @@ export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
-
-    let ownerData: { user_id?: number; house_id?: number } = {};
-    if (ownerType === 'user') {
-      ownerData = { user_id: ownerId };
-    }
-    if (ownerType === 'house') {
-      ownerData = { house_id: ownerId };
-    }
+    const { ownerFilter } = context;
 
     const body = await request.json();
     const validatedData = createTransactionSchema.parse(body);
@@ -174,8 +173,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const category = await prisma.category.findUnique({
-      where: { id: validatedData.category_id },
+    const category = await prisma.category.findFirst({
+      where: { id: validatedData.category_id, ...ownerFilter },
     });
     if (!category) {
       return NextResponse.json(
@@ -184,18 +183,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fortnight = await prisma.fortnight.findUnique({
-      where: { id: validatedData.fortnight_id },
-      select: { id: true, user_id: true, house_id: true },
+    const fortnight = await prisma.fortnight.findFirst({
+      where: { id: validatedData.fortnight_id, ...ownerFilter },
+      select: { id: true },
     });
-    if (
-      !fortnight ||
-      (fortnight.user_id == null && fortnight.house_id == null) ||
-      (fortnight.user_id != null && fortnight.house_id != null)
-    ) {
+    if (!fortnight) {
       return NextResponse.json(
-        { error: 'Invalid fortnight for this transaction' },
-        { status: 400 },
+        { error: 'Fortnight not found' },
+        { status: 404 },
       );
     }
 
@@ -206,9 +201,9 @@ export async function POST(request: NextRequest) {
       null;
 
     if (walletId != null) {
-      const wallet = await prisma.wallet.findUnique({
-        where: { id: walletId },
-        select: { id: true, user_id: true, house_id: true },
+      const wallet = await prisma.wallet.findFirst({
+        where: { id: walletId, ...ownerFilter },
+        select: { id: true },
       });
       if (!wallet) {
         return NextResponse.json(
@@ -216,77 +211,23 @@ export async function POST(request: NextRequest) {
           { status: 404 },
         );
       }
-      if (ownerType === 'user') {
-        if (wallet.user_id !== ownerId || wallet.house_id != null) {
-          return NextResponse.json(
-            {
-              error:
-                'Wallet does not belong to the same owner (user/house) as the fortnight',
-            },
-            { status: 400 },
-          );
-        }
-      } else {
-        if (wallet.house_id !== ownerId || wallet.user_id != null) {
-          return NextResponse.json(
-            {
-              error:
-                'Wallet does not belong to the same owner (user/house) as the fortnight',
-            },
-            { status: 400 },
-          );
-        }
-      }
     }
 
-    const created = await prisma.$transaction(async (tx) => {
-      const expense = await tx.expense.create({
-        data: {
-          fortnight_id: validatedData.fortnight_id,
-          category_id: validatedData.category_id,
-          description: validatedData.description,
-          amount: validatedData.amount,
-          is_paid: validatedData.is_paid ?? false,
-          payment_date: validatedData.payment_date
-            ? new Date(validatedData.payment_date)
-            : null,
-          expense_template_id: validatedData.expense_template_id ?? null,
-          wallet_id: walletId ?? undefined,
-          ...ownerData,
-        },
-        include: {
-          category: { select: { name: true } },
-          wallet: { select: { name: true } },
-        },
-      });
-
-      if (expense.is_paid && expense.wallet_id != null) {
-        await tx.wallet.update({
-          where: { id: expense.wallet_id },
-          data: { amount: { decrement: expense.amount } },
-        });
-      }
-
-      return expense;
+    const created = await createExpense({
+      fortnightId: validatedData.fortnight_id,
+      categoryId: validatedData.category_id,
+      description: validatedData.description,
+      amount: validatedData.amount,
+      isPaid: validatedData.is_paid ?? false,
+      paymentDate: validatedData.payment_date ?? null,
+      expenseTemplateId: validatedData.expense_template_id ?? null,
+      walletId,
     });
-
-    const dateValue = created.payment_date || created.created_at;
-    const dateStr =
-      dateValue instanceof Date
-        ? dateValue.toISOString().split('T')[0]
-        : new Date(dateValue).toISOString().split('T')[0];
 
     return NextResponse.json(
       {
-        id: created.id,
-        date: dateStr,
-        description: created.description,
+        ...created,
         amount: decimalToNumber(created.amount),
-        category: created.category?.name ?? '',
-        paymentMethod: created.wallet?.name || 'Efectivo',
-        type: 'expense',
-        is_paid: created.is_paid,
-        payment_date: created.payment_date,
       },
       { status: 201 },
     );
@@ -356,60 +297,58 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updateData: {
-      fortnight_id?: number;
-      category_id?: number;
-      description?: string;
-      amount?: number;
-      is_paid?: boolean;
-      payment_date?: Date | null;
-      wallet_id?: number | null;
-    } = {};
-    if (validatedData.fortnight_id !== undefined)
-      updateData.fortnight_id = validatedData.fortnight_id;
-    if (validatedData.category_id !== undefined)
-      updateData.category_id = validatedData.category_id;
-    if (validatedData.description !== undefined)
-      updateData.description = validatedData.description;
-    if (validatedData.amount !== undefined) updateData.amount = validatedData.amount;
-    if (validatedData.is_paid !== undefined)
-      updateData.is_paid = validatedData.is_paid;
-    if (validatedData.payment_date !== undefined) {
-      updateData.payment_date = validatedData.payment_date
-        ? new Date(validatedData.payment_date)
-        : null;
-    }
     const walletId =
       (validatedData as { wallet_id?: number | null }).wallet_id ??
       validatedData.card_id;
-    if (walletId !== undefined) updateData.wallet_id = walletId ?? null;
 
-    const transaction = await prisma.expense.update({
-      where: { id: Number(id), ...ownerFilter },
-      data: updateData,
-      include: {
-        category: { select: { name: true } },
-        wallet: { select: { name: true } },
-      },
+    if (validatedData.fortnight_id !== undefined) {
+      const fortnight = await prisma.fortnight.findFirst({
+        where: { id: validatedData.fortnight_id, ...ownerFilter },
+        select: { id: true },
+      });
+
+      if (!fortnight) {
+        return NextResponse.json({ error: 'Fortnight not found' }, { status: 404 });
+      }
+    }
+
+    if (validatedData.category_id !== undefined) {
+      const category = await prisma.category.findFirst({
+        where: { id: validatedData.category_id, ...ownerFilter },
+        select: { id: true },
+      });
+
+      if (!category) {
+        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      }
+    }
+
+    if (walletId !== undefined && walletId !== null) {
+      const wallet = await prisma.wallet.findFirst({
+        where: { id: walletId, ...ownerFilter },
+        select: { id: true },
+      });
+
+      if (!wallet) {
+        return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
+      }
+    }
+
+    const transaction = await updateExpense({
+      id: Number(id),
+      fortnightId: validatedData.fortnight_id,
+      categoryId: validatedData.category_id,
+      description: validatedData.description,
+      amount: validatedData.amount,
+      isPaid: validatedData.is_paid,
+      paymentDate: validatedData.payment_date,
+      walletId,
     });
-
-    const dateValue = transaction.payment_date || transaction.created_at;
-    const dateStr =
-      dateValue instanceof Date
-        ? dateValue.toISOString().split('T')[0]
-        : new Date(dateValue).toISOString().split('T')[0];
 
     return NextResponse.json(
       {
-        id: transaction.id,
-        date: dateStr,
-        description: transaction.description,
+        ...transaction,
         amount: decimalToNumber(transaction.amount),
-        category: transaction.category?.name ?? '',
-        paymentMethod: transaction.wallet?.name || 'Efectivo',
-        type: 'expense',
-        is_paid: transaction.is_paid,
-        payment_date: transaction.payment_date,
       },
       { status: 200 },
     );
@@ -485,17 +424,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      if (existing.is_paid === true && existing.wallet_id != null) {
-        await tx.wallet.update({
-          where: { id: existing.wallet_id },
-          data: { amount: { increment: existing.amount } },
-        });
-      }
-      await tx.expense.delete({
-        where: { id: expenseId, ...ownerFilter },
-      });
-    });
+    await deleteExpense({ id: expenseId });
 
     return NextResponse.json(
       { message: 'Transaction deleted successfully' },

@@ -5,6 +5,8 @@ import type {
 } from '@/schemas/wallet.schema';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
+type WalletServiceError = Error & { code?: string };
+
 export async function listWallets(userId: number) {
   const memberships = await prisma.houseMember.findMany({
     where: {
@@ -70,8 +72,8 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
   });
 
   if (!defaultUser) {
-    const error = new Error('No active user found to own wallet');
-    (error as any).code = 'NO_DEFAULT_USER';
+    const error = new Error('No active user found to own wallet') as WalletServiceError;
+    error.code = 'NO_DEFAULT_USER';
     throw error;
   }
 
@@ -79,6 +81,7 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
     data: {
       name: data.name,
       amount: data.amount,
+      credit_limit: data.credit_limit,
       type: data.type,
       active: data.active,
       cutoff_day: data.cutoff_day,
@@ -97,6 +100,7 @@ export async function createWalletForUser(
     data: {
       name: data.name,
       amount: data.amount,
+      credit_limit: data.credit_limit,
       type: data.type,
       active: data.active,
       cutoff_day: data.cutoff_day,
@@ -116,6 +120,7 @@ export async function createWalletForOwner(
     data: {
       name: data.name,
       amount: data.amount,
+      credit_limit: data.credit_limit,
       type: data.type,
       active: data.active,
       cutoff_day: data.cutoff_day,
@@ -142,8 +147,8 @@ export async function updateWalletMetadataForOwner(
     where: { id, ...ownerFilter },
   });
   if (!existing) {
-    const error = new Error('Wallet not found');
-    (error as any).code = 'P2025';
+    const error = new Error('Wallet not found') as WalletServiceError;
+    error.code = 'P2025';
     throw error;
   }
   return prisma.wallet.update({
@@ -163,8 +168,8 @@ export async function deleteWalletIfUnused(id: number) {
   if (relatedExpense || relatedExpenseTemplate) {
     const error = new Error(
       'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
-    );
-    (error as any).code = 'WALLET_IN_USE';
+    ) as WalletServiceError;
+    error.code = 'WALLET_IN_USE';
     throw error;
   }
 
@@ -179,8 +184,8 @@ export async function deleteWalletIfUnusedForOwner(
     where: { id, ...ownerFilter },
   });
   if (!existing) {
-    const error = new Error('Wallet not found');
-    (error as any).code = 'P2025';
+    const error = new Error('Wallet not found') as WalletServiceError;
+    error.code = 'P2025';
     throw error;
   }
   const relatedExpense = await prisma.expense.findFirst({
@@ -193,8 +198,8 @@ export async function deleteWalletIfUnusedForOwner(
   if (relatedExpense || relatedExpenseTemplate) {
     const error = new Error(
       'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
-    );
-    (error as any).code = 'WALLET_IN_USE';
+    ) as WalletServiceError;
+    error.code = 'WALLET_IN_USE';
     throw error;
   }
 

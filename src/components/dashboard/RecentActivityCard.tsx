@@ -19,29 +19,27 @@ export default function RecentActivityCard({ data }: RecentActivityCardProps) {
   const activities = data.recentActivity;
 
   return (
-    <Card className={cn(DASHBOARD_CARD_CLASS, 'min-w-0')}>
+    <Card className={cn(DASHBOARD_CARD_CLASS, 'min-w-0')} role="region" aria-label="Actividad reciente">
       <CardHeader>
-        <CardTitle className="text-base font-medium">
-          Actividad reciente
-        </CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+            <Activity className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Actividad reciente
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex flex-col gap-1 pt-2 pb-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Activity className="size-3.5 shrink-0" aria-hidden />
-            <span className="text-xs font-medium">
-              {activities.length === 0
-                ? 'Sin actividad'
-                : `${activities.length} ${
-                    activities.length === 1 ? 'movimiento' : 'movimientos'
-                  }`}
-            </span>
-          </div>
-        </div>
+        <p className="text-[10px] text-muted-foreground">
+          {activities.length === 0
+            ? 'Sin actividad'
+            : `${activities.length} ${activities.length === 1 ? 'movimiento' : 'movimientos'}`}
+        </p>
 
         {activities.length === 0 ? (
           <p
-            className="text-sm text-muted-foreground py-4 text-center border-t border-border/60 pt-4"
+            className="text-[9px] text-muted-foreground py-4 text-center border-t border-border/60 pt-4"
             aria-label="Sin actividad reciente"
           >
             No hay actividad reciente.
@@ -52,34 +50,36 @@ export default function RecentActivityCard({ data }: RecentActivityCardProps) {
               {activities.map((act) => (
                 <li
                   key={act.id}
-                  className="flex gap-3 rounded-md border border-border/60 px-3 py-2 min-w-0"
+                  className="flex gap-3 rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40 min-w-0"
                 >
-                  <span className="shrink-0 mt-0.5 text-muted-foreground">
+                  <span className="shrink-0 mt-0.5">
                     {act.type === 'expense_added' ? (
-                      <Receipt className="size-3.5" aria-hidden />
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
+                        <Receipt className="h-3 w-3 text-violet-600 dark:text-violet-400" aria-hidden />
+                      </span>
                     ) : (
-                      <TrendingUp
-                        className="size-3.5 text-chart-4"
-                        aria-hidden
-                      />
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
+                        <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" aria-hidden />
+                      </span>
                     )}
                   </span>
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <p className="text-sm font-medium line-clamp-2">
                       {typeLabel(act.type)}: {act.description}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-[9px] text-muted-foreground mt-0.5">
                       {formatDate(act.timestamp)}
                       {act.user && ` · ${act.user}`}
                       {act.meta && ` · ${act.meta}`}
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 text-sm font-medium tabular-nums ${
+                    className={cn(
+                      'shrink-0 text-sm font-bold font-mono tabular-nums',
                       act.type === 'income_added'
-                        ? 'text-chart-4'
-                        : 'text-destructive'
-                    }`}
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-destructive',
+                    )}
                   >
                     {act.type === 'income_added' ? '+' : '-'}
                     {formatCurrency(act.amount)}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -15,11 +16,19 @@ import {
   clientFetchFromApi,
   createWallet,
   updateWallet,
-  updateWalletStatus,
   deleteWallet,
+  createCreditCard,
+  updateCreditCard,
 } from '@/lib/api';
 import {
+  Banknote,
+  BadgeCheck,
+  BookmarkIcon,
+  CreditCard,
+  Eye,
+  Landmark,
   Pencil,
+  Store,
   Trash2,
   WalletIcon,
 } from 'lucide-react';
@@ -27,8 +36,41 @@ import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
 } from '@/domain/payment-method';
-import { formatCurrency, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
+
+const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
+
+const isCreditType = (type: string) =>
+  CREDIT_TYPES.includes(type as PaymentMethodType);
+
+const WALLET_ICON_CONFIG: Record<
+  PaymentMethodType,
+  { icon: typeof CreditCard; bg: string; fg: string }
+> = {
+  CASH: {
+    icon: Banknote,
+    bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
+    fg: 'text-emerald-600 dark:text-emerald-400',
+  },
+  DEBIT_CARD: {
+    icon: Landmark,
+    bg: 'bg-blue-500/10 dark:bg-blue-500/15',
+    fg: 'text-blue-600 dark:text-blue-400',
+  },
+  CREDIT_CARD: {
+    icon: CreditCard,
+    bg: 'bg-violet-500/10 dark:bg-violet-500/15',
+    fg: 'text-violet-600 dark:text-violet-400',
+  },
+  DEPARTMENT_STORE_CARD: {
+    icon: Store,
+    bg: 'bg-violet-500/10 dark:bg-violet-500/15',
+    fg: 'text-violet-600 dark:text-violet-400',
+  },
+};
 
 export default function WalletsPage() {
   const { context } = useFinanceContext();
@@ -38,13 +80,12 @@ export default function WalletsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = useState(false)
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchWallets = async () => {
+  const fetchWallets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -61,32 +102,37 @@ export default function WalletsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [context]);
 
   useEffect(() => {
     fetchWallets();
-  }, [context]);
+  }, [fetchWallets]);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
       setFormError(null);
-      await createWallet(
-        {
-          name: data.name,
-          amount: data.amount || 0,
-          type: data.type,
-          active: data.active || true,
-          cutoff_day: data.cutoff_day || null,
-          due_day: data.due_day || null,
-        },
-        context,
-      );
-      toast.success('Billetera creada');
+      const payload = {
+        name: data.name,
+        amount: data.amount || 0,
+        credit_limit: data.credit_limit ?? null,
+        type: data.type,
+        active: data.active || true,
+        cutoff_day: data.cutoff_day || null,
+        due_day: data.due_day || null,
+      };
+
+      if (isCreditType(data.type)) {
+        await createCreditCard(payload, context);
+        toast.success('Tarjeta creada');
+      } else {
+        await createWallet(payload, context);
+        toast.success('Billetera creada');
+      }
       await fetchWallets();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Error al crear la billetera';
+        err instanceof Error ? err.message : 'Error al crear';
       setFormError(message);
       throw err;
     }
@@ -96,14 +142,19 @@ export default function WalletsPage() {
     if (!selectedWallet) return;
     try {
       setFormError(null);
-      await updateWallet(selectedWallet.id, data, context);
-      toast.success('Billetera actualizada');
+      if (isCreditType(selectedWallet.type)) {
+        await updateCreditCard(selectedWallet.id, data, context);
+        toast.success('Tarjeta actualizada');
+      } else {
+        await updateWallet(selectedWallet.id, data, context);
+        toast.success('Billetera actualizada');
+      }
       await fetchWallets();
       setEditDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Error al actualizar la billetera';
+        err instanceof Error ? err.message : 'Error al actualizar';
       setFormError(message);
       throw err;
     }
@@ -114,54 +165,37 @@ export default function WalletsPage() {
     try {
       setError(null);
       await deleteWallet(selectedWallet.id, context);
-      toast.success('Billetera eliminada');
+      toast.success('Eliminada');
       await fetchWallets();
       setDeleteDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Error al eliminar la billetera';
+        err instanceof Error ? err.message : 'Error al eliminar';
       if (
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict') ||
         message.includes('related')
       ) {
-        setError('La billetera está en uso y no puede eliminarse');
+        setError('Está en uso y no puede eliminarse');
       } else {
         setError(message);
       }
     }
   };
 
-  const handleUpdateStatus = async () => {
-    if (!selectedWallet) return
-    try {
-      setFormError(null)
-      await updateWalletStatus(selectedWallet.id, !selectedWallet.active);
-      toast.success('Estatus de Cartera actualizada')
-      await fetchWallets()
-      setUpdateStatusDialogOpen(false)
-      setSelectedWallet(null)
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Error al actualizar estatus de la cartera';
-      setFormError(message);
-      throw err;
-    }
-  }
-
-  const openEditDialog = (wallet: WalletListItem) => {
+  const openEditDialog = useCallback((wallet: WalletListItem) => {
     setSelectedWallet(wallet);
     setEditDialogOpen(true);
     setFormError(null);
-  };
+  }, []);
 
-  const openDeleteDialog = (wallet: WalletListItem) => {
+  const openDeleteDialog = useCallback((wallet: WalletListItem) => {
     setSelectedWallet(wallet);
     setDeleteDialogOpen(true);
     setError(null);
-  };
+  }, []);
 
   const columns = useMemo<ColumnDef<WalletListItem>[]>(
     () => [
@@ -170,41 +204,106 @@ export default function WalletsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Nombre" />
         ),
-        cell: ({ row }) => (
-          <span
-            className={cn(
-              'font-medium',
-              !row.original.active && 'text-muted-foreground'
-            )}
-          >
-            {row.original.name}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const wallet = row.original;
+          const isCard = isCreditType(wallet.type);
+          const config = WALLET_ICON_CONFIG[wallet.type as PaymentMethodType];
+          const Icon = config?.icon ?? WalletIcon;
+
+          return (
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                  config?.bg ?? 'bg-muted',
+                )}
+              >
+                <Icon className={cn('h-3.5 w-3.5', config?.fg ?? 'text-muted-foreground')} />
+              </span>
+              <div className="min-w-0">
+                <p
+                  className={cn(
+                    'truncate font-medium',
+                    !wallet.active && 'text-muted-foreground',
+                  )}
+                >
+                  {wallet.name}
+                </p>
+                {isCard && wallet.cutoff_day != null && wallet.due_day != null && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Corte {wallet.cutoff_day} / Pago {wallet.due_day}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        },
       },
       {
         accessorKey: 'amount',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Monto" />
-        ),
-        cell: ({ row }) => formatCurrency(row.original.amount),
-      },
-      {
-        accessorKey: 'remaining_amount',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Monto restante" />
+          <DataTableColumnHeader column={column} title="Saldo" />
         ),
         cell: ({ row }) => {
-          const remaining = row.original.remaining_amount;
+          const wallet = row.original;
+          const isCard = isCreditType(wallet.type);
+
           return (
             <span
               className={cn(
-                'font-medium',
-                remaining < 0 && 'text-destructive',
-                remaining >= 0 && remaining < row.original.amount * 0.2 && 'text-amber-600 dark:text-amber-400',
-                remaining >= row.original.amount * 0.2 && 'text-green-700 dark:text-green-400',
+                'font-mono tabular-nums text-sm',
+                isCard && wallet.amount > 0 && 'font-bold text-foreground',
               )}
             >
-              {formatCurrency(remaining)}
+              {formatCurrency(wallet.amount)}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'available',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Disponible" />
+        ),
+        accessorFn: (row) => {
+          if (isCreditType(row.type)) {
+            return row.credit_limit != null ? row.credit_limit - row.amount : null;
+          }
+          return row.amount;
+        },
+        cell: ({ row }) => {
+          const wallet = row.original;
+          const isCard = isCreditType(wallet.type);
+
+          if (isCard) {
+            if (wallet.credit_limit == null) {
+              return <span className="text-muted-foreground">Sin línea</span>;
+            }
+            const available = wallet.credit_limit - wallet.amount;
+            return (
+              <span
+                className={cn(
+                  'font-mono tabular-nums text-sm font-bold',
+                  available < 0
+                    ? 'text-destructive'
+                    : 'text-emerald-600 dark:text-emerald-400',
+                )}
+              >
+                {formatCurrency(available)}
+              </span>
+            );
+          }
+
+          return (
+            <span
+              className={cn(
+                'font-mono tabular-nums text-sm',
+                wallet.amount > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {formatCurrency(wallet.amount)}
             </span>
           );
         },
@@ -218,26 +317,38 @@ export default function WalletsPage() {
       {
         accessorKey: 'active',
         header: 'Estado',
-        cell: ({ row }) => (
-          <span
-            className={cn(
-              'inline-flex px-2 py-0.5 text-xs font-medium rounded-full',
-              row.original.active
-                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
-            )}
-          >
-            {row.original.active ? 'Activo' : 'Inactivo'}
-          </span>
-        ),
+        cell: ({ row }) =>
+          row.original.active ? (
+            <Badge variant="secondary">
+              <BadgeCheck data-icon="inline-start" />
+              Activo
+            </Badge>
+          ) : (
+            <Badge variant="outline">
+              <BookmarkIcon data-icon="inline-end" />
+              Inactivo
+            </Badge>
+          ),
       },
       {
         id: 'actions',
         header: () => <span className="text-right">Acciones</span>,
         cell: ({ row }) => {
           const wallet = row.original;
+          const isCard = isCreditType(wallet.type);
+
           return (
             <div className="flex justify-end gap-2">
+              {isCard && (
+                <Button asChild variant="ghost" size="icon">
+                  <Link
+                    href={`/credit-cards/${wallet.id}`}
+                    aria-label={`Ver estado de cuenta de ${wallet.name}`}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -259,7 +370,7 @@ export default function WalletsPage() {
         },
       },
     ],
-    [openEditDialog, openDeleteDialog]
+    [openEditDialog, openDeleteDialog],
   );
 
   return (
@@ -270,7 +381,7 @@ export default function WalletsPage() {
       >
         <Button onClick={() => setCreateDialogOpen(true)}>
           <WalletIcon />
-          Agregar billetera
+          Agregar billetera o tarjeta
         </Button>
       </div>
 
@@ -324,9 +435,11 @@ export default function WalletsPage() {
             }}
             onSubmit={handleEdit}
             mode="edit"
+            showAmountField={!isCreditType(selectedWallet.type)}
             defaultValues={{
               name: selectedWallet.name,
               amount: selectedWallet.amount ?? 0,
+              credit_limit: selectedWallet.credit_limit ?? null,
               type: selectedWallet.type as PaymentMethodType,
               active: selectedWallet.active,
               cutoff_day: selectedWallet.cutoff_day,
@@ -347,21 +460,6 @@ export default function WalletsPage() {
             onConfirm={handleDelete}
             title="Eliminar billetera"
             description="¿Estás seguro de querer eliminar esta billetera? Esta acción no puede deshacerse."
-            itemName={selectedWallet.name}
-          />
-
-          <ConfirmDeleteDialog
-            open={updateStatusDialogOpen}
-            onOpenChange={(open) => {
-              setUpdateStatusDialogOpen(open)
-              if (!open) {
-                setSelectedWallet(null)
-                setError(null)
-              }
-            }}
-            onConfirm={handleUpdateStatus}
-            title="Actualizar Estatus de cartera"
-            description="¿Estás seguro de querer actualizar esta cartera?"
             itemName={selectedWallet.name}
           />
         </>

@@ -6,7 +6,7 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
-import { AlertTriangle, Percent, Receipt } from 'lucide-react';
+import { Percent, Receipt } from 'lucide-react';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS } from './constants';
 
@@ -23,23 +23,36 @@ export default function ExpenseHealthCheckCard({
   const isHighCommitment = percentCommitted >= 80;
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Salud de gastos">
       <CardHeader>
-        <CardTitle className="text-base font-medium">Salud de gastos</CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+            <Percent className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Salud de gastos
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <TooltipProvider>
-          <div className="flex flex-col items-center gap-1 pt-2 pb-2">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Percent className="size-3.5 shrink-0" aria-hidden />
-              <span className="text-xs font-medium">Ingresos comprometidos</span>
-            </div>
+          <div
+            className={cn(
+              'rounded-lg border px-2.5 py-2',
+              isHighCommitment
+                ? 'border-l-[3px] border-l-destructive/50 bg-destructive/5'
+                : 'border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8',
+            )}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Ingresos comprometidos
+            </span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <p
                   className={cn(
-                    'text-2xl font-semibold tracking-tight',
-                    isHighCommitment ? 'text-destructive' : 'text-foreground',
+                    'text-2xl font-bold font-mono tabular-nums mt-0.5 cursor-help',
+                    isHighCommitment ? 'text-destructive' : 'text-violet-600 dark:text-violet-400',
                   )}
                 >
                   {percentCommitted.toFixed(1)}%
@@ -52,14 +65,13 @@ export default function ExpenseHealthCheckCard({
           </div>
 
           <div className="space-y-3 border-t border-border/60 pt-4">
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
-                <span className="text-xs font-medium">Total vencido</span>
-              </div>
+            <div className="rounded-lg border border-l-[3px] border-l-destructive/50 bg-destructive/5 px-2.5 py-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total vencido
+              </span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <p className="text-base font-medium text-destructive cursor-help">
+                  <p className="text-sm font-bold font-mono tabular-nums text-destructive mt-0.5 cursor-help">
                     {formatCurrency(totalOverdueAmount)}
                   </p>
                 </TooltipTrigger>
@@ -70,18 +82,17 @@ export default function ExpenseHealthCheckCard({
             </div>
 
             {largestExpense && (
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Receipt className="size-3.5 shrink-0" aria-hidden />
-                  <span className="text-xs font-medium">Mayor gasto</span>
-                </div>
+              <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Mayor gasto
+                </span>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="cursor-help">
+                    <div className="cursor-help mt-0.5">
                       <p className="text-sm font-medium truncate">
                         {largestExpense.description}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[9px] text-muted-foreground">
                         {largestExpense.category} ·{' '}
                         {formatCurrency(largestExpense.amount)}
                       </p>
