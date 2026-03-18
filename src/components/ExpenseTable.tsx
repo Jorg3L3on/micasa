@@ -75,7 +75,11 @@ export default function ExpenseTable({
   period,
 }: ExpenseTableProps) {
   const { context } = useFinanceContext();
+  const [dropdownMounted, setDropdownMounted] = useState(false);
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
+
+  // Defer DropdownMenu render until after hydration to avoid Radix useId mismatch
+  useEffect(() => setDropdownMounted(true), []);
   const [localExpenses, setLocalExpenses] = useState<TransactionRow[]>(expenses);
   const [editingExpense, setEditingExpense] = useState<TransactionRow | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -434,6 +438,21 @@ export default function ExpenseTable({
         cell: ({ row }) => {
           const expense = row.original;
           const isUpdating = updatingIds.has(expense.id);
+          if (!dropdownMounted) {
+            return (
+              <div className="flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={isUpdating}
+                  aria-hidden
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          }
           return (
             <div className="flex justify-center">
               <DropdownMenu>
@@ -485,6 +504,7 @@ export default function ExpenseTable({
       },
     ],
     [
+      dropdownMounted,
       updatingIds,
       handleEditAmount,
       handlePaidToggle,
