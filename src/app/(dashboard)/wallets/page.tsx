@@ -15,11 +15,10 @@ import {
   clientFetchFromApi,
   createWallet,
   updateWallet,
+  updateWalletStatus,
   deleteWallet,
 } from '@/lib/api';
 import {
-  BadgeCheck,
-  BookmarkIcon,
   Pencil,
   Trash2,
   WalletIcon,
@@ -28,9 +27,7 @@ import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
 } from '@/domain/payment-method';
-import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 
 export default function WalletsPage() {
@@ -41,6 +38,7 @@ export default function WalletsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = useState(false)
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(
     null,
   );
@@ -136,6 +134,23 @@ export default function WalletsPage() {
     }
   };
 
+  const handleUpdateStatus = async () => {
+    if (!selectedWallet) return
+    try {
+      setFormError(null)
+      await updateWalletStatus(selectedWallet.id, !selectedWallet.active);
+      toast.success('Estatus de Cartera actualizada')
+      await fetchWallets()
+      setUpdateStatusDialogOpen(false)
+      setSelectedWallet(null)
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Error al actualizar estatus de la cartera';
+      setFormError(message);
+      throw err;
+    }
+  }
+
   const openEditDialog = (wallet: WalletListItem) => {
     setSelectedWallet(wallet);
     setEditDialogOpen(true);
@@ -174,6 +189,27 @@ export default function WalletsPage() {
         cell: ({ row }) => formatCurrency(row.original.amount),
       },
       {
+        accessorKey: 'remaining_amount',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Monto restante" />
+        ),
+        cell: ({ row }) => {
+          const remaining = row.original.remaining_amount;
+          return (
+            <span
+              className={cn(
+                'font-medium',
+                remaining < 0 && 'text-destructive',
+                remaining >= 0 && remaining < row.original.amount * 0.2 && 'text-amber-600 dark:text-amber-400',
+                remaining >= row.original.amount * 0.2 && 'text-green-700 dark:text-green-400',
+              )}
+            >
+              {formatCurrency(remaining)}
+            </span>
+          );
+        },
+      },
+      {
         accessorKey: 'type',
         header: 'Tipo',
         cell: ({ row }) =>
@@ -182,18 +218,18 @@ export default function WalletsPage() {
       {
         accessorKey: 'active',
         header: 'Estado',
-        cell: ({ row }) =>
-          row.original.active ? (
-            <Badge variant="secondary">
-              <BadgeCheck data-icon="inline-start" />
-              Activo
-            </Badge>
-          ) : (
-            <Badge variant="outline">
-              <BookmarkIcon data-icon="inline-end" />
-              Inactivo
-            </Badge>
-          ),
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              'inline-flex px-2 py-0.5 text-xs font-medium rounded-full',
+              row.original.active
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+            )}
+          >
+            {row.original.active ? 'Activo' : 'Inactivo'}
+          </span>
+        ),
       },
       {
         id: 'actions',
@@ -311,6 +347,21 @@ export default function WalletsPage() {
             onConfirm={handleDelete}
             title="Eliminar billetera"
             description="¿Estás seguro de querer eliminar esta billetera? Esta acción no puede deshacerse."
+            itemName={selectedWallet.name}
+          />
+
+          <ConfirmDeleteDialog
+            open={updateStatusDialogOpen}
+            onOpenChange={(open) => {
+              setUpdateStatusDialogOpen(open)
+              if (!open) {
+                setSelectedWallet(null)
+                setError(null)
+              }
+            }}
+            onConfirm={handleUpdateStatus}
+            title="Actualizar Estatus de cartera"
+            description="¿Estás seguro de querer actualizar esta cartera?"
             itemName={selectedWallet.name}
           />
         </>

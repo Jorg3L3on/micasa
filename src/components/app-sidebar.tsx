@@ -7,6 +7,7 @@ import {
   Receipt,
   Calendar,
   Home,
+  PiggyBank,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -85,6 +86,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: getCurrentMonthHref(),
       icon: Calendar,
       isActive: pathname.startsWith('/monthly/'),
+    },
+    {
+      title: 'Presupuestos',
+      url: '/budgets',
+      icon: PiggyBank,
+      isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
     },
     {
       title: 'Operaciones',

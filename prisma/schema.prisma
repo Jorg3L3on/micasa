@@ -33,6 +33,13 @@ enum TransferType {
   USER_TO_HOUSE
 }
 
+enum BudgetFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  CUSTOM
+}
+
 model User {
   id       Int     @id @default(autoincrement())
   name     String
@@ -51,6 +58,7 @@ model User {
   incomeTemplates  IncomeTemplate[]
   wallets          Wallet[]
   categories       Category[]
+  budgets          Budget[]
 
   // Shared
   memberships HouseMember[]
@@ -99,8 +107,9 @@ model Category {
   // Relationships
   user             User?    @relation(fields: [user_id], references: [id])
   house            House?   @relation(fields: [house_id], references: [id])
-  expenses         Expense[]
-  expense_templates ExpenseTemplate[]
+  expenses           Expense[]
+  expense_templates  ExpenseTemplate[]
+  budget_allocations BudgetAllocation[]
 
   @@index([user_id])
   @@index([house_id])
@@ -236,6 +245,7 @@ model House {
   incomes          Income[]
   incomeTemplates  IncomeTemplate[]
   categories       Category[]
+  budgets          Budget[]
 }
 
 model HouseMember {
@@ -270,11 +280,54 @@ model Wallet {
   user  User?  @relation(fields: [user_id], references: [id])
   house House? @relation(fields: [house_id], references: [id])
 
-  expenses          Expense[]
-  expense_templates ExpenseTemplate[]
+  expenses           Expense[]
+  expense_templates  ExpenseTemplate[]
+  budget_allocations BudgetAllocation[]
 
   @@index([user_id])
   @@index([house_id])
+}
+
+model Budget {
+  id           Int             @id @default(autoincrement())
+  name         String          @db.VarChar(25)
+  total_amount Decimal         @db.Decimal(10, 2)
+  frequency    BudgetFrequency
+  start_date   DateTime?
+  end_date     DateTime?
+  active       Boolean         @default(true)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  user        User?              @relation(fields: [user_id], references: [id])
+  house       House?             @relation(fields: [house_id], references: [id])
+  allocations BudgetAllocation[]
+
+  @@index([user_id])
+  @@index([house_id])
+}
+
+model BudgetAllocation {
+  id          Int     @id @default(autoincrement())
+  budget_id   Int
+  wallet_id   Int
+  category_id Int
+  amount      Decimal @db.Decimal(10, 2)
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  budget   Budget   @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+  wallet   Wallet   @relation(fields: [wallet_id], references: [id])
+  category Category @relation(fields: [category_id], references: [id])
+
+  @@index([budget_id])
+  @@index([wallet_id])
+  @@index([category_id])
 }
 
 /**
