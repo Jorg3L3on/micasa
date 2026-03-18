@@ -33,25 +33,33 @@ enum TransferType {
   USER_TO_HOUSE
 }
 
+enum BudgetFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  CUSTOM
+}
+
 model User {
-  id       Int     @id @default(autoincrement())
-  name     String
-  email    String  @unique
-  password String
-  active   Boolean @default(true)
+  id                   Int     @id @default(autoincrement())
+  name                 String
+  email                String  @unique
+  password             String
+  active               Boolean @default(true)
   onboarding_completed Boolean @default(false)
 
   created_at DateTime @default(now())
 
   // Personal finance
-  fortnights       Fortnight[]
-  incomes          Income[]
-  expenses         Expense[]
-  expenseTemplates ExpenseTemplate[]
-  incomeTemplates  IncomeTemplate[]
-  wallets          Wallet[]
-  categories       Category[]
+  fortnights         Fortnight[]
+  incomes            Income[]
+  expenses           Expense[]
+  expenseTemplates   ExpenseTemplate[]
+  incomeTemplates    IncomeTemplate[]
+  wallets            Wallet[]
+  categories         Category[]
   creditCardPayments CreditCardPayment[]
+  budgets            Budget[]
 
   // Shared
   memberships HouseMember[]
@@ -81,10 +89,10 @@ model Fortnight {
   expenses Expense[]
   incomes  Income[]
 
-  @@index([user_id])
-  @@index([house_id])
   @@unique([user_id, month, year, period])
   @@unique([house_id, month, year, period])
+  @@index([user_id])
+  @@index([house_id])
 }
 
 model Category {
@@ -98,10 +106,11 @@ model Category {
   created_at DateTime @default(now())
 
   // Relationships
-  user             User?    @relation(fields: [user_id], references: [id])
-  house            House?   @relation(fields: [house_id], references: [id])
-  expenses         Expense[]
-  expense_templates ExpenseTemplate[]
+  user               User?              @relation(fields: [user_id], references: [id])
+  house              House?             @relation(fields: [house_id], references: [id])
+  expenses           Expense[]
+  expense_templates  ExpenseTemplate[]
+  budget_allocations BudgetAllocation[]
 
   @@index([user_id])
   @@index([house_id])
@@ -237,7 +246,9 @@ model House {
   incomes          Income[]
   incomeTemplates  IncomeTemplate[]
   categories       Category[]
+
   creditCardPayments CreditCardPayment[]
+  budgets            Budget[]
 }
 
 model HouseMember {
@@ -254,12 +265,12 @@ model HouseMember {
 }
 
 model Wallet {
-  id          Int               @id @default(autoincrement())
-  name        String
-  description String?
-  amount      Decimal           @default(0) @db.Decimal(10, 2)
-  credit_limit Decimal?         @db.Decimal(10, 2)
-  type        PaymentMethodType
+  id               Int               @id @default(autoincrement())
+  name             String
+  description      String?
+  amount           Decimal           @default(0) @db.Decimal(10, 2)
+  credit_limit     Decimal?          @db.Decimal(10, 2)
+  type             PaymentMethodType
   cutoff_day       Int?
   due_day          Int?
   active           Boolean           @default(true)
@@ -274,15 +285,58 @@ model Wallet {
   user  User?  @relation(fields: [user_id], references: [id])
   house House? @relation(fields: [house_id], references: [id])
 
-  expenses          Expense[]
-  expense_templates ExpenseTemplate[]
+  expenses             Expense[]
+  expense_templates    ExpenseTemplate[]
   credit_card_payments CreditCardPayment[] @relation("CreditCardWalletPayments")
   source_card_payments CreditCardPayment[] @relation("CreditCardSourceWalletPayments")
+  budgetAllocations    BudgetAllocation[]
 
   @@index([user_id])
   @@index([house_id])
   @@index([user_id, type, active])
   @@index([house_id, type, active])
+}
+
+model Budget {
+  id           Int             @id @default(autoincrement())
+  name         String          @db.VarChar(25)
+  total_amount Decimal         @db.Decimal(10, 2)
+  frequency    BudgetFrequency
+  start_date   DateTime?
+  end_date     DateTime?
+  active       Boolean         @default(true)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  user        User?              @relation(fields: [user_id], references: [id])
+  house       House?             @relation(fields: [house_id], references: [id])
+  allocations BudgetAllocation[]
+
+  @@index([user_id])
+  @@index([house_id])
+}
+
+model BudgetAllocation {
+  id          Int     @id @default(autoincrement())
+  budget_id   Int
+  wallet_id   Int
+  category_id Int
+  amount      Decimal @db.Decimal(10, 2)
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  budget   Budget   @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+  wallet   Wallet   @relation(fields: [wallet_id], references: [id])
+  category Category @relation(fields: [category_id], references: [id])
+
+  @@index([budget_id])
+  @@index([wallet_id])
+  @@index([category_id])
 }
 
 /**
@@ -306,7 +360,7 @@ model Transfer {
   house_income_id Int? @unique
 
   user_expense Expense? @relation("TransferUserExpense", fields: [user_expense_id], references: [id])
-  house_income  Income?  @relation("TransferHouseIncome", fields: [house_income_id], references: [id])
+  house_income Income?  @relation("TransferHouseIncome", fields: [house_income_id], references: [id])
 
   user  User  @relation(fields: [user_id], references: [id])
   house House @relation(fields: [house_id], references: [id])
