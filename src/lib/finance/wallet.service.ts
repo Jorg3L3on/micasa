@@ -31,12 +31,35 @@ export async function listWallets(userId: number) {
 }
 
 export async function listWalletsByOwner(ownerFilter: OwnerFilter) {
-  return prisma.wallet.findMany({
+  const wallets = await prisma.wallet.findMany({
     where: ownerFilter,
     orderBy: [
       { active: 'desc' },
       { name: 'asc' },
     ],
+  });
+
+  const walletIds = wallets.map((w) => w.id);
+  const expenseSums = await prisma.expense.groupBy({
+    by: ['wallet_id'],
+    where: {
+      wallet_id: { in: walletIds },
+      is_paid: false,
+    },
+    _sum: { amount: true },
+  });
+
+  const spentMap = new Map(
+    expenseSums.map((e) => [e.wallet_id, Number(e._sum.amount ?? 0)]),
+  );
+
+  return wallets.map((w) => {
+    const spent = spentMap.get(w.id) ?? 0;
+    return {
+      ...w,
+      spent_amount: spent,
+      remaining_amount: Number(w.amount) - spent,
+    };
   });
 }
 

@@ -3,6 +3,7 @@
 import type { FinanceContextType } from '@/types/finance-context';
 import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
 import { WalletFormValues } from '@/schemas/wallet.schema';
+import type { CreateBudgetInput, AllocationInput } from '@/schemas/budget.schema';
 
 /**
  * Builds URLSearchParams for owner context (ownerType, ownerId).
@@ -341,8 +342,16 @@ export async function updateWallet(
 ) {
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data }),
   }, context);
+}
+
+/** Update Wallet Status */
+export async function updateWalletStatus(id: number, status: boolean) {
+  return clientFetchFromApi(`/api/wallets?id=${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active: status }),
+  })
 }
 
 /** Delete Wallet **/
@@ -352,6 +361,37 @@ export async function deleteWallet(
 ) {
   return clientFetchFromApi(`/api/wallets?id=${id}`, {
     method: 'DELETE',
+  }, context);
+}
+
+// Budget helpers
+export async function createBudget(
+  data: CreateBudgetInput,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi('/api/budgets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, context);
+}
+
+export async function deleteBudget(
+  id: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/budgets/${id}`, {
+    method: 'DELETE',
+  }, context);
+}
+
+export async function updateBudgetAllocations(
+  id: number,
+  allocations: AllocationInput[],
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/budgets/${id}/allocations`, {
+    method: 'PUT',
+    body: JSON.stringify({ allocations }),
   }, context);
 }
 

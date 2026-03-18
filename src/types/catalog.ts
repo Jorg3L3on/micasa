@@ -67,6 +67,28 @@ export type IncomeTemplateListItem = {
   userName: string | null;
 };
 
+export type BudgetAllocationItem = {
+  id: number;
+  wallet_id: number;
+  wallet_name: string;
+  category_id: number;
+  category_name: string;
+  amount: number;
+};
+
+export type BudgetListItem = {
+  id: number;
+  name: string;
+  allocated_amount: number;
+  remaining_amount: number;
+  spent_amount: number;
+  frequency: string;
+  start_date: string | null;
+  end_date: string | null;
+  active: boolean;
+  allocations: BudgetAllocationItem[];
+};
+
 export type WalletListItem = {
   id: number;
   name: string;
@@ -75,4 +97,6 @@ export type WalletListItem = {
   active: boolean;
   cutoff_day: number | null;
   due_day: number | null;
+  spent_amount: number;
+  remaining_amount: number;
 };

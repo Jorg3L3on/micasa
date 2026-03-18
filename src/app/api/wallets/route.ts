@@ -179,3 +179,49 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
+    const { searchParams } = new URL(request.url);
+    const idParam = searchParams.get('id');
+    if (!idParam || isNaN(Number(idParam))) {
+      return NextResponse.json(
+        { error: 'Valid id parameter is required' },
+        { status: 400 },
+      );
+    }
+    const id = Number(idParam);
+
+
+    const body = await request.json();
+    const parsedData = updateWalletSchema.parse(body);
+
+    const wallet = await updateWalletMetadataForOwner(id, parsedData, ownerFilter);
+
+    return NextResponse.json(wallet, { status: 200 });
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Wallet not found' },
+        { status: 404 }
+      )
+    }
+
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Cannot delete Wallet with related records' },
+        { status: 409 }
+      )
+    }
+
+    console.error('Error deleting Wallet:', error)
+    return NextResponse.json(
+      { error: 'Failed to update Wallet' },
+      { status: 500 }
+    )
+  }
+}
