@@ -214,156 +214,160 @@ export default function SummaryBlock({
           )}
         </div>
 
-        {/* Three metric cards */}
-        <div className="grid grid-cols-3 gap-2">
-          {/* Ingresos */}
-          <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
-            <div className="flex items-center justify-between gap-1 mb-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
-                  <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                </span>
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Ingresos
-                </span>
-              </div>
-              {onEditIncome && incomeItems.length === 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 shrink-0 opacity-60 hover:opacity-100"
-                  onClick={onEditIncome}
-                  aria-label="Modificar ingresos de la quincena"
-                  tabIndex={0}
-                >
-                  <Pencil className="h-2.5 w-2.5" />
-                </Button>
-              )}
-            </div>
-            <p className="text-sm font-bold font-mono tabular-nums leading-tight">
-              {formatCurrency(tenemos)}
-            </p>
-            {(hasUserIncome || incomeItems.length > 0) && (
-              <p className="text-[9px] text-muted-foreground mt-0.5">
-                {incomeItems.length > 0
-                  ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
-                  : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
-              </p>
-            )}
-          </div>
-
-          {/* Pagado */}
-          <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-green-500/50 bg-green-500/5 dark:bg-green-500/8 px-2.5 py-2">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15 shrink-0">
-                <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
-              </span>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Pagado
-              </span>
-            </div>
-            <p className="text-sm font-bold font-mono tabular-nums leading-tight">
-              {formatCurrency(pagado)}
-            </p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">
-              {expenseCount > 0
-                ? `${paidExpenseCount} de ${expenseCount} gastos`
-                : '—'}
-            </p>
-          </div>
-
-          {/* Pendiente */}
-          <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-2.5 py-2">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
-                <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-              </span>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Pendiente
-              </span>
-            </div>
-            <p className="text-sm font-bold font-mono tabular-nums leading-tight">
-              {formatCurrency(pendiente)}
-            </p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">
-              {expenseCount > 0
-                ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
-                : '—'}
-            </p>
-          </div>
-        </div>
-
-        {/* Expandable income breakdown */}
-        {isExpanded && (incomeItems.length > 0 || hasUserIncome) && (
+        {isExpanded && (
           <>
-            <Separator className="my-1" />
-            <div className="space-y-2">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Desglose de ingresos
-              </h4>
-              {incomeItems.length > 0 ? (
-                <div className="space-y-1">
-                  {incomeItems.map((item) => {
-                    const label =
-                      item.source === '__OVERRIDE__'
-                        ? 'Ingreso manual'
-                        : item.templateName || item.source || 'Ingreso';
-                    const displayLabel = item.userName
-                      ? `${item.userName}: ${label}`
-                      : label;
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex justify-between items-center gap-2 group rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40"
-                      >
-                        <span className="text-xs text-muted-foreground truncate min-w-0">
-                          {displayLabel}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-xs font-semibold font-mono tabular-nums">
-                            {formatCurrency(item.amount)}
-                          </span>
-                          {onEditIncomeSource && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() =>
-                                onEditIncomeSource(item.id, item.amount)
-                              }
-                              aria-label={`Modificar ${displayLabel}`}
-                              tabIndex={0}
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* Three metric cards */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Ingresos */}
+              <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
+                      <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Ingresos
+                    </span>
+                  </div>
+                  {onEditIncome && incomeItems.length === 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 shrink-0 opacity-60 hover:opacity-100"
+                      onClick={onEditIncome}
+                      aria-label="Modificar ingresos de la quincena"
+                      tabIndex={0}
+                    >
+                      <Pencil className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-1">
-                  {userIncome?.map((periodIncome) => (
-                    <div key={periodIncome.fortnightId} className="space-y-1">
-                      {periodIncome.userIncome.map((userInc) => (
-                        <div
-                          key={userInc.userId}
-                          className="flex justify-between items-center gap-2 rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40"
-                        >
-                          <span className="text-xs text-muted-foreground truncate">
-                            {userInc.userName}
-                          </span>
-                          <span className="text-xs font-semibold font-mono tabular-nums shrink-0">
-                            {formatCurrency(userInc.income)}
-                          </span>
+                <p className="text-sm font-bold font-mono tabular-nums leading-tight">
+                  {formatCurrency(tenemos)}
+                </p>
+                {(hasUserIncome || incomeItems.length > 0) && (
+                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                    {incomeItems.length > 0
+                      ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
+                      : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
+                  </p>
+                )}
+              </div>
+
+              {/* Pagado */}
+              <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-green-500/50 bg-green-500/5 dark:bg-green-500/8 px-2.5 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15 shrink-0">
+                    <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Pagado
+                  </span>
+                </div>
+                <p className="text-sm font-bold font-mono tabular-nums leading-tight">
+                  {formatCurrency(pagado)}
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">
+                  {expenseCount > 0
+                    ? `${paidExpenseCount} de ${expenseCount} gastos`
+                    : '—'}
+                </p>
+              </div>
+
+              {/* Pendiente */}
+              <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-2.5 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
+                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Pendiente
+                  </span>
+                </div>
+                <p className="text-sm font-bold font-mono tabular-nums leading-tight">
+                  {formatCurrency(pendiente)}
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">
+                  {expenseCount > 0
+                    ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
+                    : '—'}
+                </p>
+              </div>
+            </div>
+
+            {/* Income breakdown */}
+            {(incomeItems.length > 0 || hasUserIncome) && (
+              <>
+                <Separator className="my-1" />
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Desglose de ingresos
+                  </h4>
+                  {incomeItems.length > 0 ? (
+                    <div className="space-y-1">
+                      {incomeItems.map((item) => {
+                        const label =
+                          item.source === '__OVERRIDE__'
+                            ? 'Ingreso manual'
+                            : item.templateName || item.source || 'Ingreso';
+                        const displayLabel = item.userName
+                          ? `${item.userName}: ${label}`
+                          : label;
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex justify-between items-center gap-2 group rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40"
+                          >
+                            <span className="text-xs text-muted-foreground truncate min-w-0">
+                              {displayLabel}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-xs font-semibold font-mono tabular-nums">
+                                {formatCurrency(item.amount)}
+                              </span>
+                              {onEditIncomeSource && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() =>
+                                    onEditIncomeSource(item.id, item.amount)
+                                  }
+                                  aria-label={`Modificar ${displayLabel}`}
+                                  tabIndex={0}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {userIncome?.map((periodIncome) => (
+                        <div key={periodIncome.fortnightId} className="space-y-1">
+                          {periodIncome.userIncome.map((userInc) => (
+                            <div
+                              key={userInc.userId}
+                              className="flex justify-between items-center gap-2 rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40"
+                            >
+                              <span className="text-xs text-muted-foreground truncate">
+                                {userInc.userName}
+                              </span>
+                              <span className="text-xs font-semibold font-mono tabular-nums shrink-0">
+                                {formatCurrency(userInc.income)}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </>
         )}
       </CardContent>

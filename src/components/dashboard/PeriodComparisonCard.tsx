@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowDownRight, ArrowUpRight, TrendingDown } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS } from './constants';
@@ -24,32 +24,33 @@ export default function PeriodComparisonCard({
   const expenseDown = expenseDiff <= 0;
 
   return (
-    <Card className={DASHBOARD_CARD_CLASS}>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Comparación de periodos">
       <CardHeader>
-        <CardTitle className="text-base font-medium">
-          Comparación de periodos
-        </CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
+            <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Comparación de periodos
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex flex-col items-center gap-1 pt-2 pb-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            {incomeUp ? (
-              <ArrowUpRight
-                className="size-3.5 shrink-0 text-chart-4"
-                aria-hidden
-              />
-            ) : (
-              <ArrowDownRight
-                className="size-3.5 shrink-0 text-destructive"
-                aria-hidden
-              />
-            )}
-            <span className="text-xs font-medium">Ingresos vs anterior</span>
-          </div>
+        <div
+          className={cn(
+            'rounded-lg border px-2.5 py-2',
+            incomeUp
+              ? 'border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8'
+              : 'border-l-[3px] border-l-destructive/50 bg-destructive/5',
+          )}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Ingresos vs anterior
+          </span>
           <p
             className={cn(
-              'text-2xl font-semibold tracking-tight',
-              incomeUp ? 'text-chart-4' : 'text-destructive',
+              'text-2xl font-bold font-mono tabular-nums mt-0.5',
+              incomeUp ? 'text-blue-600 dark:text-blue-400' : 'text-destructive',
             )}
           >
             {incomeDiff >= 0 ? '+' : ''}
@@ -58,33 +59,39 @@ export default function PeriodComparisonCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <span className="text-xs font-medium">Ingresos actual</span>
-            </div>
-            <p className="text-base font-medium text-chart-4 tabular-nums">
+          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Ingresos actual
+            </span>
+            <p className="text-sm font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400 mt-0.5">
               {formatCurrency(currentIncome)}
             </p>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <span className="text-xs font-medium">Gastos actual</span>
-            </div>
-            <p className="text-base font-medium text-destructive tabular-nums">
+          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Gastos actual
+            </span>
+            <p className="text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400 mt-0.5">
               {formatCurrency(currentExpense)}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1 border-t border-border/60 pt-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <TrendingDown className="size-3.5 shrink-0" aria-hidden />
-            <span className="text-xs font-medium">Gastos vs anterior</span>
-          </div>
+        <div
+          className={cn(
+            'rounded-lg border px-2.5 py-2',
+            expenseDown
+              ? 'border-l-[3px] border-l-green-500/50 bg-green-500/5 dark:bg-green-500/8'
+              : 'border-l-[3px] border-l-destructive/50 bg-destructive/5',
+          )}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Gastos vs anterior
+          </span>
           <p
             className={cn(
-              'text-base font-medium',
-              expenseDown ? 'text-chart-4' : 'text-destructive',
+              'text-sm font-bold font-mono tabular-nums mt-0.5',
+              expenseDown ? 'text-green-600 dark:text-green-400' : 'text-destructive',
             )}
           >
             {expenseDiff >= 0 ? '+' : ''}
@@ -93,7 +100,7 @@ export default function PeriodComparisonCard({
         </div>
 
         <p
-          className="text-xs text-muted-foreground border-t border-border/60 pt-3"
+          className="text-[9px] text-muted-foreground border-t border-border/60 pt-3"
           aria-label="Periodo anterior"
         >
           Anterior: Ingresos {formatCurrency(previousIncome)}, Gastos{' '}

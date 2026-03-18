@@ -2,12 +2,13 @@ import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import FortnightColumn from '@/components/FortnightColumn'
-import WalletBalanceStrip from '@/components/WalletBalanceStrip'
+import WalletBalanceStrip from '../../../../../components/WalletBalanceStrip'
+import DuePaymentsBanner from '@/components/DuePaymentsBanner'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { WalletListItem } from '@/types/catalog'
+import type { WalletListItem, DuePaymentItem } from '@/types/catalog'
 
 type Transaction = {
   id: number
@@ -128,9 +129,30 @@ async function getSummary(
 async function getWallets(ownerContext?: OwnerContext): Promise<WalletListItem[]> {
   try {
     const wallets = await fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext)
-    return wallets.filter((w) => w.active)
+    return wallets
+      .filter((w) => w.active)
+      .map((w) => {
+        if (w.type === 'CREDIT_CARD' || w.type === 'DEPARTMENT_STORE_CARD') {
+          const creditLimit = w.credit_limit ?? 0
+          const available = creditLimit - w.amount
+          return {
+            ...w,
+            amount: available,
+          }
+        }
+        return w
+      })
   } catch (error) {
     console.error('Error fetching wallets:', error)
+    return []
+  }
+}
+
+async function getDuePayments(ownerContext?: OwnerContext): Promise<DuePaymentItem[]> {
+  try {
+    return await fetchFromApi<DuePaymentItem[]>('/api/wallets/due-payments', ownerContext)
+  } catch (error) {
+    console.error('Error fetching due payments:', error)
     return []
   }
 }
@@ -172,6 +194,11 @@ export default async function MonthlyPage({
   const prevHref = `/monthly/${prevYear}/${prevMonthStr}${ownerQuery}`
   const nextHref = `/monthly/${nextYear}/${nextMonthStr}${ownerQuery}`
 
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  const isCurrentMonth = year === currentYear && month === currentMonth
+
   const [
     firstFortnightInfo,
     secondFortnightInfo,
@@ -184,6 +211,7 @@ export default async function MonthlyPage({
     nextFirstInfo,
     nextSecondInfo,
     wallets,
+    duePayments,
   ] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
     getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
@@ -196,6 +224,7 @@ export default async function MonthlyPage({
     getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST', ownerContext),
     getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND', ownerContext),
     getWallets(ownerContext),
+    isCurrentMonth ? getDuePayments(ownerContext) : Promise.resolve([] as DuePaymentItem[]),
   ])
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null
@@ -204,9 +233,6 @@ export default async function MonthlyPage({
   const prevMonthLabel = `${getMonthName(prevMonth)} ${prevYear}`
   const nextMonthLabel = `${getMonthName(nextMonth)} ${nextYear}`
 
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null
   const canCreateNextMonth =
     !hasNextMonth &&
@@ -223,6 +249,22 @@ export default async function MonthlyPage({
     ? `${ownerContext.ownerType}-${ownerContext.ownerId}`
     : 'user-default'
 
+  const dueWalletIds = duePayments.map((dp) => dp.walletId)
+  const currentDay = now.getDate()
+  const isFirstFortnight = currentDay <= 15
+  const paidWalletIds = isCurrentMonth
+    ? wallets
+        .filter((w) => {
+          if (w.type !== 'CREDIT_CARD' && w.type !== 'DEPARTMENT_STORE_CARD') return false
+          if (w.due_day == null) return false
+          const dueInFortnight = isFirstFortnight
+            ? w.due_day >= 1 && w.due_day <= 15
+            : w.due_day >= 16
+          return dueInFortnight && !dueWalletIds.includes(w.id)
+        })
+        .map((w) => w.id)
+    : []
+
   return (
     <>
       <div className="mb-4 flex items-center gap-2">
@@ -235,7 +277,7 @@ export default async function MonthlyPage({
           prevMonthLabel={prevMonthLabel}
         />
 
-        <WalletBalanceStrip wallets={wallets} />
+        <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
 
         <div className="shrink-0">
           {hasNextMonth ? (
@@ -264,6 +306,12 @@ export default async function MonthlyPage({
           )}
         </div>
       </div>
+
+      {isCurrentMonth && duePayments.length > 0 && (
+        <div className="mb-4">
+          <DuePaymentsBanner duePayments={duePayments} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <FortnightColumn
