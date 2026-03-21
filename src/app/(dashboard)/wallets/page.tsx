@@ -27,6 +27,7 @@ import {
   CreditCard,
   Eye,
   Landmark,
+  LineChart,
   Pencil,
   Store,
   Trash2,
@@ -381,9 +382,15 @@ export default function WalletsPage() {
   return (
     <>
       <div
-        className="sticky top-20 z-20 mb-4 flex justify-end bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
+        className="sticky top-20 z-20 mb-4 flex flex-wrap items-center justify-end gap-2 bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
         aria-label="Acciones de billeteras"
       >
+        <Button variant="outline" asChild>
+          <Link href="/wallets/liquidity" aria-label="Ver proyección de liquidez">
+            <LineChart className="h-4 w-4" />
+            Proyección de liquidez
+          </Link>
+        </Button>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <WalletIcon />
           Agregar billetera o tarjeta

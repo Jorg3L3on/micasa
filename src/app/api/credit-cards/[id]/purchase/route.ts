@@ -4,11 +4,19 @@ import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { createCreditCardPurchaseSchema } from '@/schemas/credit-card.schema';
 import { createCreditCardPurchase } from '@/lib/finance/credit-card.service';
+import { logFinanceEvent } from '@/lib/observability/finance-log';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let purchaseLogContext: {
+    owner_type: string;
+    owner_id: number;
+    credit_card_wallet_id: number;
+    amount: number;
+  } | null = null;
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
@@ -18,7 +26,7 @@ export async function POST(
 
     if (!id || Number.isNaN(creditCardId)) {
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
+        { error: 'Se requiere un id válido' },
         { status: 400 },
       );
     }
@@ -38,12 +46,19 @@ export async function POST(
     ]);
 
     if (!fortnight) {
-      return NextResponse.json({ error: 'Fortnight not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Quincena no encontrada' }, { status: 404 });
     }
 
     if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 });
     }
+
+    purchaseLogContext = {
+      owner_type: context.ownerType,
+      owner_id: context.ownerId,
+      credit_card_wallet_id: creditCardId,
+      amount: validatedData.amount,
+    };
 
     const purchase = await createCreditCardPurchase(
       creditCardId,
@@ -51,11 +66,24 @@ export async function POST(
       validatedData,
     );
 
+    logFinanceEvent(
+      'info',
+      'credit_card.purchase.created',
+      {
+        credit_card_wallet_id: creditCardId,
+        expense_id: purchase.id,
+        amount: Number(purchase.amount),
+        owner_type: context.ownerType,
+        owner_id: context.ownerId,
+      },
+      request,
+    );
+
     return NextResponse.json(purchase, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
@@ -66,7 +94,7 @@ export async function POST(
       'code' in error &&
       error.code === 'P2025'
     ) {
-      return NextResponse.json({ error: 'Credit card not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
     }
 
     if (
@@ -76,10 +104,25 @@ export async function POST(
       (error.code === 'CREDIT_LIMIT_EXCEEDED' ||
         error.code === 'INSUFFICIENT_WALLET_BALANCE')
     ) {
+      if (purchaseLogContext) {
+        logFinanceEvent(
+          'warn',
+          'finance.api.client_error',
+          {
+            route: 'POST /api/credit-cards/[id]/purchase',
+            error_code:
+              error.code === 'CREDIT_LIMIT_EXCEEDED'
+                ? 'CREDIT_LIMIT_EXCEEDED'
+                : 'INSUFFICIENT_WALLET_BALANCE',
+            ...purchaseLogContext,
+          },
+          request,
+        );
+      }
       return NextResponse.json(
         {
           error:
-            error instanceof Error ? error.message : 'Invalid purchase',
+            error instanceof Error ? error.message : 'Compra no válida',
         },
         { status: 400 },
       );
@@ -87,7 +130,7 @@ export async function POST(
 
     console.error('Error creating credit card purchase:', error);
     return NextResponse.json(
-      { error: 'Failed to create credit card purchase' },
+      { error: 'No se pudo registrar la compra' },
       { status: 500 },
     );
   }

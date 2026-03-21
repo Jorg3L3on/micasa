@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching credit cards:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch credit cards' },
+      { error: 'No se pudieron cargar las tarjetas' },
       { status: 500 },
     );
   }
@@ -43,14 +43,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
 
     console.error('Error creating credit card:', error);
     return NextResponse.json(
-      { error: 'Failed to create credit card' },
+      { error: 'No se pudo crear la tarjeta' },
       { status: 500 },
     );
   }

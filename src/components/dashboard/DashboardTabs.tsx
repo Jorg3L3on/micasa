@@ -14,6 +14,7 @@ import {
   FixedVsVariableCard,
   QuickActionsCard,
   PeriodComparisonCard,
+  LiquidityTeaserCard,
 } from './index';
 import { DASHBOARD_GRID_CLASS } from './constants';
 
@@ -70,6 +71,7 @@ export default function DashboardTabs({
       </TabsList>
 
       <TabsContent value="resumen" className="mt-0 space-y-6">
+        <LiquidityTeaserCard />
         <div className={DASHBOARD_GRID_CLASS}>
           <QuickActionsCard compact period={data.period} />
           <CurrentPeriodSummaryCard data={data} />

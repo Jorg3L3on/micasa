@@ -84,7 +84,7 @@ export async function getCreditCardByOwner(
   });
 
   if (!wallet) {
-    const error = new Error('Credit card not found');
+    const error = new Error('Tarjeta no encontrada');
     (error as { code?: string }).code = 'P2025';
     throw error;
   }
@@ -109,7 +109,7 @@ export async function updateCreditCardForOwner(
   const wallet = await updateWalletMetadataForOwner(id, data, ownerFilter);
 
   if (!isCreditWalletType(wallet.type)) {
-    const error = new Error('Wallet is not a credit card');
+    const error = new Error('La billetera no es una tarjeta de crédito');
     (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
     throw error;
   }
@@ -132,7 +132,7 @@ export async function createCreditCardPurchase(
   });
 
   if (!wallet) {
-    const error = new Error('Credit card not found');
+    const error = new Error('Tarjeta no encontrada');
     (error as { code?: string }).code = 'P2025';
     throw error;
   }
@@ -181,13 +181,13 @@ export async function createCreditCardPayment(
     ]);
 
     if (!creditCardWallet) {
-      const error = new Error('Credit card not found');
+      const error = new Error('Tarjeta no encontrada');
       (error as { code?: string }).code = 'P2025';
       throw error;
     }
 
     if (!sourceWallet) {
-      const error = new Error('Wallet not found');
+      const error = new Error('Billetera de origen no encontrada');
       (error as { code?: string }).code = 'WALLET_NOT_FOUND';
       throw error;
     }
@@ -196,7 +196,9 @@ export async function createCreditCardPayment(
     ensureFundingWalletType(sourceWallet);
 
     if (creditCardWallet.id === sourceWallet.id) {
-      const error = new Error('Source wallet must be different from the credit card');
+      const error = new Error(
+        'La billetera de origen debe ser distinta de la tarjeta',
+      );
       (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_WALLET';
       throw error;
     }
@@ -205,21 +207,25 @@ export async function createCreditCardPayment(
       creditCardWallet.user_id !== sourceWallet.user_id ||
       creditCardWallet.house_id !== sourceWallet.house_id
     ) {
-      const error = new Error('Payment source must belong to the same owner');
+      const error = new Error(
+        'La billetera de origen debe pertenecer al mismo titular',
+      );
       (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_OWNER';
       throw error;
     }
 
     const currentDebt = toWalletAmountNumber(creditCardWallet);
     if (input.amount > currentDebt) {
-      const error = new Error('Payment amount cannot exceed current card debt');
+      const error = new Error(
+        'El monto del pago no puede superar la deuda actual de la tarjeta',
+      );
       (error as { code?: string }).code = 'INVALID_PAYMENT_AMOUNT';
       throw error;
     }
 
     const sourceBalance = toWalletAmountNumber(sourceWallet);
     if (sourceBalance < input.amount) {
-      const error = new Error('Insufficient balance in source wallet');
+      const error = new Error('Saldo insuficiente en la billetera de origen');
       (error as { code?: string }).code = 'INSUFFICIENT_SOURCE_BALANCE';
       throw error;
     }
@@ -278,7 +284,7 @@ export async function listCreditCardPaymentsByOwner(
   });
 
   if (!wallet) {
-    const error = new Error('Credit card not found');
+    const error = new Error('Tarjeta no encontrada');
     (error as { code?: string }).code = 'P2025';
     throw error;
   }

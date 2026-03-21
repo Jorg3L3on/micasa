@@ -241,6 +241,13 @@ Location: `src/lib/finance/`.
 
 ---
 
+### liquidity-projection.service.ts & credit-card-statement.service.ts
+
+- **credit-card-statement.service.ts:** `resolveCreditCardStatementWindow`, `getCreditCardStatementByOwner`, `getDuePaymentsForCurrentFortnight`, and `getStatementObligationBreakdownByWallet` (misma fórmula que `next_due_payment` en el estado).
+- **liquidity-projection.service.ts:** `getLiquidityProjection` cruza saldos **CASH** / **DEBIT_CARD** con obligaciones por `until` (UTC): tarjetas vía `loadCreditCardActivityLedger` + `computeObligationBreakdownFromLedger` (2 queries por proyección), opcionalmente gastos impagos en funding, plantillas sin gasto en quincenas existentes, y escenario de estrés (% sobre ciclo cuando el estado cerrado va en $0). CSV: `liquidity-projection-csv.ts`.
+
+---
+
 ## 3. Finance-related API routes
 
 | Route | Method | Service / behaviour | Models affected | Wallet balance effects |
@@ -260,6 +267,8 @@ Location: `src/lib/finance/`.
 | **/api/wallets** | POST | createWalletForDefaultUser | Wallet | Initial amount on create only |
 | **/api/wallets** | PUT | updateWalletMetadata | Wallet | **None** (amount stripped in service) |
 | **/api/wallets** | DELETE | deleteWalletIfUnused | Wallet | None |
+| **/api/wallets/due-payments** | GET | getDuePaymentsForCurrentFortnight | Wallet, Expense, CreditCardPayment (read) | None |
+| **/api/wallets/liquidity-projection** | GET | getLiquidityProjection (`until`, `omitZero`, `format=json\|csv`, `stressCyclePercent`, `includeUnpaid`, `includeTemplates`); ledger precargado para TC; log `finance.liquidity_projection.computed` | Wallet, Expense, ExpenseTemplate, Fortnight, CreditCardPayment (read) | None |
 | **/api/expense-templates** | GET/POST/PUT/DELETE | prisma CRUD on ExpenseTemplate | ExpenseTemplate, Category, Wallet (read/relation) | None |
 | **/api/income-templates** | GET/POST/PUT/DELETE | prisma CRUD on IncomeTemplate | IncomeTemplate | None |
 | **/api/categories** | (read/CRUD) | prisma Category | Category | None |

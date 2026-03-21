@@ -33,6 +33,7 @@ import {
   type AddExpenseFormValues,
 } from '@/schemas/transaction.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import { cn, formatCurrency } from '@/lib/utils';
 
 type DashboardQuickExpenseDialogProps = {
   open: boolean;
@@ -133,6 +134,11 @@ export default function DashboardQuickExpenseDialog({
 
     return selectedPaymentMethod.credit_limit - projectedCardDebt;
   }, [isCreditCardPaymentMethod, projectedCardDebt, selectedPaymentMethod]);
+
+  const exceedsCreditLimit =
+    isCreditCardPaymentMethod &&
+    projectedAvailableCredit != null &&
+    projectedAvailableCredit < 0;
 
   useEffect(() => {
     if (!open) {
@@ -331,19 +337,33 @@ export default function DashboardQuickExpenseDialog({
               )}
             />
             {selectedPaymentMethod && (
-              <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <div
+                className={cn(
+                  'rounded-md border px-3 py-2 text-xs',
+                  exceedsCreditLimit
+                    ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                    : 'border-border/60 bg-muted/30 text-muted-foreground',
+                )}
+                role={exceedsCreditLimit ? 'alert' : undefined}
+              >
                 {isCreditCardPaymentMethod ? (
                   <>
-                    <p>
+                    <p className={cn(exceedsCreditLimit && 'text-destructive')}>
                       Esta compra se registrará como pagada y aumentará la deuda
                       actual de la tarjeta.
                     </p>
                     {projectedCardDebt != null && (
                       <p className="mt-1 font-mono tabular-nums text-foreground">
-                        Deuda proyectada: {projectedCardDebt.toFixed(2)}
+                        Deuda proyectada: {formatCurrency(projectedCardDebt)}
                         {projectedAvailableCredit != null
-                          ? ` · Disponible proyectado: ${projectedAvailableCredit.toFixed(2)}`
+                          ? ` · Disponible proyectado: ${formatCurrency(projectedAvailableCredit)}`
                           : ''}
+                      </p>
+                    )}
+                    {exceedsCreditLimit && (
+                      <p className="mt-2 font-medium">
+                        El monto supera el crédito disponible de la tarjeta.
+                        Ajusta el monto o el método de pago antes de guardar.
                       </p>
                     )}
                   </>
@@ -437,7 +457,10 @@ export default function DashboardQuickExpenseDialog({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || loading}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || loading || exceedsCreditLimit}
+              >
                 {isSubmitting ? 'Guardando...' : 'Guardar'}
               </Button>
             </DialogFooter>

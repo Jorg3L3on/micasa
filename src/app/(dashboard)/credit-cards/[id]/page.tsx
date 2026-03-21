@@ -1,11 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  Download,
+  FileText,
   Landmark,
   Receipt,
   RotateCcw,
@@ -17,16 +22,23 @@ import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPayment
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
 import {
+  buildOwnerQuery,
   clientFetchFromApi,
   createCreditCardPayment,
   getCreditCardStatement,
   getPaymentMethodOptions,
 } from '@/lib/api';
+import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
+import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type {
   CreditCardListItem,
+  CreditCardPaymentListItem,
+  CreditCardStatementPurchaseItem,
   CreditCardStatementResponse,
   PaymentMethodOption,
 } from '@/types/catalog';
@@ -41,6 +53,374 @@ const shiftDateByDays = (dateStr: string, days: number): string => {
 
 const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
+
+type SortDir = 'asc' | 'desc';
+type PurchaseSortField = 'payment_date' | 'amount' | 'description' | 'category';
+type PaymentSortField = 'paid_at' | 'amount' | 'source_wallet_name';
+
+const sortPurchases = (
+  items: CreditCardStatementPurchaseItem[],
+  field: PurchaseSortField,
+  dir: SortDir,
+  query: string,
+): CreditCardStatementPurchaseItem[] => {
+  const q = query.trim().toLowerCase();
+  const rows = q
+    ? items.filter(
+        (i) =>
+          i.description.toLowerCase().includes(q) ||
+          i.category.toLowerCase().includes(q),
+      )
+    : [...items];
+  const m = dir === 'desc' ? -1 : 1;
+  rows.sort((a, b) => {
+    if (field === 'amount') return m * (a.amount - b.amount);
+    if (field === 'description') {
+      return m * a.description.localeCompare(b.description, 'es');
+    }
+    if (field === 'category') {
+      return m * a.category.localeCompare(b.category, 'es');
+    }
+    return m * a.payment_date.localeCompare(b.payment_date);
+  });
+  return rows;
+};
+
+const sortPayments = (
+  items: CreditCardPaymentListItem[],
+  field: PaymentSortField,
+  dir: SortDir,
+  query: string,
+): CreditCardPaymentListItem[] => {
+  const q = query.trim().toLowerCase();
+  const rows = q
+    ? items.filter(
+        (i) =>
+          i.source_wallet_name.toLowerCase().includes(q) ||
+          (i.note?.toLowerCase().includes(q) ?? false),
+      )
+    : [...items];
+  const m = dir === 'desc' ? -1 : 1;
+  rows.sort((a, b) => {
+    if (field === 'amount') return m * (a.amount - b.amount);
+    if (field === 'source_wallet_name') {
+      return m * a.source_wallet_name.localeCompare(b.source_wallet_name, 'es');
+    }
+    return m * a.paid_at.localeCompare(b.paid_at);
+  });
+  return rows;
+};
+
+const fortnightHref = (
+  p: CreditCardStatementPurchaseItem,
+  ownerQueryString: string,
+) =>
+  `/fortnight/${p.fortnight_year}/${String(p.fortnight_month).padStart(2, '0')}/${p.fortnight_period}${ownerQueryString}`;
+
+const PurchaseSortButton = ({
+  sortKey,
+  label,
+  activeKey,
+  dir,
+  onSort,
+}: {
+  sortKey: PurchaseSortField;
+  label: string;
+  activeKey: PurchaseSortField;
+  dir: SortDir;
+  onSort: (k: PurchaseSortField) => void;
+}) => (
+  <Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
+    onClick={() => onSort(sortKey)}
+    aria-label={`Ordenar por ${label}${
+      activeKey === sortKey ? (dir === 'desc' ? ', descendente' : ', ascendente') : ''
+    }`}
+  >
+    {label}
+    {activeKey === sortKey &&
+      (dir === 'desc' ? (
+        <ArrowDown className="ml-0.5 h-3 w-3" />
+      ) : (
+        <ArrowUp className="ml-0.5 h-3 w-3" />
+      ))}
+  </Button>
+);
+
+const PaymentSortButton = ({
+  sortKey,
+  label,
+  activeKey,
+  dir,
+  onSort,
+}: {
+  sortKey: PaymentSortField;
+  label: string;
+  activeKey: PaymentSortField;
+  dir: SortDir;
+  onSort: (k: PaymentSortField) => void;
+}) => (
+  <Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
+    onClick={() => onSort(sortKey)}
+    aria-label={`Ordenar pagos por ${label}`}
+  >
+    {label}
+    {activeKey === sortKey &&
+      (dir === 'desc' ? (
+        <ArrowDown className="ml-0.5 h-3 w-3" />
+      ) : (
+        <ArrowUp className="ml-0.5 h-3 w-3" />
+      ))}
+  </Button>
+);
+
+const CreditCardDetailSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-36" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    </div>
+    <Skeleton className="mx-auto h-10 w-64 max-w-full" />
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-24 rounded-lg" />
+      ))}
+    </div>
+    <div className="grid gap-4 lg:grid-cols-3">
+      <Skeleton className="h-56 rounded-xl lg:col-span-1" />
+      <Skeleton className="h-56 rounded-xl lg:col-span-2" />
+    </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Skeleton className="h-64 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  </div>
+);
+
+type PurchaseTableProps = {
+  items: CreditCardStatementPurchaseItem[];
+  emptyText: string;
+  ownerQueryString: string;
+  regionLabel: string;
+};
+
+const PurchaseTableBlock = ({
+  items,
+  emptyText,
+  ownerQueryString,
+  regionLabel,
+}: PurchaseTableProps) => {
+  const [query, setQuery] = useState('');
+  const [field, setField] = useState<PurchaseSortField>('payment_date');
+  const [dir, setDir] = useState<SortDir>('desc');
+
+  const sorted = useMemo(
+    () => sortPurchases(items, field, dir, query),
+    [items, field, dir, query],
+  );
+
+  const handleSortClick = (next: PurchaseSortField) => {
+    if (field === next) {
+      setDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+      return;
+    }
+    setField(next);
+    setDir(next === 'payment_date' || next === 'amount' ? 'desc' : 'asc');
+  };
+
+  return (
+    <div role="region" aria-label={regionLabel} className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por descripción o categoría…"
+          className="max-w-sm text-sm"
+          aria-label={`Filtrar: ${regionLabel}`}
+        />
+        <div
+          className="flex flex-wrap gap-0.5"
+          role="group"
+          aria-label="Ordenar compras"
+        >
+          <PurchaseSortButton
+            sortKey="payment_date"
+            label="Fecha"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+          <PurchaseSortButton
+            sortKey="amount"
+            label="Monto"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+          <PurchaseSortButton
+            sortKey="description"
+            label="Concepto"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+          <PurchaseSortButton
+            sortKey="category"
+            label="Categoría"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+        </div>
+      </div>
+      {sorted.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
+      ) : (
+        <ul className="space-y-2">
+          {sorted.map((purchase) => (
+            <li
+              key={purchase.id}
+              className="rounded-md border border-border/60 px-3 py-2"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium">{purchase.description}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {purchase.category} · {formatDate(purchase.payment_date)}
+                  </p>
+                  <Link
+                    href={fortnightHref(purchase, ownerQueryString)}
+                    className="text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    Ver en quincena
+                  </Link>
+                </div>
+                <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                  {formatCurrency(purchase.amount)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+type PaymentTableProps = {
+  items: CreditCardPaymentListItem[];
+  regionLabel: string;
+};
+
+const PaymentTableBlock = ({ items, regionLabel }: PaymentTableProps) => {
+  const [query, setQuery] = useState('');
+  const [field, setField] = useState<PaymentSortField>('paid_at');
+  const [dir, setDir] = useState<SortDir>('desc');
+
+  const sorted = useMemo(
+    () => sortPayments(items, field, dir, query),
+    [items, field, dir, query],
+  );
+
+  const handleSortClick = (next: PaymentSortField) => {
+    if (field === next) {
+      setDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+      return;
+    }
+    setField(next);
+    setDir(next === 'paid_at' || next === 'amount' ? 'desc' : 'asc');
+  };
+
+  return (
+    <div role="region" aria-label={regionLabel} className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por billetera origen o nota…"
+          className="max-w-sm text-sm"
+          aria-label={`Filtrar: ${regionLabel}`}
+        />
+        <div
+          className="flex flex-wrap gap-0.5"
+          role="group"
+          aria-label="Ordenar pagos"
+        >
+          <PaymentSortButton
+            sortKey="paid_at"
+            label="Fecha"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+          <PaymentSortButton
+            sortKey="amount"
+            label="Monto"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+          <PaymentSortButton
+            sortKey="source_wallet_name"
+            label="Origen"
+            activeKey={field}
+            dir={dir}
+            onSort={handleSortClick}
+          />
+        </div>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Todavía no hay pagos registrados.
+        </p>
+      ) : sorted.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No hay pagos que coincidan con el filtro.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {sorted.map((payment) => (
+            <li
+              key={payment.id}
+              className="rounded-md border border-border/60 px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">
+                    Desde {payment.source_wallet_name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {formatDate(payment.paid_at)}
+                    {payment.note ? ` · ${payment.note}` : ''}
+                  </p>
+                </div>
+                <span className="font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(payment.amount)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 export default function CreditCardDetailPage() {
   const params = useParams<{ id: string }>();
@@ -60,6 +440,12 @@ export default function CreditCardDetailPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [asOfDate, setAsOfDate] = useState(getTodayDateString());
+
+  const ownerQueryString = useMemo(() => {
+    const q = buildOwnerQuery(context);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [context]);
 
   const fundingWalletOptions = useMemo(
     () =>
@@ -135,7 +521,10 @@ export default function CreditCardDetailPage() {
   const isCurrentCycle = useMemo(() => {
     if (!statement) return true;
     const today = getTodayDateString();
-    return today >= statement.current_cycle_start && today <= statement.current_cycle_end;
+    return (
+      today >= statement.current_cycle_start &&
+      today <= statement.current_cycle_end
+    );
   }, [statement]);
 
   const handlePreviousCycle = useCallback(() => {
@@ -152,10 +541,28 @@ export default function CreditCardDetailPage() {
     setAsOfDate(getTodayDateString());
   }, []);
 
+  const handleExportCsv = useCallback(() => {
+    if (!card || !statement) return;
+    try {
+      downloadCreditCardStatementCsv(card.name, statement);
+      toast.success('CSV descargado');
+    } catch {
+      toast.error('No se pudo exportar el CSV');
+    }
+  }, [card, statement]);
+
+  const handleExportPdf = useCallback(() => {
+    if (!card || !statement) return;
+    try {
+      downloadCreditCardStatementPdf(card.name, statement);
+      toast.success('PDF descargado');
+    } catch {
+      toast.error('No se pudo exportar el PDF');
+    }
+  }, [card, statement]);
+
   if (loading && !statement) {
-    return (
-      <div className="py-8 text-center text-muted-foreground">Cargando...</div>
-    );
+    return <CreditCardDetailSkeleton />;
   }
 
   if (error || !card || !statement) {
@@ -182,6 +589,24 @@ export default function CreditCardDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportCsv}
+            aria-label="Exportar periodo visible a CSV"
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportPdf}
+            aria-label="Exportar periodo visible a PDF"
+          >
+            <FileText className="h-4 w-4" />
+            Exportar PDF
+          </Button>
           <Button
             variant="outline"
             onClick={() => setPurchaseDialogOpen(true)}
@@ -335,34 +760,23 @@ export default function CreditCardDetailPage() {
               Compras del ciclo actual
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
             {statement.current_cycle_purchase_items.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No hay compras en el ciclo actual. Usa{' '}
-                <span className="font-medium text-foreground">Registrar compra</span>{' '}
+                <span className="font-medium text-foreground">
+                  Registrar compra
+                </span>{' '}
                 arriba o registra un gasto en la planificación mensual con esta
                 tarjeta como método de pago.
               </p>
             ) : (
-              statement.current_cycle_purchase_items.map((purchase) => (
-                <div
-                  key={purchase.id}
-                  className="rounded-md border border-border/60 px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{purchase.description}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {purchase.category} ·{' '}
-                        {formatDate(purchase.payment_date)}
-                      </p>
-                    </div>
-                    <span className="font-mono tabular-nums font-bold">
-                      {formatCurrency(purchase.amount)}
-                    </span>
-                  </div>
-                </div>
-              ))
+              <PurchaseTableBlock
+                items={statement.current_cycle_purchase_items}
+                emptyText="No hay compras que coincidan con el filtro."
+                ownerQueryString={ownerQueryString}
+                regionLabel="Compras del ciclo actual"
+              />
             )}
           </CardContent>
         </Card>
@@ -375,31 +789,18 @@ export default function CreditCardDetailPage() {
               Compras del último corte
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
             {statement.statement_purchases.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No hubo compras en el último corte.
               </p>
             ) : (
-              statement.statement_purchases.map((purchase) => (
-                <div
-                  key={purchase.id}
-                  className="rounded-md border border-border/60 px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{purchase.description}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {purchase.category} ·{' '}
-                        {formatDate(purchase.payment_date)}
-                      </p>
-                    </div>
-                    <span className="font-mono tabular-nums font-bold">
-                      {formatCurrency(purchase.amount)}
-                    </span>
-                  </div>
-                </div>
-              ))
+              <PurchaseTableBlock
+                items={statement.statement_purchases}
+                emptyText="No hay compras que coincidan con el filtro."
+                ownerQueryString={ownerQueryString}
+                regionLabel="Compras del último corte"
+              />
             )}
           </CardContent>
         </Card>
@@ -410,34 +811,11 @@ export default function CreditCardDetailPage() {
               Historial de pagos
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {statement.payment_history.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Todavía no hay pagos registrados.
-              </p>
-            ) : (
-              statement.payment_history.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="rounded-md border border-border/60 px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">
-                        Desde {payment.source_wallet_name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatDate(payment.paid_at)}
-                        {payment.note ? ` · ${payment.note}` : ''}
-                      </p>
-                    </div>
-                    <span className="font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(payment.amount)}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+          <CardContent>
+            <PaymentTableBlock
+              items={statement.payment_history}
+              regionLabel="Historial de pagos"
+            />
           </CardContent>
         </Card>
       </div>
@@ -462,6 +840,8 @@ export default function CreditCardDetailPage() {
         creditCardId={creditCardId}
         context={context}
         onSuccess={loadData}
+        availableCredit={statement.available_credit}
+        creditLimit={statement.credit_limit}
       />
     </div>
   );

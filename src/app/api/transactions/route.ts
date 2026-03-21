@@ -11,6 +11,7 @@ import {
   deleteExpense,
   updateExpense,
 } from '@/lib/finance/expense.service';
+import { logFinanceEvent } from '@/lib/observability/finance-log';
 
 function decimalToNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -158,6 +159,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let transactionCreateLog: {
+    owner_type: string;
+    owner_id: number;
+    wallet_id: number | null;
+    amount: number;
+  } | null = null;
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
@@ -213,6 +221,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    transactionCreateLog = {
+      owner_type: context.ownerType,
+      owner_id: context.ownerId,
+      wallet_id: walletId,
+      amount: validatedData.amount,
+    };
+
     const created = await createExpense({
       fortnightId: validatedData.fortnight_id,
       categoryId: validatedData.category_id,
@@ -246,6 +261,18 @@ export async function POST(request: NextRequest) {
       ((error as { code: string }).code === 'CREDIT_LIMIT_EXCEEDED' ||
         (error as { code: string }).code === 'INSUFFICIENT_WALLET_BALANCE')
     ) {
+      if (transactionCreateLog) {
+        logFinanceEvent(
+          'warn',
+          'finance.api.client_error',
+          {
+            route: 'POST /api/transactions',
+            error_code: (error as { code: string }).code,
+            ...transactionCreateLog,
+          },
+          request,
+        );
+      }
       return NextResponse.json(
         {
           error:
@@ -264,6 +291,14 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  let transactionUpdateLog: {
+    owner_type: string;
+    owner_id: number;
+    expense_id: number;
+    wallet_id: number | null | undefined;
+    amount: number | undefined;
+  } | null = null;
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
@@ -350,6 +385,14 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    transactionUpdateLog = {
+      owner_type: context.ownerType,
+      owner_id: context.ownerId,
+      expense_id: Number(id),
+      wallet_id: walletId,
+      amount: validatedData.amount,
+    };
+
     const transaction = await updateExpense({
       id: Number(id),
       fortnightId: validatedData.fortnight_id,
@@ -393,6 +436,18 @@ export async function PUT(request: NextRequest) {
       ((error as { code: string }).code === 'CREDIT_LIMIT_EXCEEDED' ||
         (error as { code: string }).code === 'INSUFFICIENT_WALLET_BALANCE')
     ) {
+      if (transactionUpdateLog) {
+        logFinanceEvent(
+          'warn',
+          'finance.api.client_error',
+          {
+            route: 'PUT /api/transactions',
+            error_code: (error as { code: string }).code,
+            ...transactionUpdateLog,
+          },
+          request,
+        );
+      }
       return NextResponse.json(
         {
           error:

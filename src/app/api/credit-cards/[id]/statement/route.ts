@@ -19,7 +19,7 @@ export async function GET(
 
     if (!id || Number.isNaN(creditCardId)) {
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
+        { error: 'Se requiere un id válido' },
         { status: 400 },
       );
     }
@@ -39,7 +39,7 @@ export async function GET(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
@@ -60,14 +60,14 @@ export async function GET(
       error.code === 'INVALID_CREDIT_CARD'
     ) {
       return NextResponse.json(
-        { error: 'Wallet is not configured as a credit card' },
+        { error: 'La billetera no está configurada como tarjeta de crédito' },
         { status: 400 },
       );
     }
 
     console.error('Error fetching credit card statement:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch credit card statement' },
+      { error: 'No se pudo cargar el estado de cuenta' },
       { status: 500 },
     );
   }

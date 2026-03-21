@@ -64,14 +64,18 @@ const assertPaidChargeAllowedForWallet = (
     const limit =
       wallet.credit_limit == null ? null : Number(wallet.credit_limit);
     if (limit != null && balance + chargeAmount > limit) {
-      const error = new Error('Expense exceeds available credit') as ExpenseServiceError;
+      const error = new Error(
+        'El gasto supera el crédito disponible',
+      ) as ExpenseServiceError;
       error.code = 'CREDIT_LIMIT_EXCEEDED';
       throw error;
     }
     return;
   }
   if (isFundingWalletType(wallet.type) && balance < chargeAmount) {
-    const error = new Error('Insufficient wallet balance') as ExpenseServiceError;
+    const error = new Error(
+      'Saldo insuficiente en la billetera',
+    ) as ExpenseServiceError;
     error.code = 'INSUFFICIENT_WALLET_BALANCE';
     throw error;
   }
@@ -422,12 +426,16 @@ export async function updateExpense(input: UpdateExpenseInput) {
         const limit =
           w.credit_limit == null ? null : Number(w.credit_limit);
         if (limit != null && projected > limit) {
-          const error = new Error('Expense exceeds available credit') as ExpenseServiceError;
+          const error = new Error(
+            'El gasto supera el crédito disponible',
+          ) as ExpenseServiceError;
           error.code = 'CREDIT_LIMIT_EXCEEDED';
           throw error;
         }
       } else if (isFundingWalletType(w.type) && projected < 0) {
-        const error = new Error('Insufficient wallet balance') as ExpenseServiceError;
+        const error = new Error(
+          'Saldo insuficiente en la billetera',
+        ) as ExpenseServiceError;
         error.code = 'INSUFFICIENT_WALLET_BALANCE';
         throw error;
       }

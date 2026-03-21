@@ -118,6 +118,71 @@ export type DuePaymentItem = {
   statementDueDate: string;
 };
 
+export type LiquidityProjectionObligationSource =
+  | 'credit_card_statement'
+  | 'unpaid_expense'
+  | 'expense_template';
+
+/** Respuesta de GET /api/wallets/liquidity-projection */
+export type LiquidityProjectionObligationItem = {
+  source: LiquidityProjectionObligationSource;
+  wallet_id: number;
+  wallet_name: string;
+  wallet_type: string;
+  statement_start: string;
+  statement_end: string;
+  statement_due_date: string;
+  last_statement_balance: number;
+  payments_applied_to_statement: number;
+  next_due_payment: number;
+  stress_adjustment?: number;
+  expense_id?: number;
+  expense_description?: string;
+  expense_template_id?: number;
+  template_name?: string;
+  is_estimate?: boolean;
+  fortnight_id?: number;
+};
+
+export type LiquidityProjectionMilestone = {
+  due_date: string;
+  is_past_due: boolean;
+  obligations: LiquidityProjectionObligationItem[];
+  total_due: number;
+  cumulative_due_through_date: number;
+  funding_total: number;
+  liquidity_headroom: number;
+};
+
+export type LiquidityProjectionSummary = {
+  total_obligations_due_on_or_before_until: number;
+  funding_total: number;
+  net_liquidity_versus_obligations: number;
+  shortfall_versus_funding: number;
+  first_cumulative_shortfall_date: string | null;
+};
+
+export type LiquidityProjectionOptionsEcho = {
+  stress_cycle_percent: number;
+  include_unpaid_expenses: boolean;
+  include_expense_templates: boolean;
+};
+
+export type LiquidityProjectionResponse = {
+  as_of: string;
+  until: string;
+  funding_wallets: Array<{
+    id: number;
+    name: string;
+    type: string;
+    balance: number;
+  }>;
+  milestones: LiquidityProjectionMilestone[];
+  summary: LiquidityProjectionSummary;
+  assumptions: readonly string[];
+  options: LiquidityProjectionOptionsEcho;
+};
+
 export type CreditCardPaymentListItem = {
   id: number;
   amount: number;
@@ -135,6 +200,10 @@ export type CreditCardStatementPurchaseItem = {
   amount: number;
   payment_date: string;
   category: string;
+  fortnight_id: number;
+  fortnight_year: number;
+  fortnight_month: number;
+  fortnight_period: 'FIRST' | 'SECOND';
 };
 
 export type CreditCardStatementResponse = {
