@@ -217,6 +217,13 @@ export async function createCreditCardPayment(
       throw error;
     }
 
+    const sourceBalance = toWalletAmountNumber(sourceWallet);
+    if (sourceBalance < input.amount) {
+      const error = new Error('Insufficient balance in source wallet');
+      (error as { code?: string }).code = 'INSUFFICIENT_SOURCE_BALANCE';
+      throw error;
+    }
+
     const payment = await tx.creditCardPayment.create({
       data: {
         amount: input.amount,

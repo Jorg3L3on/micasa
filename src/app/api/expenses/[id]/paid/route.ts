@@ -83,6 +83,22 @@ export async function PATCH(
       );
     }
 
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'CREDIT_LIMIT_EXCEEDED' ||
+        error.code === 'INSUFFICIENT_WALLET_BALANCE')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error ? error.message : 'No se puede marcar como pagado',
+        },
+        { status: 400 },
+      );
+    }
+
     console.error('Error updating expense paid status:', error);
     return NextResponse.json(
       { error: 'Failed to update expense paid status' },

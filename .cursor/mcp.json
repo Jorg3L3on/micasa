@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "micasa-postgres": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/scripts/micasa-mcp-postgres.mjs"]
+    }
+  }
+}

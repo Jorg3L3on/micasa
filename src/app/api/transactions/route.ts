@@ -239,6 +239,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'CREDIT_LIMIT_EXCEEDED' ||
+        (error as { code: string }).code === 'INSUFFICIENT_WALLET_BALANCE')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error ? error.message : 'Invalid transaction',
+        },
+        { status: 400 },
+      );
+    }
+
     console.error('Error creating transaction:', error);
     return NextResponse.json(
       { error: 'Failed to create transaction' },
@@ -368,6 +384,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
+      );
+    }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'CREDIT_LIMIT_EXCEEDED' ||
+        (error as { code: string }).code === 'INSUFFICIENT_WALLET_BALANCE')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error ? error.message : 'Invalid transaction',
+        },
+        { status: 400 },
       );
     }
     console.error('Error updating transaction:', error);

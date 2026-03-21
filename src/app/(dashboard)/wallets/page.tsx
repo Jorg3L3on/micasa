@@ -242,21 +242,26 @@ export default function WalletsPage() {
       {
         accessorKey: 'amount',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Saldo" />
+          <DataTableColumnHeader column={column} title="Deuda / saldo" />
         ),
         cell: ({ row }) => {
           const wallet = row.original;
           const isCard = isCreditType(wallet.type);
 
           return (
-            <span
-              className={cn(
-                'font-mono tabular-nums text-sm',
-                isCard && wallet.amount > 0 && 'font-bold text-foreground',
-              )}
-            >
-              {formatCurrency(wallet.amount)}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              <span
+                className={cn(
+                  'font-mono tabular-nums text-sm',
+                  isCard && wallet.amount > 0 && 'font-bold text-foreground',
+                )}
+              >
+                {formatCurrency(wallet.amount)}
+              </span>
+              <span className="text-[9px] text-muted-foreground">
+                {isCard ? 'Deuda' : 'Saldo'}
+              </span>
+            </div>
           );
         },
       },

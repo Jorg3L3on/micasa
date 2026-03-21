@@ -9,20 +9,14 @@ import {
   Landmark,
   Receipt,
   RotateCcw,
+  ShoppingCart,
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
@@ -62,15 +56,10 @@ export default function CreditCardDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [asOfDate, setAsOfDate] = useState(getTodayDateString());
-  const [paymentForm, setPaymentForm] = useState({
-    source_wallet_id: '',
-    amount: '',
-    paid_at: getTodayDateString(),
-    note: '',
-  });
 
   const fundingWalletOptions = useMemo(
     () =>
@@ -119,34 +108,20 @@ export default function CreditCardDetailPage() {
     loadData();
   }, [loadData]);
 
-  const handlePaymentSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-
+  const handlePaymentSubmit = async (data: {
+    source_wallet_id: number;
+    amount: number;
+    paid_at: string;
+    note: string | null;
+  }) => {
     try {
       setPaymentSubmitting(true);
       setPaymentError(null);
 
-      await createCreditCardPayment(
-        creditCardId,
-        {
-          source_wallet_id: Number(paymentForm.source_wallet_id),
-          amount: Number(paymentForm.amount),
-          paid_at: `${paymentForm.paid_at}T12:00:00.000Z`,
-          note: paymentForm.note.trim() || null,
-        },
-        context,
-      );
+      await createCreditCardPayment(creditCardId, data, context);
 
       toast.success('Pago registrado');
       setPaymentDialogOpen(false);
-      setPaymentForm({
-        source_wallet_id: '',
-        amount: '',
-        paid_at: getTodayDateString(),
-        note: '',
-      });
       await loadData();
     } catch (err) {
       setPaymentError(
@@ -206,10 +181,19 @@ export default function CreditCardDetailPage() {
           </div>
         </div>
 
-        <Button onClick={() => setPaymentDialogOpen(true)}>
-          <Wallet className="h-4 w-4" />
-          Registrar pago
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setPurchaseDialogOpen(true)}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Registrar compra
+          </Button>
+          <Button onClick={() => setPaymentDialogOpen(true)}>
+            <Wallet className="h-4 w-4" />
+            Registrar pago
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center justify-center gap-1">
@@ -354,8 +338,9 @@ export default function CreditCardDetailPage() {
           <CardContent className="space-y-3">
             {statement.current_cycle_purchase_items.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No hay compras registradas en el ciclo actual. Las compras se
-                registran desde el flujo normal de gastos seleccionando esta
+                No hay compras en el ciclo actual. Usa{' '}
+                <span className="font-medium text-foreground">Registrar compra</span>{' '}
+                arriba o registra un gasto en la planificación mensual con esta
                 tarjeta como método de pago.
               </p>
             ) : (
@@ -457,107 +442,27 @@ export default function CreditCardDetailPage() {
         </Card>
       </div>
 
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar pago</DialogTitle>
-            <DialogDescription>
-              Transfiere saldo desde una billetera de efectivo o débito hacia
-              esta tarjeta.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handlePaymentSubmit} className="space-y-4">
-            {paymentError && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {paymentError}
-              </div>
-            )}
+      <CreditCardPaymentDialog
+        open={paymentDialogOpen}
+        onOpenChange={(open) => {
+          setPaymentDialogOpen(open);
+          if (!open) setPaymentError(null);
+        }}
+        fundingWalletOptions={fundingWalletOptions}
+        nextDuePayment={statement.next_due_payment}
+        outstandingBalance={statement.outstanding_balance}
+        submitting={paymentSubmitting}
+        error={paymentError}
+        onSubmit={handlePaymentSubmit}
+      />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Billetera origen</label>
-              <select
-                value={paymentForm.source_wallet_id}
-                onChange={(event) =>
-                  setPaymentForm((current) => ({
-                    ...current,
-                    source_wallet_id: event.target.value,
-                  }))
-                }
-                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                aria-label="Selecciona la billetera origen"
-              >
-                <option value="">Selecciona una billetera</option>
-                {fundingWalletOptions.map((wallet) => (
-                  <option key={wallet.id} value={wallet.id}>
-                    {wallet.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Monto</label>
-                <Input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={paymentForm.amount}
-                  onChange={(event) =>
-                    setPaymentForm((current) => ({
-                      ...current,
-                      amount: event.target.value,
-                    }))
-                  }
-                  aria-label="Monto del pago"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Fecha de pago</label>
-                <Input
-                  type="date"
-                  value={paymentForm.paid_at}
-                  onChange={(event) =>
-                    setPaymentForm((current) => ({
-                      ...current,
-                      paid_at: event.target.value,
-                    }))
-                  }
-                  aria-label="Fecha del pago"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nota</label>
-              <Input
-                value={paymentForm.note}
-                onChange={(event) =>
-                  setPaymentForm((current) => ({
-                    ...current,
-                    note: event.target.value,
-                  }))
-                }
-                aria-label="Nota del pago"
-                placeholder="Opcional"
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPaymentDialogOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={paymentSubmitting}>
-                {paymentSubmitting ? 'Guardando...' : 'Registrar pago'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <CreditCardQuickPurchaseDialog
+        open={purchaseDialogOpen}
+        onOpenChange={setPurchaseDialogOpen}
+        creditCardId={creditCardId}
+        context={context}
+        onSuccess={loadData}
+      />
     </div>
   );
 }

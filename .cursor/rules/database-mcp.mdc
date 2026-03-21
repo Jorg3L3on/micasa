@@ -1,0 +1,23 @@
+---
+description: Use micasa-postgres MCP for database questions and read-only queries
+alwaysApply: true
+---
+
+# Database access via MCP
+
+When the user asks about **live database data or structure** (e.g. list rows, counts, table contents, ad hoc **read-only** SQL, schema of tables, “what’s in the DB”), use the **micasa-postgres** MCP server—not the terminal, `npx tsx`, raw `node`/`pg` one-liners, or Prisma CLI (`db execute`, etc.) for exploration.
+
+## How
+
+1. Prefer MCP **tools** from **micasa-postgres** (e.g. the **`query`** tool for SQL). All queries from that server run in **read-only** transactions.
+2. Use MCP **resources** for table/schema discovery when helpful.
+3. **Exceptions** (MCP is optional): the user explicitly asks for a script, migration, seed, or Prisma workflow; the MCP is disabled or failing (say so and then use an approved alternative if they want); or the task is **only** editing `schema.prisma` / migration files with **no** need to read live data.
+
+## Project notes
+
+- Datasource is **PostgreSQL** (Prisma). Default public tables follow Prisma naming (e.g. model `User` → table **`"User"`**, quoted), not necessarily lowercase `users`.
+- Do **not** paste password hashes or other secrets from query results unless the user clearly requests it and it’s appropriate.
+
+## Security
+
+Treat MCP access like any DB client: prefer **dev** credentials; avoid destructive assumptions even if the user misspeaks.

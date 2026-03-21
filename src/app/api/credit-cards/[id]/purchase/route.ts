@@ -69,6 +69,22 @@ export async function POST(
       return NextResponse.json({ error: 'Credit card not found' }, { status: 404 });
     }
 
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'CREDIT_LIMIT_EXCEEDED' ||
+        error.code === 'INSUFFICIENT_WALLET_BALANCE')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error ? error.message : 'Invalid purchase',
+        },
+        { status: 400 },
+      );
+    }
+
     console.error('Error creating credit card purchase:', error);
     return NextResponse.json(
       { error: 'Failed to create credit card purchase' },

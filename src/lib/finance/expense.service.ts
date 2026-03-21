@@ -3,6 +3,8 @@ import { PaymentMethodType } from '@/generated/prisma/client';
 import {
   applyWalletAmountDelta,
   getPaidExpenseWalletDelta,
+  isCreditWalletType,
+  isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
 
 type ExpenseServiceError = Error & { code?: string };
@@ -47,6 +49,32 @@ type TogglePaidInput = {
 
 type DeleteExpenseInput = {
   id: number;
+};
+
+const assertPaidChargeAllowedForWallet = (
+  wallet: {
+    type: PaymentMethodType;
+    amount: unknown;
+    credit_limit: unknown;
+  },
+  chargeAmount: number,
+) => {
+  const balance = Number(wallet.amount);
+  if (isCreditWalletType(wallet.type)) {
+    const limit =
+      wallet.credit_limit == null ? null : Number(wallet.credit_limit);
+    if (limit != null && balance + chargeAmount > limit) {
+      const error = new Error('Expense exceeds available credit') as ExpenseServiceError;
+      error.code = 'CREDIT_LIMIT_EXCEEDED';
+      throw error;
+    }
+    return;
+  }
+  if (isFundingWalletType(wallet.type) && balance < chargeAmount) {
+    const error = new Error('Insufficient wallet balance') as ExpenseServiceError;
+    error.code = 'INSUFFICIENT_WALLET_BALANCE';
+    throw error;
+  }
 };
 
 export type ExpenseWithMeta = Awaited<
@@ -165,7 +193,14 @@ export async function createExpense(input: CreateExpenseInput) {
   if (effectiveWalletId) {
     const wallet = await prisma.wallet.findUnique({
       where: { id: effectiveWalletId },
-      select: { id: true, user_id: true, house_id: true, type: true },
+      select: {
+        id: true,
+        user_id: true,
+        house_id: true,
+        type: true,
+        amount: true,
+        credit_limit: true,
+      },
     });
     if (!wallet) {
       const error = new Error('Wallet not found') as ExpenseServiceError;
@@ -193,6 +228,10 @@ export async function createExpense(input: CreateExpenseInput) {
         error.code = 'INVALID_WALLET_OWNER';
         throw error;
       }
+    }
+
+    if (isPaid) {
+      assertPaidChargeAllowedForWallet(wallet, amount);
     }
   }
 
@@ -371,6 +410,30 @@ export async function updateExpense(input: UpdateExpenseInput) {
     }
 
     for (const [walletIdStr, delta] of Object.entries(deltas)) {
+      if (delta === 0) continue;
+      const walletIdNum = Number(walletIdStr);
+      const w = await tx.wallet.findUnique({
+        where: { id: walletIdNum },
+        select: { type: true, amount: true, credit_limit: true },
+      });
+      if (!w) continue;
+      const projected = Number(w.amount) + delta;
+      if (isCreditWalletType(w.type)) {
+        const limit =
+          w.credit_limit == null ? null : Number(w.credit_limit);
+        if (limit != null && projected > limit) {
+          const error = new Error('Expense exceeds available credit') as ExpenseServiceError;
+          error.code = 'CREDIT_LIMIT_EXCEEDED';
+          throw error;
+        }
+      } else if (isFundingWalletType(w.type) && projected < 0) {
+        const error = new Error('Insufficient wallet balance') as ExpenseServiceError;
+        error.code = 'INSUFFICIENT_WALLET_BALANCE';
+        throw error;
+      }
+    }
+
+    for (const [walletIdStr, delta] of Object.entries(deltas)) {
       const walletIdNum = Number(walletIdStr);
       await applyWalletAmountDelta(tx, walletIdNum, delta);
     }
@@ -437,7 +500,21 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
     const wasPaid = existing.is_paid;
     const willBePaid = paid;
 
-    if (existing.wallet_id != null && existing.wallet?.type != null && wasPaid !== willBePaid) {
+    if (
+      existing.wallet_id != null &&
+      existing.wallet?.type != null &&
+      wasPaid !== willBePaid
+    ) {
+      if (willBePaid) {
+        const w = await tx.wallet.findUnique({
+          where: { id: existing.wallet_id },
+          select: { type: true, amount: true, credit_limit: true },
+        });
+        if (w) {
+          assertPaidChargeAllowedForWallet(w, Number(existing.amount));
+        }
+      }
+
       const expenseDelta = getPaidExpenseWalletDelta(
         existing.wallet.type,
         Number(existing.amount),
