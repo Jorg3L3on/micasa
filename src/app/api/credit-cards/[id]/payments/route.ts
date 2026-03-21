@@ -15,7 +15,7 @@ export async function GET(
 
     if (!id || Number.isNaN(creditCardId)) {
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
+        { error: 'Se requiere un id válido' },
         { status: 400 },
       );
     }
@@ -33,12 +33,12 @@ export async function GET(
       'code' in error &&
       error.code === 'P2025'
     ) {
-      return NextResponse.json({ error: 'Credit card not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
     }
 
     console.error('Error fetching credit card payments:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch credit card payments' },
+      { error: 'No se pudieron cargar los pagos' },
       { status: 500 },
     );
   }

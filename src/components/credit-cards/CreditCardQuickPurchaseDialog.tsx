@@ -20,8 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { FinanceContextType } from '@/types/finance-context';
-import type { CategoryOption } from '@/types/catalog';
+import type { CategoryOption, CreditCardListItem } from '@/types/catalog';
 import { clientFetchFromApi, createCreditCardPurchase } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightCatalogItem = {
   id: number;
@@ -56,6 +58,9 @@ export type CreditCardQuickPurchaseDialogProps = {
   creditCardId: number;
   context: FinanceContextType;
   onSuccess: () => void | Promise<void>;
+  /** From estado de cuenta; avoids an extra fetch when already loaded */
+  availableCredit?: number | null;
+  creditLimit?: number | null;
 };
 
 const CreditCardQuickPurchaseDialog = ({
@@ -64,9 +69,13 @@ const CreditCardQuickPurchaseDialog = ({
   creditCardId,
   context,
   onSuccess,
+  availableCredit: availableCreditProp,
+  creditLimit: creditLimitProp,
 }: CreditCardQuickPurchaseDialogProps) => {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [fortnights, setFortnights] = useState<FortnightCatalogItem[]>([]);
+  const [fetchedAvailable, setFetchedAvailable] = useState<number | null>(null);
+  const [fetchedLimit, setFetchedLimit] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,16 +89,34 @@ const CreditCardQuickPurchaseDialog = ({
     try {
       setLoading(true);
       setError(null);
-      const [cats, fts] = await Promise.all([
+      const needCardFetch =
+        availableCreditProp === undefined && creditLimitProp === undefined;
+      const cardPromise = needCardFetch
+        ? clientFetchFromApi<CreditCardListItem>(
+            `/api/credit-cards/${creditCardId}`,
+            undefined,
+            context,
+          )
+        : Promise.resolve(null);
+
+      const [cats, fts, cardRow] = await Promise.all([
         clientFetchFromApi<CategoryOption[]>('/api/categories', undefined, context),
         clientFetchFromApi<FortnightCatalogItem[]>(
           '/api/fortnights',
           undefined,
           context,
         ),
+        cardPromise,
       ]);
       setCategories(cats);
       setFortnights(fts);
+      if (cardRow) {
+        setFetchedAvailable(cardRow.available_credit ?? null);
+        setFetchedLimit(cardRow.credit_limit ?? null);
+      } else {
+        setFetchedAvailable(null);
+        setFetchedLimit(null);
+      }
       const defaultFt = resolveDefaultFortnightId(fts);
       setFortnightId(defaultFt);
     } catch (err) {
@@ -99,7 +126,7 @@ const CreditCardQuickPurchaseDialog = ({
     } finally {
       setLoading(false);
     }
-  }, [context]);
+  }, [availableCreditProp, context, creditCardId, creditLimitProp]);
 
   useEffect(() => {
     if (open) {
@@ -111,6 +138,19 @@ const CreditCardQuickPurchaseDialog = ({
       void loadCatalog();
     }
   }, [open, loadCatalog]);
+
+  const resolvedLimit =
+    creditLimitProp !== undefined ? creditLimitProp : fetchedLimit;
+  const resolvedAvailable =
+    availableCreditProp !== undefined ? availableCreditProp : fetchedAvailable;
+
+  const numAmountPreview = Number(amount);
+  const exceedsCreditLimit =
+    resolvedLimit != null &&
+    resolvedAvailable != null &&
+    Number.isFinite(numAmountPreview) &&
+    numAmountPreview > 0 &&
+    numAmountPreview > resolvedAvailable;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -125,6 +165,12 @@ const CreditCardQuickPurchaseDialog = ({
     }
     if (!description.trim()) {
       setError('La descripción es obligatoria');
+      return;
+    }
+    if (exceedsCreditLimit) {
+      setError(
+        'El monto supera el crédito disponible. Reduce el monto o registra un pago primero.',
+      );
       return;
     }
 
@@ -171,8 +217,41 @@ const CreditCardQuickPurchaseDialog = ({
             </div>
           )}
 
+          {resolvedLimit != null && resolvedAvailable != null && (
+            <div
+              className={cn(
+                'rounded-md border border-border/60 px-3 py-2 text-xs',
+                exceedsCreditLimit
+                  ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                  : 'bg-muted/30 text-muted-foreground',
+              )}
+              role="status"
+            >
+              <p className="font-medium text-foreground">
+                Crédito disponible:{' '}
+                <span className="font-mono tabular-nums">
+                  {formatCurrency(resolvedAvailable)}
+                </span>
+              </p>
+              {exceedsCreditLimit && (
+                <p className="mt-1 font-medium" role="alert">
+                  Este monto supera el límite disponible; el servidor rechazará
+                  la operación si no hay línea suficiente.
+                </p>
+              )}
+            </div>
+          )}
+
           {loading ? (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
+            <div className="space-y-4" aria-busy="true" aria-label="Cargando formulario">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
           ) : (
             <>
               <div className="space-y-2">
@@ -264,7 +343,10 @@ const CreditCardQuickPurchaseDialog = ({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting || loading}>
+            <Button
+              type="submit"
+              disabled={submitting || loading || exceedsCreditLimit}
+            >
               {submitting ? 'Guardando...' : 'Registrar compra'}
             </Button>
           </DialogFooter>

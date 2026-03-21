@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   getWalletAvailableCredit,
@@ -110,7 +110,7 @@ export async function getCreditCardStatementByOwner(
   });
 
   if (!card) {
-    const error = new Error('Credit card not found');
+    const error = new Error('Tarjeta no encontrada');
     (error as { code?: string }).code = 'P2025';
     throw error;
   }
@@ -120,7 +120,9 @@ export async function getCreditCardStatementByOwner(
     card.cutoff_day == null ||
     card.due_day == null
   ) {
-    const error = new Error('Wallet is not configured as a credit card');
+    const error = new Error(
+      'La billetera no está configurada como tarjeta de crédito',
+    );
     (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
     throw error;
   }
@@ -132,7 +134,12 @@ export async function getCreditCardStatementByOwner(
     card.due_day,
   );
 
-  const [purchases, payments] = await Promise.all([
+  const paymentWhereBase = {
+    ...ownerFilter,
+    credit_card_wallet_id: creditCardId,
+  };
+
+  const [purchases, payments, paymentTotals] = await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -146,14 +153,14 @@ export async function getCreditCardStatementByOwner(
         payment_date: true,
         created_at: true,
         category: { select: { name: true } },
+        fortnight: {
+          select: { id: true, year: true, month: true, period: true },
+        },
       },
       orderBy: [{ payment_date: 'desc' }, { created_at: 'desc' }],
     }),
     prisma.creditCardPayment.findMany({
-      where: {
-        ...ownerFilter,
-        credit_card_wallet_id: creditCardId,
-      },
+      where: paymentWhereBase,
       include: {
         source_wallet: { select: { id: true, name: true } },
         credit_card_wallet: { select: { id: true, name: true } },
@@ -161,6 +168,35 @@ export async function getCreditCardStatementByOwner(
       orderBy: { paid_at: 'desc' },
       take: MAX_PAYMENT_HISTORY,
     }),
+    Promise.all([
+      prisma.creditCardPayment.aggregate({
+        where: {
+          ...paymentWhereBase,
+          paid_at: { gt: window.statementEnd },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.creditCardPayment.aggregate({
+        where: {
+          ...paymentWhereBase,
+          paid_at: {
+            gt: window.statementEnd,
+            lte: window.statementDueDate,
+          },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.creditCardPayment.aggregate({
+        where: {
+          ...paymentWhereBase,
+          paid_at: {
+            gte: window.currentCycleStart,
+            lte: window.currentCycleEnd,
+          },
+        },
+        _sum: { amount: true },
+      }),
+    ]),
   ]);
 
   const statementPurchases = purchases
@@ -183,40 +219,18 @@ export async function getCreditCardStatementByOwner(
       isWithinRange(expense.effectiveDate, window.currentCycleStart, window.currentCycleEnd),
     );
 
-  const paymentsSinceLastCutoff = payments.filter(
-    (payment) => payment.paid_at > window.statementEnd,
-  );
-
-  const paymentsAppliedToStatement = payments.filter(
-    (payment) =>
-      payment.paid_at > window.statementEnd &&
-      payment.paid_at <= window.statementDueDate,
-  );
-
-  const currentCyclePayments = payments.filter((payment) =>
-    isWithinRange(payment.paid_at, window.currentCycleStart, window.currentCycleEnd),
-  );
-
   const lastStatementBalance = statementPurchases.reduce(
     (sum, expense) => sum + expense.amount,
     0,
   );
-  const paymentsAfterCutoffTotal = paymentsSinceLastCutoff.reduce(
-    (sum, payment) => sum + Number(payment.amount),
-    0,
-  );
-  const paymentsAppliedToStatementTotal = paymentsAppliedToStatement.reduce(
-    (sum, payment) => sum + Number(payment.amount),
-    0,
-  );
+  const [afterCutoffAgg, appliedToStatementAgg, currentCycleAgg] = paymentTotals;
+  const paymentsAfterCutoffTotal = Number(afterCutoffAgg._sum.amount ?? 0);
+  const paymentsAppliedToStatementTotal = Number(appliedToStatementAgg._sum.amount ?? 0);
   const currentCyclePurchasesTotal = currentCyclePurchases.reduce(
     (sum, expense) => sum + expense.amount,
     0,
   );
-  const currentCyclePaymentsTotal = currentCyclePayments.reduce(
-    (sum, payment) => sum + Number(payment.amount),
-    0,
-  );
+  const currentCyclePaymentsTotal = Number(currentCycleAgg._sum.amount ?? 0);
   const currentBalance = Number(card.amount);
   const creditLimit = card.credit_limit == null ? null : Number(card.credit_limit);
 
@@ -253,6 +267,10 @@ export async function getCreditCardStatementByOwner(
       amount: expense.amount,
       payment_date: toDateOnlyString(expense.effectiveDate),
       category: expense.category?.name ?? '',
+      fortnight_id: expense.fortnight.id,
+      fortnight_year: expense.fortnight.year,
+      fortnight_month: expense.fortnight.month,
+      fortnight_period: expense.fortnight.period,
     })),
     current_cycle_purchase_items: currentCyclePurchases.map((expense) => ({
       id: expense.id,
@@ -260,6 +278,10 @@ export async function getCreditCardStatementByOwner(
       amount: expense.amount,
       payment_date: toDateOnlyString(expense.effectiveDate),
       category: expense.category?.name ?? '',
+      fortnight_id: expense.fortnight.id,
+      fortnight_year: expense.fortnight.year,
+      fortnight_month: expense.fortnight.month,
+      fortnight_period: expense.fortnight.period,
     })),
     payment_history: payments.map((payment) => ({
       id: payment.id,
@@ -273,6 +295,247 @@ export async function getCreditCardStatementByOwner(
     })),
   };
 }
+
+export type CreditCardStatementWindow = ReturnType<
+  typeof resolveCreditCardStatementWindow
+>;
+
+export type CreditCardStatementObligationBreakdown = {
+  last_statement_balance: number;
+  payments_applied_to_statement: number;
+  next_due_payment: number;
+};
+
+/** Filas precargadas para proyección de liquidez (evita N consultas por periodo). */
+export type CardLedgerExpenseRow = {
+  wallet_id: number;
+  amount: number;
+  effectiveAt: Date;
+};
+
+export type CardLedgerPaymentRow = {
+  credit_card_wallet_id: number;
+  amount: number;
+  paid_at: Date;
+};
+
+export type CreditCardStatementObligationWithCycle =
+  CreditCardStatementObligationBreakdown & {
+    current_cycle_purchases: number;
+  };
+
+const expenseOwnerWhereSql = (ownerFilter: OwnerFilter) => {
+  if (ownerFilter.user_id !== null) {
+    return Prisma.sql`e."user_id" = ${ownerFilter.user_id} AND e."house_id" IS NULL`;
+  }
+  return Prisma.sql`e."user_id" IS NULL AND e."house_id" = ${ownerFilter.house_id}`;
+};
+
+const creditPaymentOwnerWhereSql = (ownerFilter: OwnerFilter) => {
+  if (ownerFilter.user_id !== null) {
+    return Prisma.sql`p."user_id" = ${ownerFilter.user_id} AND p."house_id" IS NULL`;
+  }
+  return Prisma.sql`p."user_id" IS NULL AND p."house_id" = ${ownerFilter.house_id}`;
+};
+
+/**
+ * Carga compras pagadas y pagos a TC en un rango; {@link computeObligationBreakdownFromLedger}
+ * reproduce la misma lógica que las agregaciones por ventana.
+ */
+export async function loadCreditCardActivityLedger(
+  cardIds: number[],
+  ownerFilter: OwnerFilter,
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<{
+  expenses: CardLedgerExpenseRow[];
+  payments: CardLedgerPaymentRow[];
+}> {
+  if (cardIds.length === 0) {
+    return { expenses: [], payments: [] };
+  }
+
+  const ownerExpense = expenseOwnerWhereSql(ownerFilter);
+  const ownerPayment = creditPaymentOwnerWhereSql(ownerFilter);
+
+  const [expenseRows, paymentRows] = await Promise.all([
+    prisma.$queryRaw<
+      Array<{ wallet_id: number; amount: unknown; eff: Date }>
+    >`
+      SELECT e."wallet_id", e."amount",
+        COALESCE(e."payment_date", e."created_at") AS eff
+      FROM "Expense" e
+      WHERE e."is_paid" = true
+        AND e."wallet_id" IN (${Prisma.join(cardIds)})
+        AND COALESCE(e."payment_date", e."created_at") >= ${rangeStart}
+        AND COALESCE(e."payment_date", e."created_at") <= ${rangeEnd}
+        AND ${ownerExpense}
+    `,
+    prisma.$queryRaw<
+      Array<{ credit_card_wallet_id: number; amount: unknown; paid_at: Date }>
+    >`
+      SELECT p."credit_card_wallet_id", p."amount", p."paid_at"
+      FROM "CreditCardPayment" p
+      WHERE p."credit_card_wallet_id" IN (${Prisma.join(cardIds)})
+        AND p."paid_at" >= ${rangeStart}
+        AND p."paid_at" <= ${rangeEnd}
+        AND ${ownerPayment}
+    `,
+  ]);
+
+  return {
+    expenses: expenseRows.map((r) => ({
+      wallet_id: r.wallet_id,
+      amount: Number(r.amount),
+      effectiveAt: r.eff,
+    })),
+    payments: paymentRows.map((r) => ({
+      credit_card_wallet_id: r.credit_card_wallet_id,
+      amount: Number(r.amount),
+      paid_at: r.paid_at,
+    })),
+  };
+}
+
+export const computeObligationBreakdownFromLedger = (
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  expenses: CardLedgerExpenseRow[],
+  payments: CardLedgerPaymentRow[],
+): Map<number, CreditCardStatementObligationWithCycle> => {
+  const result = new Map<number, CreditCardStatementObligationWithCycle>();
+  const st = window.statementStart.getTime();
+  const en = window.statementEnd.getTime();
+  const ccs = window.currentCycleStart.getTime();
+  const cce = window.currentCycleEnd.getTime();
+  const dueT = window.statementDueDate.getTime();
+
+  for (const id of cardIds) {
+    let lastStatementBalance = 0;
+    let currentCyclePurchases = 0;
+    for (const e of expenses) {
+      if (e.wallet_id !== id) continue;
+      const t = e.effectiveAt.getTime();
+      if (t >= st && t <= en) {
+        lastStatementBalance += e.amount;
+      }
+      if (t >= ccs && t <= cce) {
+        currentCyclePurchases += e.amount;
+      }
+    }
+    let paymentsAppliedToStatement = 0;
+    for (const p of payments) {
+      if (p.credit_card_wallet_id !== id) continue;
+      const pt = p.paid_at.getTime();
+      if (pt > en && pt <= dueT) {
+        paymentsAppliedToStatement += p.amount;
+      }
+    }
+    const nextDuePayment = Math.max(
+      lastStatementBalance - paymentsAppliedToStatement,
+      0,
+    );
+    result.set(id, {
+      last_statement_balance: lastStatementBalance,
+      payments_applied_to_statement: paymentsAppliedToStatement,
+      next_due_payment: nextDuePayment,
+      current_cycle_purchases: currentCyclePurchases,
+    });
+  }
+  return result;
+};
+
+/**
+ * Statement-period obligation per card (same formula as {@link getCreditCardStatementByOwner}).
+ * Used for liquidity projection across future cutoffs.
+ */
+export async function getStatementObligationBreakdownByWallet(
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  ownerFilter: OwnerFilter,
+): Promise<Map<number, CreditCardStatementObligationBreakdown>> {
+  if (cardIds.length === 0) {
+    return new Map();
+  }
+
+  const [purchases, payments] = await Promise.all([
+    sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
+    sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
+  ]);
+
+  const result = new Map<number, CreditCardStatementObligationBreakdown>();
+  for (const id of cardIds) {
+    const lastStatementBalance = purchases.get(id) ?? 0;
+    const paymentsAppliedToStatement = payments.get(id) ?? 0;
+    const nextDuePayment = Math.max(
+      lastStatementBalance - paymentsAppliedToStatement,
+      0,
+    );
+    result.set(id, {
+      last_statement_balance: lastStatementBalance,
+      payments_applied_to_statement: paymentsAppliedToStatement,
+      next_due_payment: nextDuePayment,
+    });
+  }
+  return result;
+}
+
+const sumStatementPurchasesByWallet = async (
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  ownerFilter: OwnerFilter,
+) => {
+  if (cardIds.length === 0) {
+    return new Map<number, number>();
+  }
+
+  const ownerSql = expenseOwnerWhereSql(ownerFilter);
+  const rows = await prisma.$queryRaw<Array<{ wallet_id: number; total: unknown }>>`
+    SELECT e."wallet_id", COALESCE(SUM(e."amount"), 0) AS total
+    FROM "Expense" e
+    WHERE e."is_paid" = true
+      AND e."wallet_id" IN (${Prisma.join(cardIds)})
+      AND COALESCE(e."payment_date", e."created_at") >= ${window.statementStart}
+      AND COALESCE(e."payment_date", e."created_at") <= ${window.statementEnd}
+      AND ${ownerSql}
+    GROUP BY e."wallet_id"
+  `;
+
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    map.set(row.wallet_id, Number(row.total));
+  }
+  return map;
+};
+
+const sumPaymentsAppliedToStatementByWallet = async (
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  ownerFilter: OwnerFilter,
+) => {
+  if (cardIds.length === 0) {
+    return new Map<number, number>();
+  }
+
+  const ownerSql = creditPaymentOwnerWhereSql(ownerFilter);
+  const rows = await prisma.$queryRaw<
+    Array<{ credit_card_wallet_id: number; total: unknown }>
+  >`
+    SELECT p."credit_card_wallet_id", COALESCE(SUM(p."amount"), 0) AS total
+    FROM "CreditCardPayment" p
+    WHERE p."credit_card_wallet_id" IN (${Prisma.join(cardIds)})
+      AND p."paid_at" > ${window.statementEnd}
+      AND p."paid_at" <= ${window.statementDueDate}
+      AND ${ownerSql}
+    GROUP BY p."credit_card_wallet_id"
+  `;
+
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    map.set(row.credit_card_wallet_id, Number(row.total));
+  }
+  return map;
+};
 
 export async function getDuePaymentsForCurrentFortnight(
   ownerFilter: OwnerFilter,
@@ -313,23 +576,65 @@ export async function getDuePaymentsForCurrentFortnight(
 
   if (dueCards.length === 0) return [];
 
-  const items = await Promise.all(
-    dueCards.map(async (card) => {
-      const statement = await getCreditCardStatementByOwner(
-        card.id,
-        ownerFilter,
+  const groups = new Map<string, typeof dueCards>();
+  for (const card of dueCards) {
+    const key = `${card.cutoff_day}-${card.due_day}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(card);
+    } else {
+      groups.set(key, [card]);
+    }
+  }
+
+  const purchaseSums = new Map<number, number>();
+  const paymentSums = new Map<number, number>();
+  const statementDueByWallet = new Map<number, string>();
+
+  await Promise.all(
+    [...groups.values()].map(async (cardsInGroup) => {
+      const head = cardsInGroup[0];
+      const window = resolveCreditCardStatementWindow(
         now,
+        head.cutoff_day!,
+        head.due_day!,
       );
-      return {
-        walletId: card.id,
-        walletName: card.name,
-        walletType: card.type,
-        dueDay: card.due_day!,
-        nextDuePayment: statement.next_due_payment,
-        statementDueDate: statement.statement_due_date,
-      };
+      const cardIds = cardsInGroup.map((c) => c.id);
+      const dueStr = toDateOnlyString(window.statementDueDate);
+      for (const id of cardIds) {
+        statementDueByWallet.set(id, dueStr);
+      }
+
+      const [purchases, payments] = await Promise.all([
+        sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
+        sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
+      ]);
+
+      for (const [id, value] of purchases) {
+        purchaseSums.set(id, value);
+      }
+      for (const [id, value] of payments) {
+        paymentSums.set(id, value);
+      }
     }),
   );
+
+  const items = dueCards.map((card) => {
+    const lastStatementBalance = purchaseSums.get(card.id) ?? 0;
+    const paymentsAppliedToStatement = paymentSums.get(card.id) ?? 0;
+    const nextDuePayment = Math.max(
+      lastStatementBalance - paymentsAppliedToStatement,
+      0,
+    );
+    return {
+      walletId: card.id,
+      walletName: card.name,
+      walletType: card.type,
+      dueDay: card.due_day!,
+      nextDuePayment,
+      statementDueDate: statementDueByWallet.get(card.id)!,
+    };
+  });
 
   return items.filter((item) => item.nextDuePayment > 0);
 }

@@ -55,7 +55,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: 'Billeteras',
       url: '/wallets',
-      isActive: pathname.startsWith('/wallets'),
+      isActive:
+        pathname === '/wallets' ||
+        (pathname.startsWith('/wallets/') &&
+          !pathname.startsWith('/wallets/liquidity')),
+    },
+    {
+      title: 'Proyección de liquidez',
+      url: '/wallets/liquidity',
+      isActive: pathname.startsWith('/wallets/liquidity'),
     },
     {
       title: 'Tarjetas de crédito',

@@ -4,11 +4,21 @@ import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updatePaidSchema } from '@/schemas/transaction.schema';
 import { toggleExpensePaid } from '@/lib/finance/expense.service';
+import { logFinanceEvent } from '@/lib/observability/finance-log';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let paidToggleLog: {
+    owner_type: string;
+    owner_id: number;
+    expense_id: number;
+    wallet_id: number | null;
+    amount: number;
+    paid: boolean;
+  } | null = null;
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
@@ -33,6 +43,15 @@ export async function PATCH(
 
     const body = await request.json();
     const validatedData = updatePaidSchema.parse(body);
+
+    paidToggleLog = {
+      owner_type: context.ownerType,
+      owner_id: context.ownerId,
+      expense_id: expenseId,
+      wallet_id: existing.wallet_id,
+      amount: Number(existing.amount),
+      paid: validatedData.paid,
+    };
 
     const expense = await toggleExpensePaid({
       id: expenseId,
@@ -90,6 +109,18 @@ export async function PATCH(
       (error.code === 'CREDIT_LIMIT_EXCEEDED' ||
         error.code === 'INSUFFICIENT_WALLET_BALANCE')
     ) {
+      if (paidToggleLog) {
+        logFinanceEvent(
+          'warn',
+          'finance.api.client_error',
+          {
+            route: 'PATCH /api/expenses/[id]/paid',
+            error_code: error.code,
+            ...paidToggleLog,
+          },
+          request,
+        );
+      }
       return NextResponse.json(
         {
           error:
