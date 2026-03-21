@@ -313,20 +313,23 @@ export async function getDuePaymentsForCurrentFortnight(
 
   if (dueCards.length === 0) return [];
 
-  return dueCards.map((card) => {
-    const window = resolveCreditCardStatementWindow(
-      now,
-      card.cutoff_day!,
-      card.due_day!,
-    );
+  const items = await Promise.all(
+    dueCards.map(async (card) => {
+      const statement = await getCreditCardStatementByOwner(
+        card.id,
+        ownerFilter,
+        now,
+      );
+      return {
+        walletId: card.id,
+        walletName: card.name,
+        walletType: card.type,
+        dueDay: card.due_day!,
+        nextDuePayment: statement.next_due_payment,
+        statementDueDate: statement.statement_due_date,
+      };
+    }),
+  );
 
-    return {
-      walletId: card.id,
-      walletName: card.name,
-      walletType: card.type,
-      dueDay: card.due_day!,
-      nextDuePayment: Number(card.amount),
-      statementDueDate: toDateOnlyString(window.statementDueDate),
-    };
-  });
+  return items.filter((item) => item.nextDuePayment > 0);
 }

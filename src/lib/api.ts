@@ -556,3 +556,21 @@ export async function createCreditCardPayment(
     body: JSON.stringify(data),
   }, context);
 }
+
+export async function createCreditCardPurchase(
+  creditCardId: number,
+  data: {
+    fortnight_id: number;
+    category_id: number;
+    description: string;
+    amount: number;
+    payment_date?: string | null;
+    expense_template_id?: number | null;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/credit-cards/${creditCardId}/purchase`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, context);
+}

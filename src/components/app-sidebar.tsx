@@ -55,9 +55,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: 'Billeteras',
       url: '/wallets',
-      isActive:
-        pathname.startsWith('/wallets') ||
-        pathname.startsWith('/credit-cards'),
+      isActive: pathname.startsWith('/wallets'),
+    },
+    {
+      title: 'Tarjetas de crédito',
+      url: '/credit-cards',
+      isActive: pathname.startsWith('/credit-cards'),
     },
     ...(context.type === 'house'
       ? [

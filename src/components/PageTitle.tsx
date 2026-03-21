@@ -142,12 +142,14 @@ function getPageTitle(
     wallets: 'Billeteras',
   };
 
-  // Handle credit-cards (detail pages live under /credit-cards/[id])
   if (segments[0] === 'credit-cards') {
     breadcrumbs.push({
-      label: 'Billeteras',
-      href: `/wallets${qs}`,
+      label: 'Tarjetas de crédito',
+      href: `/credit-cards${qs}`,
     });
+    if (segments.length === 1) {
+      return { title: 'Tarjetas de crédito', breadcrumbs };
+    }
     breadcrumbs.push({ label: 'Estado de cuenta' });
     return { title: 'Estado de cuenta', breadcrumbs };
   }

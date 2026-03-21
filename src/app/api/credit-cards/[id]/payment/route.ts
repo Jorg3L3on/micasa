@@ -74,6 +74,23 @@ export async function POST(
       error &&
       typeof error === 'object' &&
       'code' in error &&
+      error.code === 'INSUFFICIENT_SOURCE_BALANCE'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Insufficient balance in source wallet',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
       (error.code === 'INVALID_CREDIT_CARD' ||
         error.code === 'INVALID_PAYMENT_SOURCE_WALLET' ||
         error.code === 'INVALID_PAYMENT_SOURCE_OWNER')
