@@ -273,15 +273,24 @@ export default async function MonthlyPage({
 
   return (
     <>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <MonthlyHeader
-          year={year}
-          month={month}
-          monthName={monthName}
-          hasPrevMonth={hasPrevMonth}
-          prevHref={prevHref}
-          prevMonthLabel={prevMonthLabel}
-        />
+      <div className="mb-3 flex items-center gap-2 sm:gap-3">
+        <div className="shrink-0">
+          <MonthlyHeader
+            year={year}
+            month={month}
+            monthName={monthName}
+            hasPrevMonth={hasPrevMonth}
+            prevHref={prevHref}
+            prevMonthLabel={prevMonthLabel}
+          />
+        </div>
+
+        <h1
+          className="min-w-0 flex-1 truncate text-center text-sm font-semibold tabular-nums sm:text-base"
+          aria-live="polite"
+        >
+          {monthName} {year}
+        </h1>
 
         <div className="shrink-0">
           {hasNextMonth ? (

@@ -53,6 +53,8 @@ import { cn } from '@/lib/utils';
 
 import type { TransactionRow } from '@/types/catalog';
 
+export type ExpenseTableDensity = 'comfortable' | 'compact';
+
 type ExpenseTableProps = {
   date?: string;
   expenses: TransactionRow[];
@@ -62,6 +64,7 @@ type ExpenseTableProps = {
   year?: number;
   month?: number;
   period?: 'FIRST' | 'SECOND';
+  density?: ExpenseTableDensity;
 };
 
 export default function ExpenseTable({
@@ -73,7 +76,9 @@ export default function ExpenseTable({
   year,
   month,
   period,
+  density = 'comfortable',
 }: ExpenseTableProps) {
+  const isCompact = density === 'compact';
   const { context } = useFinanceContext();
   const [dropdownMounted, setDropdownMounted] = useState(false);
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
@@ -328,7 +333,14 @@ export default function ExpenseTable({
         accessorKey: 'is_paid',
         id: 'is_paid',
         header: () => (
-          <span className="text-center text-xs font-medium">Estado</span>
+          <span
+            className={cn(
+              'text-center font-medium',
+              isCompact ? 'text-[10px]' : 'text-xs',
+            )}
+          >
+            Estado
+          </span>
         ),
         cell: ({ row }) => {
           const expense = row.original;
@@ -336,7 +348,12 @@ export default function ExpenseTable({
           if (expense.is_paid) {
             return (
               <div className="flex justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <CheckCircle2
+                  className={cn(
+                    'text-green-600 dark:text-green-400',
+                    isCompact ? 'h-4 w-4' : 'h-5 w-5',
+                  )}
+                />
               </div>
             );
           }
@@ -345,7 +362,7 @@ export default function ExpenseTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
                 onClick={() => {
                   setPayingExpense(expense);
                   setPayDialogOpen(true);
@@ -353,7 +370,12 @@ export default function ExpenseTable({
                 disabled={isUpdating}
                 aria-label="Marcar como pagado"
               >
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                <CheckCircle2
+                  className={cn(
+                    'text-muted-foreground',
+                    isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                  )}
+                />
               </Button>
             </div>
           );
@@ -363,32 +385,46 @@ export default function ExpenseTable({
       {
         accessorKey: 'description',
         header: () => (
-          <span className="text-xs font-medium">Gasto</span>
+          <span className={cn('font-medium', isCompact ? 'text-[10px]' : 'text-xs')}>
+            Gasto
+          </span>
         ),
         cell: ({ row }) => {
           const expense = row.original;
           const { hasDue, daysRemaining, showCountdown, badgeColor } =
             getDueInfo(expense);
           return (
-            <div className="flex flex-col gap-1 min-w-[200px]">
+            <div
+              className={cn(
+                'flex flex-col gap-1',
+                isCompact ? 'min-w-[160px]' : 'min-w-[200px]',
+              )}
+            >
               <span
                 className={cn(
-                  'font-medium text-sm',
-                  expense.is_paid && 'text-muted-foreground line-through'
+                  'font-medium',
+                  isCompact ? 'text-xs' : 'text-sm',
+                  expense.is_paid && 'text-muted-foreground line-through',
                 )}
               >
                 {expense.description}
               </span>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground">
+                <span
+                  className={cn(
+                    'text-muted-foreground',
+                    isCompact ? 'text-[10px]' : 'text-xs',
+                  )}
+                >
                   {expense.category} • {expense.paymentMethod}
                 </span>
                 {hasDue && (
                   <Badge
                     variant={expense.is_paid ? 'secondary' : badgeColor}
                     className={cn(
-                      'text-[10px] h-5',
-                      expense.is_paid && 'opacity-60'
+                      'text-[10px]',
+                      isCompact ? 'h-4 px-1.5' : 'h-5',
+                      expense.is_paid && 'opacity-60',
                     )}
                   >
                     {expense.is_paid
@@ -415,14 +451,18 @@ export default function ExpenseTable({
           <DataTableColumnHeader
             column={column}
             title="Monto"
-            className="text-right min-w-[120px] text-xs font-medium"
+            className={cn(
+              'text-right min-w-[120px] font-medium',
+              isCompact ? 'text-[10px]' : 'text-xs',
+            )}
           />
         ),
         cell: ({ row }) => (
           <span
             className={cn(
-              'text-right font-mono tabular-nums text-sm',
-              row.original.is_paid && 'text-muted-foreground line-through'
+              'text-right font-mono tabular-nums',
+              isCompact ? 'text-xs' : 'text-sm',
+              row.original.is_paid && 'text-muted-foreground line-through',
             )}
           >
             {formatCurrency(toDisplayAmount(row.original.amount))}
@@ -433,7 +473,14 @@ export default function ExpenseTable({
       {
         id: 'actions',
         header: () => (
-          <span className="text-center text-xs font-medium">Acciones</span>
+          <span
+            className={cn(
+              'text-center font-medium',
+              isCompact ? 'text-[10px]' : 'text-xs',
+            )}
+          >
+            Acciones
+          </span>
         ),
         cell: ({ row }) => {
           const expense = row.original;
@@ -444,11 +491,13 @@ export default function ExpenseTable({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
                   disabled={isUpdating}
                   aria-hidden
                 >
-                  <MoreVertical className="h-4 w-4" />
+                  <MoreVertical
+                    className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                  />
                 </Button>
               </div>
             );
@@ -460,10 +509,12 @@ export default function ExpenseTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
                     disabled={isUpdating}
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <MoreVertical
+                      className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -512,6 +563,7 @@ export default function ExpenseTable({
       setDeleteDialogOpen,
       setPayingExpense,
       setPayDialogOpen,
+      isCompact,
     ]
   );
 
@@ -534,22 +586,25 @@ export default function ExpenseTable({
       <Card className="overflow-hidden border-border/60">
         <CardContent className="px-0 pb-3 pt-0 space-y-0">
           <div className="relative w-full">
-            <Table>
+            <Table className={isCompact ? 'text-xs' : undefined}>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className={
+                        className={cn(
                           header.id === 'is_paid'
                             ? 'w-12 text-center'
                             : header.id === 'amount'
                               ? 'text-right min-w-[120px]'
                               : header.id === 'actions'
                                 ? 'w-20 text-center'
-                                : 'min-w-[200px]'
-                        }
+                                : isCompact
+                                  ? 'min-w-[160px]'
+                                  : 'min-w-[200px]',
+                          isCompact && 'h-8! py-1.5 px-1.5!',
+                        )}
                       >
                         {header.isPlaceholder
                           ? null
@@ -564,14 +619,22 @@ export default function ExpenseTable({
               </TableHeader>
             </Table>
           </div>
-          <div className="relative w-full max-h-[380px] overflow-y-auto">
-            <Table>
+          <div
+            className={cn(
+              'relative w-full overflow-y-auto',
+              isCompact ? 'max-h-[min(380px,55vh)]' : 'max-h-[380px]',
+            )}
+          >
+            <Table className={isCompact ? 'text-xs' : undefined}>
               <TableBody>
                 {table.getRowModel().rows?.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}
-                      className="py-8 text-center text-sm text-muted-foreground"
+                      className={cn(
+                        'text-center text-muted-foreground',
+                        isCompact ? 'py-6 text-xs' : 'py-8 text-sm',
+                      )}
                     >
                       Sin gastos
                     </TableCell>
@@ -585,20 +648,21 @@ export default function ExpenseTable({
                           'transition-colors',
                           row.original.is_paid
                             ? 'bg-muted/30 opacity-75 hover:bg-muted/40'
-                            : 'hover:bg-muted/50'
+                            : 'hover:bg-muted/50',
                         )}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
                             key={cell.id}
-                            className={
+                            className={cn(
                               cell.column.id === 'is_paid' ||
-                              cell.column.id === 'actions'
+                                cell.column.id === 'actions'
                                 ? 'text-center'
                                 : cell.column.id === 'amount'
                                   ? 'text-right'
-                                  : undefined
-                            }
+                                  : undefined,
+                              isCompact && 'p-1',
+                            )}
                           >
                             {flexRender(
                               cell.column.columnDef.cell,
@@ -609,17 +673,33 @@ export default function ExpenseTable({
                       </TableRow>
                     ))}
                     <TableRow className="border-t-2 border-border/60 bg-muted/30">
-                      <TableCell colSpan={2} className="text-right py-2.5">
+                      <TableCell
+                        colSpan={2}
+                        className={cn(
+                          'text-right',
+                          isCompact ? 'py-2' : 'py-2.5',
+                        )}
+                      >
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Total gastos
                         </span>
                       </TableCell>
-                      <TableCell className="text-right py-2.5">
-                        <span className="text-sm font-bold font-mono tabular-nums">
+                      <TableCell
+                        className={cn(
+                          'text-right',
+                          isCompact ? 'py-2' : 'py-2.5',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'font-bold font-mono tabular-nums',
+                            isCompact ? 'text-xs' : 'text-sm',
+                          )}
+                        >
                           {formatCurrency(total)}
                         </span>
                       </TableCell>
-                      <TableCell className="py-2.5" />
+                      <TableCell className={isCompact ? 'py-2' : 'py-2.5'} />
                     </TableRow>
                   </>
                 )}

@@ -20,7 +20,7 @@ const DuePaymentsBanner = ({ duePayments }: DuePaymentsBannerProps) => {
 
   return (
     <div
-      className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/10 px-3 py-2.5"
+      className="rounded-lg border border-border/60 border-l-[3px] border-l-amber-500/50 bg-card px-3 py-2.5"
       role="region"
       aria-label="Pagos de tarjetas pendientes esta quincena"
     >

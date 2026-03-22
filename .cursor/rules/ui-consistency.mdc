@@ -1,0 +1,38 @@
+---
+description: UI hierarchy, page chrome, and consistency with the fintech design system across MiCasa
+alwaysApply: true
+---
+
+# UI consistency (MiCasa)
+
+When adding or changing screens, align with **`fintech-ui-design-system.mdc`** (same `.cursor/rules/` folder) for **tokens** (typography for money, icon pills, table footers, dark mode). This rule adds **layout and control hierarchy** so the app feels cohesive, not “panel of buttons.”
+
+## Page structure
+
+- **Chrome row** (nav, month, account context): keep **sparse**—prefer **icon + `Tooltip`** for prev/next and secondary toggles; avoid stacking many labeled buttons in one horizontal strip.
+- **Content row**: put **data strips** (e.g. wallet balances) **below** the chrome row at **full width** when they are wide, instead of squeezing them beside nav icons.
+- **Primary work area**: place the **main repeated action** (e.g. add expense) **next to the data it affects** (e.g. directly under the summary, above the table)—not only at the far top or bottom of the page.
+
+## Actions and controls
+
+- **One primary labeled control** per logical block (e.g. one clear CTA per column or section). Secondary actions go in **`DropdownMenu`** (e.g. “Más” / regenerate), not as equal-weight buttons beside the primary.
+- **Several related toggles** (layout, visibility, filters): prefer **one trigger** opening a **menu** (`DropdownMenu` with radio + checkbox items) over multiple side-by-side segmented button groups—unless the product explicitly needs always-visible one-tap toggles.
+- **Tertiary / view controls**: use **`Button variant="ghost"`** (compact `h-8`–`h-9`) with icon + short label; reserve **`outline` + `rounded-xl` + shadow** for stronger CTAs (e.g. create next month).
+- **Icon-only controls**: always **`aria-label`** and usually **`Tooltip`** with Spanish copy matching existing patterns.
+
+## Surfaces and color
+
+- **Default to calm shells**: `border border-border/60`, `bg-card` (or transparent) for list tiles and summary panels. Use **accent on the icon pill** and/or a **colored left border** (`border-l-[3px] border-l-*-500/50`) when you need type identity—avoid full **tinted panel backgrounds** unless the fintech rule calls for a specific metric emphasis.
+- **Scrollable horizontal cards** (wallets, chips): keep **edge fades** and **`shrink-0`** items per the fintech rule; collapse toggles get tooltips.
+
+## Persistence and URLs
+
+- **User layout preferences** (view mode, visibility): **`localStorage`** with a clear `micasa.*` key prefix is fine; document keys in code comments when adding new ones.
+
+## Checklist before shipping UI
+
+1. Does this screen match **fintech** typography and money formatting?
+2. Is there **at most one** dominant button per section?
+3. Are **rare** actions in a **menu**, not the main bar?
+4. Is **chrome** separated from **content** and not overcrowded?
+5. **`aria-label` / tooltips** on icon-only controls?
