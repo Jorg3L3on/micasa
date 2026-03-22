@@ -1,11 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { TransactionRow } from '@/types/catalog';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
 const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
@@ -138,14 +148,16 @@ export default function MonthlyFortnightView({
     }
   }, []);
 
-  const handleLayoutSingle = useCallback(() => {
-    setLayout('single');
-    persistLayout('single');
-  }, []);
-
-  const handleLayoutBoth = useCallback(() => {
-    setLayout('both');
-    persistLayout('both');
+  const handleLayoutRadio = useCallback((value: string) => {
+    if (value === 'single') {
+      setLayout('single');
+      persistLayout('single');
+      return;
+    }
+    if (value === 'both') {
+      setLayout('both');
+      persistLayout('both');
+    }
   }, []);
 
   const handlePeriodChange = useCallback((value: string) => {
@@ -154,14 +166,9 @@ export default function MonthlyFortnightView({
     persistPeriod(value);
   }, []);
 
-  const handleSummaryShowToolbar = useCallback(() => {
-    setSummaryVisible(true);
-    persistSummaryVisible(true);
-  }, []);
-
-  const handleSummaryHideToolbar = useCallback(() => {
-    setSummaryVisible(false);
-    persistSummaryVisible(false);
+  const handleSummaryChecked = useCallback((checked: boolean) => {
+    setSummaryVisible(checked);
+    persistSummaryVisible(checked);
   }, []);
 
   const handleShowSummaryFromColumn = useCallback(() => {
@@ -169,131 +176,111 @@ export default function MonthlyFortnightView({
     persistSummaryVisible(true);
   }, []);
 
+  const vistaChip = useMemo(() => {
+    if (layout === 'both') return 'Ambas';
+    return period === 'FIRST' ? 'Una · 1ª' : 'Una · 2ª';
+  }, [layout, period]);
+
   const showFirst = layout === 'both' || period === 'FIRST';
   const showSecond = layout === 'both' || period === 'SECOND';
 
   return (
     <div className="space-y-4">
       <div
-        className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start"
         role="region"
-        aria-label="Controles de vista de quincenas"
+        aria-label="Controles de vista de planificación"
       >
-        <div
-          className="flex flex-col gap-1.5"
-          role="group"
-          aria-label="Modo de vista"
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Vista
-          </span>
-          <div className="inline-flex rounded-lg bg-muted p-[3px]">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
+              variant="outline"
               className={cn(
-                'h-8 rounded-md px-3 shadow-none',
-                layout === 'single' &&
-                  'bg-background text-foreground shadow-sm dark:bg-input/30',
+                'h-9 gap-2 rounded-xl border-border/60 px-3 shadow-sm',
+                'hover:bg-muted/40',
               )}
-              aria-pressed={layout === 'single'}
-              aria-label="Mostrar una sola quincena"
-              onClick={handleLayoutSingle}
+              aria-haspopup="menu"
+              aria-label={`Vista de planificación: ${vistaChip}. Abrir opciones.`}
             >
-              Una quincena
+              <SlidersHorizontal
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+              <span className="text-sm font-medium">Vista</span>
+              <span
+                className="max-w-[140px] truncate text-xs font-medium text-muted-foreground sm:max-w-[200px]"
+                aria-hidden
+              >
+                {vistaChip}
+              </span>
+              <ChevronDown
+                className="h-4 w-4 shrink-0 opacity-50"
+                aria-hidden
+              />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-8 rounded-md px-3 shadow-none',
-                layout === 'both' &&
-                  'bg-background text-foreground shadow-sm dark:bg-input/30',
-              )}
-              aria-pressed={layout === 'both'}
-              aria-label="Mostrar ambas quincenas"
-              onClick={handleLayoutBoth}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="min-w-56"
+            aria-label="Opciones de vista de planificación"
+          >
+            <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Disposición
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={layout}
+              onValueChange={handleLayoutRadio}
             >
-              Ambas quincenas
-            </Button>
-          </div>
-        </div>
+              <DropdownMenuRadioItem value="single">
+                Una quincena
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="both">
+                Ambas quincenas
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
 
-        {layout === 'single' ? (
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Quincena
-            </span>
-            <Tabs
-              value={period}
-              onValueChange={handlePeriodChange}
-              className="w-full min-w-0 sm:w-auto"
-            >
-              <TabsList className="h-auto w-full min-w-0 flex-wrap sm:w-fit">
-                <TabsTrigger
-                  value="FIRST"
-                  className="shrink-0"
-                  title={first.label}
-                  aria-label={`Primera quincena: ${first.label}`}
+            {layout === 'single' ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Quincena visible
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={period}
+                  onValueChange={handlePeriodChange}
                 >
-                  1ª quincena
-                </TabsTrigger>
-                <TabsTrigger
-                  value="SECOND"
-                  className="shrink-0"
-                  title={second.label}
-                  aria-label={`Segunda quincena: ${second.label}`}
-                >
-                  2ª quincena
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        ) : null}
+                  <DropdownMenuRadioItem
+                    value="FIRST"
+                    title={first.label}
+                    className="max-w-[min(100vw-2rem,18rem)]"
+                  >
+                    <span className="truncate">
+                      1ª — {first.label}
+                    </span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="SECOND"
+                    title={second.label}
+                    className="max-w-[min(100vw-2rem,18rem)]"
+                  >
+                    <span className="truncate">
+                      2ª — {second.label}
+                    </span>
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </>
+            ) : null}
 
-        <div
-          className="flex flex-col gap-1.5 sm:items-end"
-          role="group"
-          aria-label="Visibilidad del resumen por quincena"
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Tarjetas de resumen
-          </span>
-          <div className="inline-flex rounded-lg bg-muted p-[3px]">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-8 rounded-md px-3 shadow-none',
-                summaryVisible &&
-                  'bg-background text-foreground shadow-sm dark:bg-input/30',
-              )}
-              aria-pressed={summaryVisible}
-              aria-label="Mostrar tarjetas de resumen de cada quincena"
-              onClick={handleSummaryShowToolbar}
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={summaryVisible}
+              onCheckedChange={handleSummaryChecked}
             >
-              Visibles
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-8 rounded-md px-3 shadow-none',
-                !summaryVisible &&
-                  'bg-background text-foreground shadow-sm dark:bg-input/30',
-              )}
-              aria-pressed={!summaryVisible}
-              aria-label="Ocultar tarjetas de resumen de cada quincena"
-              onClick={handleSummaryHideToolbar}
-            >
-              Ocultas
-            </Button>
-          </div>
-        </div>
+              Mostrar resumen
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div
