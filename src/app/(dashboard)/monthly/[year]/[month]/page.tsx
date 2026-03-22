@@ -273,7 +273,7 @@ export default async function MonthlyPage({
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <MonthlyHeader
           year={year}
           month={month}
@@ -282,8 +282,6 @@ export default async function MonthlyPage({
           prevHref={prevHref}
           prevMonthLabel={prevMonthLabel}
         />
-
-        <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
 
         <div className="shrink-0">
           {hasNextMonth ? (
@@ -311,6 +309,10 @@ export default async function MonthlyPage({
             />
           )}
         </div>
+      </div>
+
+      <div className="mb-4 min-w-0">
+        <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
       </div>
 
       {isCurrentMonth && duePayments.length > 0 && (
