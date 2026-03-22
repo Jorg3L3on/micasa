@@ -505,25 +505,8 @@ export default function FortnightColumn({
           </div>
         )}
 
-        {/* Single Expense Table for all expenses */}
-        <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
-          {sortedTransactions.length === 0 ? (
-            <EmptyState message="No hay transacciones para esta quincena" />
-          ) : (
-            <ExpenseTable
-              expenses={sortedTransactions}
-              onExpenseUpdate={handleExpenseUpdate}
-              fortnightLabel={label}
-              totalIncome={tenemos}
-              year={year}
-              month={month}
-              period={period}
-            />
-          )}
-        </div>
-
-        {/* Action bar */}
-        <div className="flex items-center gap-2 pt-2">
+        {/* Primary actions: junto al resumen, antes de la tabla */}
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -581,6 +564,23 @@ export default function FortnightColumn({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+
+        {/* Single Expense Table for all expenses */}
+        <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
+          {sortedTransactions.length === 0 ? (
+            <EmptyState message="No hay transacciones para esta quincena" />
+          ) : (
+            <ExpenseTable
+              expenses={sortedTransactions}
+              onExpenseUpdate={handleExpenseUpdate}
+              fortnightLabel={label}
+              totalIncome={tenemos}
+              year={year}
+              month={month}
+              period={period}
+            />
+          )}
         </div>
       </div>
 

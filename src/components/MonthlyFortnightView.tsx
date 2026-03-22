@@ -185,9 +185,9 @@ export default function MonthlyFortnightView({
   const showSecond = layout === 'both' || period === 'SECOND';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start"
+        className="flex justify-end"
         role="region"
         aria-label="Controles de vista de planificación"
       >
@@ -195,33 +195,30 @@ export default function MonthlyFortnightView({
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               className={cn(
-                'h-9 gap-2 rounded-xl border-border/60 px-3 shadow-sm',
-                'hover:bg-muted/40',
+                'h-8 gap-1.5 rounded-lg px-2 text-muted-foreground',
+                'hover:bg-muted/60 hover:text-foreground',
               )}
               aria-haspopup="menu"
               aria-label={`Vista de planificación: ${vistaChip}. Abrir opciones.`}
             >
               <SlidersHorizontal
-                className="h-4 w-4 shrink-0 text-muted-foreground"
+                className="h-3.5 w-3.5 shrink-0"
                 aria-hidden
               />
-              <span className="text-sm font-medium">Vista</span>
-              <span
-                className="max-w-[140px] truncate text-xs font-medium text-muted-foreground sm:max-w-[200px]"
-                aria-hidden
-              >
+              <span className="text-xs font-medium sm:text-sm">Vista</span>
+              <span className="max-w-[120px] truncate text-xs text-muted-foreground sm:max-w-[200px]">
                 {vistaChip}
               </span>
               <ChevronDown
-                className="h-4 w-4 shrink-0 opacity-50"
+                className="h-3.5 w-3.5 shrink-0 opacity-60"
                 aria-hidden
               />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            align="start"
+            align="end"
             className="min-w-56"
             aria-label="Opciones de vista de planificación"
           >
