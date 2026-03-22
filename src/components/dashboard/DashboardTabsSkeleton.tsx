@@ -22,8 +22,8 @@ export default function DashboardTabsSkeleton() {
         ))}
       </div>
       <div className={cn(DASHBOARD_GRID_CLASS)}>
-        <div className="card-glass card-depth h-40 animate-pulse rounded-lg border border-border/50" />
-        <div className="card-glass card-depth h-40 animate-pulse rounded-lg border border-border/50" />
+        <div className="h-40 animate-pulse rounded-xl border border-border/60 bg-transparent shadow-sm" />
+        <div className="h-40 animate-pulse rounded-xl border border-border/60 bg-transparent shadow-sm" />
       </div>
       <div className="max-w-2xl">
         <div className="h-24 animate-pulse rounded-lg bg-muted/50" />

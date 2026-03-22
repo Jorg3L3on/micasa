@@ -8,7 +8,7 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import { Percent, Receipt } from 'lucide-react';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS } from './constants';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type ExpenseHealthCheckCardProps = {
   data: DashboardData;
@@ -38,10 +38,10 @@ export default function ExpenseHealthCheckCard({
         <TooltipProvider>
           <div
             className={cn(
-              'rounded-lg border px-2.5 py-2',
+              DASHBOARD_METRIC_STRIP_CLASS,
               isHighCommitment
-                ? 'border-l-[3px] border-l-destructive/50 bg-destructive/5'
-                : 'border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8',
+                ? 'border-l-destructive/50'
+                : 'border-l-violet-500/50',
             )}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -65,7 +65,12 @@ export default function ExpenseHealthCheckCard({
           </div>
 
           <div className="space-y-3 border-t border-border/60 pt-4">
-            <div className="rounded-lg border border-l-[3px] border-l-destructive/50 bg-destructive/5 px-2.5 py-2">
+            <div
+              className={cn(
+                DASHBOARD_METRIC_STRIP_CLASS,
+                'border-l-destructive/50',
+              )}
+            >
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Total vencido
               </span>
@@ -82,7 +87,12 @@ export default function ExpenseHealthCheckCard({
             </div>
 
             {largestExpense && (
-              <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+              <div
+                className={cn(
+                  DASHBOARD_METRIC_STRIP_CLASS,
+                  'border-l-violet-500/50',
+                )}
+              >
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Mayor gasto
                 </span>

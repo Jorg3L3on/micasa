@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS } from './constants';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type PeriodComparisonCardProps = {
   data: DashboardData;
@@ -38,10 +38,8 @@ export default function PeriodComparisonCard({
       <CardContent className="space-y-6">
         <div
           className={cn(
-            'rounded-lg border px-2.5 py-2',
-            incomeUp
-              ? 'border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8'
-              : 'border-l-[3px] border-l-destructive/50 bg-destructive/5',
+            DASHBOARD_METRIC_STRIP_CLASS,
+            incomeUp ? 'border-l-blue-500/50' : 'border-l-destructive/50',
           )}
         >
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -59,7 +57,9 @@ export default function PeriodComparisonCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
-          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+          <div
+            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-blue-500/50')}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Ingresos actual
             </span>
@@ -67,7 +67,9 @@ export default function PeriodComparisonCard({
               {formatCurrency(currentIncome)}
             </p>
           </div>
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+          <div
+            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos actual
             </span>
@@ -79,10 +81,8 @@ export default function PeriodComparisonCard({
 
         <div
           className={cn(
-            'rounded-lg border px-2.5 py-2',
-            expenseDown
-              ? 'border-l-[3px] border-l-green-500/50 bg-green-500/5 dark:bg-green-500/8'
-              : 'border-l-[3px] border-l-destructive/50 bg-destructive/5',
+            DASHBOARD_METRIC_STRIP_CLASS,
+            expenseDown ? 'border-l-green-500/50' : 'border-l-destructive/50',
           )}
         >
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

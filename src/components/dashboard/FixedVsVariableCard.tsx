@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS } from './constants';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type FixedVsVariableCardProps = {
   data: DashboardData;
@@ -44,7 +44,9 @@ export default function FixedVsVariableCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+          <div
+            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos fijos
             </span>
@@ -52,7 +54,9 @@ export default function FixedVsVariableCard({
               {formatCurrency(totalFixed)}
             </p>
           </div>
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/8 px-2.5 py-2">
+          <div
+            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos variables
             </span>

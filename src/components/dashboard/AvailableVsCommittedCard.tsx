@@ -1,11 +1,10 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS } from './constants';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type AvailableVsCommittedCardProps = {
   data: DashboardData;
@@ -14,8 +13,6 @@ type AvailableVsCommittedCardProps = {
 export default function AvailableVsCommittedCard({
   data,
 }: AvailableVsCommittedCardProps) {
-  const searchParams = useSearchParams();
-  const queryString = searchParams.toString();
   const { libre, pagado, pendiente } = data.availableVsCommitted;
 
   return (
@@ -31,7 +28,9 @@ export default function AvailableVsCommittedCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5 pt-0">
-        <div className="rounded-lg border border-l-[3px] border-l-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/8 px-2.5 py-2">
+        <div
+          className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-emerald-500/50')}
+        >
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Libre
           </span>
@@ -41,7 +40,9 @@ export default function AvailableVsCommittedCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-5">
-          <div className="rounded-lg border border-l-[3px] border-l-green-500/50 bg-green-500/5 dark:bg-green-500/8 px-2.5 py-2">
+          <div
+            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-green-500/50')}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Pagado
             </span>
@@ -49,7 +50,9 @@ export default function AvailableVsCommittedCard({
               {formatCurrency(pagado)}
             </p>
           </div>
-          <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-2.5 py-2">
+          <div
+            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-amber-500/50')}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Pendiente
             </span>

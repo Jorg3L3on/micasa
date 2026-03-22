@@ -23,6 +23,7 @@ When adding or changing screens, align with **`fintech-ui-design-system.mdc`** (
 ## Surfaces and color
 
 - **Default to calm shells**: `border border-border/60`, `bg-card` (or transparent) for list tiles and summary panels. Use **accent on the icon pill** and/or a **colored left border** (`border-l-[3px] border-l-*-500/50`) when you need type identity—avoid full **tinted panel backgrounds** unless the fintech rule calls for a specific metric emphasis.
+- **Dashboard metric strips** (`src/components/dashboard/`): use `DASHBOARD_METRIC_STRIP_CLASS` + a `border-l-*` accent; no `bg-*-500/5` fills on those strips. Enforced in GitHub Actions (`.github/workflows/ci.yml`) and locally via `npm run validate:dashboard-ui` or `npm run ci`.
 - **Scrollable horizontal cards** (wallets, chips): keep **edge fades** and **`shrink-0`** items per the fintech rule; collapse toggles get tooltips.
 
 ## Persistence and URLs

@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
+    "ci": "npm run validate:dashboard-ui && npm test && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
