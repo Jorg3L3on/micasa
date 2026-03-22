@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -32,6 +32,7 @@ import {
   createExpenseTemplate,
 } from '@/lib/api';
 import type { TransactionRow } from '@/types/catalog';
+import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 
 type IncomeItemBySource = {
   fortnightId: number;
@@ -65,6 +66,7 @@ type FortnightColumnProps = {
   period: 'FIRST' | 'SECOND';
   showSummaryCard?: boolean;
   onShowSummaryCard?: () => void;
+  tableDensity?: ExpenseTableDensity;
 };
 
 export default function FortnightColumn({
@@ -77,6 +79,7 @@ export default function FortnightColumn({
   period,
   showSummaryCard = true,
   onShowSummaryCard,
+  tableDensity = 'comfortable',
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const router = useRouter();
@@ -90,6 +93,32 @@ export default function FortnightColumn({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
+
+  // Atajo: tecla "A" abre agregar gasto; ignorar si hay diálogo abierto o el foco está en un campo editable.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key !== 'a' && e.key !== 'A') return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+      if (overrideDialogOpen || addExpenseDialogOpen) return;
+      if (!fortnightId || fortnightId <= 0) return;
+      e.preventDefault();
+      setAddExpenseDialogOpen(true);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [overrideDialogOpen, addExpenseDialogOpen, fortnightId]);
 
   const monthLabel = useMemo(() => {
     if (!year || !month) {
@@ -507,22 +536,29 @@ export default function FortnightColumn({
 
         {/* Primary actions: junto al resumen, antes de la tabla */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAddExpenseDialogOpen(true)}
-            disabled={!fortnightId || fortnightId <= 0}
-            className="gap-1.5"
-            aria-label="Agregar gasto a esta quincena"
-            title={
-              !fortnightId || fortnightId <= 0
-                ? 'La quincena no está disponible. Recarga la página.'
-                : undefined
-            }
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Agregar gasto
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddExpenseDialogOpen(true)}
+                disabled={!fortnightId || fortnightId <= 0}
+                className="gap-1.5"
+                aria-label="Agregar gasto a esta quincena"
+                title={
+                  !fortnightId || fortnightId <= 0
+                    ? 'La quincena no está disponible. Recarga la página.'
+                    : undefined
+                }
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Agregar gasto
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>
+              Atajo: tecla A
+            </TooltipContent>
+          </Tooltip>
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -567,9 +603,17 @@ export default function FortnightColumn({
         </div>
 
         {/* Single Expense Table for all expenses */}
-        <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
+        <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
           {sortedTransactions.length === 0 ? (
-            <EmptyState message="No hay transacciones para esta quincena" />
+            <EmptyState
+              message="Sin gastos en esta quincena"
+              description="Empieza con un gasto para ver totales y el estado del mes."
+              action={{
+                label: 'Agregar primer gasto',
+                onClick: () => setAddExpenseDialogOpen(true),
+                variant: 'default',
+              }}
+            />
           ) : (
             <ExpenseTable
               expenses={sortedTransactions}
@@ -579,6 +623,7 @@ export default function FortnightColumn({
               year={year}
               month={month}
               period={period}
+              density={tableDensity}
             />
           )}
         </div>
