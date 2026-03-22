@@ -18,6 +18,10 @@ jobs:
 
       - run: npm ci
 
+      # Client is generated to src/generated/prisma (gitignored); required for tests and build.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Dashboard metric strip rules
         run: npm run validate:dashboard-ui
 
