@@ -11,7 +11,7 @@ import AddExpenseDialog from '@/components/AddExpenseDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw } from 'lucide-react';
+import { BarChart3, Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
@@ -52,6 +52,8 @@ type FortnightColumnProps = {
   year: number;
   month: number;
   period: 'FIRST' | 'SECOND';
+  showSummaryCard?: boolean;
+  onShowSummaryCard?: () => void;
 };
 
 export default function FortnightColumn({
@@ -62,6 +64,8 @@ export default function FortnightColumn({
   year,
   month,
   period,
+  showSummaryCard = true,
+  onShowSummaryCard,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const router = useRouter();
@@ -450,28 +454,45 @@ export default function FortnightColumn({
   return (
     <>
       <div className="flex flex-col space-y-4">
-        {/* Summary Cards */}
-        <div className="sticky top-16 z-10">
-          <SummaryBlock
-            tenemos={tenemos}
-            libre={libre}
-            pagado={pagado}
-            pendiente={pendiente}
-            monthLabel={monthLabel}
-            userIncome={currentFortnightUserIncome}
-            incomeItems={
-              summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ?? []
-            }
-            year={year}
-            month={month}
-            period={period}
-            expenseCount={transactions.length}
-            paidExpenseCount={transactions.filter((t) => t.is_paid).length}
-            unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
-            onEditIncome={handleOpenOverrideDialog}
-            onEditIncomeSource={handleOpenEditIncomeSource}
-          />
-        </div>
+        {/* Summary card (toggle desde la barra de planificación) */}
+        {showSummaryCard ? (
+          <div className="sticky top-16 z-10">
+            <SummaryBlock
+              tenemos={tenemos}
+              libre={libre}
+              pagado={pagado}
+              pendiente={pendiente}
+              monthLabel={monthLabel}
+              userIncome={currentFortnightUserIncome}
+              incomeItems={
+                summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
+                []
+              }
+              year={year}
+              month={month}
+              period={period}
+              expenseCount={transactions.length}
+              paidExpenseCount={transactions.filter((t) => t.is_paid).length}
+              unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
+              onEditIncome={handleOpenOverrideDialog}
+              onEditIncomeSource={handleOpenEditIncomeSource}
+            />
+          </div>
+        ) : (
+          <div className="sticky top-16 z-10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 border-dashed"
+              onClick={onShowSummaryCard}
+              aria-label={`Mostrar resumen de la quincena: ${label}`}
+            >
+              <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+              Mostrar resumen
+            </Button>
+          </div>
+        )}
 
         {/* Single Expense Table for all expenses */}
         <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">

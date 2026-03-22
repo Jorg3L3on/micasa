@@ -144,16 +144,14 @@ export default function SummaryBlock({
 
       <CardContent className="px-4 pb-3 pt-3 space-y-3">
         {/* Hero: Available balance */}
-        <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/5 dark:bg-emerald-500/8 blur-2xl" />
-
+        <div className="relative rounded-xl border border-border/60 p-3">
           <div className="relative flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 shrink-0">
                 <TrendingUp className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
               </span>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/70 dark:text-emerald-400/70 leading-none">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">
                   Disponible
                 </p>
                 {daysRemaining !== null && (
@@ -219,7 +217,7 @@ export default function SummaryBlock({
             {/* Three metric cards */}
             <div className="grid grid-cols-3 gap-2">
               {/* Ingresos */}
-              <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+              <div className="relative rounded-lg border border-border/60 px-2.5 py-2">
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
@@ -255,7 +253,7 @@ export default function SummaryBlock({
               </div>
 
               {/* Pagado */}
-              <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-green-500/50 bg-green-500/5 dark:bg-green-500/8 px-2.5 py-2">
+              <div className="relative rounded-lg border border-border/60 px-2.5 py-2">
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15 shrink-0">
                     <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
@@ -275,7 +273,7 @@ export default function SummaryBlock({
               </div>
 
               {/* Pendiente */}
-              <div className="relative overflow-hidden rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-2.5 py-2">
+              <div className="relative rounded-lg border border-border/60 px-2.5 py-2">
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
                     <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
