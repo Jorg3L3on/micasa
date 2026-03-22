@@ -81,26 +81,30 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   const [isStepLoading, setStepLoading] = useState(false);
   const [canProceed, setCanProceed] = useState(true);
   const [wallets, setWallets] = useState<WalletDraft[]>([
-    { id: crypto.randomUUID(), name: 'Efectivo', type: 'CASH' },
-    { id: crypto.randomUUID(), name: 'Cuenta principal', type: 'BANK' },
+    { id: crypto.randomUUID(), name: '', type: 'CASH' },
+    { id: crypto.randomUUID(), name: '', type: 'BANK' },
   ]);
   const [categories, setCategories] = useState<CategoryDraft[]>([
     { id: crypto.randomUUID(), name: 'Comida' },
     { id: crypto.randomUUID(), name: 'Transporte' },
     { id: crypto.randomUUID(), name: 'Vivienda' },
   ]);
-  const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>([
-    {
-      id: crypto.randomUUID(),
-      name: 'Sueldo',
-      amount: 0,
-      walletId: '',
-      source: '',
-      appliesFirstFortnight: true,
-      appliesSecondFortnight: true,
-    },
-  ]);
-  const [expenseTemplates, setExpenseTemplates] = useState<ExpenseTemplateDraft[]>([
+  const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
+    [
+      {
+        id: crypto.randomUUID(),
+        name: 'Sueldo',
+        amount: 0,
+        walletId: '',
+        source: '',
+        appliesFirstFortnight: true,
+        appliesSecondFortnight: true,
+      },
+    ],
+  );
+  const [expenseTemplates, setExpenseTemplates] = useState<
+    ExpenseTemplateDraft[]
+  >([
     {
       id: crypto.randomUUID(),
       name: 'Renta',

@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   useOnboarding,
   type IncomeTemplateDraft,
@@ -55,8 +56,7 @@ export default function StepIncomeTemplates() {
     id: string,
     frequency: 'FIRST' | 'SECOND' | 'BOTH',
   ) => {
-    const appliesFirstFortnight =
-      frequency === 'FIRST' || frequency === 'BOTH';
+    const appliesFirstFortnight = frequency === 'FIRST' || frequency === 'BOTH';
     const appliesSecondFortnight =
       frequency === 'SECOND' || frequency === 'BOTH';
 
@@ -79,12 +79,6 @@ export default function StepIncomeTemplates() {
       currentName === 'Nuevo ingreso'
     ) {
       handleNameChange(id, '');
-    }
-  };
-
-  const handleIncomeSourceFocus = (id: string, currentSource: string) => {
-    if (currentSource === 'Origen (empresa, cliente...)') {
-      handleSourceChange(id, '');
     }
   };
 
@@ -114,18 +108,20 @@ export default function StepIncomeTemplates() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <h3 className="text-foreground text-lg font-semibold">
           ¿De dónde viene tu dinero?
         </h3>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Las plantillas de ingreso representan dinero que recibes
-          regularmente. Ejemplos: sueldo, trabajos freelance, ventas.
+          Las plantillas son ingresos que recibes con cierta regularidad (sueldo,
+          freelance, etc.). Para cada una: cómo se llama, de dónde viene, un
+          monto de referencia, en qué billetera cae el dinero y en qué quincena
+          lo recibes.
         </p>
       </div>
 
-      <ul className="flex flex-col gap-3" role="list">
-        {incomeTemplates.map((income) => {
+      <ul className="flex flex-col gap-4" role="list">
+        {incomeTemplates.map((income, index) => {
           let frequency: 'FIRST' | 'SECOND' | 'BOTH' = 'BOTH';
           if (income.appliesFirstFortnight && income.appliesSecondFortnight) {
             frequency = 'BOTH';
@@ -139,7 +135,7 @@ export default function StepIncomeTemplates() {
             <motion.li
               key={income.id}
               className={cn(
-                'flex flex-wrap items-center gap-3 rounded-lg border p-4 transition-colors',
+                'space-y-4 rounded-lg border p-4 transition-colors',
                 'hover:bg-muted/40',
               )}
               role="listitem"
@@ -147,90 +143,158 @@ export default function StepIncomeTemplates() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Input
-                type="text"
-                value={income.name}
-                onChange={(e) => handleNameChange(income.id, e.target.value)}
-                onFocus={() => handleIncomeNameFocus(income.id, income.name)}
-                placeholder="Nombre del ingreso"
-                className="min-w-0 flex-1 basis-32"
-                aria-label={`Nombre del ingreso: ${income.name}`}
-              />
-              <Input
-                type="text"
-                value={income.source}
-                onChange={(e) => handleSourceChange(income.id, e.target.value)}
-                onFocus={() =>
-                  handleIncomeSourceFocus(income.id, income.source)
-                }
-                placeholder="Origen (empresa, cliente...)"
-                className="min-w-[8rem] max-w-[12rem] text-sm"
-                aria-label={`Origen del ingreso: ${income.source || income.name}`}
-              />
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-muted-foreground shrink-0 text-xs"
-                  aria-hidden
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-muted-foreground text-sm font-medium">
+                  Ingreso {index + 1}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemove(income.id)}
+                  disabled={!canDelete}
+                  aria-label={`Eliminar ingreso ${income.name || `número ${index + 1}`}`}
+                  className="text-muted-foreground hover:text-destructive -mt-1 shrink-0"
                 >
-                  MXN
-                </span>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={income.amount === 0 ? '' : income.amount}
-                  onChange={(e) =>
-                    handleAmountChange(income.id, e.target.value)
-                  }
-                  placeholder="0"
-                  className="w-24"
-                  aria-label="Monto del ingreso en pesos"
-                />
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
-              <Select
-                value={income.walletId || undefined}
-                onValueChange={(value) => handleWalletChange(income.id, value)}
-              >
-                <SelectTrigger className="w-40" size="default">
-                  <SelectValue placeholder="Billetera" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wallets.map((wallet) => (
-                    <SelectItem key={wallet.id} value={wallet.id}>
-                      {wallet.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={frequency}
-                onValueChange={(value) =>
-                  handleFrequencyChange(
-                    income.id,
-                    value as 'FIRST' | 'SECOND' | 'BOTH',
-                  )
-                }
-              >
-                <SelectTrigger className="w-44" size="default">
-                  <SelectValue placeholder="Frecuencia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BOTH">Ambas quincenas</SelectItem>
-                  <SelectItem value="FIRST">Solo primera quincena</SelectItem>
-                  <SelectItem value="SECOND">Solo segunda quincena</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemove(income.id)}
-                disabled={!canDelete}
-                aria-label={`Eliminar ingreso ${income.name}`}
-                className="shrink-0 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="size-4" />
-              </Button>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label htmlFor={`income-name-${income.id}`}>
+                    Nombre del ingreso
+                  </Label>
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    Cómo lo verás en la app (ej. Sueldo, Honorarios).
+                  </p>
+                  <Input
+                    id={`income-name-${income.id}`}
+                    type="text"
+                    value={income.name}
+                    onChange={(e) =>
+                      handleNameChange(income.id, e.target.value)
+                    }
+                    onFocus={() =>
+                      handleIncomeNameFocus(income.id, income.name)
+                    }
+                    placeholder="Ej. Sueldo"
+                    className="min-w-0 w-full"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label htmlFor={`income-source-${income.id}`}>
+                    Origen{' '}
+                    <span className="text-muted-foreground font-normal">
+                      (opcional)
+                    </span>
+                  </Label>
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    Quien paga o de donde sale (empresa, cliente).
+                  </p>
+                  <Input
+                    id={`income-source-${income.id}`}
+                    type="text"
+                    value={income.source}
+                    onChange={(e) =>
+                      handleSourceChange(income.id, e.target.value)
+                    }
+                    placeholder="Ej. Mi empleador"
+                    className="min-w-0 w-full"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label htmlFor={`income-amount-${income.id}`}>
+                    Monto de referencia
+                  </Label>
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    Aproximado por quincena; puedes ajustarlo después.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-muted-foreground w-9 shrink-0 text-xs"
+                      aria-hidden
+                    >
+                      MXN
+                    </span>
+                    <Input
+                      id={`income-amount-${income.id}`}
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={income.amount === 0 ? '' : income.amount}
+                      onChange={(e) =>
+                        handleAmountChange(income.id, e.target.value)
+                      }
+                      placeholder="0"
+                      className="min-w-0 flex-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label htmlFor={`income-wallet-${income.id}`}>
+                    Billetera de depósito
+                  </Label>
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    Donde entra este dinero al cobrarlo.
+                  </p>
+                  <Select
+                    value={income.walletId || undefined}
+                    onValueChange={(value) =>
+                      handleWalletChange(income.id, value)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`income-wallet-${income.id}`}
+                      className="w-full"
+                      size="default"
+                    >
+                      <SelectValue placeholder="Elige una billetera" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {wallets.map((wallet) => (
+                        <SelectItem key={wallet.id} value={wallet.id}>
+                          {wallet.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor={`income-frequency-${income.id}`}>
+                    Quincenas en que lo recibes
+                  </Label>
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    Si solo cae en una quincena del mes, elige cuál.
+                  </p>
+                  <Select
+                    value={frequency}
+                    onValueChange={(value) =>
+                      handleFrequencyChange(
+                        income.id,
+                        value as 'FIRST' | 'SECOND' | 'BOTH',
+                      )
+                    }
+                  >
+                    <SelectTrigger
+                      id={`income-frequency-${income.id}`}
+                      className="w-full sm:max-w-md"
+                      size="default"
+                    >
+                      <SelectValue placeholder="Frecuencia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BOTH">Ambas quincenas</SelectItem>
+                      <SelectItem value="FIRST">Solo primera quincena</SelectItem>
+                      <SelectItem value="SECOND">Solo segunda quincena</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </motion.li>
           );
         })}
