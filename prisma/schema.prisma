@@ -178,6 +178,7 @@ model Expense {
   house            House?           @relation(fields: [house_id], references: [id])
 
   transferAsUser Transfer? @relation("TransferUserExpense")
+  credit_card_payment CreditCardPayment?
 
   @@index([user_id])
   @@index([house_id])
@@ -387,12 +388,14 @@ model CreditCardPayment {
   source_wallet_id      Int
   user_id               Int?
   house_id              Int?
+  expense_id            Int?     @unique
   created_at            DateTime @default(now())
 
-  credit_card_wallet Wallet @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
-  source_wallet      Wallet @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
-  user               User?  @relation(fields: [user_id], references: [id])
-  house              House? @relation(fields: [house_id], references: [id])
+  credit_card_wallet Wallet  @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
+  source_wallet      Wallet  @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
+  user               User?   @relation(fields: [user_id], references: [id])
+  house              House?  @relation(fields: [house_id], references: [id])
+  expense            Expense? @relation(fields: [expense_id], references: [id], onDelete: SetNull)
 
   @@index([credit_card_wallet_id, paid_at])
   @@index([source_wallet_id, paid_at])

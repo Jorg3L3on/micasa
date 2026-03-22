@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -11,6 +11,8 @@ import AddExpenseDialog from '@/components/AddExpenseDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,14 +27,18 @@ import {
 import { BarChart3, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
+  buildOwnerQuery,
   clientFetchFromApi,
   updateFortnightOverrideAmount,
   updateIncomeAmount,
   createExpenseTransaction,
   createExpenseTemplate,
 } from '@/lib/api';
-import type { TransactionRow } from '@/types/catalog';
+import type { DuePaymentItem, TransactionRow } from '@/types/catalog';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
+
+const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
+  `micasa.planificacion.fortnightTab.${p}`;
 
 type IncomeItemBySource = {
   fortnightId: number;
@@ -67,6 +73,7 @@ type FortnightColumnProps = {
   showSummaryCard?: boolean;
   onShowSummaryCard?: () => void;
   tableDensity?: ExpenseTableDensity;
+  cardDueItems?: DuePaymentItem[];
 };
 
 export default function FortnightColumn({
@@ -80,8 +87,14 @@ export default function FortnightColumn({
   showSummaryCard = true,
   onShowSummaryCard,
   tableDensity = 'comfortable',
+  cardDueItems = [],
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
+  const ownerQueryString = useMemo(() => {
+    const q = buildOwnerQuery(context);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [context]);
   const router = useRouter();
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
@@ -93,10 +106,35 @@ export default function FortnightColumn({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
+  const [columnTab, setColumnTab] = useState<'expenses' | 'cards'>('expenses');
 
-  // Atajo: tecla "A" abre agregar gasto; ignorar si hay diálogo abierto o el foco está en un campo editable.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(fortnightTabStorageKey(period));
+      if (raw === 'cards' || raw === 'expenses') {
+        setColumnTab(raw);
+      } else {
+        setColumnTab('expenses');
+      }
+    } catch {
+      setColumnTab('expenses');
+    }
+  }, [period]);
+
+  const handleColumnTabChange = useCallback((value: string) => {
+    if (value !== 'expenses' && value !== 'cards') return;
+    setColumnTab(value);
+    try {
+      localStorage.setItem(fortnightTabStorageKey(period), value);
+    } catch {
+      /* ignore */
+    }
+  }, [period]);
+
+  // Atajo: tecla "A" abre agregar gasto (solo pestaña Gastos); ignorar si hay diálogo abierto o el foco está en un campo editable.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (columnTab !== 'expenses') return;
       if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key !== 'a' && e.key !== 'A') return;
@@ -118,14 +156,14 @@ export default function FortnightColumn({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [overrideDialogOpen, addExpenseDialogOpen, fortnightId]);
+  }, [columnTab, overrideDialogOpen, addExpenseDialogOpen, fortnightId]);
 
   const refreshData = useCallback(async () => {
     try {
       setIsRefreshing(true);
       const [transactionsData, summaryData] = await Promise.all([
         clientFetchFromApi<TransactionRow[]>(
-          `/api/transactions?year=${year}&month=${String(month).padStart(2, '0')}&period=${period}`,
+          `/api/transactions?year=${year}&month=${String(month).padStart(2, '0')}&period=${period}&type=expense`,
           undefined,
           context,
         ),
@@ -467,18 +505,18 @@ export default function FortnightColumn({
       ? summary.userIncome.filter((ui) => ui.fortnightId === fortnightId)
       : undefined;
 
-  // Sort expenses: unpaid first (by amount descending), then paid (by amount descending)
-  const sortedTransactions = [...transactions].sort((a, b) => {
-    // First, separate paid and unpaid
-    if (a.is_paid !== b.is_paid) {
-      // Unpaid (false) comes before paid (true)
-      return a.is_paid ? 1 : -1;
-    }
-    // Within the same paid status, sort by amount descending
-    const amountA = Number(a.amount);
-    const amountB = Number(b.amount);
-    return amountB - amountA;
-  });
+  const sortedTransactions = useMemo(
+    () =>
+      [...transactions].sort((a, b) => {
+        if (a.is_paid !== b.is_paid) {
+          return a.is_paid ? 1 : -1;
+        }
+        const amountA = Number(a.amount);
+        const amountB = Number(b.amount);
+        return amountB - amountA;
+      }),
+    [transactions],
+  );
 
   return (
     <>
@@ -590,31 +628,67 @@ export default function FortnightColumn({
           </DropdownMenu>
         </div>
 
-        {/* Single Expense Table for all expenses */}
-        <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
-          {sortedTransactions.length === 0 ? (
-            <EmptyState
-              message="Sin gastos en esta quincena"
-              description="Empieza con un gasto para ver totales y el estado del mes."
-              action={{
-                label: 'Agregar primer gasto',
-                onClick: () => setAddExpenseDialogOpen(true),
-                variant: 'default',
-              }}
-            />
-          ) : (
-            <ExpenseTable
-              expenses={sortedTransactions}
-              onExpenseUpdate={handleExpenseUpdate}
-              fortnightLabel={label}
-              totalIncome={tenemos}
-              year={year}
-              month={month}
-              period={period}
-              density={tableDensity}
-            />
-          )}
-        </div>
+        <Tabs
+          value={columnTab}
+          onValueChange={handleColumnTabChange}
+          className="w-full min-w-0"
+        >
+          <TabsList
+            variant="line"
+            className="mb-2 h-auto w-full justify-start gap-1 rounded-none border-b border-border/60 bg-transparent p-0 sm:max-w-md"
+          >
+            <TabsTrigger
+              value="expenses"
+              className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
+            >
+              Gastos
+            </TabsTrigger>
+            <TabsTrigger
+              value="cards"
+              className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
+            >
+              Pagos tarjeta
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="expenses" className="mt-0 outline-none">
+            <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
+              {sortedTransactions.length === 0 ? (
+                <EmptyState
+                  message="Sin gastos en esta quincena"
+                  description="Empieza con un gasto para ver totales y el estado del mes."
+                  action={{
+                    label: 'Agregar primer gasto',
+                    onClick: () => setAddExpenseDialogOpen(true),
+                    variant: 'default',
+                  }}
+                />
+              ) : (
+                <ExpenseTable
+                  expenses={sortedTransactions}
+                  onExpenseUpdate={handleExpenseUpdate}
+                  fortnightLabel={label}
+                  totalIncome={tenemos}
+                  year={year}
+                  month={month}
+                  period={period}
+                  density={tableDensity}
+                />
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cards" className="mt-0 outline-none">
+            <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
+              <FortnightCardPaymentsPanel
+                items={cardDueItems}
+                ownerQueryString={ownerQueryString}
+                fortnightLabel={label}
+                isCompact={tableDensity === 'compact'}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Override Amount Dialog */}

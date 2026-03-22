@@ -827,6 +827,9 @@ export async function createCreditCardPayment(
     amount: number;
     paid_at: string;
     note?: string | null;
+    create_fortnight_expense?: boolean;
+    category_id?: number;
+    expense_description?: string | null;
   },
   context?: FinanceContextType,
 ) {

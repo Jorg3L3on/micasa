@@ -171,7 +171,10 @@ export default function TransactionsDataTable({
                   : 'text-emerald-600 dark:text-emerald-400',
               )}
             >
-              {formatCurrencySigned(t.amount, t.type ?? 'expense')}
+              {formatCurrencySigned(
+                t.amount,
+                t.type === 'income' ? 'income' : 'expense',
+              )}
             </span>
           );
         },

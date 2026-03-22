@@ -32,10 +32,12 @@ import {
   getCreditCardStatement,
   getPaymentMethodOptions,
 } from '@/lib/api';
+import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type {
+  CategoryOption,
   CreditCardListItem,
   CreditCardPaymentListItem,
   CreditCardStatementPurchaseItem,
@@ -433,6 +435,7 @@ export default function CreditCardDetailPage() {
   const [paymentSources, setPaymentSources] = useState<PaymentMethodOption[]>(
     [],
   );
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -466,19 +469,26 @@ export default function CreditCardDetailPage() {
       setLoading(true);
       setError(null);
 
-      const [cardData, statementData, paymentMethodsData] = await Promise.all([
-        clientFetchFromApi<CreditCardListItem>(
-          `/api/credit-cards/${creditCardId}`,
-          undefined,
-          context,
-        ),
-        getCreditCardStatement(creditCardId, context, asOfDate),
-        getPaymentMethodOptions(context),
-      ]);
+      const [cardData, statementData, paymentMethodsData, categoriesData] =
+        await Promise.all([
+          clientFetchFromApi<CreditCardListItem>(
+            `/api/credit-cards/${creditCardId}`,
+            undefined,
+            context,
+          ),
+          getCreditCardStatement(creditCardId, context, asOfDate),
+          getPaymentMethodOptions(context),
+          clientFetchFromApi<CategoryOption[]>(
+            '/api/categories',
+            undefined,
+            context,
+          ),
+        ]);
 
       setCard(cardData);
       setStatement(statementData);
       setPaymentSources(paymentMethodsData);
+      setCategoryOptions(categoriesData);
     } catch (err) {
       setError(
         err instanceof Error
@@ -494,12 +504,7 @@ export default function CreditCardDetailPage() {
     loadData();
   }, [loadData]);
 
-  const handlePaymentSubmit = async (data: {
-    source_wallet_id: number;
-    amount: number;
-    paid_at: string;
-    note: string | null;
-  }) => {
+  const handlePaymentSubmit = async (data: CreditCardPaymentSubmitPayload) => {
     try {
       setPaymentSubmitting(true);
       setPaymentError(null);
@@ -827,6 +832,7 @@ export default function CreditCardDetailPage() {
           if (!open) setPaymentError(null);
         }}
         fundingWalletOptions={fundingWalletOptions}
+        categoryOptions={categoryOptions}
         nextDuePayment={statement.next_due_payment}
         outstandingBalance={statement.outstanding_balance}
         submitting={paymentSubmitting}
