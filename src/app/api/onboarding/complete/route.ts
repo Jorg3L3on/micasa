@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 
 type WalletPayload = {
   id: string;
@@ -228,6 +229,8 @@ export async function POST(request: Request) {
             applies_second_fortnight: !!expense.appliesSecondFortnight,
             is_subscription: false,
             due_day: null,
+            due_day_first_fortnight: null,
+            due_day_second_fortnight: null,
             cutoff_day: null,
             active: true,
             user_id: userId,
@@ -368,15 +371,18 @@ export async function POST(request: Request) {
                 continue;
               }
 
-              // Use the end of the fortnight as an approximate due day.
-              const dueDay = f.endDate.getDate();
+              const resolvedDue = resolveTemplateDueDay(f.period, {
+                due_day: tmpl.due_day,
+                due_day_first_fortnight: tmpl.due_day_first_fortnight,
+                due_day_second_fortnight: tmpl.due_day_second_fortnight,
+              });
 
               expenseCreates.push({
                 description: tmpl.name,
                 amount: Number(tmpl.suggested_amount ?? 0),
                 is_paid: false,
                 payment_date: null,
-                due_day: dueDay,
+                due_day: resolvedDue ?? null,
                 user_id: userId,
                 house_id: null,
                 fortnight_id: record.id,

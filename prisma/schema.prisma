@@ -125,6 +125,8 @@ model ExpenseTemplate {
   applies_second_fortnight Boolean  @default(false)
   is_subscription          Boolean  @default(false)
   due_day                  Int?
+  due_day_first_fortnight  Int?
+  due_day_second_fortnight Int?
   cutoff_day               Int?
   active                   Boolean  @default(true)
 

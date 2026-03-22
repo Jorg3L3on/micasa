@@ -32,6 +32,13 @@ import {
   getPaymentMethodOptions,
 } from '@/lib/api';
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import {
   expenseTemplateSchema,
   ExpenseTemplateFormValues,
@@ -49,6 +56,7 @@ export default function NewExpenseTemplatePage() {
   );
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cutoffSectionOpen, setCutoffSectionOpen] = useState(false);
 
   const form = useForm<ExpenseTemplateFormValues>({
     resolver: zodResolver(expenseTemplateSchema),
@@ -58,8 +66,9 @@ export default function NewExpenseTemplatePage() {
       suggestedAmount: null,
       paymentMethodId: null,
       active: true,
-      dueDay: 1,
-      cutoffDay: 1,
+      dueDayFirst: null,
+      dueDaySecond: null,
+      cutoffDay: null,
       isRecurring: false,
       appliesFirstFortnight: false,
       appliesSecondFortnight: false,
@@ -68,6 +77,20 @@ export default function NewExpenseTemplatePage() {
   });
 
   const isRecurring = form.watch('isRecurring');
+  const appliesFirstFortnight = form.watch('appliesFirstFortnight');
+  const appliesSecondFortnight = form.watch('appliesSecondFortnight');
+
+  useEffect(() => {
+    if (!appliesFirstFortnight) {
+      form.setValue('dueDayFirst', null);
+    }
+  }, [appliesFirstFortnight, form]);
+
+  useEffect(() => {
+    if (!appliesSecondFortnight) {
+      form.setValue('dueDaySecond', null);
+    }
+  }, [appliesSecondFortnight, form]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,7 +131,8 @@ export default function NewExpenseTemplatePage() {
         categoryId: 'Categoría',
         suggestedAmount: 'Monto por defecto',
         paymentMethodId: 'Método de pago',
-        dueDay: 'Día de vencimiento',
+        dueDayFirst: 'Vencimiento 1ª quincena',
+        dueDaySecond: 'Vencimiento 2ª quincena',
         cutoffDay: 'Día de corte',
         isRecurring: 'Recurrente',
         appliesFirstFortnight: 'Primera quincena',
@@ -297,76 +321,77 @@ export default function NewExpenseTemplatePage() {
                   )}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="cutoffDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Día de corte</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={
-                            typeof field.value === 'number' && !Number.isNaN(field.value)
-                              ? field.value
-                              : ''
-                          }
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === '') {
-                              field.onChange(NaN);
-                              return;
-                            }
-                            const num = Number.parseInt(value, 10);
-                            if (Number.isFinite(num) && num >= 1 && num <= 31) {
-                              field.onChange(num);
-                            }
-                          }}
-                          onBlur={field.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              <Collapsible
+                open={cutoffSectionOpen}
+                onOpenChange={setCutoffSectionOpen}
+                className="rounded-lg border border-border/60"
+              >
+                <CollapsibleTrigger
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted/50',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dueDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Día de vencimiento</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={
-                            typeof field.value === 'number' && !Number.isNaN(field.value)
-                              ? field.value
-                              : ''
-                          }
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === '') {
-                              field.onChange(NaN);
-                              return;
+                  aria-expanded={cutoffSectionOpen}
+                  aria-label="Mostrar u ocultar día de corte opcional"
+                >
+                  <span>Día de corte (opcional)</span>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                      cutoffSectionOpen && 'rotate-180',
+                    )}
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 px-3 pb-3 pt-0">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Solo si quieres registrar el cierre del periodo de facturación
+                    (por ejemplo suscripciones o cargos recurrentes a tarjeta). No
+                    afecta cómo se generan los gastos por quincena; el corte de
+                    tarjetas sigue viniendo de cada billetera.
+                  </p>
+                  <FormField
+                    control={form.control}
+                    name="cutoffDay"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Día del mes</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="31"
+                            placeholder="Vacío = sin corte en plantilla"
+                            aria-label="Día de corte del mes (opcional)"
+                            value={
+                              field.value != null && !Number.isNaN(field.value)
+                                ? field.value
+                                : ''
                             }
-                            const num = Number.parseInt(value, 10);
-                            if (Number.isFinite(num) && num >= 1 && num <= 31) {
-                              field.onChange(num);
-                            }
-                          }}
-                          onBlur={field.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === '') {
+                                field.onChange(null);
+                                return;
+                              }
+                              const num = Number.parseInt(value, 10);
+                              if (
+                                Number.isFinite(num) &&
+                                num >= 1 &&
+                                num <= 31
+                              ) {
+                                field.onChange(num);
+                              }
+                            }}
+                            onBlur={field.onBlur}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
 
               <Separator />
 
@@ -414,6 +439,8 @@ export default function NewExpenseTemplatePage() {
                                 form.setValue('appliesFirstFortnight', false);
                                 form.setValue('appliesSecondFortnight', false);
                                 form.setValue('isSubscription', false);
+                                form.setValue('dueDayFirst', null);
+                                form.setValue('dueDaySecond', null);
                               }
                             }}
                           />
@@ -439,50 +466,148 @@ export default function NewExpenseTemplatePage() {
                         Aplicación por quincena
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="appliesFirstFortnight"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel className="text-sm font-medium">
-                                  Primera quincena
-                                </FormLabel>
-                                <FormDescription className="text-xs">
-                                  Aplica en días 1-15
-                                </FormDescription>
-                              </div>
-                            </FormItem>
+                        <div className="flex flex-col gap-3">
+                          <FormField
+                            control={form.control}
+                            name="appliesFirstFortnight"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                  <FormLabel className="text-sm font-medium">
+                                    Primera quincena
+                                  </FormLabel>
+                                  <FormDescription className="text-xs">
+                                    Aplica en días 1-15
+                                  </FormDescription>
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                          {appliesFirstFortnight && (
+                            <FormField
+                              control={form.control}
+                              name="dueDayFirst"
+                              render={({ field }) => (
+                                <FormItem className="rounded-md border bg-muted/20 p-3">
+                                  <FormLabel className="text-sm">
+                                    Día de vencimiento
+                                  </FormLabel>
+                                  <FormDescription className="text-xs">
+                                    Día 1–15 del mes (opcional)
+                                  </FormDescription>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      max="15"
+                                      aria-label="Día de vencimiento primera quincena"
+                                      value={
+                                        field.value != null &&
+                                        !Number.isNaN(field.value)
+                                          ? field.value
+                                          : ''
+                                      }
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === '') {
+                                          field.onChange(null);
+                                          return;
+                                        }
+                                        const num = Number.parseInt(value, 10);
+                                        if (
+                                          Number.isFinite(num) &&
+                                          num >= 1 &&
+                                          num <= 15
+                                        ) {
+                                          field.onChange(num);
+                                        }
+                                      }}
+                                      onBlur={field.onBlur}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="appliesSecondFortnight"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel className="text-sm font-medium">
-                                  Segunda quincena
-                                </FormLabel>
-                                <FormDescription className="text-xs">
-                                  Aplica en días 16-31
-                                </FormDescription>
-                              </div>
-                            </FormItem>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                          <FormField
+                            control={form.control}
+                            name="appliesSecondFortnight"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                  <FormLabel className="text-sm font-medium">
+                                    Segunda quincena
+                                  </FormLabel>
+                                  <FormDescription className="text-xs">
+                                    Aplica en días 16-31
+                                  </FormDescription>
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                          {appliesSecondFortnight && (
+                            <FormField
+                              control={form.control}
+                              name="dueDaySecond"
+                              render={({ field }) => (
+                                <FormItem className="rounded-md border bg-muted/20 p-3">
+                                  <FormLabel className="text-sm">
+                                    Día de vencimiento
+                                  </FormLabel>
+                                  <FormDescription className="text-xs">
+                                    Día 16–31 del mes (opcional)
+                                  </FormDescription>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="16"
+                                      max="31"
+                                      aria-label="Día de vencimiento segunda quincena"
+                                      value={
+                                        field.value != null &&
+                                        !Number.isNaN(field.value)
+                                          ? field.value
+                                          : ''
+                                      }
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === '') {
+                                          field.onChange(null);
+                                          return;
+                                        }
+                                        const num = Number.parseInt(value, 10);
+                                        if (
+                                          Number.isFinite(num) &&
+                                          num >= 16 &&
+                                          num <= 31
+                                        ) {
+                                          field.onChange(num);
+                                        }
+                                      }}
+                                      onBlur={field.onBlur}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           )}
-                        />
+                        </div>
                       </div>
                     </div>
 

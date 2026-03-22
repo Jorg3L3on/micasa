@@ -1,7 +1,7 @@
 import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
-import FortnightColumn from '@/components/FortnightColumn'
+import MonthlyFortnightView from '@/components/MonthlyFortnightView'
 import WalletBalanceStrip from '../../../../../components/WalletBalanceStrip'
 import DuePaymentsBanner from '@/components/DuePaymentsBanner'
 import Link from 'next/link'
@@ -252,6 +252,12 @@ export default async function MonthlyPage({
   const dueWalletIds = duePayments.map((dp) => dp.walletId)
   const currentDay = now.getDate()
   const isFirstFortnight = currentDay <= 15
+  const suggestedPeriod: 'FIRST' | 'SECOND' =
+    isCurrentMonth && currentDay <= 15
+      ? 'FIRST'
+      : isCurrentMonth
+        ? 'SECOND'
+        : 'FIRST'
   const paidWalletIds = isCurrentMonth
     ? wallets
         .filter((w) => {
@@ -313,29 +319,24 @@ export default async function MonthlyPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <FortnightColumn
-          key={`${ownerKey}-${year}-${month}-FIRST`}
-          label={firstLabel}
-          transactions={firstTransactions}
-          summary={firstSummary}
-          fortnightId={firstFortnightId}
-          year={year}
-          month={month}
-          period="FIRST"
-        />
-
-        <FortnightColumn
-          key={`${ownerKey}-${year}-${month}-SECOND`}
-          label={secondLabel}
-          transactions={secondTransactions}
-          summary={secondSummary}
-          fortnightId={secondFortnightId}
-          year={year}
-          month={month}
-          period="SECOND"
-        />
-      </div>
+      <MonthlyFortnightView
+        ownerKey={ownerKey}
+        year={year}
+        month={month}
+        suggestedPeriod={suggestedPeriod}
+        first={{
+          label: firstLabel,
+          transactions: firstTransactions,
+          summary: firstSummary,
+          fortnightId: firstFortnightId,
+        }}
+        second={{
+          label: secondLabel,
+          transactions: secondTransactions,
+          summary: secondSummary,
+          fortnightId: secondFortnightId,
+        }}
+      />
     </>
   )
 }

@@ -50,6 +50,9 @@ export type ExpenseTemplateListItem = {
   paymentMethodId: number | null;
   active: boolean;
   totalEstimatedAmount?: number;
+  dueDayFirst: number | null;
+  dueDaySecond: number | null;
+  /** Derived for compatibility: first non-null per-quincena due, then legacy `due_day`. */
   dueDay: number | null;
   cutoffDay: number | null;
   isRecurring: boolean;

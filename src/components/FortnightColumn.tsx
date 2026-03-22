@@ -259,14 +259,15 @@ export default function FortnightColumn({
         );
       } else if (data.isRecurring && !data.applyToBothFortnights) {
         // Case 2: Recurring, single fortnight - create expense + template
-        // Extract day from date for dueDay
+        // Extract day from date for per-quincena due
         const dateObj = data.date
           ? new Date(data.date)
           : new Date(year, month - 1, period === 'FIRST' ? 1 : 16);
-        const dueDay = dateObj.getDate();
-        const cutoffDay =
-          period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
-
+        const dueFromDate = dateObj.getDate();
+        const dueDayFirst =
+          period === 'FIRST' ? dueFromDate : null;
+        const dueDaySecond =
+          period === 'SECOND' ? dueFromDate : null;
         // First create the template
         const templateResponse = await createExpenseTemplate(
           {
@@ -275,8 +276,9 @@ export default function FortnightColumn({
             defaultAmount: data.amount,
             paymentMethodId: data.paymentMethodId,
             active: true,
-            dueDay,
-            cutoffDay,
+            dueDayFirst,
+            dueDaySecond,
+            cutoffDay: null,
             isRecurring: true,
             appliesFirstFortnight: period === 'FIRST',
             appliesSecondFortnight: period === 'SECOND',
@@ -309,14 +311,16 @@ export default function FortnightColumn({
           );
         }
 
-        // Extract day from date for dueDay
+        const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
         const dateObj = data.date
           ? new Date(data.date)
           : new Date(year, month - 1, period === 'FIRST' ? 1 : 16);
-        const dueDay = dateObj.getDate();
-        const cutoffDay =
-          period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
-
+        const currentDue = dateObj.getDate();
+        const otherDue = new Date(getDateForFortnight(otherPeriod)).getDate();
+        const dueDayFirst =
+          period === 'FIRST' ? currentDue : otherDue;
+        const dueDaySecond =
+          period === 'FIRST' ? otherDue : currentDue;
         // First create the template
         const templateResponse = await createExpenseTemplate(
           {
@@ -325,8 +329,9 @@ export default function FortnightColumn({
             defaultAmount: data.amount,
             paymentMethodId: data.paymentMethodId,
             active: true,
-            dueDay,
-            cutoffDay,
+            dueDayFirst,
+            dueDaySecond,
+            cutoffDay: null,
             isRecurring: true,
             appliesFirstFortnight: true,
             appliesSecondFortnight: true,
@@ -352,7 +357,6 @@ export default function FortnightColumn({
         );
 
         // Create expense for the other fortnight
-        const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
         const otherDate = getDateForFortnight(otherPeriod);
         await createExpenseTransaction(
           {

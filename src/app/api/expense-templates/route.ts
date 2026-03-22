@@ -6,6 +6,20 @@ import {
   createExpenseTemplateSchema,
   updateExpenseTemplateSchema,
 } from '@/schemas/expense-template.schema';
+import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-due';
+
+const prismaDueFieldsFromPayload = (validated: {
+  dueDayFirst?: number | null | undefined;
+  dueDaySecond?: number | null | undefined;
+}) => {
+  const first = validated.dueDayFirst ?? null;
+  const second = validated.dueDaySecond ?? null;
+  return {
+    due_day_first_fortnight: first,
+    due_day_second_fortnight: second,
+    due_day: first ?? second ?? null,
+  };
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,7 +71,9 @@ export async function GET(request: NextRequest) {
         active: template.active,
         totalEstimatedAmount: totalAmount,
         expenseIds: [], // Will be populated from form selections in UI
-        dueDay: template.due_day,
+        dueDayFirst: template.due_day_first_fortnight,
+        dueDaySecond: template.due_day_second_fortnight,
+        dueDay: deriveLegacyDueDayForTemplate(template),
         cutoffDay: template.cutoff_day,
         isRecurring: template.is_recurring,
         appliesFirstFortnight: template.applies_first_fortnight,
@@ -85,6 +101,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createExpenseTemplateSchema.parse(body);
 
+    const dueFields = prismaDueFieldsFromPayload(validatedData);
+
     const template = await prisma.expenseTemplate.create({
       data: {
         name: validatedData.name,
@@ -94,8 +112,8 @@ export async function POST(request: NextRequest) {
           : null,
         wallet_id: validatedData.paymentMethodId ?? undefined,
         active: validatedData.active ?? true,
-        due_day: validatedData.dueDay,
-        cutoff_day: validatedData.cutoffDay,
+        ...dueFields,
+        cutoff_day: validatedData.cutoffDay ?? null,
         is_recurring: validatedData.isRecurring,
         applies_first_fortnight: validatedData.appliesFirstFortnight,
         applies_second_fortnight: validatedData.appliesSecondFortnight,
@@ -133,7 +151,9 @@ export async function POST(request: NextRequest) {
           ? Number(template.suggested_amount)
           : 0,
         expenseIds: [],
-        dueDay: template.due_day,
+        dueDayFirst: template.due_day_first_fortnight,
+        dueDaySecond: template.due_day_second_fortnight,
+        dueDay: deriveLegacyDueDayForTemplate(template),
         cutoffDay: template.cutoff_day,
         isRecurring: template.is_recurring,
         appliesFirstFortnight: template.applies_first_fortnight,
@@ -206,12 +226,8 @@ export async function PUT(request: NextRequest) {
       updateData.wallet_id = validatedData.paymentMethodId ?? null;
     }
 
-    if (validatedData.dueDay !== undefined) {
-      updateData.due_day = validatedData.dueDay;
-    }
-    if (validatedData.cutoffDay !== undefined) {
-      updateData.cutoff_day = validatedData.cutoffDay;
-    }
+    Object.assign(updateData, prismaDueFieldsFromPayload(validatedData));
+    updateData.cutoff_day = validatedData.cutoffDay ?? null;
     if (validatedData.isRecurring !== undefined) {
       updateData.is_recurring = validatedData.isRecurring;
     }
@@ -270,7 +286,9 @@ export async function PUT(request: NextRequest) {
           totalAmount ||
           (template.suggested_amount ? Number(template.suggested_amount) : 0),
         expenseIds: template.expenses.map((e) => e.id),
-        dueDay: template.due_day,
+        dueDayFirst: template.due_day_first_fortnight,
+        dueDaySecond: template.due_day_second_fortnight,
+        dueDay: deriveLegacyDueDayForTemplate(template),
         cutoffDay: template.cutoff_day,
         isRecurring: template.is_recurring,
         appliesFirstFortnight: template.applies_first_fortnight,
