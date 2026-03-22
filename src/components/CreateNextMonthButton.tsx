@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { CalendarPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights } from '@/lib/api';
 
@@ -59,22 +60,37 @@ export default function CreateNextMonthButton({
   return (
     <Button
       type="button"
-      variant="default"
+      variant="outline"
       size="sm"
       onClick={handleCreate}
       disabled={submitting}
-    >
-      {submitting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-          Creando...
-        </>
-      ) : (
-        <>
-          <CalendarPlus className="mr-2 h-4 w-4" aria-hidden />
-          Crear {nextMonthLabel}
-        </>
+      aria-busy={submitting}
+      aria-label={`Crear planificación para ${nextMonthLabel}`}
+      className={cn(
+        'h-auto min-h-9 shrink-0 justify-start gap-2.5 whitespace-normal rounded-xl border-border/60 py-2 pl-2 pr-3',
+        'bg-card text-left shadow-sm transition-all',
+        'hover:border-violet-500/40 hover:shadow-md dark:bg-card/80',
+        'focus-visible:ring-violet-500/20 dark:focus-visible:ring-violet-500/30',
       )}
+    >
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15"
+        aria-hidden
+      >
+        {submitting ? (
+          <Loader2 className="h-4 w-4 animate-spin text-violet-600 dark:text-violet-400" />
+        ) : (
+          <CalendarPlus className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+        )}
+      </span>
+      <span className="flex min-w-0 flex-col items-start gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">
+          {submitting ? 'Creando…' : 'Nuevo mes'}
+        </span>
+        <span className="text-sm font-semibold leading-tight text-foreground">
+          {nextMonthLabel}
+        </span>
+      </span>
     </Button>
   );
 }
