@@ -12,7 +12,11 @@ import {
 } from '@/components/ui/select';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS, getPeriodLabel } from './constants';
+import {
+  DASHBOARD_CARD_CLASS,
+  DASHBOARD_METRIC_STRIP_CLASS,
+  getPeriodLabel,
+} from './constants';
 
 type CurrentPeriodSummaryCardProps = {
   data: DashboardData;
@@ -94,7 +98,12 @@ export default function CurrentPeriodSummaryCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-5">
-          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+          <div
+            className={cn(
+              DASHBOARD_METRIC_STRIP_CLASS,
+              'border-l-blue-500/50',
+            )}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Ingresos
             </span>
@@ -102,7 +111,12 @@ export default function CurrentPeriodSummaryCard({
               {formatCurrency(summary.totalIncome)}
             </p>
           </div>
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-2.5 py-2">
+          <div
+            className={cn(
+              DASHBOARD_METRIC_STRIP_CLASS,
+              'border-l-violet-500/50',
+            )}
+          >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos
             </span>

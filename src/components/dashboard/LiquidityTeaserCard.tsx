@@ -43,7 +43,7 @@ const LiquidityTeaserCard = () => {
   if (loading) {
     return (
       <div
-        className="rounded-lg border border-border/60 border-l-[3px] border-l-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/8 px-3 py-3 animate-pulse"
+        className="rounded-lg border border-border/60 border-l-[3px] border-l-emerald-500/40 bg-transparent px-3 py-3 animate-pulse"
         role="status"
         aria-label="Cargando resumen de liquidez"
       >
@@ -61,10 +61,8 @@ const LiquidityTeaserCard = () => {
   return (
     <div
       className={cn(
-        'rounded-lg border border-border/60 border-l-[3px] px-3 py-3',
-        short
-          ? 'border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/10'
-          : 'border-l-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/8',
+        'rounded-lg border border-border/60 border-l-[3px] bg-transparent px-3 py-3',
+        short ? 'border-l-amber-500/50' : 'border-l-emerald-500/50',
       )}
       role="region"
       aria-label="Resumen de proyección de liquidez"

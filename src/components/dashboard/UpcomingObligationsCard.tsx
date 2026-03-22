@@ -15,7 +15,7 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { updateExpensePaidStatus } from '@/lib/api';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS } from './constants';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type UpcomingObligationsCardProps = {
   data: DashboardData;
@@ -73,7 +73,12 @@ export default function UpcomingObligationsCard({
           </p>
         ) : (
           <>
-            <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-2.5 py-2">
+            <div
+              className={cn(
+                DASHBOARD_METRIC_STRIP_CLASS,
+                'border-l-amber-500/50',
+              )}
+            >
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {obligations.length} {obligations.length === 1 ? 'obligación' : 'obligaciones'}
               </span>
@@ -91,8 +96,8 @@ export default function UpcomingObligationsCard({
                       <li
                         key={ob.id}
                         className={cn(
-                          'flex items-center justify-between rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40',
-                          overdue && 'bg-destructive/5',
+                          'flex items-center justify-between rounded-md border border-transparent border-l-[3px] px-2 py-1 -mx-1 transition-colors hover:bg-muted/40',
+                          overdue && 'border-l-destructive/50',
                         )}
                       >
                         <div className="min-w-0 flex-1">

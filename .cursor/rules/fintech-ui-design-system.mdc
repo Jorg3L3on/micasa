@@ -24,13 +24,15 @@ Every card gets an **icon badge** in a tinted pill + title + optional subtitle:
 
 ## Color-Accented Metric Cards
 
-Use colored left borders + tinted backgrounds per metric type:
+Use a **colored left border only** for metric strips—**no** tinted panel fill (`bg-*-500/5` etc.). Keep the shell calm (`border-border/60`, `bg-transparent`); identity comes from the **3px left accent** plus typography and optional **icon pill** tints.
 
 ```tsx
-<div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+<div className="rounded-lg border border-border/60 border-l-[3px] border-l-blue-500/50 bg-transparent px-2.5 py-2">
 ```
 
-Color mapping:
+For dashboard panels, prefer the shared constant `DASHBOARD_METRIC_STRIP_CLASS` from `src/components/dashboard/constants.ts` and add the matching `border-l-*` class.
+
+Color mapping (left border + text/icon colors):
 - **Income / Bank**: blue (`blue-500`)
 - **Paid / Success**: green (`green-500`)
 - **Pending / Warning**: amber (`amber-500`)

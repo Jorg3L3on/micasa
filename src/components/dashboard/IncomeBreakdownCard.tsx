@@ -8,9 +8,9 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
-import { DASHBOARD_CARD_CLASS } from './constants';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type IncomeBreakdownCardProps = {
   data: DashboardData;
@@ -35,7 +35,7 @@ export default function IncomeBreakdownCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-2.5 py-2">
+        <div className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-blue-500/50')}>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Total ingresos
           </span>
