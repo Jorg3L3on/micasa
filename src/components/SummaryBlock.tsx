@@ -1,20 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import {
   Wallet,
-  TrendingUp,
   CheckCircle2,
   Clock,
   ChevronDown,
   ChevronUp,
   Pencil,
   BarChart3,
+  Receipt,
 } from 'lucide-react';
 
 export type IncomeItemBySource = {
@@ -30,7 +35,6 @@ type SummaryBlockProps = {
   libre: number;
   pagado: number;
   pendiente: number;
-  monthLabel?: string;
   userIncome?: Array<{
     fortnightId: number;
     userIncome: Array<{ userId: number; userName: string; income: number }>;
@@ -51,7 +55,6 @@ export default function SummaryBlock({
   libre,
   pagado,
   pendiente,
-  monthLabel,
   userIncome,
   incomeItems = [],
   year,
@@ -64,27 +67,6 @@ export default function SummaryBlock({
   onEditIncomeSource,
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!year || !month || !period) {
-      setDaysRemaining(null);
-      return;
-    }
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1;
-    const currentDay = today.getDate();
-
-    if (year !== currentYear || month !== currentMonth) {
-      setDaysRemaining(null);
-      return;
-    }
-
-    const endDay = period === 'FIRST' ? 15 : new Date(year, month, 0).getDate();
-    const remaining = endDay - currentDay;
-    setDaysRemaining(remaining >= 0 ? remaining : null);
-  }, [year, month, period]);
 
   const periodDayRange =
     year && month && period
@@ -92,6 +74,18 @@ export default function SummaryBlock({
         ? '1–15'
         : `16–${new Date(year, month, 0).getDate()}`
       : null;
+
+  const quincenaOrdinal =
+    period === 'FIRST'
+      ? 'Primera quincena'
+      : period === 'SECOND'
+        ? 'Segunda quincena'
+        : null;
+
+  const headerSubtitle =
+    quincenaOrdinal && periodDayRange
+      ? `${quincenaOrdinal} · Días ${periodDayRange}`
+      : quincenaOrdinal ?? (periodDayRange ? `Días ${periodDayRange}` : null);
 
   const hasUserIncome =
     userIncome &&
@@ -102,110 +96,189 @@ export default function SummaryBlock({
   const pendingPercent = tenemos > 0 ? (pendiente / tenemos) * 100 : 0;
   const totalSpentPercent = paidPercent + pendingPercent;
 
+  /** Ingreso de la quincena menos solo lo ya pagado (aún no descuenta pendientes). */
+  const disponibleAhora = tenemos - pagado;
+  /** Ingreso menos todos los gastos planeados; coincide con `libre` del API. */
+  const trasPagarPlaneado = libre;
+
+  const tooltipDisponibleAhora =
+    'Tras descontar solo lo que ya pagaste. Lo pendiente sigue reservado en tus gastos de la quincena.';
+  const tooltipTrasPagarPlaneado =
+    'Ingreso de la quincena menos todos los gastos registrados (pagados y pendientes).';
+
   return (
-    <Card className="overflow-hidden border-border/60">
-      <CardHeader className="pb-0 pt-3 px-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/15">
-              <BarChart3 className="h-3.5 w-3.5 text-primary" />
+    <Card className="gap-0 overflow-hidden rounded-xl border-border/60 py-0 shadow-sm">
+      <CardHeader className="space-y-0 border-b border-border/50 bg-muted/15 px-4 pb-1 pt-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/15"
+              aria-hidden
+            >
+              <BarChart3 className="h-4 w-4 text-primary" />
             </span>
-            <div>
-              {monthLabel && (
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-none mb-0.5">
-                  {monthLabel}
-                </p>
-              )}
-              <CardTitle className="text-sm font-semibold leading-none">
-                Estado de la quincena
-                {periodDayRange && (
-                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                    ({periodDayRange})
-                  </span>
-                )}
+            <div className="min-w-0 space-y-0.5">
+              <CardTitle className="text-base font-semibold leading-tight tracking-tight">
+                Resumen de la quincena
               </CardTitle>
+              {headerSubtitle ? (
+                <p className="text-xs leading-snug text-muted-foreground">
+                  {headerSubtitle}
+                </p>
+              ) : null}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-7 w-7 p-0 shrink-0 rounded-full"
-            aria-label={isExpanded ? 'Contraer desglose' : 'Expandir desglose'}
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                aria-expanded={isExpanded}
+                aria-label={
+                  isExpanded
+                    ? 'Ocultar desglose de ingresos y gastos'
+                    : 'Ver desglose de ingresos y gastos'
+                }
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4" aria-hidden />
+                ) : (
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} align="end">
+              {isExpanded ? 'Ocultar desglose' : 'Ingresos, pagado y pendiente'}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pb-3 pt-3 space-y-3">
-        {/* Hero: Available balance */}
-        <div className="relative rounded-xl border border-border/60 p-3">
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 shrink-0">
-                <TrendingUp className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-              </span>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">
-                  Disponible
-                </p>
-                {daysRemaining !== null && (
-                  <p className="text-[10px] text-muted-foreground mt-1 leading-none">
-                    {daysRemaining} día{daysRemaining !== 1 ? 's' : ''} restante{daysRemaining !== 1 ? 's' : ''}
-                  </p>
-                )}
+      <CardContent className="space-y-3 px-4 pb-4 pt-1">
+        {/* Hero: disponible hoy vs tras pagar todo lo planeado */}
+        <div
+          className={cn(
+            'relative rounded-lg border border-border/60 border-l-[3px] border-l-emerald-500/45',
+            'bg-muted/20 px-2.5 py-2.5 dark:bg-muted/10 sm:px-3 sm:py-3',
+          )}
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch sm:gap-0">
+            {/* h-8 + gap-2 → pl-10 aligns amounts with label column */}
+            <div className="flex min-h-0 min-w-0 flex-col sm:h-full sm:pr-3 sm:border-r sm:border-border/50">
+              <div className="flex min-h-0 flex-1 items-start gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20">
+                  <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="block w-full text-left text-[9px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      >
+                        Disponible ahora
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      className="max-w-xs text-left text-xs leading-snug"
+                    >
+                      {tooltipDisponibleAhora}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
+              <p
+                className={cn(
+                  'mt-auto w-full pl-10 pt-2 font-mono text-lg font-bold tabular-nums leading-tight tracking-tight',
+                  disponibleAhora >= 0
+                    ? 'text-foreground'
+                    : 'text-destructive/85 dark:text-destructive/90',
+                )}
+              >
+                {formatCurrency(disponibleAhora)}
+              </p>
             </div>
-            <span
-              className={cn(
-                'text-2xl font-bold font-mono tabular-nums shrink-0',
-                libre >= 0
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : 'text-destructive',
-              )}
-            >
-              {formatCurrency(libre)}
-            </span>
+            <div className="flex min-h-0 min-w-0 flex-col sm:h-full sm:pl-3">
+              <div className="flex min-h-0 flex-1 items-start gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20">
+                  <Receipt className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="block w-full text-left text-[9px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      >
+                        Cuando pagues todo lo planeado
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      className="max-w-xs text-left text-xs leading-snug"
+                    >
+                      {tooltipTrasPagarPlaneado}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+              <p
+                className={cn(
+                  'mt-auto w-full pl-10 pt-2 font-mono text-lg font-bold tabular-nums leading-tight tracking-tight',
+                  trasPagarPlaneado >= 0
+                    ? 'text-foreground'
+                    : 'text-destructive/85 dark:text-destructive/90',
+                )}
+              >
+                {formatCurrency(trasPagarPlaneado)}
+              </p>
+              {pendiente <= 0 && tenemos > 0 ? (
+                <p className="pl-10 pt-0.5 text-[9px] text-muted-foreground">
+                  Sin gastos pendientes: coincide con “Disponible ahora”.
+                </p>
+              ) : null}
+            </div>
           </div>
 
           {tenemos > 0 && (
-            <div className="relative mt-3">
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-emerald-500/10 dark:bg-emerald-500/15">
+            <div className="relative mt-3 border-t border-border/50 pt-2.5">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Uso del ingreso
+              </p>
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-l-full bg-green-500 dark:bg-green-400 transition-all duration-500"
+                  className="h-full rounded-l-full bg-foreground/35 transition-all duration-500 dark:bg-foreground/40"
                   style={{ width: `${Math.min(paidPercent, 100)}%` }}
                 />
                 <div
                   className={cn(
-                    'h-full bg-amber-400 dark:bg-amber-500 transition-all duration-500',
+                    'h-full bg-muted-foreground/30 transition-all duration-500 dark:bg-muted-foreground/35',
                     paidPercent === 0 && 'rounded-l-full',
                     paidPercent + pendingPercent >= 100 && 'rounded-r-full',
                   )}
                   style={{ width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between mt-1.5 gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400" />
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 dark:bg-foreground/45" />
                     <span className="text-[9px] text-muted-foreground">
                       Pagado {Math.round(paidPercent)}%
                     </span>
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 dark:bg-amber-500" />
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/45 dark:bg-muted-foreground/50" />
                     <span className="text-[9px] text-muted-foreground">
                       Pendiente {Math.round(pendingPercent)}%
                     </span>
                   </span>
                 </div>
-                <span className="text-[9px] text-muted-foreground shrink-0">
-                  {Math.round(totalSpentPercent)}% comprometido
+                <span className="text-[9px] text-muted-foreground sm:shrink-0 sm:text-right">
+                  {Math.round(totalSpentPercent)}% del ingreso comprometido
                 </span>
               </div>
             </div>
@@ -214,16 +287,17 @@ export default function SummaryBlock({
 
         {isExpanded && (
           <>
+            <Separator className="bg-border/60" />
             {/* Three metric cards */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {/* Ingresos */}
-              <div className="relative rounded-lg border border-border/60 px-2.5 py-2">
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
+              <div className="relative rounded-lg border border-border/60 border-l-[3px] border-l-blue-500/50 bg-transparent px-3 py-2.5">
+                <div className="mb-1 flex items-center justify-between gap-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
                       <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                     </span>
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Ingresos
                     </span>
                   </div>
@@ -253,9 +327,9 @@ export default function SummaryBlock({
               </div>
 
               {/* Pagado */}
-              <div className="relative rounded-lg border border-border/60 px-2.5 py-2">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15 shrink-0">
+              <div className="relative rounded-lg border border-border/60 border-l-[3px] border-l-green-500/50 bg-transparent px-3 py-2.5">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15">
                     <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
                   </span>
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -273,9 +347,9 @@ export default function SummaryBlock({
               </div>
 
               {/* Pendiente */}
-              <div className="relative rounded-lg border border-border/60 px-2.5 py-2">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
+              <div className="relative rounded-lg border border-border/60 border-l-[3px] border-l-amber-500/50 bg-transparent px-3 py-2.5">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15">
                     <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                   </span>
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -295,76 +369,73 @@ export default function SummaryBlock({
 
             {/* Income breakdown */}
             {(incomeItems.length > 0 || hasUserIncome) && (
-              <>
-                <Separator className="my-1" />
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Desglose de ingresos
-                  </h4>
-                  {incomeItems.length > 0 ? (
-                    <div className="space-y-1">
-                      {incomeItems.map((item) => {
-                        const label =
-                          item.source === '__OVERRIDE__'
-                            ? 'Ingreso manual'
-                            : item.templateName || item.source || 'Ingreso';
-                        const displayLabel = item.userName
-                          ? `${item.userName}: ${label}`
-                          : label;
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex justify-between items-center gap-2 group rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40"
-                          >
-                            <span className="text-xs text-muted-foreground truncate min-w-0">
-                              {displayLabel}
+              <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 dark:bg-muted/10">
+                <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Desglose de ingresos
+                </h4>
+                {incomeItems.length > 0 ? (
+                  <div className="space-y-1">
+                    {incomeItems.map((item) => {
+                      const label =
+                        item.source === '__OVERRIDE__'
+                          ? 'Ingreso manual'
+                          : item.templateName || item.source || 'Ingreso';
+                      const displayLabel = item.userName
+                        ? `${item.userName}: ${label}`
+                        : label;
+                      return (
+                        <div
+                          key={item.id}
+                          className="group -mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                        >
+                          <span className="min-w-0 truncate text-xs text-muted-foreground">
+                            {displayLabel}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <span className="text-xs font-semibold font-mono tabular-nums">
+                              {formatCurrency(item.amount)}
                             </span>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-xs font-semibold font-mono tabular-nums">
-                                {formatCurrency(item.amount)}
-                              </span>
-                              {onEditIncomeSource && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() =>
-                                    onEditIncomeSource(item.id, item.amount)
-                                  }
-                                  aria-label={`Modificar ${displayLabel}`}
-                                  tabIndex={0}
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
+                            {onEditIncomeSource && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                onClick={() =>
+                                  onEditIncomeSource(item.id, item.amount)
+                                }
+                                aria-label={`Modificar ${displayLabel}`}
+                                tabIndex={0}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {userIncome?.map((periodIncome) => (
-                        <div key={periodIncome.fortnightId} className="space-y-1">
-                          {periodIncome.userIncome.map((userInc) => (
-                            <div
-                              key={userInc.userId}
-                              className="flex justify-between items-center gap-2 rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40"
-                            >
-                              <span className="text-xs text-muted-foreground truncate">
-                                {userInc.userName}
-                              </span>
-                              <span className="text-xs font-semibold font-mono tabular-nums shrink-0">
-                                {formatCurrency(userInc.income)}
-                              </span>
-                            </div>
-                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {userIncome?.map((periodIncome) => (
+                      <div key={periodIncome.fortnightId} className="space-y-1">
+                        {periodIncome.userIncome.map((userInc) => (
+                          <div
+                            key={userInc.userId}
+                            className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                          >
+                            <span className="truncate text-xs text-muted-foreground">
+                              {userInc.userName}
+                            </span>
+                            <span className="shrink-0 text-xs font-semibold font-mono tabular-nums">
+                              {formatCurrency(userInc.income)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}

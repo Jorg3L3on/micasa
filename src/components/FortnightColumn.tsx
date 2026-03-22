@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -119,17 +119,6 @@ export default function FortnightColumn({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [overrideDialogOpen, addExpenseDialogOpen, fortnightId]);
-
-  const monthLabel = useMemo(() => {
-    if (!year || !month) {
-      return '';
-    }
-    const date = new Date(year, month - 1, 1);
-    return date.toLocaleDateString('es-MX', {
-      month: 'long',
-      year: 'numeric',
-    });
-  }, [year, month]);
 
   const refreshData = useCallback(async () => {
     try {
@@ -502,7 +491,6 @@ export default function FortnightColumn({
               libre={libre}
               pagado={pagado}
               pendiente={pendiente}
-              monthLabel={monthLabel}
               userIncome={currentFortnightUserIncome}
               incomeItems={
                 summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
