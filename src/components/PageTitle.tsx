@@ -133,10 +133,37 @@ function getPageTitle(
     return { title, breadcrumbs };
   }
 
+  if (segments[0] === 'pantry') {
+    breadcrumbs.push({
+      label: 'Despensa',
+      href: `/pantry${qs}`,
+    });
+    if (segments[1] === 'receipts') {
+      breadcrumbs.push({
+        label: 'Recibos',
+        href: `/pantry/receipts${qs}`,
+      });
+      if (segments[2] && /^\d+$/.test(segments[2])) {
+        breadcrumbs.push({ label: `Recibo #${segments[2]}` });
+        return { title: 'Detalle del recibo', breadcrumbs };
+      }
+      return { title: 'Recibos de despensa', breadcrumbs };
+    }
+    if (segments[1] === 'products') {
+      breadcrumbs.push({
+        label: 'Productos',
+        href: `/pantry/products${qs}`,
+      });
+      return { title: 'Productos de despensa', breadcrumbs };
+    }
+    return { title: 'Despensa', breadcrumbs };
+  }
+
   // Handle other pages
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',
     categories: 'Categorías',
+    pantry: 'Despensa',
     expenses: 'Gastos',
     transactions: 'Transacciones',
     wallets: 'Billeteras',

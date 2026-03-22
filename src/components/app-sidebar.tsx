@@ -8,6 +8,7 @@ import {
   Calendar,
   Home,
   PiggyBank,
+  ShoppingBasket,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -122,6 +123,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ];
 
+  const despensaItems = [
+    {
+      title: 'Despensa',
+      url: '#',
+      icon: ShoppingBasket,
+      isActive: pathname.startsWith('/pantry'),
+      items: [
+        {
+          title: 'Inicio',
+          url: '/pantry',
+          isActive:
+            pathname === '/pantry' ||
+            (pathname.startsWith('/pantry') &&
+              !pathname.startsWith('/pantry/receipts') &&
+              !pathname.startsWith('/pantry/products')),
+        },
+        {
+          title: 'Recibos',
+          url: '/pantry/receipts',
+          isActive: pathname.startsWith('/pantry/receipts'),
+        },
+        {
+          title: 'Productos',
+          url: '/pantry/products',
+          isActive: pathname.startsWith('/pantry/products'),
+        },
+      ],
+    },
+  ];
+
   const teams = [
     {
       name: 'MiCasa',
@@ -137,6 +168,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItems} />
+        <NavMain groupLabel="Despensa" items={despensaItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser

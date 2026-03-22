@@ -1,0 +1,363 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { toast } from 'sonner';
+import { Loader2, Package, Pencil, Trash2 } from 'lucide-react';
+
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import EmptyState from '@/components/EmptyState';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { PantryProductForm } from '@/components/pantry/PantryProductForm';
+import { useFinanceContext } from '@/context/finance-context';
+import {
+  createPantryProduct,
+  deletePantryProduct,
+  listPantryProducts,
+  patchPantryProduct,
+} from '@/lib/api';
+import { formatCurrency } from '@/lib/utils';
+import type {
+  CreatePantryProductInput,
+  PantryProductFormValues,
+  PatchPantryProductInput,
+} from '@/schemas/pantry-product.schema';
+import type { PantryProductDto } from '@/types/pantry-product';
+
+const formValuesToCreateBody = (
+  v: PantryProductFormValues,
+): CreatePantryProductInput => {
+  const raw = v.default_unit_price?.trim().replace(',', '.') ?? '';
+  let default_unit_price: number | null | undefined;
+  if (raw === '') {
+    default_unit_price = null;
+  } else {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) {
+      throw new Error('Precio de referencia inválido');
+    }
+    default_unit_price = Math.round(n * 100) / 100;
+  }
+  return {
+    name: v.name.trim(),
+    description: v.description?.trim() ? v.description.trim() : null,
+    brand: v.brand?.trim() ? v.brand.trim() : null,
+    barcode: v.barcode?.trim() ? v.barcode.trim() : null,
+    unit_label: v.unit_label?.trim() ? v.unit_label.trim() : null,
+    default_unit_price,
+    active: v.active,
+  };
+};
+
+const formValuesToPatchBody = (
+  v: PantryProductFormValues,
+): PatchPantryProductInput => formValuesToCreateBody(v);
+
+const productToFormDefaults = (p: PantryProductDto): PantryProductFormValues => ({
+  name: p.name,
+  description: p.description ?? '',
+  barcode: p.barcode ?? '',
+  brand: p.brand ?? '',
+  unit_label: p.unit_label ?? '',
+  default_unit_price:
+    p.default_unit_price != null ? String(p.default_unit_price) : '',
+  active: p.active,
+});
+
+export default function PantryProductsPage() {
+  const { context } = useFinanceContext();
+  const [products, setProducts] = useState<PantryProductDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selected, setSelected] = useState<PantryProductDto | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const loadList = useCallback(async () => {
+    try {
+      setLoading(true);
+      setListError(null);
+      const data = await listPantryProducts(context);
+      setProducts(data);
+    } catch (e) {
+      setListError(
+        e instanceof Error ? e.message : 'Error al cargar los productos',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [context]);
+
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
+  const handleCreate = async (data: PantryProductFormValues) => {
+    try {
+      setFormError(null);
+      const body = formValuesToCreateBody(data);
+      await createPantryProduct(body, context);
+      toast.success('Producto creado');
+      await loadList();
+      setCreateOpen(false);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Error al crear el producto';
+      setFormError(message);
+      throw err;
+    }
+  };
+
+  const handleEdit = async (data: PantryProductFormValues) => {
+    if (!selected) return;
+    try {
+      setFormError(null);
+      const body = formValuesToPatchBody(data);
+      await patchPantryProduct(selected.id, body, context);
+      toast.success('Producto actualizado');
+      await loadList();
+      setEditOpen(false);
+      setSelected(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Error al actualizar el producto';
+      setFormError(message);
+      throw err;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    try {
+      await deletePantryProduct(selected.id, context);
+      toast.success('Producto eliminado');
+      await loadList();
+      setDeleteOpen(false);
+      setSelected(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo eliminar el producto',
+      );
+    }
+  };
+
+  const openEdit = useCallback((p: PantryProductDto) => {
+    setSelected(p);
+    setFormError(null);
+    setEditOpen(true);
+  }, []);
+
+  const openDelete = useCallback((p: PantryProductDto) => {
+    setSelected(p);
+    setDeleteOpen(true);
+  }, []);
+
+  const columns = useMemo<ColumnDef<PantryProductDto>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Producto" />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{row.original.name}</span>
+            {row.original.description ? (
+              <span className="text-[10px] text-muted-foreground line-clamp-1">
+                {row.original.description}
+              </span>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'brand',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Marca" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.brand ?? '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'unit_label',
+        header: 'Unidad',
+        cell: ({ row }) => (
+          <span className="font-mono text-sm tabular-nums text-muted-foreground">
+            {row.original.unit_label ?? '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'default_unit_price',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Precio ref." />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm font-mono tabular-nums">
+            {row.original.default_unit_price != null
+              ? formatCurrency(row.original.default_unit_price)
+              : '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'active',
+        header: 'Estado',
+        cell: ({ row }) =>
+          row.original.active ? (
+            <Badge variant="secondary" className="text-[10px] font-medium">
+              Activo
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              Inactivo
+            </Badge>
+          ),
+      },
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Acciones</span>,
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <div className="flex justify-end gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => openEdit(p)}
+                aria-label={`Editar ${p.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => openDelete(p)}
+                aria-label={`Eliminar ${p.name}`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [openEdit, openDelete],
+  );
+
+  return (
+    <div
+      className="flex flex-1 flex-col gap-4 p-4 pt-0"
+      role="region"
+      aria-label="Catálogo de productos de despensa"
+    >
+      <Card className="overflow-hidden border-border/60">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-2">
+          <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
+              <Package className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            </span>
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <CardTitle className="text-sm font-semibold leading-none">
+                Productos
+              </CardTitle>
+              <p className="text-[10px] text-muted-foreground">
+                Catálogo por contexto (personal o casa).
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            className="rounded-xl shrink-0"
+            onClick={() => {
+              setFormError(null);
+              setCreateOpen(true);
+            }}
+          >
+            Agregar producto
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {listError ? (
+            <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {listError}
+            </div>
+          ) : null}
+          {loading ? (
+            <div
+              className="flex justify-center py-12 text-muted-foreground"
+              role="status"
+              aria-label="Cargando productos"
+            >
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : products.length === 0 ? (
+            <EmptyState message="Aún no hay productos en este contexto." />
+          ) : (
+            <DataTable
+              data={products}
+              columns={columns}
+              filterColumn="name"
+              filterPlaceholder="Buscar producto…"
+              pagination
+              columnVisibility
+              emptyMessage="Sin resultados."
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <PantryProductForm
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          setFormError(null);
+        }}
+        onSubmit={handleCreate}
+        mode="create"
+        error={formError && createOpen ? formError : null}
+      />
+
+      {selected ? (
+        <>
+          <PantryProductForm
+            open={editOpen}
+            onOpenChange={(open) => {
+              setEditOpen(open);
+              if (!open) setSelected(null);
+              setFormError(null);
+            }}
+            onSubmit={handleEdit}
+            mode="edit"
+            defaultValues={productToFormDefaults(selected)}
+            error={formError && editOpen ? formError : null}
+          />
+
+          <ConfirmDeleteDialog
+            open={deleteOpen}
+            onOpenChange={(open) => {
+              setDeleteOpen(open);
+              if (!open) setSelected(null);
+            }}
+            onConfirm={handleDelete}
+            title="Eliminar producto"
+            description="¿Eliminar este producto del catálogo? No afecta recibos ya guardados."
+            itemName={selected.name}
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}

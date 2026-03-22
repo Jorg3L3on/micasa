@@ -17,6 +17,7 @@ import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-reac
 import type { Column } from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -46,6 +47,10 @@ export type DataTableProps<TData> = {
   toolbarExtra?: React.ReactNode;
   /** Renders extra filter controls in the toolbar (e.g. category, type). Shown after the search input, before Columnas. */
   filterSlot?: React.ReactNode;
+  /** Called when a data row is clicked (e.g. select for detail pane). */
+  onRowClick?: (row: TData) => void;
+  /** When set with onRowClick, highlights the row whose id matches (row must have numeric `id`). */
+  selectedRowId?: number | null;
 };
 
 export function DataTable<TData>({
@@ -58,6 +63,8 @@ export function DataTable<TData>({
   emptyMessage = 'Sin resultados.',
   toolbarExtra,
   filterSlot,
+  onRowClick,
+  selectedRowId,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -163,10 +170,33 @@ export function DataTable<TData>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row) => {
+                const original = row.original as { id?: number };
+                const isSelected =
+                  selectedRowId != null && original?.id === selectedRowId;
+                return (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
+                  data-selected={isSelected ? 'true' : undefined}
+                  className={cn(
+                    onRowClick && 'cursor-pointer hover:bg-muted/40',
+                    isSelected &&
+                      'bg-muted/30 border-l-[3px] border-l-violet-500/50',
+                  )}
+                  onClick={() => onRowClick?.(row.original)}
+                  onKeyDown={(e) => {
+                    if (!onRowClick) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onRowClick(row.original);
+                    }
+                  }}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  aria-label={
+                    onRowClick ? 'Seleccionar fila para ver detalle' : undefined
+                  }
+                  aria-selected={isSelected}
                 >
                   {row.getVisibleCells().map((cell) => {
                   const minWidth = cell.column.columnDef.minSize;
@@ -183,7 +213,8 @@ export function DataTable<TData>({
                   );
                 })}
                 </TableRow>
-              ))
+              );
+              })
             ) : (
               <TableRow>
                 <TableCell

@@ -10,6 +10,17 @@ import type {
 } from '@/types/catalog';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import type { CreateBudgetInput, AllocationInput } from '@/schemas/budget.schema';
+import type {
+  PantryReceiptDetailDto,
+  PantryReceiptListItemDto,
+} from '@/types/pantry-receipt';
+import type { PantryInsightsDto } from '@/types/pantry-insights';
+import type { PatchPantryReceiptInput } from '@/schemas/pantry-receipt.schema';
+import type {
+  CreatePantryProductInput,
+  PatchPantryProductInput,
+} from '@/schemas/pantry-product.schema';
+import type { PantryProductDto } from '@/types/pantry-product';
 
 type ApiErrorDetail = {
   message?: string;
@@ -103,6 +114,182 @@ export async function clientFetchFromApi<T>(
   }
 
   return res.json();
+}
+
+/**
+ * POST multipart (e.g. file upload). Do not set Content-Type — the browser sets the boundary.
+ */
+export async function clientFetchMultipartJson<T>(
+  endpoint: string,
+  formData: FormData,
+  context?: FinanceContextType,
+): Promise<T> {
+  let url = endpoint;
+  const ownerParams = buildOwnerQuery(context);
+  if (ownerParams.toString()) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    url = `${endpoint}${separator}${ownerParams.toString()}`;
+  }
+
+  const baseUrl = getClientApiBaseUrl();
+  const res = await fetch(`${baseUrl}${url}`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    let errorMessage = `No se pudo completar la solicitud (${endpoint})`;
+    if (res.status === 413) {
+      errorMessage =
+        'El archivo supera el límite de tamaño del servidor o del proxy (p. ej. nginx, Vercel). Prueba en local, sube un CSV más pequeño o aumenta client_max_body_size / el límite de tu proveedor.';
+    }
+    let errorDetails: ApiErrorDetail[] | undefined;
+    try {
+      const error = (await res.json()) as ApiErrorResponse;
+      if (error.error) {
+        errorMessage = error.error;
+      }
+      if (error.details && Array.isArray(error.details)) {
+        errorDetails = error.details;
+        if (errorDetails && errorDetails.length > 0) {
+          errorMessage = error.details
+            .map((detail) =>
+              typeof detail === 'string'
+                ? detail
+                : (detail.message ?? 'Error en los datos enviados'),
+            )
+            .join(', ');
+        }
+      }
+    } catch {
+      // keep default message (incl. 413 hint when JSON body is empty)
+    }
+    const err = new Error(errorMessage) as ClientApiError;
+    err.status = res.status;
+    err.details = errorDetails;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function listPantryReceipts(
+  context?: FinanceContextType,
+): Promise<PantryReceiptListItemDto[]> {
+  return clientFetchFromApi<PantryReceiptListItemDto[]>(
+    '/api/pantry/receipts',
+    undefined,
+    context,
+  );
+}
+
+export async function getPantryInsights(
+  context?: FinanceContextType,
+): Promise<PantryInsightsDto> {
+  return clientFetchFromApi<PantryInsightsDto>(
+    '/api/pantry/insights',
+    undefined,
+    context,
+  );
+}
+
+export async function uploadPantryReceipt(
+  formData: FormData,
+  context?: FinanceContextType,
+): Promise<PantryReceiptDetailDto> {
+  return clientFetchMultipartJson<PantryReceiptDetailDto>(
+    '/api/pantry/receipts',
+    formData,
+    context,
+  );
+}
+
+export async function getPantryReceipt(
+  id: number,
+  context?: FinanceContextType,
+): Promise<PantryReceiptDetailDto> {
+  return clientFetchFromApi<PantryReceiptDetailDto>(
+    `/api/pantry/receipts/${id}`,
+    undefined,
+    context,
+  );
+}
+
+export async function patchPantryReceipt(
+  id: number,
+  body: PatchPantryReceiptInput,
+  context?: FinanceContextType,
+): Promise<PantryReceiptDetailDto> {
+  return clientFetchFromApi<PantryReceiptDetailDto>(
+    `/api/pantry/receipts/${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+    context,
+  );
+}
+
+export async function deletePantryReceipt(
+  id: number,
+  context?: FinanceContextType,
+): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/pantry/receipts/${id}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function listPantryProducts(
+  context?: FinanceContextType,
+): Promise<PantryProductDto[]> {
+  return clientFetchFromApi<PantryProductDto[]>(
+    '/api/pantry/products',
+    undefined,
+    context,
+  );
+}
+
+export async function createPantryProduct(
+  body: CreatePantryProductInput,
+  context?: FinanceContextType,
+): Promise<PantryProductDto> {
+  return clientFetchFromApi<PantryProductDto>(
+    '/api/pantry/products',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+    context,
+  );
+}
+
+export async function patchPantryProduct(
+  id: number,
+  body: PatchPantryProductInput,
+  context?: FinanceContextType,
+): Promise<PantryProductDto> {
+  return clientFetchFromApi<PantryProductDto>(
+    `/api/pantry/products/${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+    context,
+  );
+}
+
+export async function deletePantryProduct(
+  id: number,
+  context?: FinanceContextType,
+): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/pantry/products/${id}`,
+    { method: 'DELETE' },
+    context,
+  );
 }
 
 export async function createCategory(

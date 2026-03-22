@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "backfill:pantry-products": "tsx --tsconfig tsconfig.json scripts/backfill-pantry-products-from-receipts.ts",
     "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
     "ci": "npm run validate:dashboard-ui && prisma generate && npm test && npm run build"
   },
@@ -43,6 +44,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
+    "recharts": "^2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.5"

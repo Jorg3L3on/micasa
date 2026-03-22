@@ -61,6 +61,10 @@ model User {
   creditCardPayments CreditCardPayment[]
   budgets            Budget[]
 
+  pantry_receipts_created PantryReceipt[] @relation("PantryReceiptCreatedBy")
+  pantry_receipts_owned  PantryReceipt[] @relation("PantryReceiptUserOwner")
+  pantry_products         PantryProduct[]  @relation("PantryProductUserOwner")
+
   // Shared
   memberships HouseMember[]
   ownedHouses House[]
@@ -251,6 +255,8 @@ model House {
 
   creditCardPayments CreditCardPayment[]
   budgets            Budget[]
+  pantry_receipts    PantryReceipt[]      @relation("PantryReceiptHouseOwner")
+  pantry_products    PantryProduct[]      @relation("PantryProductHouseOwner")
 }
 
 model HouseMember {
@@ -392,4 +398,86 @@ model CreditCardPayment {
   @@index([source_wallet_id, paid_at])
   @@index([user_id, paid_at])
   @@index([house_id, paid_at])
+}
+
+/**
+ * Pantry / grocery receipts (per user or per house), with line items parsed from uploads.
+ */
+model PantryReceipt {
+  id     Int  @id @default(autoincrement())
+  title  String?
+  /** Optional totals parsed from receipt footer (e.g. Subtotal, Total). */
+  subtotal       Decimal? @db.Decimal(12, 2)
+  discount_total Decimal? @db.Decimal(12, 2)
+  delivery_fee   Decimal? @db.Decimal(12, 2)
+  grand_total    Decimal? @db.Decimal(12, 2)
+  merchant_ref   String?
+  currency       String   @default("MXN")
+  purchased_at   DateTime?
+
+  user_id  Int?
+  house_id Int?
+
+  created_by_user_id Int
+
+  file_name String?
+  file_mime String?
+  file_data Bytes?
+
+  parse_warnings String[] @default([])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user       User? @relation("PantryReceiptUserOwner", fields: [user_id], references: [id])
+  house      House? @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
+  created_by User   @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
+  lines      PantryReceiptLine[]
+
+  @@index([user_id])
+  @@index([house_id])
+  @@index([created_at])
+}
+
+model PantryReceiptLine {
+  id          Int     @id @default(autoincrement())
+  receipt_id  Int
+  sort_order  Int     @default(0)
+  description String
+  quantity    Decimal @default(1) @db.Decimal(14, 4)
+  /// Unit shown on receipt (pz, kg, etc.)
+  unit_label  String?
+  unit_price  Decimal? @db.Decimal(12, 2)
+  line_total  Decimal  @db.Decimal(12, 2)
+
+  receipt PantryReceipt @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
+
+  @@index([receipt_id])
+}
+
+/**
+ * Pantry product catalog (per user or house) for reference prices and labels.
+ */
+model PantryProduct {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  description        String?
+  barcode            String?
+  brand              String?
+  /// Default unit (pz, kg, L, etc.)
+  unit_label         String?
+  default_unit_price Decimal? @db.Decimal(12, 2)
+  active             Boolean  @default(true)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user              User?                 @relation("PantryProductUserOwner", fields: [user_id], references: [id])
+  house             House?                @relation("PantryProductHouseOwner", fields: [house_id], references: [id])
+
+  @@index([user_id])
+  @@index([house_id])
 }
