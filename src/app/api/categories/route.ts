@@ -34,7 +34,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch categories' },
+      { error: 'No se pudieron cargar las categorías' },
       { status: 500 },
     );
   }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     if (existingSameName) {
       return NextResponse.json(
-        { error: 'Category with this name already exists' },
+        { error: 'Ya existe una categoría con este nombre' },
         { status: 409 },
       );
     }
@@ -77,14 +77,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
 
     console.error('Error creating category:', error);
     return NextResponse.json(
-      { error: 'Failed to create category' },
+      { error: 'No se pudo crear la categoría' },
       { status: 500 },
     );
   }
@@ -104,7 +104,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
     if (!id || isNaN(Number(id))) {
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
+        { error: 'Se requiere un parámetro id válido' },
         { status: 400 },
       );
     }
@@ -115,7 +115,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     });
     if (!existing) {
       return NextResponse.json(
-        { error: 'Category not found' },
+        { error: 'Categoría no encontrada' },
         { status: 404 },
       );
     }
@@ -133,7 +133,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       });
       if (duplicateName) {
         return NextResponse.json(
-          { error: 'Category with this name already exists' },
+          { error: 'Ya existe una categoría con este nombre' },
           { status: 409 },
         );
       }
@@ -156,7 +156,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
@@ -168,14 +168,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       error.code === 'P2025'
     ) {
       return NextResponse.json(
-        { error: 'Category not found' },
+        { error: 'Categoría no encontrada' },
         { status: 404 },
       );
     }
 
     console.error('Error updating category:', error);
     return NextResponse.json(
-      { error: 'Failed to update category' },
+      { error: 'No se pudo actualizar la categoría' },
       { status: 500 },
     );
   }
@@ -196,7 +196,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
     if (!id || isNaN(Number(id))) {
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
+        { error: 'Se requiere un parámetro id válido' },
         { status: 400 },
       );
     }
@@ -207,7 +207,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     });
     if (!existing) {
       return NextResponse.json(
-        { error: 'Category not found' },
+        { error: 'Categoría no encontrada' },
         { status: 404 },
       );
     }
@@ -235,7 +235,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     });
 
     return NextResponse.json(
-      { message: 'Category deleted successfully' },
+      { message: 'Categoría eliminada correctamente' },
       { status: 200 },
     );
   } catch (error) {
@@ -246,14 +246,14 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       error.code === 'P2025'
     ) {
       return NextResponse.json(
-        { error: 'Category not found' },
+        { error: 'Categoría no encontrada' },
         { status: 404 },
       );
     }
 
     console.error('Error deleting category:', error);
     return NextResponse.json(
-      { error: 'Failed to delete category' },
+      { error: 'No se pudo eliminar la categoría' },
       { status: 500 },
     );
   }

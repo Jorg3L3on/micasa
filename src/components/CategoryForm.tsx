@@ -66,7 +66,9 @@ export default function CategoryForm({
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error al enviar el formulario de categoría:', error);
+      if (!(error instanceof Error)) {
+        console.error('Error al enviar el formulario de categoría:', error);
+      }
     }
   };
 
