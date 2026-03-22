@@ -153,10 +153,23 @@ export default function ExpenseTemplatesPage() {
         cell: ({ row }) => row.original.cutoffDay ?? '—',
       },
       {
-        accessorKey: 'dueDay',
-        minSize: 72,
+        id: 'dueDays',
+        minSize: 100,
         header: 'Pago',
-        cell: ({ row }) => row.original.dueDay ?? '—',
+        cell: ({ row }) => {
+          const t = row.original;
+          const parts: string[] = [];
+          if (t.appliesFirstFortnight && t.dueDayFirst != null) {
+            parts.push(`1ª: ${t.dueDayFirst}`);
+          }
+          if (t.appliesSecondFortnight && t.dueDaySecond != null) {
+            parts.push(`2ª: ${t.dueDaySecond}`);
+          }
+          if (parts.length > 0) {
+            return parts.join(' · ');
+          }
+          return t.dueDay != null ? String(t.dueDay) : '—';
+        },
       },
       {
         accessorKey: 'isRecurring',

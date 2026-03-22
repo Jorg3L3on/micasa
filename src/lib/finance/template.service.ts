@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { TransferType } from '@/generated/prisma/client';
 import { createUserToHouseTransferInTx } from '@/lib/finance/transfer.service';
+import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 
 const DEFAULT_EXPENSE_AMOUNT = 0.01;
 const INCOME_TEMPLATE_DEFAULT_AMOUNT = 0.01;
@@ -213,6 +214,8 @@ export async function expandExpenseTemplatesForFortnight(
         category_id: true,
         wallet_id: true,
         due_day: true,
+        due_day_first_fortnight: true,
+        due_day_second_fortnight: true,
       },
     });
 
@@ -267,6 +270,8 @@ export async function expandExpenseTemplatesForFortnight(
         }
       }
 
+      const resolvedDue = resolveTemplateDueDay(period, template);
+
       await tx.expense.create({
         data: {
           fortnight_id: fortnightId,
@@ -275,7 +280,7 @@ export async function expandExpenseTemplatesForFortnight(
           amount: String(amount),
           wallet_id: template.wallet_id ?? undefined,
           expense_template_id: template.id,
-          due_day: template.due_day ?? undefined,
+          due_day: resolvedDue,
           is_paid: false,
           user_id: fortnight.user_id,
           house_id: fortnight.house_id,

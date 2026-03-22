@@ -261,8 +261,9 @@ export async function createExpenseTemplate(
     paymentMethodId?: number | null;
     active?: boolean;
     expenseIds?: number[];
-    dueDay: number;
-    cutoffDay: number;
+    dueDayFirst?: number | null;
+    dueDaySecond?: number | null;
+    cutoffDay?: number | null;
     isRecurring: boolean;
     appliesFirstFortnight: boolean;
     appliesSecondFortnight: boolean;
@@ -290,8 +291,9 @@ export async function updateExpenseTemplate(
     paymentMethodId?: number | null;
     active?: boolean;
     expenseIds?: number[];
-    dueDay: number;
-    cutoffDay: number;
+    dueDayFirst?: number | null;
+    dueDaySecond?: number | null;
+    cutoffDay?: number | null;
     isRecurring: boolean;
     appliesFirstFortnight: boolean;
     appliesSecondFortnight: boolean;
