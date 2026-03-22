@@ -36,8 +36,16 @@ import {
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
+  PAYMENT_METHOD_OPTIONS,
 } from '@/domain/payment-method';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
@@ -46,6 +54,16 @@ const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD
 
 const isCreditType = (type: string) =>
   CREDIT_TYPES.includes(type as PaymentMethodType);
+
+const TYPE_FILTER_ALL = 'all';
+const STATUS_FILTER_ALL = 'all';
+const BALANCE_FILTER_ALL = 'all';
+
+type StatusFilterValue = typeof STATUS_FILTER_ALL | 'active' | 'inactive';
+type BalanceFilterValue =
+  | typeof BALANCE_FILTER_ALL
+  | 'nonzero'
+  | 'zero';
 
 const WALLET_ICON_CONFIG: Record<
   PaymentMethodType,
@@ -85,6 +103,36 @@ export default function WalletsPage() {
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>(TYPE_FILTER_ALL);
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilterValue>(STATUS_FILTER_ALL);
+  const [balanceFilter, setBalanceFilter] =
+    useState<BalanceFilterValue>(BALANCE_FILTER_ALL);
+
+  const filteredWallets = useMemo(() => {
+    return wallets.filter((w) => {
+      if (typeFilter !== TYPE_FILTER_ALL && w.type !== typeFilter) {
+        return false;
+      }
+      if (statusFilter === 'active' && !w.active) return false;
+      if (statusFilter === 'inactive' && w.active) return false;
+      const amt = Number(w.amount);
+      if (balanceFilter === 'nonzero' && !(amt > 0)) return false;
+      if (balanceFilter === 'zero' && amt !== 0) return false;
+      return true;
+    });
+  }, [wallets, typeFilter, statusFilter, balanceFilter]);
+
+  const hasActiveFilters =
+    typeFilter !== TYPE_FILTER_ALL ||
+    statusFilter !== STATUS_FILTER_ALL ||
+    balanceFilter !== BALANCE_FILTER_ALL;
+
+  const handleClearFilters = useCallback(() => {
+    setTypeFilter(TYPE_FILTER_ALL);
+    setStatusFilter(STATUS_FILTER_ALL);
+    setBalanceFilter(BALANCE_FILTER_ALL);
+  }, []);
 
   const fetchWallets = useCallback(async () => {
     try {
@@ -413,11 +461,90 @@ export default function WalletsPage() {
             <EmptyState message="No se encontraron billeteras" />
           ) : (
             <DataTable
-              data={wallets}
+              data={filteredWallets}
               columns={columns}
               filterColumn="name"
-              filterPlaceholder="Filtrar por nombre..."
-              emptyMessage="No se encontraron billeteras."
+              filterPlaceholder="Buscar por nombre..."
+              emptyMessage="Ninguna billetera coincide con los filtros."
+              filterSlot={
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                  <Select
+                    value={typeFilter}
+                    onValueChange={setTypeFilter}
+                  >
+                    <SelectTrigger
+                      className="w-full sm:w-[200px]"
+                      aria-label="Filtrar por tipo"
+                    >
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={TYPE_FILTER_ALL}>
+                        Todos los tipos
+                      </SelectItem>
+                      {PAYMENT_METHOD_OPTIONS.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(v) =>
+                      setStatusFilter(v as StatusFilterValue)
+                    }
+                  >
+                    <SelectTrigger
+                      className="w-full sm:w-[180px]"
+                      aria-label="Filtrar por estado"
+                    >
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={STATUS_FILTER_ALL}>
+                        Todos los estados
+                      </SelectItem>
+                      <SelectItem value="active">Solo activas</SelectItem>
+                      <SelectItem value="inactive">Solo inactivas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={balanceFilter}
+                    onValueChange={(v) =>
+                      setBalanceFilter(v as BalanceFilterValue)
+                    }
+                  >
+                    <SelectTrigger
+                      className="w-full sm:w-[220px]"
+                      aria-label="Filtrar por saldo o deuda"
+                    >
+                      <SelectValue placeholder="Saldo / deuda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={BALANCE_FILTER_ALL}>
+                        Cualquier saldo o deuda
+                      </SelectItem>
+                      <SelectItem value="nonzero">
+                        Con saldo o deuda mayor a cero
+                      </SelectItem>
+                      <SelectItem value="zero">En cero</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {hasActiveFilters ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 shrink-0 text-muted-foreground"
+                      onClick={handleClearFilters}
+                      aria-label="Limpiar filtros de billeteras"
+                    >
+                      Limpiar filtros
+                    </Button>
+                  ) : null}
+                </div>
+              }
             />
           )}
         </CardContent>
