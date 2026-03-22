@@ -11,7 +11,18 @@ import AddExpenseDialog from '@/components/AddExpenseDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Plus, RefreshCw } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { BarChart3, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   clientFetchFromApi,
@@ -529,18 +540,47 @@ export default function FortnightColumn({
             <Plus className="h-3.5 w-3.5" />
             Agregar gasto
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRegenerateFromTemplates}
-            disabled={!fortnightId || fortnightId <= 0 || isRefreshing}
-            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            aria-label="Regenerar gastos e ingresos desde plantillas"
-            title="Regenera los gastos e ingresos de esta quincena a partir de las plantillas activas."
-          >
-            <RefreshCw className="h-3 w-3" />
-            Regenerar
-          </Button>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    disabled={!fortnightId || fortnightId <= 0}
+                    aria-label="Más acciones de esta quincena"
+                  >
+                    <MoreVertical className="h-4 w-4" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                Más acciones
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="min-w-48">
+              <DropdownMenuItem
+                disabled={
+                  !fortnightId || fortnightId <= 0 || isRefreshing
+                }
+                onSelect={() => {
+                  void handleRegenerateFromTemplates();
+                }}
+              >
+                {isRefreshing ? (
+                  <Loader2
+                    className="h-4 w-4 shrink-0 animate-spin"
+                    aria-hidden
+                  />
+                ) : (
+                  <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                Regenerar desde plantillas
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

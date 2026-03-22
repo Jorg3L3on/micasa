@@ -7,6 +7,11 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Banknote, ChevronDown, ChevronUp, CreditCard, Landmark, Store } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
 
@@ -101,25 +106,32 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 shrink-0 rounded-lg"
-        onClick={handleToggleStrip}
-        aria-expanded={stripVisible}
-        aria-label={
-          stripVisible
-            ? 'Ocultar tarjetas de saldos de billeteras'
-            : 'Mostrar tarjetas de saldos de billeteras'
-        }
-      >
-        {stripVisible ? (
-          <ChevronUp className="h-4 w-4" />
-        ) : (
-          <ChevronDown className="h-4 w-4" />
-        )}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-lg"
+            onClick={handleToggleStrip}
+            aria-expanded={stripVisible}
+            aria-label={
+              stripVisible
+                ? 'Ocultar tarjetas de saldos de billeteras'
+                : 'Mostrar tarjetas de saldos de billeteras'
+            }
+          >
+            {stripVisible ? (
+              <ChevronUp className="h-4 w-4" aria-hidden />
+            ) : (
+              <ChevronDown className="h-4 w-4" aria-hidden />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4}>
+          Mostrar u ocultar saldos de billeteras
+        </TooltipContent>
+      </Tooltip>
 
       {stripVisible ? (
         <div
