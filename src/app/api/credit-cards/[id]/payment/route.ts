@@ -136,9 +136,22 @@ export async function POST(
       error &&
       typeof error === 'object' &&
       'code' in error &&
+      error.code === 'CATEGORY_NOT_FOUND'
+    ) {
+      return NextResponse.json(
+        { error: 'Categoría no encontrada' },
+        { status: 404 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
       (error.code === 'INVALID_CREDIT_CARD' ||
         error.code === 'INVALID_PAYMENT_SOURCE_WALLET' ||
-        error.code === 'INVALID_PAYMENT_SOURCE_OWNER')
+        error.code === 'INVALID_PAYMENT_SOURCE_OWNER' ||
+        error.code === 'INVALID_CARD_OWNER')
     ) {
       return NextResponse.json(
         {

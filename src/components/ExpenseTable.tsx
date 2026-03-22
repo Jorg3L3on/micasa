@@ -53,6 +53,35 @@ import { cn } from '@/lib/utils';
 
 import type { TransactionRow } from '@/types/catalog';
 
+/** Rows from combined transaction feeds use income ids that are not expense ids. */
+const isExpenseTransactionRow = (row: TransactionRow) => row.type !== 'income';
+
+type ThrownApiError = Error & { status?: number };
+
+/** Map `clientFetchFromApi` errors to user copy; avoid console noise for expected 4xx (e.g. saldo). */
+const getApiErrorFeedback = (
+  error: unknown,
+  fallback: string,
+): { userMessage: string; logToConsole: boolean } => {
+  const err = error as ThrownApiError;
+  if (!(err instanceof Error)) {
+    return { userMessage: fallback, logToConsole: true };
+  }
+  const status = err.status;
+  const is4xx =
+    typeof status === 'number' && status >= 400 && status < 500;
+  if (is4xx && err.message.trim()) {
+    return { userMessage: err.message, logToConsole: false };
+  }
+  if (typeof status === 'number' && status >= 500) {
+    return { userMessage: fallback, logToConsole: true };
+  }
+  return {
+    userMessage: err.message.trim() ? err.message : fallback,
+    logToConsole: true,
+  };
+};
+
 export type ExpenseTableDensity = 'comfortable' | 'compact';
 
 type ExpenseTableProps = {
@@ -97,11 +126,9 @@ export default function ExpenseTable({
   // Sync local state with props when expenses change
   useEffect(() => {
     const sorted = [...expenses].sort((a, b) => {
-      // Unpaid first, then paid
       if (a.is_paid !== b.is_paid) {
         return a.is_paid ? 1 : -1;
       }
-      // Within same status, sort by amount descending
       const amountA = toDisplayAmount(a.amount);
       const amountB = toDisplayAmount(b.amount);
       return amountB - amountA;
@@ -110,6 +137,13 @@ export default function ExpenseTable({
   }, [expenses]);
 
   const handlePaidToggle = async (expense: TransactionRow, newPaidStatus: boolean) => {
+    if (!isExpenseTransactionRow(expense)) {
+      toast.error(
+        'Los ingresos no se marcan como pagado desde la tabla de gastos.',
+      );
+      return;
+    }
+
     const expenseId = expense.id;
     setUpdatingIds((prev) => {
       const next = new Set(prev);
@@ -134,10 +168,14 @@ export default function ExpenseTable({
       );
     } catch (error) {
       setLocalExpenses(expenses);
-      console.error('Error updating expense paid status:', error);
-      toast.error(
+      const { userMessage, logToConsole } = getApiErrorFeedback(
+        error,
         'Error al actualizar el estado de pago. Por favor, intenta de nuevo.',
       );
+      if (logToConsole) {
+        console.error('Error updating expense paid status:', error);
+      }
+      toast.error(userMessage);
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
@@ -148,13 +186,14 @@ export default function ExpenseTable({
   };
 
   const handleEditAmount = (expense: TransactionRow) => {
+    if (!isExpenseTransactionRow(expense)) return;
     setEditingExpense(expense);
     setEditDialogOpen(true);
     setEditError(null);
   };
 
   const handleUpdateAmount = async (data: ExpenseAmountFormValues) => {
-    if (!editingExpense) return;
+    if (!editingExpense || !isExpenseTransactionRow(editingExpense)) return;
 
     const expenseId = editingExpense.id;
     setUpdatingIds((prev) => {
@@ -179,11 +218,15 @@ export default function ExpenseTable({
       toast.success('Monto del gasto actualizado.');
     } catch (error) {
       setLocalExpenses(expenses);
-      const message =
-        error instanceof Error ? error.message : 'Error al actualizar el monto';
-      setEditError(message);
-      console.error('Error updating expense amount:', error);
-      toast.error(message);
+      const { userMessage, logToConsole } = getApiErrorFeedback(
+        error,
+        'Error al actualizar el monto',
+      );
+      setEditError(userMessage);
+      if (logToConsole) {
+        console.error('Error updating expense amount:', error);
+      }
+      toast.error(userMessage);
       throw error;
     } finally {
       setUpdatingIds((prev) => {
@@ -195,7 +238,7 @@ export default function ExpenseTable({
   };
 
   const handleDeleteExpense = async () => {
-    if (!deletingExpense) return;
+    if (!deletingExpense || !isExpenseTransactionRow(deletingExpense)) return;
 
     const expenseId = deletingExpense.id;
     setUpdatingIds((prev) => {
@@ -217,10 +260,14 @@ export default function ExpenseTable({
       toast.success('Gasto eliminado.');
     } catch (error) {
       setLocalExpenses(expenses);
-      console.error('Error deleting expense:', error);
-      toast.error(
+      const { userMessage, logToConsole } = getApiErrorFeedback(
+        error,
         'Error al eliminar el gasto. Por favor, intenta de nuevo.',
       );
+      if (logToConsole) {
+        console.error('Error deleting expense:', error);
+      }
+      toast.error(userMessage);
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
@@ -313,7 +360,6 @@ export default function ExpenseTable({
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
-  // Calculate totals using safe amount coercion
   const totalPaid = paidExpenses.reduce(
     (sum, e) => sum + toDisplayAmount(e.amount),
     0,
@@ -354,6 +400,13 @@ export default function ExpenseTable({
                     isCompact ? 'h-4 w-4' : 'h-5 w-5',
                   )}
                 />
+              </div>
+            );
+          }
+          if (!isExpenseTransactionRow(expense)) {
+            return (
+              <div className="flex justify-center text-muted-foreground">
+                <span className={isCompact ? 'text-[10px]' : 'text-xs'}>—</span>
               </div>
             );
           }
@@ -416,7 +469,7 @@ export default function ExpenseTable({
                     isCompact ? 'text-[10px]' : 'text-xs',
                   )}
                 >
-                  {expense.category} • {expense.paymentMethod}
+                  {`${expense.category} • ${expense.paymentMethod}`}
                 </span>
                 {hasDue && (
                   <Badge
@@ -485,6 +538,15 @@ export default function ExpenseTable({
         cell: ({ row }) => {
           const expense = row.original;
           const isUpdating = updatingIds.has(expense.id);
+          if (!isExpenseTransactionRow(expense)) {
+            return (
+              <div className="flex justify-center text-muted-foreground">
+                <span className={isCompact ? 'text-[10px]' : 'text-xs'} aria-hidden>
+                  —
+                </span>
+              </div>
+            );
+          }
           if (!dropdownMounted) {
             return (
               <div className="flex justify-center">

@@ -17,6 +17,10 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { createWalletForOwner, updateWalletMetadataForOwner } from '@/lib/finance/wallet.service';
 import { createExpense } from '@/lib/finance/expense.service';
+import {
+  getFortnightPeriodForDay,
+  resolveOrCreateFortnight,
+} from '@/lib/fortnights';
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -249,13 +253,66 @@ export async function createCreditCardPayment(
     await applyWalletAmountDelta(tx, sourceWallet.id, -input.amount);
     await applyWalletAmountDelta(tx, creditCardWallet.id, -input.amount);
 
-    const now = new Date();
-    const period = now.getDate() <= 15 ? 1 : 2;
-    const paidPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${period}`;
-    await tx.wallet.update({
-      where: { id: creditCardWallet.id },
-      data: { last_paid_period: paidPeriod },
-    });
+    let expenseId: number | null = null;
+    if (input.create_fortnight_expense === true && input.category_id != null) {
+      const category = await tx.category.findFirst({
+        where: { id: input.category_id, ...ownerFilter },
+      });
+      if (!category) {
+        const error = new Error('Categoría no encontrada');
+        (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
+        throw error;
+      }
+
+      const paidAt = new Date(input.paid_at);
+      const fnYear = paidAt.getUTCFullYear();
+      const fnMonth = paidAt.getUTCMonth() + 1;
+      const fnDay = paidAt.getUTCDate();
+      const fnPeriod = getFortnightPeriodForDay(fnDay);
+
+      const ownerUserId = creditCardWallet.user_id;
+      const ownerHouseId = creditCardWallet.house_id;
+      if (ownerUserId == null && ownerHouseId == null) {
+        const error = new Error('Titular de tarjeta inválido');
+        (error as { code?: string }).code = 'INVALID_CARD_OWNER';
+        throw error;
+      }
+
+      const fortnight = await resolveOrCreateFortnight({
+        ownerType: ownerUserId != null ? 'user' : 'house',
+        ownerId: ownerUserId != null ? ownerUserId : ownerHouseId!,
+        year: fnYear,
+        month: fnMonth,
+        period: fnPeriod,
+        tx,
+      });
+
+      const description =
+        input.expense_description?.trim() ||
+        `Pago tarjeta: ${creditCardWallet.name}`;
+
+      const expense = await tx.expense.create({
+        data: {
+          fortnight_id: fortnight.id,
+          wallet_id: sourceWallet.id,
+          category_id: input.category_id,
+          description,
+          amount: input.amount,
+          is_paid: true,
+          payment_date: new Date(input.paid_at),
+          expense_template_id: null,
+          user_id: fortnight.user_id,
+          house_id: fortnight.house_id,
+        },
+      });
+
+      expenseId = expense.id;
+
+      await tx.creditCardPayment.update({
+        where: { id: payment.id },
+        data: { expense_id: expenseId },
+      });
+    }
 
     return {
       id: payment.id,
@@ -266,6 +323,7 @@ export async function createCreditCardPayment(
       source_wallet_name: payment.source_wallet.name,
       credit_card_wallet_id: payment.credit_card_wallet_id,
       credit_card_wallet_name: payment.credit_card_wallet.name,
+      expense_id: expenseId,
     };
   });
 }

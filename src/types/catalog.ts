@@ -117,8 +117,15 @@ export type DuePaymentItem = {
   walletName: string;
   walletType: string;
   dueDay: number;
+  cutoff_day: number;
   nextDuePayment: number;
   statementDueDate: string;
+};
+
+/** GET /api/wallets/due-payments?year=&month= — planificación mensual por quincena */
+export type PlannerDuePaymentsResponse = {
+  first: DuePaymentItem[];
+  second: DuePaymentItem[];
 };
 
 export type LiquidityProjectionObligationSource =

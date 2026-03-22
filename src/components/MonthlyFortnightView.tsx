@@ -23,7 +23,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
-import type { TransactionRow } from '@/types/catalog';
+import type { DuePaymentItem, TransactionRow } from '@/types/catalog';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
@@ -60,6 +60,8 @@ type FortnightBundle = {
   transactions: TransactionRow[];
   summary: FortnightSummary;
   fortnightId: number;
+  /** Card payment reminders for this quincena (current month only). */
+  cardDueItems?: DuePaymentItem[];
 };
 
 export type MonthlyFortnightViewProps = {
@@ -549,6 +551,7 @@ export default function MonthlyFortnightView({
             showSummaryCard={summaryVisible}
             onShowSummaryCard={handleShowSummaryFromColumn}
             tableDensity={tableDensity}
+            cardDueItems={first.cardDueItems}
           />
         ) : null}
         {showSecond ? (
@@ -564,6 +567,7 @@ export default function MonthlyFortnightView({
             showSummaryCard={summaryVisible}
             onShowSummaryCard={handleShowSummaryFromColumn}
             tableDensity={tableDensity}
+            cardDueItems={second.cardDueItems}
           />
         ) : null}
       </div>

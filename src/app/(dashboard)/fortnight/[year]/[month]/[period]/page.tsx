@@ -59,7 +59,7 @@ async function getTransactions(
 ): Promise<TransactionRow[]> {
   try {
     return await fetchFromApi<TransactionRow[]>(
-      `/api/transactions?year=${year}&month=${month}&period=${period}`,
+      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense`,
       ownerContext,
     );
   } catch (error) {

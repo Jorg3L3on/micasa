@@ -3,12 +3,15 @@ import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import MonthlyFortnightView from '@/components/MonthlyFortnightView'
 import WalletBalanceStrip from '../../../../../components/WalletBalanceStrip'
-import DuePaymentsBanner from '@/components/DuePaymentsBanner'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { WalletListItem, DuePaymentItem } from '@/types/catalog'
+import type {
+  WalletListItem,
+  DuePaymentItem,
+  PlannerDuePaymentsResponse,
+} from '@/types/catalog'
 
 type Transaction = {
   id: number
@@ -94,7 +97,7 @@ async function getTransactions(
 ): Promise<Transaction[]> {
   try {
     return await fetchFromApi<Transaction[]>(
-      `/api/transactions?year=${year}&month=${month}&period=${period}`,
+      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense`,
       ownerContext
     )
   } catch (error) {
@@ -157,6 +160,26 @@ async function getDuePayments(ownerContext?: OwnerContext): Promise<DuePaymentIt
   }
 }
 
+async function getPlannerDuePayments(
+  year: number,
+  month: number,
+  ownerContext?: OwnerContext,
+): Promise<PlannerDuePaymentsResponse> {
+  try {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    })
+    return await fetchFromApi<PlannerDuePaymentsResponse>(
+      `/api/wallets/due-payments?${params.toString()}`,
+      ownerContext,
+    )
+  } catch (error) {
+    console.error('Error fetching planner due payments:', error)
+    return { first: [], second: [] }
+  }
+}
+
 export default async function MonthlyPage({
   params,
   searchParams,
@@ -212,6 +235,7 @@ export default async function MonthlyPage({
     nextSecondInfo,
     wallets,
     duePayments,
+    plannerDue,
   ] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
     getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
@@ -225,6 +249,7 @@ export default async function MonthlyPage({
     getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND', ownerContext),
     getWallets(ownerContext),
     isCurrentMonth ? getDuePayments(ownerContext) : Promise.resolve([] as DuePaymentItem[]),
+    getPlannerDuePayments(year, month, ownerContext),
   ])
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null
@@ -270,6 +295,9 @@ export default async function MonthlyPage({
         })
         .map((w) => w.id)
     : []
+
+  const cardDueFirst = plannerDue.first
+  const cardDueSecond = plannerDue.second
 
   return (
     <>
@@ -332,12 +360,6 @@ export default async function MonthlyPage({
         <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
       </div>
 
-      {isCurrentMonth && duePayments.length > 0 && (
-        <div className="mb-4">
-          <DuePaymentsBanner duePayments={duePayments} />
-        </div>
-      )}
-
       <MonthlyFortnightView
         ownerKey={ownerKey}
         year={year}
@@ -348,12 +370,14 @@ export default async function MonthlyPage({
           transactions: firstTransactions,
           summary: firstSummary,
           fortnightId: firstFortnightId,
+          cardDueItems: cardDueFirst,
         }}
         second={{
           label: secondLabel,
           transactions: secondTransactions,
           summary: secondSummary,
           fortnightId: secondFortnightId,
+          cardDueItems: cardDueSecond,
         }}
       />
     </>

@@ -46,7 +46,6 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         amount: 50,
         cutoff_day: 15,
         due_day: 18,
-        last_paid_period: null,
       },
     ]);
     queryRaw
@@ -61,12 +60,13 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       walletName: 'Visa',
       nextDuePayment: 400,
       dueDay: 18,
+      cutoff_day: 15,
     });
     expect(typeof result[0]?.statementDueDate).toBe('string');
     expect(queryRaw).toHaveBeenCalledTimes(2);
   });
 
-  it('drops cards already marked paid for the current fortnight period', async () => {
+  it('ignores last_paid_period and still returns due when statement obligation remains', async () => {
     findManyWallets.mockResolvedValue([
       {
         id: 1,
@@ -75,12 +75,17 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         amount: 50,
         cutoff_day: 15,
         due_day: 18,
-        last_paid_period: '2026-03-2',
       },
     ]);
+    queryRaw
+      .mockResolvedValueOnce([{ wallet_id: 1, total: 500 }])
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 1, total: 100 }]);
+
     const result = await getDuePaymentsForCurrentFortnight(userOwner);
-    expect(result).toEqual([]);
-    expect(queryRaw).not.toHaveBeenCalled();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.nextDuePayment).toBe(400);
+    expect(queryRaw).toHaveBeenCalledTimes(2);
   });
 
   it('batches two cards that share cutoff and due into one query pair', async () => {
@@ -92,7 +97,6 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         amount: 10,
         cutoff_day: 15,
         due_day: 18,
-        last_paid_period: null,
       },
       {
         id: 2,
@@ -101,7 +105,6 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         amount: 10,
         cutoff_day: 15,
         due_day: 18,
-        last_paid_period: null,
       },
     ]);
     queryRaw

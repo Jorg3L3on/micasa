@@ -537,15 +537,23 @@ const sumPaymentsAppliedToStatementByWallet = async (
   return map;
 };
 
-export async function getDuePaymentsForCurrentFortnight(
-  ownerFilter: OwnerFilter,
-) {
-  const now = new Date();
-  const currentDay = now.getDate();
-  const isFirstFortnight = currentDay <= 15;
-  const period = isFirstFortnight ? 1 : 2;
-  const currentPeriodString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${period}`;
+type DuePaymentsAsOfOptions = {
+  /**
+   * When true, keep rows with nextDuePayment === 0 (al corriente en el corte).
+   * Always includes `cutoff_day` on each item.
+   */
+  includeZeroObligation?: boolean;
+};
 
+/**
+ * Cards with positive balance and due-day matching `dueDayPredicate`, as of `asOf`.
+ */
+async function getDuePaymentsWithAsOf(
+  ownerFilter: OwnerFilter,
+  asOf: Date,
+  dueDayPredicate: (dueDay: number) => boolean,
+  options?: DuePaymentsAsOfOptions,
+) {
   const cards = await prisma.wallet.findMany({
     where: {
       ...ownerFilter,
@@ -561,17 +569,13 @@ export async function getDuePaymentsForCurrentFortnight(
       amount: true,
       cutoff_day: true,
       due_day: true,
-      last_paid_period: true,
     },
   });
 
   const dueCards = cards.filter((card) => {
-    if (card.last_paid_period === currentPeriodString) return false;
     if (Number(card.amount) <= 0) return false;
     const dueDay = card.due_day!;
-    return isFirstFortnight
-      ? dueDay >= 1 && dueDay <= 15
-      : dueDay >= 16;
+    return dueDayPredicate(dueDay);
   });
 
   if (dueCards.length === 0) return [];
@@ -595,7 +599,7 @@ export async function getDuePaymentsForCurrentFortnight(
     [...groups.values()].map(async (cardsInGroup) => {
       const head = cardsInGroup[0];
       const window = resolveCreditCardStatementWindow(
-        now,
+        asOf,
         head.cutoff_day!,
         head.due_day!,
       );
@@ -631,10 +635,57 @@ export async function getDuePaymentsForCurrentFortnight(
       walletName: card.name,
       walletType: card.type,
       dueDay: card.due_day!,
+      cutoff_day: card.cutoff_day!,
       nextDuePayment,
       statementDueDate: statementDueByWallet.get(card.id)!,
     };
   });
 
+  if (options?.includeZeroObligation) {
+    return items;
+  }
   return items.filter((item) => item.nextDuePayment > 0);
+}
+
+export async function getDuePaymentsForCurrentFortnight(
+  ownerFilter: OwnerFilter,
+) {
+  const now = new Date();
+  const currentDay = now.getDate();
+  const isFirstFortnight = currentDay <= 15;
+  return getDuePaymentsWithAsOf(
+    ownerFilter,
+    now,
+    isFirstFortnight
+      ? (dueDay) => dueDay >= 1 && dueDay <= 15
+      : (dueDay) => dueDay >= 16,
+  );
+}
+
+/** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
+export async function getDuePaymentsForPlannerMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+) {
+  const asOfFirst = createUtcDate(year, month, 15);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const asOfSecond = createUtcDate(year, month, lastDay);
+
+  const [first, second] = await Promise.all([
+    getDuePaymentsWithAsOf(
+      ownerFilter,
+      asOfFirst,
+      (dueDay) => dueDay >= 1 && dueDay <= 15,
+      { includeZeroObligation: true },
+    ),
+    getDuePaymentsWithAsOf(
+      ownerFilter,
+      asOfSecond,
+      (dueDay) => dueDay >= 16,
+      { includeZeroObligation: true },
+    ),
+  ]);
+
+  return { first, second };
 }
