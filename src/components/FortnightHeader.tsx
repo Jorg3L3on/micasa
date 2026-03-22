@@ -4,6 +4,11 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 type FortnightHeaderProps = {
   year: number
@@ -58,21 +63,49 @@ export default function FortnightHeader({
       <div>
         <h1 className="text-2xl font-bold">{label}</h1>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link
-            href={`/fortnight/${prevYear}/${prevMonth.toString().padStart(2, '0')}/${prevPeriod}${suffix}`}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <Button variant="ghost" size="icon" asChild>
-          <Link
-            href={`/fortnight/${nextYear}/${nextMonth.toString().padStart(2, '0')}/${nextPeriod}${suffix}`}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
+      <div
+        className="flex items-center gap-1"
+        role="group"
+        aria-label="Selector de quincena"
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-lg" asChild>
+              <Link
+                href={`/fortnight/${prevYear}/${prevMonth.toString().padStart(2, '0')}/${prevPeriod}${suffix}`}
+                aria-label="Quincena anterior"
+              >
+                <ChevronLeft
+                  className="size-5 shrink-0"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            Quincena anterior
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-lg" asChild>
+              <Link
+                href={`/fortnight/${nextYear}/${nextMonth.toString().padStart(2, '0')}/${nextPeriod}${suffix}`}
+                aria-label="Quincena siguiente"
+              >
+                <ChevronRight
+                  className="size-5 shrink-0"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            Quincena siguiente
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )

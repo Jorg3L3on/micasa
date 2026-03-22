@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -31,30 +31,38 @@ export default function MonthlyHeader({
       <Tooltip>
         <TooltipTrigger asChild>
           {hasPrevMonth ? (
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon-lg" asChild>
               <Link
                 href={prevHref}
-                aria-label={`Mes anterior: ${prevMonthLabel}`}
+                aria-label={`Ir al mes anterior: ${prevMonthLabel}`}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft
+                  className="size-5 shrink-0"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
               </Link>
             </Button>
           ) : (
             <span className="inline-flex">
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon-lg"
                 disabled
                 aria-label={`Mes anterior: ${prevMonthLabel} (no disponible)`}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft
+                  className="size-5 shrink-0"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
               </Button>
             </span>
           )}
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={4}>
           {hasPrevMonth
-            ? `Mes anterior: ${prevMonthLabel}`
+            ? `Ir al mes anterior (${prevMonthLabel})`
             : `${prevMonthLabel} (no disponible)`}
         </TooltipContent>
       </Tooltip>

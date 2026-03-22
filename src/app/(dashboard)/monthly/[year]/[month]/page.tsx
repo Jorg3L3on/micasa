@@ -273,7 +273,11 @@ export default async function MonthlyPage({
 
   return (
     <>
-      <div className="mb-3 flex items-center gap-2 sm:gap-3">
+      <div
+        className="mb-3 flex items-center gap-2 sm:gap-3"
+        role="group"
+        aria-label="Selector de mes"
+      >
         <div className="shrink-0">
           <MonthlyHeader
             year={year}
@@ -296,17 +300,21 @@ export default async function MonthlyPage({
           {hasNextMonth ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" asChild>
+                <Button variant="ghost" size="icon-lg" asChild>
                   <Link
                     href={nextHref}
-                    aria-label={`Mes siguiente: ${nextMonthLabel}`}
+                    aria-label={`Ir al mes siguiente: ${nextMonthLabel}`}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight
+                      className="size-5 shrink-0"
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
                   </Link>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}>
-                {`Mes siguiente: ${nextMonthLabel}`}
+                {`Ir al mes siguiente (${nextMonthLabel})`}
               </TooltipContent>
             </Tooltip>
           ) : (
