@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/sidebar"
 
 export function NavMain({
+  groupLabel = "Navegación",
   items,
 }: {
+  groupLabel?: string
   items: {
     title: string
     url: string
@@ -44,7 +46,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Navegación</SidebarGroupLabel>
+      <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           // If item has sub-items, make it collapsible
