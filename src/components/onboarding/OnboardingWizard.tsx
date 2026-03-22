@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { OnboardingProvider, useOnboarding } from '@/components/onboarding/OnboardingContext';
 import {
@@ -71,7 +70,6 @@ function OnboardingWizardContent() {
     isStepLoading,
     setStepLoading,
     canProceed,
-    setCanProceed,
   } = onboarding;
   const StepComponent = steps[currentStep];
   const progress = (currentStep + 1) / totalSteps;
@@ -79,10 +77,6 @@ function OnboardingWizardContent() {
   const description = stepDescriptions[currentStep];
 
   const router = useRouter();
-
-  useEffect(() => {
-    setCanProceed(true);
-  }, [currentStep, setCanProceed]);
 
   const handleFinish = async () => {
     try {

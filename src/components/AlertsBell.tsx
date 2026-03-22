@@ -10,9 +10,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi, buildOwnerQuery } from '@/lib/api';
+import { useFinanceContext } from '@/context/finance-context';
+import type { FinanceContextType } from '@/types/finance-context';
 
-const STORAGE_KEY = 'micasa-alerts-seen';
+const STORAGE_KEY_BASE = 'micasa-alerts-seen';
+
+const storageKeyForContext = (context: FinanceContextType): string => {
+  if (context.type === 'user' && context.id === 0) {
+    return STORAGE_KEY_BASE;
+  }
+  return `${STORAGE_KEY_BASE}:${context.type}:${context.id}`;
+};
 
 type AlertItem = {
   type: string;
@@ -51,10 +60,10 @@ function getAlertId(
   return `${period.year}-${period.month}-${period.period}-${alert.type}`;
 }
 
-function loadSeenIds(): Set<string> {
+function loadSeenIds(storageKey: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw) as string[];
     return new Set(Array.isArray(parsed) ? parsed : []);
@@ -63,22 +72,30 @@ function loadSeenIds(): Set<string> {
   }
 }
 
-function saveSeenIds(ids: Set<string>): void {
+function saveSeenIds(storageKey: string, ids: Set<string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(storageKey, JSON.stringify([...ids]));
   } catch {
     // ignore
   }
 }
 
-const DASHBOARD_ACTIVIDAD_URL = '/dashboard?tab=actividad';
-
 export function AlertsBell() {
+  const { context } = useFinanceContext();
   const [data, setData] = useState<DashboardAlertsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
+
+  const seenStorageKey = storageKeyForContext(context);
+
+  const dashboardActividadHref = (() => {
+    const ownerQs = buildOwnerQuery(context).toString();
+    return ownerQs
+      ? `/dashboard?tab=actividad&${ownerQs}`
+      : '/dashboard?tab=actividad';
+  })();
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
@@ -86,6 +103,8 @@ export function AlertsBell() {
     try {
       const res = await clientFetchFromApi<DashboardAlertsResponse>(
         '/api/dashboard',
+        undefined,
+        context,
       );
       setData({ period: res.period, alerts: res.alerts ?? [] });
     } catch (e) {
@@ -94,24 +113,28 @@ export function AlertsBell() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [context]);
 
   useEffect(() => {
-    setSeenIds(loadSeenIds());
-  }, []);
+    setSeenIds(loadSeenIds(seenStorageKey));
+  }, [seenStorageKey]);
 
   useEffect(() => {
+    setData(null);
     fetchAlerts();
   }, [fetchAlerts]);
 
-  const markSeen = useCallback((id: string) => {
-    setSeenIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveSeenIds(next);
-      return next;
-    });
-  }, []);
+  const markSeen = useCallback(
+    (id: string) => {
+      setSeenIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        saveSeenIds(seenStorageKey, next);
+        return next;
+      });
+    },
+    [seenStorageKey],
+  );
 
   const period = data?.period ?? null;
   const alerts = data?.alerts ?? [];
@@ -192,7 +215,7 @@ export function AlertsBell() {
               return (
                 <Link
                   key={id}
-                  href={DASHBOARD_ACTIVIDAD_URL}
+                  href={dashboardActividadHref}
                   onClick={() => handleAlertClick(alert)}
                   className={cn(
                     'flex w-full cursor-pointer items-start gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',

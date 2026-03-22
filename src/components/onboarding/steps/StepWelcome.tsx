@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Receipt, TrendingUp, Wallet } from 'lucide-react';
+import { useOnboarding } from '@/components/onboarding/OnboardingContext';
 
 const bullets = [
   {
@@ -18,6 +20,12 @@ const bullets = [
 ] as const;
 
 export default function StepWelcome() {
+  const { setCanProceed } = useOnboarding();
+
+  useEffect(() => {
+    setCanProceed(true);
+  }, [setCanProceed]);
+
   return (
     <div className="space-y-8">
       <p className="text-muted-foreground text-base leading-relaxed">

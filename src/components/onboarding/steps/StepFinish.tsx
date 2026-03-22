@@ -52,7 +52,9 @@ export default function StepFinish({ setCanProceed }: Props) {
     <div className="space-y-6">
       {/* Section 1 — Title & explanation */}
       <div className="space-y-2">
-        <h3 className="text-foreground text-lg font-semibold">Todo está listo</h3>
+        <h3 className="text-foreground text-lg font-semibold">
+          Todo está listo
+        </h3>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Tu espacio financiero ya está configurado. Hemos preparado tus
           billeteras, categorías e ingresos y gastos recurrentes. Tus finanzas
@@ -139,14 +141,6 @@ export default function StepFinish({ setCanProceed }: Props) {
           )}
         </section>
       </div>
-
-      {/* Section 3 — Start date summary */}
-      <section className="space-y-2 rounded-lg border p-4">
-        <h4 className="text-muted-foreground text-sm font-semibold">
-          Inicio de tus ciclos financieros
-        </h4>
-        <p className="text-sm">{formattedStartDate}</p>
-      </section>
 
       {/* Optional microcopy shown while finishing onboarding */}
       {onboarding.isStepLoading && (
