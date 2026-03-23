@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { WalletListItem } from '@/types/catalog';
+import { useFinanceContext } from '@/context/finance-context';
+import { buildOwnerQuery } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Banknote, ChevronDown, ChevronUp, CreditCard, Landmark, Store } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -62,6 +64,12 @@ type WalletBalanceStripProps = {
 };
 
 const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripProps) => {
+  const { context } = useFinanceContext();
+  const ownerQueryString = useMemo(() => {
+    const q = buildOwnerQuery(context);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [context]);
   const [stripVisible, setStripVisible] = useState(true);
 
   useEffect(() => {
@@ -257,7 +265,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   return (
                     <Link
                       key={wallet.id}
-                      href={`/credit-cards/${wallet.id}`}
+                      href={`/credit-cards/${wallet.id}${ownerQueryString}`}
                       className={cardClasses}
                       aria-label={`Ver estado de cuenta de ${wallet.name}`}
                     >

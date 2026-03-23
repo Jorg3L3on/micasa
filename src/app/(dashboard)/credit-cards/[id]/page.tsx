@@ -6,6 +6,8 @@ import { useParams } from 'next/navigation';
 import {
   ArrowDown,
   ArrowUp,
+  CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -15,22 +17,34 @@ import {
   Receipt,
   RotateCcw,
   ShoppingCart,
+  Upload,
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import CreditCardMercadoPagoImportDialog from '@/components/credit-cards/CreditCardMercadoPagoImportDialog';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
   createCreditCardPayment,
+  downloadCreditCardStatementImportFile,
   getCreditCardStatement,
   getPaymentMethodOptions,
+  listCreditCardStatementImports,
+  rollbackCreditCardStatementImport,
 } from '@/lib/api';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
@@ -40,10 +54,15 @@ import type {
   CategoryOption,
   CreditCardListItem,
   CreditCardPaymentListItem,
+  CreditCardStatementImportListItem,
   CreditCardStatementPurchaseItem,
   CreditCardStatementResponse,
   PaymentMethodOption,
 } from '@/types/catalog';
+
+/** Listas dentro de tarjetas en esta página: altura máxima y scroll vertical. */
+const CREDIT_CARD_DETAIL_LIST_SCROLL_CLASS =
+  'max-h-[min(20rem,45vh)] overflow-y-auto scrollbar-hide pr-0.5';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
@@ -193,9 +212,11 @@ const CreditCardDetailSkeleton = () => (
           <Skeleton className="h-3 w-40" />
         </div>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-9 w-28" />
         <Skeleton className="h-9 w-36" />
-        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-32 rounded-xl" />
       </div>
     </div>
     <Skeleton className="mx-auto h-10 w-64 max-w-full" />
@@ -220,6 +241,7 @@ type PurchaseTableProps = {
   emptyText: string;
   ownerQueryString: string;
   regionLabel: string;
+  listScrollClassName?: string;
 };
 
 const PurchaseTableBlock = ({
@@ -227,6 +249,7 @@ const PurchaseTableBlock = ({
   emptyText,
   ownerQueryString,
   regionLabel,
+  listScrollClassName = CREDIT_CARD_DETAIL_LIST_SCROLL_CLASS,
 }: PurchaseTableProps) => {
   const [query, setQuery] = useState('');
   const [field, setField] = useState<PurchaseSortField>('payment_date');
@@ -294,32 +317,46 @@ const PurchaseTableBlock = ({
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{emptyText}</p>
       ) : (
-        <ul className="space-y-2">
-          {sorted.map((purchase) => (
-            <li
-              key={purchase.id}
-              className="rounded-md border border-border/60 px-3 py-2"
-            >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="font-medium">{purchase.description}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {purchase.category} · {formatDate(purchase.payment_date)}
-                  </p>
-                  <Link
-                    href={fortnightHref(purchase, ownerQueryString)}
-                    className="text-[10px] font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    Ver en quincena
-                  </Link>
+        <div className={listScrollClassName}>
+          <ul className="space-y-2">
+            {sorted.map((purchase) => (
+              <li
+                key={purchase.id}
+                className="rounded-md border border-border/60 px-3 py-2"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {purchase.description}
+                      {purchase.credit_msi_current != null &&
+                      purchase.credit_msi_total != null ? (
+                        <span
+                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
+                          title="Meses sin intereses"
+                        >
+                          MSI {purchase.credit_msi_current}/
+                          {purchase.credit_msi_total}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {purchase.category} · {formatDate(purchase.payment_date)}
+                    </p>
+                    <Link
+                      href={fortnightHref(purchase, ownerQueryString)}
+                      className="text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Ver en quincena
+                    </Link>
+                  </div>
+                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                    {formatCurrency(purchase.amount)}
+                  </span>
                 </div>
-                <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
-                  {formatCurrency(purchase.amount)}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -328,9 +365,14 @@ const PurchaseTableBlock = ({
 type PaymentTableProps = {
   items: CreditCardPaymentListItem[];
   regionLabel: string;
+  listScrollClassName?: string;
 };
 
-const PaymentTableBlock = ({ items, regionLabel }: PaymentTableProps) => {
+const PaymentTableBlock = ({
+  items,
+  regionLabel,
+  listScrollClassName = CREDIT_CARD_DETAIL_LIST_SCROLL_CLASS,
+}: PaymentTableProps) => {
   const [query, setQuery] = useState('');
   const [field, setField] = useState<PaymentSortField>('paid_at');
   const [dir, setDir] = useState<SortDir>('desc');
@@ -396,29 +438,31 @@ const PaymentTableBlock = ({ items, regionLabel }: PaymentTableProps) => {
           No hay pagos que coincidan con el filtro.
         </p>
       ) : (
-        <ul className="space-y-2">
-          {sorted.map((payment) => (
-            <li
-              key={payment.id}
-              className="rounded-md border border-border/60 px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">
-                    Desde {payment.source_wallet_name}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatDate(payment.paid_at)}
-                    {payment.note ? ` · ${payment.note}` : ''}
-                  </p>
+        <div className={listScrollClassName}>
+          <ul className="space-y-2">
+            {sorted.map((payment) => (
+              <li
+                key={payment.id}
+                className="rounded-md border border-border/60 px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">
+                      Desde {payment.source_wallet_name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatDate(payment.paid_at)}
+                      {payment.note ? ` · ${payment.note}` : ''}
+                    </p>
+                  </div>
+                  <span className="font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(payment.amount)}
+                  </span>
                 </div>
-                <span className="font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(payment.amount)}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -443,6 +487,11 @@ export default function CreditCardDetailPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [asOfDate, setAsOfDate] = useState(getTodayDateString());
+  const [statementImports, setStatementImports] = useState<
+    CreditCardStatementImportListItem[]
+  >([]);
+  const [mpImportDialogOpen, setMpImportDialogOpen] = useState(false);
+  const [rollbackImportId, setRollbackImportId] = useState<number | null>(null);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -459,6 +508,10 @@ export default function CreditCardDetailPage() {
   );
 
   const loadData = useCallback(async () => {
+    if (context.id === 0) {
+      return;
+    }
+
     if (!Number.isFinite(creditCardId)) {
       setError('Tarjeta inválida');
       setLoading(false);
@@ -485,10 +538,21 @@ export default function CreditCardDetailPage() {
           ),
         ]);
 
+      let importsData: CreditCardStatementImportListItem[] = [];
+      try {
+        importsData = await listCreditCardStatementImports(
+          creditCardId,
+          context,
+        );
+      } catch {
+        importsData = [];
+      }
+
       setCard(cardData);
       setStatement(statementData);
       setPaymentSources(paymentMethodsData);
       setCategoryOptions(categoriesData);
+      setStatementImports(importsData);
     } catch (err) {
       setError(
         err instanceof Error
@@ -566,7 +630,53 @@ export default function CreditCardDetailPage() {
     }
   }, [card, statement]);
 
-  if (loading && !statement) {
+  const handleDownloadStatementImport = useCallback(
+    async (importId: number) => {
+      try {
+        await downloadCreditCardStatementImportFile(
+          creditCardId,
+          importId,
+          context,
+        );
+        toast.success('PDF descargado');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'No se pudo descargar el archivo',
+        );
+      }
+    },
+    [context, creditCardId],
+  );
+
+  const rollbackImportSummary = useMemo(() => {
+    if (rollbackImportId == null) return null;
+    return statementImports.find((r) => r.id === rollbackImportId) ?? null;
+  }, [rollbackImportId, statementImports]);
+
+  const handleConfirmRollbackImport = useCallback(async () => {
+    if (rollbackImportId == null) return;
+    try {
+      const res = await rollbackCreditCardStatementImport(
+        creditCardId,
+        rollbackImportId,
+        context,
+      );
+      toast.success(
+        res.expenses_removed > 0
+          ? `Importación revertida: ${res.expenses_removed} gasto(s) eliminado(s).`
+          : 'Importación eliminada.',
+      );
+      setRollbackImportId(null);
+      await loadData();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo revertir la importación',
+      );
+      throw err;
+    }
+  }, [context, creditCardId, loadData, rollbackImportId]);
+
+  if (context.id === 0 || (loading && !statement)) {
     return <CreditCardDetailSkeleton />;
   }
 
@@ -593,34 +703,61 @@ export default function CreditCardDetailPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 gap-1.5"
+                aria-label="Más acciones: exportar estado de cuenta"
+              >
+                <ChevronDown className="h-4 w-4 opacity-70" />
+                Más
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                onClick={handleExportCsv}
+                className="cursor-pointer"
+              >
+                <Download className="mr-2 h-4 w-4 shrink-0" />
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleExportPdf}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4 shrink-0" />
+                Exportar PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             type="button"
             variant="outline"
-            onClick={handleExportCsv}
-            aria-label="Exportar periodo visible a CSV"
+            className="h-9 gap-2"
+            onClick={() => setMpImportDialogOpen(true)}
+            aria-label="Importar estado de cuenta desde PDF de Mercado Pago"
           >
-            <Download className="h-4 w-4" />
-            Exportar CSV
+            <Upload className="h-4 w-4 shrink-0" />
+            Importar PDF
           </Button>
           <Button
             type="button"
             variant="outline"
-            onClick={handleExportPdf}
-            aria-label="Exportar periodo visible a PDF"
-          >
-            <FileText className="h-4 w-4" />
-            Exportar PDF
-          </Button>
-          <Button
-            variant="outline"
+            className="h-9 gap-2"
             onClick={() => setPurchaseDialogOpen(true)}
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-4 w-4 shrink-0" />
             Registrar compra
           </Button>
-          <Button onClick={() => setPaymentDialogOpen(true)}>
-            <Wallet className="h-4 w-4" />
+          <Button
+            type="button"
+            className="h-9 gap-2 rounded-xl shadow-sm"
+            onClick={() => setPaymentDialogOpen(true)}
+          >
+            <Wallet className="h-4 w-4 shrink-0" />
             Registrar pago
           </Button>
         </div>
@@ -787,6 +924,38 @@ export default function CreditCardDetailPage() {
         </Card>
       </div>
 
+      <Card className="overflow-hidden border-border/60 border-l-[3px] border-l-violet-500/50">
+        <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+            <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-sm font-semibold">
+              MSI vigentes
+            </CardTitle>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Compras a meses sin intereses donde la cuota registrada aún no es
+              la última (por ejemplo 11 de 15). Cada fila es un cargo ya
+              contabilizado en la tarjeta.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {statement.msi_active_purchases.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No hay cargos MSI con cuotas pendientes en esta tarjeta.
+            </p>
+          ) : (
+            <PurchaseTableBlock
+              items={statement.msi_active_purchases}
+              emptyText="Ningún resultado con el filtro aplicado."
+              ownerQueryString={ownerQueryString}
+              regionLabel="Meses sin intereses vigentes"
+            />
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="overflow-hidden border-border/60">
           <CardHeader>
@@ -848,6 +1017,38 @@ export default function CreditCardDetailPage() {
         onSuccess={loadData}
         availableCredit={statement.available_credit}
         creditLimit={statement.credit_limit}
+      />
+
+      <CreditCardMercadoPagoImportDialog
+        open={mpImportDialogOpen}
+        onOpenChange={setMpImportDialogOpen}
+        creditCardId={creditCardId}
+        context={context}
+        categoryOptions={categoryOptions}
+        statementImports={statementImports}
+        onSuccess={loadData}
+        onDownloadImport={handleDownloadStatementImport}
+        onRollbackClick={(id) => setRollbackImportId(id)}
+      />
+
+      <ConfirmDeleteDialog
+        open={rollbackImportId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRollbackImportId(null);
+        }}
+        onConfirm={handleConfirmRollbackImport}
+        title="Revertir importación"
+        confirmLabel="Revertir"
+        loadingLabel="Revirtiendo…"
+        description="Se eliminarán los gastos generados por este PDF, se corregirá la deuda de la tarjeta y se borrará el registro de importación (incluido el archivo guardado, si aplica). Esta acción no se puede deshacer."
+        itemName={
+          rollbackImportSummary
+            ? rollbackImportSummary.period_start &&
+              rollbackImportSummary.period_end
+              ? `${formatDate(rollbackImportSummary.period_start.slice(0, 10))} – ${formatDate(rollbackImportSummary.period_end.slice(0, 10))}`
+              : rollbackImportSummary.file_name ?? `Importación #${rollbackImportSummary.id}`
+            : undefined
+        }
       />
     </div>
   );

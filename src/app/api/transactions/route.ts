@@ -12,6 +12,13 @@ import {
   updateExpense,
 } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
+import type { Prisma } from '@/generated/prisma/client';
+import { whereExcludeCreditMsiInstallments } from '@/lib/finance/expense-planning-scope';
+import {
+  buildFortnightWhereForReport,
+  listOrphanCreditCardPaymentsForPlanning,
+  unionPaidAtRangeFromFortnights,
+} from '@/lib/finance/planning-credit-card-payments';
 
 function decimalToNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -39,6 +46,7 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period');
     const type = searchParams.get('type');
     const isPaidParam = searchParams.get('is_paid');
+    const excludeCreditMsi = searchParams.get('exclude_credit_msi') === 'true';
 
     let fortnightIds: number[] | undefined;
     if (month || year || period) {
@@ -62,22 +70,49 @@ export async function GET(request: NextRequest) {
           ? false
           : undefined;
 
-    const expenseWhere: Record<string, unknown> = { ...ownerFilter };
+    let expenseWhere: Prisma.ExpenseWhereInput = { ...ownerFilter };
     if (fortnightIds !== undefined) {
       expenseWhere.fortnight_id = { in: fortnightIds };
     }
     if (is_paid !== undefined) {
       expenseWhere.is_paid = is_paid;
     }
+    if (excludeCreditMsi) {
+      expenseWhere = {
+        AND: [expenseWhere, whereExcludeCreditMsiInstallments()],
+      };
+    }
 
-    const expenses = await prisma.expense.findMany({
-      where: expenseWhere,
-      include: {
-        category: { select: { name: true } },
-        wallet: { select: { name: true } },
-      },
-      orderBy: { created_at: 'desc' },
-    });
+    const [expenses, orphanCardPayments] = await Promise.all([
+      prisma.expense.findMany({
+        where: expenseWhere,
+        include: {
+          category: { select: { name: true } },
+          wallet: { select: { name: true, type: true } },
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      (async () => {
+        if (!excludeCreditMsi || type === 'income') {
+          return [];
+        }
+        const fnWhere = buildFortnightWhereForReport(
+          ownerFilter,
+          month,
+          year,
+          period,
+        );
+        if (fnWhere == null) {
+          return [];
+        }
+        const planningFortnights = await prisma.fortnight.findMany({
+          where: fnWhere as Prisma.FortnightWhereInput,
+          select: { start_date: true, end_date: true },
+        });
+        const paidAtRange = unionPaidAtRangeFromFortnights(planningFortnights);
+        return listOrphanCreditCardPaymentsForPlanning(ownerFilter, paidAtRange);
+      })(),
+    ]);
 
     const expenseTransactions = expenses.map((expense) => {
       const dateValue = expense.payment_date || expense.created_at;
@@ -92,12 +127,36 @@ export async function GET(request: NextRequest) {
         amount: decimalToNumber(expense.amount),
         category: expense.category?.name ?? '',
         paymentMethod: expense.wallet?.name || 'Efectivo',
+        wallet_type: expense.wallet?.type ?? null,
+        planning_row_kind: 'expense' as const,
         type: 'expense',
         is_paid: expense.is_paid,
         payment_date: expense.payment_date,
         due_day: (expense as { due_day?: number | null }).due_day ?? null,
       };
     });
+
+    const cardPaymentTransactions =
+      is_paid === false
+        ? []
+        : orphanCardPayments.map((p) => {
+            const note = p.note?.trim();
+            return {
+              id: p.id,
+              date: p.paid_at.toISOString().split('T')[0],
+              description: note
+                ? `Pago tarjeta (${p.credit_card_wallet.name}): ${note}`
+                : `Pago tarjeta: ${p.credit_card_wallet.name}`,
+              amount: decimalToNumber(p.amount),
+              category: 'Pago a tarjeta',
+              paymentMethod: p.source_wallet.name,
+              wallet_type: p.source_wallet.type,
+              planning_row_kind: 'card_payment' as const,
+              type: 'expense' as const,
+              is_paid: true,
+              due_day: null,
+            };
+          });
 
     const incomeWhere: Record<string, unknown> = {
       ...ownerFilter,
@@ -136,9 +195,12 @@ export async function GET(request: NextRequest) {
     });
 
     let combined: Array<
-      (typeof expenseTransactions)[number] | (typeof incomeTransactions)[number]
+      | (typeof expenseTransactions)[number]
+      | (typeof cardPaymentTransactions)[number]
+      | (typeof incomeTransactions)[number]
     > = [
       ...expenseTransactions,
+      ...cardPaymentTransactions,
       ...incomeTransactions,
     ];
 
@@ -237,6 +299,8 @@ export async function POST(request: NextRequest) {
       paymentDate: validatedData.payment_date ?? null,
       expenseTemplateId: validatedData.expense_template_id ?? null,
       walletId,
+      creditMsiCurrent: validatedData.credit_msi_current ?? null,
+      creditMsiTotal: validatedData.credit_msi_total ?? null,
     });
 
     return NextResponse.json(

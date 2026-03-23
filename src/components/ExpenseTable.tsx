@@ -52,9 +52,18 @@ import { DataTableColumnHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 
 import type { TransactionRow } from '@/types/catalog';
+import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 
 /** Rows from combined transaction feeds use income ids that are not expense ids. */
 const isExpenseTransactionRow = (row: TransactionRow) => row.type !== 'income';
+
+const isCardChargeExpenseRow = (row: TransactionRow): boolean => {
+  if (!isExpenseTransactionRow(row)) return false;
+  return isCreditOrStoreCardWalletType(row.wallet_type);
+};
+
+const isPlanningCardPaymentRow = (row: TransactionRow): boolean =>
+  row.planning_row_kind === 'card_payment';
 
 type ThrownApiError = Error & { status?: number };
 
@@ -137,6 +146,9 @@ export default function ExpenseTable({
   }, [expenses]);
 
   const handlePaidToggle = async (expense: TransactionRow, newPaidStatus: boolean) => {
+    if (isPlanningCardPaymentRow(expense)) {
+      return;
+    }
     if (!isExpenseTransactionRow(expense)) {
       toast.error(
         'Los ingresos no se marcan como pagado desde la tabla de gastos.',
@@ -186,6 +198,7 @@ export default function ExpenseTable({
   };
 
   const handleEditAmount = (expense: TransactionRow) => {
+    if (isPlanningCardPaymentRow(expense)) return;
     if (!isExpenseTransactionRow(expense)) return;
     setEditingExpense(expense);
     setEditDialogOpen(true);
@@ -238,7 +251,13 @@ export default function ExpenseTable({
   };
 
   const handleDeleteExpense = async () => {
-    if (!deletingExpense || !isExpenseTransactionRow(deletingExpense)) return;
+    if (
+      !deletingExpense ||
+      isPlanningCardPaymentRow(deletingExpense) ||
+      !isExpenseTransactionRow(deletingExpense)
+    ) {
+      return;
+    }
 
     const expenseId = deletingExpense.id;
     setUpdatingIds((prev) => {
@@ -360,16 +379,31 @@ export default function ExpenseTable({
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
-  const totalPaid = paidExpenses.reduce(
+  const cashFlowPaid = paidExpenses.filter((e) => !isCardChargeExpenseRow(e));
+  const cashFlowPending = pendingExpenses.filter((e) => !isCardChargeExpenseRow(e));
+  const cardPaid = paidExpenses.filter((e) => isCardChargeExpenseRow(e));
+  const cardPending = pendingExpenses.filter((e) => isCardChargeExpenseRow(e));
+
+  const totalPaid = cashFlowPaid.reduce(
     (sum, e) => sum + toDisplayAmount(e.amount),
     0,
   );
-  const totalPending = pendingExpenses.reduce(
+  const totalPending = cashFlowPending.reduce(
     (sum, e) => sum + toDisplayAmount(e.amount),
     0,
   );
 
   const total = totalPaid + totalPending;
+  const cardTotalPaid = cardPaid.reduce(
+    (sum, e) => sum + toDisplayAmount(e.amount),
+    0,
+  );
+  const cardTotalPending = cardPending.reduce(
+    (sum, e) => sum + toDisplayAmount(e.amount),
+    0,
+  );
+  const cardGrandTotal = cardTotalPaid + cardTotalPending;
+
   const paidPct = total > 0 ? (totalPaid / total) * 100 : 0;
   const pendingPct = total > 0 ? (totalPending / total) * 100 : 0;
 
@@ -407,6 +441,19 @@ export default function ExpenseTable({
             return (
               <div className="flex justify-center text-muted-foreground">
                 <span className={isCompact ? 'text-[10px]' : 'text-xs'}>—</span>
+              </div>
+            );
+          }
+          if (isPlanningCardPaymentRow(expense)) {
+            return (
+              <div className="flex justify-center">
+                <CheckCircle2
+                  className={cn(
+                    'text-green-600 dark:text-green-400',
+                    isCompact ? 'h-4 w-4' : 'h-5 w-5',
+                  )}
+                  aria-hidden
+                />
               </div>
             );
           }
@@ -471,6 +518,30 @@ export default function ExpenseTable({
                 >
                   {`${expense.category} • ${expense.paymentMethod}`}
                 </span>
+                {isPlanningCardPaymentRow(expense) ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'border-emerald-500/40 text-emerald-800 dark:text-emerald-300',
+                      'text-[10px]',
+                      isCompact ? 'h-4 px-1.5' : 'h-5',
+                    )}
+                  >
+                    Pago TC
+                  </Badge>
+                ) : null}
+                {isCardChargeExpenseRow(expense) ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'border-violet-500/40 text-violet-700 dark:text-violet-300',
+                      'text-[10px]',
+                      isCompact ? 'h-4 px-1.5' : 'h-5',
+                    )}
+                  >
+                    Tarjeta
+                  </Badge>
+                ) : null}
                 {hasDue && (
                   <Badge
                     variant={expense.is_paid ? 'secondary' : badgeColor}
@@ -542,6 +613,18 @@ export default function ExpenseTable({
             return (
               <div className="flex justify-center text-muted-foreground">
                 <span className={isCompact ? 'text-[10px]' : 'text-xs'} aria-hidden>
+                  —
+                </span>
+              </div>
+            );
+          }
+          if (isPlanningCardPaymentRow(expense)) {
+            return (
+              <div className="flex justify-center text-muted-foreground">
+                <span
+                  className={isCompact ? 'text-[10px]' : 'text-xs'}
+                  title="Registrado desde pagos de tarjeta"
+                >
                   —
                 </span>
               </div>
@@ -639,6 +722,8 @@ export default function ExpenseTable({
     columns,
     state: { sorting },
     onSortingChange: setSorting,
+    getRowId: (row) =>
+      `${row.planning_row_kind ?? 'expense'}-${row.id}`,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -705,9 +790,11 @@ export default function ExpenseTable({
                   <>
                     {table.getRowModel().rows.map((row) => (
                       <TableRow
-                        key={row.id}
+                        key={`${row.original.planning_row_kind ?? 'expense'}-${row.original.id}`}
                         className={cn(
                           'transition-colors',
+                          isCardChargeExpenseRow(row.original) &&
+                            'border-l-[3px] border-l-violet-500/45',
                           row.original.is_paid
                             ? 'bg-muted/30 opacity-75 hover:bg-muted/40'
                             : 'hover:bg-muted/50',
@@ -743,7 +830,7 @@ export default function ExpenseTable({
                         )}
                       >
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Total gastos
+                          Efectivo y débito
                         </span>
                       </TableCell>
                       <TableCell
@@ -763,6 +850,40 @@ export default function ExpenseTable({
                       </TableCell>
                       <TableCell className={isCompact ? 'py-2' : 'py-2.5'} />
                     </TableRow>
+                    {cardGrandTotal > 0 ? (
+                      <TableRow className="border-border/60 bg-muted/20">
+                        <TableCell
+                          colSpan={2}
+                          className={cn(
+                            'text-right',
+                            isCompact ? 'py-1.5' : 'py-2',
+                          )}
+                        >
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Cargos a tarjeta
+                          </span>
+                          <span className="mt-0.5 block text-[9px] font-normal normal-case text-muted-foreground">
+                            No suman al efectivo hasta pagar el estado de cuenta
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right',
+                            isCompact ? 'py-1.5' : 'py-2',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'font-semibold font-mono tabular-nums text-violet-700 dark:text-violet-300',
+                              isCompact ? 'text-xs' : 'text-sm',
+                            )}
+                          >
+                            {formatCurrency(cardGrandTotal)}
+                          </span>
+                        </TableCell>
+                        <TableCell className={isCompact ? 'py-1.5' : 'py-2'} />
+                      </TableRow>
+                    ) : null}
                   </>
                 )}
               </TableBody>

@@ -7,6 +7,10 @@ export const PAYMENT_METHODS = [
 
 export type PaymentMethodType = typeof PAYMENT_METHODS[number]
 
+/** Sin Prisma: usable en Client Components. */
+export const isCreditOrStoreCardWalletType = (
+  type: string | null | undefined,
+): boolean => type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethodType, string> = {
   CASH: 'Efectivo',

@@ -23,7 +23,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
-import type { DuePaymentItem, TransactionRow } from '@/types/catalog';
+import type {
+  DuePaymentItem,
+  PlannerCardChargesSummary,
+  PlannerCardStatementDueSummary,
+  PlannerOrphanCardPaymentsSummary,
+  TransactionRow,
+} from '@/types/catalog';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
@@ -53,6 +59,12 @@ type FortnightSummary = {
     userName: string | null;
     templateName: string | null;
   }>;
+  planningExpenseCount?: number;
+  planningPaidExpenseCount?: number;
+  planningUnpaidExpenseCount?: number;
+  cardCharges?: PlannerCardChargesSummary | null;
+  planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
+  planningCardStatementDue?: PlannerCardStatementDueSummary | null;
 };
 
 type FortnightBundle = {

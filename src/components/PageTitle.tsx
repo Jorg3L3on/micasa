@@ -171,12 +171,9 @@ function getPageTitle(
 
   if (segments[0] === 'credit-cards') {
     breadcrumbs.push({
-      label: 'Tarjetas de crédito',
-      href: `/credit-cards${qs}`,
+      label: 'Billeteras',
+      href: `/wallets${qs}`,
     });
-    if (segments.length === 1) {
-      return { title: 'Tarjetas de crédito', breadcrumbs };
-    }
     breadcrumbs.push({ label: 'Estado de cuenta' });
     return { title: 'Estado de cuenta', breadcrumbs };
   }

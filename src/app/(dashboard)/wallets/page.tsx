@@ -13,6 +13,7 @@ import { WalletFormValues } from '@/schemas/wallet.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
+  buildOwnerQuery,
   clientFetchFromApi,
   createWallet,
   updateWallet,
@@ -127,6 +128,12 @@ export default function WalletsPage() {
     typeFilter !== TYPE_FILTER_ALL ||
     statusFilter !== STATUS_FILTER_ALL ||
     balanceFilter !== BALANCE_FILTER_ALL;
+
+  const ownerQueryString = useMemo(() => {
+    const q = buildOwnerQuery(context);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [context]);
 
   const handleClearFilters = useCallback(() => {
     setTypeFilter(TYPE_FILTER_ALL);
@@ -396,7 +403,7 @@ export default function WalletsPage() {
               {isCard && (
                 <Button asChild variant="ghost" size="icon">
                   <Link
-                    href={`/credit-cards/${wallet.id}`}
+                    href={`/credit-cards/${wallet.id}${ownerQueryString}`}
                     aria-label={`Ver estado de cuenta de ${wallet.name}`}
                   >
                     <Eye className="h-4 w-4" />
@@ -424,7 +431,7 @@ export default function WalletsPage() {
         },
       },
     ],
-    [openEditDialog, openDeleteDialog],
+    [openEditDialog, openDeleteDialog, ownerQueryString],
   );
 
   return (

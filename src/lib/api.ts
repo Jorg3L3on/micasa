@@ -3,8 +3,10 @@
 import type { FinanceContextType } from '@/types/finance-context';
 import type {
   CreditCardPaymentListItem,
+  CreditCardStatementImportListItem,
   CreditCardStatementResponse,
   LiquidityProjectionResponse,
+  MercadoPagoStatementImportResponse,
   PaymentMethodOption,
   WalletListItem,
 } from '@/types/catalog';
@@ -340,15 +342,24 @@ export async function getPaymentMethodOptions(
   );
   return wallets
     .filter((w) => w.active)
-    .map((w) => ({
-      id: w.id,
-      name: w.name,
-      type: w.type,
-      amount: w.amount,
-      credit_limit: w.credit_limit ?? null,
-      available_credit:
-        w.credit_limit != null ? w.credit_limit - w.amount : null,
-    }));
+    .map((w) => {
+      // API JSON may serialize Prisma Decimals as strings; coerce so UI math never uses + on strings.
+      const amountNum = Number(w.amount);
+      const limitNum =
+        w.credit_limit != null ? Number(w.credit_limit) : null;
+      const amount = Number.isFinite(amountNum) ? amountNum : 0;
+      const credit_limit =
+        limitNum != null && Number.isFinite(limitNum) ? limitNum : null;
+      return {
+        id: w.id,
+        name: w.name,
+        type: w.type,
+        amount,
+        credit_limit,
+        available_credit:
+          credit_limit != null ? credit_limit - amount : null,
+      };
+    });
 }
 
 export type FetchLiquidityProjectionParams = {
@@ -809,6 +820,84 @@ export async function getCreditCardStatement(
   );
 }
 
+export async function listCreditCardStatementImports(
+  creditCardId: number,
+  context?: FinanceContextType,
+): Promise<CreditCardStatementImportListItem[]> {
+  return clientFetchFromApi<CreditCardStatementImportListItem[]>(
+    `/api/credit-cards/${creditCardId}/statement-imports`,
+    undefined,
+    context,
+  );
+}
+
+export async function uploadMercadoPagoCreditCardStatement(
+  creditCardId: number,
+  formData: FormData,
+  context?: FinanceContextType,
+): Promise<MercadoPagoStatementImportResponse> {
+  return clientFetchMultipartJson<MercadoPagoStatementImportResponse>(
+    `/api/credit-cards/${creditCardId}/statement-imports`,
+    formData,
+    context,
+  );
+}
+
+export async function rollbackCreditCardStatementImport(
+  creditCardId: number,
+  importId: number,
+  context?: FinanceContextType,
+): Promise<{ expenses_removed: number }> {
+  return clientFetchFromApi<{ expenses_removed: number }>(
+    `/api/credit-cards/${creditCardId}/statement-imports/${importId}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function downloadCreditCardStatementImportFile(
+  creditCardId: number,
+  importId: number,
+  context?: FinanceContextType,
+): Promise<void> {
+  let url = `/api/credit-cards/${creditCardId}/statement-imports/${importId}/file`;
+  const ownerParams = buildOwnerQuery(context);
+  if (ownerParams.toString()) {
+    url = `${url}?${ownerParams.toString()}`;
+  }
+
+  const baseUrl = getClientApiBaseUrl();
+  const res = await fetch(`${baseUrl}${url}`, { credentials: 'include' });
+
+  if (!res.ok) {
+    let message = 'No se pudo descargar el PDF';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) {
+        message = body.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  const blob = await res.blob();
+  const dispo = res.headers.get('Content-Disposition');
+  let name = 'estado-cuenta.pdf';
+  const m = dispo?.match(/filename="([^"]+)"/);
+  if (m?.[1]) {
+    name = m[1];
+  }
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.rel = 'noopener';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export async function getCreditCardPayments(
   id: number,
   context?: FinanceContextType,
@@ -848,6 +937,8 @@ export async function createCreditCardPurchase(
     amount: number;
     payment_date?: string | null;
     expense_template_id?: number | null;
+    credit_msi_current?: number | null;
+    credit_msi_total?: number | null;
   },
   context?: FinanceContextType,
 ) {

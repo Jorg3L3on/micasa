@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
+  buildOwnerQuery,
   downloadLiquidityProjectionCsv,
   fetchLiquidityProjection,
 } from '@/lib/api';
@@ -71,6 +72,11 @@ const SOURCE_LABEL: Record<
 
 export default function LiquidityProjectionPage() {
   const { context } = useFinanceContext();
+  const ownerQueryString = useMemo(() => {
+    const q = buildOwnerQuery(context);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [context]);
   const [untilInput, setUntilInput] = useState(defaultUntilYmdUtc);
   const [showZeroLines, setShowZeroLines] = useState(false);
   const [stressPercent, setStressPercent] = useState(0);
@@ -591,7 +597,7 @@ export default function LiquidityProjectionPage() {
                               return (
                                 <li key={rowKey}>
                                   <Link
-                                    href={`/credit-cards/${o.wallet_id}`}
+                                    href={`/credit-cards/${o.wallet_id}${ownerQueryString}`}
                                     className={rowClass}
                                     aria-label={`${o.wallet_name}, ${SOURCE_LABEL[o.source]} ${formatCurrency(o.next_due_payment)}`}
                                   >

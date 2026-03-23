@@ -20,7 +20,13 @@ import {
   Pencil,
   BarChart3,
   Receipt,
+  CreditCard,
 } from 'lucide-react';
+import type {
+  PlannerCardChargesSummary,
+  PlannerCardStatementDueSummary,
+  PlannerOrphanCardPaymentsSummary,
+} from '@/types/catalog';
 
 export type IncomeItemBySource = {
   id: number;
@@ -32,6 +38,7 @@ export type IncomeItemBySource = {
 
 type SummaryBlockProps = {
   tenemos: number;
+  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente`. */
   libre: number;
   pagado: number;
   pendiente: number;
@@ -46,13 +53,19 @@ type SummaryBlockProps = {
   expenseCount?: number;
   paidExpenseCount?: number;
   unpaidExpenseCount?: number;
+  /** Cargos TC / tienda aparte del efectivo (solo planificación con API de resumen). */
+  cardCharges?: PlannerCardChargesSummary | null;
+  /** Pagos a tarjeta sin fila de gasto, ya incluidos en totales de efectivo. */
+  planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
+  /** Adeudo al estado de cuenta (próximo pago) dentro del período; suma al pendiente planificado. */
+  planningCardStatementDue?: PlannerCardStatementDueSummary | null;
   onEditIncome?: () => void;
   onEditIncomeSource?: (id: number, amount: number) => void;
 };
 
 export default function SummaryBlock({
   tenemos,
-  libre,
+  libre: _libre,
   pagado,
   pendiente,
   userIncome,
@@ -63,6 +76,9 @@ export default function SummaryBlock({
   expenseCount = 0,
   paidExpenseCount = 0,
   unpaidExpenseCount = 0,
+  cardCharges = null,
+  planningOrphanCardPayments = null,
+  planningCardStatementDue = null,
   onEditIncome,
   onEditIncomeSource,
 }: SummaryBlockProps) {
@@ -96,15 +112,21 @@ export default function SummaryBlock({
   const pendingPercent = tenemos > 0 ? (pendiente / tenemos) * 100 : 0;
   const totalSpentPercent = paidPercent + pendingPercent;
 
-  /** Ingreso de la quincena menos solo lo ya pagado (aún no descuenta pendientes). */
+  /** Compromiso en efectivo/débito: alinea héroe, barra y tarjetas Pagado/Pendiente. */
+  const comprometidoEfectivo = pagado + pendiente;
+
+  /** Ingreso de la quincena menos solo lo ya pagado (incluye pagos a tarjeta ya hechos). */
   const disponibleAhora = tenemos - pagado;
-  /** Ingreso menos todos los gastos planeados; coincide con `libre` del API. */
-  const trasPagarPlaneado = libre;
+  /** Ingreso menos todo lo comprometido (pagado + pendiente), mismo criterio que el resumen del API. */
+  const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
   const tooltipDisponibleAhora =
-    'Tras descontar solo lo que ya pagaste. Lo pendiente sigue reservado en tus gastos de la quincena.';
+    'Ingreso de la quincena menos lo ya pagado con efectivo o débito (incluye pagos a tarjeta que ya registraste). Lo pendiente sigue reservado.';
+
   const tooltipTrasPagarPlaneado =
-    'Ingreso de la quincena menos todos los gastos registrados (pagados y pendientes).';
+    planningCardStatementDue != null && planningCardStatementDue.total > 0
+      ? 'Ingreso menos gastos en efectivo/débito (pagados y pendientes), pagos a tarjeta ya hechos y lo que aún debes al estado de cuenta en esta quincena (ver pestaña Pagos tarjeta). Las compras recién cargadas a la TC no suman hasta integrarse al corte.'
+      : 'Ingreso de la quincena menos todo lo comprometido en efectivo o débito: gastos planeados (pagados y pendientes) y pagos a tarjeta que ya descontaron tu efectivo. Las compras cargadas a la tarjeta no entran aquí hasta que pagues el estado de cuenta.';
 
   return (
     <Card className="gap-0 overflow-hidden rounded-xl border-border/60 py-0 shadow-sm">
@@ -235,6 +257,28 @@ export default function SummaryBlock({
               >
                 {formatCurrency(trasPagarPlaneado)}
               </p>
+              {planningCardStatementDue != null &&
+              planningCardStatementDue.total > 0 ? (
+                <p className="pl-10 pt-0.5 text-[9px] leading-snug text-muted-foreground">
+                  Incluye {formatCurrency(planningCardStatementDue.total)} que aún
+                  debes pagar al estado de cuenta
+                  {planningCardStatementDue.cardCount > 0
+                    ? ` (${planningCardStatementDue.cardCount} tarjeta${
+                        planningCardStatementDue.cardCount !== 1 ? 's' : ''
+                      })`
+                    : ''}
+                  .
+                </p>
+              ) : null}
+              {planningOrphanCardPayments != null &&
+              planningOrphanCardPayments.count > 0 ? (
+                <p className="pl-10 pt-0.5 text-[9px] leading-snug text-muted-foreground">
+                  Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
+                  {planningOrphanCardPayments.count} pago
+                  {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
+                  (salida de efectivo).
+                </p>
+              ) : null}
               {pendiente <= 0 && tenemos > 0 ? (
                 <p className="pl-10 pt-0.5 text-[9px] text-muted-foreground">
                   Sin gastos pendientes: coincide con “Disponible ahora”.
@@ -284,6 +328,38 @@ export default function SummaryBlock({
             </div>
           )}
         </div>
+
+        {!isExpanded &&
+        ((cardCharges != null && cardCharges.total > 0) ||
+          (planningOrphanCardPayments != null &&
+            planningOrphanCardPayments.count > 0) ||
+          (planningCardStatementDue != null &&
+            planningCardStatementDue.total > 0)) ? (
+          <p className="text-[9px] leading-snug text-muted-foreground">
+            {planningCardStatementDue != null &&
+            planningCardStatementDue.total > 0 ? (
+              <>
+                “Cuando pagues todo lo planeado” incluye{' '}
+                {formatCurrency(planningCardStatementDue.total)} pendiente de
+                pago a tarjeta (estado de cuenta).{' '}
+              </>
+            ) : null}
+            {planningOrphanCardPayments != null &&
+            planningOrphanCardPayments.count > 0 ? (
+              <>
+                Los pagos a tarjeta ya hechos cuentan en “Disponible ahora” y
+                “Cuando pagues todo lo planeado”.{' '}
+              </>
+            ) : null}
+            {cardCharges != null && cardCharges.total > 0 ? (
+              <>
+                Hay {formatCurrency(cardCharges.total)} cargados a tarjeta (no
+                son efectivo hasta pagar el estado de cuenta). Ver desglose
+                arriba.
+              </>
+            ) : null}
+          </p>
+        ) : null}
 
         {isExpanded && (
           <>
@@ -364,8 +440,62 @@ export default function SummaryBlock({
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}
                 </p>
+                {planningCardStatementDue != null &&
+                planningCardStatementDue.total > 0 ? (
+                  <p className="text-[9px] leading-snug text-muted-foreground mt-1 border-t border-border/40 pt-1">
+                    De eso, {formatCurrency(planningCardStatementDue.total)} son
+                    pagos al estado de cuenta (tarjeta).
+                  </p>
+                ) : null}
               </div>
             </div>
+
+            {planningOrphanCardPayments != null &&
+            planningOrphanCardPayments.count > 0 ? (
+              <p className="text-[9px] leading-snug text-muted-foreground">
+                Incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
+                {planningOrphanCardPayments.count} pago
+                {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
+                (desde la sección de tarjetas, sin gasto duplicado en la lista).
+              </p>
+            ) : null}
+
+            {cardCharges != null && cardCharges.total > 0 ? (
+              <div
+                className={cn(
+                  'rounded-lg border border-border/60 border-l-[3px] border-l-violet-500/50',
+                  'bg-transparent px-3 py-2.5',
+                )}
+                role="region"
+                aria-label="Cargos con tarjeta en esta quincena"
+              >
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
+                    <CreditCard className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Cargos a tarjeta
+                  </span>
+                </div>
+                <p className="text-sm font-bold font-mono tabular-nums leading-tight text-violet-700 dark:text-violet-300">
+                  {formatCurrency(cardCharges.total)}
+                </p>
+                <p className="mt-1 text-[9px] leading-snug text-muted-foreground">
+                  Son compras cargadas a la tarjeta; no son salida de efectivo hasta
+                  que pagues el estado de cuenta (los pagos a la tarjeta sí cuentan
+                  arriba como efectivo/débito).
+                  {cardCharges.expenseCount > 0 ? (
+                    <>
+                      {' '}
+                      {cardCharges.expenseCount} movimiento
+                      {cardCharges.expenseCount !== 1 ? 's' : ''}:{' '}
+                      {formatCurrency(cardCharges.paid)} pagado ·{' '}
+                      {formatCurrency(cardCharges.unpaid)} pendiente.
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            ) : null}
 
             {/* Income breakdown */}
             {(incomeItems.length > 0 || hasUserIncome) && (

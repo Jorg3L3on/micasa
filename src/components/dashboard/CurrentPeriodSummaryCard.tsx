@@ -28,6 +28,10 @@ export default function CurrentPeriodSummaryCard({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { summary } = data;
+  const balanceCoherente =
+    summary.totalIncome - summary.totalPaid - summary.totalUnpaid;
+  const orphan = data.planningCardPayments;
+  const statementDue = data.planningCardStatementDue;
 
   const handleViewChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -48,7 +52,7 @@ export default function CurrentPeriodSummaryCard({
 
   const isMonthView = view === 'month';
 
-  const BalanceIcon = summary.balance >= 0 ? Wallet : Scale;
+  const BalanceIcon = balanceCoherente >= 0 ? Wallet : Scale;
 
   return (
     <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Resumen del periodo">
@@ -90,10 +94,10 @@ export default function CurrentPeriodSummaryCard({
           <p
             className={cn(
               'text-2xl font-bold font-mono tabular-nums',
-              summary.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
+              balanceCoherente >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
             )}
           >
-            {formatCurrency(summary.balance)}
+            {formatCurrency(balanceCoherente)}
           </p>
         </div>
 
@@ -123,6 +127,20 @@ export default function CurrentPeriodSummaryCard({
             <p className="text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400 mt-0.5">
               {formatCurrency(summary.totalExpense)}
             </p>
+            {statementDue != null && statementDue.total > 0 ? (
+              <p className="mt-1 text-[9px] leading-snug text-muted-foreground">
+                + {formatCurrency(statementDue.total)} pendiente de pago al
+                estado de cuenta ({statementDue.cardCount}{' '}
+                {statementDue.cardCount !== 1 ? 'tarjetas' : 'tarjeta'}).
+              </p>
+            ) : null}
+            {orphan != null && orphan.count > 0 ? (
+              <p className="mt-1 text-[9px] leading-snug text-muted-foreground">
+                Incluye pagos a tarjeta: {formatCurrency(orphan.total)} (
+                {orphan.count} mov.
+                {orphan.count !== 1 ? 's' : ''}).
+              </p>
+            ) : null}
           </div>
         </div>
       </CardContent>

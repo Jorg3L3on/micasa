@@ -13,7 +13,11 @@ type AvailableVsCommittedCardProps = {
 export default function AvailableVsCommittedCard({
   data,
 }: AvailableVsCommittedCardProps) {
-  const { libre, pagado, pendiente } = data.availableVsCommitted;
+  const { pagado, pendiente } = data.availableVsCommitted;
+  const { totalIncome, totalPaid, totalUnpaid } = data.summary;
+  const libreCoherente = totalIncome - totalPaid - totalUnpaid;
+  const orphan = data.planningCardPayments;
+  const statementDue = data.planningCardStatementDue;
 
   return (
     <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Disponible vs comprometido">
@@ -35,8 +39,22 @@ export default function AvailableVsCommittedCard({
             Libre
           </span>
           <p className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-            {formatCurrency(libre)}
+            {formatCurrency(libreCoherente)}
           </p>
+          {statementDue != null && statementDue.total > 0 ? (
+            <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
+              Incluye {formatCurrency(statementDue.total)} pendiente de pago al
+              estado de cuenta ({statementDue.cardCount} tarjeta
+              {statementDue.cardCount !== 1 ? 's' : ''}).
+            </p>
+          ) : null}
+          {orphan != null && orphan.count > 0 ? (
+            <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
+              Incluye {formatCurrency(orphan.total)} en {orphan.count} pago
+              {orphan.count !== 1 ? 's' : ''} a tarjeta (ya salieron del
+              efectivo).
+            </p>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-5">

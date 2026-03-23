@@ -29,6 +29,16 @@ export type ExpenseListItem = {
   active: boolean;
 };
 
+/** Wallet tipo Prisma `PaymentMethodType`; null = sin billetera (efectivo implícito). */
+export type ExpenseWalletType =
+  | 'CASH'
+  | 'DEBIT_CARD'
+  | 'CREDIT_CARD'
+  | 'DEPARTMENT_STORE_CARD';
+
+/** Gasto normal vs pago a TC registrado solo como movimiento de tarjeta (sin Expense). */
+export type PlanningExpenseRowKind = 'expense' | 'card_payment';
+
 export type TransactionRow = {
   id: number;
   date: string;
@@ -36,9 +46,32 @@ export type TransactionRow = {
   amount: number | string;
   category: string;
   paymentMethod: string;
+  wallet_type?: ExpenseWalletType | null;
+  /** Solo planificación: filas de pago a tarjeta no editables como gasto. */
+  planning_row_kind?: PlanningExpenseRowKind;
   type?: 'income' | 'expense';
   is_paid: boolean;
   due_day?: number | null;
+};
+
+/** Desglose de cargos a TC / tienda en resumen de planificación (`exclude_credit_msi`). */
+export type PlannerCardChargesSummary = {
+  total: number;
+  paid: number;
+  unpaid: number;
+  expenseCount: number;
+};
+
+/** Pagos a tarjeta contados en planificación sin fila de gasto vinculada. */
+export type PlannerOrphanCardPaymentsSummary = {
+  total: number;
+  count: number;
+};
+
+/** Monto a pagar al estado de cuenta en la quincena (pestaña Pagos tarjeta). */
+export type PlannerCardStatementDueSummary = {
+  total: number;
+  cardCount: number;
 };
 
 export type ExpenseTemplateListItem = {
@@ -110,6 +143,31 @@ export type WalletListItem = {
 
 export type CreditCardListItem = WalletListItem & {
   available_credit: number | null;
+};
+
+/** GET /api/credit-cards/:id/statement-imports */
+export type CreditCardStatementImportListItem = {
+  id: number;
+  provider: string;
+  created_at: string;
+  period_start: string | null;
+  period_end: string | null;
+  account_number: string | null;
+  statement_issue_date: string | null;
+  total_due: number | null;
+  file_name: string | null;
+  has_file: boolean;
+  expense_count: number;
+  parse_warnings: string[];
+};
+
+/** POST /api/credit-cards/:id/statement-imports (Mercado Pago) */
+export type MercadoPagoStatementImportResponse = {
+  import_id: number;
+  expenses_created: number;
+  duplicates_skipped: number;
+  lines_skipped: number;
+  warnings: string[];
 };
 
 export type DuePaymentItem = {
@@ -214,6 +272,8 @@ export type CreditCardStatementPurchaseItem = {
   fortnight_year: number;
   fortnight_month: number;
   fortnight_period: 'FIRST' | 'SECOND';
+  credit_msi_current: number | null;
+  credit_msi_total: number | null;
 };
 
 export type CreditCardStatementResponse = {
@@ -239,5 +299,7 @@ export type CreditCardStatementResponse = {
   current_cycle_payments: number;
   statement_purchases: CreditCardStatementPurchaseItem[];
   current_cycle_purchase_items: CreditCardStatementPurchaseItem[];
+  /** Gastos MSI pagados donde la cuota actual es menor que el total (aún quedan meses). */
+  msi_active_purchases: CreditCardStatementPurchaseItem[];
   payment_history: CreditCardPaymentListItem[];
 };

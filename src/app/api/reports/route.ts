@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import {
+  whereCreditOrStoreCardWalletOnly,
+  wherePlanningCashFlowExpenses,
+} from '@/lib/finance/expense-planning-scope';
+import {
+  aggregateOrphanCreditCardPaymentsForPlanning,
+  buildFortnightWhereForReport,
+  unionPaidAtRangeFromFortnights,
+} from '@/lib/finance/planning-credit-card-payments';
+import { sumPlannerCardDueForFortnight } from '@/lib/finance/credit-card-statement.service';
 
 async function buildWhereClause(
   ownerFilter: OwnerFilter,
@@ -48,17 +58,34 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const period = searchParams.get('period');
+    const excludeCreditMsi = searchParams.get('exclude_credit_msi') === 'true';
 
     if (reportType === 'summary') {
-      const where = await buildWhereClause(ownerFilter, month, year, period);
+      const baseWhere = await buildWhereClause(ownerFilter, month, year, period);
+      const where = excludeCreditMsi
+        ? { AND: [baseWhere, wherePlanningCashFlowExpenses()] }
+        : baseWhere;
 
-      const expenses = await prisma.expense.findMany({
-        where: where as any,
-        select: {
-          amount: true,
-          is_paid: true,
-        },
-      });
+      const [expenses, cardExpenses] = await Promise.all([
+        prisma.expense.findMany({
+          where: where as any,
+          select: {
+            amount: true,
+            is_paid: true,
+          },
+        }),
+        excludeCreditMsi
+          ? prisma.expense.findMany({
+              where: {
+                AND: [baseWhere, whereCreditOrStoreCardWalletOnly()],
+              } as any,
+              select: {
+                amount: true,
+                is_paid: true,
+              },
+            })
+          : Promise.resolve([] as { amount: unknown; is_paid: boolean }[]),
+      ]);
 
       let incomeWhere: Record<string, unknown> = { ...ownerFilter };
       if (month || year || period) {
@@ -84,17 +111,69 @@ export async function GET(request: NextRequest) {
         where: incomeWhere as any,
       });
 
-      const totalExpense = expenses.reduce((sum, expense) => {
+      let totalExpense = expenses.reduce((sum, expense) => {
         return sum + Number(expense.amount);
       }, 0);
 
-      const totalPaid = expenses
+      let totalPaid = expenses
         .filter((e) => e.is_paid)
         .reduce((sum, expense) => {
           return sum + Number(expense.amount);
         }, 0);
 
-      const totalUnpaid = totalExpense - totalPaid;
+      let totalUnpaid = totalExpense - totalPaid;
+
+      let orphanCardPaymentTotal = 0;
+      let orphanCardPaymentCount = 0;
+      if (excludeCreditMsi) {
+        const fnWhere = buildFortnightWhereForReport(
+          ownerFilter,
+          month,
+          year,
+          period,
+        );
+        if (fnWhere != null) {
+          const planningFortnights = await prisma.fortnight.findMany({
+            where: fnWhere as any,
+            select: { start_date: true, end_date: true },
+          });
+          const paidAtRange = unionPaidAtRangeFromFortnights(planningFortnights);
+          const orphan = await aggregateOrphanCreditCardPaymentsForPlanning(
+            ownerFilter,
+            paidAtRange,
+          );
+          orphanCardPaymentTotal = orphan.total;
+          orphanCardPaymentCount = orphan.count;
+        }
+        if (orphanCardPaymentCount > 0) {
+          totalExpense += orphanCardPaymentTotal;
+          totalPaid += orphanCardPaymentTotal;
+          totalUnpaid = totalExpense - totalPaid;
+        }
+      }
+
+      let planningCardStatementDueTotal = 0;
+      let planningCardStatementDueCardCount = 0;
+      if (
+        excludeCreditMsi &&
+        year &&
+        month &&
+        period &&
+        (period === 'FIRST' || period === 'SECOND')
+      ) {
+        const due = await sumPlannerCardDueForFortnight(
+          ownerFilter,
+          parseInt(year, 10),
+          parseInt(month, 10),
+          period,
+        );
+        planningCardStatementDueTotal = due.total;
+        planningCardStatementDueCardCount = due.cardCount;
+        if (planningCardStatementDueTotal > 0) {
+          totalExpense += planningCardStatementDueTotal;
+          totalUnpaid += planningCardStatementDueTotal;
+        }
+      }
 
       // Check for override amount (marked with source = '__OVERRIDE__')
       const overrideIncome = income.find(
@@ -112,6 +191,32 @@ export async function GET(request: NextRequest) {
           }, 0);
 
       const balance = totalIncome - totalExpense;
+
+      const cardTotal = excludeCreditMsi
+        ? cardExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+        : 0;
+      const cardPaid = excludeCreditMsi
+        ? cardExpenses
+            .filter((e) => e.is_paid)
+            .reduce((sum, e) => sum + Number(e.amount), 0)
+        : 0;
+      const cardUnpaid = excludeCreditMsi ? cardTotal - cardPaid : 0;
+      const cardExpenseCount = excludeCreditMsi ? cardExpenses.length : 0;
+
+      let planningExpenseCount = excludeCreditMsi ? expenses.length : undefined;
+      let planningPaidExpenseCount = excludeCreditMsi
+        ? expenses.filter((e) => e.is_paid).length
+        : undefined;
+      let planningUnpaidExpenseCount = excludeCreditMsi
+        ? expenses.filter((e) => !e.is_paid).length
+        : undefined;
+
+      if (excludeCreditMsi && orphanCardPaymentCount > 0) {
+        planningExpenseCount =
+          (planningExpenseCount ?? 0) + orphanCardPaymentCount;
+        planningPaidExpenseCount =
+          (planningPaidExpenseCount ?? 0) + orphanCardPaymentCount;
+      }
 
       // Fetch user income data and income items (by source) for the period
       let userIncomeData: Array<{
@@ -233,6 +338,36 @@ export async function GET(request: NextRequest) {
           balance,
           userIncome: userIncomeData,
           incomeItems,
+          ...(excludeCreditMsi
+            ? {
+                planningExpenseCount,
+                planningPaidExpenseCount,
+                planningUnpaidExpenseCount,
+                cardCharges:
+                  cardTotal > 0 || cardExpenseCount > 0
+                    ? {
+                        total: cardTotal,
+                        paid: cardPaid,
+                        unpaid: cardUnpaid,
+                        expenseCount: cardExpenseCount,
+                      }
+                    : null,
+                planningOrphanCardPayments:
+                  orphanCardPaymentCount > 0 || orphanCardPaymentTotal > 0
+                    ? {
+                        total: orphanCardPaymentTotal,
+                        count: orphanCardPaymentCount,
+                      }
+                    : null,
+                planningCardStatementDue:
+                  planningCardStatementDueTotal > 0
+                    ? {
+                        total: planningCardStatementDueTotal,
+                        cardCount: planningCardStatementDueCardCount,
+                      }
+                    : null,
+              }
+            : {}),
         },
         { status: 200 },
       );

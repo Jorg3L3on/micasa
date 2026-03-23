@@ -150,6 +150,8 @@ export async function createCreditCardPurchase(
     paymentDate: input.payment_date ?? null,
     expenseTemplateId: input.expense_template_id ?? null,
     walletId: creditCardId,
+    creditMsiCurrent: input.credit_msi_current ?? null,
+    creditMsiTotal: input.credit_msi_total ?? null,
   });
 }
 

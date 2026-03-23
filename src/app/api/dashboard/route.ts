@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { wherePlanningCashFlowExpenses } from '@/lib/finance/expense-planning-scope';
+import {
+  aggregateOrphanCreditCardPaymentsForPlanning,
+  unionPaidAtRangeFromFortnights,
+} from '@/lib/finance/planning-credit-card-payments';
+import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
 
 type PeriodView = 'month' | 'biweekly';
 
@@ -83,15 +89,39 @@ export async function GET(request: NextRequest) {
       }),
       prisma.fortnight.findMany({
         where: fortnightWherePrev,
-        select: { id: true },
+        select: { id: true, start_date: true, end_date: true },
       }),
     ]);
 
     const currentFortnightIds = fortnightsCurrent.map((f) => f.id);
     const prevFortnightIds = fortnightsPrev.map((f) => f.id);
 
+    const expenseWhereCurrent =
+      currentFortnightIds.length > 0
+        ? {
+            AND: [
+              { fortnight_id: { in: currentFortnightIds } },
+              ownerFilter,
+              wherePlanningCashFlowExpenses(),
+            ],
+          }
+        : { fortnight_id: { in: [] as number[] } };
+    const expenseWherePrev =
+      prevFortnightIds.length > 0
+        ? {
+            AND: [
+              { fortnight_id: { in: prevFortnightIds } },
+              ownerFilter,
+              wherePlanningCashFlowExpenses(),
+            ],
+          }
+        : { fortnight_id: { in: [] as number[] } };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    const paidAtRangeCurrent = unionPaidAtRangeFromFortnights(fortnightsCurrent);
+    const paidAtRangePrev = unionPaidAtRangeFromFortnights(fortnightsPrev);
 
     const [
       expensesCurrent,
@@ -100,9 +130,13 @@ export async function GET(request: NextRequest) {
       incomePrev,
       allExpensesUpcoming,
       incomeWithUser,
+      orphanPayCurrent,
+      orphanPayPrev,
+      cardDueCurrent,
+      cardDuePrev,
     ] = await Promise.all([
       prisma.expense.findMany({
-        where: { fortnight_id: { in: currentFortnightIds } },
+        where: expenseWhereCurrent,
         include: {
           category: { select: { name: true } },
           expense_template: { select: { is_recurring: true } },
@@ -116,7 +150,7 @@ export async function GET(request: NextRequest) {
         include: { user: { select: { id: true, name: true } } },
       }),
       prisma.expense.findMany({
-        where: { fortnight_id: { in: prevFortnightIds } },
+        where: expenseWherePrev,
         select: { amount: true, is_paid: true },
       }),
       prisma.income.findMany({
@@ -127,7 +161,7 @@ export async function GET(request: NextRequest) {
         select: { amount: true },
       }),
       prisma.expense.findMany({
-        where: { fortnight_id: { in: currentFortnightIds } },
+        where: expenseWhereCurrent,
         include: {
           fortnight: {
             select: {
@@ -148,6 +182,28 @@ export async function GET(request: NextRequest) {
         },
         include: { user: { select: { id: true, name: true } } },
       }),
+      aggregateOrphanCreditCardPaymentsForPlanning(
+        ownerFilter,
+        paidAtRangeCurrent,
+      ),
+      aggregateOrphanCreditCardPaymentsForPlanning(
+        ownerFilter,
+        paidAtRangePrev,
+      ),
+      sumPlannerCardDueForDashboardScope(
+        ownerFilter,
+        view,
+        current.year,
+        current.month,
+        current.period,
+      ),
+      sumPlannerCardDueForDashboardScope(
+        ownerFilter,
+        view,
+        prev.year,
+        prev.month,
+        prev.period,
+      ),
     ]);
 
     const overrideIncome = incomeCurrent.find(
@@ -159,13 +215,22 @@ export async function GET(request: NextRequest) {
     const totalIncomeCurrent = overrideIncome
       ? Number(overrideIncome.amount)
       : regularIncome.reduce((s, i) => s + Number(i.amount), 0);
-    const totalExpenseCurrent = expensesCurrent.reduce(
+    let totalExpenseCurrent = expensesCurrent.reduce(
       (s, e) => s + Number(e.amount),
       0,
     );
-    const totalPaidCurrent = expensesCurrent
+    if (orphanPayCurrent.count > 0) {
+      totalExpenseCurrent += orphanPayCurrent.total;
+    }
+    if (cardDueCurrent.total > 0) {
+      totalExpenseCurrent += cardDueCurrent.total;
+    }
+    let totalPaidCurrent = expensesCurrent
       .filter((e) => e.is_paid)
       .reduce((s, e) => s + Number(e.amount), 0);
+    if (orphanPayCurrent.count > 0) {
+      totalPaidCurrent += orphanPayCurrent.total;
+    }
     const totalUnpaidCurrent = totalExpenseCurrent - totalPaidCurrent;
     const balanceCurrent = totalIncomeCurrent - totalExpenseCurrent;
 
@@ -173,10 +238,16 @@ export async function GET(request: NextRequest) {
       (s, i) => s + Number(i.amount),
       0,
     );
-    const totalExpensePrev = expensesPrev.reduce(
+    let totalExpensePrev = expensesPrev.reduce(
       (s, e) => s + Number(e.amount),
       0,
     );
+    if (orphanPayPrev.count > 0) {
+      totalExpensePrev += orphanPayPrev.total;
+    }
+    if (cardDuePrev.total > 0) {
+      totalExpensePrev += cardDuePrev.total;
+    }
 
     const userIncomeMap: Record<number, { name: string; amount: number }> = {};
     incomeWithUser.forEach((inc) => {
@@ -368,6 +439,20 @@ export async function GET(request: NextRequest) {
           pagado: totalPaidCurrent,
           pendiente: totalUnpaidCurrent,
         },
+        planningCardPayments:
+          orphanPayCurrent.count > 0
+            ? {
+                total: orphanPayCurrent.total,
+                count: orphanPayCurrent.count,
+              }
+            : null,
+        planningCardStatementDue:
+          cardDueCurrent.total > 0
+            ? {
+                total: cardDueCurrent.total,
+                cardCount: cardDueCurrent.cardCount,
+              }
+            : null,
         upcomingObligations,
         recentActivity,
         incomeBreakdown: {

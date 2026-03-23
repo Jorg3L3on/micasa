@@ -9,6 +9,7 @@ import {
   Home,
   PiggyBank,
   ShoppingBasket,
+  Wallet,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -54,22 +55,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive: pathname.startsWith('/categories'),
     },
     {
-      title: 'Billeteras',
-      url: '/wallets',
-      isActive:
-        pathname === '/wallets' ||
-        (pathname.startsWith('/wallets/') &&
-          !pathname.startsWith('/wallets/liquidity')),
-    },
-    {
       title: 'Proyección de liquidez',
       url: '/wallets/liquidity',
       isActive: pathname.startsWith('/wallets/liquidity'),
-    },
-    {
-      title: 'Tarjetas de crédito',
-      url: '/credit-cards',
-      isActive: pathname.startsWith('/credit-cards'),
     },
     ...(context.type === 'house'
       ? [
@@ -96,6 +84,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive: pathname.startsWith('/monthly/'),
     },
     {
+      title: 'Billeteras',
+      url: '/wallets',
+      icon: Wallet,
+      isActive:
+        pathname === '/wallets' ||
+        (pathname.startsWith('/wallets/') &&
+          !pathname.startsWith('/wallets/liquidity')) ||
+        pathname.startsWith('/credit-cards'),
+    },
+    {
       title: 'Presupuestos',
       url: '/budgets',
       icon: PiggyBank,
@@ -116,8 +114,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         pathname.startsWith('/expense-templates') ||
         pathname.startsWith('/income-templates') ||
         pathname.startsWith('/categories') ||
-        pathname.startsWith('/wallets') ||
-        pathname.startsWith('/credit-cards') ||
+        pathname.startsWith('/wallets/liquidity') ||
         pathname.startsWith('/house-users'),
       items: catalogItems,
     },

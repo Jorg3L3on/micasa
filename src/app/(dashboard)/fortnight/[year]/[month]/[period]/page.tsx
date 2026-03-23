@@ -3,7 +3,12 @@ import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
-import type { TransactionRow } from '@/types/catalog';
+import type {
+  PlannerCardChargesSummary,
+  PlannerCardStatementDueSummary,
+  PlannerOrphanCardPaymentsSummary,
+  TransactionRow,
+} from '@/types/catalog';
 
 type Summary = {
   totalIncome: number;
@@ -15,6 +20,12 @@ type Summary = {
     fortnightId: number;
     userIncome: Array<{ userId: number; userName: string; income: number }>;
   }>;
+  planningExpenseCount?: number;
+  planningPaidExpenseCount?: number;
+  planningUnpaidExpenseCount?: number;
+  cardCharges?: PlannerCardChargesSummary | null;
+  planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
+  planningCardStatementDue?: PlannerCardStatementDueSummary | null;
 };
 
 function groupTransactionsByDate(
@@ -59,7 +70,7 @@ async function getTransactions(
 ): Promise<TransactionRow[]> {
   try {
     return await fetchFromApi<TransactionRow[]>(
-      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense`,
+      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense&exclude_credit_msi=true`,
       ownerContext,
     );
   } catch (error) {
@@ -76,7 +87,7 @@ async function getSummary(
 ): Promise<Summary> {
   try {
     return await fetchFromApi<Summary>(
-      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}`,
+      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}&exclude_credit_msi=true`,
       ownerContext,
     );
   } catch (error) {
@@ -164,9 +175,20 @@ export default async function FortnightPage({
           year={year}
           month={month}
           period={period}
-          expenseCount={transactions.length}
-          paidExpenseCount={transactions.filter((t) => t.is_paid).length}
-          unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
+          expenseCount={summary.planningExpenseCount ?? transactions.length}
+          paidExpenseCount={
+            summary.planningPaidExpenseCount ??
+            transactions.filter((t) => t.is_paid).length
+          }
+          unpaidExpenseCount={
+            summary.planningUnpaidExpenseCount ??
+            transactions.filter((t) => !t.is_paid).length
+          }
+          cardCharges={summary.cardCharges ?? null}
+          planningOrphanCardPayments={
+            summary.planningOrphanCardPayments ?? null
+          }
+          planningCardStatementDue={summary.planningCardStatementDue ?? null}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}
