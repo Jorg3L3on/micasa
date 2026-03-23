@@ -10,9 +10,12 @@ import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddExpenseDialog from '@/components/AddExpenseDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
+import FortnightCardPaymentsPanel, {
+  getPlannerCardPaymentStatus,
+} from '@/components/planner/FortnightCardPaymentsPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +37,13 @@ import {
   createExpenseTransaction,
   createExpenseTemplate,
 } from '@/lib/api';
-import type { DuePaymentItem, TransactionRow } from '@/types/catalog';
+import type {
+  DuePaymentItem,
+  PlannerCardChargesSummary,
+  PlannerCardStatementDueSummary,
+  PlannerOrphanCardPaymentsSummary,
+  TransactionRow,
+} from '@/types/catalog';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
@@ -60,6 +69,12 @@ type Summary = {
     userIncome: Array<{ userId: number; userName: string; income: number }>;
   }>;
   incomeItems?: IncomeItemBySource[];
+  planningExpenseCount?: number;
+  planningPaidExpenseCount?: number;
+  planningUnpaidExpenseCount?: number;
+  cardCharges?: PlannerCardChargesSummary | null;
+  planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
+  planningCardStatementDue?: PlannerCardStatementDueSummary | null;
 };
 
 type FortnightColumnProps = {
@@ -161,14 +176,16 @@ export default function FortnightColumn({
   const refreshData = useCallback(async () => {
     try {
       setIsRefreshing(true);
+      const ym = String(month).padStart(2, '0');
+      const planningQs = '&exclude_credit_msi=true';
       const [transactionsData, summaryData] = await Promise.all([
         clientFetchFromApi<TransactionRow[]>(
-          `/api/transactions?year=${year}&month=${String(month).padStart(2, '0')}&period=${period}&type=expense`,
+          `/api/transactions?year=${year}&month=${ym}&period=${period}&type=expense${planningQs}`,
           undefined,
           context,
         ),
         clientFetchFromApi<Summary>(
-          `/api/reports?type=summary&year=${year}&month=${String(month).padStart(2, '0')}&period=${period}`,
+          `/api/reports?type=summary&year=${year}&month=${ym}&period=${period}${planningQs}`,
           undefined,
           context,
         ),
@@ -518,6 +535,33 @@ export default function FortnightColumn({
     [transactions],
   );
 
+  const unpaidExpenseCount = useMemo(
+    () => transactions.filter((t) => !t.is_paid).length,
+    [transactions],
+  );
+
+  const summaryExpenseCount =
+    summary.planningExpenseCount ?? transactions.length;
+  const summaryPaidExpenseCount =
+    summary.planningPaidExpenseCount ??
+    transactions.filter((t) => t.is_paid).length;
+  const summaryUnpaidExpenseCount =
+    summary.planningUnpaidExpenseCount ?? unpaidExpenseCount;
+
+  const plannerTodayYmd = useMemo(
+    () => new Date().toISOString().split('T')[0],
+    [],
+  );
+
+  const pendingCardPaymentsCount = useMemo(
+    () =>
+      cardDueItems.filter(
+        (item) =>
+          getPlannerCardPaymentStatus(item, plannerTodayYmd) !== 'pagado',
+      ).length,
+    [cardDueItems, plannerTodayYmd],
+  );
+
   return (
     <>
       <div className="flex flex-col space-y-4">
@@ -537,9 +581,16 @@ export default function FortnightColumn({
               year={year}
               month={month}
               period={period}
-              expenseCount={transactions.length}
-              paidExpenseCount={transactions.filter((t) => t.is_paid).length}
-              unpaidExpenseCount={transactions.filter((t) => !t.is_paid).length}
+              expenseCount={summaryExpenseCount}
+              paidExpenseCount={summaryPaidExpenseCount}
+              unpaidExpenseCount={summaryUnpaidExpenseCount}
+              cardCharges={summary.cardCharges ?? null}
+              planningOrphanCardPayments={
+                summary.planningOrphanCardPayments ?? null
+              }
+              planningCardStatementDue={
+                summary.planningCardStatementDue ?? null
+              }
               onEditIncome={handleOpenOverrideDialog}
               onEditIncomeSource={handleOpenEditIncomeSource}
             />
@@ -640,14 +691,36 @@ export default function FortnightColumn({
             <TabsTrigger
               value="expenses"
               className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
+              aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
             >
-              Gastos
+              <span className="inline-flex items-center gap-2">
+                Gastos
+                <Badge
+                  variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
+                  className="pointer-events-none h-5 min-w-5 shrink-0 justify-center border-0 px-1.5 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:min-w-5.5 sm:text-[11px]"
+                  aria-hidden
+                >
+                  {unpaidExpenseCount}
+                </Badge>
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="cards"
               className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
+              aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
             >
-              Pagos tarjeta
+              <span className="inline-flex items-center gap-2">
+                Pagos tarjeta
+                <Badge
+                  variant={
+                    pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
+                  }
+                  className="pointer-events-none h-5 min-w-5 shrink-0 justify-center border-0 px-1.5 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:min-w-5.5 sm:text-[11px]"
+                  aria-hidden
+                >
+                  {pendingCardPaymentsCount}
+                </Badge>
+              </span>
             </TabsTrigger>
           </TabsList>
 

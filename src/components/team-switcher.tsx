@@ -20,6 +20,27 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+
+/**
+ * Placeholder con la misma envoltura que el botón real pero sin DropdownMenu ni useId de Radix.
+ * Evita mismatch de hidratación cuando la sesión no existe en el SSR pero sí en el primer paint del cliente.
+ */
+const TeamSwitcherShell = () => (
+  <SidebarMenu>
+    <SidebarMenuItem>
+      <div
+        className="peer/menu-button flex h-12 w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2"
+        aria-hidden
+      >
+        <div className="size-8 shrink-0 animate-pulse rounded-lg bg-sidebar-primary/25" />
+        <div className="grid min-w-0 flex-1 gap-1 group-data-[collapsible=icon]:hidden">
+          <div className="h-3.5 w-30 max-w-full animate-pulse rounded bg-muted" />
+          <div className="h-3 w-24 max-w-full animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+    </SidebarMenuItem>
+  </SidebarMenu>
+);
 import { CreateHouseDialog } from '@/components/create-house-dialog';
 import type { CreatedHouse } from '@/components/create-house-dialog';
 import { clientFetchFromApi } from '@/lib/api';
@@ -30,12 +51,17 @@ type TeamSwitcherProps = {
 };
 
 export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
+  const [clientReady, setClientReady] = useState(false);
   const { isMobile } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { context, setUserContext, setHouseContext } = useFinanceContext();
+
+  useEffect(() => {
+    setClientReady(true);
+  }, []);
 
   const pushUrlWithOwnerContext = useCallback(
     (ownerType: 'user' | 'house', ownerId: number) => {
@@ -92,8 +118,8 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
     [setHouseContext, pushUrlWithOwnerContext],
   );
 
-  if (!session?.user) {
-    return null;
+  if (!clientReady || !session?.user) {
+    return <TeamSwitcherShell />;
   }
 
   const userId = Number(session.user.id);

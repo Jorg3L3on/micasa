@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { isCreditMsiInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
   isCreditWalletType,
@@ -152,6 +153,8 @@ export async function getCreditCardStatementByOwner(
         amount: true,
         payment_date: true,
         created_at: true,
+        credit_msi_current: true,
+        credit_msi_total: true,
         category: { select: { name: true } },
         fortnight: {
           select: { id: true, year: true, month: true, period: true },
@@ -219,6 +222,37 @@ export async function getCreditCardStatementByOwner(
       isWithinRange(expense.effectiveDate, window.currentCycleStart, window.currentCycleEnd),
     );
 
+  /** MSI con cuotas aún pendientes (cuota actual estrictamente menor al total). */
+  const msiActivePurchases = purchases
+    .filter(
+      (e) =>
+        isCreditMsiInstallmentExpense(e) &&
+        e.credit_msi_current != null &&
+        e.credit_msi_total != null &&
+        e.credit_msi_current < e.credit_msi_total,
+    )
+    .map((expense) => ({
+      ...expense,
+      effectiveDate: toEffectiveExpenseDate(expense),
+      amount: Number(expense.amount),
+    }))
+    .sort(
+      (a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime(),
+    )
+    .map((expense) => ({
+      id: expense.id,
+      description: expense.description,
+      amount: expense.amount,
+      payment_date: toDateOnlyString(expense.effectiveDate),
+      category: expense.category?.name ?? '',
+      fortnight_id: expense.fortnight.id,
+      fortnight_year: expense.fortnight.year,
+      fortnight_month: expense.fortnight.month,
+      fortnight_period: expense.fortnight.period,
+      credit_msi_current: expense.credit_msi_current,
+      credit_msi_total: expense.credit_msi_total,
+    }));
+
   const lastStatementBalance = statementPurchases.reduce(
     (sum, expense) => sum + expense.amount,
     0,
@@ -271,6 +305,8 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
+      credit_msi_current: expense.credit_msi_current,
+      credit_msi_total: expense.credit_msi_total,
     })),
     current_cycle_purchase_items: currentCyclePurchases.map((expense) => ({
       id: expense.id,
@@ -282,7 +318,10 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
+      credit_msi_current: expense.credit_msi_current,
+      credit_msi_total: expense.credit_msi_total,
     })),
+    msi_active_purchases: msiActivePurchases,
     payment_history: payments.map((payment) => ({
       id: payment.id,
       amount: Number(payment.amount),
@@ -688,4 +727,51 @@ export async function getDuePaymentsForPlannerMonth(
   ]);
 
   return { first, second };
+}
+
+/** Suma `nextDuePayment` de tarjetas con corte en la quincena (misma lógica que planificación / due-payments). */
+export async function sumPlannerCardDueForFortnight(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): Promise<{ total: number; cardCount: number }> {
+  const { first, second } = await getDuePaymentsForPlannerMonth(
+    ownerFilter,
+    year,
+    month,
+  );
+  const items = period === 'FIRST' ? first : second;
+  const withDue = items.filter((i) => i.nextDuePayment > 0);
+  const total = withDue.reduce((s, i) => s + i.nextDuePayment, 0);
+  return { total, cardCount: withDue.length };
+}
+
+/** Mes completo (vista mensual en panel): 1ª + 2ª quincena sin duplicar tarjetas (cada TC cae en una sola lista). */
+export async function sumPlannerCardDueForMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<{ total: number; cardCount: number }> {
+  const { first, second } = await getDuePaymentsForPlannerMonth(
+    ownerFilter,
+    year,
+    month,
+  );
+  const withDue = [...first, ...second].filter((i) => i.nextDuePayment > 0);
+  const total = withDue.reduce((s, i) => s + i.nextDuePayment, 0);
+  return { total, cardCount: withDue.length };
+}
+
+export async function sumPlannerCardDueForDashboardScope(
+  ownerFilter: OwnerFilter,
+  view: 'month' | 'biweekly',
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): Promise<{ total: number; cardCount: number }> {
+  if (view === 'month') {
+    return sumPlannerCardDueForMonth(ownerFilter, year, month);
+  }
+  return sumPlannerCardDueForFortnight(ownerFilter, year, month, period);
 }

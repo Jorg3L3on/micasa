@@ -57,10 +57,13 @@ export async function listWalletsByOwner(ownerFilter: OwnerFilter) {
 
   return wallets.map((w) => {
     const spent = spentMap.get(w.id) ?? 0;
+    const amountNum = Number(w.amount);
     return {
       ...w,
+      amount: amountNum,
+      credit_limit: w.credit_limit == null ? null : Number(w.credit_limit),
       spent_amount: spent,
-      remaining_amount: Number(w.amount) - spent,
+      remaining_amount: amountNum - spent,
     };
   });
 }

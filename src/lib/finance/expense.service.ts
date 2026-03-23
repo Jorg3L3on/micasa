@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import {
   applyWalletAmountDelta,
+  assertPaidChargeAllowedForWallet,
   getPaidExpenseWalletDelta,
   isCreditWalletType,
   isFundingWalletType,
@@ -29,6 +30,9 @@ type CreateExpenseInput = {
   paymentDate?: string | null;
   expenseTemplateId?: number | null;
   walletId?: number | null;
+  statementImportId?: number | null;
+  creditMsiCurrent?: number | null;
+  creditMsiTotal?: number | null;
 };
 
 type UpdateExpenseInput = {
@@ -49,36 +53,6 @@ type TogglePaidInput = {
 
 type DeleteExpenseInput = {
   id: number;
-};
-
-const assertPaidChargeAllowedForWallet = (
-  wallet: {
-    type: PaymentMethodType;
-    amount: unknown;
-    credit_limit: unknown;
-  },
-  chargeAmount: number,
-) => {
-  const balance = Number(wallet.amount);
-  if (isCreditWalletType(wallet.type)) {
-    const limit =
-      wallet.credit_limit == null ? null : Number(wallet.credit_limit);
-    if (limit != null && balance + chargeAmount > limit) {
-      const error = new Error(
-        'El gasto supera el crédito disponible',
-      ) as ExpenseServiceError;
-      error.code = 'CREDIT_LIMIT_EXCEEDED';
-      throw error;
-    }
-    return;
-  }
-  if (isFundingWalletType(wallet.type) && balance < chargeAmount) {
-    const error = new Error(
-      'Saldo insuficiente en la billetera',
-    ) as ExpenseServiceError;
-    error.code = 'INSUFFICIENT_WALLET_BALANCE';
-    throw error;
-  }
 };
 
 export type ExpenseWithMeta = Awaited<
@@ -157,6 +131,9 @@ export async function createExpense(input: CreateExpenseInput) {
     paymentDate,
     expenseTemplateId,
     walletId,
+    statementImportId,
+    creditMsiCurrent,
+    creditMsiTotal,
   } = input;
 
   if (amount <= 0) {
@@ -250,6 +227,9 @@ export async function createExpense(input: CreateExpenseInput) {
         is_paid: isPaid,
         payment_date: paymentDate ? new Date(paymentDate) : null,
         expense_template_id: expenseTemplateId || null,
+        statement_import_id: statementImportId ?? null,
+        credit_msi_current: creditMsiCurrent ?? null,
+        credit_msi_total: creditMsiTotal ?? null,
         user_id: fortnight.user_id,
         house_id: fortnight.house_id,
       },

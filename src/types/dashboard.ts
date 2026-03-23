@@ -19,6 +19,16 @@ export type DashboardData = {
     pagado: number;
     pendiente: number;
   };
+  /** Pagos a TC sin gasto duplicado, ya incluidos en gastos/balance del periodo. */
+  planningCardPayments?: {
+    total: number;
+    count: number;
+  } | null;
+  /** Pendiente de pago al estado de cuenta en el periodo (misma lógica que planificación). */
+  planningCardStatementDue?: {
+    total: number;
+    cardCount: number;
+  } | null;
   upcomingObligations: Array<{
     id: number;
     description: string;

@@ -4,7 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -95,7 +95,9 @@ function FinanceProviderSync({
   const searchParams = useSearchParams();
   const { data: session } = useSession();
 
-  useEffect(() => {
+  // useLayoutEffect so owner context updates before sibling useEffect hooks run
+  // (e.g. credit-card detail fetching with buildOwnerQuery).
+  useLayoutEffect(() => {
     const userId =
       session?.user?.id != null ? Number(session.user.id) : null;
     const isUserIdValid = userId != null && !Number.isNaN(userId);

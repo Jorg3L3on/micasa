@@ -40,6 +40,10 @@ enum BudgetFrequency {
   CUSTOM
 }
 
+enum StatementImportProvider {
+  MERCADO_PAGO
+}
+
 model User {
   id                   Int     @id @default(autoincrement())
   name                 String
@@ -60,6 +64,9 @@ model User {
   categories         Category[]
   creditCardPayments CreditCardPayment[]
   budgets            Budget[]
+
+  credit_card_statement_imports_created CreditCardStatementImport[] @relation("CreditCardStatementImportCreatedBy")
+  credit_card_statement_imports_owned   CreditCardStatementImport[] @relation("CreditCardStatementImportUserOwner")
 
   pantry_receipts_created PantryReceipt[] @relation("PantryReceiptCreatedBy")
   pantry_receipts_owned  PantryReceipt[] @relation("PantryReceiptUserOwner")
@@ -160,6 +167,10 @@ model Expense {
   payment_date DateTime?
   due_day      Int?
 
+  /// Meses sin intereses (MSI): cuota actual y total (ej. 11 de 15). Null = no MSI.
+  credit_msi_current Int?
+  credit_msi_total   Int?
+
   house_id            Int?
   fortnight_id        Int
   category_id         Int?
@@ -177,6 +188,9 @@ model Expense {
   expense_template ExpenseTemplate? @relation(fields: [expense_template_id], references: [id])
   house            House?           @relation(fields: [house_id], references: [id])
 
+  statement_import_id Int?
+  statement_import    CreditCardStatementImport? @relation(fields: [statement_import_id], references: [id], onDelete: SetNull)
+
   transferAsUser Transfer? @relation("TransferUserExpense")
   credit_card_payment CreditCardPayment?
 
@@ -185,6 +199,7 @@ model Expense {
   @@index([fortnight_id])
   @@index([wallet_id])
   @@index([expense_template_id])
+  @@index([statement_import_id])
 }
 
 model Income {
@@ -256,6 +271,7 @@ model House {
 
   creditCardPayments CreditCardPayment[]
   budgets            Budget[]
+  credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
   pantry_receipts    PantryReceipt[]      @relation("PantryReceiptHouseOwner")
   pantry_products    PantryProduct[]      @relation("PantryProductHouseOwner")
 }
@@ -298,6 +314,7 @@ model Wallet {
   expense_templates    ExpenseTemplate[]
   credit_card_payments CreditCardPayment[] @relation("CreditCardWalletPayments")
   source_card_payments CreditCardPayment[] @relation("CreditCardSourceWalletPayments")
+  credit_card_statement_imports CreditCardStatementImport[]
   budgetAllocations    BudgetAllocation[]
 
   @@index([user_id])
@@ -406,6 +423,44 @@ model CreditCardPayment {
 /**
  * Pantry / grocery receipts (per user or per house), with line items parsed from uploads.
  */
+/**
+ * Uploaded issuer PDFs (per card). Parsed rows become Expense rows linked via statement_import_id.
+ * Provider-specific parsers (e.g. Mercado Pago) live in server code.
+ */
+model CreditCardStatementImport {
+  id                   Int                     @id @default(autoincrement())
+  provider             StatementImportProvider
+  wallet_id            Int
+  user_id              Int?
+  house_id             Int?
+  created_by_user_id   Int
+
+  file_name            String?
+  file_mime            String?
+  file_data            Bytes?
+
+  period_start         DateTime?
+  period_end           DateTime?
+  account_number       String?
+  statement_issue_date DateTime?
+  total_due            Decimal?                @db.Decimal(12, 2)
+
+  parse_warnings       String[]                @default([])
+
+  created_at           DateTime                @default(now())
+
+  wallet     Wallet  @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+  user       User?   @relation("CreditCardStatementImportUserOwner", fields: [user_id], references: [id])
+  house      House?  @relation("CreditCardStatementImportHouseOwner", fields: [house_id], references: [id])
+  created_by User    @relation("CreditCardStatementImportCreatedBy", fields: [created_by_user_id], references: [id])
+  expenses   Expense[]
+
+  @@index([wallet_id])
+  @@index([user_id])
+  @@index([house_id])
+  @@index([created_at])
+}
+
 model PantryReceipt {
   id     Int  @id @default(autoincrement())
   title  String?

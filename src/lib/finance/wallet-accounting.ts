@@ -32,6 +32,38 @@ export const getPaidExpenseWalletDelta = (
   return -Math.abs(amount);
 };
 
+type PaidChargeWalletShape = {
+  type: PaymentMethodType;
+  amount: unknown;
+  credit_limit: unknown;
+};
+
+export const assertPaidChargeAllowedForWallet = (
+  wallet: PaidChargeWalletShape,
+  chargeAmount: number,
+) => {
+  const balance = Number(wallet.amount);
+  if (isCreditWalletType(wallet.type)) {
+    const limit =
+      wallet.credit_limit == null ? null : Number(wallet.credit_limit);
+    if (limit != null && balance + chargeAmount > limit) {
+      const error = new Error(
+        'El gasto supera el crédito disponible',
+      ) as Error & { code?: string };
+      error.code = 'CREDIT_LIMIT_EXCEEDED';
+      throw error;
+    }
+    return;
+  }
+  if (isFundingWalletType(wallet.type) && balance < chargeAmount) {
+    const error = new Error(
+      'Saldo insuficiente en la billetera',
+    ) as Error & { code?: string };
+    error.code = 'INSUFFICIENT_WALLET_BALANCE';
+    throw error;
+  }
+};
+
 export const getWalletAvailableCredit = ({
   amount,
   credit_limit,

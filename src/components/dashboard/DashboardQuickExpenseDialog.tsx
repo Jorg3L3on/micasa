@@ -120,7 +120,11 @@ export default function DashboardQuickExpenseDialog({
 
   const projectedCardDebt = useMemo(() => {
     if (!isCreditCardPaymentMethod) return null;
-    return (selectedPaymentMethod?.amount ?? 0) + (selectedAmount || 0);
+    const currentDebt = Number(selectedPaymentMethod?.amount ?? 0);
+    const add = Number(selectedAmount || 0);
+    const safeDebt = Number.isFinite(currentDebt) ? currentDebt : 0;
+    const safeAdd = Number.isFinite(add) ? add : 0;
+    return safeDebt + safeAdd;
   }, [isCreditCardPaymentMethod, selectedAmount, selectedPaymentMethod]);
 
   const projectedAvailableCredit = useMemo(() => {
@@ -132,7 +136,9 @@ export default function DashboardQuickExpenseDialog({
       return null;
     }
 
-    return selectedPaymentMethod.credit_limit - projectedCardDebt;
+    const limit = Number(selectedPaymentMethod.credit_limit);
+    if (!Number.isFinite(limit)) return null;
+    return limit - projectedCardDebt;
   }, [isCreditCardPaymentMethod, projectedCardDebt, selectedPaymentMethod]);
 
   const exceedsCreditLimit =

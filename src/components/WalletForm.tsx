@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
   Loader2,
@@ -90,6 +91,30 @@ type WalletFormProps = {
   showAmountField?: boolean;
 };
 
+const toNumericOrNull = (value: unknown): number | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const toNumericAmount = (value: unknown): number => {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const buildWalletFormDefaults = (
+  mode: 'create' | 'edit',
+  defaultValues?: WalletFormValues,
+): WalletFormInput => ({
+  name: defaultValues?.name ?? '',
+  amount: toNumericAmount(defaultValues?.amount),
+  credit_limit: toNumericOrNull(defaultValues?.credit_limit),
+  type: defaultValues?.type ?? 'CASH',
+  active: defaultValues?.active ?? true,
+  cutoff_day: toNumericOrNull(defaultValues?.cutoff_day),
+  due_day: toNumericOrNull(defaultValues?.due_day),
+});
+
 export default function WalletForm({
   open,
   onOpenChange,
@@ -102,16 +127,14 @@ export default function WalletForm({
 }: WalletFormProps) {
   const form = useForm<WalletFormInput>({
     resolver: zodResolver(walletSchema),
-    defaultValues: {
-      name: defaultValues?.name ?? '',
-      amount: defaultValues?.amount ?? 0,
-      credit_limit: defaultValues?.credit_limit ?? null,
-      type: defaultValues?.type ?? 'CASH',
-      active: defaultValues?.active ?? true,
-      cutoff_day: defaultValues?.cutoff_day ?? null,
-      due_day: defaultValues?.due_day ?? null,
-    },
+    defaultValues: buildWalletFormDefaults(mode, defaultValues),
   });
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset(buildWalletFormDefaults(mode, defaultValues));
+    // Reset when the dialog opens only; `defaultValues` is often a new object each parent render.
+  }, [open, mode, form]);
 
   const handleSubmit = async (data: WalletFormInput) => {
     const parsedData = walletSchema.parse(data);
@@ -332,10 +355,9 @@ export default function WalletForm({
                             step="0.01"
                             className="pl-7 font-mono tabular-nums"
                             value={
-                              field.value != null &&
-                              typeof field.value === 'number'
-                                ? field.value
-                                : ''
+                              field.value == null || field.value === ''
+                                ? ''
+                                : Number(field.value)
                             }
                             onChange={(e) =>
                               field.onChange(
@@ -370,10 +392,9 @@ export default function WalletForm({
                             step="1"
                             placeholder="1–31"
                             value={
-                              field.value != null &&
-                              typeof field.value === 'number'
-                                ? field.value
-                                : ''
+                              field.value == null || field.value === ''
+                                ? ''
+                                : Number(field.value)
                             }
                             onChange={(e) =>
                               field.onChange(
@@ -406,10 +427,9 @@ export default function WalletForm({
                             step="1"
                             placeholder="1–31"
                             value={
-                              field.value != null &&
-                              typeof field.value === 'number'
-                                ? field.value
-                                : ''
+                              field.value == null || field.value === ''
+                                ? ''
+                                : Number(field.value)
                             }
                             onChange={(e) =>
                               field.onChange(

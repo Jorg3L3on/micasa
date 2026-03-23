@@ -84,6 +84,8 @@ const CreditCardQuickPurchaseDialog = ({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(getTodayDateString());
+  const [msiCurrent, setMsiCurrent] = useState('');
+  const [msiTotal, setMsiTotal] = useState('');
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -133,6 +135,8 @@ const CreditCardQuickPurchaseDialog = ({
       setDescription('');
       setAmount('');
       setPaymentDate(getTodayDateString());
+      setMsiCurrent('');
+      setMsiTotal('');
       setCategoryId('');
       setError(null);
       void loadCatalog();
@@ -167,6 +171,24 @@ const CreditCardQuickPurchaseDialog = ({
       setError('La descripción es obligatoria');
       return;
     }
+    const msiCurTrim = msiCurrent.trim();
+    const msiTotTrim = msiTotal.trim();
+    if (msiCurTrim || msiTotTrim) {
+      const cur = Number.parseInt(msiCurTrim, 10);
+      const tot = Number.parseInt(msiTotTrim, 10);
+      if (
+        !Number.isFinite(cur) ||
+        !Number.isFinite(tot) ||
+        cur < 1 ||
+        tot < 1 ||
+        cur > tot
+      ) {
+        setError(
+          'MSI opcional: indica cuota actual y total (números enteros, 1 ≤ actual ≤ total)',
+        );
+        return;
+      }
+    }
     if (exceedsCreditLimit) {
       setError(
         'El monto supera el crédito disponible. Reduce el monto o registra un pago primero.',
@@ -177,6 +199,14 @@ const CreditCardQuickPurchaseDialog = ({
     try {
       setSubmitting(true);
       setError(null);
+      const msiPayload =
+        msiCurrent.trim() && msiTotal.trim()
+          ? {
+              credit_msi_current: Number.parseInt(msiCurrent.trim(), 10),
+              credit_msi_total: Number.parseInt(msiTotal.trim(), 10),
+            }
+          : {};
+
       await createCreditCardPurchase(
         creditCardId,
         {
@@ -185,6 +215,7 @@ const CreditCardQuickPurchaseDialog = ({
           description: description.trim(),
           amount: numAmount,
           payment_date: paymentDate,
+          ...msiPayload,
         },
         context,
       );
@@ -332,6 +363,46 @@ const CreditCardQuickPurchaseDialog = ({
                   />
                 </div>
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="qp-msi-cur">
+                    MSI — cuota actual (opcional)
+                  </label>
+                  <Input
+                    id="qp-msi-cur"
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="ej. 11"
+                    value={msiCurrent}
+                    onChange={(e) => setMsiCurrent(e.target.value)}
+                    aria-label="Cuota actual meses sin intereses"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="qp-msi-tot">
+                    MSI — total de meses (opcional)
+                  </label>
+                  <Input
+                    id="qp-msi-tot"
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="ej. 15"
+                    value={msiTotal}
+                    onChange={(e) => setMsiTotal(e.target.value)}
+                    aria-label="Total de meses sin intereses"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Si rellenas ambos, la compra se marca como MSI y no aparece en la
+                planificación por quincena (sí en el estado de cuenta de la
+                tarjeta).
+              </p>
             </>
           )}
 

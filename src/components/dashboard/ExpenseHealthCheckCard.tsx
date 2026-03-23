@@ -58,8 +58,10 @@ export default function ExpenseHealthCheckCard({
                   {percentCommitted.toFixed(1)}%
                 </p>
               </TooltipTrigger>
-              <TooltipContent>
-                Porcentaje de ingresos del periodo asignado a gastos
+              <TooltipContent className="max-w-xs text-left">
+                Porcentaje del ingreso del periodo ya asignado a salidas de efectivo
+                o débito (incluye pagos a tarjeta registrados en el periodo). No
+                incluye solo cargos a la tarjeta sin pagar el estado de cuenta.
               </TooltipContent>
             </Tooltip>
           </div>

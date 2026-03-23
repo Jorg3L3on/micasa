@@ -21,6 +21,10 @@ type ConfirmDeleteDialogProps = {
   title: string
   description: string
   itemName?: string
+  /** Defaults to "Eliminar" */
+  confirmLabel?: string
+  /** Defaults to "Eliminando..." */
+  loadingLabel?: string
 }
 
 export default function ConfirmDeleteDialog({
@@ -30,6 +34,8 @@ export default function ConfirmDeleteDialog({
   title,
   description,
   itemName,
+  confirmLabel = 'Eliminar',
+  loadingLabel = 'Eliminando...',
 }: ConfirmDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -64,10 +70,10 @@ export default function ConfirmDeleteDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Eliminando...
+                {loadingLabel}
               </>
             ) : (
-              'Eliminar'
+              confirmLabel
             )}
           </Button>
         </AlertDialogFooter>

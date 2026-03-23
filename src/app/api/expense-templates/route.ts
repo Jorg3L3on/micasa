@@ -8,6 +8,11 @@ import {
 } from '@/schemas/expense-template.schema';
 import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-due';
 
+/**
+ * Nota producto: las cuotas MSI (meses sin intereses en TC) viven como gastos de tarjeta
+ * (import PDF / compra registrada), no como plantillas recurrentes por quincena.
+ */
+
 const prismaDueFieldsFromPayload = (validated: {
   dueDayFirst?: number | null | undefined;
   dueDaySecond?: number | null | undefined;

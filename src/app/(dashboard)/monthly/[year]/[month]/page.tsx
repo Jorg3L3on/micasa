@@ -11,6 +11,9 @@ import type {
   WalletListItem,
   DuePaymentItem,
   PlannerDuePaymentsResponse,
+  PlannerCardChargesSummary,
+  PlannerOrphanCardPaymentsSummary,
+  PlannerCardStatementDueSummary,
 } from '@/types/catalog'
 
 type Transaction = {
@@ -33,6 +36,12 @@ type Summary = {
     fortnightId: number
     userIncome: Array<{ userId: number; userName: string; income: number }>
   }>
+  planningExpenseCount?: number
+  planningPaidExpenseCount?: number
+  planningUnpaidExpenseCount?: number
+  cardCharges?: PlannerCardChargesSummary | null
+  planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null
+  planningCardStatementDue?: PlannerCardStatementDueSummary | null
 }
 
 type FortnightInfo = {
@@ -97,7 +106,7 @@ async function getTransactions(
 ): Promise<Transaction[]> {
   try {
     return await fetchFromApi<Transaction[]>(
-      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense`,
+      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense&exclude_credit_msi=true`,
       ownerContext
     )
   } catch (error) {
@@ -114,7 +123,7 @@ async function getSummary(
 ): Promise<Summary> {
   try {
     return await fetchFromApi<Summary>(
-      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}`,
+      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}&exclude_credit_msi=true`,
       ownerContext
     )
   } catch (error) {
