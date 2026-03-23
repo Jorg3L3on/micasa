@@ -14,18 +14,45 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useClientMounted } from '@/hooks/use-client-mounted';
+
+const NavUserShell = ({
+  user,
+}: {
+  user: { name: string; email: string; avatar: string };
+}) => (
+  <SidebarMenu>
+    <SidebarMenuItem>
+      <div
+        className="peer/menu-button flex h-12 w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2"
+        aria-hidden
+      >
+        <Avatar className="h-8 w-8 rounded-lg">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback className="rounded-lg">
+            {user.name
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase() || 'U'}
+          </AvatarFallback>
+        </Avatar>
+        <div className="grid flex-1 text-left text-sm leading-tight">
+          <span className="truncate font-medium">{user.name}</span>
+          <span className="truncate text-xs">{user.email}</span>
+        </div>
+        <ChevronsUpDown className="ml-auto size-4 opacity-50" />
+      </div>
+    </SidebarMenuItem>
+  </SidebarMenu>
+);
 
 export function NavUser({
   user,
@@ -37,6 +64,11 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const mounted = useClientMounted();
+
+  if (!mounted) {
+    return <NavUserShell user={user} />;
+  }
 
   return (
     <SidebarMenu>
@@ -96,19 +128,17 @@ export function NavUser({
                   Cuenta
                 </Link>
               </DropdownMenuItem>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuItem disabled className="opacity-60">
-                      <Bell />
-                      Notificaciones
-                    </DropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>Próximamente</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuItem disabled className="opacity-60">
+                    <Bell />
+                    Notificaciones
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Próximamente</p>
+                </TooltipContent>
+              </Tooltip>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem

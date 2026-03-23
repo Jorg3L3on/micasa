@@ -178,6 +178,8 @@ export type DuePaymentItem = {
   cutoff_day: number;
   nextDuePayment: number;
   statementDueDate: string;
+  /** Deuda actual en la billetera tarjeta (para tope de pago y “saldo total”). */
+  outstandingBalance: number;
 };
 
 /** GET /api/wallets/due-payments?year=&month= — planificación mensual por quincena */

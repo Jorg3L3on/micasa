@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { clientFetchFromApi, buildOwnerQuery } from '@/lib/api';
 import { useFinanceContext } from '@/context/finance-context';
 import type { FinanceContextType } from '@/types/finance-context';
+import { useClientMounted } from '@/hooks/use-client-mounted';
 
 const STORAGE_KEY_BASE = 'micasa-alerts-seen';
 
@@ -81,6 +82,7 @@ function saveSeenIds(storageKey: string, ids: Set<string>): void {
 }
 
 export function AlertsBell() {
+  const mounted = useClientMounted();
   const { context } = useFinanceContext();
   const [data, setData] = useState<DashboardAlertsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,6 +162,22 @@ export function AlertsBell() {
     },
     [error, data, fetchAlerts],
   );
+
+  if (!mounted) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="relative size-9"
+        aria-label="Alertas"
+        tabIndex={0}
+        disabled
+      >
+        <Bell className="size-5 opacity-60" aria-hidden />
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>

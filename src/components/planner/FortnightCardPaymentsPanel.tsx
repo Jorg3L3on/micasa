@@ -2,9 +2,16 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { CreditCard, Store } from 'lucide-react';
+import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
+import { Banknote, CreditCard, Loader2, Store } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -44,6 +51,9 @@ type FortnightCardPaymentsPanelProps = {
   ownerQueryString: string;
   fortnightLabel: string;
   isCompact?: boolean;
+  onPayCard?: (item: DuePaymentItem) => void;
+  /** Mientras se cargan billeteras/categorías para el diálogo de pago */
+  payingWalletId?: number | null;
 };
 
 const FortnightCardPaymentsPanel = ({
@@ -51,8 +61,10 @@ const FortnightCardPaymentsPanel = ({
   ownerQueryString,
   fortnightLabel,
   isCompact = false,
+  onPayCard,
+  payingWalletId = null,
 }: FortnightCardPaymentsPanelProps) => {
-  const todayYmd = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayYmd = useHydrationSafeTodayYmd();
 
   const rows = useMemo(
     () =>
@@ -143,6 +155,16 @@ const FortnightCardPaymentsPanel = ({
                 >
                   Estado
                 </TableHead>
+                {onPayCard ? (
+                  <TableHead
+                    className={cn(
+                      'w-10 max-w-10 min-w-10 p-0 text-center font-medium',
+                      isCompact ? 'h-9' : '',
+                    )}
+                  >
+                    <span className="sr-only">Pago</span>
+                  </TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,6 +248,65 @@ const FortnightCardPaymentsPanel = ({
                         {statusLabel(status)}
                       </Badge>
                     </TableCell>
+                    {onPayCard ? (
+                      <TableCell
+                        className={cn(
+                          'w-10 max-w-10 min-w-10 p-1 align-middle text-center',
+                        )}
+                      >
+                        {status === 'pagado' ? null : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex justify-center">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon-xs"
+                                  className={cn(
+                                    'border-border/60 bg-card shadow-none',
+                                    'transition-colors hover:border-emerald-500/45 hover:bg-emerald-500/6 dark:hover:bg-emerald-500/10',
+                                    'disabled:pointer-events-none disabled:opacity-45',
+                                    '[&_svg]:text-emerald-600 dark:[&_svg]:text-emerald-400',
+                                  )}
+                                  disabled={
+                                    item.outstandingBalance <= 0 ||
+                                    payingWalletId === item.walletId
+                                  }
+                                  onClick={() => onPayCard(item)}
+                                  aria-label={`Registrar pago: ${item.walletName}`}
+                                >
+                                  {payingWalletId === item.walletId ? (
+                                    <Loader2
+                                      className="size-3 shrink-0 animate-spin"
+                                      aria-hidden
+                                    />
+                                  ) : (
+                                    <Banknote className="size-3" aria-hidden />
+                                  )}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[220px]"
+                            >
+                              {item.outstandingBalance <= 0 ? (
+                                'Sin saldo pendiente en esta tarjeta.'
+                              ) : (
+                                <>
+                                  <span className="font-medium">Pagar</span>
+                                  <span className="mt-0.5 block text-[11px] font-normal opacity-90">
+                                    Desde efectivo o débito (igual que en
+                                    Billeteras).
+                                  </span>
+                                </>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })}

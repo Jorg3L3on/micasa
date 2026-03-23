@@ -18,14 +18,15 @@ function TooltipProvider({
   )
 }
 
+/**
+ * Root only — use within a parent {@link TooltipProvider} (see `app/layout.tsx`).
+ * Avoids nesting a provider per tooltip, which can change Radix id order and
+ * contribute to SSR/client hydration mismatches next to Collapsible, etc.
+ */
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return (
-    <TooltipProvider>
-      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
-    </TooltipProvider>
-  )
+  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
 }
 
 function TooltipTrigger({
