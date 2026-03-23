@@ -4,6 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SessionProvider } from '@/components/session-provider';
 import { FinanceProvider } from '@/context/finance-context';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sonner';
 
 const geistSans = Geist({
@@ -42,15 +43,17 @@ export default function RootLayout({
       >
         <SessionProvider>
           <FinanceProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster richColors position="top-center" />
-            </ThemeProvider>
+            <TooltipProvider delayDuration={0}>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="dark"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <Toaster richColors position="top-center" />
+              </ThemeProvider>
+            </TooltipProvider>
           </FinanceProvider>
         </SessionProvider>
       </body>

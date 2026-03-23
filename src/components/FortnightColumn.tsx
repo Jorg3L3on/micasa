@@ -13,6 +13,8 @@ import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
 } from '@/components/planner/FortnightCardPaymentsPanel';
@@ -32,19 +34,24 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
+  createCreditCardPayment,
+  createExpenseTemplate,
+  createExpenseTransaction,
+  getPaymentMethodOptions,
   updateFortnightOverrideAmount,
   updateIncomeAmount,
-  createExpenseTransaction,
-  createExpenseTemplate,
 } from '@/lib/api';
 import type {
+  CategoryOption,
   DuePaymentItem,
+  PaymentMethodOption,
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
   TransactionRow,
 } from '@/types/catalog';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
+import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
@@ -123,6 +130,64 @@ export default function FortnightColumn({
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
   const [columnTab, setColumnTab] = useState<'expenses' | 'cards'>('expenses');
 
+  const [plannerPaymentDialogOpen, setPlannerPaymentDialogOpen] =
+    useState(false);
+  const [plannerPaymentCard, setPlannerPaymentCard] =
+    useState<DuePaymentItem | null>(null);
+  const [plannerPaymentFunding, setPlannerPaymentFunding] = useState<
+    PaymentMethodOption[]
+  >([]);
+  const [plannerPaymentCategories, setPlannerPaymentCategories] = useState<
+    CategoryOption[]
+  >([]);
+  const [plannerPayCardLoadingId, setPlannerPayCardLoadingId] = useState<
+    number | null
+  >(null);
+  const [plannerPaymentSubmitting, setPlannerPaymentSubmitting] =
+    useState(false);
+  const [plannerPaymentError, setPlannerPaymentError] = useState<string | null>(
+    null,
+  );
+
+  const plannerFundingWalletOptions = useMemo(
+    () =>
+      plannerPaymentFunding.filter(
+        (w) => w.type === 'CASH' || w.type === 'DEBIT_CARD',
+      ),
+    [plannerPaymentFunding],
+  );
+
+  const handlePlannerOpenPayCard = useCallback(
+    async (item: DuePaymentItem) => {
+      if (context.id === 0) return;
+      setPlannerPayCardLoadingId(item.walletId);
+      setPlannerPaymentError(null);
+      try {
+        const [methods, categoriesData] = await Promise.all([
+          getPaymentMethodOptions(context),
+          clientFetchFromApi<CategoryOption[]>(
+            '/api/categories',
+            undefined,
+            context,
+          ),
+        ]);
+        setPlannerPaymentFunding(methods);
+        setPlannerPaymentCategories(categoriesData);
+        setPlannerPaymentCard(item);
+        setPlannerPaymentDialogOpen(true);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : 'No se pudieron cargar datos para el pago',
+        );
+      } finally {
+        setPlannerPayCardLoadingId(null);
+      }
+    },
+    [context],
+  );
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(fortnightTabStorageKey(period));
@@ -200,6 +265,32 @@ export default function FortnightColumn({
       setIsRefreshing(false);
     }
   }, [year, month, period, context, router]);
+
+  const handlePlannerCardPaymentSubmit = useCallback(
+    async (data: CreditCardPaymentSubmitPayload) => {
+      if (!plannerPaymentCard) return;
+      try {
+        setPlannerPaymentSubmitting(true);
+        setPlannerPaymentError(null);
+        await createCreditCardPayment(
+          plannerPaymentCard.walletId,
+          data,
+          context,
+        );
+        toast.success('Pago registrado');
+        setPlannerPaymentDialogOpen(false);
+        setPlannerPaymentCard(null);
+        await refreshData();
+      } catch (err) {
+        setPlannerPaymentError(
+          err instanceof Error ? err.message : 'Error al registrar el pago',
+        );
+      } finally {
+        setPlannerPaymentSubmitting(false);
+      }
+    },
+    [plannerPaymentCard, context, refreshData],
+  );
 
   const handleExpenseUpdate = useCallback(
     async (expenseId: number, isPaid: boolean) => {
@@ -548,10 +639,7 @@ export default function FortnightColumn({
   const summaryUnpaidExpenseCount =
     summary.planningUnpaidExpenseCount ?? unpaidExpenseCount;
 
-  const plannerTodayYmd = useMemo(
-    () => new Date().toISOString().split('T')[0],
-    [],
-  );
+  const plannerTodayYmd = useHydrationSafeTodayYmd();
 
   const pendingCardPaymentsCount = useMemo(
     () =>
@@ -758,6 +846,10 @@ export default function FortnightColumn({
                 ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
                 isCompact={tableDensity === 'compact'}
+                onPayCard={
+                  context.id !== 0 ? handlePlannerOpenPayCard : undefined
+                }
+                payingWalletId={plannerPayCardLoadingId}
               />
             </div>
           </TabsContent>
@@ -794,6 +886,24 @@ export default function FortnightColumn({
         month={month}
         period={period}
         error={addExpenseError && addExpenseDialogOpen ? addExpenseError : null}
+      />
+
+      <CreditCardPaymentDialog
+        open={plannerPaymentDialogOpen && plannerPaymentCard !== null}
+        onOpenChange={(open) => {
+          setPlannerPaymentDialogOpen(open);
+          if (!open) {
+            setPlannerPaymentError(null);
+            setPlannerPaymentCard(null);
+          }
+        }}
+        fundingWalletOptions={plannerFundingWalletOptions}
+        categoryOptions={plannerPaymentCategories}
+        nextDuePayment={plannerPaymentCard?.nextDuePayment ?? 0}
+        outstandingBalance={plannerPaymentCard?.outstandingBalance ?? 0}
+        submitting={plannerPaymentSubmitting}
+        error={plannerPaymentError}
+        onSubmit={handlePlannerCardPaymentSubmit}
       />
     </>
   );

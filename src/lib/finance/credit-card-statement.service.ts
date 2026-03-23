@@ -14,6 +14,40 @@ const createUtcDate = (year: number, month: number, day: number) =>
 
 const toDateOnlyString = (date: Date) => date.toISOString().split('T')[0];
 
+/**
+ * Pago que cuenta contra el corte: día UTC posterior al del cierre, o mismo día UTC con `paid_at`
+ * estrictamente después del instante de cierre (evita excluir pagos el día del vencimiento del ciclo).
+ */
+const paymentAppliesToStatementPeriod = (
+  paidAt: Date,
+  statementEnd: Date,
+  statementDueDate: Date,
+): boolean => {
+  const paidMs = paidAt.getTime();
+  if (paidMs > endOfUtcCalendarDay(statementDueDate).getTime()) {
+    return false;
+  }
+  const payDay = toDateOnlyString(paidAt);
+  const endDay = toDateOnlyString(statementEnd);
+  if (payDay > endDay) return true;
+  if (payDay < endDay) return false;
+  return paidMs > statementEnd.getTime();
+};
+
+/** Inclusive upper bound so any `paid_at` on the due calendar day (UTC) counts toward the statement. */
+const endOfUtcCalendarDay = (date: Date) =>
+  new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+
 const clampDayToMonth = (year: number, month: number, day: number) =>
   Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
 
@@ -179,16 +213,11 @@ export async function getCreditCardStatementByOwner(
         },
         _sum: { amount: true },
       }),
-      prisma.creditCardPayment.aggregate({
-        where: {
-          ...paymentWhereBase,
-          paid_at: {
-            gt: window.statementEnd,
-            lte: window.statementDueDate,
-          },
-        },
-        _sum: { amount: true },
-      }),
+      sumPaymentsAppliedToStatementByWallet(
+        [creditCardId],
+        window,
+        ownerFilter,
+      ).then((m) => m.get(creditCardId) ?? 0),
       prisma.creditCardPayment.aggregate({
         where: {
           ...paymentWhereBase,
@@ -257,9 +286,9 @@ export async function getCreditCardStatementByOwner(
     (sum, expense) => sum + expense.amount,
     0,
   );
-  const [afterCutoffAgg, appliedToStatementAgg, currentCycleAgg] = paymentTotals;
+  const [afterCutoffAgg, paymentsAppliedToStatementTotal, currentCycleAgg] =
+    paymentTotals;
   const paymentsAfterCutoffTotal = Number(afterCutoffAgg._sum.amount ?? 0);
-  const paymentsAppliedToStatementTotal = Number(appliedToStatementAgg._sum.amount ?? 0);
   const currentCyclePurchasesTotal = currentCyclePurchases.reduce(
     (sum, expense) => sum + expense.amount,
     0,
@@ -447,8 +476,6 @@ export const computeObligationBreakdownFromLedger = (
   const en = window.statementEnd.getTime();
   const ccs = window.currentCycleStart.getTime();
   const cce = window.currentCycleEnd.getTime();
-  const dueT = window.statementDueDate.getTime();
-
   for (const id of cardIds) {
     let lastStatementBalance = 0;
     let currentCyclePurchases = 0;
@@ -465,8 +492,13 @@ export const computeObligationBreakdownFromLedger = (
     let paymentsAppliedToStatement = 0;
     for (const p of payments) {
       if (p.credit_card_wallet_id !== id) continue;
-      const pt = p.paid_at.getTime();
-      if (pt > en && pt <= dueT) {
+      if (
+        paymentAppliesToStatementPeriod(
+          p.paid_at,
+          window.statementEnd,
+          window.statementDueDate,
+        )
+      ) {
         paymentsAppliedToStatement += p.amount;
       }
     }
@@ -557,14 +589,23 @@ const sumPaymentsAppliedToStatementByWallet = async (
   }
 
   const ownerSql = creditPaymentOwnerWhereSql(ownerFilter);
+  const paymentDueEnd = endOfUtcCalendarDay(window.statementDueDate);
   const rows = await prisma.$queryRaw<
     Array<{ credit_card_wallet_id: number; total: unknown }>
   >`
     SELECT p."credit_card_wallet_id", COALESCE(SUM(p."amount"), 0) AS total
     FROM "CreditCardPayment" p
     WHERE p."credit_card_wallet_id" IN (${Prisma.join(cardIds)})
-      AND p."paid_at" > ${window.statementEnd}
-      AND p."paid_at" <= ${window.statementDueDate}
+      AND p."paid_at" <= ${paymentDueEnd}
+      AND (
+        (p."paid_at" AT TIME ZONE 'UTC')::date
+          > (${window.statementEnd} AT TIME ZONE 'UTC')::date
+        OR (
+          (p."paid_at" AT TIME ZONE 'UTC')::date
+            = (${window.statementEnd} AT TIME ZONE 'UTC')::date
+          AND p."paid_at" > ${window.statementEnd}
+        )
+      )
       AND ${ownerSql}
     GROUP BY p."credit_card_wallet_id"
   `;
@@ -677,6 +718,7 @@ async function getDuePaymentsWithAsOf(
       cutoff_day: card.cutoff_day!,
       nextDuePayment,
       statementDueDate: statementDueByWallet.get(card.id)!,
+      outstandingBalance: Number(card.amount),
     };
   });
 

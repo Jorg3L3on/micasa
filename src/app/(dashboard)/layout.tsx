@@ -1,16 +1,11 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { AppSidebar } from '@/components/app-sidebar';
 import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
-import PageTitle from '@/components/PageTitle';
-import { AlertsBell } from '@/components/AlertsBell';
-import { ThemeToggle } from '@/components/theme-toggle';
+  DashboardAppSidebarDynamic,
+  DashboardHeaderToolbarDynamic,
+} from '@/components/dashboard-shell-dynamic';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 export default async function DashboardLayout({
   children,
@@ -34,21 +29,16 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <DashboardAppSidebarDynamic
+        navUser={{
+          name: session.user.name ?? 'Usuario',
+          email: session.user.email ?? '',
+          avatar: session.user.image ?? '',
+        }}
+      />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/80 bg-background shadow-sm transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex min-w-0 flex-1 items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1 shrink-0" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 shrink-0 data-[orientation=vertical]:h-4"
-            />
-            <PageTitle />
-          </div>
-          <div className="flex shrink-0 items-center gap-1 px-4">
-            <AlertsBell />
-            <ThemeToggle />
-          </div>
+        <header className="sticky top-0 z-10 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background shadow-sm transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <DashboardHeaderToolbarDynamic />
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-muted/30">
           <div className="container mx-auto">{children}</div>

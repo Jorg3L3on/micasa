@@ -12,7 +12,6 @@ import {
   Wallet,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 
 import { TeamSwitcher } from '@/components/team-switcher';
 import { NavUser } from '@/components/nav-user';
@@ -26,16 +25,25 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 
-function getCurrentMonthHref(): string {
+/** Mes calendario en UTC (misma fecha en Node SSR y en el navegador para el mismo instante). */
+function getCurrentMonthHrefUtc(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   return `/monthly/${year}/${month}`;
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export type AppSidebarNavUser = {
+  name: string;
+  email: string;
+  avatar: string;
+};
+
+export function AppSidebar({
+  navUser,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { navUser: AppSidebarNavUser }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
   const { context } = useFinanceContext();
 
   const catalogItems = [
@@ -79,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: 'Planificación',
-      url: getCurrentMonthHref(),
+      url: getCurrentMonthHrefUtc(),
       icon: Calendar,
       isActive: pathname.startsWith('/monthly/'),
     },
@@ -168,13 +176,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain groupLabel="Despensa" items={despensaItems} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser
-          user={{
-            name: session?.user?.name ?? 'Usuario',
-            email: session?.user?.email ?? '',
-            avatar: session?.user?.image ?? '',
-          }}
-        />
+        <NavUser user={navUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
