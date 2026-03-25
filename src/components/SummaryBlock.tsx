@@ -198,7 +198,7 @@ export default function SummaryBlock({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="block w-full text-left text-[9px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="block w-full text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
                         Disponible ahora
                       </button>
@@ -233,7 +233,7 @@ export default function SummaryBlock({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="block w-full text-left text-[9px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="block w-full text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
                         Cuando pagues todo lo planeado
                       </button>
@@ -310,18 +310,18 @@ export default function SummaryBlock({
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 dark:bg-foreground/45" />
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       Pagado {Math.round(paidPercent)}%
                     </span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/45 dark:bg-muted-foreground/50" />
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       Pendiente {Math.round(pendingPercent)}%
                     </span>
                   </span>
                 </div>
-                <span className="text-[9px] text-muted-foreground sm:shrink-0 sm:text-right">
+                <span className="text-[10px] text-muted-foreground sm:shrink-0 sm:text-right">
                   {Math.round(totalSpentPercent)}% del ingreso comprometido
                 </span>
               </div>

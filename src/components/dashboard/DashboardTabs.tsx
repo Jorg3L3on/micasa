@@ -56,12 +56,15 @@ export default function DashboardTabs({
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="w-full">
-      <TabsList className="mb-6 w-full sm:w-auto flex flex-wrap h-auto gap-1 p-1.5 rounded-lg bg-muted/40">
+      <TabsList
+        variant="line"
+        className="mb-6 h-11 w-full justify-start border-b border-border/60 rounded-none bg-transparent px-0"
+      >
         {TAB_CONFIG.map(({ value, label, ariaLabel, icon: Icon }) => (
           <TabsTrigger
             key={value}
             value={value}
-            className="gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors"
+            className="gap-2 px-5 text-sm font-medium"
             aria-label={ariaLabel}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
@@ -70,35 +73,37 @@ export default function DashboardTabs({
         ))}
       </TabsList>
 
-      <TabsContent value="resumen" className="mt-0 space-y-6">
-        <LiquidityTeaserCard />
-        <div className={DASHBOARD_GRID_CLASS}>
+      <TabsContent value="resumen" className="mt-0 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          <div className="lg:col-span-2">
+            <LiquidityTeaserCard />
+          </div>
           <QuickActionsCard compact period={data.period} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <CurrentPeriodSummaryCard data={data} />
           <AvailableVsCommittedCard data={data} />
         </div>
       </TabsContent>
 
       <TabsContent value="actividad" className="mt-0 space-y-6">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <RecentActivityCard data={data} />
           </div>
-          <div className="space-y-4">
+          <div>
             <UpcomingObligationsCard data={data} />
           </div>
         </div>
       </TabsContent>
 
-      <TabsContent value="analisis" className="mt-0 space-y-6">
+      <TabsContent value="analisis" className="mt-0 space-y-5">
         <div className={DASHBOARD_GRID_CLASS}>
           <PeriodComparisonCard data={data} />
           <FixedVsVariableCard data={data} />
           <ExpenseHealthCheckCard data={data} />
         </div>
-        <div className="max-w-md">
-          <IncomeBreakdownCard data={data} />
-        </div>
+        <IncomeBreakdownCard data={data} />
       </TabsContent>
     </Tabs>
   );

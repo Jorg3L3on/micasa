@@ -300,10 +300,7 @@ export default function MonthlyFortnightView({
       )}
     >
       <div
-        className={cn(
-          'flex',
-          layout === 'single' ? 'justify-start' : 'justify-end',
-        )}
+        className="flex justify-end"
         role="region"
         aria-label="Controles de vista de planificación"
       >
