@@ -327,7 +327,7 @@ export default async function MonthlyPage({
         </div>
 
         <h1
-          className="min-w-0 flex-1 truncate text-center text-sm font-semibold tabular-nums sm:text-base"
+          className="min-w-0 flex-1 truncate text-center text-xl font-bold sm:text-2xl"
           aria-live="polite"
         >
           {monthName} {year}

@@ -778,7 +778,7 @@ export default function FortnightColumn({
           >
             <TabsTrigger
               value="expenses"
-              className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
+              className="px-3 py-2 text-xs font-medium sm:text-sm"
               aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
             >
               <span className="inline-flex items-center gap-2">
@@ -794,7 +794,7 @@ export default function FortnightColumn({
             </TabsTrigger>
             <TabsTrigger
               value="cards"
-              className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
+              className="px-3 py-2 text-xs font-medium sm:text-sm"
               aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
             >
               <span className="inline-flex items-center gap-2">
