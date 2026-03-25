@@ -284,10 +284,34 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
           </div>
         </div>
       ) : (
-        <p className="text-muted-foreground min-w-0 truncate text-xs tabular-nums">
-          {sortedWallets.length} billetera
-          {sortedWallets.length !== 1 ? 's' : ''} · pulsa la flecha para ver saldos
-        </p>
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+          {sortedWallets.map((wallet) => (
+            <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  wallet.type === 'CASH' ? 'bg-emerald-500' :
+                  wallet.type === 'DEBIT_CARD' ? 'bg-blue-500' :
+                  wallet.type === 'CREDIT_CARD' ? 'bg-violet-500' :
+                  wallet.type === 'DEPARTMENT_STORE_CARD' ? 'bg-amber-500' :
+                  'bg-muted-foreground/50',
+                )}
+                aria-hidden
+              />
+              <span className="max-w-[80px] truncate text-[10px] text-muted-foreground">
+                {wallet.name}
+              </span>
+              <span
+                className={cn(
+                  'font-mono text-xs font-medium tabular-nums',
+                  wallet.amount < 0 ? 'text-destructive/80' : 'text-foreground/80',
+                )}
+              >
+                {formatCurrency(wallet.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

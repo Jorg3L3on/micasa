@@ -412,16 +412,7 @@ export default function ExpenseTable({
       {
         accessorKey: 'is_paid',
         id: 'is_paid',
-        header: () => (
-          <span
-            className={cn(
-              'text-center font-medium',
-              isCompact ? 'text-[10px]' : 'text-xs',
-            )}
-          >
-            Estado
-          </span>
-        ),
+        header: () => <span className="sr-only">Estado</span>,
         cell: ({ row }) => {
           const expense = row.original;
           const isUpdating = updatingIds.has(expense.id);
@@ -596,16 +587,7 @@ export default function ExpenseTable({
       },
       {
         id: 'actions',
-        header: () => (
-          <span
-            className={cn(
-              'text-center font-medium',
-              isCompact ? 'text-[10px]' : 'text-xs',
-            )}
-          >
-            Acciones
-          </span>
-        ),
+        header: () => <span className="sr-only">Acciones</span>,
         cell: ({ row }) => {
           const expense = row.original;
           const isUpdating = updatingIds.has(expense.id);
@@ -829,8 +811,8 @@ export default function ExpenseTable({
                           isCompact ? 'py-2' : 'py-2.5',
                         )}
                       >
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Efectivo y débito
+                        <span className="text-xs text-muted-foreground">
+                          Total efectivo/débito
                         </span>
                       </TableCell>
                       <TableCell
@@ -859,10 +841,10 @@ export default function ExpenseTable({
                             isCompact ? 'py-1.5' : 'py-2',
                           )}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          <span className="text-xs font-medium text-muted-foreground">
                             Cargos a tarjeta
                           </span>
-                          <span className="mt-0.5 block text-[9px] font-normal normal-case text-muted-foreground">
+                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
                             No suman al efectivo hasta pagar el estado de cuenta
                           </span>
                         </TableCell>
