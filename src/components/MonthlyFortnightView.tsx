@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -14,14 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type {
   DuePaymentItem,
@@ -30,7 +23,7 @@ import type {
   PlannerOrphanCardPaymentsSummary,
   TransactionRow,
 } from '@/types/catalog';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
 const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
@@ -180,8 +173,6 @@ export default function MonthlyFortnightView({
   const [summaryVisible, setSummaryVisible] = useState(true);
   const [tableDensity, setTableDensity] =
     useState<ExpenseTableDensity>('comfortable');
-  const [sheetOpen, setSheetOpen] = useState(false);
-
   useEffect(() => {
     const storedLayout = readStoredLayout();
     const storedPeriod = readStoredPeriod();
@@ -202,65 +193,37 @@ export default function MonthlyFortnightView({
     setPrefsReady(true);
   }, []);
 
-  const closeSheetAfterChange = useCallback(() => {
-    setSheetOpen(false);
+  const handleLayoutRadio = useCallback((value: string) => {
+    if (value === 'single') {
+      setLayout('single');
+      persistLayout('single');
+    } else if (value === 'both') {
+      setLayout('both');
+      persistLayout('both');
+    }
   }, []);
 
-  const handleLayoutRadio = useCallback(
-    (value: string, fromSheet?: boolean) => {
-      if (value === 'single') {
-        setLayout('single');
-        persistLayout('single');
-        if (fromSheet) closeSheetAfterChange();
-        return;
-      }
-      if (value === 'both') {
-        setLayout('both');
-        persistLayout('both');
-        if (fromSheet) closeSheetAfterChange();
-      }
-    },
-    [closeSheetAfterChange],
-  );
+  const handlePeriodChange = useCallback((value: string) => {
+    if (value !== 'FIRST' && value !== 'SECOND') return;
+    setPeriod(value);
+    persistPeriod(value);
+  }, []);
 
-  const handlePeriodChange = useCallback(
-    (value: string, fromSheet?: boolean) => {
-      if (value !== 'FIRST' && value !== 'SECOND') return;
-      setPeriod(value);
-      persistPeriod(value);
-      if (fromSheet) closeSheetAfterChange();
-    },
-    [closeSheetAfterChange],
-  );
+  const handleSummaryChecked = useCallback((checked: boolean) => {
+    setSummaryVisible(checked);
+    persistSummaryVisible(checked);
+  }, []);
 
-  const handleSummaryChecked = useCallback(
-    (checked: boolean, fromSheet?: boolean) => {
-      setSummaryVisible(checked);
-      persistSummaryVisible(checked);
-      if (fromSheet) closeSheetAfterChange();
-    },
-    [closeSheetAfterChange],
-  );
-
-  const handleTableDensityChange = useCallback(
-    (value: string, fromSheet?: boolean) => {
-      if (value !== 'comfortable' && value !== 'compact') return;
-      setTableDensity(value);
-      persistTableDensity(value);
-      if (fromSheet) closeSheetAfterChange();
-    },
-    [closeSheetAfterChange],
-  );
+  const handleTableDensityChange = useCallback((value: string) => {
+    if (value !== 'comfortable' && value !== 'compact') return;
+    setTableDensity(value);
+    persistTableDensity(value);
+  }, []);
 
   const handleShowSummaryFromColumn = useCallback(() => {
     setSummaryVisible(true);
     persistSummaryVisible(true);
   }, []);
-
-  const vistaChip = useMemo(() => {
-    if (layout === 'both') return 'Ambas';
-    return period === 'FIRST' ? 'Una · 1ª' : 'Una · 2ª';
-  }, [layout, period]);
 
   const showFirst = layout === 'both' || period === 'FIRST';
   const showSecond = layout === 'both' || period === 'SECOND';
@@ -284,12 +247,12 @@ export default function MonthlyFortnightView({
     );
   }
 
-  const sheetOptionClass = (active: boolean) =>
+  const segmentBtn = (active: boolean) =>
     cn(
-      'flex min-h-11 w-full items-center rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors',
+      'rounded-md px-3 py-1 text-xs font-medium transition-colors',
       active
-        ? 'border-primary/40 bg-primary/5 text-foreground'
-        : 'border-border/60 bg-card text-foreground hover:bg-muted/50',
+        ? 'bg-primary/10 text-primary'
+        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
     );
 
   return (
@@ -300,246 +263,96 @@ export default function MonthlyFortnightView({
       )}
     >
       <div
-        className="flex justify-end"
+        className="flex items-center justify-end gap-2"
         role="region"
         aria-label="Controles de vista de planificación"
       >
-        <Button
-          type="button"
-          variant="ghost"
-          className={cn(
-            'h-8 gap-1.5 rounded-lg px-2 text-muted-foreground sm:hidden',
-            'hover:bg-muted/60 hover:text-foreground',
-          )}
-          aria-haspopup="dialog"
-          aria-label={`Vista de planificación: ${vistaChip}. Abrir opciones.`}
-          onClick={() => setSheetOpen(true)}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="text-xs font-medium">Vista</span>
-          <span className="max-w-[120px] truncate text-xs text-muted-foreground">
-            {vistaChip}
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-        </Button>
-
-        <div className="hidden sm:block">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className={cn(
-                  'h-8 gap-1.5 rounded-lg px-2 text-muted-foreground',
-                  'hover:bg-muted/60 hover:text-foreground',
-                )}
-                aria-haspopup="menu"
-                aria-label={`Vista de planificación: ${vistaChip}. Abrir opciones.`}
-              >
-                <SlidersHorizontal
-                  className="h-3.5 w-3.5 shrink-0"
-                  aria-hidden
-                />
-                <span className="text-xs font-medium sm:text-sm">Vista</span>
-                <span className="max-w-[120px] truncate text-xs text-muted-foreground sm:max-w-[200px]">
-                  {vistaChip}
-                </span>
-                <ChevronDown
-                  className="h-3.5 w-3.5 shrink-0 opacity-60"
-                  aria-hidden
-                />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="min-w-56"
-              aria-label="Opciones de vista de planificación"
-            >
-              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Disposición
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={layout}
-                onValueChange={handleLayoutRadio}
-              >
-                <DropdownMenuRadioItem value="single">
-                  Una quincena
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="both">
-                  Ambas quincenas
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-
-              {layout === 'single' ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Quincena visible
-                  </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={period}
-                    onValueChange={handlePeriodChange}
-                  >
-                    <DropdownMenuRadioItem
-                      value="FIRST"
-                      title={first.label}
-                      className="max-w-[min(100vw-2rem,18rem)]"
-                    >
-                      <span className="truncate">1ª — {first.label}</span>
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="SECOND"
-                      title={second.label}
-                      className="max-w-[min(100vw-2rem,18rem)]"
-                    >
-                      <span className="truncate">2ª — {second.label}</span>
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </>
-              ) : null}
-
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={summaryVisible}
-                onCheckedChange={handleSummaryChecked}
-              >
-                Mostrar resumen
-              </DropdownMenuCheckboxItem>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Densidad de tabla
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={tableDensity}
-                onValueChange={handleTableDensityChange}
-              >
-                <DropdownMenuRadioItem value="comfortable">
-                  Cómoda
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="compact">
-                  Compacta
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Layout toggle: Una | Ambas */}
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/60 p-0.5">
+          <button
+            type="button"
+            onClick={() => handleLayoutRadio('single')}
+            className={segmentBtn(layout === 'single')}
+            aria-pressed={layout === 'single'}
+            aria-label="Ver una quincena"
+          >
+            Una
+          </button>
+          <button
+            type="button"
+            onClick={() => handleLayoutRadio('both')}
+            className={segmentBtn(layout === 'both')}
+            aria-pressed={layout === 'both'}
+            aria-label="Ver ambas quincenas"
+          >
+            Ambas
+          </button>
         </div>
-      </div>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent
-          side="bottom"
-          className="max-h-[88vh] overflow-y-auto rounded-t-xl px-4 pb-6 pt-2 sm:hidden"
-          showCloseButton
-        >
-          <SheetHeader className="pb-2 text-left">
-            <SheetTitle className="text-base">Vista de planificación</SheetTitle>
-          </SheetHeader>
-
-          <div className="flex flex-col gap-5 pt-2">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Disposición
-              </p>
-              <div
-                className="flex flex-col gap-2"
-                role="radiogroup"
-                aria-label="Disposición de quincenas"
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={layout === 'single'}
-                  className={sheetOptionClass(layout === 'single')}
-                  onClick={() => handleLayoutRadio('single', true)}
-                >
-                  Una quincena
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={layout === 'both'}
-                  className={sheetOptionClass(layout === 'both')}
-                  onClick={() => handleLayoutRadio('both', true)}
-                >
-                  Ambas quincenas
-                </button>
-              </div>
-            </div>
-
-            {layout === 'single' ? (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Quincena visible
-                </p>
-                <div
-                  className="flex flex-col gap-2"
-                  role="radiogroup"
-                  aria-label="Quincena visible"
-                >
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={period === 'FIRST'}
-                    className={sheetOptionClass(period === 'FIRST')}
-                    onClick={() => handlePeriodChange('FIRST', true)}
-                  >
-                    <span className="truncate">1ª — {first.label}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={period === 'SECOND'}
-                    className={sheetOptionClass(period === 'SECOND')}
-                    onClick={() => handlePeriodChange('SECOND', true)}
-                  >
-                    <span className="truncate">2ª — {second.label}</span>
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5">
-              <Checkbox
-                checked={summaryVisible}
-                onCheckedChange={(c) => handleSummaryChecked(c === true, true)}
-                aria-label="Mostrar resumen"
-              />
-              <span className="text-sm font-medium">Mostrar resumen</span>
-            </label>
-
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Densidad de tabla
-              </p>
-              <div
-                className="flex flex-col gap-2"
-                role="radiogroup"
-                aria-label="Densidad de tabla"
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={tableDensity === 'comfortable'}
-                  className={sheetOptionClass(tableDensity === 'comfortable')}
-                  onClick={() => handleTableDensityChange('comfortable', true)}
-                >
-                  Cómoda
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={tableDensity === 'compact'}
-                  className={sheetOptionClass(tableDensity === 'compact')}
-                  onClick={() => handleTableDensityChange('compact', true)}
-                >
-                  Compacta
-                </button>
-              </div>
-            </div>
+        {/* Period selector — only visible in single mode */}
+        {layout === 'single' && (
+          <div className="flex items-center gap-0.5 rounded-lg border border-border/60 p-0.5">
+            <button
+              type="button"
+              onClick={() => handlePeriodChange('FIRST')}
+              className={segmentBtn(period === 'FIRST')}
+              aria-pressed={period === 'FIRST'}
+              aria-label={`Primera quincena: ${first.label}`}
+              title={first.label}
+            >
+              1ª
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange('SECOND')}
+              className={segmentBtn(period === 'SECOND')}
+              aria-pressed={period === 'SECOND'}
+              aria-label={`Segunda quincena: ${second.label}`}
+              title={second.label}
+            >
+              2ª
+            </button>
           </div>
-        </SheetContent>
-      </Sheet>
+        )}
+
+        {/* Secondary settings: summary visibility + table density */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+              aria-label="Opciones adicionales de vista"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-48">
+            <DropdownMenuCheckboxItem
+              checked={summaryVisible}
+              onCheckedChange={handleSummaryChecked}
+            >
+              Mostrar resumen
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Densidad de tabla
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={tableDensity}
+              onValueChange={handleTableDensityChange}
+            >
+              <DropdownMenuRadioItem value="comfortable">
+                Cómoda
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="compact">
+                Compacta
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <div
         className={cn(
@@ -548,36 +361,70 @@ export default function MonthlyFortnightView({
         )}
       >
         {showFirst ? (
-          <FortnightColumn
-            key={`${ownerKey}-${year}-${month}-FIRST`}
-            label={first.label}
-            transactions={first.transactions}
-            summary={first.summary}
-            fortnightId={first.fortnightId}
-            year={year}
-            month={month}
-            period="FIRST"
-            showSummaryCard={summaryVisible}
-            onShowSummaryCard={handleShowSummaryFromColumn}
-            tableDensity={tableDensity}
-            cardDueItems={first.cardDueItems}
-          />
+          <div className="flex flex-col gap-3">
+            {layout === 'both' && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+                    1ª
+                  </span>
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {first.label}
+                  </span>
+                </div>
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                  {formatCurrency(first.summary.totalIncome)}
+                </span>
+              </div>
+            )}
+            <FortnightColumn
+              key={`${ownerKey}-${year}-${month}-FIRST`}
+              label={first.label}
+              transactions={first.transactions}
+              summary={first.summary}
+              fortnightId={first.fortnightId}
+              year={year}
+              month={month}
+              period="FIRST"
+              showSummaryCard={summaryVisible}
+              onShowSummaryCard={handleShowSummaryFromColumn}
+              tableDensity={tableDensity}
+              cardDueItems={first.cardDueItems}
+            />
+          </div>
         ) : null}
         {showSecond ? (
-          <FortnightColumn
-            key={`${ownerKey}-${year}-${month}-SECOND`}
-            label={second.label}
-            transactions={second.transactions}
-            summary={second.summary}
-            fortnightId={second.fortnightId}
-            year={year}
-            month={month}
-            period="SECOND"
-            showSummaryCard={summaryVisible}
-            onShowSummaryCard={handleShowSummaryFromColumn}
-            tableDensity={tableDensity}
-            cardDueItems={second.cardDueItems}
-          />
+          <div className="flex flex-col gap-3">
+            {layout === 'both' && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-muted/60 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground ring-1 ring-inset ring-border/60">
+                    2ª
+                  </span>
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {second.label}
+                  </span>
+                </div>
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                  {formatCurrency(second.summary.totalIncome)}
+                </span>
+              </div>
+            )}
+            <FortnightColumn
+              key={`${ownerKey}-${year}-${month}-SECOND`}
+              label={second.label}
+              transactions={second.transactions}
+              summary={second.summary}
+              fortnightId={second.fortnightId}
+              year={year}
+              month={month}
+              period="SECOND"
+              showSummaryCard={summaryVisible}
+              onShowSummaryCard={handleShowSummaryFromColumn}
+              tableDensity={tableDensity}
+              cardDueItems={second.cardDueItems}
+            />
+          </div>
         ) : null}
       </div>
     </div>
