@@ -831,7 +831,7 @@ export async function listCreditCardStatementImports(
   );
 }
 
-export async function uploadMercadoPagoCreditCardStatement(
+export async function uploadCreditCardStatement(
   creditCardId: number,
   formData: FormData,
   context?: FinanceContextType,
@@ -842,6 +842,9 @@ export async function uploadMercadoPagoCreditCardStatement(
     context,
   );
 }
+
+/** @deprecated Use uploadCreditCardStatement */
+export const uploadMercadoPagoCreditCardStatement = uploadCreditCardStatement;
 
 export async function rollbackCreditCardStatementImport(
   creditCardId: number,

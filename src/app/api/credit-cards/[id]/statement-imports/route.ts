@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
-import { importMercadoPagoStatementPdf } from '@/lib/server/credit-card-statement/mercado-pago-statement-import.service';
+import { StatementImportProvider } from '@/generated/prisma/client';
+import { importStatementPdf } from '@/lib/server/credit-card-statement/statement-import.service';
 
 export const runtime = 'nodejs';
 
@@ -47,7 +48,9 @@ export async function GET(
         period_end: true,
         account_number: true,
         statement_issue_date: true,
+        payment_due_date: true,
         total_due: true,
+        minimum_payment: true,
         file_name: true,
         parse_warnings: true,
         _count: { select: { expenses: true } },
@@ -62,7 +65,9 @@ export async function GET(
       period_end: r.period_end?.toISOString() ?? null,
       account_number: r.account_number,
       statement_issue_date: r.statement_issue_date?.toISOString() ?? null,
+      payment_due_date: r.payment_due_date?.toISOString() ?? null,
       total_due: r.total_due != null ? Number(r.total_due) : null,
+      minimum_payment: r.minimum_payment != null ? Number(r.minimum_payment) : null,
       file_name: r.file_name,
       has_file: r.file_name != null,
       expense_count: r._count.expenses,
@@ -126,13 +131,17 @@ export async function POST(
       );
     }
 
-    const provider = String(formData.get('provider') ?? '').toUpperCase();
-    if (provider && provider !== 'MERCADO_PAGO') {
+    const providerRaw = String(formData.get('provider') ?? '').toUpperCase();
+    const validProviders: string[] = Object.values(StatementImportProvider);
+    if (!providerRaw || !validProviders.includes(providerRaw)) {
       return NextResponse.json(
-        { error: 'Por ahora solo se admite provider=MERCADO_PAGO' },
+        {
+          error: `Proveedor no válido. Opciones: ${validProviders.join(', ')}`,
+        },
         { status: 400 },
       );
     }
+    const provider = providerRaw as StatementImportProvider;
 
     const storeFile = formData.get('store_file') !== 'false';
     const skipDuplicates = formData.get('skip_duplicates') === 'true';
@@ -145,7 +154,7 @@ export async function POST(
       }
     }
 
-    const result = await importMercadoPagoStatementPdf({
+    const result = await importStatementPdf(provider, {
       buffer: buf,
       fileName: file.name || 'estado-cuenta.pdf',
       mimeType: file.type || 'application/pdf',

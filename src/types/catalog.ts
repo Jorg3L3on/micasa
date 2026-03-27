@@ -154,7 +154,9 @@ export type CreditCardStatementImportListItem = {
   period_end: string | null;
   account_number: string | null;
   statement_issue_date: string | null;
+  payment_due_date: string | null;
   total_due: number | null;
+  minimum_payment: number | null;
   file_name: string | null;
   has_file: boolean;
   expense_count: number;
@@ -294,9 +296,11 @@ export type CreditCardStatementResponse = {
   current_cycle_end: string;
   outstanding_balance: number;
   last_statement_balance: number;
+  imported_statement_total: number | null;
   payments_since_last_cutoff: number;
   payments_applied_to_statement: number;
   next_due_payment: number;
+  minimum_payment: number | null;
   current_cycle_purchases: number;
   current_cycle_payments: number;
   statement_purchases: CreditCardStatementPurchaseItem[];

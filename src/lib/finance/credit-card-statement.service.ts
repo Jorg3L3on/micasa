@@ -174,7 +174,10 @@ export async function getCreditCardStatementByOwner(
     credit_card_wallet_id: creditCardId,
   };
 
-  const [purchases, payments, paymentTotals] = await Promise.all([
+  // Most recent statement import whose period_end falls within ±7 days of
+  // the statement window end — used to override next_due_payment and due date.
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const [purchases, payments, paymentTotals, recentImport] = await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -229,7 +232,25 @@ export async function getCreditCardStatementByOwner(
         _sum: { amount: true },
       }),
     ]),
+    prisma.creditCardStatementImport.findFirst({
+      where: {
+        wallet_id: creditCardId,
+        period_end: {
+          gte: new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS),
+          lte: new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS),
+        },
+      },
+      orderBy: { created_at: 'desc' },
+      select: { total_due: true, payment_due_date: true, minimum_payment: true },
+    }),
   ]);
+
+  const importedTotalDue =
+    recentImport?.total_due != null ? Number(recentImport.total_due) : null;
+  const importedMinimumPayment =
+    recentImport?.minimum_payment != null
+      ? Number(recentImport.minimum_payment)
+      : null;
 
   const statementPurchases = purchases
     .map((expense) => ({
@@ -311,17 +332,21 @@ export async function getCreditCardStatementByOwner(
     due_day: card.due_day,
     statement_start: toDateOnlyString(window.statementStart),
     statement_end: toDateOnlyString(window.statementEnd),
-    statement_due_date: toDateOnlyString(window.statementDueDate),
+    statement_due_date: recentImport?.payment_due_date
+      ? toDateOnlyString(recentImport.payment_due_date)
+      : toDateOnlyString(window.statementDueDate),
     current_cycle_start: toDateOnlyString(window.currentCycleStart),
     current_cycle_end: toDateOnlyString(window.currentCycleEnd),
     outstanding_balance: currentBalance,
     last_statement_balance: lastStatementBalance,
     payments_since_last_cutoff: paymentsAfterCutoffTotal,
     payments_applied_to_statement: paymentsAppliedToStatementTotal,
+    imported_statement_total: importedTotalDue,
     next_due_payment: Math.max(
-      lastStatementBalance - paymentsAppliedToStatementTotal,
+      (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatementTotal,
       0,
     ),
+    minimum_payment: importedMinimumPayment,
     current_cycle_purchases: currentCyclePurchasesTotal,
     current_cycle_payments: currentCyclePaymentsTotal,
     statement_purchases: statementPurchases.map((expense) => ({
