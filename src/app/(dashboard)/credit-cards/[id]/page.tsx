@@ -22,9 +22,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import CreditCardMercadoPagoImportDialog from '@/components/credit-cards/CreditCardMercadoPagoImportDialog';
+import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
+import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -676,6 +678,21 @@ export default function CreditCardDetailPage() {
     }
   }, [context, creditCardId, loadData, rollbackImportId]);
 
+  const daysUntilDue = useMemo(() => {
+    if (!statement) return 0;
+    const today = new Date(getTodayDateString() + 'T12:00:00Z');
+    const due = new Date(statement.statement_due_date + 'T12:00:00Z');
+    return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }, [statement]);
+
+  const utilizationPct = useMemo((): number | null => {
+    if (!statement?.credit_limit || statement.credit_limit === 0) return null;
+    return Math.min(
+      100,
+      Math.round((statement.outstanding_balance / statement.credit_limit) * 100),
+    );
+  }, [statement]);
+
   if (context.id === 0 || (loading && !statement)) {
     return <CreditCardDetailSkeleton />;
   }
@@ -689,7 +706,8 @@ export default function CreditCardDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
@@ -702,201 +720,295 @@ export default function CreditCardDetailPage() {
             </p>
           </div>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 gap-1.5 self-start sm:self-auto"
+              aria-label="Más acciones"
+            >
+              <ChevronDown className="h-4 w-4 opacity-70" />
+              Más
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem
+              onClick={() => setMpImportDialogOpen(true)}
+              className="cursor-pointer"
+            >
+              <Upload className="mr-2 h-4 w-4 shrink-0" />
+              Importar PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleExportCsv}
+              className="cursor-pointer"
+            >
+              <Download className="mr-2 h-4 w-4 shrink-0" />
+              Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleExportPdf}
+              className="cursor-pointer"
+            >
+              <FileText className="mr-2 h-4 w-4 shrink-0" />
+              Exportar PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
+      {/* ── Hero: pago próximo ─────────────────────────────────────── */}
+      <div
+        className={cn(
+          'rounded-xl border-2 p-5 transition-colors',
+          daysUntilDue < 0
+            ? 'border-destructive/60 bg-destructive/5'
+            : daysUntilDue <= 5
+              ? 'border-amber-500/60 bg-amber-500/5'
+              : daysUntilDue <= 10
+                ? 'border-yellow-500/40 bg-yellow-500/5'
+                : 'border-border/60 bg-card',
+        )}
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Pago próximo
+            </p>
+            <p className="text-4xl font-bold font-mono tabular-nums">
+              {formatCurrency(statement.next_due_payment)}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
                 variant="outline"
-                className="h-9 gap-1.5"
-                aria-label="Más acciones: exportar estado de cuenta"
+                className={cn(
+                  'gap-1.5 text-xs font-medium',
+                  daysUntilDue < 0
+                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                    : daysUntilDue <= 5
+                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      : daysUntilDue <= 10
+                        ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                        : 'border-border/60 text-muted-foreground',
+                )}
               >
-                <ChevronDown className="h-4 w-4 opacity-70" />
-                Más
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem
-                onClick={handleExportCsv}
-                className="cursor-pointer"
-              >
-                <Download className="mr-2 h-4 w-4 shrink-0" />
-                Exportar CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleExportPdf}
-                className="cursor-pointer"
-              >
-                <FileText className="mr-2 h-4 w-4 shrink-0" />
-                Exportar PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-9 gap-2"
-            onClick={() => setMpImportDialogOpen(true)}
-            aria-label="Importar estado de cuenta desde PDF de Mercado Pago"
-          >
-            <Upload className="h-4 w-4 shrink-0" />
-            Importar PDF
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-9 gap-2"
-            onClick={() => setPurchaseDialogOpen(true)}
-          >
-            <ShoppingCart className="h-4 w-4 shrink-0" />
-            Registrar compra
-          </Button>
-          <Button
-            type="button"
-            className="h-9 gap-2 rounded-xl shadow-sm"
-            onClick={() => setPaymentDialogOpen(true)}
-          >
-            <Wallet className="h-4 w-4 shrink-0" />
-            Registrar pago
-          </Button>
+                <CalendarClock className="h-3 w-3" />
+                {daysUntilDue < 0
+                  ? `Vencido hace ${Math.abs(daysUntilDue)} día${Math.abs(daysUntilDue) === 1 ? '' : 's'}`
+                  : daysUntilDue === 0
+                    ? 'Vence hoy'
+                    : `Vence en ${daysUntilDue} día${daysUntilDue === 1 ? '' : 's'}`}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {formatDate(statement.statement_due_date)}
+              </span>
+              {statement.minimum_payment != null &&
+                statement.minimum_payment !== statement.next_due_payment && (
+                  <span className="text-xs text-muted-foreground">
+                    Mínimo: {formatCurrency(statement.minimum_payment)}
+                  </span>
+                )}
+            </div>
+            {utilizationPct != null && (
+              <div className="max-w-xs space-y-1 pt-1">
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Utilización de crédito</span>
+                  <span className="font-mono tabular-nums">{utilizationPct}%</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      utilizationPct > 80
+                        ? 'bg-destructive'
+                        : utilizationPct > 50
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500',
+                    )}
+                    style={{ width: `${utilizationPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end">
+            <Button
+              type="button"
+              className="gap-2 rounded-xl shadow-sm"
+              onClick={() => setPaymentDialogOpen(true)}
+            >
+              <Wallet className="h-4 w-4 shrink-0" />
+              Registrar pago
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setPurchaseDialogOpen(true)}
+            >
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              Registrar compra
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handlePreviousCycle}
-          aria-label="Ciclo anterior"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-
-        <div className="min-w-0 text-center">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Ciclo actual
-          </p>
-          <p className="text-sm font-semibold tabular-nums">
-            {formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)}
-          </p>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleNextCycle}
-          disabled={isCurrentCycle}
-          aria-label="Ciclo siguiente"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-
-        {!isCurrentCycle && (
+      {/* ── Cycle nav + compact stats ──────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1 self-start rounded-lg border border-border/60 bg-muted/40 px-1 py-1">
           <Button
             variant="ghost"
-            size="sm"
-            onClick={handleResetToToday}
-            aria-label="Volver al ciclo actual"
-            className="ml-1 text-xs"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handlePreviousCycle}
+            aria-label="Ciclo anterior"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Hoy
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-        )}
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 px-3 py-3 dark:bg-violet-500/8">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Deuda actual
-          </p>
-          <p className="text-2xl font-bold font-mono tabular-nums">
-            {formatCurrency(statement.outstanding_balance)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-l-[3px] border-l-emerald-500/50 bg-emerald-500/5 px-3 py-3 dark:bg-emerald-500/8">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Crédito disponible
-          </p>
-          <p
-            className={cn(
-              'text-2xl font-bold font-mono tabular-nums',
-              (statement.available_credit ?? 0) < 0 && 'text-destructive',
-            )}
+          <div className="min-w-0 px-2 text-center">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Ciclo
+            </p>
+            <p className="text-xs font-semibold tabular-nums">
+              {formatCycleRange(
+                statement.current_cycle_start,
+                statement.current_cycle_end,
+              )}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleNextCycle}
+            disabled={isCurrentCycle}
+            aria-label="Ciclo siguiente"
           >
-            {statement.available_credit == null
-              ? 'Sin línea'
-              : formatCurrency(statement.available_credit)}
-          </p>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+          {!isCurrentCycle && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-1.5 text-[10px]"
+              onClick={handleResetToToday}
+              aria-label="Volver al ciclo actual"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Hoy
+            </Button>
+          )}
         </div>
-        <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 px-3 py-3 dark:bg-amber-500/8">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Pago próximo
-          </p>
-          <p className="text-2xl font-bold font-mono tabular-nums">
-            {formatCurrency(statement.next_due_payment)}
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            Vence el {formatDate(statement.statement_due_date)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 px-3 py-3 dark:bg-blue-500/8">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Compras del ciclo
-          </p>
-          <p className="text-2xl font-bold font-mono tabular-nums">
-            {formatCurrency(statement.current_cycle_purchases)}
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            Pagos del ciclo {formatCurrency(statement.current_cycle_payments)}
-          </p>
+        <div className="flex flex-wrap gap-2">
+          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 px-3 py-2 dark:bg-violet-500/8">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Deuda actual
+            </p>
+            <p className="text-sm font-bold font-mono tabular-nums">
+              {formatCurrency(statement.outstanding_balance)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-l-[3px] border-l-emerald-500/50 bg-emerald-500/5 px-3 py-2 dark:bg-emerald-500/8">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Disponible
+            </p>
+            <p
+              className={cn(
+                'text-sm font-bold font-mono tabular-nums',
+                (statement.available_credit ?? 0) < 0 && 'text-destructive',
+              )}
+            >
+              {statement.available_credit == null
+                ? 'Sin línea'
+                : formatCurrency(statement.available_credit)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 px-3 py-2 dark:bg-blue-500/8">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Compras ciclo
+            </p>
+            <p className="text-sm font-bold font-mono tabular-nums">
+              {formatCurrency(statement.current_cycle_purchases)}
+            </p>
+          </div>
         </div>
       </div>
 
+      {/* ── Chart + Statement summary ──────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="overflow-hidden border-border/60 lg:col-span-1">
-          <CardHeader>
+        <div className="lg:col-span-2">
+          <CreditCardPaymentsChart
+            paymentHistory={statement.payment_history}
+            msiActivePurchases={statement.msi_active_purchases}
+            statementEnd={statement.statement_end}
+          />
+        </div>
+        <Card className="overflow-hidden border-border/60">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">
-              Resumen del estado de cuenta
+              Estado de cuenta
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-start gap-2">
-              <Receipt className="mt-0.5 h-4 w-4 text-violet-500" />
-              <div>
-                <p className="text-muted-foreground">Periodo facturado</p>
-                <p>
-                  {formatDate(statement.statement_start)} al{' '}
-                  {formatDate(statement.statement_end)}
-                </p>
-              </div>
+          <CardContent className="divide-y divide-border/40 p-0 pb-0">
+            <div className="flex items-center justify-between px-4 py-2.5 text-xs">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Receipt className="h-3 w-3 text-violet-500" />
+                Periodo
+              </span>
+              <span className="text-right font-medium">
+                {formatDate(statement.statement_start)} –{' '}
+                {formatDate(statement.statement_end)}
+              </span>
             </div>
-            <div className="flex items-start gap-2">
-              <Landmark className="mt-0.5 h-4 w-4 text-blue-500" />
-              <div>
-                <p className="text-muted-foreground">Saldo del corte</p>
-                <p className="font-mono tabular-nums">
-                  {formatCurrency(statement.last_statement_balance)}
-                </p>
-              </div>
+            <div className="flex items-center justify-between px-4 py-2.5 text-xs">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Landmark className="h-3 w-3 text-blue-500" />
+                {statement.imported_statement_total != null
+                  ? 'Total importado'
+                  : 'Saldo del corte'}
+              </span>
+              <span className="font-mono tabular-nums font-medium">
+                {formatCurrency(
+                  statement.imported_statement_total ??
+                    statement.last_statement_balance,
+                )}
+              </span>
             </div>
-            <div>
-              <p className="text-muted-foreground">Pagos desde el corte</p>
-              <p className="font-mono tabular-nums">
+            <div className="flex items-center justify-between px-4 py-2.5 text-xs">
+              <span className="text-muted-foreground">Pagos desde corte</span>
+              <span className="font-mono tabular-nums font-medium">
                 {formatCurrency(statement.payments_since_last_cutoff)}
-              </p>
+              </span>
             </div>
-            <div>
-              <p className="text-muted-foreground">Pagos aplicados al corte</p>
-              <p className="font-mono tabular-nums">
+            <div className="flex items-center justify-between px-4 py-2.5 text-xs">
+              <span className="text-muted-foreground">Pagos aplicados</span>
+              <span className="font-mono tabular-nums font-medium">
                 {formatCurrency(statement.payments_applied_to_statement)}
-              </p>
+              </span>
+            </div>
+            <div
+              className={cn(
+                'flex items-center justify-between px-4 py-3 text-sm font-semibold',
+                daysUntilDue < 0
+                  ? 'bg-destructive/8 text-destructive'
+                  : daysUntilDue <= 5
+                    ? 'bg-amber-500/8 text-amber-700 dark:text-amber-300'
+                    : 'bg-muted/30',
+              )}
+            >
+              <span>Por pagar</span>
+              <span className="font-mono tabular-nums">
+                {formatCurrency(statement.next_due_payment)}
+              </span>
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        <Card className="overflow-hidden border-border/60 lg:col-span-2">
+      {/* ── Compras ciclo actual + MSI vigentes ───────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="overflow-hidden border-border/60">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">
               Compras del ciclo actual
@@ -922,40 +1034,42 @@ export default function CreditCardDetailPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      <Card className="overflow-hidden border-border/60 border-l-[3px] border-l-violet-500/50">
-        <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-          </span>
-          <div className="min-w-0 flex-1">
+        <Card className="overflow-hidden border-border/60 border-l-[3px] border-l-violet-500/50">
+          <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
+              <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+            </span>
             <CardTitle className="text-sm font-semibold">
               MSI vigentes
             </CardTitle>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Compras a meses sin intereses donde la cuota registrada aún no es
-              la última (por ejemplo 11 de 15). Cada fila es un cargo ya
-              contabilizado en la tarjeta.
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {statement.msi_active_purchases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No hay cargos MSI con cuotas pendientes en esta tarjeta.
-            </p>
-          ) : (
-            <PurchaseTableBlock
-              items={statement.msi_active_purchases}
-              emptyText="Ningún resultado con el filtro aplicado."
-              ownerQueryString={ownerQueryString}
-              regionLabel="Meses sin intereses vigentes"
-            />
-          )}
-        </CardContent>
-      </Card>
+            {statement.msi_active_purchases.length > 0 && (
+              <Badge
+                variant="secondary"
+                className="ml-auto text-[10px] tabular-nums"
+              >
+                {statement.msi_active_purchases.length}
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            {statement.msi_active_purchases.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay cargos MSI con cuotas pendientes en esta tarjeta.
+              </p>
+            ) : (
+              <PurchaseTableBlock
+                items={statement.msi_active_purchases}
+                emptyText="Ningún resultado con el filtro aplicado."
+                ownerQueryString={ownerQueryString}
+                regionLabel="Meses sin intereses vigentes"
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* ── Compras del último corte + Historial de pagos ─────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="overflow-hidden border-border/60">
           <CardHeader>
@@ -1019,7 +1133,7 @@ export default function CreditCardDetailPage() {
         creditLimit={statement.credit_limit}
       />
 
-      <CreditCardMercadoPagoImportDialog
+      <CreditCardStatementImportDialog
         open={mpImportDialogOpen}
         onOpenChange={setMpImportDialogOpen}
         creditCardId={creditCardId}
