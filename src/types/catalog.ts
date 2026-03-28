@@ -280,6 +280,17 @@ export type CreditCardStatementPurchaseItem = {
   credit_msi_total: number | null;
 };
 
+export type MsiProjectionMonthItem = {
+  monthKey: string;
+  label: string;
+  total: number;
+  cards: Array<{
+    cardId: number;
+    cardName: string;
+    amount: number;
+  }>;
+};
+
 export type CreditCardStatementResponse = {
   credit_card_id: number;
   name: string;
