@@ -3,6 +3,7 @@ import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import MonthlyFortnightView from '@/components/MonthlyFortnightView'
 import WalletBalanceStrip from '../../../../../components/WalletBalanceStrip'
+import { CreditCardMsiProjectionBlock } from '@/components/credit-cards/CreditCardMsiProjectionBlock'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -367,6 +368,10 @@ export default async function MonthlyPage({
 
       <div className="mb-4 min-w-0">
         <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
+      </div>
+
+      <div className="mb-4">
+        <CreditCardMsiProjectionBlock />
       </div>
 
       <MonthlyFortnightView

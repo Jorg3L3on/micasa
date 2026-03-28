@@ -768,6 +768,38 @@ export async function getDuePaymentsForCurrentFortnight(
   );
 }
 
+/**
+ * For a future statement window, sums the MSI installments that would appear
+ * in that window. `monthOffset` is how many statement cycles ahead we are from
+ * today's current cycle (1 = next statement, 2 = the one after, …).
+ * A purchase with `remaining = total − current` covers offsets 1…remaining.
+ */
+async function getMsiProjectedBalance(
+  ownerFilter: OwnerFilter,
+  cardId: number,
+  monthOffset: number,
+): Promise<number> {
+  if (monthOffset <= 0) return 0;
+  const purchases = await prisma.expense.findMany({
+    where: {
+      ...ownerFilter,
+      wallet_id: cardId,
+      is_paid: true,
+      credit_msi_current: { not: null },
+      credit_msi_total: { not: null },
+    },
+    select: { amount: true, credit_msi_current: true, credit_msi_total: true },
+  });
+  return purchases
+    .filter(
+      (e) =>
+        e.credit_msi_current != null &&
+        e.credit_msi_total != null &&
+        e.credit_msi_total - e.credit_msi_current >= monthOffset,
+    )
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+}
+
 /** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
 export async function getDuePaymentsForPlannerMonth(
   ownerFilter: OwnerFilter,
@@ -792,6 +824,43 @@ export async function getDuePaymentsForPlannerMonth(
       { includeZeroObligation: true },
     ),
   ]);
+
+  // For future months, items with nextDuePayment === 0 but positive outstanding
+  // balance have no recorded expenses in that statement window yet. Fill in
+  // the projected MSI installments so the Pagos tarjeta tab shows real amounts.
+  const today = new Date();
+  if (asOfFirst > today) {
+    const allItems = [...first, ...second];
+    const itemsToFill = allItems.filter(
+      (item) => item.nextDuePayment === 0 && item.outstandingBalance > 0,
+    );
+    await Promise.all(
+      itemsToFill.map(async (item) => {
+        const todayEnd = resolveCreditCardStatementWindow(
+          today,
+          item.cutoff_day,
+          item.dueDay,
+        ).statementEnd;
+        const futureEnd = resolveCreditCardStatementWindow(
+          asOfFirst,
+          item.cutoff_day,
+          item.dueDay,
+        ).statementEnd;
+        const monthOffset =
+          (futureEnd.getUTCFullYear() - todayEnd.getUTCFullYear()) * 12 +
+          (futureEnd.getUTCMonth() - todayEnd.getUTCMonth());
+        if (monthOffset <= 0) return;
+        const projected = await getMsiProjectedBalance(
+          ownerFilter,
+          item.walletId,
+          monthOffset,
+        );
+        if (projected > 0) {
+          item.nextDuePayment = projected;
+        }
+      }),
+    );
+  }
 
   return { first, second };
 }

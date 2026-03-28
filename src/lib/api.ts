@@ -820,6 +820,16 @@ export async function getCreditCardStatement(
   );
 }
 
+export async function getCreditCardMsiProjection(
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<import('@/types/catalog').MsiProjectionMonthItem[]>(
+    '/api/credit-cards/msi-projection',
+    undefined,
+    context,
+  );
+}
+
 export async function listCreditCardStatementImports(
   creditCardId: number,
   context?: FinanceContextType,
