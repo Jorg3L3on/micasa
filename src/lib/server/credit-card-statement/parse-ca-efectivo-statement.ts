@@ -48,6 +48,8 @@ export type CaEfectivoStatementParseResult = {
   periodEnd: Date | null;
   totalDue: number | null;
   minimumPayment: number | null;
+  /** Saldo Total from the statement header — used to sync wallet balance after import. */
+  currentBalance: number | null;
   movements: CaEfectivoParsedMovement[];
   warnings: string[];
 };
@@ -93,22 +95,36 @@ export const parseCaEfectivoStatementText = (
     );
   }
 
-  // Payment options: "Total del mes: Ó Mínimo:" appears only in the payment
-  // options section. The two amounts follow on a later line.
+  // EN POCAS PALABRAS summary table — last column is "Total Del Mes":
+  // Row: $ TotalMesAnterior $ Compras $ Promociones $ OtrosCargos $ -Pagos $ TotalDelMes
   let totalDue: number | null = null;
   let minimumPayment: number | null = null;
+  const summaryRowMatch = text.match(
+    /EN POCAS PALABRAS[\s\S]{0,600}?\$\s*[\d,]+\.\d{2}\s+\$\s*[\d,]+\.\d{2}\s+\$\s*[\d,]+\.\d{2}\s+\$\s*[\d,]+\.\d{2}\s+\$\s*-?[\d,]+\.\d{2}\s+\$\s*([\d,]+\.\d{2})/i,
+  );
+  if (summaryRowMatch) {
+    totalDue = Number.parseFloat(summaryRowMatch[1].replace(/,/g, ''));
+  }
+
+  // Minimum payment from the payment options box: "$ 892.67 $ 892.67"
   const payOptsMatch = text.match(
-    /Total del mes:\s*[ÓO]?\s*M[íi]nimo:[\s\S]{0,400}?\$\s*([\d,]+\.\d{2})\s+\$\s*([\d,]+\.\d{2})/i,
+    /ELIGE 1 DE ESTAS OPCIONES[\s\S]{0,400}?\$\s*([\d,]+\.\d{2})\s+\$\s*([\d,]+\.\d{2})/i,
   );
   if (payOptsMatch) {
-    totalDue = Number.parseFloat(payOptsMatch[1].replace(/,/g, ''));
     minimumPayment = Number.parseFloat(payOptsMatch[2].replace(/,/g, ''));
-  } else {
-    // Fallback: Saldo Total
-    const totalMatch = text.match(/Saldo Total:\s*\$\s*([\d,]+\.\d{2})/i);
-    totalDue = totalMatch
-      ? Number.parseFloat(totalMatch[1].replace(/,/g, ''))
-      : null;
+    if (totalDue === null) {
+      totalDue = Number.parseFloat(payOptsMatch[1].replace(/,/g, ''));
+    }
+  }
+
+  // Saldo Total from the header table — authoritative current balance for the account.
+  const saldoTotalMatch = text.match(/Saldo Total:\s*\$\s*([\d,]+\.\d{2})/i);
+  const currentBalance = saldoTotalMatch
+    ? Number.parseFloat(saldoTotalMatch[1].replace(/,/g, ''))
+    : null;
+
+  if (totalDue === null) {
+    totalDue = currentBalance;
   }
 
   // Locate movements section: starts after "TARJETA TITULAR NO." line, ends at "TOTAL:$"
@@ -123,6 +139,7 @@ export const parseCaEfectivoStatementText = (
       periodEnd,
       totalDue,
       minimumPayment,
+      currentBalance,
       movements: [],
       warnings,
     };
@@ -240,6 +257,7 @@ export const parseCaEfectivoStatementText = (
     periodEnd,
     totalDue,
     minimumPayment,
+    currentBalance,
     movements,
     warnings,
   };

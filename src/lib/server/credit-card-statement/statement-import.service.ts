@@ -52,6 +52,8 @@ type ParsedStatement = {
   periodEnd: Date | null;
   totalDue: number | null;
   minimumPayment: number | null;
+  /** When set, the wallet amount is synced to this value after import (C&A Efectivo). */
+  currentBalance: number | null;
   movements: ParsedMovement[];
   warnings: string[];
 };
@@ -279,6 +281,14 @@ async function runImport(
     return createdImport;
   });
 
+  // Sync wallet balance to the authoritative Saldo Total from the statement (C&A Efectivo).
+  if (parsed.currentBalance != null) {
+    await prisma.wallet.update({
+      where: { id: creditCardWalletId },
+      data: { amount: parsed.currentBalance },
+    });
+  }
+
   const finalWarnings = [
     ...warnings,
     `Resumen: ${expensesCreated} gasto(s) creado(s), ${duplicatesSkipped} duplicado(s) omitido(s), ${linesSkipped} línea(s) omitida(s).`,
@@ -316,6 +326,7 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: null,
+        currentBalance: null,
         movements: r.movements.map((m) => ({
           description: m.description,
           amount: m.amount,
@@ -338,6 +349,7 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
+        currentBalance: null,
         movements: r.movements.map((m) => ({
           description: m.description,
           amount: m.amount,
@@ -360,6 +372,7 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
+        currentBalance: r.currentBalance,
         movements: r.movements.map((m) => ({
           description: m.description,
           amount: m.amount,
