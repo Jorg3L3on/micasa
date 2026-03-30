@@ -39,31 +39,32 @@ export async function GET(request: NextRequest) {
         const seYear = window.statementEnd.getUTCFullYear();
         const seMonth = window.statementEnd.getUTCMonth() + 1;
 
-        const msiPurchases = await prisma.expense.findMany({
+        const installmentPurchases = await prisma.expense.findMany({
           where: {
             ...context.ownerFilter,
             wallet_id: card.id,
             is_paid: true,
-            credit_msi_current: { not: null },
-            credit_msi_total: { not: null },
+            credit_installment_current: { not: null },
+            credit_installment_total: { not: null },
           },
           select: {
             amount: true,
-            credit_msi_current: true,
-            credit_msi_total: true,
+            credit_installment_current: true,
+            credit_installment_total: true,
           },
         });
 
-        const active = msiPurchases.filter(
+        const active = installmentPurchases.filter(
           (e) =>
-            e.credit_msi_current != null &&
-            e.credit_msi_total != null &&
-            e.credit_msi_current < e.credit_msi_total,
+            e.credit_installment_current != null &&
+            e.credit_installment_total != null &&
+            e.credit_installment_current < e.credit_installment_total,
         );
 
         const monthlyMap = new Map<string, number>();
         for (const purchase of active) {
-          const remaining = purchase.credit_msi_total! - purchase.credit_msi_current!;
+          const remaining =
+            purchase.credit_installment_total! - purchase.credit_installment_current!;
           for (let i = 1; i <= remaining; i++) {
             const futureDate = new Date(Date.UTC(seYear, seMonth - 1 + i, 1));
             const key = `${futureDate.getUTCFullYear()}-${String(futureDate.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -102,9 +103,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error computing MSI projection:', error);
+    console.error('Error computing installment projection:', error);
     return NextResponse.json(
-      { error: 'No se pudo calcular la proyección MSI' },
+      { error: 'No se pudo calcular la proyección de cuotas' },
       { status: 500 },
     );
   }

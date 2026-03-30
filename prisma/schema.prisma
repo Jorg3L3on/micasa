@@ -169,9 +169,9 @@ model Expense {
   payment_date DateTime?
   due_day      Int?
 
-  /// Meses sin intereses (MSI): cuota actual y total (ej. 11 de 15). Null = no MSI.
-  credit_msi_current Int?
-  credit_msi_total   Int?
+  /// Cuotas en meses (installment): cuota actual y total (ej. 11 de 15). Null = no aplica.
+  credit_installment_current Int?
+  credit_installment_total   Int?
 
   house_id            Int?
   fortnight_id        Int

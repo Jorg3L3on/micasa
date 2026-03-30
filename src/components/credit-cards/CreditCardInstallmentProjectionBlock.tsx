@@ -17,16 +17,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
-import { getCreditCardMsiProjection } from '@/lib/api';
+import { getCreditCardInstallmentProjection } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
-import type { MsiProjectionMonthItem } from '@/types/catalog';
+import type { InstallmentProjectionMonthItem } from '@/types/catalog';
 
-const STORAGE_KEY = 'micasa.msi-projection.expanded';
+const STORAGE_KEY = 'micasa.installment-projection.expanded';
+const LEGACY_STORAGE_KEY = 'micasa.msi-projection.expanded';
 
 const readStored = (): boolean => {
   if (typeof window === 'undefined') return false;
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v != null) return v === 'true';
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    return legacy === 'true';
   } catch {
     return false;
   }
@@ -36,6 +40,7 @@ const writeStored = (value: boolean) => {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, value ? 'true' : 'false');
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     /* ignore */
   }
@@ -43,11 +48,11 @@ const writeStored = (value: boolean) => {
 
 type TooltipProps = {
   active?: boolean;
-  payload?: Array<{ value: number; payload: MsiProjectionMonthItem }>;
+  payload?: Array<{ value: number; payload: InstallmentProjectionMonthItem }>;
   label?: string;
 };
 
-const MsiTooltip = ({ active, payload, label }: TooltipProps) => {
+const InstallmentTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
   return (
@@ -74,12 +79,12 @@ const shortAxisMoney = (n: number): string => {
   return String(Math.round(n));
 };
 
-export function CreditCardMsiProjectionBlock() {
+export function CreditCardInstallmentProjectionBlock() {
   const { context } = useFinanceContext();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [data, setData] = useState<MsiProjectionMonthItem[] | null>(null);
+  const [data, setData] = useState<InstallmentProjectionMonthItem[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -90,7 +95,7 @@ export function CreditCardMsiProjectionBlock() {
   useEffect(() => {
     if (context.id === 0) return;
     setLoading(true);
-    getCreditCardMsiProjection(context)
+    getCreditCardInstallmentProjection(context)
       .then(setData)
       .catch(() => setData([]))
       .finally(() => setLoading(false));
@@ -139,7 +144,7 @@ export function CreditCardMsiProjectionBlock() {
         </span>
         <div className="min-w-0 flex-1">
           <CardTitle className="text-sm font-semibold leading-none">
-            Proyección de cuotas MSI
+            Proyección de cuotas
           </CardTitle>
           {!expanded && (
             <p className="mt-0.5 text-[10px] text-muted-foreground">
@@ -155,7 +160,7 @@ export function CreditCardMsiProjectionBlock() {
           className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
           onClick={handleToggle}
           aria-expanded={expanded}
-          aria-label={expanded ? 'Ocultar proyección MSI' : 'Ver proyección MSI'}
+          aria-label={expanded ? 'Ocultar proyección de cuotas' : 'Ver proyección de cuotas'}
         >
           {expanded ? (
             <ChevronUp className="h-4 w-4" aria-hidden />
@@ -184,7 +189,7 @@ export function CreditCardMsiProjectionBlock() {
                   width={44}
                   tickFormatter={shortAxisMoney}
                 />
-                <Tooltip content={<MsiTooltip />} cursor={{ fill: gridColor }} />
+                <Tooltip content={<InstallmentTooltip />} cursor={{ fill: gridColor }} />
                 <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                   {data.map((entry) => {
                     const primaryCardId = entry.cards[0]?.cardId;

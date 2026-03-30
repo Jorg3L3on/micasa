@@ -330,14 +330,14 @@ const PurchaseTableBlock = ({
                   <div className="min-w-0">
                     <p className="font-medium">
                       {purchase.description}
-                      {purchase.credit_msi_current != null &&
-                      purchase.credit_msi_total != null ? (
+                      {purchase.credit_installment_current != null &&
+                      purchase.credit_installment_total != null ? (
                         <span
                           className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
-                          title="Meses sin intereses"
+                          title="Compra en cuotas"
                         >
-                          MSI {purchase.credit_msi_current}/
-                          {purchase.credit_msi_total}
+                          Cuota {purchase.credit_installment_current}/
+                          {purchase.credit_installment_total}
                         </span>
                       ) : null}
                     </p>
@@ -940,7 +940,7 @@ export default function CreditCardDetailPage() {
         <div className="lg:col-span-2">
           <CreditCardPaymentsChart
             paymentHistory={statement.payment_history}
-            msiActivePurchases={statement.msi_active_purchases}
+            installmentActivePurchases={statement.installment_active_purchases}
             statementEnd={statement.statement_end}
           />
         </div>
@@ -1006,7 +1006,7 @@ export default function CreditCardDetailPage() {
         </Card>
       </div>
 
-      {/* ── Compras ciclo actual + MSI vigentes ───────────────────── */}
+      {/* ── Compras ciclo actual + cuotas vigentes ───────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="overflow-hidden border-border/60">
           <CardHeader>
@@ -1041,28 +1041,29 @@ export default function CreditCardDetailPage() {
               <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
             </span>
             <CardTitle className="text-sm font-semibold">
-              MSI vigentes
+              Cuotas vigentes
             </CardTitle>
-            {statement.msi_active_purchases.length > 0 && (
+            {statement.installment_active_purchases.length > 0 && (
               <Badge
                 variant="secondary"
                 className="ml-auto text-[10px] tabular-nums"
               >
-                {statement.msi_active_purchases.length}
+                {statement.installment_active_purchases.length}
               </Badge>
             )}
           </CardHeader>
           <CardContent>
-            {statement.msi_active_purchases.length === 0 ? (
+            {statement.installment_active_purchases.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No hay cargos MSI con cuotas pendientes en esta tarjeta.
+                No hay compras en cuotas con pagos pendientes en períodos futuros en
+                esta tarjeta.
               </p>
             ) : (
               <PurchaseTableBlock
-                items={statement.msi_active_purchases}
+                items={statement.installment_active_purchases}
                 emptyText="Ningún resultado con el filtro aplicado."
                 ownerQueryString={ownerQueryString}
-                regionLabel="Meses sin intereses vigentes"
+                regionLabel="Cuotas vigentes"
               />
             )}
           </CardContent>

@@ -820,11 +820,11 @@ export async function getCreditCardStatement(
   );
 }
 
-export async function getCreditCardMsiProjection(
+export async function getCreditCardInstallmentProjection(
   context?: FinanceContextType,
 ) {
-  return clientFetchFromApi<import('@/types/catalog').MsiProjectionMonthItem[]>(
-    '/api/credit-cards/msi-projection',
+  return clientFetchFromApi<import('@/types/catalog').InstallmentProjectionMonthItem[]>(
+    '/api/credit-cards/installment-projection',
     undefined,
     context,
   );
@@ -950,8 +950,8 @@ export async function createCreditCardPurchase(
     amount: number;
     payment_date?: string | null;
     expense_template_id?: number | null;
-    credit_msi_current?: number | null;
-    credit_msi_total?: number | null;
+    credit_installment_current?: number | null;
+    credit_installment_total?: number | null;
   },
   context?: FinanceContextType,
 ) {

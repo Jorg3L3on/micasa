@@ -40,8 +40,8 @@ type ParsedMovement = {
   description: string;
   amount: number;
   paymentDate: Date;
-  msiCurrent?: number;
-  msiTotal?: number;
+  installmentCurrent?: number;
+  installmentTotal?: number;
 };
 
 type ParsedStatement = {
@@ -262,8 +262,8 @@ async function runImport(
           is_paid: true,
           payment_date: new Date(`${paymentDateStr}T12:00:00.000Z`),
           statement_import_id: createdImport.id,
-          credit_msi_current: mov.msiCurrent ?? null,
-          credit_msi_total: mov.msiTotal ?? null,
+          credit_installment_current: mov.installmentCurrent ?? null,
+          credit_installment_total: mov.installmentTotal ?? null,
           user_id: fortnight.user_id,
           house_id: fortnight.house_id,
         },
@@ -331,8 +331,8 @@ export async function importStatementPdf(
           description: m.description,
           amount: m.amount,
           paymentDate: m.paymentDate,
-          msiCurrent: m.msiCurrent,
-          msiTotal: m.msiTotal,
+          installmentCurrent: m.installmentCurrent,
+          installmentTotal: m.installmentTotal,
         })),
         warnings: r.warnings,
       };
@@ -349,13 +349,13 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
-        currentBalance: null,
+        currentBalance: r.currentBalance,
         movements: r.movements.map((m) => ({
           description: m.description,
           amount: m.amount,
           paymentDate: m.paymentDate,
-          msiCurrent: m.msiCurrent,
-          msiTotal: m.msiTotal,
+          installmentCurrent: m.installmentCurrent,
+          installmentTotal: m.installmentTotal,
         })),
         warnings: r.warnings,
       };
@@ -377,8 +377,8 @@ export async function importStatementPdf(
           description: m.description,
           amount: m.amount,
           paymentDate: m.paymentDate,
-          msiCurrent: m.msiCurrent,
-          msiTotal: m.msiTotal,
+          installmentCurrent: m.installmentCurrent,
+          installmentTotal: m.installmentTotal,
         })),
         warnings: r.warnings,
       };

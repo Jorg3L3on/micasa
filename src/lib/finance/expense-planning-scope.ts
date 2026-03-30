@@ -1,6 +1,6 @@
 /**
  * Planificación por quincena/mes:
- * - Cuotas MSI: fuera de agregados (sigue en estado de cuenta de la TC).
+ * - Cuotas en meses (installment): fuera de agregados (sigue en estado de cuenta de la TC).
  * - Cargos con tarjeta de crédito o tienda: fuera del total de “salida de efectivo”.
  * - La salida de efectivo por tarjeta viene de: gastos con billetera débito/efectivo
  *   (p. ej. “Pago tarjeta” al registrar en la quincena) y pagos a TC sin gasto vinculado
@@ -10,12 +10,12 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
 
-export type CreditMsiFields = {
-  credit_msi_current: number | null;
-  credit_msi_total: number | null;
+export type CreditInstallmentFields = {
+  credit_installment_current: number | null;
+  credit_installment_total: number | null;
 };
 
-export const parseMsiFromDescription = (
+export const parseInstallmentFromDescription = (
   description: string,
 ): { current: number; total: number } | null => {
   const re = /\b(\d{1,3})\s+de\s+(\d{1,3})\b/gi;
@@ -38,9 +38,9 @@ export const parseMsiFromDescription = (
   return best;
 };
 
-export const isCreditMsiInstallmentExpense = (e: CreditMsiFields): boolean => {
-  const c = e.credit_msi_current;
-  const t = e.credit_msi_total;
+export const isCreditInstallmentExpense = (e: CreditInstallmentFields): boolean => {
+  const c = e.credit_installment_current;
+  const t = e.credit_installment_total;
   if (c == null || t == null) {
     return false;
   }
@@ -50,9 +50,9 @@ export const isCreditMsiInstallmentExpense = (e: CreditMsiFields): boolean => {
   return t >= 1 && c >= 1 && c <= t;
 };
 
-/** Filas con ambos MSI definidos quedan fuera (solo planificación). */
-export const whereExcludeCreditMsiInstallments = (): Prisma.ExpenseWhereInput => ({
-  OR: [{ credit_msi_current: null }, { credit_msi_total: null }],
+/** Filas con ambas cuotas definidas quedan fuera (solo planificación). */
+export const whereExcludeCreditInstallments = (): Prisma.ExpenseWhereInput => ({
+  OR: [{ credit_installment_current: null }, { credit_installment_total: null }],
 });
 
 /** Gastos ligados a billetera de crédito o tienda departamental. */
@@ -87,10 +87,10 @@ export const whereExcludeCreditStoreCardWallet = (): Prisma.ExpenseWhereInput =>
   ],
 });
 
-/** Agregados de planificación: sin MSI en TC y sin cargos a tarjeta/tienda. */
+/** Agregados de planificación: sin cuotas en TC y sin cargos a tarjeta/tienda. */
 export const wherePlanningCashFlowExpenses = (): Prisma.ExpenseWhereInput => ({
   AND: [
-    whereExcludeCreditMsiInstallments(),
+    whereExcludeCreditInstallments(),
     whereExcludeCreditStoreCardWallet(),
   ],
 });

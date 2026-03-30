@@ -20,27 +20,27 @@ export const createTransactionFieldsSchema = z.object({
   is_paid: defaultBooleanSchema,
   payment_date: dateStringSchema.nullable().optional(),
   expense_template_id: positiveIntSchema.optional(),
-  credit_msi_current: z.number().int().positive().optional().nullable(),
-  credit_msi_total: z.number().int().positive().optional().nullable(),
+  credit_installment_current: z.number().int().positive().optional().nullable(),
+  credit_installment_total: z.number().int().positive().optional().nullable(),
 });
 
-export const withCreditMsiPairRefine = <T extends z.ZodTypeAny>(schema: T) =>
+export const withCreditInstallmentPairRefine = <T extends z.ZodTypeAny>(schema: T) =>
   schema.refine((d: unknown) => {
     const o = d as {
-      credit_msi_current?: number | null;
-      credit_msi_total?: number | null;
+      credit_installment_current?: number | null;
+      credit_installment_total?: number | null;
     };
-    const c = o.credit_msi_current;
-    const t = o.credit_msi_total;
+    const c = o.credit_installment_current;
+    const t = o.credit_installment_total;
     if (c == null && t == null) return true;
     if (c == null || t == null) return false;
     return c <= t;
   }, {
-    message: 'MSI: indica cuota actual y total (actual ≤ total)',
-    path: ['credit_msi_current'],
+    message: 'Cuota: indica cuota actual y total (actual ≤ total)',
+    path: ['credit_installment_current'],
   });
 
-export const createTransactionSchema = withCreditMsiPairRefine(
+export const createTransactionSchema = withCreditInstallmentPairRefine(
   createTransactionFieldsSchema,
 );
 

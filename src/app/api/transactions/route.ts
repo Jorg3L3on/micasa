@@ -13,7 +13,7 @@ import {
 } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import type { Prisma } from '@/generated/prisma/client';
-import { whereExcludeCreditMsiInstallments } from '@/lib/finance/expense-planning-scope';
+import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
 import {
   buildFortnightWhereForReport,
   listOrphanCreditCardPaymentsForPlanning,
@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period');
     const type = searchParams.get('type');
     const isPaidParam = searchParams.get('is_paid');
-    const excludeCreditMsi = searchParams.get('exclude_credit_msi') === 'true';
+    const excludeCreditInstallment =
+      searchParams.get('exclude_credit_installment') === 'true' ||
+      searchParams.get('exclude_credit_msi') === 'true';
 
     let fortnightIds: number[] | undefined;
     if (month || year || period) {
@@ -77,9 +79,9 @@ export async function GET(request: NextRequest) {
     if (is_paid !== undefined) {
       expenseWhere.is_paid = is_paid;
     }
-    if (excludeCreditMsi) {
+    if (excludeCreditInstallment) {
       expenseWhere = {
-        AND: [expenseWhere, whereExcludeCreditMsiInstallments()],
+        AND: [expenseWhere, whereExcludeCreditInstallments()],
       };
     }
 
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest) {
         orderBy: { created_at: 'desc' },
       }),
       (async () => {
-        if (!excludeCreditMsi || type === 'income') {
+        if (!excludeCreditInstallment || type === 'income') {
           return [];
         }
         const fnWhere = buildFortnightWhereForReport(
@@ -299,8 +301,8 @@ export async function POST(request: NextRequest) {
       paymentDate: validatedData.payment_date ?? null,
       expenseTemplateId: validatedData.expense_template_id ?? null,
       walletId,
-      creditMsiCurrent: validatedData.credit_msi_current ?? null,
-      creditMsiTotal: validatedData.credit_msi_total ?? null,
+      creditInstallmentCurrent: validatedData.credit_installment_current ?? null,
+      creditInstallmentTotal: validatedData.credit_installment_total ?? null,
     });
 
     return NextResponse.json(

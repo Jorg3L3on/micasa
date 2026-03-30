@@ -70,7 +70,7 @@ async function getTransactions(
 ): Promise<TransactionRow[]> {
   try {
     return await fetchFromApi<TransactionRow[]>(
-      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense&exclude_credit_msi=true`,
+      `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense&exclude_credit_installment=true`,
       ownerContext,
     );
   } catch (error) {
@@ -87,7 +87,7 @@ async function getSummary(
 ): Promise<Summary> {
   try {
     return await fetchFromApi<Summary>(
-      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}&exclude_credit_msi=true`,
+      `/api/reports?type=summary&year=${year}&month=${month}&period=${period}&exclude_credit_installment=true`,
       ownerContext,
     );
   } catch (error) {
