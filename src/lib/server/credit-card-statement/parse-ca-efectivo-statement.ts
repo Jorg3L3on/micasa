@@ -36,8 +36,8 @@ export type CaEfectivoParsedMovement = {
   description: string;
   amount: number;
   paymentDate: Date;
-  msiCurrent?: number;
-  msiTotal?: number;
+  installmentCurrent?: number;
+  installmentTotal?: number;
 };
 
 export type CaEfectivoStatementParseResult = {
@@ -208,15 +208,15 @@ export const parseCaEfectivoStatementText = (
     const paymentDate = new Date(Date.UTC(year, movMonth - 1, day, 12, 0, 0, 0));
 
     // Parse installment reference from continuation lines, e.g. "05/07"
-    let msiCurrent: number | undefined;
-    let msiTotal: number | undefined;
+    let installmentCurrent: number | undefined;
+    let installmentTotal: number | undefined;
     for (let i = 1; i < group.length; i++) {
       const contLine = group[i];
       if (!contLine.includes('$')) {
-        const msiMatch = contLine.match(/\b(\d{1,2})\/(\d{2})\b/);
-        if (msiMatch) {
-          msiCurrent = Number.parseInt(msiMatch[1], 10);
-          msiTotal = Number.parseInt(msiMatch[2], 10);
+        const installmentMatch = contLine.match(/\b(\d{1,2})\/(\d{2})\b/);
+        if (installmentMatch) {
+          installmentCurrent = Number.parseInt(installmentMatch[1], 10);
+          installmentTotal = Number.parseInt(installmentMatch[2], 10);
           break;
         }
       }
@@ -243,8 +243,8 @@ export const parseCaEfectivoStatementText = (
       description,
       amount,
       paymentDate,
-      ...(msiCurrent !== undefined && msiTotal !== undefined
-        ? { msiCurrent, msiTotal }
+      ...(installmentCurrent !== undefined && installmentTotal !== undefined
+        ? { installmentCurrent, installmentTotal }
         : {}),
     });
   }

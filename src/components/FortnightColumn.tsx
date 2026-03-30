@@ -242,7 +242,7 @@ export default function FortnightColumn({
     try {
       setIsRefreshing(true);
       const ym = String(month).padStart(2, '0');
-      const planningQs = '&exclude_credit_msi=true';
+      const planningQs = '&exclude_credit_installment=true';
       const [transactionsData, summaryData] = await Promise.all([
         clientFetchFromApi<TransactionRow[]>(
           `/api/transactions?year=${year}&month=${ym}&period=${period}&type=expense${planningQs}`,

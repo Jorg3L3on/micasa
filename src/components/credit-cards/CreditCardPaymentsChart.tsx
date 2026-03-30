@@ -44,7 +44,7 @@ const PaymentsTooltip = ({ active, payload, label }: TooltipProps) => {
       )}
       {projected > 0 && (
         <p className="font-mono tabular-nums text-amber-500">
-          MSI proyectado: {formatCurrency(projected)}
+          Cuotas proyectadas: {formatCurrency(projected)}
         </p>
       )}
       {paid > 0 && projected > 0 && (
@@ -64,7 +64,7 @@ const shortAxisMoney = (n: number): string => {
 
 type Props = {
   paymentHistory: CreditCardPaymentListItem[];
-  msiActivePurchases: CreditCardStatementPurchaseItem[];
+  installmentActivePurchases: CreditCardStatementPurchaseItem[];
   /** ISO date string "YYYY-MM-DD" — end of the current statement period. */
   statementEnd: string;
 };
@@ -79,7 +79,7 @@ const labelFromKey = (key: string): string => {
 
 const buildChartData = (
   paymentHistory: CreditCardPaymentListItem[],
-  msiActivePurchases: CreditCardStatementPurchaseItem[],
+  installmentActivePurchases: CreditCardStatementPurchaseItem[],
   statementEnd: string,
 ): ChartDataPoint[] => {
   const dataMap = new Map<string, { paid: number; projected: number }>();
@@ -95,16 +95,22 @@ const buildChartData = (
     dataMap.get(key)!.paid += Number(p.amount);
   }
 
-  // Project remaining MSI installments from the month after statement_end
+  // Project remaining installment charges from the month after statement_end
   const [seYear, seMonth] = statementEnd.split('-').map(Number);
-  for (const msi of msiActivePurchases) {
-    if (msi.credit_msi_current == null || msi.credit_msi_total == null) continue;
-    const remaining = msi.credit_msi_total - msi.credit_msi_current;
+  for (const purchase of installmentActivePurchases) {
+    if (
+      purchase.credit_installment_current == null ||
+      purchase.credit_installment_total == null
+    ) {
+      continue;
+    }
+    const remaining =
+      purchase.credit_installment_total - purchase.credit_installment_current;
     for (let i = 1; i <= remaining; i++) {
       const futureDate = new Date(Date.UTC(seYear, seMonth - 1 + i, 1));
       const key = `${futureDate.getUTCFullYear()}-${String(futureDate.getUTCMonth() + 1).padStart(2, '0')}`;
       ensureMonth(key);
-      dataMap.get(key)!.projected += Number(msi.amount);
+      dataMap.get(key)!.projected += Number(purchase.amount);
     }
   }
 
@@ -120,7 +126,7 @@ const buildChartData = (
 
 export const CreditCardPaymentsChart = ({
   paymentHistory,
-  msiActivePurchases,
+  installmentActivePurchases,
   statementEnd,
 }: Props) => {
   const { resolvedTheme } = useTheme();
@@ -137,8 +143,8 @@ export const CreditCardPaymentsChart = ({
   const amber = isDark ? '#fbbf24' : '#d97706';
 
   const data = useMemo(
-    () => buildChartData(paymentHistory, msiActivePurchases, statementEnd),
-    [paymentHistory, msiActivePurchases, statementEnd],
+    () => buildChartData(paymentHistory, installmentActivePurchases, statementEnd),
+    [paymentHistory, installmentActivePurchases, statementEnd],
   );
 
   const hasData = data.some((d) => d.paid > 0 || d.projected > 0);
@@ -151,17 +157,17 @@ export const CreditCardPaymentsChart = ({
         </span>
         <div className="min-w-0">
           <CardTitle className="text-sm font-semibold leading-none">
-            Pagos y proyección MSI
+            Pagos y cuotas futuras
           </CardTitle>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            Pagos realizados a la tarjeta · Cuotas MSI pendientes por mes
+            Pagos realizados a la tarjeta · Cuotas pendientes por mes
           </p>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         {!hasData ? (
           <p className="text-sm text-muted-foreground">
-            Sin pagos registrados ni cuotas MSI pendientes.
+            Sin pagos registrados ni cuotas pendientes proyectadas.
           </p>
         ) : (
           <div className="h-56 w-full min-w-0">
@@ -184,7 +190,7 @@ export const CreditCardPaymentsChart = ({
                 <Tooltip content={<PaymentsTooltip />} cursor={{ fill: gridColor }} />
                 <Legend
                   formatter={(value) =>
-                    value === 'paid' ? 'Pagos realizados' : 'MSI proyectado'
+                    value === 'paid' ? 'Pagos realizados' : 'Cuotas proyectadas'
                   }
                   wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
                 />

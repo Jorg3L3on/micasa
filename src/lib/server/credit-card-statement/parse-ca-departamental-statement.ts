@@ -36,8 +36,8 @@ export type CaDepartamentalParsedMovement = {
   description: string;
   amount: number;
   paymentDate: Date;
-  msiCurrent?: number;
-  msiTotal?: number;
+  installmentCurrent?: number;
+  installmentTotal?: number;
 };
 
 export type CaDepartamentalStatementParseResult = {
@@ -48,6 +48,8 @@ export type CaDepartamentalStatementParseResult = {
   periodEnd: Date | null;
   totalDue: number | null;
   minimumPayment: number | null;
+  /** Saldo Total from the statement header — used to sync wallet balance after import. */
+  currentBalance: number | null;
   movements: CaDepartamentalParsedMovement[];
   warnings: string[];
 };
@@ -93,22 +95,36 @@ export const parseCaDepartamentalStatementText = (
     );
   }
 
-  // Payment options: "Total del mes: Ó Mínimo:" appears only in the payment
-  // options section. The two amounts follow on a later line.
+  // EN POCAS PALABRAS summary table — last column is "Total Del Mes".
+  // Anchor on "Anterior" (column header word appearing just before the data row).
   let totalDue: number | null = null;
   let minimumPayment: number | null = null;
+  const summaryRowMatch = text.match(
+    /EN POCAS PALABRAS[\s\S]{0,800}?Anterior[\s\S]{0,100}?(?:\$\s*-?[\d,]+\.\d{2}\s+){3,}\$\s*([\d,]+\.\d{2})/i,
+  );
+  if (summaryRowMatch) {
+    totalDue = Number.parseFloat(summaryRowMatch[1].replace(/,/g, ''));
+  }
+
+  // Minimum payment from the payment options box
   const payOptsMatch = text.match(
-    /Total del mes:\s*[ÓO]?\s*M[íi]nimo:[\s\S]{0,400}?\$\s*([\d,]+\.\d{2})\s+\$\s*([\d,]+\.\d{2})/i,
+    /ELIGE 1 DE ESTAS OPCIONES[\s\S]{0,400}?\$\s*([\d,]+\.\d{2})\s+\$\s*([\d,]+\.\d{2})/i,
   );
   if (payOptsMatch) {
-    totalDue = Number.parseFloat(payOptsMatch[1].replace(/,/g, ''));
     minimumPayment = Number.parseFloat(payOptsMatch[2].replace(/,/g, ''));
-  } else {
-    // Fallback: Saldo Total
-    const totalMatch = text.match(/Saldo Total:\s*\$\s*([\d,]+\.\d{2})/i);
-    totalDue = totalMatch
-      ? Number.parseFloat(totalMatch[1].replace(/,/g, ''))
-      : null;
+    if (totalDue === null) {
+      totalDue = Number.parseFloat(payOptsMatch[1].replace(/,/g, ''));
+    }
+  }
+
+  // Saldo Total from the header table — authoritative current balance for the account.
+  const saldoTotalMatch = text.match(/Saldo Total:\s*\$\s*([\d,]+\.\d{2})/i);
+  const currentBalance = saldoTotalMatch
+    ? Number.parseFloat(saldoTotalMatch[1].replace(/,/g, ''))
+    : null;
+
+  if (totalDue === null) {
+    totalDue = currentBalance;
   }
 
   // Locate movements section: starts after "TARJETA TITULAR NO." line, ends at "TOTAL:$"
@@ -123,6 +139,7 @@ export const parseCaDepartamentalStatementText = (
       periodEnd,
       totalDue,
       minimumPayment,
+      currentBalance,
       movements: [],
       warnings,
     };
@@ -190,16 +207,16 @@ export const parseCaDepartamentalStatementText = (
     const year = inferMovementYear(movMonth, periodEnd);
     const paymentDate = new Date(Date.UTC(year, movMonth - 1, day, 12, 0, 0, 0));
 
-    // Parse MSI installment reference from continuation lines, e.g. "05/06"
-    let msiCurrent: number | undefined;
-    let msiTotal: number | undefined;
+    // Parse installment reference from continuation lines, e.g. "05/06"
+    let installmentCurrent: number | undefined;
+    let installmentTotal: number | undefined;
     for (let i = 1; i < group.length; i++) {
       const contLine = group[i];
       if (!contLine.includes('$')) {
-        const msiMatch = contLine.match(/\b(\d{1,2})\/(\d{2})\b/);
-        if (msiMatch) {
-          msiCurrent = Number.parseInt(msiMatch[1], 10);
-          msiTotal = Number.parseInt(msiMatch[2], 10);
+        const installmentMatch = contLine.match(/\b(\d{1,2})\/(\d{2})\b/);
+        if (installmentMatch) {
+          installmentCurrent = Number.parseInt(installmentMatch[1], 10);
+          installmentTotal = Number.parseInt(installmentMatch[2], 10);
           break;
         }
       }
@@ -226,8 +243,8 @@ export const parseCaDepartamentalStatementText = (
       description,
       amount,
       paymentDate,
-      ...(msiCurrent !== undefined && msiTotal !== undefined
-        ? { msiCurrent, msiTotal }
+      ...(installmentCurrent !== undefined && installmentTotal !== undefined
+        ? { installmentCurrent, installmentTotal }
         : {}),
     });
   }
@@ -240,6 +257,7 @@ export const parseCaDepartamentalStatementText = (
     periodEnd,
     totalDue,
     minimumPayment,
+    currentBalance,
     movements,
     warnings,
   };

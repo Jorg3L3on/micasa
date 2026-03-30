@@ -1,7 +1,7 @@
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import { isCreditMsiInstallmentExpense } from '@/lib/finance/expense-planning-scope';
+import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
   isCreditWalletType,
@@ -190,8 +190,8 @@ export async function getCreditCardStatementByOwner(
         amount: true,
         payment_date: true,
         created_at: true,
-        credit_msi_current: true,
-        credit_msi_total: true,
+        credit_installment_current: true,
+        credit_installment_total: true,
         category: { select: { name: true } },
         fortnight: {
           select: { id: true, year: true, month: true, period: true },
@@ -272,14 +272,14 @@ export async function getCreditCardStatementByOwner(
       isWithinRange(expense.effectiveDate, window.currentCycleStart, window.currentCycleEnd),
     );
 
-  /** MSI con cuotas aún pendientes (cuota actual estrictamente menor al total). */
-  const msiActivePurchases = purchases
+  /** Cuotas con pagos aún pendientes (cuota actual estrictamente menor al total). */
+  const installmentActivePurchases = purchases
     .filter(
       (e) =>
-        isCreditMsiInstallmentExpense(e) &&
-        e.credit_msi_current != null &&
-        e.credit_msi_total != null &&
-        e.credit_msi_current < e.credit_msi_total,
+        isCreditInstallmentExpense(e) &&
+        e.credit_installment_current != null &&
+        e.credit_installment_total != null &&
+        e.credit_installment_current < e.credit_installment_total,
     )
     .map((expense) => ({
       ...expense,
@@ -299,8 +299,8 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
-      credit_msi_current: expense.credit_msi_current,
-      credit_msi_total: expense.credit_msi_total,
+      credit_installment_current: expense.credit_installment_current,
+      credit_installment_total: expense.credit_installment_total,
     }));
 
   const lastStatementBalance = statementPurchases.reduce(
@@ -359,8 +359,8 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
-      credit_msi_current: expense.credit_msi_current,
-      credit_msi_total: expense.credit_msi_total,
+      credit_installment_current: expense.credit_installment_current,
+      credit_installment_total: expense.credit_installment_total,
     })),
     current_cycle_purchase_items: currentCyclePurchases.map((expense) => ({
       id: expense.id,
@@ -372,10 +372,10 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
-      credit_msi_current: expense.credit_msi_current,
-      credit_msi_total: expense.credit_msi_total,
+      credit_installment_current: expense.credit_installment_current,
+      credit_installment_total: expense.credit_installment_total,
     })),
-    msi_active_purchases: msiActivePurchases,
+    installment_active_purchases: installmentActivePurchases,
     payment_history: payments.map((payment) => ({
       id: payment.id,
       amount: Number(payment.amount),
@@ -797,12 +797,12 @@ export async function getDuePaymentsForCurrentFortnight(
 }
 
 /**
- * For a future statement window, sums the MSI installments that would appear
+ * For a future statement window, sums the installment charges that would appear
  * in that window. `monthOffset` is how many statement cycles ahead we are from
  * today's current cycle (1 = next statement, 2 = the one after, …).
  * A purchase with `remaining = total − current` covers offsets 1…remaining.
  */
-async function getMsiProjectedBalance(
+async function getInstallmentProjectedBalance(
   ownerFilter: OwnerFilter,
   cardId: number,
   monthOffset: number,
@@ -813,17 +813,21 @@ async function getMsiProjectedBalance(
       ...ownerFilter,
       wallet_id: cardId,
       is_paid: true,
-      credit_msi_current: { not: null },
-      credit_msi_total: { not: null },
+      credit_installment_current: { not: null },
+      credit_installment_total: { not: null },
     },
-    select: { amount: true, credit_msi_current: true, credit_msi_total: true },
+    select: {
+      amount: true,
+      credit_installment_current: true,
+      credit_installment_total: true,
+    },
   });
   return purchases
     .filter(
       (e) =>
-        e.credit_msi_current != null &&
-        e.credit_msi_total != null &&
-        e.credit_msi_total - e.credit_msi_current >= monthOffset,
+        e.credit_installment_current != null &&
+        e.credit_installment_total != null &&
+        e.credit_installment_total - e.credit_installment_current >= monthOffset,
     )
     .reduce((sum, e) => sum + Number(e.amount), 0);
 }
@@ -855,7 +859,7 @@ export async function getDuePaymentsForPlannerMonth(
 
   // For future months, items with nextDuePayment === 0 but positive outstanding
   // balance have no recorded expenses in that statement window yet. Fill in
-  // the projected MSI installments so the Pagos tarjeta tab shows real amounts.
+  // the projected installment amounts so the Pagos tarjeta tab shows real amounts.
   const today = new Date();
   if (asOfFirst > today) {
     const allItems = [...first, ...second];
@@ -865,7 +869,7 @@ export async function getDuePaymentsForPlannerMonth(
 
     // For cards that have a recent import, the import's payment is shown in the
     // planner month where payment_due_date falls (offset +1 from the import's
-    // period_end cycle). Use period_end + 1 cycle as the MSI reference so that
+    // period_end cycle). Use period_end + 1 cycle as the installment reference so that
     // the remaining installments land on the correct months.
     const fillCardIds = itemsToFill.map((i) => i.walletId);
     const recentImportsForFill = fillCardIds.length > 0
@@ -897,7 +901,7 @@ export async function getDuePaymentsForPlannerMonth(
 
         // If a recent import exists, its payment is already shown in the planner
         // month where payment_due_date falls (one cycle after period_end). Shift
-        // the MSI reference forward by one cycle so remaining installments align.
+        // the installment reference forward by one cycle so remaining installments align.
         const importPeriodEnd = importPeriodEndByWallet.get(item.walletId);
         const referenceEnd = importPeriodEnd
           ? addMonths(importPeriodEnd, 1, item.cutoff_day)
@@ -907,7 +911,7 @@ export async function getDuePaymentsForPlannerMonth(
           (futureEnd.getUTCFullYear() - referenceEnd.getUTCFullYear()) * 12 +
           (futureEnd.getUTCMonth() - referenceEnd.getUTCMonth());
         if (monthOffset <= 0) return;
-        const projected = await getMsiProjectedBalance(
+        const projected = await getInstallmentProjectedBalance(
           ownerFilter,
           item.walletId,
           monthOffset,

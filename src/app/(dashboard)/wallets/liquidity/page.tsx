@@ -38,7 +38,7 @@ import type {
   LiquidityProjectionResponse,
 } from '@/types/catalog';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
-import { CreditCardMsiProjectionBlock } from '@/components/credit-cards/CreditCardMsiProjectionBlock';
+import { CreditCardInstallmentProjectionBlock } from '@/components/credit-cards/CreditCardInstallmentProjectionBlock';
 
 const defaultUntilYmdUtc = (): string => {
   const d = new Date();
@@ -871,8 +871,8 @@ export default function LiquidityProjectionPage() {
         </>
       )}
 
-      {/* ── MSI block — secondary context, loads independently ── */}
-      <CreditCardMsiProjectionBlock />
+      {/* ── Installment projection — secondary context, loads independently ── */}
+      <CreditCardInstallmentProjectionBlock />
     </div>
   );
 }
