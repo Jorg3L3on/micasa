@@ -31,8 +31,8 @@ type CreateExpenseInput = {
   expenseTemplateId?: number | null;
   walletId?: number | null;
   statementImportId?: number | null;
-  creditMsiCurrent?: number | null;
-  creditMsiTotal?: number | null;
+  creditInstallmentCurrent?: number | null;
+  creditInstallmentTotal?: number | null;
 };
 
 type UpdateExpenseInput = {
@@ -132,8 +132,8 @@ export async function createExpense(input: CreateExpenseInput) {
     expenseTemplateId,
     walletId,
     statementImportId,
-    creditMsiCurrent,
-    creditMsiTotal,
+    creditInstallmentCurrent,
+    creditInstallmentTotal,
   } = input;
 
   if (amount <= 0) {
@@ -228,8 +228,8 @@ export async function createExpense(input: CreateExpenseInput) {
         payment_date: paymentDate ? new Date(paymentDate) : null,
         expense_template_id: expenseTemplateId || null,
         statement_import_id: statementImportId ?? null,
-        credit_msi_current: creditMsiCurrent ?? null,
-        credit_msi_total: creditMsiTotal ?? null,
+        credit_installment_current: creditInstallmentCurrent ?? null,
+        credit_installment_total: creditInstallmentTotal ?? null,
         user_id: fortnight.user_id,
         house_id: fortnight.house_id,
       },

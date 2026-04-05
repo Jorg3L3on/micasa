@@ -54,7 +54,7 @@ export type TransactionRow = {
   due_day?: number | null;
 };
 
-/** Desglose de cargos a TC / tienda en resumen de planificación (`exclude_credit_msi`). */
+/** Desglose de cargos a TC / tienda en resumen de planificación (`exclude_credit_installment`). */
 export type PlannerCardChargesSummary = {
   total: number;
   paid: number;
@@ -154,7 +154,9 @@ export type CreditCardStatementImportListItem = {
   period_end: string | null;
   account_number: string | null;
   statement_issue_date: string | null;
+  payment_due_date: string | null;
   total_due: number | null;
+  minimum_payment: number | null;
   file_name: string | null;
   has_file: boolean;
   expense_count: number;
@@ -274,8 +276,19 @@ export type CreditCardStatementPurchaseItem = {
   fortnight_year: number;
   fortnight_month: number;
   fortnight_period: 'FIRST' | 'SECOND';
-  credit_msi_current: number | null;
-  credit_msi_total: number | null;
+  credit_installment_current: number | null;
+  credit_installment_total: number | null;
+};
+
+export type InstallmentProjectionMonthItem = {
+  monthKey: string;
+  label: string;
+  total: number;
+  cards: Array<{
+    cardId: number;
+    cardName: string;
+    amount: number;
+  }>;
 };
 
 export type CreditCardStatementResponse = {
@@ -294,14 +307,16 @@ export type CreditCardStatementResponse = {
   current_cycle_end: string;
   outstanding_balance: number;
   last_statement_balance: number;
+  imported_statement_total: number | null;
   payments_since_last_cutoff: number;
   payments_applied_to_statement: number;
   next_due_payment: number;
+  minimum_payment: number | null;
   current_cycle_purchases: number;
   current_cycle_payments: number;
   statement_purchases: CreditCardStatementPurchaseItem[];
   current_cycle_purchase_items: CreditCardStatementPurchaseItem[];
-  /** Gastos MSI pagados donde la cuota actual es menor que el total (aún quedan meses). */
-  msi_active_purchases: CreditCardStatementPurchaseItem[];
+  /** Gastos en cuotas pagados donde la cuota actual es menor que el total (aún quedan meses). */
+  installment_active_purchases: CreditCardStatementPurchaseItem[];
   payment_history: CreditCardPaymentListItem[];
 };

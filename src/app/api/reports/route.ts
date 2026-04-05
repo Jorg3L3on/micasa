@@ -58,11 +58,13 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const period = searchParams.get('period');
-    const excludeCreditMsi = searchParams.get('exclude_credit_msi') === 'true';
+    const excludeCreditInstallment =
+      searchParams.get('exclude_credit_installment') === 'true' ||
+      searchParams.get('exclude_credit_msi') === 'true';
 
     if (reportType === 'summary') {
       const baseWhere = await buildWhereClause(ownerFilter, month, year, period);
-      const where = excludeCreditMsi
+      const where = excludeCreditInstallment
         ? { AND: [baseWhere, wherePlanningCashFlowExpenses()] }
         : baseWhere;
 
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
             is_paid: true,
           },
         }),
-        excludeCreditMsi
+        excludeCreditInstallment
           ? prisma.expense.findMany({
               where: {
                 AND: [baseWhere, whereCreditOrStoreCardWalletOnly()],
@@ -125,7 +127,7 @@ export async function GET(request: NextRequest) {
 
       let orphanCardPaymentTotal = 0;
       let orphanCardPaymentCount = 0;
-      if (excludeCreditMsi) {
+      if (excludeCreditInstallment) {
         const fnWhere = buildFortnightWhereForReport(
           ownerFilter,
           month,
@@ -155,7 +157,7 @@ export async function GET(request: NextRequest) {
       let planningCardStatementDueTotal = 0;
       let planningCardStatementDueCardCount = 0;
       if (
-        excludeCreditMsi &&
+        excludeCreditInstallment &&
         year &&
         month &&
         period &&
@@ -192,26 +194,26 @@ export async function GET(request: NextRequest) {
 
       const balance = totalIncome - totalExpense;
 
-      const cardTotal = excludeCreditMsi
+      const cardTotal = excludeCreditInstallment
         ? cardExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
         : 0;
-      const cardPaid = excludeCreditMsi
+      const cardPaid = excludeCreditInstallment
         ? cardExpenses
             .filter((e) => e.is_paid)
             .reduce((sum, e) => sum + Number(e.amount), 0)
         : 0;
-      const cardUnpaid = excludeCreditMsi ? cardTotal - cardPaid : 0;
-      const cardExpenseCount = excludeCreditMsi ? cardExpenses.length : 0;
+      const cardUnpaid = excludeCreditInstallment ? cardTotal - cardPaid : 0;
+      const cardExpenseCount = excludeCreditInstallment ? cardExpenses.length : 0;
 
-      let planningExpenseCount = excludeCreditMsi ? expenses.length : undefined;
-      let planningPaidExpenseCount = excludeCreditMsi
+      let planningExpenseCount = excludeCreditInstallment ? expenses.length : undefined;
+      let planningPaidExpenseCount = excludeCreditInstallment
         ? expenses.filter((e) => e.is_paid).length
         : undefined;
-      let planningUnpaidExpenseCount = excludeCreditMsi
+      let planningUnpaidExpenseCount = excludeCreditInstallment
         ? expenses.filter((e) => !e.is_paid).length
         : undefined;
 
-      if (excludeCreditMsi && orphanCardPaymentCount > 0) {
+      if (excludeCreditInstallment && orphanCardPaymentCount > 0) {
         planningExpenseCount =
           (planningExpenseCount ?? 0) + orphanCardPaymentCount;
         planningPaidExpenseCount =
@@ -338,7 +340,7 @@ export async function GET(request: NextRequest) {
           balance,
           userIncome: userIncomeData,
           incomeItems,
-          ...(excludeCreditMsi
+          ...(excludeCreditInstallment
             ? {
                 planningExpenseCount,
                 planningPaidExpenseCount,

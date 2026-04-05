@@ -3,7 +3,7 @@
  * Expects text extracted via pdf-parse (see extractMercadoPagoStatementText).
  */
 
-import { parseMsiFromDescription } from '@/lib/finance/expense-planning-scope';
+import { parseInstallmentFromDescription } from '@/lib/finance/expense-planning-scope';
 
 const MONTHS_ES: Record<string, number> = {
   enero: 0,
@@ -96,9 +96,9 @@ export type MercadoPagoParsedMovement = {
   description: string;
   amount: number;
   paymentDate: Date;
-  /** MSI: «N de M» en la descripción del PDF */
-  msiCurrent?: number;
-  msiTotal?: number;
+  /** Cuotas: «N de M» en la descripción del PDF */
+  installmentCurrent?: number;
+  installmentTotal?: number;
 };
 
 export type MercadoPagoStatementParseResult = {
@@ -263,7 +263,7 @@ export const parseMercadoPagoStatementText = (
       continue;
     }
     const paymentDate = pickTransactionDate(day, month, periodEnd, statementYear);
-    const msiParsed = parseMsiFromDescription(description);
+    const installmentParsed = parseInstallmentFromDescription(description);
     movements.push({
       rawLine,
       day,
@@ -271,8 +271,8 @@ export const parseMercadoPagoStatementText = (
       description,
       amount,
       paymentDate,
-      ...(msiParsed
-        ? { msiCurrent: msiParsed.current, msiTotal: msiParsed.total }
+      ...(installmentParsed
+        ? { installmentCurrent: installmentParsed.current, installmentTotal: installmentParsed.total }
         : {}),
     });
   }

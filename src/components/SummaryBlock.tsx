@@ -131,8 +131,8 @@ export default function SummaryBlock({
   return (
     <Card className="gap-0 overflow-hidden rounded-xl border-border/60 py-0 shadow-sm">
       <CardHeader className="space-y-0 border-b border-border/50 bg-muted/15 px-4 pb-1 pt-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <span
               className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/15"
               aria-hidden
@@ -150,6 +150,16 @@ export default function SummaryBlock({
               ) : null}
             </div>
           </div>
+          {!isExpanded && tenemos > 0 && (
+            <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">
+              <span className="font-mono text-sm font-bold tabular-nums leading-tight">
+                {formatCurrency(disponibleAhora)}
+              </span>
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {formatCurrency(pagado)} pagado
+              </span>
+            </div>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -182,7 +192,7 @@ export default function SummaryBlock({
         {/* Hero: disponible hoy vs tras pagar todo lo planeado */}
         <div
           className={cn(
-            'relative rounded-lg border border-border/60 border-l-[3px] border-l-emerald-500/45',
+            'relative rounded-lg border border-border/60',
             'bg-muted/20 px-2.5 py-2.5 dark:bg-muted/10 sm:px-3 sm:py-3',
           )}
         >
@@ -198,9 +208,9 @@ export default function SummaryBlock({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="block w-full text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="block w-full text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
-                        Disponible ahora
+                        Disponible
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
@@ -233,9 +243,9 @@ export default function SummaryBlock({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="block w-full text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="block w-full text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
-                        Cuando pagues todo lo planeado
+                        Tras gastos planeados
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
@@ -259,7 +269,7 @@ export default function SummaryBlock({
               </p>
               {planningCardStatementDue != null &&
               planningCardStatementDue.total > 0 ? (
-                <p className="pl-10 pt-0.5 text-[9px] leading-snug text-muted-foreground">
+                <p className="pl-10 pt-0.5 text-[10px] leading-snug text-muted-foreground">
                   Incluye {formatCurrency(planningCardStatementDue.total)} que aún
                   debes pagar al estado de cuenta
                   {planningCardStatementDue.cardCount > 0
@@ -272,16 +282,11 @@ export default function SummaryBlock({
               ) : null}
               {planningOrphanCardPayments != null &&
               planningOrphanCardPayments.count > 0 ? (
-                <p className="pl-10 pt-0.5 text-[9px] leading-snug text-muted-foreground">
+                <p className="pl-10 pt-0.5 text-[10px] leading-snug text-muted-foreground">
                   Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
                   {planningOrphanCardPayments.count} pago
                   {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
                   (salida de efectivo).
-                </p>
-              ) : null}
-              {pendiente <= 0 && tenemos > 0 ? (
-                <p className="pl-10 pt-0.5 text-[9px] text-muted-foreground">
-                  Sin gastos pendientes: coincide con “Disponible ahora”.
                 </p>
               ) : null}
             </div>
@@ -289,10 +294,10 @@ export default function SummaryBlock({
 
           {tenemos > 0 && (
             <div className="relative mt-3 border-t border-border/50 pt-2.5">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Uso del ingreso
               </p>
-              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-l-full bg-foreground/35 transition-all duration-500 dark:bg-foreground/40"
                   style={{ width: `${Math.min(paidPercent, 100)}%` }}
@@ -308,21 +313,29 @@ export default function SummaryBlock({
               </div>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 dark:bg-foreground/45" />
-                    <span className="text-[10px] text-muted-foreground">
-                      Pagado {Math.round(paidPercent)}%
+                  {paidPercent === 0 && pendingPercent === 0 ? (
+                    <span className="text-xs italic text-muted-foreground/60">
+                      Sin gastos registrados aún
                     </span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/45 dark:bg-muted-foreground/50" />
-                    <span className="text-[10px] text-muted-foreground">
-                      Pendiente {Math.round(pendingPercent)}%
-                    </span>
-                  </span>
+                  ) : (
+                    <>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 dark:bg-foreground/45" />
+                        <span className="text-xs text-muted-foreground">
+                          Pagado {Math.round(paidPercent)}%
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/45 dark:bg-muted-foreground/50" />
+                        <span className="text-xs text-muted-foreground">
+                          Pendiente {Math.round(pendingPercent)}%
+                        </span>
+                      </span>
+                    </>
+                  )}
                 </div>
-                <span className="text-[10px] text-muted-foreground sm:shrink-0 sm:text-right">
-                  {Math.round(totalSpentPercent)}% del ingreso comprometido
+                <span className="text-xs font-medium text-muted-foreground sm:shrink-0 sm:text-right">
+                  {Math.round(totalSpentPercent)}% comprometido
                 </span>
               </div>
             </div>
@@ -335,7 +348,7 @@ export default function SummaryBlock({
             planningOrphanCardPayments.count > 0) ||
           (planningCardStatementDue != null &&
             planningCardStatementDue.total > 0)) ? (
-          <p className="text-[9px] leading-snug text-muted-foreground">
+          <p className="text-[10px] leading-snug text-muted-foreground">
             {planningCardStatementDue != null &&
             planningCardStatementDue.total > 0 ? (
               <>
@@ -394,7 +407,7 @@ export default function SummaryBlock({
                   {formatCurrency(tenemos)}
                 </p>
                 {(hasUserIncome || incomeItems.length > 0) && (
-                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
                     {incomeItems.length > 0
                       ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
                       : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
@@ -415,7 +428,7 @@ export default function SummaryBlock({
                 <p className="text-sm font-bold font-mono tabular-nums leading-tight">
                   {formatCurrency(pagado)}
                 </p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   {expenseCount > 0
                     ? `${paidExpenseCount} de ${expenseCount} gastos`
                     : '—'}
@@ -435,14 +448,14 @@ export default function SummaryBlock({
                 <p className="text-sm font-bold font-mono tabular-nums leading-tight">
                   {formatCurrency(pendiente)}
                 </p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   {expenseCount > 0
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}
                 </p>
                 {planningCardStatementDue != null &&
                 planningCardStatementDue.total > 0 ? (
-                  <p className="text-[9px] leading-snug text-muted-foreground mt-1 border-t border-border/40 pt-1">
+                  <p className="text-[10px] leading-snug text-muted-foreground mt-1 border-t border-border/40 pt-1">
                     De eso, {formatCurrency(planningCardStatementDue.total)} son
                     pagos al estado de cuenta (tarjeta).
                   </p>
@@ -452,7 +465,7 @@ export default function SummaryBlock({
 
             {planningOrphanCardPayments != null &&
             planningOrphanCardPayments.count > 0 ? (
-              <p className="text-[9px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground">
                 Incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
                 {planningOrphanCardPayments.count} pago
                 {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
@@ -480,7 +493,7 @@ export default function SummaryBlock({
                 <p className="text-sm font-bold font-mono tabular-nums leading-tight text-violet-700 dark:text-violet-300">
                   {formatCurrency(cardCharges.total)}
                 </p>
-                <p className="mt-1 text-[9px] leading-snug text-muted-foreground">
+                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
                   Son compras cargadas a la tarjeta; no son salida de efectivo hasta
                   que pagues el estado de cuenta (los pagos a la tarjeta sí cuentan
                   arriba como efectivo/débito).

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
@@ -41,7 +42,9 @@ export default async function DashboardLayout({
           <DashboardHeaderToolbarDynamic />
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-muted/30">
-          <div className="container mx-auto">{children}</div>
+          <div className="container mx-auto">
+            <Suspense>{children}</Suspense>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

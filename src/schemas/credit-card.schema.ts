@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   createTransactionFieldsSchema,
-  withCreditMsiPairRefine,
+  withCreditInstallmentPairRefine,
 } from '@/schemas/transaction.schema';
 import { creditCardType, createWalletSchema, updateWalletSchema } from '@/schemas/wallet.schema';
 import {
@@ -18,7 +18,7 @@ export const updateCreditCardSchema = updateWalletSchema.safeExtend({
   type: creditCardType.optional(),
 });
 
-export const createCreditCardPurchaseSchema = withCreditMsiPairRefine(
+export const createCreditCardPurchaseSchema = withCreditInstallmentPairRefine(
   createTransactionFieldsSchema.omit({
     wallet_id: true,
     card_id: true,

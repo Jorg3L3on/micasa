@@ -159,24 +159,43 @@ function getPageTitle(
     return { title: 'Despensa', breadcrumbs };
   }
 
+  if (segments[0] === 'wallets') {
+    breadcrumbs.push({ label: 'Billeteras', href: `/wallets${qs}` });
+    if (segments[1] === 'liquidity') {
+      breadcrumbs.push({ label: 'Proyección de liquidez' });
+      return { title: 'Proyección de liquidez', breadcrumbs };
+    }
+    return { title: 'Billeteras', breadcrumbs };
+  }
+
+  if (segments[0] === 'credit-cards') {
+    breadcrumbs.push({ label: 'Billeteras', href: `/wallets${qs}` });
+    breadcrumbs.push({ label: 'Estado de cuenta' });
+    return { title: 'Estado de cuenta', breadcrumbs };
+  }
+
+  if (segments[0] === 'budgets') {
+    breadcrumbs.push({ label: 'Presupuestos' });
+    return { title: 'Presupuestos', breadcrumbs };
+  }
+
+  if (segments[0] === 'transactions') {
+    breadcrumbs.push({ label: 'Operaciones' });
+    return { title: 'Operaciones', breadcrumbs };
+  }
+
+  if (segments[0] === 'house-users') {
+    breadcrumbs.push({ label: 'Usuarios de la casa' });
+    return { title: 'Usuarios de la casa', breadcrumbs };
+  }
+
   // Handle other pages
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',
     categories: 'Categorías',
     pantry: 'Despensa',
     expenses: 'Gastos',
-    transactions: 'Transacciones',
-    wallets: 'Billeteras',
   };
-
-  if (segments[0] === 'credit-cards') {
-    breadcrumbs.push({
-      label: 'Billeteras',
-      href: `/wallets${qs}`,
-    });
-    breadcrumbs.push({ label: 'Estado de cuenta' });
-    return { title: 'Estado de cuenta', breadcrumbs };
-  }
 
   const pageTitle = pageTitles[segments[0]] || segments[0];
   breadcrumbs.push({ label: pageTitle });

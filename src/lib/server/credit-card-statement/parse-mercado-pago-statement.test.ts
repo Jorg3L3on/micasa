@@ -48,16 +48,18 @@ describe('parseMercadoPagoStatementText', () => {
     const cursor = r.movements.find((m) => m.description.includes('CURSOR'));
     expect(cursor?.amount).toBe(344.4);
 
-    const msi = r.movements.find((m) => m.description.includes('11 de 15'));
-    expect(msi?.amount).toBe(463.96);
-    expect(msi?.msiCurrent).toBe(11);
-    expect(msi?.msiTotal).toBe(15);
-    expect(msi?.paymentDate.getUTCFullYear()).toBe(2025);
-    expect(msi?.paymentDate.getUTCMonth()).toBe(3);
-    expect(msi?.paymentDate.getUTCDate()).toBe(23);
+    const withInstallments = r.movements.find((m) =>
+      m.description.includes('11 de 15'),
+    );
+    expect(withInstallments?.amount).toBe(463.96);
+    expect(withInstallments?.installmentCurrent).toBe(11);
+    expect(withInstallments?.installmentTotal).toBe(15);
+    expect(withInstallments?.paymentDate.getUTCFullYear()).toBe(2025);
+    expect(withInstallments?.paymentDate.getUTCMonth()).toBe(3);
+    expect(withInstallments?.paymentDate.getUTCDate()).toBe(23);
 
     const plain = r.movements.find((m) => m.description.includes('TODOMODA'));
-    expect(plain?.msiCurrent).toBeUndefined();
-    expect(plain?.msiTotal).toBeUndefined();
+    expect(plain?.installmentCurrent).toBeUndefined();
+    expect(plain?.installmentTotal).toBeUndefined();
   });
 });
