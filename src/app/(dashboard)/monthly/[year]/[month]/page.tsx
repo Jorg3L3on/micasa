@@ -311,7 +311,7 @@ export default async function MonthlyPage({
   return (
     <>
       <div
-        className="mb-3 flex items-center gap-2 sm:gap-3"
+        className="mb-5 flex items-center gap-2 sm:gap-3"
         role="group"
         aria-label="Selector de mes"
       >
@@ -365,7 +365,7 @@ export default async function MonthlyPage({
         </div>
       </div>
 
-      <div className="mb-4 min-w-0">
+      <div className="mb-8 min-w-0">
         <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
       </div>
 
