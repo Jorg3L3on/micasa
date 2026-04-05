@@ -820,6 +820,16 @@ export async function getCreditCardStatement(
   );
 }
 
+export async function getCreditCardInstallmentProjection(
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<import('@/types/catalog').InstallmentProjectionMonthItem[]>(
+    '/api/credit-cards/installment-projection',
+    undefined,
+    context,
+  );
+}
+
 export async function listCreditCardStatementImports(
   creditCardId: number,
   context?: FinanceContextType,
@@ -831,7 +841,7 @@ export async function listCreditCardStatementImports(
   );
 }
 
-export async function uploadMercadoPagoCreditCardStatement(
+export async function uploadCreditCardStatement(
   creditCardId: number,
   formData: FormData,
   context?: FinanceContextType,
@@ -842,6 +852,9 @@ export async function uploadMercadoPagoCreditCardStatement(
     context,
   );
 }
+
+/** @deprecated Use uploadCreditCardStatement */
+export const uploadMercadoPagoCreditCardStatement = uploadCreditCardStatement;
 
 export async function rollbackCreditCardStatementImport(
   creditCardId: number,
@@ -937,8 +950,8 @@ export async function createCreditCardPurchase(
     amount: number;
     payment_date?: string | null;
     expense_template_id?: number | null;
-    credit_msi_current?: number | null;
-    credit_msi_total?: number | null;
+    credit_installment_current?: number | null;
+    credit_installment_total?: number | null;
   },
   context?: FinanceContextType,
 ) {

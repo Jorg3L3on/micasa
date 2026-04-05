@@ -42,6 +42,8 @@ enum BudgetFrequency {
 
 enum StatementImportProvider {
   MERCADO_PAGO
+  CA_DEPARTAMENTAL
+  CA_EFECTIVO
 }
 
 model User {
@@ -167,9 +169,9 @@ model Expense {
   payment_date DateTime?
   due_day      Int?
 
-  /// Meses sin intereses (MSI): cuota actual y total (ej. 11 de 15). Null = no MSI.
-  credit_msi_current Int?
-  credit_msi_total   Int?
+  /// Cuotas en meses (installment): cuota actual y total (ej. 11 de 15). Null = no aplica.
+  credit_installment_current Int?
+  credit_installment_total   Int?
 
   house_id            Int?
   fortnight_id        Int
@@ -443,7 +445,9 @@ model CreditCardStatementImport {
   period_end           DateTime?
   account_number       String?
   statement_issue_date DateTime?
+  payment_due_date     DateTime?
   total_due            Decimal?                @db.Decimal(12, 2)
+  minimum_payment      Decimal?                @db.Decimal(12, 2)
 
   parse_warnings       String[]                @default([])
 

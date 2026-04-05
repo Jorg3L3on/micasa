@@ -1,7 +1,3 @@
-/**
- * @deprecated Use CreditCardStatementImportDialog instead.
- * This file is kept for backward compatibility.
- */
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -26,8 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { uploadMercadoPagoCreditCardStatement } from '@/lib/api';
-import { cn, formatDate } from '@/lib/utils';
+import { uploadCreditCardStatement } from '@/lib/api';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 import type {
   CategoryOption,
@@ -37,7 +33,15 @@ import type {
 const IMPORT_LIST_SCROLL_CLASS =
   'max-h-[min(16rem,40vh)] overflow-y-auto scrollbar-hide pr-0.5';
 
-export type CreditCardMercadoPagoImportDialogProps = {
+type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO';
+
+const PROVIDER_OPTIONS: { value: Provider; label: string }[] = [
+  { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
+  { value: 'CA_DEPARTAMENTAL', label: 'C&A Departamental' },
+  { value: 'CA_EFECTIVO', label: 'C&A Efectivo' },
+];
+
+export type CreditCardStatementImportDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   creditCardId: number;
@@ -49,7 +53,13 @@ export type CreditCardMercadoPagoImportDialogProps = {
   onRollbackClick: (importId: number) => void;
 };
 
-const CreditCardMercadoPagoImportDialog = ({
+const PROVIDER_LABEL: Record<string, string> = {
+  MERCADO_PAGO: 'Mercado Pago',
+  CA_DEPARTAMENTAL: 'C&A Departamental',
+  CA_EFECTIVO: 'C&A Efectivo',
+};
+
+const CreditCardStatementImportDialog = ({
   open,
   onOpenChange,
   creditCardId,
@@ -59,20 +69,21 @@ const CreditCardMercadoPagoImportDialog = ({
   onSuccess,
   onDownloadImport,
   onRollbackClick,
-}: CreditCardMercadoPagoImportDialogProps) => {
-  const [mpImportFile, setMpImportFile] = useState<File | null>(null);
-  const [mpImportCategoryId, setMpImportCategoryId] = useState('');
-  const [mpStorePdf, setMpStorePdf] = useState(true);
-  const [mpSkipDuplicates, setMpSkipDuplicates] = useState(true);
-  const [mpImportSubmitting, setMpImportSubmitting] = useState(false);
-  const [mpFileInputKey, setMpFileInputKey] = useState(0);
+}: CreditCardStatementImportDialogProps) => {
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [provider, setProvider] = useState<Provider>('MERCADO_PAGO');
+  const [importCategoryId, setImportCategoryId] = useState('');
+  const [storePdf, setStorePdf] = useState(true);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const resetForm = useCallback(() => {
-    setMpImportFile(null);
-    setMpImportCategoryId('');
-    setMpStorePdf(true);
-    setMpSkipDuplicates(true);
-    setMpFileInputKey((k) => k + 1);
+    setImportFile(null);
+    setImportCategoryId('');
+    setStorePdf(true);
+    setSkipDuplicates(true);
+    setFileInputKey((k) => k + 1);
   }, []);
 
   const prevOpenRef = useRef(open);
@@ -83,31 +94,27 @@ const CreditCardMercadoPagoImportDialog = ({
     prevOpenRef.current = open;
   }, [open, resetForm]);
 
-  const handleMercadoPagoImport = async () => {
-    if (!mpImportFile) {
-      toast.error('Elige un PDF de Mercado Pago');
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error('Elige un PDF de estado de cuenta');
       return;
     }
     try {
-      setMpImportSubmitting(true);
+      setSubmitting(true);
       const formData = new FormData();
-      formData.append('file', mpImportFile);
-      formData.append('provider', 'MERCADO_PAGO');
-      if (!mpStorePdf) {
+      formData.append('file', importFile);
+      formData.append('provider', provider);
+      if (!storePdf) {
         formData.append('store_file', 'false');
       }
-      if (mpSkipDuplicates) {
+      if (skipDuplicates) {
         formData.append('skip_duplicates', 'true');
       }
-      if (mpImportCategoryId) {
-        formData.append('category_id', mpImportCategoryId);
+      if (importCategoryId) {
+        formData.append('category_id', importCategoryId);
       }
 
-      const result = await uploadMercadoPagoCreditCardStatement(
-        creditCardId,
-        formData,
-        context,
-      );
+      const result = await uploadCreditCardStatement(creditCardId, formData, context);
 
       toast.success(
         `Importación lista: ${result.expenses_created} gasto(s) creado(s)${
@@ -126,7 +133,7 @@ const CreditCardMercadoPagoImportDialog = ({
         err instanceof Error ? err.message : 'No se pudo importar el PDF',
       );
     } finally {
-      setMpImportSubmitting(false);
+      setSubmitting(false);
     }
   };
 
@@ -140,13 +147,12 @@ const CreditCardMercadoPagoImportDialog = ({
             </span>
             <div className="min-w-0 space-y-1.5">
               <DialogTitle className="text-left text-base">
-                Importar estado de cuenta (Mercado Pago)
+                Importar estado de cuenta
               </DialogTitle>
               <DialogDescription className="text-left text-xs leading-relaxed">
                 Sube el PDF del banco: guardamos el archivo (opcional) y creamos
-                un gasto pagado por cada compra del apartado «Movimientos». Si
-                ya registraste cargos, activa omitir duplicados o revisa el
-                saldo de la tarjeta para evitar dobles.
+                un gasto pagado por cada compra del periodo. Si ya registraste
+                cargos, activa omitir duplicados para evitar dobles.
               </DialogDescription>
             </div>
           </div>
@@ -155,30 +161,49 @@ const CreditCardMercadoPagoImportDialog = ({
         <div className="space-y-4 pt-1">
           <div className="flex flex-col gap-3">
             <div className="space-y-2">
-              <Label htmlFor="mp-statement-file-dialog" className="text-xs">
+              <Label className="text-xs">Banco / Proveedor</Label>
+              <Select
+                value={provider}
+                onValueChange={(v) => setProvider(v as Provider)}
+                disabled={submitting}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROVIDER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="statement-file-dialog" className="text-xs">
                 PDF del estado de cuenta
               </Label>
               <Input
-                key={mpFileInputKey}
-                id="mp-statement-file-dialog"
+                key={fileInputKey}
+                id="statement-file-dialog"
                 type="file"
                 accept="application/pdf"
                 className="cursor-pointer"
-                disabled={mpImportSubmitting}
+                disabled={submitting}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  setMpImportFile(f ?? null);
+                  setImportFile(f ?? null);
                 }}
               />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Categoría (opcional)</Label>
               <Select
-                value={mpImportCategoryId || '__default__'}
+                value={importCategoryId || '__default__'}
                 onValueChange={(v) =>
-                  setMpImportCategoryId(v === '__default__' ? '' : v)
+                  setImportCategoryId(v === '__default__' ? '' : v)
                 }
-                disabled={mpImportSubmitting}
+                disabled={submitting}
               >
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Predeterminada" />
@@ -200,23 +225,23 @@ const CreditCardMercadoPagoImportDialog = ({
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex items-center gap-2">
               <Checkbox
-                id="mp-store-pdf-dialog"
-                checked={mpStorePdf}
-                onCheckedChange={(v) => setMpStorePdf(v === true)}
-                disabled={mpImportSubmitting}
+                id="store-pdf-dialog"
+                checked={storePdf}
+                onCheckedChange={(v) => setStorePdf(v === true)}
+                disabled={submitting}
               />
-              <Label htmlFor="mp-store-pdf-dialog" className="text-xs font-normal">
+              <Label htmlFor="store-pdf-dialog" className="text-xs font-normal">
                 Guardar PDF para descargarlo después
               </Label>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
-                id="mp-skip-dup-dialog"
-                checked={mpSkipDuplicates}
-                onCheckedChange={(v) => setMpSkipDuplicates(v === true)}
-                disabled={mpImportSubmitting}
+                id="skip-dup-dialog"
+                checked={skipDuplicates}
+                onCheckedChange={(v) => setSkipDuplicates(v === true)}
+                disabled={submitting}
               />
-              <Label htmlFor="mp-skip-dup-dialog" className="text-xs font-normal">
+              <Label htmlFor="skip-dup-dialog" className="text-xs font-normal">
                 Omitir duplicados (misma fecha, monto y descripción)
               </Label>
             </div>
@@ -244,11 +269,21 @@ const CreditCardMercadoPagoImportDialog = ({
                           : 'Periodo no detectado'}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
+                        {PROVIDER_LABEL[row.provider] ?? row.provider}
+                        {' · '}
                         {row.expense_count} gasto(s)
-                        {row.account_number
-                          ? ` · Cuenta ${row.account_number}`
+                        {row.payment_due_date
+                          ? ` · Vence ${formatDate(row.payment_due_date.slice(0, 10))}`
                           : ''}
-                        {row.file_name ? ` · ${row.file_name}` : ''}
+                        {row.total_due != null
+                          ? ` · Total ${formatCurrency(row.total_due)}`
+                          : ''}
+                        {row.minimum_payment != null
+                          ? ` · Mín ${formatCurrency(row.minimum_payment)}`
+                          : ''}
+                        {row.account_number
+                          ? ` · ${row.account_number}`
+                          : ''}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
@@ -289,17 +324,17 @@ const CreditCardMercadoPagoImportDialog = ({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={mpImportSubmitting}
+            disabled={submitting}
           >
             Cerrar
           </Button>
           <Button
             type="button"
-            onClick={handleMercadoPagoImport}
-            disabled={mpImportSubmitting || !mpImportFile}
+            onClick={handleImport}
+            disabled={submitting || !importFile}
             className="rounded-xl"
           >
-            {mpImportSubmitting ? 'Importando…' : 'Importar PDF'}
+            {submitting ? 'Importando…' : 'Importar PDF'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -307,4 +342,4 @@ const CreditCardMercadoPagoImportDialog = ({
   );
 };
 
-export default CreditCardMercadoPagoImportDialog;
+export default CreditCardStatementImportDialog;

@@ -1,7 +1,7 @@
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import { isCreditMsiInstallmentExpense } from '@/lib/finance/expense-planning-scope';
+import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
   isCreditWalletType,
@@ -174,7 +174,10 @@ export async function getCreditCardStatementByOwner(
     credit_card_wallet_id: creditCardId,
   };
 
-  const [purchases, payments, paymentTotals] = await Promise.all([
+  // Most recent statement import whose period_end falls within ±7 days of
+  // the statement window end — used to override next_due_payment and due date.
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const [purchases, payments, paymentTotals, recentImport] = await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -187,8 +190,8 @@ export async function getCreditCardStatementByOwner(
         amount: true,
         payment_date: true,
         created_at: true,
-        credit_msi_current: true,
-        credit_msi_total: true,
+        credit_installment_current: true,
+        credit_installment_total: true,
         category: { select: { name: true } },
         fortnight: {
           select: { id: true, year: true, month: true, period: true },
@@ -229,7 +232,25 @@ export async function getCreditCardStatementByOwner(
         _sum: { amount: true },
       }),
     ]),
+    prisma.creditCardStatementImport.findFirst({
+      where: {
+        wallet_id: creditCardId,
+        period_end: {
+          gte: new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS),
+          lte: new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS),
+        },
+      },
+      orderBy: { created_at: 'desc' },
+      select: { total_due: true, payment_due_date: true, minimum_payment: true },
+    }),
   ]);
+
+  const importedTotalDue =
+    recentImport?.total_due != null ? Number(recentImport.total_due) : null;
+  const importedMinimumPayment =
+    recentImport?.minimum_payment != null
+      ? Number(recentImport.minimum_payment)
+      : null;
 
   const statementPurchases = purchases
     .map((expense) => ({
@@ -251,14 +272,14 @@ export async function getCreditCardStatementByOwner(
       isWithinRange(expense.effectiveDate, window.currentCycleStart, window.currentCycleEnd),
     );
 
-  /** MSI con cuotas aún pendientes (cuota actual estrictamente menor al total). */
-  const msiActivePurchases = purchases
+  /** Cuotas con pagos aún pendientes (cuota actual estrictamente menor al total). */
+  const installmentActivePurchases = purchases
     .filter(
       (e) =>
-        isCreditMsiInstallmentExpense(e) &&
-        e.credit_msi_current != null &&
-        e.credit_msi_total != null &&
-        e.credit_msi_current < e.credit_msi_total,
+        isCreditInstallmentExpense(e) &&
+        e.credit_installment_current != null &&
+        e.credit_installment_total != null &&
+        e.credit_installment_current < e.credit_installment_total,
     )
     .map((expense) => ({
       ...expense,
@@ -278,8 +299,8 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
-      credit_msi_current: expense.credit_msi_current,
-      credit_msi_total: expense.credit_msi_total,
+      credit_installment_current: expense.credit_installment_current,
+      credit_installment_total: expense.credit_installment_total,
     }));
 
   const lastStatementBalance = statementPurchases.reduce(
@@ -311,17 +332,21 @@ export async function getCreditCardStatementByOwner(
     due_day: card.due_day,
     statement_start: toDateOnlyString(window.statementStart),
     statement_end: toDateOnlyString(window.statementEnd),
-    statement_due_date: toDateOnlyString(window.statementDueDate),
+    statement_due_date: recentImport?.payment_due_date
+      ? toDateOnlyString(recentImport.payment_due_date)
+      : toDateOnlyString(window.statementDueDate),
     current_cycle_start: toDateOnlyString(window.currentCycleStart),
     current_cycle_end: toDateOnlyString(window.currentCycleEnd),
     outstanding_balance: currentBalance,
     last_statement_balance: lastStatementBalance,
     payments_since_last_cutoff: paymentsAfterCutoffTotal,
     payments_applied_to_statement: paymentsAppliedToStatementTotal,
+    imported_statement_total: importedTotalDue,
     next_due_payment: Math.max(
-      lastStatementBalance - paymentsAppliedToStatementTotal,
+      (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatementTotal,
       0,
     ),
+    minimum_payment: importedMinimumPayment,
     current_cycle_purchases: currentCyclePurchasesTotal,
     current_cycle_payments: currentCyclePaymentsTotal,
     statement_purchases: statementPurchases.map((expense) => ({
@@ -334,8 +359,8 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
-      credit_msi_current: expense.credit_msi_current,
-      credit_msi_total: expense.credit_msi_total,
+      credit_installment_current: expense.credit_installment_current,
+      credit_installment_total: expense.credit_installment_total,
     })),
     current_cycle_purchase_items: currentCyclePurchases.map((expense) => ({
       id: expense.id,
@@ -347,10 +372,10 @@ export async function getCreditCardStatementByOwner(
       fortnight_year: expense.fortnight.year,
       fortnight_month: expense.fortnight.month,
       fortnight_period: expense.fortnight.period,
-      credit_msi_current: expense.credit_msi_current,
-      credit_msi_total: expense.credit_msi_total,
+      credit_installment_current: expense.credit_installment_current,
+      credit_installment_total: expense.credit_installment_total,
     })),
-    msi_active_purchases: msiActivePurchases,
+    installment_active_purchases: installmentActivePurchases,
     payment_history: payments.map((payment) => ({
       id: payment.id,
       amount: Number(payment.amount),
@@ -673,7 +698,10 @@ async function getDuePaymentsWithAsOf(
 
   const purchaseSums = new Map<number, number>();
   const paymentSums = new Map<number, number>();
+  const importedTotalByWallet = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
+
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
   await Promise.all(
     [...groups.values()].map(async (cardsInGroup) => {
@@ -689,10 +717,34 @@ async function getDuePaymentsWithAsOf(
         statementDueByWallet.set(id, dueStr);
       }
 
-      const [purchases, payments] = await Promise.all([
+      // The import we want is the one whose payment_due_date falls in this
+      // planner fortnight. That corresponds to the PREVIOUS statement (period_end
+      // = day before window.statementStart). Compute its due date and search ±7d.
+      const previousStatementEnd = new Date(window.statementStart.getTime() - 24 * 60 * 60 * 1000);
+      const previousDueDate = resolveDueDate(previousStatementEnd, head.due_day!);
+
+      const [purchases, payments, recentImports] = await Promise.all([
         sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
         sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
+        prisma.creditCardStatementImport.findMany({
+          where: {
+            wallet_id: { in: cardIds },
+            payment_due_date: {
+              gte: new Date(previousDueDate.getTime() - SEVEN_DAYS_MS),
+              lte: new Date(previousDueDate.getTime() + SEVEN_DAYS_MS),
+            },
+          },
+          orderBy: { created_at: 'desc' },
+          select: { wallet_id: true, total_due: true },
+        }),
       ]);
+
+      // Keep only the most recent import per wallet
+      for (const imp of recentImports) {
+        if (!importedTotalByWallet.has(imp.wallet_id) && imp.total_due != null) {
+          importedTotalByWallet.set(imp.wallet_id, Number(imp.total_due));
+        }
+      }
 
       for (const [id, value] of purchases) {
         purchaseSums.set(id, value);
@@ -706,8 +758,9 @@ async function getDuePaymentsWithAsOf(
   const items = dueCards.map((card) => {
     const lastStatementBalance = purchaseSums.get(card.id) ?? 0;
     const paymentsAppliedToStatement = paymentSums.get(card.id) ?? 0;
+    const importedTotalDue = importedTotalByWallet.get(card.id) ?? null;
     const nextDuePayment = Math.max(
-      lastStatementBalance - paymentsAppliedToStatement,
+      (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatement,
       0,
     );
     return {
@@ -743,6 +796,42 @@ export async function getDuePaymentsForCurrentFortnight(
   );
 }
 
+/**
+ * For a future statement window, sums the installment charges that would appear
+ * in that window. `monthOffset` is how many statement cycles ahead we are from
+ * today's current cycle (1 = next statement, 2 = the one after, …).
+ * A purchase with `remaining = total − current` covers offsets 1…remaining.
+ */
+async function getInstallmentProjectedBalance(
+  ownerFilter: OwnerFilter,
+  cardId: number,
+  monthOffset: number,
+): Promise<number> {
+  if (monthOffset <= 0) return 0;
+  const purchases = await prisma.expense.findMany({
+    where: {
+      ...ownerFilter,
+      wallet_id: cardId,
+      is_paid: true,
+      credit_installment_current: { not: null },
+      credit_installment_total: { not: null },
+    },
+    select: {
+      amount: true,
+      credit_installment_current: true,
+      credit_installment_total: true,
+    },
+  });
+  return purchases
+    .filter(
+      (e) =>
+        e.credit_installment_current != null &&
+        e.credit_installment_total != null &&
+        e.credit_installment_total - e.credit_installment_current >= monthOffset,
+    )
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+}
+
 /** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
 export async function getDuePaymentsForPlannerMonth(
   ownerFilter: OwnerFilter,
@@ -767,6 +856,72 @@ export async function getDuePaymentsForPlannerMonth(
       { includeZeroObligation: true },
     ),
   ]);
+
+  // For future months, items with nextDuePayment === 0 but positive outstanding
+  // balance have no recorded expenses in that statement window yet. Fill in
+  // the projected installment amounts so the Pagos tarjeta tab shows real amounts.
+  const today = new Date();
+  if (asOfFirst > today) {
+    const allItems = [...first, ...second];
+    const itemsToFill = allItems.filter(
+      (item) => item.nextDuePayment === 0 && item.outstandingBalance > 0,
+    );
+
+    // For cards that have a recent import, the import's payment is shown in the
+    // planner month where payment_due_date falls (offset +1 from the import's
+    // period_end cycle). Use period_end + 1 cycle as the installment reference so that
+    // the remaining installments land on the correct months.
+    const fillCardIds = itemsToFill.map((i) => i.walletId);
+    const recentImportsForFill = fillCardIds.length > 0
+      ? await prisma.creditCardStatementImport.findMany({
+          where: { wallet_id: { in: fillCardIds }, period_end: { not: null } },
+          orderBy: { period_end: 'desc' },
+          distinct: ['wallet_id'],
+          select: { wallet_id: true, period_end: true },
+        })
+      : [];
+    const importPeriodEndByWallet = new Map(
+      recentImportsForFill
+        .filter((imp) => imp.period_end != null)
+        .map((imp) => [imp.wallet_id, imp.period_end as Date]),
+    );
+
+    await Promise.all(
+      itemsToFill.map(async (item) => {
+        const todayEnd = resolveCreditCardStatementWindow(
+          today,
+          item.cutoff_day,
+          item.dueDay,
+        ).statementEnd;
+        const futureEnd = resolveCreditCardStatementWindow(
+          asOfFirst,
+          item.cutoff_day,
+          item.dueDay,
+        ).statementEnd;
+
+        // If a recent import exists, its payment is already shown in the planner
+        // month where payment_due_date falls (one cycle after period_end). Shift
+        // the installment reference forward by one cycle so remaining installments align.
+        const importPeriodEnd = importPeriodEndByWallet.get(item.walletId);
+        const referenceEnd = importPeriodEnd
+          ? addMonths(importPeriodEnd, 1, item.cutoff_day)
+          : todayEnd;
+
+        const monthOffset =
+          (futureEnd.getUTCFullYear() - referenceEnd.getUTCFullYear()) * 12 +
+          (futureEnd.getUTCMonth() - referenceEnd.getUTCMonth());
+        if (monthOffset <= 0) return;
+        const projected = await getInstallmentProjectedBalance(
+          ownerFilter,
+          item.walletId,
+          monthOffset,
+        );
+        if (projected > 0) {
+          item.nextDuePayment = projected;
+        }
+      }),
+    );
+  }
 
   return { first, second };
 }

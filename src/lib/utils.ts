@@ -7,8 +7,16 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(dateString: string | Date): string {
   try {
-    const date =
-      typeof dateString === 'string' ? new Date(dateString) : dateString;
+    let date: Date;
+    if (typeof dateString === 'string') {
+      // Date-only strings (YYYY-MM-DD) must be treated as UTC noon to avoid
+      // timezone offset pushing the date into the previous day in UTC-6.
+      date = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+        ? new Date(`${dateString}T12:00:00Z`)
+        : new Date(dateString);
+    } else {
+      date = dateString;
+    }
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'short',

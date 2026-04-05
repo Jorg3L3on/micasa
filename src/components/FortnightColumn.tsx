@@ -242,7 +242,7 @@ export default function FortnightColumn({
     try {
       setIsRefreshing(true);
       const ym = String(month).padStart(2, '0');
-      const planningQs = '&exclude_credit_msi=true';
+      const planningQs = '&exclude_credit_installment=true';
       const [transactionsData, summaryData] = await Promise.all([
         clientFetchFromApi<TransactionRow[]>(
           `/api/transactions?year=${year}&month=${ym}&period=${period}&type=expense${planningQs}`,
@@ -699,83 +699,16 @@ export default function FortnightColumn({
           </div>
         )}
 
-        {/* Primary actions: junto al resumen, antes de la tabla */}
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAddExpenseDialogOpen(true)}
-                disabled={!fortnightId || fortnightId <= 0}
-                className="gap-1.5"
-                aria-label="Agregar gasto a esta quincena"
-                title={
-                  !fortnightId || fortnightId <= 0
-                    ? 'La quincena no está disponible. Recarga la página.'
-                    : undefined
-                }
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Agregar gasto
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={4}>
-              Atajo: tecla A
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    disabled={!fortnightId || fortnightId <= 0}
-                    aria-label="Más acciones de esta quincena"
-                  >
-                    <MoreVertical className="h-4 w-4" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4}>
-                Más acciones
-              </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="min-w-48">
-              <DropdownMenuItem
-                disabled={
-                  !fortnightId || fortnightId <= 0 || isRefreshing
-                }
-                onSelect={() => {
-                  void handleRegenerateFromTemplates();
-                }}
-              >
-                {isRefreshing ? (
-                  <Loader2
-                    className="h-4 w-4 shrink-0 animate-spin"
-                    aria-hidden
-                  />
-                ) : (
-                  <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
-                )}
-                Regenerar desde plantillas
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
         <Tabs
           value={columnTab}
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <TabsList
-            variant="line"
-            className="mb-2 h-auto w-full justify-start gap-1 rounded-none border-b border-border/60 bg-transparent p-0 sm:max-w-md"
-          >
+          <div className="mb-2 flex items-center border-b border-border/60">
+            <TabsList
+              variant="line"
+              className="h-auto flex-1 justify-start gap-1 rounded-none bg-transparent p-0"
+            >
             <TabsTrigger
               value="expenses"
               className="px-3 py-2 text-xs font-medium sm:text-sm"
@@ -810,7 +743,72 @@ export default function FortnightColumn({
                 </Badge>
               </span>
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+            <div className="flex shrink-0 items-center gap-1.5 pb-1 pl-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAddExpenseDialogOpen(true)}
+                    disabled={!fortnightId || fortnightId <= 0}
+                    className="gap-1.5"
+                    aria-label="Agregar gasto a esta quincena"
+                    title={
+                      !fortnightId || fortnightId <= 0
+                        ? 'La quincena no está disponible. Recarga la página.'
+                        : undefined
+                    }
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agregar gasto
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={4}>
+                  Atajo: tecla A
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        disabled={!fortnightId || fortnightId <= 0}
+                        aria-label="Más acciones de esta quincena"
+                      >
+                        <MoreVertical className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    Más acciones
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  <DropdownMenuItem
+                    disabled={!fortnightId || fortnightId <= 0 || isRefreshing}
+                    onSelect={() => {
+                      void handleRegenerateFromTemplates();
+                    }}
+                  >
+                    {isRefreshing ? (
+                      <Loader2
+                        className="h-4 w-4 shrink-0 animate-spin"
+                        aria-hidden
+                      />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                    )}
+                    Regenerar desde plantillas
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
 
           <TabsContent value="expenses" className="mt-0 outline-none">
             <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
