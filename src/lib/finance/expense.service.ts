@@ -7,6 +7,7 @@ import {
   isCreditWalletType,
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
+import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 
 type ExpenseServiceError = Error & { code?: string };
 
@@ -153,7 +154,7 @@ export async function createExpense(input: CreateExpenseInput) {
 
   const fortnight = await prisma.fortnight.findUnique({
     where: { id: fortnightId },
-    select: { id: true, user_id: true, house_id: true },
+    select: { id: true, user_id: true, house_id: true, period: true },
   });
 
   if (
@@ -216,6 +217,17 @@ export async function createExpense(input: CreateExpenseInput) {
     }
   }
 
+  let resolvedDueDay: number | null = null;
+  if (expenseTemplateId) {
+    const template = await prisma.expenseTemplate.findUnique({
+      where: { id: expenseTemplateId },
+      select: { due_day: true, due_day_first_fortnight: true, due_day_second_fortnight: true },
+    });
+    if (template) {
+      resolvedDueDay = resolveTemplateDueDay(fortnight.period, template) ?? null;
+    }
+  }
+
   const created = await prisma.$transaction(async (tx) => {
     const expense = await tx.expense.create({
       data: {
@@ -227,6 +239,7 @@ export async function createExpense(input: CreateExpenseInput) {
         is_paid: isPaid,
         payment_date: paymentDate ? new Date(paymentDate) : null,
         expense_template_id: expenseTemplateId || null,
+        due_day: resolvedDueDay,
         statement_import_id: statementImportId ?? null,
         credit_installment_current: creditInstallmentCurrent ?? null,
         credit_installment_total: creditInstallmentTotal ?? null,

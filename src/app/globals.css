@@ -2,81 +2,82 @@
 @import 'tw-animate-css';
 
 /* ==========================================================================
-   OKLCH Design System – theme_tokens from .cursorrules
-   Light: neutral base; Dark: strictly applied per rules
+   Design System – Indigo-accented fintech palette
+   Light: neutral base with indigo accent
+   Dark: deep blue-black with indigo primary
    ========================================================================== */
 
 :root {
   --radius: 0.75rem;
-  /* Light – theme_tokens.cssVars.light */
-  --background: oklch(1 0 0);
+  /* Light mode */
+  --background: oklch(0.97 0.005 265);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0.005 0);
+  --primary: oklch(0.585 0.233 264);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.94 0.008 265);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.96 0.005 0);
+  --muted: oklch(0.94 0.008 265);
   --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.96 0.01 250);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.93 0.02 265);
+  --accent-foreground: oklch(0.585 0.233 264);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.005 0);
-  --input: oklch(0.92 0.005 0);
-  --ring: oklch(0.205 0 0);
-  --chart-1: oklch(0.45 0 0);
-  --chart-2: oklch(0.55 0 0);
-  --chart-3: oklch(0.65 0 0);
-  --chart-4: oklch(0.75 0 0);
-  --chart-5: oklch(0.85 0 0);
-  --sidebar: oklch(0.98 0.005 0);
+  --border: oklch(0.89 0.008 265);
+  --input: oklch(0.89 0.008 265);
+  --ring: oklch(0.585 0.233 264);
+  --chart-1: oklch(0.585 0.233 264);
+  --chart-2: oklch(0.65 0.18 25);
+  --chart-3: oklch(0.68 0.16 145);
+  --chart-4: oklch(0.7 0.15 290);
+  --chart-5: oklch(0.72 0.12 55);
+  --sidebar: oklch(0.99 0.003 265);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.96 0.01 250);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.92 0.005 0);
-  --sidebar-ring: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.585 0.233 264);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.93 0.02 265);
+  --sidebar-accent-foreground: oklch(0.585 0.233 264);
+  --sidebar-border: oklch(0.89 0.008 265);
+  --sidebar-ring: oklch(0.585 0.233 264);
 }
 
 .dark {
-  /* Dark – theme_tokens.cssVars.dark (strict) */
-  --background: oklch(0.1 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.2 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.25 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Dark mode – deep blue-black with indigo accent */
+  --background: oklch(0.13 0.012 265);
+  --foreground: oklch(0.96 0.005 265);
+  --card: oklch(0.16 0.012 265);
+  --card-foreground: oklch(0.96 0.005 265);
+  --popover: oklch(0.16 0.012 265);
+  --popover-foreground: oklch(0.96 0.005 265);
+  --primary: oklch(0.585 0.233 264);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.21 0.012 265);
+  --secondary-foreground: oklch(0.96 0.005 265);
+  --muted: oklch(0.21 0.012 265);
+  --muted-foreground: oklch(0.58 0.01 265);
+  --accent: oklch(0.25 0.015 265);
+  --accent-foreground: oklch(0.96 0.005 265);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.2 0 0);
-  --ring: oklch(0.5 0 0);
-  --chart-1: oklch(0.65 0 0);
-  --chart-2: oklch(0.72 0 0);
-  --chart-3: oklch(0.78 0 0);
-  --chart-4: oklch(0.85 0 0);
-  --chart-5: oklch(0.92 0 0);
-  --sidebar: oklch(0.12 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.985 0 0);
-  --sidebar-primary-foreground: oklch(0.145 0 0);
-  --sidebar-accent: oklch(0.25 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(0.5 0 0);
+  --border: oklch(0.23 0.012 265);
+  --input: oklch(0.23 0.012 265);
+  --ring: oklch(0.585 0.233 264);
+  --chart-1: oklch(0.585 0.233 264);
+  --chart-2: oklch(0.72 0.18 25);
+  --chart-3: oklch(0.72 0.16 145);
+  --chart-4: oklch(0.7 0.15 290);
+  --chart-5: oklch(0.75 0.12 55);
+  --sidebar: oklch(0.09 0.01 265);
+  --sidebar-foreground: oklch(0.85 0.008 265);
+  --sidebar-primary: oklch(0.585 0.233 264);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.28 0.07 264);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.18 0.01 265);
+  --sidebar-ring: oklch(0.585 0.233 264);
 }
 
 @theme inline {
@@ -136,19 +137,25 @@
     @apply ring-1 ring-inset ring-white/5;
   }
 
-  /* Orange glow for active/highlighted elements (e.g. Mes selector, active badges) */
+  /* Orange glow for active/highlighted elements */
   .glow-orange {
     box-shadow: 0 0 15px rgba(249, 115, 22, 0.15);
     @apply border-orange-500/50 border;
   }
 
-  /* Status glow: red (Vencido) – keep destructive color, add glow */
+  /* Indigo glow for primary accent elements */
+  .glow-primary {
+    box-shadow: 0 0 15px oklch(0.585 0.233 264 / 0.25);
+    @apply border-primary/40 border;
+  }
+
+  /* Status glow: red (Vencido) */
   .glow-status-destructive {
     box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
     @apply border border-destructive/50;
   }
 
-  /* Status glow: green (Pagado) – keep success color, add glow */
+  /* Status glow: green (Pagado) */
   .glow-status-success {
     box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
     @apply border border-green-500/50;
