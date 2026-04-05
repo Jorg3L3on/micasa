@@ -249,10 +249,10 @@ export default function MonthlyFortnightView({
 
   const segmentBtn = (active: boolean) =>
     cn(
-      'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+      'rounded-md px-3 py-1 text-xs font-semibold transition-all duration-150',
       active
-        ? 'bg-primary/10 text-primary'
-        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+        ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-inset ring-primary/20'
+        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
     );
 
   return (
@@ -357,22 +357,22 @@ export default function MonthlyFortnightView({
       <div
         className={cn(
           'grid gap-6',
-          layout === 'both' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1',
+          layout === 'both' ? 'grid-cols-1 gap-10 lg:grid-cols-2' : 'grid-cols-1',
         )}
       >
         {showFirst ? (
           <div className="flex flex-col gap-3">
             {layout === 'both' && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary ring-1 ring-inset ring-primary/25">
                     1ª
                   </span>
-                  <span className="truncate text-sm font-medium text-foreground">
+                  <span className="truncate text-sm font-semibold text-foreground">
                     {first.label}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
                   {formatCurrency(first.summary.totalIncome)}
                 </span>
               </div>
@@ -396,16 +396,16 @@ export default function MonthlyFortnightView({
         {showSecond ? (
           <div className="flex flex-col gap-3">
             {layout === 'both' && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-muted/60 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground ring-1 ring-inset ring-border/60">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted/70 text-xs font-bold text-muted-foreground ring-1 ring-inset ring-border/60">
                     2ª
                   </span>
-                  <span className="truncate text-sm font-medium text-foreground">
+                  <span className="truncate text-sm font-semibold text-foreground">
                     {second.label}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
                   {formatCurrency(second.summary.totalIncome)}
                 </span>
               </div>

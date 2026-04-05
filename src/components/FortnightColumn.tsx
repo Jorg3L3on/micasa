@@ -843,6 +843,8 @@ export default function FortnightColumn({
                 items={cardDueItems}
                 ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
+                plannerYear={year}
+                plannerMonth={month}
                 isCompact={tableDensity === 'compact'}
                 onPayCard={
                   context.id !== 0 ? handlePlannerOpenPayCard : undefined

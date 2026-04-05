@@ -6,8 +6,7 @@ import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Banknote, ChevronDown, ChevronUp, CreditCard, Landmark, Store } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, CreditCard, Landmark, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -17,46 +16,6 @@ import {
 
 const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
 
-type WalletTheme = {
-  icon: LucideIcon;
-  accent: string;
-  border: string;
-  iconBg: string;
-};
-
-const WALLET_THEMES: Record<string, WalletTheme> = {
-  CASH: {
-    icon: Banknote,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    border: 'border-l-emerald-500/50',
-    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-  },
-  DEBIT_CARD: {
-    icon: Landmark,
-    accent: 'text-blue-600 dark:text-blue-400',
-    border: 'border-l-blue-500/50',
-    iconBg: 'bg-blue-500/10 dark:bg-blue-500/15',
-  },
-  CREDIT_CARD: {
-    icon: CreditCard,
-    accent: 'text-violet-600 dark:text-violet-400',
-    border: 'border-l-violet-500/50',
-    iconBg: 'bg-violet-500/10 dark:bg-violet-500/15',
-  },
-  DEPARTMENT_STORE_CARD: {
-    icon: Store,
-    accent: 'text-amber-600 dark:text-amber-400',
-    border: 'border-l-amber-500/50',
-    iconBg: 'bg-amber-500/10 dark:bg-amber-500/15',
-  },
-};
-
-const DEFAULT_THEME: WalletTheme = {
-  icon: CreditCard,
-  accent: 'text-muted-foreground',
-  border: 'border-l-muted-foreground/40',
-  iconBg: 'bg-muted/50',
-};
 
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
@@ -153,9 +112,6 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
           <div className="overflow-x-auto scrollbar-hide px-2">
             <div className="flex gap-2 py-0.5">
               {sortedWallets.map((wallet) => {
-                const theme = WALLET_THEMES[wallet.type] ?? DEFAULT_THEME;
-                const Icon = theme.icon;
-
                 const isCreditType =
                   wallet.type === 'CREDIT_CARD' ||
                   wallet.type === 'DEPARTMENT_STORE_CARD';
@@ -201,15 +157,35 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   return wallet.due_day! < currentDay;
                 })();
 
+                const WalletIcon =
+                  wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD'
+                    ? CreditCard
+                    : wallet.type === 'DEBIT_CARD'
+                      ? Landmark
+                      : Wallet;
+
                 const cardContent = (
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
-                        theme.iconBg,
+                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+                        isCreditType
+                          ? 'bg-violet-500/10 dark:bg-violet-500/15'
+                          : wallet.type === 'DEBIT_CARD'
+                            ? 'bg-blue-500/10 dark:bg-blue-500/15'
+                            : 'bg-muted/40',
                       )}
                     >
-                      <Icon className={cn('h-3.5 w-3.5', theme.accent)} />
+                      <WalletIcon
+                        className={cn(
+                          'h-3.5 w-3.5',
+                          isCreditType
+                            ? 'text-violet-500 dark:text-violet-400'
+                            : wallet.type === 'DEBIT_CARD'
+                              ? 'text-blue-500 dark:text-blue-400'
+                              : 'text-muted-foreground',
+                        )}
+                      />
                     </span>
                     <div className="min-w-0">
                       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate max-w-[100px] leading-none mb-0.5">
@@ -254,11 +230,13 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                 );
 
                 const cardClasses = cn(
-                  'group shrink-0 rounded-lg border border-border/60 border-l-[3px] px-3 py-1.5',
-                  'transition-shadow duration-200 hover:shadow-md',
-                  'bg-card dark:bg-card/80',
-                  theme.border,
-                  isCreditType && 'cursor-pointer',
+                  'group shrink-0 rounded-lg border px-3 py-1.5',
+                  'transition-all duration-200 hover:shadow-md',
+                  isCreditType
+                    ? 'border-violet-500/20 bg-violet-500/5 dark:bg-violet-500/8 cursor-pointer hover:border-violet-500/35'
+                    : wallet.type === 'DEBIT_CARD'
+                      ? 'border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/8'
+                      : 'border-border/60 bg-card dark:bg-card/80',
                 );
 
                 if (isCreditType) {
@@ -288,14 +266,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
           {sortedWallets.map((wallet) => (
             <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
               <span
-                className={cn(
-                  'h-2 w-2 shrink-0 rounded-full',
-                  wallet.type === 'CASH' ? 'bg-emerald-500' :
-                  wallet.type === 'DEBIT_CARD' ? 'bg-blue-500' :
-                  wallet.type === 'CREDIT_CARD' ? 'bg-violet-500' :
-                  wallet.type === 'DEPARTMENT_STORE_CARD' ? 'bg-amber-500' :
-                  'bg-muted-foreground/50',
-                )}
+                className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40"
                 aria-hidden
               />
               <span className="max-w-[80px] truncate text-[10px] text-muted-foreground">

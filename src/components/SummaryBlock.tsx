@@ -129,8 +129,8 @@ export default function SummaryBlock({
       : 'Ingreso de la quincena menos todo lo comprometido en efectivo o débito: gastos planeados (pagados y pendientes) y pagos a tarjeta que ya descontaron tu efectivo. Las compras cargadas a la tarjeta no entran aquí hasta que pagues el estado de cuenta.';
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-xl border-border/60 py-0 shadow-sm">
-      <CardHeader className="space-y-0 border-b border-border/50 bg-muted/15 px-4 pb-1 pt-2.5">
+    <Card className="gap-0 overflow-hidden rounded-xl border-border/60 py-0 shadow-md dark:shadow-black/30">
+      <CardHeader className="space-y-0 border-b border-border/50 bg-muted/15 px-4 pb-2 pt-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <span
@@ -152,11 +152,18 @@ export default function SummaryBlock({
           </div>
           {!isExpanded && tenemos > 0 && (
             <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">
-              <span className="font-mono text-sm font-bold tabular-nums leading-tight">
-                {formatCurrency(disponibleAhora)}
+              <span
+                className={cn(
+                  'font-mono text-sm font-bold tabular-nums leading-tight',
+                  trasPagarPlaneado < 0
+                    ? 'text-destructive/85 dark:text-destructive/90'
+                    : 'text-foreground',
+                )}
+              >
+                {formatCurrency(trasPagarPlaneado)}
               </span>
               <span className="text-[10px] tabular-nums text-muted-foreground">
-                {formatCurrency(pagado)} pagado
+                {Math.round(totalSpentPercent)}% comprometido
               </span>
             </div>
           )}
@@ -186,6 +193,27 @@ export default function SummaryBlock({
             </TooltipContent>
           </Tooltip>
         </div>
+        {!isExpanded && tenemos > 0 && (
+          <div className="mt-1.5 flex h-1 w-full overflow-hidden rounded-full bg-muted/60">
+            <div
+              className="h-full rounded-l-full bg-foreground/30 transition-all duration-500 dark:bg-foreground/35"
+              style={{ width: `${Math.min(paidPercent, 100)}%` }}
+            />
+            <div
+              className={cn(
+                'h-full transition-all duration-500',
+                paidPercent === 0 ? 'rounded-l-full' : '',
+                paidPercent + pendingPercent >= 100 ? 'rounded-r-full' : '',
+                totalSpentPercent > 100
+                  ? 'bg-destructive/50'
+                  : 'bg-muted-foreground/25 dark:bg-muted-foreground/30',
+              )}
+              style={{
+                width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
+              }}
+            />
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-3 px-4 pb-4 pt-1">
@@ -196,70 +224,72 @@ export default function SummaryBlock({
             'bg-muted/20 px-2.5 py-2.5 dark:bg-muted/10 sm:px-3 sm:py-3',
           )}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch sm:gap-0">
-            {/* h-8 + gap-2 → pl-10 aligns amounts with label column */}
-            <div className="flex min-h-0 min-w-0 flex-col sm:h-full sm:pr-3 sm:border-r sm:border-border/50">
-              <div className="flex min-h-0 flex-1 items-start gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20">
-                  <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-0">
+            {/* Left: Disponible */}
+            <div className="flex flex-col gap-1.5 sm:pr-3 sm:border-r sm:border-border/50">
+              {/* Label row */}
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/40">
+                  <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="block w-full text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      >
-                        Disponible
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      className="max-w-xs text-left text-xs leading-snug"
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
-                      {tooltipDisponibleAhora}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+                      Disponible
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
+                    {tooltipDisponibleAhora}
+                  </TooltipContent>
+                </Tooltip>
               </div>
+              {/* Amount */}
               <p
                 className={cn(
-                  'mt-auto w-full pl-10 pt-2 font-mono text-lg font-bold tabular-nums leading-tight tracking-tight',
-                  disponibleAhora >= 0
-                    ? 'text-foreground'
-                    : 'text-destructive/85 dark:text-destructive/90',
+                  'pl-8 font-mono text-lg font-semibold tabular-nums leading-tight',
+                  disponibleAhora >= 0 ? 'text-foreground/75' : 'text-destructive/70',
                 )}
               >
                 {formatCurrency(disponibleAhora)}
               </p>
-            </div>
-            <div className="flex min-h-0 min-w-0 flex-col sm:h-full sm:pl-3">
-              <div className="flex min-h-0 flex-1 items-start gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20">
-                  <Receipt className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="block w-full text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      >
-                        Tras gastos planeados
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      className="max-w-xs text-left text-xs leading-snug"
-                    >
-                      {tooltipTrasPagarPlaneado}
-                    </TooltipContent>
-                  </Tooltip>
+              {tenemos > 0 && (
+                <div className="flex items-center gap-1.5 pl-8">
+                  <span className="text-[10px] text-muted-foreground/55">Ingreso</span>
+                  <span className="font-mono text-[10px] font-medium tabular-nums text-muted-foreground/55">
+                    {formatCurrency(tenemos)}
+                  </span>
                 </div>
+              )}
+            </div>
+
+            {/* Right: Tras gastos planeados */}
+            <div className="flex flex-col gap-1.5 sm:pl-3">
+              {/* Label row — same height as left */}
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 dark:bg-emerald-500/20">
+                  <Receipt className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      Tras gastos planeados
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
+                    {tooltipTrasPagarPlaneado}
+                  </TooltipContent>
+                </Tooltip>
               </div>
+              {/* Hero amount */}
               <p
                 className={cn(
-                  'mt-auto w-full pl-10 pt-2 font-mono text-lg font-bold tabular-nums leading-tight tracking-tight',
+                  'pl-8 font-mono text-2xl font-bold tabular-nums leading-tight tracking-tight',
                   trasPagarPlaneado >= 0
                     ? 'text-foreground'
                     : 'text-destructive/85 dark:text-destructive/90',
@@ -267,11 +297,10 @@ export default function SummaryBlock({
               >
                 {formatCurrency(trasPagarPlaneado)}
               </p>
-              {planningCardStatementDue != null &&
-              planningCardStatementDue.total > 0 ? (
-                <p className="pl-10 pt-0.5 text-[10px] leading-snug text-muted-foreground">
-                  Incluye {formatCurrency(planningCardStatementDue.total)} que aún
-                  debes pagar al estado de cuenta
+              {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
+                <p className="pl-8 text-[10px] leading-snug text-muted-foreground">
+                  Incluye {formatCurrency(planningCardStatementDue.total)} que aún debes
+                  pagar al estado de cuenta
                   {planningCardStatementDue.cardCount > 0
                     ? ` (${planningCardStatementDue.cardCount} tarjeta${
                         planningCardStatementDue.cardCount !== 1 ? 's' : ''
@@ -280,9 +309,8 @@ export default function SummaryBlock({
                   .
                 </p>
               ) : null}
-              {planningOrphanCardPayments != null &&
-              planningOrphanCardPayments.count > 0 ? (
-                <p className="pl-10 pt-0.5 text-[10px] leading-snug text-muted-foreground">
+              {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
+                <p className="pl-8 text-[10px] leading-snug text-muted-foreground">
                   Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
                   {planningOrphanCardPayments.count} pago
                   {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
@@ -294,7 +322,7 @@ export default function SummaryBlock({
 
           {tenemos > 0 && (
             <div className="relative mt-3 border-t border-border/50 pt-2.5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
                 Uso del ingreso
               </p>
               <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -311,30 +339,15 @@ export default function SummaryBlock({
                   style={{ width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%` }}
                 />
               </div>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {paidPercent === 0 && pendingPercent === 0 ? (
-                    <span className="text-xs italic text-muted-foreground/60">
-                      Sin gastos registrados aún
-                    </span>
-                  ) : (
-                    <>
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 dark:bg-foreground/45" />
-                        <span className="text-xs text-muted-foreground">
-                          Pagado {Math.round(paidPercent)}%
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/45 dark:bg-muted-foreground/50" />
-                        <span className="text-xs text-muted-foreground">
-                          Pendiente {Math.round(pendingPercent)}%
-                        </span>
-                      </span>
-                    </>
-                  )}
-                </div>
-                <span className="text-xs font-medium text-muted-foreground sm:shrink-0 sm:text-right">
+              <div className="mt-2 flex items-center justify-between">
+                {paidPercent === 0 && pendingPercent === 0 ? (
+                  <span className="text-xs italic text-muted-foreground/60">
+                    Sin gastos registrados aún
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <span className="text-xs font-medium text-muted-foreground">
                   {Math.round(totalSpentPercent)}% comprometido
                 </span>
               </div>
