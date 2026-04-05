@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { fetchFromApi } from '@/lib/api-server';
 import CreateMonthCard from '@/components/CreateMonthCard';
-import { DashboardTabsWrapper } from '@/components/dashboard';
 import type { DashboardData } from '@/types/dashboard';
+import StatCard from '@/components/dashboard/StatCard';
+import MonthlyOverviewChart from '@/components/dashboard/MonthlyOverviewChart';
+import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
+import RecentTransactionsTable from '@/components/dashboard/RecentTransactionsTable';
 
 export const metadata: Metadata = {
   title: 'Panel | MiCasa',
@@ -42,6 +45,37 @@ async function getDashboardData(
   }
 }
 
+const STAT_CARDS = [
+  {
+    key: 'balance' as const,
+    title: 'Balance total',
+    iconKey: 'wallet' as const,
+    iconGradient: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
+    subtitle: 'Saldo en billeteras',
+  },
+  {
+    key: 'income' as const,
+    title: 'Ingresos del periodo',
+    iconKey: 'trending-up' as const,
+    iconGradient: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+    subtitle: 'Total ingresado',
+  },
+  {
+    key: 'expense' as const,
+    title: 'Gastos del periodo',
+    iconKey: 'trending-down' as const,
+    iconGradient: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
+    subtitle: 'Total gastado',
+  },
+  {
+    key: 'available' as const,
+    title: 'Disponible',
+    iconKey: 'circle-dollar' as const,
+    iconGradient: 'linear-gradient(135deg, #eab308 0%, #facc15 100%)',
+    subtitle: 'Libre de compromisos',
+  },
+] as const;
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -52,7 +86,6 @@ export default async function DashboardPage({
     period?: string;
     ownerType?: string;
     ownerId?: string;
-    tab?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -69,14 +102,43 @@ export default async function DashboardPage({
     );
   }
 
+  const { summary, availableVsCommitted } = dashboardData;
+
+  const statValues = {
+    balance: summary.balance,
+    income: summary.totalIncome,
+    expense: summary.totalExpense,
+    available: availableVsCommitted.libre,
+  };
+
   return (
-    <DashboardTabsWrapper
-      data={dashboardData}
-      initialTab={
-        params.tab === 'actividad' || params.tab === 'analisis'
-          ? params.tab
-          : undefined
-      }
-    />
+    <div className="space-y-5">
+      {/* Stat cards row */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {STAT_CARDS.map((card) => (
+          <StatCard
+            key={card.key}
+            title={card.title}
+            amount={statValues[card.key]}
+            iconKey={card.iconKey}
+            iconGradient={card.iconGradient}
+            subtitle={card.subtitle}
+          />
+        ))}
+      </div>
+
+      {/* Chart + Cards row */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <MonthlyOverviewChart />
+        </div>
+        <div className="lg:col-span-2">
+          <MyCardsPanel />
+        </div>
+      </div>
+
+      {/* Recent transactions */}
+      <RecentTransactionsTable data={dashboardData} />
+    </div>
   );
 }

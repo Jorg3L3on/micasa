@@ -78,7 +78,7 @@ export function AppSidebar({
       : []),
   ];
 
-  const navItems = [
+  const menuItems = [
     {
       title: 'Panel',
       url: '/dashboard',
@@ -92,6 +92,19 @@ export function AppSidebar({
       isActive: pathname.startsWith('/monthly/'),
     },
     {
+      title: 'Operaciones',
+      url: '/transactions',
+      icon: Receipt,
+      isActive:
+        pathname === '/transactions' || pathname.startsWith('/transactions/'),
+    },
+    {
+      title: 'Presupuestos',
+      url: '/budgets',
+      icon: PiggyBank,
+      isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
+    },
+    {
       title: 'Billeteras',
       url: '/wallets',
       icon: Wallet,
@@ -101,19 +114,9 @@ export function AppSidebar({
           !pathname.startsWith('/wallets/liquidity')) ||
         pathname.startsWith('/credit-cards'),
     },
-    {
-      title: 'Presupuestos',
-      url: '/budgets',
-      icon: PiggyBank,
-      isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
-    },
-    {
-      title: 'Operaciones',
-      url: '/transactions',
-      icon: Receipt,
-      isActive:
-        pathname === '/transactions' || pathname.startsWith('/transactions/'),
-    },
+  ];
+
+  const generalItems = [
     {
       title: 'Catálogos',
       url: '#',
@@ -126,9 +129,6 @@ export function AppSidebar({
         pathname.startsWith('/house-users'),
       items: catalogItems,
     },
-  ];
-
-  const despensaItems = [
     {
       title: 'Despensa',
       url: '#',
@@ -172,8 +172,8 @@ export function AppSidebar({
         <TeamSwitcher teams={teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
-        <NavMain groupLabel="Despensa" items={despensaItems} />
+        <NavMain groupLabel="Menú" items={menuItems} />
+        <NavMain groupLabel="General" items={generalItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={navUser} />

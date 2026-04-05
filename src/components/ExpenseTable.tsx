@@ -310,65 +310,59 @@ export default function ExpenseTable({
 
     const today = new Date();
     const todayDay = today.getDate();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-based
+    const currentPeriod: 'FIRST' | 'SECOND' = todayDay <= 15 ? 'FIRST' : 'SECOND';
 
-    // Decide countdown / overdue behavior based on the calendar month:
-    // - Past months: always "Vencido"
-    // - Current month: "Vence en X días" if future, "Vencido" if past
-    // - Future months: neutral "Con fecha de pago"
-    let daysRemaining: number | null = null;
-    let showCountdown = false;
-    let isFutureMonth = false;
-
-    // Prefer explicit year/month props (from fortnight context); fall back to row date.
-    let expenseYear: number | null = null;
-    let expenseMonth: number | null = null;
-
-    if (year != null && month != null) {
-      expenseYear = year;
-      expenseMonth = month - 1; // JS Date month is 0-based
+    // Only show for the current fortnight (current year + month + matching period).
+    // When year/month/period are known, require an exact match. Fall back to date-only
+    // when props aren't available (e.g. standalone usage without fortnight context).
+    if (year != null && month != null && period != null) {
+      const isCurrentFortnight =
+        year === currentYear &&
+        month - 1 === currentMonth &&
+        period === currentPeriod;
+      if (!isCurrentFortnight) {
+        return {
+          hasDue: false,
+          dueDay: null as number | null,
+          daysRemaining: null as number | null,
+          showCountdown: false,
+          badgeColor: 'default' as const,
+        };
+      }
     } else if (date) {
       const expenseDate = new Date(date);
       if (!Number.isNaN(expenseDate.getTime())) {
-        expenseYear = expenseDate.getFullYear();
-        expenseMonth = expenseDate.getMonth();
+        const isCurrentMonth =
+          expenseDate.getFullYear() === currentYear &&
+          expenseDate.getMonth() === currentMonth;
+        if (!isCurrentMonth) {
+          return {
+            hasDue: false,
+            dueDay: null as number | null,
+            daysRemaining: null as number | null,
+            showCountdown: false,
+            badgeColor: 'default' as const,
+          };
+        }
       }
     }
 
-    if (expenseYear != null && expenseMonth != null) {
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth();
+    const daysRemaining = dueDayValue - todayDay;
+    const showCountdown = daysRemaining >= 0;
 
-      if (
-        expenseYear < currentYear ||
-        (expenseYear === currentYear && expenseMonth < currentMonth)
-      ) {
-        // Any past month -> always overdue
-        daysRemaining = -1;
-        showCountdown = false;
-      } else if (expenseYear === currentYear && expenseMonth === currentMonth) {
-        // Current month -> countdown or overdue
-        daysRemaining = dueDayValue - todayDay;
-        showCountdown = daysRemaining >= 0;
-      } else {
-        // Future month -> no badge at all
-        daysRemaining = null;
-        showCountdown = false;
-        isFutureMonth = true;
-      }
-    }
-
-    // Standardized badge colors
     let badgeColor: 'default' | 'destructive' | 'secondary' = 'default';
-    if (daysRemaining !== null && daysRemaining < 0) {
-      badgeColor = 'destructive'; // Overdue - red
-    } else if (daysRemaining !== null && daysRemaining <= 3) {
-      badgeColor = 'destructive'; // Urgent - red
-    } else if (daysRemaining !== null && daysRemaining <= 7) {
-      badgeColor = 'secondary'; // Warning - yellow/orange
+    if (daysRemaining < 0) {
+      badgeColor = 'destructive';
+    } else if (daysRemaining <= 3) {
+      badgeColor = 'destructive';
+    } else if (daysRemaining <= 7) {
+      badgeColor = 'secondary';
     }
 
     return {
-      hasDue: !isFutureMonth,
+      hasDue: true,
       dueDay: dueDayValue,
       daysRemaining,
       showCountdown,
@@ -482,7 +476,7 @@ export default function ExpenseTable({
         ),
         cell: ({ row }) => {
           const expense = row.original;
-          const { hasDue, daysRemaining, showCountdown, badgeColor } =
+          const { hasDue, dueDay, daysRemaining, showCountdown, badgeColor } =
             getDueInfo(expense);
           return (
             <div
@@ -543,14 +537,10 @@ export default function ExpenseTable({
                     )}
                   >
                     {expense.is_paid
-                      ? 'Pagado'
+                      ? `Pagado · día ${dueDay}`
                       : showCountdown && daysRemaining !== null && daysRemaining >= 0
-                        ? `Vence en ${daysRemaining} día${
-                            daysRemaining !== 1 ? 's' : ''
-                          }`
-                        : daysRemaining !== null && daysRemaining < 0
-                          ? 'Vencido'
-                          : 'Con fecha de pago'}
+                        ? `Día ${dueDay} · en ${daysRemaining} día${daysRemaining !== 1 ? 's' : ''}`
+                        : `Día ${dueDay} · vencido`}
                   </Badge>
                 )}
               </div>
