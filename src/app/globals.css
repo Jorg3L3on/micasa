@@ -9,8 +9,8 @@
 
 :root {
   --radius: 0.75rem;
-  /* Light mode */
-  --background: oklch(0.97 0.005 265);
+  /* Light mode – soft canvas like reference dashboards */
+  --background: #f9fafb;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -45,12 +45,12 @@
 }
 
 .dark {
-  /* Dark mode – deep blue-black with indigo accent */
-  --background: oklch(0.13 0.012 265);
+  /* Dark mode – near-black canvas + elevated cards (fintech reference) */
+  --background: #0d0d0d;
   --foreground: oklch(0.96 0.005 265);
-  --card: oklch(0.16 0.012 265);
+  --card: #161616;
   --card-foreground: oklch(0.96 0.005 265);
-  --popover: oklch(0.16 0.012 265);
+  --popover: #161616;
   --popover-foreground: oklch(0.96 0.005 265);
   --primary: oklch(0.585 0.233 264);
   --primary-foreground: oklch(1 0 0);
@@ -169,6 +169,7 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
 }
 
 @layer base {

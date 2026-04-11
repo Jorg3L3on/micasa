@@ -747,10 +747,11 @@ export async function updateExpenseAmount(
   id: number,
   amount: number,
   context?: FinanceContextType,
+  wallet_id?: number | null,
 ) {
   return clientFetchFromApi(`/api/transactions?id=${id}`, {
     method: 'PUT',
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, ...(wallet_id !== undefined ? { wallet_id } : {}) }),
   }, context);
 }
 

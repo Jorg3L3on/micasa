@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { PantryReceiptDetailView } from '@/components/pantry/PantryReceiptDetailView';
 
 export default function PantryReceiptDetailPage() {
@@ -10,9 +11,11 @@ export default function PantryReceiptDetailPage() {
 
   if (!Number.isFinite(id) || id < 1) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-sm text-muted-foreground">Identificador de recibo inválido.</p>
-      </div>
+      <PantryLayoutShell className="flex flex-col gap-5">
+        <p className="text-sm text-muted-foreground">
+          Identificador de recibo inválido.
+        </p>
+      </PantryLayoutShell>
     );
   }
 

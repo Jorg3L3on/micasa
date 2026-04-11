@@ -2,14 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import Link from 'next/link';
 import { toast } from 'sonner';
-import { Loader2, Package, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Package, Pencil, Receipt, Sparkles, Trash2 } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
+import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { PantryProductForm } from '@/components/pantry/PantryProductForm';
 import { useFinanceContext } from '@/context/finance-context';
@@ -19,7 +27,7 @@ import {
   listPantryProducts,
   patchPantryProduct,
 } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type {
   CreatePantryProductInput,
   PantryProductFormValues,
@@ -157,6 +165,15 @@ export default function PantryProductsPage() {
     setDeleteOpen(true);
   }, []);
 
+  const ownerQuery = useMemo(() => {
+    const q = new URLSearchParams();
+    q.set('ownerType', context.ownerType);
+    q.set('ownerId', String(context.ownerId));
+    return q.toString();
+  }, [context.ownerId, context.ownerType]);
+  const receiptsHref = ownerQuery ? `/pantry/receipts?${ownerQuery}` : '/pantry/receipts';
+  const insightsHref = ownerQuery ? `/pantry?${ownerQuery}` : '/pantry';
+
   const columns = useMemo<ColumnDef<PantryProductDto>[]>(
     () => [
       {
@@ -229,26 +246,36 @@ export default function PantryProductsPage() {
           const p = row.original;
           return (
             <div className="flex justify-end gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => openEdit(p)}
-                aria-label={`Editar ${p.name}`}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => openDelete(p)}
-                aria-label={`Eliminar ${p.name}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(p)}
+                    aria-label={`Editar ${p.name}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Editar producto</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openDelete(p)}
+                    aria-label={`Eliminar ${p.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Eliminar del catálogo</TooltipContent>
+              </Tooltip>
             </div>
           );
         },
@@ -257,13 +284,82 @@ export default function PantryProductsPage() {
     [openEdit, openDelete],
   );
 
+  const stats = useMemo(() => {
+    const activeCount = products.filter((p) => p.active).length;
+    const pricedCount = products.filter((p) => p.default_unit_price != null).length;
+    const brandedCount = products.filter((p) => Boolean(p.brand)).length;
+    return {
+      total: products.length,
+      activeCount,
+      pricedCount,
+      brandedCount,
+    };
+  }, [products]);
+
   return (
-    <div
-      className="flex flex-1 flex-col gap-4 p-4 pt-0"
+    <PantryLayoutShell
+      className="flex flex-col gap-5"
       role="region"
       aria-label="Catálogo de productos de despensa"
     >
-      <Card className="overflow-hidden border-border/60">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
+          <Link href={receiptsHref}>
+            <Receipt className="h-4 w-4" />
+            Recibos
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
+          <Link href={insightsHref}>
+            <Sparkles className="h-4 w-4" />
+            Ver insights
+          </Link>
+        </Button>
+      </div>
+
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Resumen del catálogo de productos"
+      >
+        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Productos
+          </p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums">
+            {stats.total.toLocaleString('es-MX')}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Activos
+          </p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+            {stats.activeCount.toLocaleString('es-MX')}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Con precio referencia
+          </p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums">
+            {stats.pricedCount.toLocaleString('es-MX')}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Con marca
+          </p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums">
+            {stats.brandedCount.toLocaleString('es-MX')}
+          </p>
+        </div>
+      </section>
+
+      <Card
+        className={cn(
+          'overflow-hidden border-border/60 border-l-[3px] border-l-sky-500/45 transition-shadow duration-200 hover:shadow-md',
+        )}
+      >
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-2">
           <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
@@ -278,22 +374,28 @@ export default function PantryProductsPage() {
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            className="rounded-xl shrink-0"
-            onClick={() => {
-              setFormError(null);
-              setCreateOpen(true);
-            }}
-          >
-            Agregar producto
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
+              {stats.total.toLocaleString('es-MX')}
+            </span>
+            <Button
+              type="button"
+              className="rounded-xl shrink-0"
+              onClick={() => {
+                setFormError(null);
+                setCreateOpen(true);
+              }}
+            >
+              Agregar producto
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {listError ? (
-            <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {listError}
-            </div>
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{listError}</AlertDescription>
+            </Alert>
           ) : null}
           {loading ? (
             <div
@@ -304,7 +406,17 @@ export default function PantryProductsPage() {
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : products.length === 0 ? (
-            <EmptyState message="Aún no hay productos en este contexto." />
+            <EmptyState
+              message="Aún no hay productos en este contexto."
+              description="Crea productos para ahorrar tiempo al importar recibos y mantener nombres consistentes."
+              action={{
+                label: 'Agregar producto',
+                onClick: () => {
+                  setFormError(null);
+                  setCreateOpen(true);
+                },
+              }}
+            />
           ) : (
             <DataTable
               data={products}
@@ -314,6 +426,7 @@ export default function PantryProductsPage() {
               pagination
               columnVisibility
               emptyMessage="Sin resultados."
+              onRowClick={openEdit}
             />
           )}
         </CardContent>
@@ -358,6 +471,6 @@ export default function PantryProductsPage() {
           />
         </>
       ) : null}
-    </div>
+    </PantryLayoutShell>
   );
 }

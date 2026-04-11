@@ -7,10 +7,13 @@ import { toast } from 'sonner';
 import {
   AlertTriangle,
   ArrowLeft,
+  CalendarDays,
   Download,
   FileText,
   Loader2,
   Plus,
+  TrendingUp,
+  Wallet,
   Trash2,
 } from 'lucide-react';
 
@@ -33,6 +36,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
+import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -240,8 +245,8 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
 
   if (notFound) {
     return (
-      <div
-        className="flex flex-1 flex-col gap-4 p-4 pt-0"
+      <PantryLayoutShell
+        className="flex flex-col gap-5"
         role="region"
         aria-label="Recibo no encontrado"
       >
@@ -253,21 +258,21 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </PantryLayoutShell>
     );
   }
 
   if (loading || !detail) {
     return (
-      <div className="flex flex-1 justify-center p-12">
+      <PantryLayoutShell className="flex min-h-[40vh] flex-1 items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      </PantryLayoutShell>
     );
   }
 
   return (
-    <div
-      className="flex flex-1 flex-col gap-4 p-4 pt-0"
+    <PantryLayoutShell
+      className="flex flex-col gap-5"
       role="region"
       aria-label="Detalle del recibo"
     >
@@ -344,44 +349,52 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
             </Alert>
           )}
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <div className="rounded-lg border border-border/60 px-2.5 py-2">
-              <div>Compra</div>
-              <div className="mt-1 text-sm font-mono tabular-nums text-foreground normal-case font-normal">
-                {detail.purchased_at
+          <div
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            role="region"
+            aria-label="Totales del recibo"
+          >
+            <PantryMetricTile
+              icon={CalendarDays}
+              label="Compra"
+              value={
+                detail.purchased_at
                   ? new Date(detail.purchased_at).toLocaleDateString('es-MX', {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
                     })
-                  : '—'}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/60 px-2.5 py-2">
-              <div>Subtotal</div>
-              <div className="mt-1 text-sm font-bold font-mono tabular-nums text-foreground normal-case">
-                {detail.subtotal != null
-                  ? formatCurrency(detail.subtotal)
-                  : '—'}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/60 px-2.5 py-2">
-              <div>Total (recibo)</div>
-              <div className="mt-1 text-sm font-bold font-mono tabular-nums text-foreground normal-case">
-                {detail.grand_total != null
+                  : '—'
+              }
+              accent="blue"
+            />
+            <PantryMetricTile
+              icon={FileText}
+              label="Subtotal"
+              value={
+                detail.subtotal != null ? formatCurrency(detail.subtotal) : '—'
+              }
+              accent="slate"
+            />
+            <PantryMetricTile
+              icon={Wallet}
+              label="Total (recibo)"
+              value={
+                detail.grand_total != null
                   ? formatCurrency(detail.grand_total)
-                  : '—'}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/60 px-2.5 py-2">
-              <div>Suma líneas</div>
-              <div className="mt-1 text-sm font-bold font-mono tabular-nums text-foreground normal-case">
-                {formatCurrency(linesSum)}
-              </div>
-            </div>
+                  : '—'
+              }
+              accent="violet"
+            />
+            <PantryMetricTile
+              icon={TrendingUp}
+              label="Suma líneas"
+              value={formatCurrency(linesSum)}
+              accent="emerald"
+            />
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-border/60">
+          <div className="overflow-x-auto rounded-xl border border-border/60 shadow-sm dark:border-white/[0.08]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -555,6 +568,6 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
         description="Se borrarán todas las líneas y el archivo asociado. Esta acción no se puede deshacer."
         itemName={detail.title ?? undefined}
       />
-    </div>
+    </PantryLayoutShell>
   );
 }

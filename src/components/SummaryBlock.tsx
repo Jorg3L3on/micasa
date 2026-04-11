@@ -129,18 +129,18 @@ export default function SummaryBlock({
       : 'Ingreso de la quincena menos todo lo comprometido en efectivo o débito: gastos planeados (pagados y pendientes) y pagos a tarjeta que ya descontaron tu efectivo. Las compras cargadas a la tarjeta no entran aquí hasta que pagues el estado de cuenta.';
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-xl border-border/60 py-0 shadow-md dark:shadow-black/30">
-      <CardHeader className="space-y-0 border-b border-border/50 bg-muted/15 px-4 pb-2 pt-2.5">
+    <Card className="gap-0 overflow-hidden rounded-xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 dark:ring-primary/10 dark:shadow-black/50">
+      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/8 via-primary/4 to-transparent px-4 pb-2.5 pt-3 dark:from-primary/12 dark:via-primary/6">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/15"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/20 dark:bg-primary/20 dark:ring-primary/25"
               aria-hidden
             >
               <BarChart3 className="h-4 w-4 text-primary" />
             </span>
             <div className="min-w-0 space-y-0.5">
-              <CardTitle className="text-base font-semibold leading-tight tracking-tight">
+              <CardTitle className="text-base font-bold leading-tight tracking-tight">
                 Resumen de la quincena
               </CardTitle>
               {headerSubtitle ? (
@@ -156,8 +156,8 @@ export default function SummaryBlock({
                 className={cn(
                   'font-mono text-sm font-bold tabular-nums leading-tight',
                   trasPagarPlaneado < 0
-                    ? 'text-destructive/85 dark:text-destructive/90'
-                    : 'text-foreground',
+                    ? 'text-destructive'
+                    : 'text-primary',
                 )}
               >
                 {formatCurrency(trasPagarPlaneado)}
@@ -173,7 +173,7 @@ export default function SummaryBlock({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded
@@ -194,9 +194,9 @@ export default function SummaryBlock({
           </Tooltip>
         </div>
         {!isExpanded && tenemos > 0 && (
-          <div className="mt-1.5 flex h-1 w-full overflow-hidden rounded-full bg-muted/60">
+          <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
             <div
-              className="h-full rounded-l-full bg-foreground/30 transition-all duration-500 dark:bg-foreground/35"
+              className="h-full rounded-l-full bg-emerald-500/80 transition-all duration-500 dark:bg-emerald-400/80"
               style={{ width: `${Math.min(paidPercent, 100)}%` }}
             />
             <div
@@ -205,8 +205,8 @@ export default function SummaryBlock({
                 paidPercent === 0 ? 'rounded-l-full' : '',
                 paidPercent + pendingPercent >= 100 ? 'rounded-r-full' : '',
                 totalSpentPercent > 100
-                  ? 'bg-destructive/50'
-                  : 'bg-muted-foreground/25 dark:bg-muted-foreground/30',
+                  ? 'bg-destructive/60'
+                  : 'bg-amber-400/60 dark:bg-amber-400/50',
               )}
               style={{
                 width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
@@ -216,27 +216,27 @@ export default function SummaryBlock({
         )}
       </CardHeader>
 
-      <CardContent className="space-y-3 px-4 pb-4 pt-1">
+      <CardContent className="space-y-3 px-4 pb-4 pt-3">
         {/* Hero: disponible hoy vs tras pagar todo lo planeado */}
         <div
           className={cn(
-            'relative rounded-lg border border-border/60',
-            'bg-muted/20 px-2.5 py-2.5 dark:bg-muted/10 sm:px-3 sm:py-3',
+            'relative rounded-xl border border-border/50',
+            'bg-gradient-to-br from-muted/30 to-muted/10 px-3 py-3 dark:from-muted/20 dark:to-transparent',
           )}
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-0">
             {/* Left: Disponible */}
-            <div className="flex flex-col gap-1.5 sm:pr-3 sm:border-r sm:border-border/50">
+            <div className="flex flex-col gap-1.5 sm:border-r sm:border-border/50 sm:pr-4">
               {/* Label row */}
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/40">
-                  <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 dark:bg-blue-500/15">
+                  <Wallet className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
                 </span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className="text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="text-left text-xs font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       Disponible
                     </button>
@@ -249,16 +249,16 @@ export default function SummaryBlock({
               {/* Amount */}
               <p
                 className={cn(
-                  'pl-8 font-mono text-lg font-semibold tabular-nums leading-tight',
-                  disponibleAhora >= 0 ? 'text-foreground/75' : 'text-destructive/70',
+                  'pl-8 font-mono text-xl font-bold tabular-nums leading-tight',
+                  disponibleAhora >= 0 ? 'text-foreground/85' : 'text-destructive',
                 )}
               >
                 {formatCurrency(disponibleAhora)}
               </p>
               {tenemos > 0 && (
                 <div className="flex items-center gap-1.5 pl-8">
-                  <span className="text-[10px] text-muted-foreground/55">Ingreso</span>
-                  <span className="font-mono text-[10px] font-medium tabular-nums text-muted-foreground/55">
+                  <span className="text-[10px] text-muted-foreground/60">Ingreso</span>
+                  <span className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground/60">
                     {formatCurrency(tenemos)}
                   </span>
                 </div>
@@ -266,17 +266,17 @@ export default function SummaryBlock({
             </div>
 
             {/* Right: Tras gastos planeados */}
-            <div className="flex flex-col gap-1.5 sm:pl-3">
+            <div className="flex flex-col gap-1.5 sm:pl-4">
               {/* Label row — same height as left */}
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 dark:bg-emerald-500/20">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15">
                   <Receipt className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 </span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className="text-left text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="text-left text-xs font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       Tras gastos planeados
                     </button>
@@ -289,10 +289,10 @@ export default function SummaryBlock({
               {/* Hero amount */}
               <p
                 className={cn(
-                  'pl-8 font-mono text-2xl font-bold tabular-nums leading-tight tracking-tight',
+                  'pl-8 font-mono text-3xl font-black tabular-nums leading-tight tracking-tight',
                   trasPagarPlaneado >= 0
-                    ? 'text-foreground'
-                    : 'text-destructive/85 dark:text-destructive/90',
+                    ? 'text-primary'
+                    : 'text-destructive',
                 )}
               >
                 {formatCurrency(trasPagarPlaneado)}
@@ -321,22 +321,27 @@ export default function SummaryBlock({
           </div>
 
           {tenemos > 0 && (
-            <div className="relative mt-3 border-t border-border/50 pt-2.5">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
+            <div className="relative mt-3 border-t border-border/40 pt-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 Uso del ingreso
               </p>
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted/70">
                 <div
-                  className="h-full rounded-l-full bg-foreground/35 transition-all duration-500 dark:bg-foreground/40"
+                  className="h-full rounded-l-full bg-emerald-500 transition-all duration-500 dark:bg-emerald-400"
                   style={{ width: `${Math.min(paidPercent, 100)}%` }}
                 />
                 <div
                   className={cn(
-                    'h-full bg-muted-foreground/30 transition-all duration-500 dark:bg-muted-foreground/35',
+                    'h-full transition-all duration-500',
                     paidPercent === 0 && 'rounded-l-full',
                     paidPercent + pendingPercent >= 100 && 'rounded-r-full',
                   )}
-                  style={{ width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%` }}
+                  style={{
+                    background: totalSpentPercent > 100
+                      ? 'oklch(0.577 0.245 27.325 / 0.6)'
+                      : 'oklch(0.85 0.18 85 / 0.65)',
+                    width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
+                  }}
                 />
               </div>
               <div className="mt-2 flex items-center justify-between">
@@ -345,9 +350,18 @@ export default function SummaryBlock({
                     Sin gastos registrados aún
                   </span>
                 ) : (
-                  <span />
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                      Pagado
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <span className="inline-block h-2 w-2 rounded-full bg-amber-400/80" />
+                      Pendiente
+                    </span>
+                  </div>
                 )}
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   {Math.round(totalSpentPercent)}% comprometido
                 </span>
               </div>
@@ -389,17 +403,17 @@ export default function SummaryBlock({
 
         {isExpanded && (
           <>
-            <Separator className="bg-border/60" />
+            <Separator className="bg-border/50" />
             {/* Three metric cards */}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {/* Ingresos */}
-              <div className="relative rounded-lg border border-border/60 border-l-[3px] border-l-blue-500/50 bg-transparent px-3 py-2.5">
-                <div className="mb-1 flex items-center justify-between gap-1">
+              <div className="relative rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/8 to-blue-500/3 px-3 py-3 dark:from-blue-500/12 dark:to-blue-500/5">
+                <div className="mb-2 flex items-center justify-between gap-1">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
-                      <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20">
+                      <Wallet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                     </span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80">
                       Ingresos
                     </span>
                   </div>
@@ -407,7 +421,7 @@ export default function SummaryBlock({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-5 w-5 shrink-0 opacity-60 hover:opacity-100"
+                      className="h-5 w-5 shrink-0 opacity-50 hover:opacity-100 hover:text-blue-500"
                       onClick={onEditIncome}
                       aria-label="Modificar ingresos de la quincena"
                       tabIndex={0}
@@ -416,11 +430,11 @@ export default function SummaryBlock({
                     </Button>
                   )}
                 </div>
-                <p className="text-sm font-bold font-mono tabular-nums leading-tight">
+                <p className="font-mono text-base font-black tabular-nums leading-tight text-foreground">
                   {formatCurrency(tenemos)}
                 </p>
                 {(hasUserIncome || incomeItems.length > 0) && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {incomeItems.length > 0
                       ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
                       : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
@@ -429,19 +443,19 @@ export default function SummaryBlock({
               </div>
 
               {/* Pagado */}
-              <div className="relative rounded-lg border border-border/60 border-l-[3px] border-l-green-500/50 bg-transparent px-3 py-2.5">
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-green-500/10 dark:bg-green-500/15">
-                    <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+              <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-3 py-3 dark:from-emerald-500/12 dark:to-emerald-500/5">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </span>
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-emerald-600/80 uppercase tracking-wider dark:text-emerald-400/80">
                     Pagado
                   </span>
                 </div>
-                <p className="text-sm font-bold font-mono tabular-nums leading-tight">
+                <p className="font-mono text-base font-black tabular-nums leading-tight text-foreground">
                   {formatCurrency(pagado)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {expenseCount > 0
                     ? `${paidExpenseCount} de ${expenseCount} gastos`
                     : '—'}
@@ -449,26 +463,26 @@ export default function SummaryBlock({
               </div>
 
               {/* Pendiente */}
-              <div className="relative rounded-lg border border-border/60 border-l-[3px] border-l-amber-500/50 bg-transparent px-3 py-2.5">
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15">
-                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+              <div className="relative rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 px-3 py-3 dark:from-amber-500/12 dark:to-amber-500/5">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20">
+                    <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                   </span>
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-amber-600/80 uppercase tracking-wider dark:text-amber-400/80">
                     Pendiente
                   </span>
                 </div>
-                <p className="text-sm font-bold font-mono tabular-nums leading-tight">
+                <p className="font-mono text-base font-black tabular-nums leading-tight text-foreground">
                   {formatCurrency(pendiente)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {expenseCount > 0
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}
                 </p>
                 {planningCardStatementDue != null &&
                 planningCardStatementDue.total > 0 ? (
-                  <p className="text-[10px] leading-snug text-muted-foreground mt-1 border-t border-border/40 pt-1">
+                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-[10px] leading-snug text-muted-foreground">
                     De eso, {formatCurrency(planningCardStatementDue.total)} son
                     pagos al estado de cuenta (tarjeta).
                   </p>
@@ -489,21 +503,21 @@ export default function SummaryBlock({
             {cardCharges != null && cardCharges.total > 0 ? (
               <div
                 className={cn(
-                  'rounded-lg border border-border/60 border-l-[3px] border-l-violet-500/50',
-                  'bg-transparent px-3 py-2.5',
+                  'rounded-xl border border-violet-500/20',
+                  'bg-gradient-to-br from-violet-500/8 to-violet-500/3 px-3 py-3 dark:from-violet-500/12 dark:to-violet-500/5',
                 )}
                 role="region"
                 aria-label="Cargos con tarjeta en esta quincena"
               >
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
-                    <CreditCard className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+                <div className="mb-2 flex items-center gap-1.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
+                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                   </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
                     Cargos a tarjeta
                   </span>
                 </div>
-                <p className="text-sm font-bold font-mono tabular-nums leading-tight text-violet-700 dark:text-violet-300">
+                <p className="font-mono text-base font-black tabular-nums leading-tight text-violet-700 dark:text-violet-300">
                   {formatCurrency(cardCharges.total)}
                 </p>
                 <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
@@ -525,8 +539,8 @@ export default function SummaryBlock({
 
             {/* Income breakdown */}
             {(incomeItems.length > 0 || hasUserIncome) && (
-              <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 dark:bg-muted/10">
-                <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 dark:bg-muted/10">
+                <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Desglose de ingresos
                 </h4>
                 {incomeItems.length > 0 ? (

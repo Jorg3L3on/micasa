@@ -22,6 +22,7 @@ import type {
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
   TransactionRow,
+  WalletListItem,
 } from '@/types/catalog';
 import { SlidersHorizontal } from 'lucide-react';
 
@@ -76,6 +77,7 @@ export type MonthlyFortnightViewProps = {
   suggestedPeriod: FortnightPeriod;
   first: FortnightBundle;
   second: FortnightBundle;
+  wallets?: WalletListItem[];
 };
 
 const readStoredLayout = (): LayoutMode | null => {
@@ -166,6 +168,7 @@ export default function MonthlyFortnightView({
   suggestedPeriod,
   first,
   second,
+  wallets = [],
 }: MonthlyFortnightViewProps) {
   const [prefsReady, setPrefsReady] = useState(false);
   const [layout, setLayout] = useState<LayoutMode>('single');
@@ -249,16 +252,16 @@ export default function MonthlyFortnightView({
 
   const segmentBtn = (active: boolean) =>
     cn(
-      'rounded-md px-3 py-1 text-xs font-semibold transition-all duration-150',
+      'rounded-md px-3 py-1.5 text-xs font-bold transition-all duration-150',
       active
-        ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-inset ring-primary/20'
-        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+        ? 'bg-primary text-primary-foreground shadow-sm'
+        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
     );
 
   return (
     <div
       className={cn(
-        'space-y-3',
+        'space-y-4',
         layout === 'single' && 'mx-auto w-full max-w-4xl xl:max-w-5xl',
       )}
     >
@@ -268,7 +271,7 @@ export default function MonthlyFortnightView({
         aria-label="Controles de vista de planificación"
       >
         {/* Layout toggle: Una | Ambas */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/60 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-muted/40 p-0.5">
           <button
             type="button"
             onClick={() => handleLayoutRadio('single')}
@@ -291,7 +294,7 @@ export default function MonthlyFortnightView({
 
         {/* Period selector — only visible in single mode */}
         {layout === 'single' && (
-          <div className="flex items-center gap-0.5 rounded-lg border border-border/60 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-muted/40 p-0.5">
             <button
               type="button"
               onClick={() => handlePeriodChange('FIRST')}
@@ -361,18 +364,21 @@ export default function MonthlyFortnightView({
         )}
       >
         {showFirst ? (
-          <div className="flex flex-col gap-3">
+          <div className={cn(
+            'flex flex-col gap-3',
+            layout === 'both' && 'rounded-2xl border border-border/30 bg-card/70 p-4 shadow-sm dark:bg-card/40',
+          )}>
             {layout === 'both' && (
-              <div className="flex items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary ring-1 ring-inset ring-primary/25">
+              <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2.5 shadow-sm dark:from-primary/15 dark:to-primary/8">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-xs font-black text-primary ring-1 ring-primary/30">
                     1ª
                   </span>
-                  <span className="truncate text-sm font-semibold text-foreground">
+                  <span className="truncate text-sm font-bold text-foreground">
                     {first.label}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
+                <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-primary">
                   {formatCurrency(first.summary.totalIncome)}
                 </span>
               </div>
@@ -390,22 +396,26 @@ export default function MonthlyFortnightView({
               onShowSummaryCard={handleShowSummaryFromColumn}
               tableDensity={tableDensity}
               cardDueItems={first.cardDueItems}
+              wallets={wallets}
             />
           </div>
         ) : null}
         {showSecond ? (
-          <div className="flex flex-col gap-3">
+          <div className={cn(
+            'flex flex-col gap-3',
+            layout === 'both' && 'rounded-2xl border border-border/30 bg-card/70 p-4 shadow-sm dark:bg-card/40',
+          )}>
             {layout === 'both' && (
-              <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted/70 text-xs font-bold text-muted-foreground ring-1 ring-inset ring-border/60">
+              <div className="flex items-center justify-between rounded-xl border border-border/40 bg-gradient-to-r from-muted/40 to-muted/20 px-3 py-2.5 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-xs font-black text-muted-foreground ring-1 ring-border/60">
                     2ª
                   </span>
-                  <span className="truncate text-sm font-semibold text-foreground">
+                  <span className="truncate text-sm font-bold text-foreground">
                     {second.label}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
+                <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-muted-foreground">
                   {formatCurrency(second.summary.totalIncome)}
                 </span>
               </div>
@@ -423,6 +433,7 @@ export default function MonthlyFortnightView({
               onShowSummaryCard={handleShowSummaryFromColumn}
               tableDensity={tableDensity}
               cardDueItems={second.cardDueItems}
+              wallets={wallets}
             />
           </div>
         ) : null}

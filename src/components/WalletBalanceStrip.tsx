@@ -79,7 +79,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0 rounded-lg"
+            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/60"
             onClick={handleToggleStrip}
             aria-expanded={stripVisible}
             aria-label={
@@ -168,12 +168,12 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1',
                         isCreditType
-                          ? 'bg-violet-500/10 dark:bg-violet-500/15'
+                          ? 'bg-violet-500/15 ring-violet-500/25 dark:bg-violet-500/20'
                           : wallet.type === 'DEBIT_CARD'
-                            ? 'bg-blue-500/10 dark:bg-blue-500/15'
-                            : 'bg-muted/40',
+                            ? 'bg-blue-500/15 ring-blue-500/25 dark:bg-blue-500/20'
+                            : 'bg-muted/50 ring-border/50',
                       )}
                     >
                       <WalletIcon
@@ -205,7 +205,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                         <div className="mt-1 space-y-0.5">
                           <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
                             <div
-                              className="h-full rounded-full transition-all bg-emerald-500 dark:bg-emerald-400"
+                              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all dark:from-emerald-400 dark:to-emerald-300"
                               style={{ width: `${percentAvailable}%` }}
                               aria-hidden
                             />
@@ -230,12 +230,12 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                 );
 
                 const cardClasses = cn(
-                  'group shrink-0 rounded-lg border px-3 py-1.5',
-                  'transition-all duration-200 hover:shadow-md',
+                  'group shrink-0 rounded-xl border px-3 py-2',
+                  'transition-all duration-200 hover:shadow-lg',
                   isCreditType
-                    ? 'border-violet-500/20 bg-violet-500/5 dark:bg-violet-500/8 cursor-pointer hover:border-violet-500/35'
+                    ? 'border-violet-500/25 bg-gradient-to-br from-violet-500/10 to-violet-500/5 dark:from-violet-500/15 dark:to-violet-500/8 cursor-pointer hover:border-violet-500/45 hover:shadow-violet-500/10'
                     : wallet.type === 'DEBIT_CARD'
-                      ? 'border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/8'
+                      ? 'border-blue-500/25 bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/15 dark:to-blue-500/8'
                       : 'border-border/60 bg-card dark:bg-card/80',
                 );
 
@@ -262,26 +262,37 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
           </div>
         </div>
       ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-          {sortedWallets.map((wallet) => (
-            <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40"
-                aria-hidden
-              />
-              <span className="max-w-[80px] truncate text-[10px] text-muted-foreground">
-                {wallet.name}
-              </span>
-              <span
-                className={cn(
-                  'font-mono text-xs font-medium tabular-nums',
-                  wallet.amount < 0 ? 'text-destructive/80' : 'text-foreground/80',
-                )}
-              >
-                {formatCurrency(wallet.amount)}
-              </span>
-            </div>
-          ))}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
+          {sortedWallets.map((wallet) => {
+            const isCreditType =
+              wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD';
+            return (
+              <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 shrink-0 rounded-full',
+                    isCreditType
+                      ? 'bg-violet-500/60'
+                      : wallet.type === 'DEBIT_CARD'
+                        ? 'bg-blue-500/60'
+                        : 'bg-muted-foreground/40',
+                  )}
+                  aria-hidden
+                />
+                <span className="max-w-[80px] truncate text-[10px] font-medium text-muted-foreground/80">
+                  {wallet.name}
+                </span>
+                <span
+                  className={cn(
+                    'font-mono text-[10px] font-semibold tabular-nums',
+                    wallet.amount < 0 ? 'text-destructive/80' : 'text-foreground/80',
+                  )}
+                >
+                  {formatCurrency(wallet.amount)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

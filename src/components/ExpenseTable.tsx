@@ -51,7 +51,7 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { DataTableColumnHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 
-import type { TransactionRow } from '@/types/catalog';
+import type { TransactionRow, WalletListItem } from '@/types/catalog';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 
 /** Rows from combined transaction feeds use income ids that are not expense ids. */
@@ -103,6 +103,7 @@ type ExpenseTableProps = {
   month?: number;
   period?: 'FIRST' | 'SECOND';
   density?: ExpenseTableDensity;
+  wallets?: WalletListItem[];
 };
 
 export default function ExpenseTable({
@@ -115,6 +116,7 @@ export default function ExpenseTable({
   month,
   period,
   density = 'comfortable',
+  wallets = [],
 }: ExpenseTableProps) {
   const isCompact = density === 'compact';
   const { context } = useFinanceContext();
@@ -215,20 +217,31 @@ export default function ExpenseTable({
       return next;
     });
 
+    const walletChanged = data.wallet_id !== undefined && data.wallet_id !== (editingExpense.wallet_id ?? null);
+    const walletName = data.wallet_id != null
+      ? (wallets.find((w) => w.id === data.wallet_id)?.name ?? editingExpense.paymentMethod)
+      : 'Efectivo';
+
     const updatedExpenses = localExpenses.map((e) =>
-      e.id === expenseId ? { ...e, amount: data.amount } : e,
+      e.id === expenseId
+        ? {
+            ...e,
+            amount: data.amount,
+            ...(walletChanged ? { wallet_id: data.wallet_id ?? null, paymentMethod: walletName } : {}),
+          }
+        : e,
     );
     setLocalExpenses(updatedExpenses);
 
     try {
       setEditError(null);
-      await updateExpenseAmount(expenseId, data.amount, context);
+      await updateExpenseAmount(expenseId, data.amount, context, data.wallet_id);
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, editingExpense.is_paid);
       }
       setEditDialogOpen(false);
       setEditingExpense(null);
-      toast.success('Monto del gasto actualizado.');
+      toast.success('Gasto actualizado.');
     } catch (error) {
       setLocalExpenses(expenses);
       const { userMessage, logToConsole } = getApiErrorFeedback(
@@ -415,7 +428,7 @@ export default function ExpenseTable({
               <div className="flex justify-center">
                 <CheckCircle2
                   className={cn(
-                    'text-green-600 dark:text-green-400',
+                    'text-emerald-500 dark:text-emerald-400',
                     isCompact ? 'h-4 w-4' : 'h-5 w-5',
                   )}
                 />
@@ -447,7 +460,10 @@ export default function ExpenseTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
+                className={cn(
+                  isCompact ? 'h-7 w-7' : 'h-8 w-8',
+                  'text-muted-foreground/40 transition-colors hover:text-emerald-500 hover:bg-emerald-500/10',
+                )}
                 onClick={() => {
                   setPayingExpense(expense);
                   setPayDialogOpen(true);
@@ -457,7 +473,6 @@ export default function ExpenseTable({
               >
                 <CheckCircle2
                   className={cn(
-                    'text-muted-foreground',
                     isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4',
                   )}
                 />
@@ -487,22 +502,34 @@ export default function ExpenseTable({
             >
               <span
                 className={cn(
-                  'font-medium',
                   isCompact ? 'text-xs' : 'text-sm',
-                  expense.is_paid && 'text-muted-foreground line-through',
+                  expense.is_paid
+                    ? 'font-medium text-muted-foreground line-through'
+                    : 'font-semibold text-foreground',
                 )}
               >
                 {expense.description}
               </span>
               <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className={cn(
-                    'text-muted-foreground',
-                    isCompact ? 'text-[10px]' : 'text-xs',
-                  )}
-                >
-                  {`${expense.category} • ${expense.paymentMethod}`}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={cn(
+                      'text-muted-foreground',
+                      isCompact ? 'text-[10px]' : 'text-[11px]',
+                    )}
+                  >
+                    {expense.category}
+                  </span>
+                  <span className={cn('text-muted-foreground/30', isCompact ? 'text-[10px]' : 'text-[11px]')}>·</span>
+                  <span
+                    className={cn(
+                      'text-muted-foreground/70',
+                      isCompact ? 'text-[10px]' : 'text-[11px]',
+                    )}
+                  >
+                    {expense.paymentMethod}
+                  </span>
+                </div>
                 {isPlanningCardPaymentRow(expense) ? (
                   <Badge
                     variant="outline"
@@ -566,8 +593,9 @@ export default function ExpenseTable({
           <span
             className={cn(
               'text-right font-mono tabular-nums',
-              isCompact ? 'text-xs' : 'text-sm',
-              row.original.is_paid && 'text-muted-foreground line-through',
+              row.original.is_paid
+                ? cn('text-muted-foreground/60 line-through', isCompact ? 'text-xs' : 'text-sm')
+                : cn('font-bold text-foreground', isCompact ? 'text-xs' : 'text-sm'),
             )}
           >
             {formatCurrency(toDisplayAmount(row.original.amount))}
@@ -640,7 +668,7 @@ export default function ExpenseTable({
                     disabled={isUpdating}
                   >
                     <Pencil className="mr-2 h-4 w-4" />
-                    Modificar monto
+                    Modificar gasto
                   </DropdownMenuItem>
                   {expense.is_paid ? (
                     <DropdownMenuItem
@@ -702,17 +730,18 @@ export default function ExpenseTable({
 
   return (
     <>
-      <Card className="overflow-hidden border-border/60">
+      <Card className="overflow-hidden rounded-xl border-border/40 shadow-md">
         <CardContent className="px-0 pb-3 pt-0 space-y-0">
           <div className="relative w-full">
             <Table className={isCompact ? 'text-xs' : undefined}>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
+                  <TableRow key={headerGroup.id} className="bg-muted/50 dark:bg-muted/30 hover:bg-muted/50">
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
                         className={cn(
+                          'text-[10px] font-bold uppercase tracking-wider text-muted-foreground',
                           header.id === 'is_paid'
                             ? 'w-12 text-center'
                             : header.id === 'amount'
@@ -764,12 +793,15 @@ export default function ExpenseTable({
                       <TableRow
                         key={`${row.original.planning_row_kind ?? 'expense'}-${row.original.id}`}
                         className={cn(
-                          'transition-colors',
-                          isCardChargeExpenseRow(row.original) &&
-                            'border-l-[3px] border-l-violet-500/45',
+                          'transition-colors group/row',
+                          isCardChargeExpenseRow(row.original)
+                            ? 'border-l-[3px] border-l-violet-500/60'
+                            : row.original.is_paid
+                              ? 'border-l-[3px] border-l-emerald-500/40'
+                              : 'border-l-[3px] border-l-primary/25 hover:border-l-primary/50',
                           row.original.is_paid
-                            ? 'bg-muted/30 opacity-75 hover:bg-muted/40'
-                            : 'hover:bg-muted/50',
+                            ? 'bg-emerald-50/25 dark:bg-emerald-950/15 opacity-75 hover:opacity-90 hover:bg-emerald-50/35 dark:hover:bg-emerald-950/25'
+                            : 'hover:bg-primary/5 dark:hover:bg-primary/8',
                         )}
                       >
                         {row.getVisibleCells().map((cell) => (
@@ -793,37 +825,37 @@ export default function ExpenseTable({
                         ))}
                       </TableRow>
                     ))}
-                    <TableRow className="border-t-2 border-border/60 bg-muted/30">
+                    <TableRow className="border-t-2 border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/10">
                       <TableCell
                         colSpan={2}
                         className={cn(
                           'text-right',
-                          isCompact ? 'py-2' : 'py-2.5',
+                          isCompact ? 'py-2' : 'py-3',
                         )}
                       >
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
                           Total efectivo/débito
                         </span>
                       </TableCell>
                       <TableCell
                         className={cn(
                           'text-right',
-                          isCompact ? 'py-2' : 'py-2.5',
+                          isCompact ? 'py-2' : 'py-3',
                         )}
                       >
                         <span
                           className={cn(
-                            'font-bold font-mono tabular-nums',
-                            isCompact ? 'text-xs' : 'text-sm',
+                            'font-black font-mono tabular-nums',
+                            isCompact ? 'text-sm' : 'text-base',
                           )}
                         >
                           {formatCurrency(total)}
                         </span>
                       </TableCell>
-                      <TableCell className={isCompact ? 'py-2' : 'py-2.5'} />
+                      <TableCell className={isCompact ? 'py-2' : 'py-3'} />
                     </TableRow>
                     {cardGrandTotal > 0 ? (
-                      <TableRow className="border-border/60 bg-muted/20">
+                      <TableRow className="border-border/30 bg-violet-50/20 dark:bg-violet-950/10">
                         <TableCell
                           colSpan={2}
                           className={cn(
@@ -831,10 +863,10 @@ export default function ExpenseTable({
                             isCompact ? 'py-1.5' : 'py-2',
                           )}
                         >
-                          <span className="text-xs font-medium text-muted-foreground">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
                             Cargos a tarjeta
                           </span>
-                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground/60">
                             No suman al efectivo hasta pagar el estado de cuenta
                           </span>
                         </TableCell>
@@ -846,7 +878,7 @@ export default function ExpenseTable({
                         >
                           <span
                             className={cn(
-                              'font-semibold font-mono tabular-nums text-violet-700 dark:text-violet-300',
+                              'font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300',
                               isCompact ? 'text-xs' : 'text-sm',
                             )}
                           >
@@ -864,7 +896,7 @@ export default function ExpenseTable({
         </CardContent>
       </Card>
 
-      {/* Edit Expense Amount Dialog */}
+      {/* Edit Expense Dialog */}
       {editingExpense && (
         <EditExpenseAmountDialog
           open={editDialogOpen}
@@ -877,9 +909,12 @@ export default function ExpenseTable({
           }}
           onSubmit={handleUpdateAmount}
           defaultAmount={toDisplayAmount(editingExpense.amount)}
+          defaultWalletId={editingExpense.wallet_id ?? null}
           expenseDescription={editingExpense.description}
           expenseCategory={editingExpense.category ?? ''}
           fortnightLabel={fortnightLabel}
+          wallets={wallets}
+          isPaid={editingExpense.is_paid}
           error={editError && editDialogOpen ? editError : null}
         />
       )}

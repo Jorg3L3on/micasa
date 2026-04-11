@@ -1,12 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useId, useMemo, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { BarChart3, LineChart } from 'lucide-react';
 import type { PantryChartsDto } from '@/types/pantry-insights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 type Props = {
   charts: PantryChartsDto;
@@ -67,15 +77,20 @@ const ProductSpendTooltip = ({ active, payload }: BarTooltipProps) => {
   );
 };
 
+const noopSubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
+  const spendGradientId = `pantrySpend-${useId().replace(/:/g, '')}`;
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const isClient = useSyncExternalStore(
+    noopSubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isDark = mounted && resolvedTheme === 'dark';
+  const isDark = isClient && resolvedTheme === 'dark';
   const axisColor = isDark ? '#a1a1aa' : '#71717a';
   const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
   const emerald = isDark ? '#34d399' : '#059669';
@@ -92,7 +107,7 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
 
   const barChartHeight = Math.max(
     200,
-    Math.min(400, barData.length * 40 + 56),
+    Math.min(360, barData.length * 36 + 48),
   );
 
   if (!hasReceipts) {
@@ -104,39 +119,47 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
   const hasBarData = barData.length > 0;
 
   return (
-    <div
-      className="grid gap-4 lg:grid-cols-2"
+    <Card
+      className={cn(
+        'overflow-hidden border-border/60 transition-shadow duration-200 hover:shadow-md',
+      )}
       role="region"
-      aria-label="Gráficas de despensa"
+      aria-label="Tendencias de despensa"
     >
-      <Card className="overflow-hidden border-border/60">
-        <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-            <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-          </span>
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold leading-none">
+      <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
+          <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+        </span>
+        <div className="min-w-0">
+          <CardTitle className="text-sm font-semibold leading-none">
+            Tendencias
+          </CardTitle>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Gasto por mes y productos que más pesan en el total
+          </p>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-8 pt-0 lg:grid-cols-2 lg:gap-6">
+        <div className="min-w-0 space-y-2 border-border/50 lg:border-r lg:pr-6 lg:pb-0 pb-6 border-b lg:border-b-0">
+          <div className="flex items-center gap-2">
+            <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gasto por mes
-            </CardTitle>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Suma de totales de recibos por mes calendario
             </p>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
           {!hasMonthData ? (
             <p className="text-sm text-muted-foreground">
               Sin datos suficientes para la serie temporal.
             </p>
           ) : (
-            <div className="h-56 w-full min-w-0">
+            <div className="h-52 w-full min-w-0 sm:h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={monthSeries}
                   margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                 >
                   <defs>
-                    <linearGradient id="pantrySpendGradient" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id={spendGradientId} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={emerald} stopOpacity={0.35} />
                       <stop offset="100%" stopColor={emerald} stopOpacity={0} />
                     </linearGradient>
@@ -162,31 +185,22 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
                     dataKey="total_spend"
                     stroke={emerald}
                     strokeWidth={2}
-                    fill="url(#pantrySpendGradient)"
+                    fill={`url(#${spendGradientId})`}
                     name="Gasto"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card className="overflow-hidden border-border/60">
-        <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-          </span>
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold leading-none">
+        <div className="min-w-0 space-y-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Top gasto por producto
-            </CardTitle>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Acumulado histórico por nombre de producto (normalizado)
             </p>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
           {!hasBarData ? (
             <p className="text-sm text-muted-foreground">
               Aún no hay líneas con gasto para comparar.
@@ -221,8 +235,8 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
               </ResponsiveContainer>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

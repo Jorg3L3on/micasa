@@ -51,6 +51,7 @@ import type {
   TransactionRow,
 } from '@/types/catalog';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
+import type { WalletListItem } from '@/types/catalog';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
@@ -96,6 +97,7 @@ type FortnightColumnProps = {
   onShowSummaryCard?: () => void;
   tableDensity?: ExpenseTableDensity;
   cardDueItems?: DuePaymentItem[];
+  wallets?: WalletListItem[];
 };
 
 export default function FortnightColumn({
@@ -110,6 +112,7 @@ export default function FortnightColumn({
   onShowSummaryCard,
   tableDensity = 'comfortable',
   cardDueItems = [],
+  wallets = [],
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -655,7 +658,7 @@ export default function FortnightColumn({
       <div className="flex flex-col space-y-4">
         {/* Summary card (toggle desde la barra de planificación) */}
         {showSummaryCard ? (
-          <div className="sticky top-16 z-10">
+          <div className="sticky top-16 z-10 -mx-0.5 px-0.5 pb-1 backdrop-blur-sm">
             <SummaryBlock
               tenemos={tenemos}
               libre={libre}
@@ -689,7 +692,7 @@ export default function FortnightColumn({
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5 border-dashed"
+              className="gap-1.5 border-dashed border-primary/30 text-primary/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
               onClick={onShowSummaryCard}
               aria-label={`Mostrar resumen de la quincena: ${label}`}
             >
@@ -704,7 +707,7 @@ export default function FortnightColumn({
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <div className="mb-2 flex items-center border-b border-border/60">
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-border/40 bg-muted/20 p-1.5 dark:bg-muted/10">
             <TabsList
               variant="line"
               className="h-auto flex-1 justify-start gap-1 rounded-none bg-transparent p-0"
@@ -744,15 +747,15 @@ export default function FortnightColumn({
               </span>
             </TabsTrigger>
             </TabsList>
-            <div className="flex shrink-0 items-center gap-1.5 pb-1 pl-2">
+            <div className="flex shrink-0 items-center gap-1.5 pl-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     onClick={() => setAddExpenseDialogOpen(true)}
                     disabled={!fortnightId || fortnightId <= 0}
-                    className="gap-1.5"
+                    className="gap-1.5 shadow-sm"
                     aria-label="Agregar gasto a esta quincena"
                     title={
                       !fortnightId || fortnightId <= 0
@@ -832,6 +835,7 @@ export default function FortnightColumn({
                   month={month}
                   period={period}
                   density={tableDensity}
+                  wallets={wallets}
                 />
               )}
             </div>
