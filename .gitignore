@@ -50,6 +50,8 @@ next-env.d.ts
 
 # Playwright MCP artifacts
 .playwright-mcp/
+/*.png
+/*.jpg
 
 # MCP server config (contains connection strings)
 .mcp.json

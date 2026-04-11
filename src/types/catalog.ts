@@ -46,6 +46,7 @@ export type TransactionRow = {
   amount: number | string;
   category: string;
   paymentMethod: string;
+  wallet_id?: number | null;
   wallet_type?: ExpenseWalletType | null;
   /** Solo planificación: filas de pago a tarjeta no editables como gasto. */
   planning_row_kind?: PlanningExpenseRowKind;

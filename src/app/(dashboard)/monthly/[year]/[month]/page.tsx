@@ -311,7 +311,7 @@ export default async function MonthlyPage({
   return (
     <>
       <div
-        className="mb-5 flex items-center gap-2 sm:gap-3"
+        className="mb-6 flex items-center gap-2 rounded-2xl border border-border/30 bg-gradient-to-r from-primary/5 via-transparent to-transparent px-4 py-3 shadow-sm dark:from-primary/8 sm:gap-3"
         role="group"
         aria-label="Selector de mes"
       >
@@ -326,12 +326,15 @@ export default async function MonthlyPage({
           />
         </div>
 
-        <h1
-          className="min-w-0 flex-1 truncate text-center text-xl font-bold sm:text-2xl"
-          aria-live="polite"
-        >
-          {monthName} {year}
-        </h1>
+        <div className="min-w-0 flex-1 text-center" aria-live="polite">
+          <h1 className="truncate text-2xl font-black tracking-tight sm:text-3xl">
+            {monthName}{' '}
+            <span className="text-primary">{year}</span>
+          </h1>
+          <p className="mt-0.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/60">
+            Planificación mensual
+          </p>
+        </div>
 
         <div className="shrink-0">
           {hasNextMonth ? (
@@ -365,7 +368,7 @@ export default async function MonthlyPage({
         </div>
       </div>
 
-      <div className="mb-8 min-w-0">
+      <div className="mb-6 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2 shadow-sm backdrop-blur-sm dark:bg-card/60">
         <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
       </div>
 
@@ -374,6 +377,7 @@ export default async function MonthlyPage({
         year={year}
         month={month}
         suggestedPeriod={suggestedPeriod}
+        wallets={wallets}
         first={{
           label: firstLabel,
           transactions: firstTransactions,

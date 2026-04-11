@@ -95,7 +95,7 @@ const FortnightCardPaymentsPanel = ({
     return (
       <div
         className={cn(
-          'rounded-lg border border-border/60 bg-card px-4 py-8 text-center',
+          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
           isCompact ? 'text-xs' : 'text-sm',
         )}
         role="region"
@@ -110,23 +110,21 @@ const FortnightCardPaymentsPanel = ({
 
   return (
     <Card
-      className="overflow-hidden border-border/60"
+      className="overflow-hidden rounded-xl border-border/40 shadow-md"
       role="region"
       aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
     >
       <CardContent className="px-0 pb-1 pt-0">
-        <p className="px-3 pt-3 pb-2 text-[10px] text-muted-foreground leading-snug">
+        <p className="px-4 pt-3 pb-2 text-[10px] font-medium text-muted-foreground/70 leading-snug">
           Monto sugerido según movimientos en MiCasa. El banco puede indicar otro importe.
         </p>
-        <div className="divide-y divide-border/40">
+        <div className="divide-y divide-border/30">
           {rows.map((item) => {
             const status = getPlannerCardPaymentStatus(item, todayYmd);
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const daysLeft = getDaysLeft(item.dueDay, todayYmd);
 
-            // Always display dueDay within the planning month (e.g. "8 abr 2026"),
-            // rather than statementDueDate which can land in the following month.
             const mm = String(plannerMonth).padStart(2, '0');
             const dd = String(item.dueDay).padStart(2, '0');
             const displayDueDateStr = `${plannerYear}-${mm}-${dd}`;
@@ -144,44 +142,55 @@ const FortnightCardPaymentsPanel = ({
               <div
                 key={item.walletId}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-3 border-l-[3px]',
-                  isCompact ? 'py-2' : 'py-3',
-                  status === 'vencido' && 'border-l-destructive/50',
-                  status === 'por_pagar' && 'border-l-amber-500/50',
-                  status === 'pagado' && 'border-l-emerald-500/40',
+                  'flex items-center gap-3 px-4 border-l-[3px] transition-colors',
+                  isCompact ? 'py-2.5' : 'py-3.5',
+                  status === 'vencido' && 'border-l-destructive bg-destructive/3 dark:bg-destructive/5',
+                  status === 'por_pagar' && 'border-l-amber-500/70 hover:bg-amber-50/30 dark:hover:bg-amber-950/10',
+                  status === 'pagado' && 'border-l-emerald-500/50 bg-emerald-50/10 dark:bg-emerald-950/10',
                 )}
               >
                 {/* Icon */}
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
-                  <Icon className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <span className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1',
+                  status === 'pagado'
+                    ? 'bg-emerald-500/10 ring-emerald-500/20 dark:bg-emerald-500/15'
+                    : status === 'vencido'
+                      ? 'bg-destructive/10 ring-destructive/20'
+                      : 'bg-violet-500/10 ring-violet-500/20 dark:bg-violet-500/15',
+                )}>
+                  <Icon className={cn(
+                    'h-4 w-4',
+                    status === 'pagado'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : status === 'vencido'
+                        ? 'text-destructive'
+                        : 'text-violet-600 dark:text-violet-400',
+                  )} />
                 </span>
 
                 {/* Name + status + date */}
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <Link
                       href={href}
                       className={cn(
-                        'truncate font-medium hover:underline text-foreground',
+                        'truncate font-semibold hover:underline',
                         isCompact ? 'text-xs' : 'text-sm',
+                        status === 'pagado' ? 'text-muted-foreground' : 'text-foreground',
                       )}
                     >
                       {item.walletName}
                     </Link>
                     <Badge
-                      variant={
-                        status === 'vencido'
-                          ? 'destructive'
-                          : status === 'pagado'
-                            ? 'secondary'
-                            : 'outline'
-                      }
+                      variant="outline"
                       className={cn(
-                        'shrink-0 text-[10px] px-1.5',
+                        'shrink-0 text-[10px] px-1.5 font-bold',
+                        status === 'vencido' &&
+                          'border-destructive/50 bg-destructive/8 text-destructive dark:bg-destructive/15',
                         status === 'por_pagar' &&
-                          'border-amber-500/50 text-amber-800 dark:text-amber-300',
+                          'border-amber-500/50 bg-amber-500/8 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
                         status === 'pagado' &&
-                          'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30',
+                          'border-emerald-500/40 bg-emerald-500/8 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
                       )}
                     >
                       {statusLabel(status)}
@@ -192,12 +201,12 @@ const FortnightCardPaymentsPanel = ({
                       {displayDueDate}
                     </span>
                     {daysLabel && (
-                      <span className={cn('text-[10px] tabular-nums', dateColor)}>
+                      <span className={cn('text-[10px] font-semibold tabular-nums', dateColor)}>
                         · {daysLabel}
                       </span>
                     )}
                     {item.cutoff_day != null && (
-                      <span className="text-[10px] text-muted-foreground/60">
+                      <span className="text-[10px] text-muted-foreground/50">
                         · Corte día {item.cutoff_day}
                       </span>
                     )}
@@ -208,9 +217,9 @@ const FortnightCardPaymentsPanel = ({
                 <div className="flex shrink-0 items-center gap-2">
                   <span
                     className={cn(
-                      'font-mono tabular-nums font-semibold',
+                      'font-mono tabular-nums font-bold',
                       isCompact ? 'text-xs' : 'text-sm',
-                      status === 'pagado' ? 'text-muted-foreground' : 'text-foreground',
+                      status === 'pagado' ? 'text-muted-foreground/60 line-through' : 'text-foreground',
                     )}
                   >
                     {formatCurrency(item.nextDuePayment)}
@@ -224,9 +233,9 @@ const FortnightCardPaymentsPanel = ({
                             variant="outline"
                             size="icon-xs"
                             className={cn(
-                              'border-border/60 bg-card shadow-none',
-                              'transition-colors hover:border-emerald-500/45 hover:bg-emerald-500/6 dark:hover:bg-emerald-500/10',
-                              'disabled:pointer-events-none disabled:opacity-45',
+                              'border-border/50 bg-card shadow-none',
+                              'transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/8 dark:hover:bg-emerald-500/12',
+                              'disabled:pointer-events-none disabled:opacity-40',
                               '[&_svg]:text-emerald-600 dark:[&_svg]:text-emerald-400',
                             )}
                             disabled={

@@ -19,6 +19,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
@@ -26,29 +33,38 @@ import {
   expenseAmountSchema,
   ExpenseAmountFormValues,
 } from '@/schemas/expense.schema'
+import type { WalletListItem } from '@/types/catalog'
 
 type EditExpenseAmountDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (data: ExpenseAmountFormValues) => Promise<void>
   defaultAmount: number
+  defaultWalletId?: number | null
   expenseDescription: string
   expenseCategory?: string
   fortnightLabel: string
+  wallets?: WalletListItem[]
+  isPaid?: boolean
   error?: string | null
 }
 
 const safeAmount = (value: number): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
 
+const NULL_WALLET_VALUE = '__none__'
+
 export default function EditExpenseAmountDialog({
   open,
   onOpenChange,
   onSubmit,
   defaultAmount,
+  defaultWalletId,
   expenseDescription,
   expenseCategory = '',
   fortnightLabel,
+  wallets = [],
+  isPaid = false,
   error,
 }: EditExpenseAmountDialogProps) {
   const initialAmount = safeAmount(defaultAmount)
@@ -57,6 +73,7 @@ export default function EditExpenseAmountDialog({
     resolver: zodResolver(expenseAmountSchema),
     defaultValues: {
       amount: initialAmount,
+      wallet_id: defaultWalletId ?? null,
     },
   })
 
@@ -64,15 +81,16 @@ export default function EditExpenseAmountDialog({
     if (open) {
       form.reset({
         amount: safeAmount(defaultAmount),
+        wallet_id: defaultWalletId ?? null,
       })
     }
-  }, [open, defaultAmount, form])
+  }, [open, defaultAmount, defaultWalletId, form])
 
   const handleSubmit = async (data: ExpenseAmountFormValues) => {
     try {
       await onSubmit(data)
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       // Error handling is done in the parent component
     }
   }
@@ -88,11 +106,11 @@ export default function EditExpenseAmountDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modificar monto del gasto</DialogTitle>
+          <DialogTitle>Modificar gasto</DialogTitle>
           <DialogDescription asChild>
             <div className="space-y-1">
               <p>
-                Modificar el monto de &quot;{expenseDescription}&quot;
+                Modificar &quot;{expenseDescription}&quot;
                 {expenseCategory ? (
                   <>
                     {' '}
@@ -147,6 +165,46 @@ export default function EditExpenseAmountDialog({
                 </FormItem>
               )}
             />
+            {wallets.length > 0 && (
+              <FormField
+                control={form.control}
+                name="wallet_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Método de pago</FormLabel>
+                    <Select
+                      disabled={isPaid}
+                      value={field.value != null ? String(field.value) : NULL_WALLET_VALUE}
+                      onValueChange={(val) => {
+                        field.onChange(val === NULL_WALLET_VALUE ? null : Number(val))
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin cartera (efectivo)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NULL_WALLET_VALUE}>
+                          Sin cartera (efectivo)
+                        </SelectItem>
+                        {wallets.map((w) => (
+                          <SelectItem key={w.id} value={String(w.id)}>
+                            {w.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isPaid && (
+                      <p className="text-xs text-muted-foreground">
+                        No se puede cambiar el método de pago de un gasto ya pagado.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar

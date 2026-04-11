@@ -129,6 +129,7 @@ export async function GET(request: NextRequest) {
         amount: decimalToNumber(expense.amount),
         category: expense.category?.name ?? '',
         paymentMethod: expense.wallet?.name || 'Efectivo',
+        wallet_id: expense.wallet_id ?? null,
         wallet_type: expense.wallet?.type ?? null,
         planning_row_kind: 'expense' as const,
         type: 'expense',
