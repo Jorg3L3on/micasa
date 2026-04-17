@@ -167,10 +167,10 @@ export default function PantryProductsPage() {
 
   const ownerQuery = useMemo(() => {
     const q = new URLSearchParams();
-    q.set('ownerType', context.ownerType);
-    q.set('ownerId', String(context.ownerId));
+    q.set('ownerType', context.type);
+    q.set('ownerId', String(context.id));
     return q.toString();
-  }, [context.ownerId, context.ownerType]);
+  }, [context.id, context.type]);
   const receiptsHref = ownerQuery ? `/pantry/receipts?${ownerQuery}` : '/pantry/receipts';
   const insightsHref = ownerQuery ? `/pantry?${ownerQuery}` : '/pantry';
 
