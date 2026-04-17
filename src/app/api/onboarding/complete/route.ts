@@ -247,6 +247,7 @@ export async function POST(request: Request) {
 
         if (generatedFortnights.length > 0) {
           await tx.fortnight.createMany({
+            skipDuplicates: true,
             data: generatedFortnights.map((f) => ({
               start_date: f.startDate,
               end_date: f.endDate,
