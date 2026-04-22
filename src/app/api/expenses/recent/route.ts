@@ -51,18 +51,16 @@ export async function GET(request: NextRequest) {
 
     const where: Prisma.ExpenseWhereInput = {
       ...ownerFilter,
-      is_paid: true,
-      payment_date: { not: null },
     };
 
     if (cursor) {
       where.AND = [
         {
           OR: [
-            { payment_date: { lt: cursor.date } },
+            { created_at: { lt: cursor.date } },
             {
               AND: [
-                { payment_date: cursor.date },
+                { created_at: cursor.date },
                 { id: { lt: cursor.id } },
               ],
             },
@@ -74,10 +72,10 @@ export async function GET(request: NextRequest) {
     const expenses = await prisma.expense.findMany({
       where,
       include: {
-        category: { select: { name: true } },
-        wallet: { select: { name: true, type: true } },
+        category: { select: { id: true, name: true } },
+        wallet: { select: { id: true, name: true, type: true } },
       },
-      orderBy: [{ payment_date: 'desc' }, { id: 'desc' }],
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
       take: limit + 1,
     });
 
@@ -88,19 +86,22 @@ export async function GET(request: NextRequest) {
       id: e.id,
       description: e.description,
       amount: decimalToNumber(e.amount),
-      date: toDateStr(e.payment_date),
+      date: toDateStr(e.payment_date ?? e.created_at),
       category: e.category?.name ?? null,
       paymentMethod: e.wallet?.name ?? null,
       walletType: e.wallet?.type ?? null,
+      isPaid: e.is_paid,
       isRecurring: e.expense_template_id != null,
       creditInstallmentCurrent: e.credit_installment_current ?? null,
       creditInstallmentTotal: e.credit_installment_total ?? null,
+      categoryId: e.category?.id ?? null,
+      walletId: e.wallet?.id ?? null,
     }));
 
     const last = pageItems[pageItems.length - 1];
     const nextCursor =
-      hasMore && last?.payment_date
-        ? `${new Date(last.payment_date).toISOString()}_${last.id}`
+      hasMore && last?.created_at
+        ? `${new Date(last.created_at).toISOString()}_${last.id}`
         : null;
 
     return NextResponse.json({ items, nextCursor }, { status: 200 });

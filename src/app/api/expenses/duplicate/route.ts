@@ -7,18 +7,13 @@ import {
   getFortnightPeriodForDay,
 } from '@/lib/fortnights';
 import { createExpense } from '@/lib/finance/expense.service';
-import { logFinanceEvent } from '@/lib/observability/finance-log';
 
 const bodySchema = z.object({
-  name: z.string().min(1),
-  categoryId: z.number().int().positive(),
-  amount: z.number().positive(),
-  paymentMethodId: z.number().int().positive(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  isPaid: z.boolean(),
-  isRecurring: z.boolean(),
-  applyToBothFortnights: z.boolean(),
-  expenseTemplateId: z.number().int().positive().nullable().optional(),
+  id: z.number().int().positive(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 function decimalToNumber(value: unknown): number {
@@ -41,6 +36,11 @@ function toDateStr(value: Date | string | null | undefined): string {
   return d.toISOString().split('T')[0];
 }
 
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
@@ -49,29 +49,25 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = bodySchema.parse(body);
+    const date = data.date ?? todayStr();
 
-    const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, ...ownerFilter },
+    const source = await prisma.expense.findFirst({
+      where: { id: data.id, ...ownerFilter },
+      select: {
+        description: true,
+        amount: true,
+        category_id: true,
+        wallet_id: true,
+      },
     });
-    if (!category) {
+    if (!source || source.category_id == null || source.wallet_id == null) {
       return NextResponse.json(
-        { error: 'Category not found' },
+        { error: 'Expense not found' },
         { status: 404 },
       );
     }
 
-    const wallet = await prisma.wallet.findFirst({
-      where: { id: data.paymentMethodId, ...ownerFilter },
-      select: { id: true },
-    });
-    if (!wallet) {
-      return NextResponse.json(
-        { error: 'Wallet not found' },
-        { status: 404 },
-      );
-    }
-
-    const [yearStr, monthStr, dayStr] = data.date.split('-');
+    const [yearStr, monthStr, dayStr] = date.split('-');
     const year = Number(yearStr);
     const month = Number(monthStr);
     const day = Number(dayStr);
@@ -87,51 +83,14 @@ export async function POST(request: NextRequest) {
 
     const created = await createExpense({
       fortnightId: fortnight.id,
-      categoryId: data.categoryId,
-      description: data.name,
-      amount: data.amount,
-      isPaid: data.isPaid,
-      paymentDate: data.isPaid ? data.date : null,
-      expenseTemplateId: data.expenseTemplateId ?? null,
-      walletId: data.paymentMethodId,
+      categoryId: source.category_id,
+      description: source.description,
+      amount: decimalToNumber(source.amount),
+      isPaid: true,
+      paymentDate: date,
+      expenseTemplateId: null,
+      walletId: source.wallet_id,
     });
-
-    if (data.isRecurring && data.applyToBothFortnights) {
-      const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
-      const otherDay = otherPeriod === 'FIRST' ? Math.min(day, 15) : 16;
-      const otherDate = `${yearStr}-${monthStr}-${String(otherDay).padStart(2, '0')}`;
-      const otherFortnight = await resolveOrCreateFortnight({
-        ownerType,
-        ownerId,
-        year,
-        month,
-        period: otherPeriod,
-      });
-      try {
-        await createExpense({
-          fortnightId: otherFortnight.id,
-          categoryId: data.categoryId,
-          description: data.name,
-          amount: data.amount,
-          isPaid: false,
-          paymentDate: null,
-          expenseTemplateId: data.expenseTemplateId ?? null,
-          walletId: data.paymentMethodId,
-        });
-      } catch (err) {
-        logFinanceEvent(
-          'warn',
-          'finance.api.client_error',
-          {
-            route: 'POST /api/expenses',
-            error: err instanceof Error ? err.message : String(err),
-            context: 'applyToBothFortnights',
-          },
-          request,
-        );
-      }
-      void otherDate;
-    }
 
     return NextResponse.json(
       {
@@ -142,12 +101,12 @@ export async function POST(request: NextRequest) {
         category: created.category ?? null,
         paymentMethod: created.paymentMethod ?? null,
         walletType: null,
-        isPaid: data.isPaid,
-        isRecurring: data.expenseTemplateId != null,
+        isPaid: true,
+        isRecurring: false,
         creditInstallmentCurrent: null,
         creditInstallmentTotal: null,
-        categoryId: data.categoryId,
-        walletId: data.paymentMethodId,
+        categoryId: source.category_id,
+        walletId: source.wallet_id,
       },
       { status: 201 },
     );
@@ -170,9 +129,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    console.error('Error creating expense from feed:', error);
+    console.error('Error duplicating expense:', error);
     return NextResponse.json(
-      { error: 'Failed to create expense' },
+      { error: 'Failed to duplicate expense' },
       { status: 500 },
     );
   }

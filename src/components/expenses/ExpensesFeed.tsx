@@ -7,6 +7,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api';
 import ExpenseCard from '@/components/expenses/ExpenseCard';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
+import RepeatChips from '@/components/expenses/RepeatChips';
 import { groupByDay } from '@/components/expenses/groupByDay';
 import type {
   ExpenseFeedItem,
@@ -39,6 +40,9 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createDefaults, setCreateDefaults] = useState<
+    Partial<AddExpenseFormValues> | undefined
+  >(undefined);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -133,9 +137,12 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
       category: null,
       paymentMethod: null,
       walletType: null,
+      isPaid: values.isPaid,
       isRecurring: values.isRecurring,
       creditInstallmentCurrent: null,
       creditInstallmentTotal: null,
+      categoryId: values.categoryId,
+      walletId: values.paymentMethodId,
     };
     setItems((prev) => [optimistic, ...prev]);
     try {
@@ -206,6 +213,56 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
     }
   };
 
+  const handleRepeat = async (source: ExpenseFeedItem) => {
+    setCreateError(null);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tempId = -Date.now();
+    const optimistic: ExpenseFeedItem = {
+      ...source,
+      id: tempId,
+      date: today,
+      isRecurring: false,
+      creditInstallmentCurrent: null,
+      creditInstallmentTotal: null,
+    };
+    setItems((prev) => [optimistic, ...prev]);
+    try {
+      const created = await clientFetchFromApi<ExpenseFeedItem>(
+        '/api/expenses/duplicate',
+        {
+          method: 'POST',
+          body: JSON.stringify({ id: source.id }),
+        },
+        context,
+      );
+      setItems((prev) => prev.map((i) => (i.id === tempId ? created : i)));
+    } catch (err) {
+      setItems((prev) => prev.filter((i) => i.id !== tempId));
+      setLoadError(
+        err instanceof Error ? err.message : 'No se pudo repetir el gasto',
+      );
+    }
+  };
+
+  const handleCustomizeRepeat = (source: ExpenseFeedItem) => {
+    if (source.categoryId == null || source.walletId == null) return;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    setCreateError(null);
+    setCreateDefaults({
+      name: source.description,
+      amount: source.amount,
+      categoryId: source.categoryId,
+      paymentMethodId: source.walletId,
+      date: today,
+      isPaid: true,
+      isRecurring: false,
+      applyToBothFortnights: false,
+    });
+    setCreateOpen(true);
+  };
+
   const handleDelete = async () => {
     if (!editing) return;
     const originalId = editing.item.id;
@@ -247,6 +304,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
           size="sm"
           onClick={() => {
             setCreateError(null);
+            setCreateDefaults(undefined);
             setCreateOpen(true);
           }}
           className="gap-1.5"
@@ -276,6 +334,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
               type="button"
               onClick={() => {
                 setCreateError(null);
+                setCreateDefaults(undefined);
                 setCreateOpen(true);
               }}
               className="gap-1.5"
@@ -286,6 +345,11 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-6">
+            <RepeatChips
+              items={items}
+              onRepeat={handleRepeat}
+              onCustomize={handleCustomizeRepeat}
+            />
             {groups.map((group) => (
               <section key={group.key} className="flex flex-col gap-2">
                 <div className="sticky top-[57px] z-[5] -mx-4 bg-background/95 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -336,11 +400,19 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         open={createOpen}
         onOpenChange={(open) => {
           setCreateOpen(open);
-          if (!open) setCreateError(null);
+          if (!open) {
+            setCreateError(null);
+            setCreateDefaults(undefined);
+          }
         }}
         mode="create"
-        title="Agregar gasto"
-        description="Registra un gasto; asignamos la quincena automáticamente."
+        title={createDefaults ? 'Repetir gasto' : 'Agregar gasto'}
+        description={
+          createDefaults
+            ? 'Revisa los datos y confirma.'
+            : 'Registra un gasto; asignamos la quincena automáticamente.'
+        }
+        defaults={createDefaults}
         onSubmit={handleCreate}
         error={createError}
       />
