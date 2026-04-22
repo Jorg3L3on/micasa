@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -15,6 +16,7 @@ type FortnightHeaderProps = {
   month: number
   period: 'FIRST' | 'SECOND'
   label: string
+  actions?: ReactNode
 }
 
 export default function FortnightHeader({
@@ -22,6 +24,7 @@ export default function FortnightHeader({
   month,
   period,
   label,
+  actions,
 }: FortnightHeaderProps) {
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
@@ -59,15 +62,17 @@ export default function FortnightHeader({
   }
 
   return (
-    <div className="mb-6 flex items-center justify-between">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 className="text-2xl font-bold">{label}</h1>
       </div>
-      <div
-        className="flex items-center gap-1"
-        role="group"
-        aria-label="Selector de quincena"
-      >
+      <div className="flex items-center gap-2">
+        {actions}
+        <div
+          className="flex items-center gap-1"
+          role="group"
+          aria-label="Selector de quincena"
+        >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-lg" asChild>
@@ -106,6 +111,7 @@ export default function FortnightHeader({
             Quincena siguiente
           </TooltipContent>
         </Tooltip>
+        </div>
       </div>
     </div>
   )

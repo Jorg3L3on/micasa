@@ -3,6 +3,7 @@ import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
+import { ReceivePayrollTrigger } from '@/components/ReceivePayrollButton';
 import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
@@ -44,21 +45,22 @@ function groupTransactionsByDate(
   );
 }
 
-async function getFortnightLabel(
+async function getFortnightInfo(
   year: string,
   month: string,
   period: string,
   ownerContext?: OwnerContext,
-): Promise<string> {
+): Promise<{ label: string; id: number | null }> {
   try {
-    const response = await fetchFromApi<{ label: string }>(
+    const response = await fetchFromApi<{ id: number; label: string } | null>(
       `/api/fortnights?year=${year}&month=${month}&period=${period}`,
       ownerContext,
     );
-    return response.label;
+    if (!response) return { label: `${month}/${year} - ${period}`, id: null };
+    return { label: response.label, id: response.id };
   } catch (error) {
-    console.error('Error fetching fortnight label:', error);
-    return `${month}/${year} - ${period}`;
+    console.error('Error fetching fortnight info:', error);
+    return { label: `${month}/${year} - ${period}`, id: null };
   }
 }
 
@@ -127,11 +129,13 @@ export default async function FortnightPage({
   const month = parseInt(monthParam, 10);
   const period = periodParam.toUpperCase() as 'FIRST' | 'SECOND';
 
-  const [fortnightLabel, transactions, summary] = await Promise.all([
-    getFortnightLabel(yearParam, monthParam, periodParam, ownerContext),
+  const [fortnightInfo, transactions, summary] = await Promise.all([
+    getFortnightInfo(yearParam, monthParam, periodParam, ownerContext),
     getTransactions(yearParam, monthParam, periodParam, ownerContext),
     getSummary(yearParam, monthParam, periodParam, ownerContext),
   ]);
+  const fortnightLabel = fortnightInfo.label;
+  const fortnightId = fortnightInfo.id;
 
   const transactionsByDate = groupTransactionsByDate(transactions);
   const sortedDates = Object.keys(transactionsByDate).sort();
@@ -163,6 +167,16 @@ export default async function FortnightPage({
         month={month}
         period={period}
         label={fortnightLabel}
+        actions={
+          fortnightId != null ? (
+            <ReceivePayrollTrigger
+              fortnightId={fortnightId}
+              period={period}
+              year={year}
+              month={month}
+            />
+          ) : null
+        }
       />
 
       <div className="space-y-6">
