@@ -6,6 +6,7 @@ import {
   FolderTree,
   Receipt,
   Calendar,
+  Coins,
   Home,
   PiggyBank,
   ShoppingBasket,
@@ -84,6 +85,12 @@ export function AppSidebar({
       url: '/dashboard',
       icon: LayoutDashboard,
       isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),
+    },
+    {
+      title: 'Gastos',
+      url: '/expenses',
+      icon: Coins,
+      isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
     },
     {
       title: 'Planificación',

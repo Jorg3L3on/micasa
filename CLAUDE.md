@@ -25,12 +25,12 @@ npm run backfill:pantry-products    # Populate pantry products from existing rec
 ## Architecture
 
 ### Stack
-- **Next.js 16** (App Router) + **React 19** + **TypeScript**
-- **PostgreSQL** via **Prisma 7** with `@prisma/adapter-pg` (connection pooling)
+- **Next.js 16.1** (App Router) + **React 19** + **TypeScript**
+- **PostgreSQL** via **Prisma 7** — `@prisma/adapter-neon` in production, `@prisma/adapter-pg` in development (see `src/lib/prisma.ts`)
 - **NextAuth v5** (beta) with JWT strategy, credentials provider
-- **Tailwind CSS v4** + **Radix UI** components
-- **Zod** for validation, **react-hook-form** for forms
-- **Vitest** for testing
+- **Tailwind CSS v4** + **Radix UI** components + **@tanstack/react-table** for data tables
+- **Zod v4** for validation, **react-hook-form** for forms
+- **Vitest 4** for testing
 
 ### Core Domain Concept: Fortnights
 The central planning unit is the **fortnight** — each month is split into two periods:
@@ -51,23 +51,119 @@ The active context is managed client-side in `src/context/finance-context.tsx` a
 4. **Validation schemas** live in `src/schemas/` (one per domain)
 
 ### Key Directories
-- `src/app/(dashboard)/` — Protected UI pages (each has a `page.tsx` doing server-side data fetch)
-- `src/app/api/` — REST API route handlers
-- `src/components/` — React components; `src/components/ui/` contains Radix UI primitives
-- `src/lib/` — Prisma client (`db.ts`), auth config (`auth.ts`), API helpers (`api.ts`, `api-server.ts`)
-- `src/schemas/` — Zod validation schemas per domain
-- `src/types/` — TypeScript types/DTOs
-- `prisma/` — Schema (542 lines, 20+ models), migrations, seed
+
+```
+src/
+  app/
+    (dashboard)/         # Protected UI pages; each page.tsx does server-side data fetch
+      budgets/           # Budget management
+      categories/        # Expense/income categories
+      credit-cards/      # Credit card tracking
+      dashboard/         # Main overview
+      expense-templates/ # Recurring expense templates
+      expenses/          # Expense entry & listing
+      fortnight/         # Single fortnight detail view
+      fortnights/        # Fortnight list
+      house-users/       # Household member management
+      income-templates/  # Recurring income templates
+      monthly/           # Monthly summary view
+      pantry/            # Pantry / grocery tracking
+      transactions/      # Transaction log
+      wallets/           # Wallet management
+    api/                 # REST API route handlers
+      account/ auth/ budgets/ categories/ credit-cards/
+      dashboard/ expense-templates/ expenses/ fortnights/
+      house-users/ houses/ income-templates/ incomes/
+      onboarding/ pantry/ reports/ transactions/ transfers/ users/ wallets/
+  components/            # React components; ui/ contains Radix UI primitives
+  context/               # finance-context.tsx — active owner context (user vs house)
+  lib/
+    prisma.ts            # Prisma singleton — `export default prisma` (used everywhere, 51 imports)
+    db.ts                # Duplicate singleton with `export const db` — currently unused, candidate for removal
+    auth.ts              # NextAuth config
+    api.ts               # Client-side fetch helpers
+    api-server.ts        # Server-side fetch helpers
+    fortnights.ts        # Fortnight date calculation utilities
+    transfers.ts         # Transfer domain utilities
+    finance/             # Domain service layer
+      *.service.ts       # budget, credit-card, expense, fortnight, wallet, transfer, template services
+      liquidity-projection*.ts   # Cash flow / liquidity projection logic
+      credit-card-statement*.ts  # Statement parsing & ledger logic
+      wallet-accounting.ts       # Wallet balance calculations
+    house/
+      house.service.ts   # House domain queries
+    observability/
+      finance-log.ts     # Structured JSON finance event logging
+    server/
+      get-owner-context.ts       # Auth + owner resolution for route handlers
+      credit-card-statement/     # Server-side statement import services & parsers
+        statement-import.service.ts
+        parse-mercado-pago-statement.ts
+        parse-ca-departamental-statement.ts
+        parse-ca-efectivo-statement.ts
+        rollback-statement-import.service.ts
+        mercado-pago-statement-import.service.ts
+      pantry/                    # Server-side pantry processing
+        compute-pantry-insights.ts
+        parse-receipt-upload.ts
+        sync-pantry-products-from-lines.ts
+  schemas/               # Zod schemas per domain (one file per resource)
+  types/                 # TypeScript types/DTOs
+  generated/prisma/      # Auto-generated Prisma client (do not edit)
+prisma/
+  schema.prisma          # 545 lines, 18 models (see below)
+  migrations/
+  seed.ts
+```
+
+### Prisma Models
+`Budget`, `BudgetAllocation`, `Category`, `CreditCardPayment`, `CreditCardStatementImport`, `Expense`, `ExpenseTemplate`, `Fortnight`, `House`, `HouseMember`, `Income`, `IncomeTemplate`, `PantryProduct`, `PantryReceipt`, `PantryReceiptLine`, `Transfer`, `User`, `Wallet`
 
 ### Prisma Client
-The Prisma client is generated to `src/generated/prisma` (not the default location). Always import from there or use the singleton from `src/lib/db.ts`. After schema changes, run `npx prisma generate`.
+Generated to `src/generated/prisma` (not the default location). Always import from there or use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). After schema changes, run `npx prisma generate`.
+
+The `prisma.ts` singleton switches adapters by environment:
+- **Production**: `PrismaNeon` (serverless-safe, uses Neon's HTTP protocol)
+- **Development**: `PrismaPg` with a connection pool
+
+### API Route Pattern
+All route handlers follow this standard pattern:
+1. Call `getOwnerContext(request)` from `src/lib/server/get-owner-context.ts` — resolves auth, validates house membership, returns `{ ownerFilter, ownerType, ownerId, role }`.
+2. Use `ownerFilter` (either `{ user_id, house_id: null }` or `{ user_id: null, house_id }`) directly in Prisma `where` clauses to scope queries.
+3. Validate request body with the domain Zod schema from `src/schemas/`.
+
+### Wallet Types & Expense Accounting
+Wallets have a `PaymentMethodType` enum that determines cash-flow behavior:
+- **Funding wallets** (`CASH`, `DEBIT_CARD`): direct cash outflow when an expense is paid
+- **Credit wallets** (`CREDIT_CARD`, `DEPARTMENT_STORE_CARD`): tracked via statement cycles; paying an expense increases credit used, not cash spent
+
+Cash outflow from credit cards enters the fortnights as either:
+- Expenses paid with a funding wallet (e.g., "Pago tarjeta" registered in the fortnight)
+- `CreditCardPayment` records with no linked expense
+
+**Installment (cuota) expenses** are excluded from fortnight aggregates — they follow the credit card statement cycle instead. See `src/lib/finance/expense-planning-scope.ts`.
+
+### Key Domain Enums
+```
+FortnightPeriod:    FIRST | SECOND
+PaymentMethodType:  CASH | DEBIT_CARD | CREDIT_CARD | DEPARTMENT_STORE_CARD
+HouseRole:          OWNER | ADMIN | MEMBER
+TransferType:       USER_TO_HOUSE
+BudgetFrequency:    DAILY | WEEKLY | BIWEEKLY | CUSTOM
+```
+
+### Liquidity Projection
+`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, and wallet balances. Surfaced in the dashboard via `LiquidityTeaserCard` and the `/api/wallets/liquidity-projection` endpoint.
+
+### Credit Card Statement Import
+Supports importing CSV/PDF statements from three issuers: **Mercado Pago**, **CA Departamental**, and **CA Efectivo**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.
 
 ### Auth
 NextAuth is configured in `src/lib/auth.ts`. Session includes `userId`. Protected routes use middleware or layout-level session checks. The onboarding flow (`/onboarding`) runs once after registration.
 
 ### Environment Variables
 ```
-DATABASE_URL    # PostgreSQL connection string (required)
+DATABASE_URL    # PostgreSQL / Neon connection string (required)
 NEXTAUTH_SECRET # JWT signing secret (required)
 NEXTAUTH_URL    # App base URL, e.g. http://localhost:3000
 ```

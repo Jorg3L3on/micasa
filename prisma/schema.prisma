@@ -214,6 +214,7 @@ model Income {
   house_id           Int?
   fortnight_id       Int
   income_template_id Int?
+  wallet_id          Int?
   created_at         DateTime @default(now())
 
   // Relationships
@@ -221,12 +222,14 @@ model Income {
   user            User?           @relation(fields: [user_id], references: [id])
   income_template IncomeTemplate? @relation(fields: [income_template_id], references: [id])
   house           House?          @relation(fields: [house_id], references: [id])
+  wallet          Wallet?         @relation(fields: [wallet_id], references: [id])
 
   transferAsHouse Transfer? @relation("TransferHouseIncome")
 
   @@index([user_id])
   @@index([house_id])
   @@index([fortnight_id])
+  @@index([wallet_id])
 }
 
 model IncomeTemplate {
@@ -314,6 +317,7 @@ model Wallet {
 
   expenses             Expense[]
   expense_templates    ExpenseTemplate[]
+  incomes              Income[]
   credit_card_payments CreditCardPayment[] @relation("CreditCardWalletPayments")
   source_card_payments CreditCardPayment[] @relation("CreditCardSourceWalletPayments")
   credit_card_statement_imports CreditCardStatementImport[]

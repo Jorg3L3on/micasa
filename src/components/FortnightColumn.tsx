@@ -29,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { BarChart3, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
+import { Banknote, BarChart3, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -41,6 +41,7 @@ import {
   updateFortnightOverrideAmount,
   updateIncomeAmount,
 } from '@/lib/api';
+import { ReceivePayrollButton } from '@/components/ReceivePayrollButton';
 import type {
   CategoryOption,
   DuePaymentItem,
@@ -151,6 +152,7 @@ export default function FortnightColumn({
   const [plannerPaymentError, setPlannerPaymentError] = useState<string | null>(
     null,
   );
+  const [payrollDialogOpen, setPayrollDialogOpen] = useState(false);
 
   const plannerFundingWalletOptions = useMemo(
     () =>
@@ -793,6 +795,13 @@ export default function FortnightColumn({
                 </Tooltip>
                 <DropdownMenuContent align="end" className="min-w-48">
                   <DropdownMenuItem
+                    disabled={!fortnightId || fortnightId <= 0}
+                    onSelect={() => setPayrollDialogOpen(true)}
+                  >
+                    <Banknote className="h-4 w-4 shrink-0" aria-hidden />
+                    Recibir quincena
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     disabled={!fortnightId || fortnightId <= 0 || isRefreshing}
                     onSelect={() => {
                       void handleRegenerateFromTemplates();
@@ -859,6 +868,17 @@ export default function FortnightColumn({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Receive Payroll Dialog */}
+      <ReceivePayrollButton
+        open={payrollDialogOpen}
+        onOpenChange={setPayrollDialogOpen}
+        fortnightId={fortnightId}
+        period={period}
+        year={year}
+        month={month}
+        onSuccess={refreshData}
+      />
 
       {/* Override Amount Dialog */}
       <EditFortnightAmountDialog

@@ -4,6 +4,7 @@ import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createUserToHouseTransfer } from '@/lib/finance/transfer.service';
+import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
 
 const createIncomeSchema = z.object({
   fortnight_id: z.number().int().positive(),
@@ -11,11 +12,57 @@ const createIncomeSchema = z.object({
   source: z.string().optional().nullable(),
   received_at: z.string().min(1),
   transfer_from_user_id: z.number().int().positive().optional(),
+  income_template_id: z.number().int().positive().optional().nullable(),
+  wallet_id: z.number().int().positive().optional().nullable(),
 });
 
 const updateIncomeAmountSchema = z.object({
   amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
+  wallet_id: z.number().int().positive().optional().nullable(),
+  force_wallet_credit: z.boolean().optional(),
 });
+
+export async function GET(request: NextRequest) {
+  try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerFilter } = context;
+
+    const { searchParams } = new URL(request.url);
+    const fortnightIdRaw = searchParams.get('fortnightId');
+    const fortnightId = fortnightIdRaw ? parseInt(fortnightIdRaw, 10) : NaN;
+    if (Number.isNaN(fortnightId) || fortnightId < 1) {
+      return NextResponse.json(
+        { error: 'Valid fortnightId parameter is required' },
+        { status: 400 },
+      );
+    }
+
+    const incomes = await prisma.income.findMany({
+      where: { ...ownerFilter, fortnight_id: fortnightId },
+      orderBy: { received_at: 'asc' },
+    });
+
+    return NextResponse.json(
+      incomes.map((i) => ({
+        id: i.id,
+        amount: Number(i.amount),
+        source: i.source,
+        received_at: i.received_at,
+        fortnight_id: i.fortnight_id,
+        income_template_id: i.income_template_id,
+        wallet_id: i.wallet_id,
+      })),
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error('Error fetching incomes:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch incomes' },
+      { status: 500 },
+    );
+  }
+}
 
 export async function PUT(request: NextRequest) {
   try {
@@ -46,12 +93,59 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updated = await prisma.income.update({
-      where: { id },
-      data: { amount: validated.amount },
+    const oldAmount = Number(income.amount);
+    const newAmount = validated.amount;
+    const oldWalletId = income.wallet_id;
+    // Use wallet from request if explicitly provided, otherwise keep existing
+    const newWalletId = validated.wallet_id !== undefined ? validated.wallet_id : oldWalletId;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (oldWalletId === null && newWalletId != null) {
+        // First time assigning a wallet — credit the full amount
+        await applyWalletAmountDelta(tx, newWalletId, newAmount);
+      } else if (oldWalletId != null && newWalletId === null) {
+        // Wallet removed — reverse the previous credit
+        await applyWalletAmountDelta(tx, oldWalletId, -oldAmount);
+      } else if (oldWalletId != null && newWalletId != null) {
+        if (oldWalletId === newWalletId) {
+          if (validated.force_wallet_credit === true) {
+            // Recovery path: explicit re-credit when historical data has wallet_id set
+            // but the wallet balance was never incremented.
+            await applyWalletAmountDelta(tx, newWalletId, newAmount);
+          } else {
+            // Same wallet — only adjust by the difference
+            const delta = newAmount - oldAmount;
+            if (delta !== 0) await applyWalletAmountDelta(tx, newWalletId, delta);
+          }
+        } else {
+          // Wallet changed — reverse old, credit new
+          await applyWalletAmountDelta(tx, oldWalletId, -oldAmount);
+          await applyWalletAmountDelta(tx, newWalletId, newAmount);
+        }
+      }
+      // oldWalletId === null && newWalletId === null → nothing to do
+
+      return tx.income.update({
+        where: { id },
+        data: {
+          amount: newAmount,
+          wallet_id: newWalletId,
+        },
+      });
     });
 
-    return NextResponse.json(updated, { status: 200 });
+    return NextResponse.json(
+      {
+        id: updated.id,
+        amount: Number(updated.amount),
+        source: updated.source,
+        received_at: updated.received_at,
+        fortnight_id: updated.fortnight_id,
+        income_template_id: updated.income_template_id,
+        wallet_id: updated.wallet_id,
+      },
+      { status: 200 },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -107,20 +201,14 @@ export async function POST(request: NextRequest) {
     if (ownerType === 'user') {
       if (fortnight.user_id !== ownerId || fortnight.house_id != null) {
         return NextResponse.json(
-          {
-            error:
-              'Fortnight does not belong to the same owner (user/house) as the income',
-          },
+          { error: 'Fortnight does not belong to the same owner (user/house) as the income' },
           { status: 400 },
         );
       }
     } else {
       if (fortnight.house_id !== ownerId || fortnight.user_id != null) {
         return NextResponse.json(
-          {
-            error:
-              'Fortnight does not belong to the same owner (user/house) as the income',
-          },
+          { error: 'Fortnight does not belong to the same owner (user/house) as the income' },
           { status: 400 },
         );
       }
@@ -128,10 +216,7 @@ export async function POST(request: NextRequest) {
 
     const transferFromUserId = validated.transfer_from_user_id;
 
-    if (
-      ownerType === 'house' &&
-      transferFromUserId != null
-    ) {
+    if (ownerType === 'house' && transferFromUserId != null) {
       const membership = await prisma.houseMember.findFirst({
         where: {
           house_id: ownerId,
@@ -177,10 +262,10 @@ export async function POST(request: NextRequest) {
           received_at: Date;
           fortnight_id: number;
           house_id: number;
+          wallet_id: number | null;
         };
       };
-      const houseIncome = (transfer as unknown as TransferWithHouseIncome)
-        .house_income;
+      const houseIncome = (transfer as unknown as TransferWithHouseIncome).house_income;
       return NextResponse.json(
         {
           id: houseIncome.id,
@@ -190,25 +275,50 @@ export async function POST(request: NextRequest) {
           fortnight_id: houseIncome.fortnight_id,
           house_id: houseIncome.house_id,
           user_id: null,
+          wallet_id: houseIncome.wallet_id ?? null,
         },
         { status: 201 },
       );
     }
 
-    const created = await prisma.income.create({
-      data: {
-        fortnight_id: validated.fortnight_id,
-        amount: validated.amount,
-        source:
-          validated.source && validated.source.length > 0
-            ? validated.source
-            : null,
-        received_at: new Date(validated.received_at),
-        ...ownerData,
-      },
+    const walletId = validated.wallet_id ?? null;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const income = await tx.income.create({
+        data: {
+          fortnight_id: validated.fortnight_id,
+          amount: validated.amount,
+          source:
+            validated.source && validated.source.length > 0
+              ? validated.source
+              : null,
+          received_at: new Date(validated.received_at),
+          income_template_id: validated.income_template_id ?? null,
+          wallet_id: walletId,
+          ...ownerData,
+        },
+      });
+
+      // Credit the wallet
+      if (walletId != null) {
+        await applyWalletAmountDelta(tx, walletId, validated.amount);
+      }
+
+      return income;
     });
 
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(
+      {
+        id: created.id,
+        amount: Number(created.amount),
+        source: created.source,
+        received_at: created.received_at,
+        fortnight_id: created.fortnight_id,
+        income_template_id: created.income_template_id,
+        wallet_id: created.wallet_id,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -224,4 +334,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

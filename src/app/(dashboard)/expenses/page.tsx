@@ -1,21 +1,37 @@
-import { redirect } from 'next/navigation';
+import { fetchFromApi } from '@/lib/api-server';
+import ExpensesFeed from '@/components/expenses/ExpensesFeed';
+import type { ExpensesRecentResponse } from '@/types/expenses-feed';
 
-type Props = {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+const PAGE_SIZE = 25;
+
+type SearchParams = {
+  ownerType?: string;
+  ownerId?: string;
 };
 
-/**
- * /expenses was a simplified duplicate of the expense-templates catalog.
- * Redirect to the single source of truth: Plantillas de gastos.
- */
-export default async function ExpensesPage({ searchParams }: Props) {
+export default async function ExpensesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const params = await searchParams;
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
-      query.set(key, Array.isArray(value) ? value[0] : value);
-    }
-  });
-  const qs = query.toString();
-  redirect(`/expense-templates${qs ? `?${qs}` : ''}`);
+  const ownerContext =
+    params.ownerType && params.ownerId
+      ? {
+          ownerType: params.ownerType as 'user' | 'house',
+          ownerId: Number(params.ownerId),
+        }
+      : undefined;
+
+  let initialPage: ExpensesRecentResponse;
+  try {
+    initialPage = await fetchFromApi<ExpensesRecentResponse>(
+      `/api/expenses/recent?limit=${PAGE_SIZE}`,
+      ownerContext,
+    );
+  } catch {
+    initialPage = { items: [], nextCursor: null };
+  }
+
+  return <ExpensesFeed initialPage={initialPage} />;
 }
