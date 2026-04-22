@@ -11,9 +11,12 @@ function mk(id: number, date: string, description = `e${id}`): ExpenseFeedItem {
     category: null,
     paymentMethod: null,
     walletType: null,
+    isPaid: true,
     isRecurring: false,
     creditInstallmentCurrent: null,
     creditInstallmentTotal: null,
+    categoryId: null,
+    walletId: null,
   };
 }
 

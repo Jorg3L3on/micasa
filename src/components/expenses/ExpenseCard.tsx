@@ -46,6 +46,11 @@ export default function ExpenseCard({
           {subtitleParts.length > 0 && (
             <span className="truncate">{subtitleParts.join(' · ')}</span>
           )}
+          {!expense.isPaid && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400">
+              Planeado
+            </span>
+          )}
           {expense.isRecurring && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
               <RefreshCw className="size-3" aria-hidden />

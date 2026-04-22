@@ -8,9 +8,12 @@ export type ExpenseFeedItem = {
   category: string | null;
   paymentMethod: string | null;
   walletType: ExpenseWalletType | null;
+  isPaid: boolean;
   isRecurring: boolean;
   creditInstallmentCurrent: number | null;
   creditInstallmentTotal: number | null;
+  categoryId: number | null;
+  walletId: number | null;
 };
 
 export type ExpensesRecentResponse = {
