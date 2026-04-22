@@ -8,17 +8,22 @@ import {
   ArrowUp,
   Banknote,
   ChevronDown,
+  Coins,
   ChevronLeft,
   ChevronRight,
   Download,
   Landmark,
   Pencil,
+  Plus,
   RotateCcw,
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
+import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
+import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
+import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -174,6 +179,9 @@ export default function WalletDetailPage() {
   });
   const [importOpen, setImportOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
+  const [incomeOpen, setIncomeOpen] = useState(false);
 
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -252,6 +260,31 @@ export default function WalletDetailPage() {
     const today = getTodayDateString();
     return today >= range.from && today <= range.to;
   }, [range.from, range.to]);
+
+  const handleCreateExpense = useCallback(
+    async (values: AddExpenseFormValues) => {
+      setExpenseError(null);
+      try {
+        await clientFetchFromApi(
+          '/api/expenses',
+          {
+            method: 'POST',
+            body: JSON.stringify(values),
+          },
+          context,
+        );
+        toast.success('Gasto registrado');
+        setExpenseOpen(false);
+        await loadData();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'No se pudo crear el gasto';
+        setExpenseError(message);
+        throw err;
+      }
+    },
+    [context, loadData],
+  );
 
   const handleExportCsv = useCallback(() => {
     if (!wallet || !data) return;
@@ -339,6 +372,31 @@ export default function WalletDetailPage() {
             </div>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {canImport && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 gap-1.5"
+                onClick={() => {
+                  setExpenseError(null);
+                  setExpenseOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Registrar gasto
+              </Button>
+              <Button
+                type="button"
+                className="h-9 gap-1.5 rounded-xl"
+                onClick={() => setIncomeOpen(true)}
+              >
+                <Coins className="h-4 w-4" />
+                Registrar ingreso
+              </Button>
+            </>
+          )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -379,6 +437,7 @@ export default function WalletDetailPage() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* Range nav + KPIs */}
@@ -583,6 +642,33 @@ export default function WalletDetailPage() {
           open={importOpen}
           onOpenChange={setImportOpen}
           walletId={walletId}
+          context={context}
+          onSuccess={loadData}
+        />
+      )}
+
+      {canImport && (
+        <ExpenseFormSheet
+          open={expenseOpen}
+          onOpenChange={(open) => {
+            setExpenseOpen(open);
+            if (!open) setExpenseError(null);
+          }}
+          mode="create"
+          title={`Registrar gasto — ${wallet.name}`}
+          description="Registra un gasto pagado con esta billetera; asignamos la quincena automáticamente."
+          defaults={{ paymentMethodId: walletId, isPaid: true }}
+          onSubmit={handleCreateExpense}
+          error={expenseError}
+        />
+      )}
+
+      {canImport && (
+        <WalletQuickIncomeDialog
+          open={incomeOpen}
+          onOpenChange={setIncomeOpen}
+          walletId={walletId}
+          walletName={wallet.name}
           context={context}
           onSuccess={loadData}
         />

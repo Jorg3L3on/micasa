@@ -1,15 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { queryRaw, findManyWallets } = vi.hoisted(() => ({
-  queryRaw: vi.fn(),
-  findManyWallets: vi.fn(),
-}));
+const { queryRaw, findManyWallets, findManyStatementImports } = vi.hoisted(
+  () => ({
+    queryRaw: vi.fn(),
+    findManyWallets: vi.fn(),
+    findManyStatementImports: vi.fn(),
+  }),
+);
 
 vi.mock('@/lib/prisma', () => ({
   default: {
     $queryRaw: queryRaw,
     wallet: {
       findMany: findManyWallets,
+    },
+    creditCardStatementImport: {
+      findMany: findManyStatementImports,
     },
   },
 }));
@@ -24,6 +30,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 2, 20, 15, 0, 0)));
     queryRaw.mockReset();
     findManyWallets.mockReset();
+    findManyStatementImports.mockReset();
+    findManyStatementImports.mockResolvedValue([]);
   });
 
   afterEach(() => {
