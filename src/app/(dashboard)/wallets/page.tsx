@@ -397,6 +397,8 @@ export default function WalletsPage() {
         cell: ({ row }) => {
           const wallet = row.original;
           const isCard = isCreditType(wallet.type);
+          const isFunding =
+            wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
 
           return (
             <div className="flex justify-end gap-2">
@@ -405,6 +407,16 @@ export default function WalletsPage() {
                   <Link
                     href={`/credit-cards/${wallet.id}${ownerQueryString}`}
                     aria-label={`Ver estado de cuenta de ${wallet.name}`}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
+              {isFunding && (
+                <Button asChild variant="ghost" size="icon">
+                  <Link
+                    href={`/wallets/${wallet.id}${ownerQueryString}`}
+                    aria-label={`Ver movimientos de ${wallet.name}`}
                   >
                     <Eye className="h-4 w-4" />
                   </Link>
