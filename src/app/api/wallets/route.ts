@@ -145,8 +145,13 @@ export async function DELETE(request: NextRequest) {
 
     try {
       await deleteWalletIfUnusedForOwner(id, ownerFilter);
-    } catch (error: any) {
-      if (error.code === 'WALLET_IN_USE') {
+    } catch (error) {
+      if (
+        error != null &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code: string }).code === 'WALLET_IN_USE'
+      ) {
         return NextResponse.json(
           {
             error:

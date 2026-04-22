@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
@@ -29,17 +29,17 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
-  const [stripVisible, setStripVisible] = useState(true);
-
-  useEffect(() => {
+  const [stripVisible, setStripVisible] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
     try {
-      const raw = localStorage.getItem(WALLET_STRIP_VISIBLE_KEY);
-      if (raw === 'false') setStripVisible(false);
-      if (raw === 'true') setStripVisible(true);
+      const raw = window.localStorage.getItem(WALLET_STRIP_VISIBLE_KEY);
+      if (raw === 'false') return false;
+      if (raw === 'true') return true;
     } catch {
       /* ignore */
     }
-  }, []);
+    return true;
+  });
 
   const persistStripVisible = useCallback((visible: boolean) => {
     try {

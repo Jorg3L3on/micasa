@@ -25,9 +25,7 @@ import {
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Collapsible,
   CollapsibleContent,
@@ -90,12 +88,6 @@ const SOURCE_LABEL: Record<LiquidityProjectionObligationItem['source'], string> 
   credit_card_statement: 'Estado TC',
   unpaid_expense: 'Gasto impago',
   expense_template: 'Plantilla',
-};
-
-const SOURCE_COLOR: Record<LiquidityProjectionObligationItem['source'], string> = {
-  credit_card_statement: 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
-  unpaid_expense: 'bg-destructive/10 text-destructive',
-  expense_template: 'bg-muted text-muted-foreground',
 };
 
 /* ─── Skeleton ──────────────────────────────────────────────────────────── */
