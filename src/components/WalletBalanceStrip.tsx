@@ -229,14 +229,20 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   </div>
                 );
 
+                const isFunding =
+                  wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
                 const cardClasses = cn(
                   'group shrink-0 rounded-xl border px-3 py-2',
                   'transition-all duration-200 hover:shadow-lg',
                   isCreditType
                     ? 'border-violet-500/25 bg-gradient-to-br from-violet-500/10 to-violet-500/5 dark:from-violet-500/15 dark:to-violet-500/8 cursor-pointer hover:border-violet-500/45 hover:shadow-violet-500/10'
                     : wallet.type === 'DEBIT_CARD'
-                      ? 'border-blue-500/25 bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/15 dark:to-blue-500/8'
-                      : 'border-border/60 bg-card dark:bg-card/80',
+                      ? 'border-blue-500/25 bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/15 dark:to-blue-500/8 cursor-pointer hover:border-blue-500/45 hover:shadow-blue-500/10'
+                      : cn(
+                          'border-border/60 bg-card dark:bg-card/80',
+                          isFunding &&
+                            'cursor-pointer hover:border-emerald-500/45 hover:shadow-emerald-500/10',
+                        ),
                 );
 
                 if (isCreditType) {
@@ -246,6 +252,19 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                       href={`/credit-cards/${wallet.id}${ownerQueryString}`}
                       className={cardClasses}
                       aria-label={`Ver estado de cuenta de ${wallet.name}`}
+                    >
+                      {cardContent}
+                    </Link>
+                  );
+                }
+
+                if (isFunding) {
+                  return (
+                    <Link
+                      key={wallet.id}
+                      href={`/wallets/${wallet.id}${ownerQueryString}`}
+                      className={cardClasses}
+                      aria-label={`Ver movimientos de ${wallet.name}`}
                     >
                       {cardContent}
                     </Link>
