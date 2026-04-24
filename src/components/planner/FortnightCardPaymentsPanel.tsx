@@ -15,10 +15,14 @@ import {
 import type { DuePaymentItem } from '@/types/catalog';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
-/** Mirrors ExpenseTable logic: dueDay − todayDay within the same month. */
-const getDaysLeft = (dueDay: number, todayYmd: string): number => {
-  const todayDay = parseInt(todayYmd.split('-')[2], 10);
-  return dueDay - todayDay;
+/** Calendar-day difference between the statement due date and today (UTC). */
+const getDaysLeft = (statementDueDateYmd: string, todayYmd: string): number => {
+  const [dy, dm, dd] = statementDueDateYmd.split('-').map((n) => parseInt(n, 10));
+  const [ty, tm, td] = todayYmd.split('-').map((n) => parseInt(n, 10));
+  if ([dy, dm, dd, ty, tm, td].some((n) => Number.isNaN(n))) return 0;
+  const due = Date.UTC(dy, dm - 1, dd);
+  const today = Date.UTC(ty, tm - 1, td);
+  return Math.round((due - today) / 86_400_000);
 };
 
 const daysLeftColor = (days: number, status: PlannerCardPaymentStatus) => {
@@ -123,12 +127,11 @@ const FortnightCardPaymentsPanel = ({
             const status = getPlannerCardPaymentStatus(item, todayYmd);
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
-            const daysLeft = getDaysLeft(item.dueDay, todayYmd);
-
             const mm = String(plannerMonth).padStart(2, '0');
             const dd = String(item.dueDay).padStart(2, '0');
             const displayDueDateStr = `${plannerYear}-${mm}-${dd}`;
             const displayDueDate = formatDate(displayDueDateStr);
+            const daysLeft = getDaysLeft(displayDueDateStr, todayYmd);
             const dateColor = daysLeftColor(daysLeft, status);
 
             const daysLabel = (() => {

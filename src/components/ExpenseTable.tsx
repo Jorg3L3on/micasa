@@ -497,7 +497,7 @@ export default function ExpenseTable({
             <div
               className={cn(
                 'flex flex-col gap-1',
-                isCompact ? 'min-w-[160px]' : 'min-w-[200px]',
+                isCompact ? 'min-w-[130px] sm:min-w-[160px]' : 'min-w-[150px] sm:min-w-[200px]',
               )}
             >
               <span
@@ -584,7 +584,7 @@ export default function ExpenseTable({
             column={column}
             title="Monto"
             className={cn(
-              'text-right min-w-[120px] font-medium',
+              'text-right min-w-[90px] sm:min-w-[120px] font-medium',
               isCompact ? 'text-[10px]' : 'text-xs',
             )}
           />
@@ -728,10 +728,265 @@ export default function ExpenseTable({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const sortedRows = table.getRowModel().rows;
+
   return (
     <>
       <Card className="overflow-hidden rounded-xl border-border/40 shadow-md">
-        <CardContent className="px-0 pb-3 pt-0 space-y-0">
+        <CardContent className="px-0 pb-0 pt-0 space-y-0 sm:pb-3">
+          {/* Mobile list (hidden on sm+) */}
+          <ul
+            role="list"
+            className="divide-y divide-border/20 sm:hidden"
+            aria-label="Gastos de la quincena"
+          >
+            {sortedRows.length === 0 ? (
+              <li className="px-3 py-6 text-center text-xs text-muted-foreground">
+                Sin gastos
+              </li>
+            ) : (
+              <>
+                {sortedRows.map((row) => {
+                  const e = row.original;
+                  const isUpdating = updatingIds.has(e.id);
+                  const isCardPay = isPlanningCardPaymentRow(e);
+                  const isCardCharge = isCardChargeExpenseRow(e);
+                  const isIncomeRow = !isExpenseTransactionRow(e);
+                  const {
+                    hasDue,
+                    dueDay,
+                    daysRemaining,
+                    showCountdown,
+                    badgeColor,
+                  } = getDueInfo(e);
+                  return (
+                    <li
+                      key={`m-${e.planning_row_kind ?? 'expense'}-${e.id}`}
+                      className={cn(
+                        'relative flex items-start gap-2.5 px-3 py-2.5 border-l-[3px] transition-colors',
+                        isCardCharge
+                          ? 'border-l-violet-500/60'
+                          : e.is_paid
+                            ? 'border-l-emerald-500/40'
+                            : 'border-l-primary/30',
+                        e.is_paid
+                          ? 'bg-emerald-50/25 dark:bg-emerald-950/10'
+                          : 'active:bg-primary/8',
+                      )}
+                    >
+                      {/* Status / pay toggle */}
+                      <div className="shrink-0 pt-0.5">
+                        {e.is_paid ? (
+                          <span
+                            className={cn(
+                              'inline-flex h-7 w-7 items-center justify-center',
+                              isCardPay
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-emerald-500 dark:text-emerald-400',
+                            )}
+                            aria-hidden
+                          >
+                            <CheckCircle2 className="h-5 w-5" />
+                          </span>
+                        ) : isIncomeRow || isCardPay ? (
+                          <span
+                            className="inline-flex h-7 w-7 items-center justify-center text-xs text-muted-foreground/60"
+                            aria-hidden
+                          >
+                            —
+                          </span>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground/40 transition-colors hover:bg-emerald-500/10 hover:text-emerald-500"
+                            onClick={() => {
+                              setPayingExpense(e);
+                              setPayDialogOpen(true);
+                            }}
+                            disabled={isUpdating}
+                            aria-label={`Marcar ${e.description} como pagado`}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Body */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            className={cn(
+                              'min-w-0 truncate text-sm',
+                              e.is_paid
+                                ? 'font-medium text-muted-foreground line-through'
+                                : 'font-semibold text-foreground',
+                            )}
+                          >
+                            {e.description}
+                          </span>
+                          <span
+                            className={cn(
+                              'shrink-0 font-mono tabular-nums text-sm',
+                              e.is_paid
+                                ? 'text-muted-foreground/60 line-through'
+                                : 'font-bold text-foreground',
+                            )}
+                          >
+                            {formatCurrency(toDisplayAmount(e.amount))}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {e.category ? (
+                            <>
+                              <span>{e.category}</span>
+                              <span className="mx-1 text-muted-foreground/30">
+                                ·
+                              </span>
+                            </>
+                          ) : null}
+                          <span className="text-muted-foreground/70">
+                            {e.paymentMethod}
+                          </span>
+                        </p>
+                        {(isCardPay || isCardCharge || hasDue) && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {isCardPay && (
+                              <Badge
+                                variant="outline"
+                                className="h-4 border-emerald-500/40 px-1.5 text-[10px] text-emerald-800 dark:text-emerald-300"
+                              >
+                                Pago TC
+                              </Badge>
+                            )}
+                            {isCardCharge && (
+                              <Badge
+                                variant="outline"
+                                className="h-4 border-violet-500/40 px-1.5 text-[10px] text-violet-700 dark:text-violet-300"
+                              >
+                                Tarjeta
+                              </Badge>
+                            )}
+                            {hasDue && (
+                              <Badge
+                                variant={
+                                  e.is_paid ? 'secondary' : badgeColor
+                                }
+                                className={cn(
+                                  'h-4 px-1.5 text-[10px]',
+                                  e.is_paid && 'opacity-60',
+                                )}
+                              >
+                                {e.is_paid
+                                  ? `Pagado · día ${dueDay}`
+                                  : showCountdown &&
+                                      daysRemaining !== null &&
+                                      daysRemaining >= 0
+                                    ? `Día ${dueDay} · en ${daysRemaining}d`
+                                    : `Día ${dueDay} · vencido`}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions menu */}
+                      <div className="-mr-1 shrink-0">
+                        {isIncomeRow || isCardPay ? (
+                          <span
+                            className="inline-flex h-7 w-7 items-center justify-center text-xs text-muted-foreground/40"
+                            aria-hidden
+                          >
+                            —
+                          </span>
+                        ) : !dropdownMounted ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled
+                            aria-hidden
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={isUpdating}
+                                aria-label={`Más acciones para ${e.description}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleEditAmount(e)}
+                                disabled={isUpdating}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Modificar gasto
+                              </DropdownMenuItem>
+                              {e.is_paid ? (
+                                <DropdownMenuItem
+                                  onClick={() => handlePaidToggle(e, false)}
+                                  disabled={isUpdating}
+                                >
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                                  Deshacer pago
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setDeletingExpense(e);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  disabled={isUpdating}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+                <li className="flex items-center justify-between gap-2 border-t-2 border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 px-3 py-2.5 dark:from-muted/30 dark:to-muted/10">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                    Total efectivo/débito
+                  </span>
+                  <span className="font-mono text-base font-black tabular-nums">
+                    {formatCurrency(total)}
+                  </span>
+                </li>
+                {cardGrandTotal > 0 && (
+                  <li className="flex items-center justify-between gap-2 bg-violet-50/20 px-3 py-2 dark:bg-violet-950/10">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
+                        Cargos a tarjeta
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60">
+                        No suman hasta pagar el estado de cuenta
+                      </span>
+                    </div>
+                    <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
+                      {formatCurrency(cardGrandTotal)}
+                    </span>
+                  </li>
+                )}
+              </>
+            )}
+          </ul>
+
+          {/* Desktop table (hidden below sm) */}
+          <div className="hidden sm:block">
           <div className="relative w-full">
             <Table className={isCompact ? 'text-xs' : undefined}>
               <TableHeader>
@@ -743,14 +998,14 @@ export default function ExpenseTable({
                         className={cn(
                           'text-[10px] font-bold uppercase tracking-wider text-muted-foreground',
                           header.id === 'is_paid'
-                            ? 'w-12 text-center'
+                            ? 'w-9 text-center sm:w-12'
                             : header.id === 'amount'
-                              ? 'text-right min-w-[120px]'
+                              ? 'text-right min-w-[90px] sm:min-w-[120px]'
                               : header.id === 'actions'
-                                ? 'w-20 text-center'
+                                ? 'w-12 text-center sm:w-20'
                                 : isCompact
-                                  ? 'min-w-[160px]'
-                                  : 'min-w-[200px]',
+                                  ? 'min-w-[130px] sm:min-w-[160px]'
+                                  : 'min-w-[150px] sm:min-w-[200px]',
                           isCompact && 'h-8! py-1.5 px-1.5!',
                         )}
                       >
@@ -892,6 +1147,7 @@ export default function ExpenseTable({
                 )}
               </TableBody>
             </Table>
+          </div>
           </div>
         </CardContent>
       </Card>
