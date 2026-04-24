@@ -130,21 +130,26 @@ export default function SummaryBlock({
 
   return (
     <Card className="gap-0 overflow-hidden rounded-xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 dark:ring-primary/10 dark:shadow-black/50">
-      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/8 via-primary/4 to-transparent px-4 pb-2.5 pt-3 dark:from-primary/12 dark:via-primary/6">
+      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/8 via-primary/4 to-transparent px-3 pb-2 pt-2.5 dark:from-primary/12 dark:via-primary/6 sm:px-4 sm:pb-2.5 sm:pt-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-2 sm:gap-3">
             <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/20 dark:bg-primary/20 dark:ring-primary/25"
+              className="mt-0.5 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/20 dark:bg-primary/20 dark:ring-primary/25 sm:flex"
               aria-hidden
             >
               <BarChart3 className="h-4 w-4 text-primary" />
             </span>
             <div className="min-w-0 space-y-0.5">
-              <CardTitle className="text-base font-bold leading-tight tracking-tight">
+              <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
                 Resumen de la quincena
               </CardTitle>
               {headerSubtitle ? (
-                <p className="text-xs leading-snug text-muted-foreground">
+                <p
+                  className={cn(
+                    'text-[11px] leading-snug text-muted-foreground sm:text-xs',
+                    !isExpanded && 'hidden sm:block',
+                  )}
+                >
                   {headerSubtitle}
                 </p>
               ) : null}
@@ -193,7 +198,7 @@ export default function SummaryBlock({
             </TooltipContent>
           </Tooltip>
         </div>
-        {!isExpanded && tenemos > 0 && (
+        {!isExpanded && tenemos > 0 && totalSpentPercent > 0 && (
           <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
             <div
               className="h-full rounded-l-full bg-emerald-500/80 transition-all duration-500 dark:bg-emerald-400/80"
@@ -216,27 +221,27 @@ export default function SummaryBlock({
         )}
       </CardHeader>
 
-      <CardContent className="space-y-3 px-4 pb-4 pt-3">
+      <CardContent className="space-y-2 px-3 pb-3 pt-2.5 sm:space-y-3 sm:px-4 sm:pb-4 sm:pt-3">
         {/* Hero: disponible hoy vs tras pagar todo lo planeado */}
         <div
           className={cn(
             'relative rounded-xl border border-border/50',
-            'bg-gradient-to-br from-muted/30 to-muted/10 px-3 py-3 dark:from-muted/20 dark:to-transparent',
+            'bg-gradient-to-br from-muted/30 to-muted/10 px-2.5 py-2.5 dark:from-muted/20 dark:to-transparent sm:px-3 sm:py-3',
           )}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-0">
+          <div className="grid grid-cols-2 gap-2 sm:gap-0">
             {/* Left: Disponible */}
-            <div className="flex flex-col gap-1.5 sm:border-r sm:border-border/50 sm:pr-4">
+            <div className="flex min-w-0 flex-col gap-1 sm:gap-1.5 sm:border-r sm:border-border/50 sm:pr-4">
               {/* Label row */}
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 dark:bg-blue-500/15">
-                  <Wallet className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 dark:bg-blue-500/15 sm:h-6 sm:w-6">
+                  <Wallet className="h-3 w-3 text-blue-500 dark:text-blue-400 sm:h-3.5 sm:w-3.5" />
                 </span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className="text-left text-xs font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="min-w-0 truncate text-left text-[11px] font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs"
                     >
                       Disponible
                     </button>
@@ -249,14 +254,19 @@ export default function SummaryBlock({
               {/* Amount */}
               <p
                 className={cn(
-                  'pl-8 font-mono text-xl font-bold tabular-nums leading-tight',
+                  'font-mono text-lg font-bold tabular-nums leading-tight sm:pl-8 sm:text-xl',
                   disponibleAhora >= 0 ? 'text-foreground/85' : 'text-destructive',
                 )}
               >
                 {formatCurrency(disponibleAhora)}
               </p>
               {tenemos > 0 && (
-                <div className="flex items-center gap-1.5 pl-8">
+                <div
+                  className={cn(
+                    'flex items-center gap-1.5 pl-0 sm:pl-8',
+                    !isExpanded && 'hidden sm:flex',
+                  )}
+                >
                   <span className="text-[10px] text-muted-foreground/60">Ingreso</span>
                   <span className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground/60">
                     {formatCurrency(tenemos)}
@@ -266,19 +276,20 @@ export default function SummaryBlock({
             </div>
 
             {/* Right: Tras gastos planeados */}
-            <div className="flex flex-col gap-1.5 sm:pl-4">
+            <div className="flex min-w-0 flex-col gap-1 sm:gap-1.5 sm:pl-4">
               {/* Label row — same height as left */}
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15">
-                  <Receipt className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 sm:h-6 sm:w-6">
+                  <Receipt className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" />
                 </span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className="text-left text-xs font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="min-w-0 truncate text-left text-[11px] font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs"
                     >
-                      Tras gastos planeados
+                      <span className="sm:hidden">Tras gastos</span>
+                      <span className="hidden sm:inline">Tras gastos planeados</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
@@ -289,7 +300,7 @@ export default function SummaryBlock({
               {/* Hero amount */}
               <p
                 className={cn(
-                  'pl-8 font-mono text-3xl font-black tabular-nums leading-tight tracking-tight',
+                  'font-mono text-xl font-black tabular-nums leading-tight tracking-tight sm:pl-8 sm:text-3xl',
                   trasPagarPlaneado >= 0
                     ? 'text-primary'
                     : 'text-destructive',
@@ -298,7 +309,12 @@ export default function SummaryBlock({
                 {formatCurrency(trasPagarPlaneado)}
               </p>
               {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
-                <p className="pl-8 text-[10px] leading-snug text-muted-foreground">
+                <p
+                  className={cn(
+                    'pl-0 text-[10px] leading-snug text-muted-foreground sm:pl-8',
+                    !isExpanded && 'hidden sm:block',
+                  )}
+                >
                   Incluye {formatCurrency(planningCardStatementDue.total)} que aún debes
                   pagar al estado de cuenta
                   {planningCardStatementDue.cardCount > 0
@@ -310,7 +326,12 @@ export default function SummaryBlock({
                 </p>
               ) : null}
               {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
-                <p className="pl-8 text-[10px] leading-snug text-muted-foreground">
+                <p
+                  className={cn(
+                    'pl-0 text-[10px] leading-snug text-muted-foreground sm:pl-8',
+                    !isExpanded && 'hidden sm:block',
+                  )}
+                >
                   Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
                   {planningOrphanCardPayments.count} pago
                   {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
@@ -321,7 +342,12 @@ export default function SummaryBlock({
           </div>
 
           {tenemos > 0 && (
-            <div className="relative mt-3 border-t border-border/40 pt-3">
+            <div
+              className={cn(
+                'relative mt-3 border-t border-border/40 pt-3',
+                !isExpanded && 'hidden sm:block',
+              )}
+            >
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 Uso del ingreso
               </p>
@@ -375,7 +401,7 @@ export default function SummaryBlock({
             planningOrphanCardPayments.count > 0) ||
           (planningCardStatementDue != null &&
             planningCardStatementDue.total > 0)) ? (
-          <p className="text-[10px] leading-snug text-muted-foreground">
+          <p className="hidden text-[10px] leading-snug text-muted-foreground sm:block">
             {planningCardStatementDue != null &&
             planningCardStatementDue.total > 0 ? (
               <>
@@ -405,15 +431,15 @@ export default function SummaryBlock({
           <>
             <Separator className="bg-border/50" />
             {/* Three metric cards */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {/* Ingresos */}
-              <div className="relative rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/8 to-blue-500/3 px-3 py-3 dark:from-blue-500/12 dark:to-blue-500/5">
-                <div className="mb-2 flex items-center justify-between gap-1">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20">
-                      <Wallet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <div className="relative rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/8 to-blue-500/3 px-2 py-2 dark:from-blue-500/12 dark:to-blue-500/5 sm:px-3 sm:py-3">
+                <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
+                  <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20 sm:h-6 sm:w-6">
+                      <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5" />
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80">
+                    <span className="truncate text-[9px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 sm:text-[10px]">
                       Ingresos
                     </span>
                   </div>
@@ -430,11 +456,11 @@ export default function SummaryBlock({
                     </Button>
                   )}
                 </div>
-                <p className="font-mono text-base font-black tabular-nums leading-tight text-foreground">
+                <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(tenemos)}
                 </p>
                 {(hasUserIncome || incomeItems.length > 0) && (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 text-[9px] text-muted-foreground sm:text-[10px]">
                     {incomeItems.length > 0
                       ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
                       : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
@@ -443,39 +469,39 @@ export default function SummaryBlock({
               </div>
 
               {/* Pagado */}
-              <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-3 py-3 dark:from-emerald-500/12 dark:to-emerald-500/5">
-                <div className="mb-2 flex items-center gap-1.5">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-2 py-2 dark:from-emerald-500/12 dark:to-emerald-500/5 sm:px-3 sm:py-3">
+                <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20 sm:h-6 sm:w-6">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" />
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-600/80 uppercase tracking-wider dark:text-emerald-400/80">
+                  <span className="truncate text-[9px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 sm:text-[10px]">
                     Pagado
                   </span>
                 </div>
-                <p className="font-mono text-base font-black tabular-nums leading-tight text-foreground">
+                <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(pagado)}
                 </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 text-[9px] text-muted-foreground sm:text-[10px]">
                   {expenseCount > 0
-                    ? `${paidExpenseCount} de ${expenseCount} gastos`
+                    ? `${paidExpenseCount}/${expenseCount}`
                     : '—'}
                 </p>
               </div>
 
               {/* Pendiente */}
-              <div className="relative rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 px-3 py-3 dark:from-amber-500/12 dark:to-amber-500/5">
-                <div className="mb-2 flex items-center gap-1.5">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20">
-                    <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              <div className="relative rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 px-2 py-2 dark:from-amber-500/12 dark:to-amber-500/5 sm:px-3 sm:py-3">
+                <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20 sm:h-6 sm:w-6">
+                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" />
                   </span>
-                  <span className="text-[10px] font-bold text-amber-600/80 uppercase tracking-wider dark:text-amber-400/80">
+                  <span className="truncate text-[9px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 sm:text-[10px]">
                     Pendiente
                   </span>
                 </div>
-                <p className="font-mono text-base font-black tabular-nums leading-tight text-foreground">
+                <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(pendiente)}
                 </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 text-[9px] text-muted-foreground sm:text-[10px]">
                   {expenseCount > 0
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}

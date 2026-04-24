@@ -709,21 +709,21 @@ export default function FortnightColumn({
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <div className="mb-3 flex items-center gap-2 rounded-xl border border-border/40 bg-muted/20 p-1.5 dark:bg-muted/10">
+          <div className="mb-3 flex min-w-0 items-center gap-1 rounded-xl border border-border/40 bg-muted/20 p-1 dark:bg-muted/10 sm:gap-2 sm:p-1.5">
             <TabsList
               variant="line"
-              className="h-auto flex-1 justify-start gap-1 rounded-none bg-transparent p-0"
+              className="h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 sm:gap-1"
             >
             <TabsTrigger
               value="expenses"
-              className="px-3 py-2 text-xs font-medium sm:text-sm"
+              className="px-2 py-1.5 text-xs font-medium sm:px-3 sm:py-2 sm:text-sm"
               aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
             >
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 sm:gap-2">
                 Gastos
                 <Badge
                   variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                  className="pointer-events-none h-5 min-w-5 shrink-0 justify-center border-0 px-1.5 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:min-w-5.5 sm:text-[11px]"
+                  className="pointer-events-none h-4 min-w-4 shrink-0 justify-center border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]"
                   aria-hidden
                 >
                   {unpaidExpenseCount}
@@ -732,16 +732,17 @@ export default function FortnightColumn({
             </TabsTrigger>
             <TabsTrigger
               value="cards"
-              className="px-3 py-2 text-xs font-medium sm:text-sm"
+              className="px-2 py-1.5 text-xs font-medium sm:px-3 sm:py-2 sm:text-sm"
               aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
             >
-              <span className="inline-flex items-center gap-2">
-                Pagos tarjeta
+              <span className="inline-flex items-center gap-1.5 sm:gap-2">
+                <span className="sm:hidden">Tarjeta</span>
+                <span className="hidden sm:inline">Pagos tarjeta</span>
                 <Badge
                   variant={
                     pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                   }
-                  className="pointer-events-none h-5 min-w-5 shrink-0 justify-center border-0 px-1.5 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:min-w-5.5 sm:text-[11px]"
+                  className="pointer-events-none h-4 min-w-4 shrink-0 justify-center border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]"
                   aria-hidden
                 >
                   {pendingCardPaymentsCount}
@@ -749,7 +750,7 @@ export default function FortnightColumn({
               </span>
             </TabsTrigger>
             </TabsList>
-            <div className="flex shrink-0 items-center gap-1.5 pl-1">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 sm:pl-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -757,7 +758,7 @@ export default function FortnightColumn({
                     size="sm"
                     onClick={() => setAddExpenseDialogOpen(true)}
                     disabled={!fortnightId || fortnightId <= 0}
-                    className="gap-1.5 shadow-sm"
+                    className="h-8 w-8 gap-1.5 p-0 shadow-sm sm:w-auto sm:px-3"
                     aria-label="Agregar gasto a esta quincena"
                     title={
                       !fortnightId || fortnightId <= 0
@@ -765,8 +766,8 @@ export default function FortnightColumn({
                         : undefined
                     }
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    Agregar gasto
+                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                    <span className="hidden sm:inline">Agregar gasto</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={4}>
