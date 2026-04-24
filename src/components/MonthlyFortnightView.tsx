@@ -252,10 +252,10 @@ export default function MonthlyFortnightView({
 
   const segmentBtn = (active: boolean) =>
     cn(
-      'rounded-md px-3 py-1.5 text-xs font-bold transition-all duration-150',
+      'relative rounded-full px-3 py-1 text-xs font-bold transition-all duration-150',
       active
-        ? 'bg-primary text-primary-foreground shadow-sm'
-        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+        ? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground shadow-sm ring-1 ring-primary/30'
+        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
     );
 
   return (
@@ -266,12 +266,12 @@ export default function MonthlyFortnightView({
       )}
     >
       <div
-        className="flex items-center justify-end gap-2"
+        className="flex items-center justify-end gap-1.5"
         role="region"
         aria-label="Controles de vista de planificación"
       >
         {/* Layout toggle: Una | Ambas */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-muted/40 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-full border border-border/50 bg-muted/40 p-0.5 shadow-inner backdrop-blur-sm">
           <button
             type="button"
             onClick={() => handleLayoutRadio('single')}
@@ -294,7 +294,7 @@ export default function MonthlyFortnightView({
 
         {/* Period selector — only visible in single mode */}
         {layout === 'single' && (
-          <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-muted/40 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-full border border-border/50 bg-muted/40 p-0.5 shadow-inner backdrop-blur-sm">
             <button
               type="button"
               onClick={() => handlePeriodChange('FIRST')}
@@ -325,7 +325,7 @@ export default function MonthlyFortnightView({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 rounded-full border border-border/50 bg-muted/40 text-muted-foreground shadow-inner backdrop-blur-sm hover:bg-muted/60 hover:text-foreground"
               aria-label="Opciones adicionales de vista"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />

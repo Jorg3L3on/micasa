@@ -164,36 +164,64 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                       ? Landmark
                       : Wallet;
 
+                const isFunding =
+                  wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
+                const accent =
+                  isCreditType
+                    ? 'violet'
+                    : wallet.type === 'DEBIT_CARD'
+                      ? 'blue'
+                      : wallet.type === 'CASH'
+                        ? 'emerald'
+                        : 'neutral';
+
                 const cardContent = (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <span
                       className={cn(
-                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1',
-                        isCreditType
-                          ? 'bg-violet-500/15 ring-violet-500/25 dark:bg-violet-500/20'
-                          : wallet.type === 'DEBIT_CARD'
-                            ? 'bg-blue-500/15 ring-blue-500/25 dark:bg-blue-500/20'
-                            : 'bg-muted/50 ring-border/50',
+                        'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 shadow-sm',
+                        accent === 'violet' &&
+                          'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
+                        accent === 'blue' &&
+                          'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
+                        accent === 'emerald' &&
+                          'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10',
+                        accent === 'neutral' &&
+                          'bg-muted/60 ring-border/60',
                       )}
                     >
                       <WalletIcon
                         className={cn(
-                          'h-3.5 w-3.5',
-                          isCreditType
-                            ? 'text-violet-500 dark:text-violet-400'
-                            : wallet.type === 'DEBIT_CARD'
-                              ? 'text-blue-500 dark:text-blue-400'
-                              : 'text-muted-foreground',
+                          'h-4 w-4',
+                          accent === 'violet' &&
+                            'text-violet-600 dark:text-violet-300',
+                          accent === 'blue' &&
+                            'text-blue-600 dark:text-blue-300',
+                          accent === 'emerald' &&
+                            'text-emerald-600 dark:text-emerald-300',
+                          accent === 'neutral' && 'text-muted-foreground',
                         )}
+                        aria-hidden
                       />
+                      {(isDueNear || isDuePast) && (
+                        <span
+                          className={cn(
+                            'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
+                            isDuePast
+                              ? 'bg-destructive animate-pulse'
+                              : 'bg-amber-500',
+                          )}
+                          aria-hidden
+                        />
+                      )}
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate max-w-[100px] leading-none mb-0.5">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <p className="max-w-[130px] truncate text-[11px] font-semibold leading-tight text-muted-foreground/90">
                         {wallet.name}
                       </p>
                       <p
                         className={cn(
-                          'text-sm font-bold font-mono tabular-nums leading-none',
+                          'font-mono text-base font-black tabular-nums leading-none',
                           wallet.amount < 0
                             ? 'text-destructive'
                             : 'text-foreground',
@@ -202,26 +230,27 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                         {formatCurrency(wallet.amount)}
                       </p>
                       {isCreditType && (
-                        <div className="mt-1 space-y-0.5">
-                          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <div className="relative h-1 w-14 overflow-hidden rounded-full bg-muted/50 sm:w-16">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all dark:from-emerald-400 dark:to-emerald-300"
                               style={{ width: `${percentAvailable}%` }}
                               aria-hidden
                             />
                           </div>
-                          {wallet.cutoff_day != null && wallet.due_day != null && (
-                            <p className="text-[9px] text-muted-foreground leading-tight">
-                              Corte {wallet.cutoff_day} ·{' '}
-                              <span
-                                className={cn(
-                                  'font-semibold',
-                                  (isDueNear || isDuePast) && 'text-destructive',
-                                )}
-                              >
-                                Pago {wallet.due_day}
-                              </span>
-                            </p>
+                          {wallet.due_day != null && (
+                            <span
+                              className={cn(
+                                'whitespace-nowrap text-[9px] font-semibold leading-none tabular-nums',
+                                isDuePast
+                                  ? 'text-destructive'
+                                  : isDueNear
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : 'text-muted-foreground/70',
+                              )}
+                            >
+                              Paga {wallet.due_day}
+                            </span>
                           )}
                         </div>
                       )}
@@ -229,20 +258,29 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   </div>
                 );
 
-                const isFunding =
-                  wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
                 const cardClasses = cn(
-                  'group shrink-0 rounded-xl border px-3 py-2',
-                  'transition-all duration-200 hover:shadow-lg',
-                  isCreditType
-                    ? 'border-violet-500/25 bg-gradient-to-br from-violet-500/10 to-violet-500/5 dark:from-violet-500/15 dark:to-violet-500/8 cursor-pointer hover:border-violet-500/45 hover:shadow-violet-500/10'
-                    : wallet.type === 'DEBIT_CARD'
-                      ? 'border-blue-500/25 bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/15 dark:to-blue-500/8 cursor-pointer hover:border-blue-500/45 hover:shadow-blue-500/10'
-                      : cn(
-                          'border-border/60 bg-card dark:bg-card/80',
-                          isFunding &&
-                            'cursor-pointer hover:border-emerald-500/45 hover:shadow-emerald-500/10',
-                        ),
+                  'group relative shrink-0 overflow-hidden rounded-2xl border px-3 py-2.5 sm:px-3.5',
+                  'backdrop-blur-sm transition-all duration-200',
+                  // subtle inner gloss highlight
+                  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:before:via-white/10',
+                  accent === 'violet' &&
+                    'border-violet-500/30 bg-gradient-to-br from-violet-500/12 via-background to-violet-500/4 dark:from-violet-500/20 dark:via-card dark:to-violet-500/5',
+                  accent === 'blue' &&
+                    'border-blue-500/30 bg-gradient-to-br from-blue-500/12 via-background to-blue-500/4 dark:from-blue-500/20 dark:via-card dark:to-blue-500/5',
+                  accent === 'emerald' &&
+                    'border-emerald-500/30 bg-gradient-to-br from-emerald-500/12 via-background to-emerald-500/4 dark:from-emerald-500/20 dark:via-card dark:to-emerald-500/5',
+                  accent === 'neutral' && 'border-border/60 bg-card dark:bg-card/80',
+                  (isCreditType || isFunding) &&
+                    cn(
+                      'cursor-pointer hover:-translate-y-0.5 hover:shadow-lg',
+                      accent === 'violet' &&
+                        'hover:border-violet-500/60 hover:shadow-violet-500/15',
+                      accent === 'blue' &&
+                        'hover:border-blue-500/60 hover:shadow-blue-500/15',
+                      accent === 'emerald' &&
+                        'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
+                      accent === 'neutral' && 'hover:border-border',
+                    ),
                 );
 
                 if (isCreditType) {

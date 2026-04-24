@@ -732,16 +732,16 @@ export default function ExpenseTable({
 
   return (
     <>
-      <Card className="overflow-hidden rounded-xl border-border/40 shadow-md">
+      <Card className="overflow-hidden rounded-xl border-0 bg-transparent shadow-none sm:border sm:border-border/40 sm:bg-card sm:shadow-md">
         <CardContent className="px-0 pb-0 pt-0 space-y-0 sm:pb-3">
           {/* Mobile list (hidden on sm+) */}
           <ul
             role="list"
-            className="divide-y divide-border/20 sm:hidden"
+            className="flex flex-col gap-1.5 px-2 pb-2 pt-2 sm:hidden"
             aria-label="Gastos de la quincena"
           >
             {sortedRows.length === 0 ? (
-              <li className="px-3 py-6 text-center text-xs text-muted-foreground">
+              <li className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
                 Sin gastos
               </li>
             ) : (
@@ -763,34 +763,35 @@ export default function ExpenseTable({
                     <li
                       key={`m-${e.planning_row_kind ?? 'expense'}-${e.id}`}
                       className={cn(
-                        'relative flex items-start gap-2.5 px-3 py-2.5 border-l-[3px] transition-colors',
+                        'group/row relative flex items-start gap-2.5 overflow-hidden rounded-xl border px-2.5 py-2.5 transition-all',
+                        // left accent stripe via border-l width
+                        'border-l-[3px]',
+                        // subtle top gloss
+                        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                         isCardCharge
-                          ? 'border-l-violet-500/60'
+                          ? 'border-violet-500/15 border-l-violet-500/70 bg-gradient-to-br from-violet-500/8 via-card to-violet-500/3 dark:from-violet-500/14 dark:via-card/60 dark:to-violet-500/5'
                           : e.is_paid
-                            ? 'border-l-emerald-500/40'
-                            : 'border-l-primary/30',
-                        e.is_paid
-                          ? 'bg-emerald-50/25 dark:bg-emerald-950/10'
-                          : 'active:bg-primary/8',
+                            ? 'border-emerald-500/15 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/4'
+                            : 'border-border/40 border-l-primary/45 bg-card/60 active:scale-[0.995] active:border-primary/40',
                       )}
                     >
                       {/* Status / pay toggle */}
-                      <div className="shrink-0 pt-0.5">
+                      <div className="shrink-0">
                         {e.is_paid ? (
                           <span
                             className={cn(
-                              'inline-flex h-7 w-7 items-center justify-center',
+                              'inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 shadow-sm',
                               isCardPay
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-emerald-500 dark:text-emerald-400',
+                                ? 'bg-green-500/15 ring-green-500/30 text-green-600 dark:text-green-400'
+                                : 'bg-emerald-500/15 ring-emerald-500/30 text-emerald-600 dark:text-emerald-400',
                             )}
-                            aria-hidden
+                            aria-label="Pagado"
                           >
                             <CheckCircle2 className="h-5 w-5" />
                           </span>
                         ) : isIncomeRow || isCardPay ? (
                           <span
-                            className="inline-flex h-7 w-7 items-center justify-center text-xs text-muted-foreground/60"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-[11px] text-muted-foreground/50 ring-1 ring-border/40"
                             aria-hidden
                           >
                             —
@@ -799,7 +800,10 @@ export default function ExpenseTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground/40 transition-colors hover:bg-emerald-500/10 hover:text-emerald-500"
+                            className={cn(
+                              'h-8 w-8 rounded-full border border-dashed bg-transparent text-muted-foreground/40 transition-colors',
+                              'border-border/60 hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400',
+                            )}
                             onClick={() => {
                               setPayingExpense(e);
                               setPayDialogOpen(true);
@@ -817,9 +821,9 @@ export default function ExpenseTable({
                         <div className="flex items-start justify-between gap-2">
                           <span
                             className={cn(
-                              'min-w-0 truncate text-sm',
+                              'min-w-0 truncate text-sm leading-tight',
                               e.is_paid
-                                ? 'font-medium text-muted-foreground line-through'
+                                ? 'font-medium text-muted-foreground/80 line-through'
                                 : 'font-semibold text-foreground',
                             )}
                           >
@@ -827,45 +831,41 @@ export default function ExpenseTable({
                           </span>
                           <span
                             className={cn(
-                              'shrink-0 font-mono tabular-nums text-sm',
+                              'shrink-0 font-mono tabular-nums text-sm leading-tight',
                               e.is_paid
                                 ? 'text-muted-foreground/60 line-through'
-                                : 'font-bold text-foreground',
+                                : isCardCharge
+                                  ? 'font-bold text-violet-700 dark:text-violet-300'
+                                  : 'font-bold text-foreground',
                             )}
                           >
                             {formatCurrency(toDisplayAmount(e.amount))}
                           </span>
                         </div>
-                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        <p className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
                           {e.category ? (
                             <>
-                              <span>{e.category}</span>
-                              <span className="mx-1 text-muted-foreground/30">
-                                ·
-                              </span>
+                              <span className="truncate">{e.category}</span>
+                              <span className="text-muted-foreground/30">·</span>
                             </>
                           ) : null}
-                          <span className="text-muted-foreground/70">
+                          <span className="truncate text-muted-foreground/70">
                             {e.paymentMethod}
                           </span>
                         </p>
                         {(isCardPay || isCardCharge || hasDue) && (
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {isCardPay && (
-                              <Badge
-                                variant="outline"
-                                className="h-4 border-emerald-500/40 px-1.5 text-[10px] text-emerald-800 dark:text-emerald-300"
-                              >
+                              <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
                                 Pago TC
-                              </Badge>
+                              </span>
                             )}
                             {isCardCharge && (
-                              <Badge
-                                variant="outline"
-                                className="h-4 border-violet-500/40 px-1.5 text-[10px] text-violet-700 dark:text-violet-300"
-                              >
+                              <span className="inline-flex h-4 items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300">
+                                <span className="h-1 w-1 rounded-full bg-violet-500 dark:bg-violet-400" aria-hidden />
                                 Tarjeta
-                              </Badge>
+                              </span>
                             )}
                             {hasDue && (
                               <Badge
@@ -873,7 +873,7 @@ export default function ExpenseTable({
                                   e.is_paid ? 'secondary' : badgeColor
                                 }
                                 className={cn(
-                                  'h-4 px-1.5 text-[10px]',
+                                  'h-4 rounded-full px-1.5 text-[10px] font-medium',
                                   e.is_paid && 'opacity-60',
                                 )}
                               >
@@ -894,7 +894,7 @@ export default function ExpenseTable({
                       <div className="-mr-1 shrink-0">
                         {isIncomeRow || isCardPay ? (
                           <span
-                            className="inline-flex h-7 w-7 items-center justify-center text-xs text-muted-foreground/40"
+                            className="inline-flex h-8 w-8 items-center justify-center text-xs text-muted-foreground/30"
                             aria-hidden
                           >
                             —
@@ -903,7 +903,7 @@ export default function ExpenseTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-8 w-8"
                             disabled
                             aria-hidden
                           >
@@ -915,7 +915,7 @@ export default function ExpenseTable({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7"
+                                className="h-8 w-8 text-muted-foreground/60 hover:text-foreground"
                                 disabled={isUpdating}
                                 aria-label={`Más acciones para ${e.description}`}
                               >
@@ -958,18 +958,18 @@ export default function ExpenseTable({
                     </li>
                   );
                 })}
-                <li className="flex items-center justify-between gap-2 border-t-2 border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 px-3 py-2.5 dark:from-muted/30 dark:to-muted/10">
+                <li className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/30 bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 px-3 py-2.5 shadow-sm dark:from-muted/40 dark:via-muted/20 dark:to-muted/5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
                     Total efectivo/débito
                   </span>
-                  <span className="font-mono text-base font-black tabular-nums">
+                  <span className="font-mono text-base font-black tabular-nums text-foreground">
                     {formatCurrency(total)}
                   </span>
                 </li>
                 {cardGrandTotal > 0 && (
-                  <li className="flex items-center justify-between gap-2 bg-violet-50/20 px-3 py-2 dark:bg-violet-950/10">
+                  <li className="flex items-center justify-between gap-2 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 via-violet-500/3 to-transparent px-3 py-2 dark:from-violet-500/14 dark:via-violet-500/5">
                     <div className="flex min-w-0 flex-col">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/80">
                         Cargos a tarjeta
                       </span>
                       <span className="text-[10px] text-muted-foreground/60">

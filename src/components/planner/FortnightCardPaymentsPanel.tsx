@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import { Banknote, CreditCard, Loader2, Store } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Tooltip,
   TooltipContent,
@@ -113,17 +111,16 @@ const FortnightCardPaymentsPanel = ({
   }
 
   return (
-    <Card
-      className="overflow-hidden rounded-xl border-border/40 shadow-md"
+    <div
       role="region"
       aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
+      className="px-1 pb-1"
     >
-      <CardContent className="px-0 pb-1 pt-0">
-        <p className="px-4 pt-3 pb-2 text-[10px] font-medium text-muted-foreground/70 leading-snug">
-          Monto sugerido según movimientos en MiCasa. El banco puede indicar otro importe.
-        </p>
-        <div className="divide-y divide-border/30">
-          {rows.map((item) => {
+      <p className="mb-2 px-2 text-[10px] font-medium leading-snug text-muted-foreground/70">
+        Monto sugerido según movimientos en MiCasa. El banco puede indicar otro importe.
+      </p>
+      <ul role="list" className="flex flex-col gap-1.5">
+        {rows.map((item) => {
             const status = getPlannerCardPaymentStatus(item, todayYmd);
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
@@ -142,76 +139,111 @@ const FortnightCardPaymentsPanel = ({
             })();
 
             return (
-              <div
+              <li
                 key={item.walletId}
                 className={cn(
-                  'flex items-center gap-3 px-4 border-l-[3px] transition-colors',
-                  isCompact ? 'py-2.5' : 'py-3.5',
-                  status === 'vencido' && 'border-l-destructive bg-destructive/3 dark:bg-destructive/5',
-                  status === 'por_pagar' && 'border-l-amber-500/70 hover:bg-amber-50/30 dark:hover:bg-amber-950/10',
-                  status === 'pagado' && 'border-l-emerald-500/50 bg-emerald-50/10 dark:bg-emerald-950/10',
+                  'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
+                  'border-l-[3px]',
+                  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+                  isCompact ? 'py-2.5' : 'py-3',
+                  status === 'vencido' &&
+                    'border-destructive/25 border-l-destructive bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
+                  status === 'por_pagar' &&
+                    'border-amber-500/25 border-l-amber-500/70 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
+                  status === 'pagado' &&
+                    'border-emerald-500/20 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
                 )}
               >
-                {/* Icon */}
-                <span className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1',
-                  status === 'pagado'
-                    ? 'bg-emerald-500/10 ring-emerald-500/20 dark:bg-emerald-500/15'
-                    : status === 'vencido'
-                      ? 'bg-destructive/10 ring-destructive/20'
-                      : 'bg-violet-500/10 ring-violet-500/20 dark:bg-violet-500/15',
-                )}>
-                  <Icon className={cn(
-                    'h-4 w-4',
+                {/* Icon badge */}
+                <span
+                  className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
                     status === 'pagado'
-                      ? 'text-emerald-600 dark:text-emerald-400'
+                      ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
                       : status === 'vencido'
-                        ? 'text-destructive'
-                        : 'text-violet-600 dark:text-violet-400',
-                  )} />
+                        ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
+                        : 'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'h-4 w-4',
+                      status === 'pagado'
+                        ? 'text-emerald-600 dark:text-emerald-300'
+                        : status === 'vencido'
+                          ? 'text-destructive'
+                          : 'text-violet-600 dark:text-violet-300',
+                    )}
+                    aria-hidden
+                  />
                 </span>
 
                 {/* Name + status + date */}
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
                     <Link
                       href={href}
                       className={cn(
-                        'truncate font-semibold hover:underline',
+                        'min-w-0 truncate font-semibold hover:underline',
                         isCompact ? 'text-xs' : 'text-sm',
-                        status === 'pagado' ? 'text-muted-foreground' : 'text-foreground',
+                        status === 'pagado'
+                          ? 'text-muted-foreground'
+                          : 'text-foreground',
                       )}
                     >
                       {item.walletName}
                     </Link>
-                    <Badge
-                      variant="outline"
+                    <span
                       className={cn(
-                        'shrink-0 text-[10px] px-1.5 font-bold',
+                        'inline-flex h-4 shrink-0 items-center gap-1 rounded-full border px-1.5 text-[9px] font-bold uppercase tracking-wider',
                         status === 'vencido' &&
-                          'border-destructive/50 bg-destructive/8 text-destructive dark:bg-destructive/15',
+                          'border-destructive/40 bg-destructive/10 text-destructive dark:border-destructive/50 dark:bg-destructive/15',
                         status === 'por_pagar' &&
-                          'border-amber-500/50 bg-amber-500/8 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+                          'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
                         status === 'pagado' &&
-                          'border-emerald-500/40 bg-emerald-500/8 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+                          'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300',
                       )}
                     >
+                      <span
+                        className={cn(
+                          'h-1 w-1 rounded-full',
+                          status === 'vencido' && 'bg-destructive',
+                          status === 'por_pagar' &&
+                            'bg-amber-500 dark:bg-amber-400',
+                          status === 'pagado' &&
+                            'bg-emerald-500 dark:bg-emerald-400',
+                        )}
+                        aria-hidden
+                      />
                       {statusLabel(status)}
-                    </Badge>
+                    </span>
                   </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={cn('text-xs font-medium tabular-nums', dateColor)}>
+                  <div className="flex items-baseline gap-1 text-[10px]">
+                    <span
+                      className={cn('font-medium tabular-nums', dateColor)}
+                    >
                       {displayDueDate}
                     </span>
                     {daysLabel && (
-                      <span className={cn('text-[10px] font-semibold tabular-nums', dateColor)}>
-                        · {daysLabel}
-                      </span>
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span
+                          className={cn(
+                            'font-semibold tabular-nums',
+                            dateColor,
+                          )}
+                        >
+                          {daysLabel}
+                        </span>
+                      </>
                     )}
                     {item.cutoff_day != null && (
-                      <span className="text-[10px] text-muted-foreground/50">
-                        · Corte día {item.cutoff_day}
-                      </span>
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="text-muted-foreground/60">
+                          Corte {item.cutoff_day}
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
@@ -220,9 +252,11 @@ const FortnightCardPaymentsPanel = ({
                 <div className="flex shrink-0 items-center gap-2">
                   <span
                     className={cn(
-                      'font-mono tabular-nums font-bold',
+                      'font-mono font-bold tabular-nums',
                       isCompact ? 'text-xs' : 'text-sm',
-                      status === 'pagado' ? 'text-muted-foreground/60 line-through' : 'text-foreground',
+                      status === 'pagado'
+                        ? 'text-muted-foreground/60 line-through'
+                        : 'text-foreground',
                     )}
                   >
                     {formatCurrency(item.nextDuePayment)}
@@ -234,10 +268,10 @@ const FortnightCardPaymentsPanel = ({
                           <Button
                             type="button"
                             variant="outline"
-                            size="icon-xs"
+                            size="icon"
                             className={cn(
-                              'border-border/50 bg-card shadow-none',
-                              'transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/8 dark:hover:bg-emerald-500/12',
+                              'h-8 w-8 rounded-full border-dashed border-emerald-500/40 bg-transparent shadow-none',
+                              'transition-colors hover:border-emerald-500/70 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15',
                               'disabled:pointer-events-none disabled:opacity-40',
                               '[&_svg]:text-emerald-600 dark:[&_svg]:text-emerald-400',
                             )}
@@ -249,14 +283,21 @@ const FortnightCardPaymentsPanel = ({
                             aria-label={`Registrar pago: ${item.walletName}`}
                           >
                             {payingWalletId === item.walletId ? (
-                              <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
+                              <Loader2
+                                className="size-3.5 shrink-0 animate-spin"
+                                aria-hidden
+                              />
                             ) : (
-                              <Banknote className="size-3" aria-hidden />
+                              <Banknote className="size-3.5" aria-hidden />
                             )}
                           </Button>
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={6} className="max-w-[220px]">
+                      <TooltipContent
+                        side="left"
+                        sideOffset={6}
+                        className="max-w-[220px]"
+                      >
                         {item.outstandingBalance <= 0 ? (
                           'Sin saldo pendiente en esta tarjeta.'
                         ) : (
@@ -271,12 +312,11 @@ const FortnightCardPaymentsPanel = ({
                     </Tooltip>
                   )}
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
-      </CardContent>
-    </Card>
+      </ul>
+    </div>
   );
 };
 
