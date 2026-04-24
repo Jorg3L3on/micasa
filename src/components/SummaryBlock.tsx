@@ -129,12 +129,12 @@ export default function SummaryBlock({
       : 'Ingreso de la quincena menos todo lo comprometido en efectivo o débito: gastos planeados (pagados y pendientes) y pagos a tarjeta que ya descontaron tu efectivo. Las compras cargadas a la tarjeta no entran aquí hasta que pagues el estado de cuenta.';
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 dark:ring-primary/10 dark:shadow-black/50">
-      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/8 via-primary/4 to-transparent px-3 pb-2 pt-2.5 dark:from-primary/12 dark:via-primary/6 sm:px-4 sm:pb-2.5 sm:pt-3">
+    <Card className="relative gap-0 overflow-hidden rounded-2xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:ring-primary/10 dark:shadow-black/50 dark:before:via-white/8">
+      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-3 pb-2 pt-2.5 dark:from-primary/15 dark:via-primary/7 sm:px-4 sm:pb-2.5 sm:pt-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2 sm:gap-3">
             <span
-              className="mt-0.5 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/20 dark:bg-primary/20 dark:ring-primary/25 sm:flex"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-primary/10 shadow-sm ring-1 ring-primary/30 dark:from-primary/30 dark:to-primary/12 dark:ring-primary/35"
               aria-hidden
             >
               <BarChart3 className="h-4 w-4 text-primary" />
@@ -199,9 +199,9 @@ export default function SummaryBlock({
           </Tooltip>
         </div>
         {!isExpanded && tenemos > 0 && totalSpentPercent > 0 && (
-          <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+          <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/60 shadow-inner">
             <div
-              className="h-full rounded-l-full bg-emerald-500/80 transition-all duration-500 dark:bg-emerald-400/80"
+              className="h-full rounded-l-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 dark:from-emerald-400 dark:to-emerald-300"
               style={{ width: `${Math.min(paidPercent, 100)}%` }}
             />
             <div
@@ -210,8 +210,8 @@ export default function SummaryBlock({
                 paidPercent === 0 ? 'rounded-l-full' : '',
                 paidPercent + pendingPercent >= 100 ? 'rounded-r-full' : '',
                 totalSpentPercent > 100
-                  ? 'bg-destructive/60'
-                  : 'bg-amber-400/60 dark:bg-amber-400/50',
+                  ? 'bg-gradient-to-r from-destructive to-destructive/70'
+                  : 'bg-gradient-to-r from-amber-500/80 to-amber-400/60 dark:from-amber-400/70 dark:to-amber-300/50',
               )}
               style={{
                 width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
@@ -223,177 +223,213 @@ export default function SummaryBlock({
 
       <CardContent className="space-y-2 px-3 pb-3 pt-2.5 sm:space-y-3 sm:px-4 sm:pb-4 sm:pt-3">
         {/* Hero: disponible hoy vs tras pagar todo lo planeado */}
-        <div
-          className={cn(
-            'relative rounded-xl border border-border/50',
-            'bg-gradient-to-br from-muted/30 to-muted/10 px-2.5 py-2.5 dark:from-muted/20 dark:to-transparent sm:px-3 sm:py-3',
-          )}
-        >
-          <div className="grid grid-cols-2 gap-2 sm:gap-0">
-            {/* Left: Disponible */}
-            <div className="flex min-w-0 flex-col gap-1 sm:gap-1.5 sm:border-r sm:border-border/50 sm:pr-4">
-              {/* Label row */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 dark:bg-blue-500/15 sm:h-6 sm:w-6">
-                  <Wallet className="h-3 w-3 text-blue-500 dark:text-blue-400 sm:h-3.5 sm:w-3.5" />
-                </span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="min-w-0 truncate text-left text-[11px] font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs"
-                    >
-                      Disponible
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
-                    {tooltipDisponibleAhora}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              {/* Amount */}
-              <p
+        <div className="grid grid-cols-2 gap-2">
+          {/* Left: Disponible */}
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-xl border border-blue-500/25 px-2.5 py-2.5 sm:px-3 sm:py-3',
+              'bg-gradient-to-br from-blue-500/10 via-background to-blue-500/3 dark:from-blue-500/18 dark:via-card dark:to-blue-500/5',
+              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
+            )}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/25 to-blue-600/10 shadow-sm ring-1 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10 sm:h-7 sm:w-7">
+                <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-300 sm:h-3.5 sm:w-3.5" aria-hidden />
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="min-w-0 truncate text-left text-[11px] font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200 sm:text-xs"
+                  >
+                    Disponible
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
+                  {tooltipDisponibleAhora}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <p
+              className={cn(
+                'mt-1 font-mono text-lg font-bold tabular-nums leading-tight sm:text-xl',
+                disponibleAhora >= 0 ? 'text-foreground/90' : 'text-destructive',
+              )}
+            >
+              {formatCurrency(disponibleAhora)}
+            </p>
+            {tenemos > 0 && (
+              <div
                 className={cn(
-                  'font-mono text-lg font-bold tabular-nums leading-tight sm:pl-8 sm:text-xl',
-                  disponibleAhora >= 0 ? 'text-foreground/85' : 'text-destructive',
+                  'mt-0.5 flex items-center gap-1.5',
+                  !isExpanded && 'hidden sm:flex',
                 )}
               >
-                {formatCurrency(disponibleAhora)}
-              </p>
-              {tenemos > 0 && (
-                <div
+                <span className="text-[10px] text-muted-foreground/60">Ingreso</span>
+                <span className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground/60">
+                  {formatCurrency(tenemos)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Tras gastos planeados — hero */}
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-xl border px-2.5 py-2.5 shadow-sm sm:px-3 sm:py-3',
+              trasPagarPlaneado >= 0
+                ? 'border-primary/35 bg-gradient-to-br from-primary/15 via-background to-primary/4 dark:from-primary/22 dark:via-card dark:to-primary/6'
+                : 'border-destructive/35 bg-gradient-to-br from-destructive/12 via-background to-destructive/3 dark:from-destructive/20 dark:via-card dark:to-destructive/5',
+              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:before:via-white/10',
+            )}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span
+                className={cn(
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg shadow-sm ring-1 sm:h-7 sm:w-7',
+                  trasPagarPlaneado >= 0
+                    ? 'bg-gradient-to-br from-primary/30 to-primary/10 ring-primary/35'
+                    : 'bg-gradient-to-br from-destructive/30 to-destructive/10 ring-destructive/35',
+                )}
+              >
+                <Receipt
                   className={cn(
-                    'flex items-center gap-1.5 pl-0 sm:pl-8',
-                    !isExpanded && 'hidden sm:flex',
+                    'h-3 w-3 sm:h-3.5 sm:w-3.5',
+                    trasPagarPlaneado >= 0
+                      ? 'text-primary'
+                      : 'text-destructive',
                   )}
-                >
-                  <span className="text-[10px] text-muted-foreground/60">Ingreso</span>
-                  <span className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground/60">
-                    {formatCurrency(tenemos)}
+                  aria-hidden
+                />
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'min-w-0 truncate text-left text-[11px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs',
+                      trasPagarPlaneado >= 0
+                        ? 'text-primary/85 decoration-primary/30 hover:text-primary'
+                        : 'text-destructive/85 decoration-destructive/30 hover:text-destructive',
+                    )}
+                  >
+                    <span className="sm:hidden">Tras gastos</span>
+                    <span className="hidden sm:inline">Tras gastos planeados</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
+                  {tooltipTrasPagarPlaneado}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <p
+              className={cn(
+                'mt-1 font-mono text-xl font-black tabular-nums leading-tight tracking-tight sm:text-3xl',
+                trasPagarPlaneado >= 0 ? 'text-primary' : 'text-destructive',
+              )}
+            >
+              {formatCurrency(trasPagarPlaneado)}
+            </p>
+            {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
+              <p
+                className={cn(
+                  'mt-0.5 text-[10px] leading-snug text-muted-foreground',
+                  !isExpanded && 'hidden sm:block',
+                )}
+              >
+                Incluye {formatCurrency(planningCardStatementDue.total)} que aún debes
+                pagar al estado de cuenta
+                {planningCardStatementDue.cardCount > 0
+                  ? ` (${planningCardStatementDue.cardCount} tarjeta${
+                      planningCardStatementDue.cardCount !== 1 ? 's' : ''
+                    })`
+                  : ''}
+                .
+              </p>
+            ) : null}
+            {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
+              <p
+                className={cn(
+                  'mt-0.5 text-[10px] leading-snug text-muted-foreground',
+                  !isExpanded && 'hidden sm:block',
+                )}
+              >
+                Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
+                {planningOrphanCardPayments.count} pago
+                {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
+                (salida de efectivo).
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {tenemos > 0 && (
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/30 via-background to-muted/10 px-3 py-2.5 dark:from-muted/20 dark:via-card dark:to-transparent',
+              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+              !isExpanded && 'hidden sm:block',
+            )}
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Uso del ingreso
+              </p>
+              <span
+                className={cn(
+                  'font-mono text-xs font-bold tabular-nums',
+                  totalSpentPercent > 100
+                    ? 'text-destructive'
+                    : totalSpentPercent > 80
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-foreground/80',
+                )}
+              >
+                {Math.round(totalSpentPercent)}%
+              </span>
+            </div>
+            <div className="relative flex h-2 w-full overflow-hidden rounded-full bg-muted/70 shadow-inner">
+              <div
+                className="h-full rounded-l-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 dark:from-emerald-400 dark:to-emerald-300"
+                style={{ width: `${Math.min(paidPercent, 100)}%` }}
+              />
+              <div
+                className={cn(
+                  'h-full transition-all duration-500',
+                  paidPercent === 0 && 'rounded-l-full',
+                  paidPercent + pendingPercent >= 100 && 'rounded-r-full',
+                  totalSpentPercent > 100
+                    ? 'bg-gradient-to-r from-destructive to-destructive/70'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-400/70 dark:from-amber-400 dark:to-amber-300/60',
+                )}
+                style={{
+                  width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
+                }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px]">
+              {paidPercent === 0 && pendingPercent === 0 ? (
+                <span className="italic text-muted-foreground/60">
+                  Sin gastos registrados aún
+                </span>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                    Pagado
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400/90" />
+                    Pendiente
                   </span>
                 </div>
               )}
-            </div>
-
-            {/* Right: Tras gastos planeados */}
-            <div className="flex min-w-0 flex-col gap-1 sm:gap-1.5 sm:pl-4">
-              {/* Label row — same height as left */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 sm:h-6 sm:w-6">
-                  <Receipt className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" />
-                </span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="min-w-0 truncate text-left text-[11px] font-semibold text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs"
-                    >
-                      <span className="sm:hidden">Tras gastos</span>
-                      <span className="hidden sm:inline">Tras gastos planeados</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
-                    {tooltipTrasPagarPlaneado}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              {/* Hero amount */}
-              <p
-                className={cn(
-                  'font-mono text-xl font-black tabular-nums leading-tight tracking-tight sm:pl-8 sm:text-3xl',
-                  trasPagarPlaneado >= 0
-                    ? 'text-primary'
-                    : 'text-destructive',
-                )}
-              >
-                {formatCurrency(trasPagarPlaneado)}
-              </p>
-              {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
-                <p
-                  className={cn(
-                    'pl-0 text-[10px] leading-snug text-muted-foreground sm:pl-8',
-                    !isExpanded && 'hidden sm:block',
-                  )}
-                >
-                  Incluye {formatCurrency(planningCardStatementDue.total)} que aún debes
-                  pagar al estado de cuenta
-                  {planningCardStatementDue.cardCount > 0
-                    ? ` (${planningCardStatementDue.cardCount} tarjeta${
-                        planningCardStatementDue.cardCount !== 1 ? 's' : ''
-                      })`
-                    : ''}
-                  .
-                </p>
-              ) : null}
-              {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
-                <p
-                  className={cn(
-                    'pl-0 text-[10px] leading-snug text-muted-foreground sm:pl-8',
-                    !isExpanded && 'hidden sm:block',
-                  )}
-                >
-                  Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
-                  {planningOrphanCardPayments.count} pago
-                  {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
-                  (salida de efectivo).
-                </p>
-              ) : null}
+              <span className="font-medium text-muted-foreground/70">
+                comprometido
+              </span>
             </div>
           </div>
-
-          {tenemos > 0 && (
-            <div
-              className={cn(
-                'relative mt-3 border-t border-border/40 pt-3',
-                !isExpanded && 'hidden sm:block',
-              )}
-            >
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                Uso del ingreso
-              </p>
-              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted/70">
-                <div
-                  className="h-full rounded-l-full bg-emerald-500 transition-all duration-500 dark:bg-emerald-400"
-                  style={{ width: `${Math.min(paidPercent, 100)}%` }}
-                />
-                <div
-                  className={cn(
-                    'h-full transition-all duration-500',
-                    paidPercent === 0 && 'rounded-l-full',
-                    paidPercent + pendingPercent >= 100 && 'rounded-r-full',
-                  )}
-                  style={{
-                    background: totalSpentPercent > 100
-                      ? 'oklch(0.577 0.245 27.325 / 0.6)'
-                      : 'oklch(0.85 0.18 85 / 0.65)',
-                    width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
-                  }}
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                {paidPercent === 0 && pendingPercent === 0 ? (
-                  <span className="text-xs italic text-muted-foreground/60">
-                    Sin gastos registrados aún
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                      Pagado
-                    </span>
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <span className="inline-block h-2 w-2 rounded-full bg-amber-400/80" />
-                      Pendiente
-                    </span>
-                  </div>
-                )}
-                <span className="text-xs font-semibold text-muted-foreground">
-                  {Math.round(totalSpentPercent)}% comprometido
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
 
         {!isExpanded &&
         ((cardCharges != null && cardCharges.total > 0) ||

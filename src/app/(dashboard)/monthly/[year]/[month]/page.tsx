@@ -311,7 +311,7 @@ export default async function MonthlyPage({
   return (
     <>
       <div
-        className="mb-6 flex items-center gap-2 rounded-2xl border border-border/30 bg-gradient-to-r from-primary/5 via-transparent to-transparent px-4 py-3 shadow-sm dark:from-primary/8 sm:gap-3"
+        className="relative mb-4 flex items-center gap-2 overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/10 via-background to-primary/3 px-3 py-3 shadow-sm before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:from-primary/15 dark:via-card dark:to-primary/5 dark:before:via-white/8 sm:mb-6 sm:gap-3 sm:px-4"
         role="group"
         aria-label="Selector de mes"
       >
@@ -329,11 +329,21 @@ export default async function MonthlyPage({
         <div className="min-w-0 flex-1 text-center" aria-live="polite">
           <h1 className="truncate text-2xl font-black tracking-tight sm:text-3xl">
             {monthName}{' '}
-            <span className="text-primary">{year}</span>
+            <span className="bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent">
+              {year}
+            </span>
           </h1>
-          <p className="mt-0.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/60">
-            Planificación mensual
-          </p>
+          <div className="mt-0.5 flex items-center justify-center gap-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60 sm:text-[11px]">
+              Planificación mensual
+            </p>
+            {isCurrentMonth ? (
+              <span className="inline-flex h-4 shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
+                <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
+                Actual
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="shrink-0">

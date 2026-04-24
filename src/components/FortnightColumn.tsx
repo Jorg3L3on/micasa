@@ -54,6 +54,7 @@ import type {
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type { WalletListItem } from '@/types/catalog';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
+import { cn } from '@/lib/utils';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
@@ -709,21 +710,37 @@ export default function FortnightColumn({
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <div className="mb-3 flex min-w-0 items-center gap-1 rounded-xl border border-border/40 bg-muted/20 p-1 dark:bg-muted/10 sm:gap-2 sm:p-1.5">
+          <div className="mb-3 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:gap-2 sm:p-1.5">
             <TabsList
               variant="line"
-              className="h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 sm:gap-1"
+              className={cn(
+                'h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 sm:gap-1',
+                '[&_[data-slot=tabs-trigger]]:rounded-full',
+                '[&_[data-slot=tabs-trigger]]:transition-all',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:from-primary/95',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:to-primary/80',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:text-primary-foreground',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:shadow-sm',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-1',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-primary/30',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:border-transparent',
+              )}
             >
             <TabsTrigger
               value="expenses"
-              className="px-2 py-1.5 text-xs font-medium sm:px-3 sm:py-2 sm:text-sm"
+              className="px-2.5 py-1.5 text-xs font-semibold sm:px-3.5 sm:py-2 sm:text-sm"
               aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
             >
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
                 Gastos
                 <Badge
                   variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                  className="pointer-events-none h-4 min-w-4 shrink-0 justify-center border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]"
+                  className={cn(
+                    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                    columnTab === 'expenses' && unpaidExpenseCount > 0 &&
+                      'bg-primary-foreground/20 text-primary-foreground',
+                  )}
                   aria-hidden
                 >
                   {unpaidExpenseCount}
@@ -732,7 +749,7 @@ export default function FortnightColumn({
             </TabsTrigger>
             <TabsTrigger
               value="cards"
-              className="px-2 py-1.5 text-xs font-medium sm:px-3 sm:py-2 sm:text-sm"
+              className="px-2.5 py-1.5 text-xs font-semibold sm:px-3.5 sm:py-2 sm:text-sm"
               aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
             >
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
@@ -742,7 +759,11 @@ export default function FortnightColumn({
                   variant={
                     pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                   }
-                  className="pointer-events-none h-4 min-w-4 shrink-0 justify-center border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]"
+                  className={cn(
+                    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                    columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
+                      'bg-primary-foreground/20 text-primary-foreground',
+                  )}
                   aria-hidden
                 >
                   {pendingCardPaymentsCount}
