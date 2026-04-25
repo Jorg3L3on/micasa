@@ -7,12 +7,16 @@ const {
   findManyExpense,
   findManyFortnight,
   findManyExpenseTemplate,
+  findManyIncome,
+  findManyIncomeTemplate,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
   findManyExpense: vi.fn(),
   findManyFortnight: vi.fn(),
   findManyExpenseTemplate: vi.fn(),
+  findManyIncome: vi.fn(),
+  findManyIncomeTemplate: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -22,6 +26,8 @@ vi.mock('@/lib/prisma', () => ({
     expense: { findMany: findManyExpense },
     fortnight: { findMany: findManyFortnight },
     expenseTemplate: { findMany: findManyExpenseTemplate },
+    income: { findMany: findManyIncome },
+    incomeTemplate: { findMany: findManyIncomeTemplate },
   },
 }));
 
@@ -71,6 +77,11 @@ describe('getLiquidityProjection', () => {
     findManyExpense.mockReset();
     findManyFortnight.mockReset();
     findManyExpenseTemplate.mockReset();
+    findManyIncome.mockReset();
+    findManyIncomeTemplate.mockReset();
+    findManyFortnight.mockResolvedValue([]);
+    findManyIncome.mockResolvedValue([]);
+    findManyIncomeTemplate.mockResolvedValue([]);
   });
 
   afterEach(() => {

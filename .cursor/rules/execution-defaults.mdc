@@ -1,0 +1,42 @@
+# End-to-end execution defaults (MiCasa)
+
+## Intent
+
+In this project, default to **full execution**. The user should only need to describe the feature/request, and the agent should do the rest unless the user explicitly asks to pause.
+
+## Default behavior in new chats
+
+When the user asks for a feature/change:
+
+1. Create or update planning artifacts under `docs/ai/**` as needed.
+2. Implement code changes end-to-end (backend/frontend/db/tests as applicable).
+3. Run relevant verification (tests/lint/build checks appropriate to scope).
+4. Fix straightforward failures discovered during verification.
+5. Report final results, changed files, and any remaining risks.
+
+Do **not** stop at only planning, only scaffolding, or only commands unless the user explicitly asks for that.
+
+## Minimal user burden rule
+
+- Do not ask the user to run project commands that the agent can run.
+- Do not require the user to manually chain workflow commands.
+- Prefer agent-driven execution over user-driven orchestration.
+
+## Clarification policy
+
+Ask questions only when a missing decision would materially change implementation behavior, data semantics, or UX contract.
+Otherwise, choose sensible defaults, proceed, and document assumptions.
+
+## Safety and scope
+
+- Preserve existing auth/owner-context semantics unless explicitly requested.
+- Do not broaden scope beyond the requested feature.
+- For destructive or irreversible actions, require explicit user confirmation.
+
+## Output expectations
+
+For implementation requests, final response should include:
+- what was implemented
+- verification performed and outcomes
+- open risks/assumptions (if any)
+- concise next optional step (for example commit/PR) when relevant

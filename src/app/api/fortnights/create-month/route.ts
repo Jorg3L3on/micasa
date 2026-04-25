@@ -77,13 +77,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (existingFirst && existingSecond) {
-      return NextResponse.json(
-        { error: 'Este mes ya tiene las dos quincenas creadas' },
-        { status: 409 },
-      );
-    }
-
     const created: { id: number; label: string; period: string }[] = [];
     const expensesByPeriod: {
       FIRST: { count: number; names: string[] };
@@ -141,13 +134,21 @@ export async function POST(request: NextRequest) {
         await expandIncomeTemplatesForFortnight(second.id, 'SECOND');
     }
 
-    // When one fortnight already existed, we didn't run template income for it.
-    // Run it now so templates with "applies to both" get income in both fortnights.
+    // When one fortnight already existed, run both template expansions now.
+    // This keeps month creation idempotent after partial failures.
     if (existingFirst) {
+      expensesByPeriod.FIRST = await expandExpenseTemplatesForFortnight(
+        existingFirst.id,
+        'FIRST',
+      );
       incomeTemplatesByPeriod.FIRST =
         await expandIncomeTemplatesForFortnight(existingFirst.id, 'FIRST');
     }
     if (existingSecond) {
+      expensesByPeriod.SECOND = await expandExpenseTemplatesForFortnight(
+        existingSecond.id,
+        'SECOND',
+      );
       incomeTemplatesByPeriod.SECOND =
         await expandIncomeTemplatesForFortnight(existingSecond.id, 'SECOND');
     }
@@ -163,9 +164,11 @@ export async function POST(request: NextRequest) {
         message:
           created.length === 2
             ? 'Mes creado: ambas quincenas creadas'
-            : `Quincena(s) creada(s): ${created
-                .map((c) => c.label)
-                .join(', ')}`,
+            : created.length === 1
+              ? `Quincena(s) creada(s): ${created
+                  .map((c) => c.label)
+                  .join(', ')}`
+              : 'Quincenas existentes: se sincronizaron plantillas de gastos e ingresos',
         created,
         year,
         month,
@@ -185,7 +188,7 @@ export async function POST(request: NextRequest) {
           total: totalIncomeFromTemplates,
         },
       },
-      { status: 201 },
+      { status: created.length > 0 ? 201 : 200 },
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
