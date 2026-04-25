@@ -146,7 +146,7 @@ export default function SummaryBlock({
               {headerSubtitle ? (
                 <p
                   className={cn(
-                    'text-[11px] leading-snug text-muted-foreground sm:text-xs',
+                    'text-[11px] leading-snug text-muted-foreground/90 sm:text-xs',
                     !isExpanded && 'hidden sm:block',
                   )}
                 >
@@ -166,9 +166,6 @@ export default function SummaryBlock({
                 )}
               >
                 {formatCurrency(trasPagarPlaneado)}
-              </span>
-              <span className="text-[10px] tabular-nums text-muted-foreground">
-                {Math.round(totalSpentPercent)}% comprometido
               </span>
             </div>
           )}
@@ -198,32 +195,11 @@ export default function SummaryBlock({
             </TooltipContent>
           </Tooltip>
         </div>
-        {!isExpanded && tenemos > 0 && totalSpentPercent > 0 && (
-          <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/60 shadow-inner">
-            <div
-              className="h-full rounded-l-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 dark:from-emerald-400 dark:to-emerald-300"
-              style={{ width: `${Math.min(paidPercent, 100)}%` }}
-            />
-            <div
-              className={cn(
-                'h-full transition-all duration-500',
-                paidPercent === 0 ? 'rounded-l-full' : '',
-                paidPercent + pendingPercent >= 100 ? 'rounded-r-full' : '',
-                totalSpentPercent > 100
-                  ? 'bg-gradient-to-r from-destructive to-destructive/70'
-                  : 'bg-gradient-to-r from-amber-500/80 to-amber-400/60 dark:from-amber-400/70 dark:to-amber-300/50',
-              )}
-              style={{
-                width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
-              }}
-            />
-          </div>
-        )}
       </CardHeader>
 
-      <CardContent className="space-y-2 px-3 pb-3 pt-2.5 sm:space-y-3 sm:px-4 sm:pb-4 sm:pt-3">
+      <CardContent className="space-y-2.5 px-3 pb-3 pt-2.5 sm:space-y-3 sm:px-4 sm:pb-4 sm:pt-3">
         {/* Hero: disponible hoy vs tras pagar todo lo planeado */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {/* Left: Disponible */}
           <div
             className={cn(
@@ -240,7 +216,7 @@ export default function SummaryBlock({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="min-w-0 truncate text-left text-[11px] font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200 sm:text-xs"
+                    className="min-w-0 truncate text-left text-xs font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200"
                   >
                     Disponible
                   </button>
@@ -252,7 +228,7 @@ export default function SummaryBlock({
             </div>
             <p
               className={cn(
-                'mt-1 font-mono text-lg font-bold tabular-nums leading-tight sm:text-xl',
+                'mt-1 font-mono text-xl font-bold tabular-nums leading-tight sm:text-xl',
                 disponibleAhora >= 0 ? 'text-foreground/90' : 'text-destructive',
               )}
             >
@@ -307,7 +283,7 @@ export default function SummaryBlock({
                   <button
                     type="button"
                     className={cn(
-                      'min-w-0 truncate text-left text-[11px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs',
+                      'min-w-0 truncate text-left text-xs font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                       trasPagarPlaneado >= 0
                         ? 'text-primary/85 decoration-primary/30 hover:text-primary'
                         : 'text-destructive/85 decoration-destructive/30 hover:text-destructive',
@@ -324,7 +300,7 @@ export default function SummaryBlock({
             </div>
             <p
               className={cn(
-                'mt-1 font-mono text-xl font-black tabular-nums leading-tight tracking-tight sm:text-3xl',
+                'mt-1 font-mono text-3xl font-black tabular-nums leading-tight tracking-tight sm:text-3xl',
                 trasPagarPlaneado >= 0 ? 'text-primary' : 'text-destructive',
               )}
             >
@@ -333,7 +309,7 @@ export default function SummaryBlock({
             {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
               <p
                 className={cn(
-                  'mt-0.5 text-[10px] leading-snug text-muted-foreground',
+                  'mt-0.5 text-[10px] leading-snug text-muted-foreground/90',
                   !isExpanded && 'hidden sm:block',
                 )}
               >
@@ -350,7 +326,7 @@ export default function SummaryBlock({
             {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
               <p
                 className={cn(
-                  'mt-0.5 text-[10px] leading-snug text-muted-foreground',
+                  'mt-0.5 text-[10px] leading-snug text-muted-foreground/90',
                   !isExpanded && 'hidden sm:block',
                 )}
               >
@@ -414,11 +390,11 @@ export default function SummaryBlock({
                 </span>
               ) : (
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-muted-foreground">
+                  <span className="flex items-center gap-1 text-muted-foreground/90">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                     Pagado
                   </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
+                  <span className="flex items-center gap-1 text-muted-foreground/90">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400/90" />
                     Pendiente
                   </span>

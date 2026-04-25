@@ -737,7 +737,7 @@ export default function ExpenseTable({
           {/* Mobile list (hidden on sm+) */}
           <ul
             role="list"
-            className="flex flex-col gap-1.5 px-2 pb-2 pt-2 sm:hidden"
+            className="flex flex-col gap-1.5 px-2 pb-2 pt-1 sm:hidden"
             aria-label="Gastos de la quincena"
           >
             {sortedRows.length === 0 ? (
@@ -991,12 +991,12 @@ export default function ExpenseTable({
             <Table className={isCompact ? 'text-xs' : undefined}>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="bg-muted/50 dark:bg-muted/30 hover:bg-muted/50">
+                  <TableRow key={headerGroup.id} className="bg-muted/70 dark:bg-muted/45 hover:bg-muted/70">
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
                         className={cn(
-                          'text-[10px] font-bold uppercase tracking-wider text-muted-foreground',
+                          'text-[10px] font-bold uppercase tracking-wider text-foreground/75',
                           header.id === 'is_paid'
                             ? 'w-9 text-center sm:w-12'
                             : header.id === 'amount'
