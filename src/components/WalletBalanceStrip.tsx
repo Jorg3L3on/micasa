@@ -108,7 +108,6 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
         >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-linear-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-linear-to-l from-background to-transparent" />
-
           <div className="overflow-x-auto scrollbar-hide px-1">
             <div className="flex gap-2 py-0.5 pr-1">
               {sortedWallets.map((wallet) => {
@@ -140,7 +139,6 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                 const walletAlreadyPaid = paidWalletIds.includes(wallet.id);
                 const dueInCurrentFortnight =
                   isCreditType &&
-                  !walletAlreadyPaid &&
                   wallet.due_day != null &&
                   (isFirstFortnight
                     ? wallet.due_day >= 1 && wallet.due_day <= 15
@@ -176,10 +174,10 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                         : 'neutral';
 
                 const cardContent = (
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5">
                     <span
                       className={cn(
-                        'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 shadow-sm',
+                        'relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
                         accent === 'violet' &&
                           'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
                         accent === 'blue' &&
@@ -192,7 +190,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                     >
                       <WalletIcon
                         className={cn(
-                          'h-4 w-4',
+                          'h-3 w-3',
                           accent === 'violet' &&
                             'text-violet-600 dark:text-violet-300',
                           accent === 'blue' &&
@@ -203,7 +201,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                         )}
                         aria-hidden
                       />
-                      {(isDueNear || isDuePast) && (
+                      {(isDueNear || isDuePast) && !walletAlreadyPaid && (
                         <span
                           className={cn(
                             'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
@@ -216,12 +214,12 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                       )}
                     </span>
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <p className="max-w-[130px] truncate text-[11px] font-semibold leading-tight text-muted-foreground/90">
+                      <p className="truncate text-[9.5px] font-semibold leading-tight text-muted-foreground/90">
                         {wallet.name}
                       </p>
                       <p
                         className={cn(
-                          'font-mono text-base font-black tabular-nums leading-none',
+                          'font-mono text-[13px] font-black tabular-nums leading-none sm:text-sm',
                           wallet.amount < 0
                             ? 'text-destructive'
                             : 'text-foreground',
@@ -231,7 +229,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                       </p>
                       {isCreditType && (
                         <div className="mt-1 flex items-center gap-1.5">
-                          <div className="relative h-1 w-14 overflow-hidden rounded-full bg-muted/50 sm:w-16">
+                          <div className="relative h-1 w-10 overflow-hidden rounded-full bg-muted/50 sm:w-12">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all dark:from-emerald-400 dark:to-emerald-300"
                               style={{ width: `${percentAvailable}%` }}
@@ -241,15 +239,17 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                           {wallet.due_day != null && (
                             <span
                               className={cn(
-                                'whitespace-nowrap text-[9px] font-semibold leading-none tabular-nums',
-                                isDuePast
+                                'whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tabular-nums',
+                                walletAlreadyPaid
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                  : isDuePast
                                   ? 'text-destructive'
                                   : isDueNear
                                     ? 'text-amber-600 dark:text-amber-400'
                                     : 'text-muted-foreground/70',
                               )}
                             >
-                              Paga {wallet.due_day}
+                              {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
                             </span>
                           )}
                         </div>
@@ -259,7 +259,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                 );
 
                 const cardClasses = cn(
-                  'group relative min-w-[178px] shrink-0 overflow-hidden rounded-2xl border px-3 py-2.5 sm:min-w-[210px] sm:px-3.5',
+                  'group relative min-w-[136px] shrink-0 overflow-hidden rounded-xl border px-2 py-1.5 sm:min-w-[164px] sm:px-2.5 sm:py-2',
                   'backdrop-blur-sm transition-all duration-200',
                   // subtle inner gloss highlight
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:before:via-white/10',
