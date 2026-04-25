@@ -353,6 +353,48 @@ const splitCsvLine = (line: string): string[] => {
   return out;
 };
 
+type PdfTextItem = { str: string; transform: number[]; width?: number };
+
+const extractPdfTextWithColumns = async (pdf: {
+  numPages: number;
+  getPage: (n: number) => Promise<{
+    getTextContent: () => Promise<{ items: unknown[] }>;
+  }>;
+}): Promise<string> => {
+  const COLUMN_GAP_THRESHOLD = 4;
+  const lines: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const rows = new Map<number, Array<{ x: number; w: number; str: string }>>();
+    for (const raw of content.items) {
+      const item = raw as PdfTextItem;
+      if (typeof item.str !== 'string' || !Array.isArray(item.transform)) continue;
+      const y = Math.round(item.transform[5]);
+      const x = item.transform[4];
+      const w = item.width ?? 0;
+      const arr = rows.get(y) ?? [];
+      arr.push({ x, w, str: item.str });
+      rows.set(y, arr);
+    }
+    const ys = Array.from(rows.keys()).sort((a, b) => b - a);
+    for (const y of ys) {
+      const cells = rows.get(y)!.sort((a, b) => a.x - b.x);
+      let line = '';
+      let prevEnd = -Infinity;
+      for (const cell of cells) {
+        const gap = cell.x - prevEnd;
+        if (line === '') line = cell.str;
+        else if (gap > COLUMN_GAP_THRESHOLD) line += '\t' + cell.str;
+        else line += cell.str;
+        prevEnd = cell.x + cell.w;
+      }
+      if (line.trim()) lines.push(line);
+    }
+  }
+  return lines.join('\n');
+};
+
 export type ParseUploadInput = {
   buffer: Buffer;
   mimeType: string;
@@ -395,10 +437,9 @@ export const parsePantryReceiptUpload = async ({
 
   if (name.endsWith('.pdf') || lowerMime.includes('pdf')) {
     try {
-      const { extractText, getDocumentProxy } = await import('unpdf');
+      const { getDocumentProxy } = await import('unpdf');
       const pdf = await getDocumentProxy(new Uint8Array(buffer));
-      const textResult = await extractText(pdf, { mergePages: true });
-      const text = (Array.isArray(textResult.text) ? textResult.text.join('\n') : textResult.text) ?? '';
+      const text = await extractPdfTextWithColumns(pdf);
       if (!text.trim()) {
         warnings.push(
           'El PDF no contiene texto seleccionable (puede ser solo imagen). Prueba exportar o subir CSV.',
