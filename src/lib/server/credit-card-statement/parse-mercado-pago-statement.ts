@@ -1,6 +1,6 @@
 /**
  * Parser for Mercado Pago (Mexico) credit card PDF statements.
- * Expects text extracted via pdf-parse (see extractMercadoPagoStatementText).
+ * Expects text extracted via unpdf (see extractMercadoPagoStatementText).
  */
 
 import { parseInstallmentFromDescription } from '@/lib/finance/expense-planning-scope';
@@ -127,7 +127,7 @@ const shouldSkipMovementDescription = (description: string): boolean => {
 };
 
 /**
- * Parse full PDF text (all pages concatenated by pdf-parse).
+ * Parse full PDF text (all pages concatenated by unpdf).
  */
 export const parseMercadoPagoStatementText = (
   fullText: string,
@@ -292,12 +292,8 @@ export const parseMercadoPagoStatementText = (
 export const extractMercadoPagoStatementText = async (
   buffer: Buffer,
 ): Promise<string> => {
-  const { PDFParse } = await import('pdf-parse');
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText();
-    return result.text ?? '';
-  } finally {
-    await parser.destroy();
-  }
+  const { extractText, getDocumentProxy } = await import('unpdf');
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const result = await extractText(pdf, { mergePages: true });
+  return (Array.isArray(result.text) ? result.text.join('\n') : result.text) ?? '';
 };

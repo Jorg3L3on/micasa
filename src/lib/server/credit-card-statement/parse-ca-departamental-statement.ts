@@ -1,6 +1,6 @@
 /**
  * Parser for C&A Departamental (Tarjeta C&A Bradescard) PDF statements.
- * Expects text extracted via pdf-parse.
+ * Expects text extracted via unpdf.
  */
 
 const MONTHS_CA: Record<string, number> = {
@@ -266,12 +266,8 @@ export const parseCaDepartamentalStatementText = (
 export const extractCaDepartamentalStatementText = async (
   buffer: Buffer,
 ): Promise<string> => {
-  const { PDFParse } = await import('pdf-parse');
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText();
-    return result.text ?? '';
-  } finally {
-    await parser.destroy();
-  }
+  const { extractText, getDocumentProxy } = await import('unpdf');
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const result = await extractText(pdf, { mergePages: true });
+  return (Array.isArray(result.text) ? result.text.join('\n') : result.text) ?? '';
 };
