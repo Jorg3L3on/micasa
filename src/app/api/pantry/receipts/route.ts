@@ -173,7 +173,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         where: { id: created.id },
         include: { lines: { orderBy: { sort_order: 'asc' } } },
       });
-    });
+    }, { timeout: 30000, maxWait: 10000 });
 
     return NextResponse.json(serializePantryReceiptDetail(receipt), {
       status: 201,
