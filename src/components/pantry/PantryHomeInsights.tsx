@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Package,
   Receipt,
+  ShoppingCart,
   Sparkles,
   TrendingDown,
 } from 'lucide-react';
@@ -71,11 +72,12 @@ export const PantryHomeInsights = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { receiptsHref, productsHref } = useMemo(() => {
+  const { receiptsHref, productsHref, shoppingHref } = useMemo(() => {
     const q = buildOwnerQuery(context).toString();
     return {
       receiptsHref: q ? `/pantry/receipts?${q}` : '/pantry/receipts',
       productsHref: q ? `/pantry/products?${q}` : '/pantry/products',
+      shoppingHref: q ? `/pantry/shopping?${q}` : '/pantry/shopping',
     };
   }, [context]);
 
@@ -158,6 +160,17 @@ export const PantryHomeInsights = () => {
           className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm"
           aria-label="Accesos rápidos de despensa"
         >
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg border-border/70 bg-background/80 px-3 text-foreground shadow-none hover:bg-accent/60"
+            asChild
+          >
+            <Link href={shoppingHref}>
+              <ShoppingCart className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              Lista de compras
+            </Link>
+          </Button>
           <Button
             variant="outline"
             size="sm"
