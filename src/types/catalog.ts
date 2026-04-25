@@ -241,6 +241,37 @@ export type LiquidityProjectionOptionsEcho = {
   include_expense_templates: boolean;
 };
 
+export type LiquidityMonthlySeriesItem = {
+  month_key: string;
+  msi_debt_total: number;
+  expected_income_total: number;
+  expense_template_total: number;
+  other_debt_components_total: number;
+  monthly_remaining: number;
+};
+
+export type LiquidityCardUtilizationRiskLevel =
+  | 'safe'
+  | 'danger'
+  | 'unrated_no_limit';
+
+export type LiquidityCardUtilizationItem = {
+  card_id: number;
+  card_name: string;
+  card_type: string;
+  used_amount: number;
+  credit_limit: number | null;
+  utilization_percent: number | null;
+  risk_level: LiquidityCardUtilizationRiskLevel;
+  is_danger: boolean;
+};
+
+export type LiquidityCardUtilizationSummary = {
+  cards: LiquidityCardUtilizationItem[];
+  dangerous_count: number;
+  unrated_count: number;
+};
+
 export type LiquidityProjectionResponse = {
   as_of: string;
   until: string;
@@ -254,6 +285,8 @@ export type LiquidityProjectionResponse = {
   summary: LiquidityProjectionSummary;
   assumptions: readonly string[];
   options: LiquidityProjectionOptionsEcho;
+  monthly_series: LiquidityMonthlySeriesItem[];
+  card_utilization_summary: LiquidityCardUtilizationSummary;
 };
 
 export type CreditCardPaymentListItem = {

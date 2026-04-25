@@ -131,6 +131,7 @@ export default function FortnightColumn({
   const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
   const [editingIncomeAmount, setEditingIncomeAmount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
   const [columnTab, setColumnTab] = useState<'expenses' | 'cards'>('expenses');
@@ -576,8 +577,13 @@ export default function FortnightColumn({
   };
 
   const handleRegenerateFromTemplates = async () => {
+    const loadingToastId = 'fortnight-regenerating';
     try {
+      setIsRegenerating(true);
       setAddExpenseError(null);
+      toast.loading('Regenerando quincena desde plantillas...', {
+        id: loadingToastId,
+      });
 
       if (!fortnightId || fortnightId <= 0) {
         toast.error(
@@ -586,7 +592,10 @@ export default function FortnightColumn({
         return;
       }
 
-      await clientFetchFromApi(
+      const result = await clientFetchFromApi<{
+        expensesCreated: { count: number; names: string[] };
+        incomeCreated: { count: number; names: string[] };
+      }>(
         `/api/fortnights/${fortnightId}/regenerate-from-templates`,
         {
           method: 'POST',
@@ -596,7 +605,18 @@ export default function FortnightColumn({
 
       await refreshData();
       router.refresh();
-      toast.success('Quincena regenerada desde plantillas.');
+      const createdExpenses = result.expensesCreated.count;
+      const createdIncomes = result.incomeCreated.count;
+      if (createdExpenses === 0 && createdIncomes === 0) {
+        toast('Regeneración completada: no se encontraron plantillas aplicables.', {
+          id: loadingToastId,
+        });
+      } else {
+        toast.success(
+          `Quincena regenerada: ${createdExpenses} gasto(s) y ${createdIncomes} ingreso(s).`,
+          { id: loadingToastId },
+        );
+      }
     } catch (error) {
       console.error('Error regenerating fortnight from templates:', error);
       const message =
@@ -604,7 +624,9 @@ export default function FortnightColumn({
           ? error.message
           : 'Error al regenerar la quincena desde plantillas';
       setAddExpenseError(message);
-      toast.error(message);
+      toast.error(message, { id: loadingToastId });
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -824,12 +846,17 @@ export default function FortnightColumn({
                     Recibir quincena
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    disabled={!fortnightId || fortnightId <= 0 || isRefreshing}
+                    disabled={
+                      !fortnightId ||
+                      fortnightId <= 0 ||
+                      isRefreshing ||
+                      isRegenerating
+                    }
                     onSelect={() => {
                       void handleRegenerateFromTemplates();
                     }}
                   >
-                    {isRefreshing ? (
+                    {isRefreshing || isRegenerating ? (
                       <Loader2
                         className="h-4 w-4 shrink-0 animate-spin"
                         aria-hidden

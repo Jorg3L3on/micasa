@@ -21,31 +21,6 @@ import { getCreditCardInstallmentProjection } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import type { InstallmentProjectionMonthItem } from '@/types/catalog';
 
-const STORAGE_KEY = 'micasa.installment-projection.expanded';
-const LEGACY_STORAGE_KEY = 'micasa.msi-projection.expanded';
-
-const readStored = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v != null) return v === 'true';
-    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-    return legacy === 'true';
-  } catch {
-    return false;
-  }
-};
-
-const writeStored = (value: boolean) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, value ? 'true' : 'false');
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-};
-
 type TooltipProps = {
   active?: boolean;
   payload?: Array<{ value: number; payload: InstallmentProjectionMonthItem }>;
@@ -82,26 +57,26 @@ const shortAxisMoney = (n: number): string => {
 export function CreditCardInstallmentProjectionBlock() {
   const { context } = useFinanceContext();
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [data, setData] = useState<InstallmentProjectionMonthItem[] | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setMounted(true);
-    setExpanded(readStored());
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (context.id === 0) return;
-    setLoading(true);
     getCreditCardInstallmentProjection(context)
-      .then(setData)
-      .catch(() => setData([]))
+      .then((response) => {
+        setError(null);
+        setData(response);
+      })
+      .catch(() => {
+        setData([]);
+        setError('No se pudo cargar la proyección de cuotas.');
+      })
       .finally(() => setLoading(false));
   }, [context]);
 
-  const isDark = mounted && resolvedTheme === 'dark';
+  const isDark = resolvedTheme === 'dark';
   const axisColor = isDark ? '#a1a1aa' : '#71717a';
   const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
   const barColor = isDark ? '#fbbf24' : '#d97706';
@@ -128,12 +103,8 @@ export function CreditCardInstallmentProjectionBlock() {
     return <Skeleton className="h-12 w-full rounded-xl" />;
   }
 
-  if (data.length === 0) return null;
-
   const handleToggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    writeStored(next);
+    setExpanded((prev) => !prev);
   };
 
   return (
@@ -172,6 +143,15 @@ export function CreditCardInstallmentProjectionBlock() {
 
       {expanded && (
         <CardContent className="pt-0">
+          {error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          ) : data.length === 0 ? (
+            <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
+              No hay items en MSI activos en este momento.
+            </div>
+          ) : (
           <div className="h-48 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -203,7 +183,8 @@ export function CreditCardInstallmentProjectionBlock() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          {isMultiCard && (
+          )}
+          {!error && data.length > 0 && isMultiCard && (
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               {Array.from(cardColors.entries()).map(([cardId, color]) => {
                 const name = data

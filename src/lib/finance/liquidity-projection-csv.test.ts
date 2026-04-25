@@ -43,6 +43,21 @@ const minimalResult = (): LiquidityProjectionResult => ({
     include_unpaid_expenses: true,
     include_expense_templates: false,
   },
+  monthly_series: [
+    {
+      month_key: '2026-03',
+      msi_debt_total: 50,
+      expected_income_total: 100,
+      expense_template_total: 0,
+      other_debt_components_total: 0,
+      monthly_remaining: 50,
+    },
+  ],
+  card_utilization_summary: {
+    cards: [],
+    dangerous_count: 0,
+    unrated_count: 0,
+  },
 });
 
 describe('liquidityProjectionToCsv', () => {

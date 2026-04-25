@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
         for (const purchase of active) {
           const remaining =
             purchase.credit_installment_total! - purchase.credit_installment_current!;
-          for (let i = 1; i <= remaining; i++) {
+          // Include the current MSI month (i=0) so active installments are visible immediately.
+          for (let i = 0; i <= remaining; i++) {
             const futureDate = new Date(Date.UTC(seYear, seMonth - 1 + i, 1));
             const key = `${futureDate.getUTCFullYear()}-${String(futureDate.getUTCMonth() + 1).padStart(2, '0')}`;
             monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + Number(purchase.amount));

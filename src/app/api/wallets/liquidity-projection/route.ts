@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       omitZeroObligations: omitZeroParam ?? true,
       stressCyclePercent,
       includeUnpaidExpenses: includeUnpaid ?? true,
-      includeExpenseTemplates: includeTemplates ?? false,
+      includeExpenseTemplates: includeTemplates ?? true,
     });
 
     const ownerType = context.ownerType;

@@ -79,6 +79,8 @@ export type LiquidityProjectionResult = {
   summary: LiquidityProjectionSummary;
   assumptions: readonly string[];
   options: LiquidityProjectionOptionsEcho;
+  monthly_series: LiquidityMonthlySeriesItem[];
+  card_utilization_summary: LiquidityCardUtilizationSummary;
 };
 
 export type GetLiquidityProjectionInput = {
@@ -90,6 +92,37 @@ export type GetLiquidityProjectionInput = {
   stressCyclePercent?: number;
   includeUnpaidExpenses?: boolean;
   includeExpenseTemplates?: boolean;
+};
+
+export type LiquidityMonthlySeriesItem = {
+  month_key: string;
+  msi_debt_total: number;
+  expected_income_total: number;
+  expense_template_total: number;
+  other_debt_components_total: number;
+  monthly_remaining: number;
+};
+
+export type LiquidityCardUtilizationRiskLevel =
+  | 'safe'
+  | 'danger'
+  | 'unrated_no_limit';
+
+export type LiquidityCardUtilizationItem = {
+  card_id: number;
+  card_name: string;
+  card_type: string;
+  used_amount: number;
+  credit_limit: number | null;
+  utilization_percent: number | null;
+  risk_level: LiquidityCardUtilizationRiskLevel;
+  is_danger: boolean;
+};
+
+export type LiquidityCardUtilizationSummary = {
+  cards: LiquidityCardUtilizationItem[];
+  dangerous_count: number;
+  unrated_count: number;
 };
 
 const calendarGroupKey = (cutoff: number, due: number) => `${cutoff}-${due}`;
@@ -116,6 +149,132 @@ const endOfUtcDay = (until: Date) => {
   const ymd = toUtcDateOnlyString(until);
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+};
+
+const toMonthKeyUtc = (date: Date | string) => {
+  const d = typeof date === 'string' ? new Date(`${date}T00:00:00.000Z`) : date;
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+const buildMonthKeyRange = (asOf: string, until: string): string[] => {
+  const [asOfYear, asOfMonth] = asOf.split('-').map(Number);
+  const [untilYear, untilMonth] = until.split('-').map(Number);
+  const cursor = new Date(Date.UTC(asOfYear, asOfMonth - 1, 1));
+  const end = new Date(Date.UTC(untilYear, untilMonth - 1, 1));
+  const months: string[] = [];
+
+  while (cursor.getTime() <= end.getTime()) {
+    months.push(toMonthKeyUtc(cursor));
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+
+  return months;
+};
+
+const mergeMoneyByMonthKey = (
+  target: Map<string, number>,
+  monthKey: string,
+  amount: number,
+) => {
+  target.set(monthKey, (target.get(monthKey) ?? 0) + amount);
+};
+
+const collectExpectedIncomeByMonth = async (
+  ownerFilter: OwnerFilter,
+  asOf: Date,
+  until: Date,
+): Promise<Map<string, number>> => {
+  const map = new Map<string, number>();
+  const fortnights = await prisma.fortnight.findMany({
+    where: {
+      ...ownerFilter,
+      end_date: { gte: asOf },
+      start_date: { lte: endOfUtcDay(until) },
+    },
+    select: {
+      id: true,
+      period: true,
+      start_date: true,
+      end_date: true,
+    },
+  });
+
+  if (fortnights.length === 0) {
+    return map;
+  }
+
+  const fortnightIds = fortnights.map((f) => f.id);
+  const [registeredIncomes, registeredTemplateIncomes] = await Promise.all([
+    prisma.income.findMany({
+      where: {
+        ...ownerFilter,
+        received_at: {
+          gte: asOf,
+          lte: endOfUtcDay(until),
+        },
+      },
+      select: {
+        amount: true,
+        received_at: true,
+      },
+    }),
+    prisma.income.findMany({
+      where: {
+        ...ownerFilter,
+        fortnight_id: { in: fortnightIds },
+        income_template_id: { not: null },
+      },
+      select: {
+        fortnight_id: true,
+        income_template_id: true,
+      },
+    }),
+  ]);
+
+  for (const income of registeredIncomes) {
+    mergeMoneyByMonthKey(
+      map,
+      toMonthKeyUtc(income.received_at),
+      Number(income.amount),
+    );
+  }
+
+  const existingTemplateKey = new Set(
+    registeredTemplateIncomes.map(
+      (row) => `${row.fortnight_id}-${row.income_template_id}`,
+    ),
+  );
+
+  for (const fn of fortnights) {
+    const appliesField =
+      fn.period === FortnightPeriod.FIRST
+        ? ('applies_first_fortnight' as const)
+        : ('applies_second_fortnight' as const);
+
+    const templates = await prisma.incomeTemplate.findMany({
+      where: {
+        ...ownerFilter,
+        active: true,
+        [appliesField]: true,
+      },
+      select: {
+        id: true,
+        suggested_amount: true,
+      },
+    });
+
+    for (const template of templates) {
+      const key = `${fn.id}-${template.id}`;
+      if (existingTemplateKey.has(key)) continue;
+      const amount = Number(template.suggested_amount ?? 0);
+      if (amount <= 0) continue;
+      mergeMoneyByMonthKey(map, toMonthKeyUtc(fn.end_date), amount);
+    }
+  }
+
+  return map;
 };
 
 const collectUnpaidFundingObligations = async (
@@ -311,7 +470,7 @@ export const getLiquidityProjection = async (
   const includeUnpaid = input.includeUnpaidExpenses ?? true;
   const includeTemplates = input.includeExpenseTemplates ?? false;
 
-  const [fundingWallets, creditCards] = await Promise.all([
+  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth] = await Promise.all([
     prisma.wallet.findMany({
       where: {
         ...input.ownerFilter,
@@ -340,10 +499,33 @@ export const getLiquidityProjection = async (
         id: true,
         name: true,
         type: true,
+        amount: true,
+        credit_limit: true,
         cutoff_day: true,
         due_day: true,
       },
     }),
+    prisma.wallet.findMany({
+      where: {
+        ...input.ownerFilter,
+        active: true,
+        type: {
+          in: [
+            PaymentMethodType.CREDIT_CARD,
+            PaymentMethodType.DEPARTMENT_STORE_CARD,
+          ],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        amount: true,
+        credit_limit: true,
+      },
+      orderBy: { name: 'asc' },
+    }),
+    collectExpectedIncomeByMonth(input.ownerFilter, asOf, input.until),
   ]);
 
   const fundingTotal = fundingWallets.reduce(
@@ -357,10 +539,10 @@ export const getLiquidityProjection = async (
       { name: w.name, type: w.type as PaymentMethodType },
     ]),
   );
-  const allCardIds = creditCards.map((c) => c.id);
+  const allCardIds = creditCardsForProjection.map((c) => c.id);
 
   const cardMeta = new Map(
-    creditCards.map((c) => [
+    creditCardsForProjection.map((c) => [
       c.id,
       {
         name: c.name,
@@ -372,7 +554,7 @@ export const getLiquidityProjection = async (
   );
 
   const groups = new Map<string, number[]>();
-  for (const card of creditCards) {
+  for (const card of creditCardsForProjection) {
     const key = calendarGroupKey(card.cutoff_day!, card.due_day!);
     const list = groups.get(key);
     if (list) {
@@ -528,6 +710,102 @@ export const getLiquidityProjection = async (
     first_cumulative_shortfall_date: firstShortfall,
   };
 
+  const debtByMonth = new Map<
+    string,
+    {
+      msi_debt_total: number;
+      expense_template_total: number;
+      other_debt_components_total: number;
+    }
+  >();
+  const monthKeys = buildMonthKeyRange(asOfStr, untilStr);
+  for (const key of monthKeys) {
+    debtByMonth.set(key, {
+      msi_debt_total: 0,
+      expense_template_total: 0,
+      other_debt_components_total: 0,
+    });
+  }
+
+  for (const m of milestones) {
+    const monthKey = toMonthKeyUtc(m.due_date);
+    const monthRow = debtByMonth.get(monthKey);
+    if (!monthRow) continue;
+    for (const o of m.obligations) {
+      if (o.source === 'credit_card_statement') {
+        monthRow.msi_debt_total += o.next_due_payment;
+        continue;
+      }
+      if (o.source === 'expense_template') {
+        monthRow.expense_template_total += o.next_due_payment;
+        continue;
+      }
+      monthRow.other_debt_components_total += o.next_due_payment;
+    }
+  }
+
+  const monthly_series: LiquidityMonthlySeriesItem[] = monthKeys.map((month_key) => {
+    const monthDebt = debtByMonth.get(month_key) ?? {
+      msi_debt_total: 0,
+      expense_template_total: 0,
+      other_debt_components_total: 0,
+    };
+    const expected_income_total = expectedIncomeByMonth.get(month_key) ?? 0;
+    const monthly_remaining =
+      expected_income_total -
+      (monthDebt.msi_debt_total +
+        monthDebt.expense_template_total +
+        monthDebt.other_debt_components_total);
+
+    return {
+      month_key,
+      msi_debt_total: monthDebt.msi_debt_total,
+      expected_income_total,
+      expense_template_total: monthDebt.expense_template_total,
+      other_debt_components_total: monthDebt.other_debt_components_total,
+      monthly_remaining,
+    };
+  });
+
+  const utilizationCards: LiquidityCardUtilizationItem[] = creditCardsForUtilization.map((card) => {
+    const usedAmount = Math.max(Number(card.amount ?? 0), 0);
+    const creditLimitRaw = Number(card.credit_limit ?? 0);
+    const hasLimit = Number.isFinite(creditLimitRaw) && creditLimitRaw > 0;
+    if (!hasLimit) {
+      return {
+        card_id: card.id,
+        card_name: card.name,
+        card_type: card.type,
+        used_amount: usedAmount,
+        credit_limit: null,
+        utilization_percent: null,
+        risk_level: 'unrated_no_limit',
+        is_danger: false,
+      };
+    }
+
+    const utilization = (usedAmount / creditLimitRaw) * 100;
+    const isDanger = utilization > 80;
+    return {
+      card_id: card.id,
+      card_name: card.name,
+      card_type: card.type,
+      used_amount: usedAmount,
+      credit_limit: creditLimitRaw,
+      utilization_percent: utilization,
+      risk_level: isDanger ? 'danger' : 'safe',
+      is_danger: isDanger,
+    };
+  });
+
+  const card_utilization_summary: LiquidityCardUtilizationSummary = {
+    cards: utilizationCards,
+    dangerous_count: utilizationCards.filter((card) => card.is_danger).length,
+    unrated_count: utilizationCards.filter(
+      (card) => card.risk_level === 'unrated_no_limit',
+    ).length,
+  };
+
   const extraAssumptions: string[] = [];
   if (includeUnpaid) {
     extraAssumptions.push(
@@ -562,6 +840,8 @@ export const getLiquidityProjection = async (
       include_unpaid_expenses: includeUnpaid,
       include_expense_templates: includeTemplates,
     },
+    monthly_series,
+    card_utilization_summary,
   };
 };
 

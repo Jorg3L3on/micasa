@@ -53,6 +53,21 @@ export async function expandIncomeTemplatesForFortnight(
       where: { active: true },
       select: { id: true },
     });
+    const templateIds = templates.map((template) => template.id);
+    const existingIncomes = templateIds.length
+      ? await tx.income.findMany({
+          where: {
+            fortnight_id: fortnightId,
+            income_template_id: { in: templateIds },
+          },
+          select: { income_template_id: true },
+        })
+      : [];
+    const existingIncomeTemplateIds = new Set(
+      existingIncomes
+        .map((income) => income.income_template_id)
+        .filter((value): value is number => value !== null),
+    );
 
     const created: string[] = [];
 
@@ -70,14 +85,7 @@ export async function expandIncomeTemplatesForFortnight(
           (fortnight.user_id != null ? defaultUser?.id : null);
         if (userId == null) continue;
 
-        const existingIncome = await tx.income.findFirst({
-          where: {
-            fortnight_id: fortnightId,
-            income_template_id: template.id,
-          },
-        });
-
-        if (existingIncome) continue;
+        if (existingIncomeTemplateIds.has(template.id)) continue;
 
         await tx.income.create({
           data: {
@@ -89,20 +97,14 @@ export async function expandIncomeTemplatesForFortnight(
             income_template_id: template.id,
           },
         });
+        existingIncomeTemplateIds.add(template.id);
       } else {
         // House income template
         const houseId = template.house_id;
 
         if (template.user_id == null) {
           // House-only income (no specific user): create Income directly for the house
-          const existingIncome = await tx.income.findFirst({
-            where: {
-              fortnight_id: fortnightId,
-              income_template_id: template.id,
-            },
-          });
-
-          if (existingIncome) continue;
+          if (existingIncomeTemplateIds.has(template.id)) continue;
 
           await tx.income.create({
             data: {
@@ -115,6 +117,7 @@ export async function expandIncomeTemplatesForFortnight(
               income_template_id: template.id,
             },
           });
+          existingIncomeTemplateIds.add(template.id);
         } else {
           // House template with user (transfer: user → house)
           const userId = template.user_id;
@@ -176,7 +179,7 @@ export async function expandIncomeTemplatesForFortnight(
     }
 
     return { count: created.length, names: created };
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 }
 
 export async function expandExpenseTemplatesForFortnight(
@@ -220,19 +223,42 @@ export async function expandExpenseTemplatesForFortnight(
     });
 
     const created: string[] = [];
+    const templateIds = templates.map((template) => template.id);
+    const existingExpenses = templateIds.length
+      ? await tx.expense.findMany({
+          where: {
+            fortnight_id: fortnightId,
+            expense_template_id: { in: templateIds },
+          },
+          select: { expense_template_id: true },
+        })
+      : [];
+    const existingTemplateIds = new Set(
+      existingExpenses
+        .map((expense) => expense.expense_template_id)
+        .filter((value): value is number => value !== null),
+    );
+
+    const walletIds = Array.from(
+      new Set(
+        templates
+          .map((template) => template.wallet_id)
+          .filter((value): value is number => value !== null),
+      ),
+    );
+    const wallets = walletIds.length
+      ? await tx.wallet.findMany({
+          where: { id: { in: walletIds } },
+          select: { id: true, user_id: true, house_id: true },
+        })
+      : [];
+    const walletById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
 
     for (const template of templates) {
       const categoryId = template.category_id;
       if (categoryId === null) continue;
 
-      const existing = await tx.expense.findFirst({
-        where: {
-          fortnight_id: fortnightId,
-          expense_template_id: template.id,
-        },
-      });
-
-      if (existing) continue;
+      if (existingTemplateIds.has(template.id)) continue;
 
       const amount =
         template.suggested_amount != null &&
@@ -240,32 +266,32 @@ export async function expandExpenseTemplatesForFortnight(
           ? Number(template.suggested_amount)
           : DEFAULT_EXPENSE_AMOUNT;
 
+      let walletIdForExpense: number | null = template.wallet_id;
       if (template.wallet_id != null) {
-        const wallet = await tx.wallet.findUnique({
-          where: { id: template.wallet_id },
-          select: { id: true, user_id: true, house_id: true },
-        });
+        const wallet = walletById.get(template.wallet_id);
 
         if (!wallet) {
-          continue;
+          walletIdForExpense = null;
         }
 
-        const walletOwnerUserId = wallet.user_id;
-        const walletOwnerHouseId = wallet.house_id;
+        if (wallet) {
+          const walletOwnerUserId = wallet.user_id;
+          const walletOwnerHouseId = wallet.house_id;
 
-        if (fortnight.user_id != null) {
-          if (
-            walletOwnerUserId !== fortnight.user_id ||
-            walletOwnerHouseId !== null
-          ) {
-            continue;
-          }
-        } else if (fortnight.house_id != null) {
-          if (
-            walletOwnerHouseId !== fortnight.house_id ||
-            walletOwnerUserId !== null
-          ) {
-            continue;
+          if (fortnight.user_id != null) {
+            if (
+              walletOwnerUserId !== fortnight.user_id ||
+              walletOwnerHouseId !== null
+            ) {
+              walletIdForExpense = null;
+            }
+          } else if (fortnight.house_id != null) {
+            if (
+              walletOwnerHouseId !== fortnight.house_id ||
+              walletOwnerUserId !== null
+            ) {
+              walletIdForExpense = null;
+            }
           }
         }
       }
@@ -278,7 +304,7 @@ export async function expandExpenseTemplatesForFortnight(
           category_id: categoryId,
           description: template.name,
           amount: String(amount),
-          wallet_id: template.wallet_id ?? undefined,
+          wallet_id: walletIdForExpense ?? undefined,
           expense_template_id: template.id,
           due_day: resolvedDue,
           is_paid: false,
@@ -288,9 +314,10 @@ export async function expandExpenseTemplatesForFortnight(
       });
 
       created.push(template.name);
+      existingTemplateIds.add(template.id);
     }
 
     return { count: created.length, names: created };
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 }
 
