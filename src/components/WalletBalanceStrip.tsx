@@ -139,6 +139,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                 const walletAlreadyPaid = paidWalletIds.includes(wallet.id);
                 const dueInCurrentFortnight =
                   isCreditType &&
+                  !walletAlreadyPaid &&
                   wallet.due_day != null &&
                   (isFirstFortnight
                     ? wallet.due_day >= 1 && wallet.due_day <= 15
