@@ -395,11 +395,10 @@ export const parsePantryReceiptUpload = async ({
 
   if (name.endsWith('.pdf') || lowerMime.includes('pdf')) {
     try {
-      const { PDFParse } = await import('pdf-parse');
-      const parser = new PDFParse({ data: new Uint8Array(buffer) });
-      const textResult = await parser.getText();
-      await parser.destroy();
-      const text = textResult.text ?? '';
+      const { extractText, getDocumentProxy } = await import('unpdf');
+      const pdf = await getDocumentProxy(new Uint8Array(buffer));
+      const textResult = await extractText(pdf, { mergePages: true });
+      const text = (Array.isArray(textResult.text) ? textResult.text.join('\n') : textResult.text) ?? '';
       if (!text.trim()) {
         warnings.push(
           'El PDF no contiene texto seleccionable (puede ser solo imagen). Prueba exportar o subir CSV.',
