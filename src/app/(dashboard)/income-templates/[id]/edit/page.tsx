@@ -47,6 +47,9 @@ type HouseUserItem = {
   email: string;
 };
 
+const FIELD_CLASSNAME =
+  'h-11 rounded-lg border border-white/15 bg-black/35 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors placeholder:text-muted-foreground hover:border-white/25 hover:bg-black/45 focus-visible:border-white/35 focus-visible:bg-black/45 focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-0';
+
 export default function EditIncomeTemplatePage() {
   const { context } = useFinanceContext();
   const router = useRouter();
@@ -77,20 +80,37 @@ export default function EditIncomeTemplatePage() {
   });
 
   useEffect(() => {
+    let isActive = true;
+
+    if (context.id === 0) {
+      return () => {
+        isActive = false;
+      };
+    }
+
     const fetchData = async () => {
       try {
+        if (!isActive) {
+          return;
+        }
         setLoading(true);
+        setError(null);
         const data = await clientFetchFromApi<IncomeTemplateListItem[]>(
           '/api/income-templates',
           undefined,
           context,
         );
+        if (!isActive) {
+          return;
+        }
         const found = data.find((t) => t.id === id);
         if (!found) {
+          setTemplate(null);
           setError('Plantilla no encontrada');
           return;
         }
         setTemplate(found);
+        setError(null);
         form.reset({
           name: found.name,
           suggestedAmount: found.suggestedAmount ?? null,
@@ -101,14 +121,23 @@ export default function EditIncomeTemplatePage() {
           userId: found.userId ?? null,
         });
       } catch (err) {
+        if (!isActive) {
+          return;
+        }
         setError(
           err instanceof Error ? err.message : 'Error al cargar los datos',
         );
       } finally {
-        setLoading(false);
+        if (isActive) {
+          setLoading(false);
+        }
       }
     };
+
     fetchData();
+    return () => {
+      isActive = false;
+    };
   }, [id, form, context]);
 
   useEffect(() => {
@@ -206,6 +235,7 @@ export default function EditIncomeTemplatePage() {
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
                         <Input
+                          className={FIELD_CLASSNAME}
                           placeholder="Ej. Salario, Freelance"
                           {...field}
                         />
@@ -222,6 +252,7 @@ export default function EditIncomeTemplatePage() {
                       <FormLabel>Monto sugerido (opcional)</FormLabel>
                       <FormControl>
                         <Input
+                          className={FIELD_CLASSNAME}
                           type="number"
                           step="0.01"
                           min="0"
@@ -251,6 +282,7 @@ export default function EditIncomeTemplatePage() {
                     <FormLabel>Origen (opcional)</FormLabel>
                     <FormControl>
                       <Input
+                        className={FIELD_CLASSNAME}
                         placeholder="Ej. Empresa, Proyecto"
                         {...field}
                         value={field.value ?? ''}
@@ -280,7 +312,7 @@ export default function EditIncomeTemplatePage() {
                           }
                           disabled={loadingMembers || houseMembers.length === 0}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className={`w-full ${FIELD_CLASSNAME}`}>
                             <SelectValue placeholder="Selecciona un miembro (opcional)" />
                           </SelectTrigger>
                           <SelectContent>
