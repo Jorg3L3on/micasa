@@ -23,6 +23,19 @@ import type {
   PatchPantryProductInput,
 } from '@/schemas/pantry-product.schema';
 import type { PantryProductDto } from '@/types/pantry-product';
+import type {
+  CreateShoppingCartInput,
+  CreateShoppingCartItemInput,
+  UpdateShoppingCartInput,
+  UpdateShoppingCartItemInput,
+} from '@/schemas/pantry-shopping-cart.schema';
+import type {
+  PantryShoppingCartActivityDto,
+  PantryShoppingCartDetailDto,
+  PantryShoppingCartItemDto,
+  PantryShoppingCartSummaryDto,
+  ShoppingCartStatus,
+} from '@/types/pantry-shopping-cart';
 
 type ApiErrorDetail = {
   message?: string;
@@ -290,6 +303,126 @@ export async function deletePantryProduct(
   await clientFetchFromApi<{ ok: boolean }>(
     `/api/pantry/products/${id}`,
     { method: 'DELETE' },
+    context,
+  );
+}
+
+// --- Pantry shopping carts ---------------------------------------------------
+
+export async function listShoppingCarts(
+  context?: FinanceContextType,
+  status?: ShoppingCartStatus | 'ALL',
+): Promise<PantryShoppingCartSummaryDto[]> {
+  const qs = status && status !== 'ALL' ? `?status=${status}` : '';
+  return clientFetchFromApi<PantryShoppingCartSummaryDto[]>(
+    `/api/pantry/shopping-carts${qs}`,
+    undefined,
+    context,
+  );
+}
+
+export async function getShoppingCart(
+  id: number,
+  context?: FinanceContextType,
+): Promise<PantryShoppingCartDetailDto> {
+  return clientFetchFromApi<PantryShoppingCartDetailDto>(
+    `/api/pantry/shopping-carts/${id}`,
+    undefined,
+    context,
+  );
+}
+
+export async function createShoppingCart(
+  body: CreateShoppingCartInput,
+  context?: FinanceContextType,
+): Promise<PantryShoppingCartDetailDto> {
+  return clientFetchFromApi<PantryShoppingCartDetailDto>(
+    '/api/pantry/shopping-carts',
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function updateShoppingCart(
+  id: number,
+  body: UpdateShoppingCartInput,
+  context?: FinanceContextType,
+): Promise<PantryShoppingCartDetailDto> {
+  return clientFetchFromApi<PantryShoppingCartDetailDto>(
+    `/api/pantry/shopping-carts/${id}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function deleteShoppingCart(
+  id: number,
+  context?: FinanceContextType,
+): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/pantry/shopping-carts/${id}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function updateShoppingCartStatus(
+  id: number,
+  status: ShoppingCartStatus,
+  context?: FinanceContextType,
+): Promise<PantryShoppingCartDetailDto> {
+  return clientFetchFromApi<PantryShoppingCartDetailDto>(
+    `/api/pantry/shopping-carts/${id}/status`,
+    { method: 'PATCH', body: JSON.stringify({ status }) },
+    context,
+  );
+}
+
+export async function addShoppingCartItem(
+  cartId: number,
+  body: CreateShoppingCartItemInput,
+  context?: FinanceContextType,
+): Promise<PantryShoppingCartItemDto> {
+  return clientFetchFromApi<PantryShoppingCartItemDto>(
+    `/api/pantry/shopping-carts/${cartId}/items`,
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function updateShoppingCartItem(
+  cartId: number,
+  itemId: number,
+  body: UpdateShoppingCartItemInput,
+  context?: FinanceContextType,
+): Promise<PantryShoppingCartItemDto> {
+  return clientFetchFromApi<PantryShoppingCartItemDto>(
+    `/api/pantry/shopping-carts/${cartId}/items/${itemId}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function deleteShoppingCartItem(
+  cartId: number,
+  itemId: number,
+  context?: FinanceContextType,
+): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/pantry/shopping-carts/${cartId}/items/${itemId}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function listShoppingCartActivity(
+  cartId: number,
+  context?: FinanceContextType,
+  limit = 100,
+): Promise<PantryShoppingCartActivityDto[]> {
+  return clientFetchFromApi<PantryShoppingCartActivityDto[]>(
+    `/api/pantry/shopping-carts/${cartId}/activity?limit=${limit}`,
+    undefined,
     context,
   );
 }

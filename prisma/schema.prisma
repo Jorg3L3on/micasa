@@ -46,6 +46,25 @@ enum StatementImportProvider {
   CA_EFECTIVO
 }
 
+enum ShoppingCartStatus {
+  IN_PROGRESS
+  BOUGHT
+  CANCELED
+  ARCHIVED
+}
+
+enum ShoppingCartActivityAction {
+  CART_CREATED
+  CART_UPDATED
+  CART_STATUS_CHANGED
+  CART_DELETED
+  ITEM_ADDED
+  ITEM_UPDATED
+  ITEM_CHECKED
+  ITEM_UNCHECKED
+  ITEM_REMOVED
+}
+
 model User {
   id                   Int     @id @default(autoincrement())
   name                 String
@@ -73,6 +92,13 @@ model User {
   pantry_receipts_created PantryReceipt[] @relation("PantryReceiptCreatedBy")
   pantry_receipts_owned  PantryReceipt[] @relation("PantryReceiptUserOwner")
   pantry_products         PantryProduct[]  @relation("PantryProductUserOwner")
+
+  pantry_shopping_carts_owned      PantryShoppingCart[]       @relation("PantryShoppingCartUserOwner")
+  pantry_shopping_carts_created    PantryShoppingCart[]       @relation("PantryShoppingCartCreatedBy")
+  pantry_shopping_carts_updated    PantryShoppingCart[]       @relation("PantryShoppingCartUpdatedBy")
+  pantry_shopping_items_created    PantryShoppingCartItem[]   @relation("PantryShoppingCartItemCreatedBy")
+  pantry_shopping_items_updated    PantryShoppingCartItem[]   @relation("PantryShoppingCartItemUpdatedBy")
+  pantry_shopping_activities       PantryShoppingCartActivity[] @relation("PantryShoppingCartActivityUser")
 
   // Shared
   memberships HouseMember[]
@@ -279,6 +305,7 @@ model House {
   credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
   pantry_receipts    PantryReceipt[]      @relation("PantryReceiptHouseOwner")
   pantry_products    PantryProduct[]      @relation("PantryProductHouseOwner")
+  pantry_shopping_carts PantryShoppingCart[] @relation("PantryShoppingCartHouseOwner")
 }
 
 model HouseMember {
@@ -544,6 +571,93 @@ model PantryProduct {
   user              User?                 @relation("PantryProductUserOwner", fields: [user_id], references: [id])
   house             House?                @relation("PantryProductHouseOwner", fields: [house_id], references: [id])
 
+  shopping_items    PantryShoppingCartItem[]
+
   @@index([user_id])
   @@index([house_id])
+}
+
+/**
+ * Pre-shopping "to-buy" list. Owned by a user or a house; every house member
+ * can see and mutate the cart and its items. Cart mutations append to the
+ * activity log for audit / "who did what".
+ */
+model PantryShoppingCart {
+  id         Int                @id @default(autoincrement())
+  title      String
+  notes      String?
+  status     ShoppingCartStatus @default(IN_PROGRESS)
+  currency   String             @default("MXN")
+
+  user_id  Int?
+  house_id Int?
+
+  created_by_user_id Int
+  updated_by_user_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user       User?  @relation("PantryShoppingCartUserOwner",  fields: [user_id],  references: [id])
+  house      House? @relation("PantryShoppingCartHouseOwner", fields: [house_id], references: [id])
+  created_by User   @relation("PantryShoppingCartCreatedBy",  fields: [created_by_user_id], references: [id])
+  updated_by User?  @relation("PantryShoppingCartUpdatedBy",  fields: [updated_by_user_id], references: [id])
+
+  items      PantryShoppingCartItem[]
+  activities PantryShoppingCartActivity[]
+
+  @@index([user_id])
+  @@index([house_id])
+  @@index([status])
+  @@index([created_at])
+}
+
+model PantryShoppingCartItem {
+  id         Int      @id @default(autoincrement())
+  cart_id    Int
+  product_id Int?
+  /// Snapshot of the product name (or ad-hoc text). Kept independent so renaming
+  /// a catalog product doesn't rewrite history.
+  name       String
+  quantity   Decimal  @default(1) @db.Decimal(14, 4)
+  unit_label String?
+  unit_price Decimal? @db.Decimal(12, 2)
+  notes      String?
+  checked    Boolean  @default(false)
+  sort_order Int      @default(0)
+
+  created_by_user_id Int
+  updated_by_user_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  cart       PantryShoppingCart @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product    PantryProduct?     @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  created_by User               @relation("PantryShoppingCartItemCreatedBy", fields: [created_by_user_id], references: [id])
+  updated_by User?              @relation("PantryShoppingCartItemUpdatedBy", fields: [updated_by_user_id], references: [id])
+
+  @@index([cart_id])
+  @@index([product_id])
+}
+
+/**
+ * Append-only activity log for a shopping cart. item_id is stored as a scalar
+ * (no FK) so removed-item events survive the cascade when the item is deleted.
+ */
+model PantryShoppingCartActivity {
+  id       Int                         @id @default(autoincrement())
+  cart_id  Int
+  item_id  Int?
+  user_id  Int
+  action   ShoppingCartActivityAction
+  metadata Json?
+
+  created_at DateTime @default(now())
+
+  cart PantryShoppingCart @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  user User               @relation("PantryShoppingCartActivityUser", fields: [user_id], references: [id])
+
+  @@index([cart_id, created_at])
+  @@index([item_id])
 }

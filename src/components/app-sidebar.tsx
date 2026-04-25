@@ -149,7 +149,13 @@ export function AppSidebar({
             pathname === '/pantry' ||
             (pathname.startsWith('/pantry') &&
               !pathname.startsWith('/pantry/receipts') &&
-              !pathname.startsWith('/pantry/products')),
+              !pathname.startsWith('/pantry/products') &&
+              !pathname.startsWith('/pantry/shopping')),
+        },
+        {
+          title: 'Lista de compras',
+          url: '/pantry/shopping',
+          isActive: pathname.startsWith('/pantry/shopping'),
         },
         {
           title: 'Recibos',
