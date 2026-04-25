@@ -37,18 +37,56 @@ const MONTHS_ES: Record<string, number> = {
   diciembre: 11,
 };
 
+/**
+ * Parse a money-like token tolerating both `1,234.56` (US/MX) and `1.234,56` (EU/ES) formats.
+ * Decides which separator is decimal by looking at the rightmost group: if a `,` or `.`
+ * is followed by 1–2 digits at the end of the token, that's the decimal separator and the
+ * other separator is treated as thousands. If both appear, the rightmost wins.
+ */
 const parseMoneyToken = (token: string): number | null => {
-  const cleaned = token.replace(/[$\s]/g, '').replace(/,/g, '');
-  const n = Number.parseFloat(cleaned);
-  return Number.isFinite(n) ? n : null;
+  let s = token.replace(/[$\s]/g, '');
+  const isNegative = s.startsWith('-');
+  if (isNegative) s = s.slice(1);
+  if (!s) return null;
+
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  let decimalSep: '.' | ',' | null = null;
+  if (lastComma === -1 && lastDot === -1) {
+    decimalSep = null;
+  } else if (lastComma === -1) {
+    decimalSep = /\.\d{1,2}$/.test(s) ? '.' : null;
+  } else if (lastDot === -1) {
+    decimalSep = /,\d{1,2}$/.test(s) ? ',' : null;
+  } else {
+    decimalSep = lastComma > lastDot ? ',' : '.';
+  }
+
+  let normalized: string;
+  if (decimalSep === ',') {
+    normalized = s.replace(/\./g, '').replace(',', '.');
+  } else if (decimalSep === '.') {
+    normalized = s.replace(/,/g, '');
+  } else {
+    normalized = s.replace(/[.,]/g, '');
+  }
+
+  const n = Number.parseFloat(normalized);
+  if (!Number.isFinite(n)) return null;
+  return isNegative ? -n : n;
 };
 
+const MONEY_TOKEN_RE = /\$?\s*-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\$?\s*-?\d+(?:[.,]\d{1,2})?/g;
+
 const extractLastMoneyOnLine = (line: string): number | null => {
-  const re = /\$\s*([\d,]+\.\d{2})/g;
   let last: number | null = null;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(line)) !== null) {
-    const v = parseMoneyToken(m[0]);
+  MONEY_TOKEN_RE.lastIndex = 0;
+  while ((m = MONEY_TOKEN_RE.exec(line)) !== null) {
+    const tok = m[0].trim();
+    if (!tok || !/\d/.test(tok)) continue;
+    if (!tok.includes('$') && !/[.,]\d{1,2}$/.test(tok)) continue;
+    const v = parseMoneyToken(tok);
     if (v != null) last = v;
   }
   return last;
@@ -68,36 +106,69 @@ const parsePedidoDate = (line: string): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
+const QTY_UNIT_RE = /(\d+(?:[.,]\d+)?)\s*(kg|pz|g|ml|l|lt|pieza|piezas|unidad|unidades|paq|paquete)\b/i;
+
+const parseQuantityCell = (cell: string): { quantity: number; unit_label: string | null } | null => {
+  const m = cell.match(QTY_UNIT_RE);
+  if (!m) return null;
+  const n = Number.parseFloat(m[1].replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return { quantity: n, unit_label: m[2].toLowerCase() };
+};
+
+/**
+ * Parse a product row.
+ *
+ * Primary path: tab-separated cells reconstructed from PDF positions
+ *   "<desc>\t<qty unit>\t$<total>"
+ *
+ * Tab-less fallback: when the PDF gave us a flat line we can still salvage
+ *   "<desc> <qty> <unit> $<total>"   or   "<desc> $<total>"
+ * by anchoring on the trailing money token.
+ */
 const parseProductLine = (line: string): ParsedReceiptLine | null => {
-  if (!line.includes('\t')) return null;
-  if (!/\$\s*[\d,]+\.\d{2}/.test(line)) return null;
-
   const lineTotal = extractLastMoneyOnLine(line);
-  if (lineTotal == null) return null;
+  if (lineTotal == null || lineTotal <= 0) return null;
 
-  const dollarIdx = line.lastIndexOf('$');
-  const beforeDollar = line.slice(0, dollarIdx).trimEnd();
-  const cells = beforeDollar
-    .split('\t')
-    .map((c) => c.trim())
-    .filter((c) => c.length > 0);
+  let desc = '';
+  let qtyCell: string | null = null;
 
-  const desc = cells[0]?.trim() ?? '';
+  if (line.includes('\t')) {
+    const dollarIdx = line.lastIndexOf('$');
+    const head =
+      dollarIdx >= 0 ? line.slice(0, dollarIdx) : line.replace(/[\d.,\s-]+$/, '');
+    const cells = head
+      .split('\t')
+      .map((c) => c.trim())
+      .filter((c) => c.length > 0);
+    desc = cells[0] ?? '';
+    qtyCell = cells.length >= 2 ? cells[cells.length - 1]! : null;
+  } else {
+    const moneyMatch = line.match(/\$?\s*-?\d[\d.,]*(?:[.,]\d{1,2})?\s*$/);
+    const moneyStart = moneyMatch ? line.lastIndexOf(moneyMatch[0]) : -1;
+    if (moneyStart < 0) return null;
+    const head = line.slice(0, moneyStart).trimEnd();
+    const qtyMatch = head.match(QTY_UNIT_RE);
+    if (qtyMatch && qtyMatch.index !== undefined) {
+      desc = head.slice(0, qtyMatch.index).trim();
+      qtyCell = qtyMatch[0];
+    } else {
+      desc = head;
+    }
+  }
+
   if (desc.length < 2) return null;
 
   let quantity = 1;
   let unit_label: string | null = null;
   let unit_price: number | null = null;
 
-  if (cells.length >= 2) {
-    const mid = cells[cells.length - 1];
-    const qm = mid.match(/^(\d+(?:\.\d+)?)\s*(kg|pz)\s*$/i);
-    if (qm) {
-      quantity = Number.parseFloat(qm[1]);
-      unit_label = qm[2].toLowerCase();
-      if (Number.isFinite(quantity) && quantity > 0) {
-        unit_price = Math.round((lineTotal / quantity) * 100) / 100;
-      }
+  if (qtyCell) {
+    const parsed = parseQuantityCell(qtyCell);
+    if (parsed) {
+      quantity = parsed.quantity;
+      unit_label = parsed.unit_label;
+      unit_price = Math.round((lineTotal / quantity) * 100) / 100;
     }
   }
 
@@ -144,64 +215,102 @@ export const parsePantryReceiptText = (raw: string): ParsedReceipt => {
   };
 
   const lines = raw.split(/\r?\n/);
+  const hasAnyTab = raw.includes('\t');
+  let descBuffer = '';
+
+  const flushBuffer = () => {
+    descBuffer = '';
+  };
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    if (!line) continue;
+    if (!line) {
+      flushBuffer();
+      continue;
+    }
 
     if (/^--\s*\d+\s+of\s+\d+\s*--$/i.test(line)) continue;
     if (line.startsWith('http://') || line.startsWith('https://')) continue;
-    if (/^Código de barras/i.test(line)) continue;
+    if (/^Código de barras/i.test(line)) {
+      flushBuffer();
+      continue;
+    }
     if (/Detalles del pedido/i.test(line) && line.includes('\t')) {
       const left = line.split('\t')[0] ?? '';
       if (/Detalles del pedido/i.test(left)) {
         result.title = left.replace(/\s+/g, ' ').trim();
       }
+      flushBuffer();
       continue;
     }
 
     if (/^Pedido el\b/i.test(line)) {
       result.purchased_at = parsePedidoDate(line);
+      flushBuffer();
       continue;
     }
 
-    const pedidoHash = line.match(/^Pedido#([\w-]+)/i);
+    const pedidoHash = line.match(/^Pedido\s*#\s*([\w-]+)/i);
     if (pedidoHash) {
       result.merchant_ref = pedidoHash[1] ?? null;
+      flushBuffer();
       continue;
     }
 
     if (/^Subtotal\b/i.test(line)) {
       parseSummaryLine(line, 'subtotal', result);
+      flushBuffer();
       continue;
     }
     if (/^Descuento\b/i.test(line) && !/envío/i.test(line)) {
       parseSummaryLine(line, 'discount_total', result);
+      flushBuffer();
       continue;
     }
-    if (/^Descuento en envío/i.test(line)) continue;
+    if (/^Descuento en envío/i.test(line)) {
+      flushBuffer();
+      continue;
+    }
     if (/^Costo de entrega/i.test(line)) {
       parseSummaryLine(line, 'delivery_fee', result);
+      flushBuffer();
       continue;
     }
     if (/^Total\b/i.test(line)) {
       parseSummaryLine(line, 'grand_total', result);
+      flushBuffer();
       continue;
     }
-    if (/^Método/i.test(line) || /^de$/i.test(line) || /^pago$/i.test(line)) {
+    if (/^(Método|Pago)\b/i.test(line)) {
+      flushBuffer();
       continue;
     }
 
-    const product = parseProductLine(line);
+    const candidate = descBuffer ? `${descBuffer} ${line}` : line;
+    const product = parseProductLine(candidate);
     if (product) {
       result.lines.push(product);
+      flushBuffer();
+      continue;
+    }
+
+    if (!/[\d.,]+/.test(line) || line.length < 40) {
+      descBuffer = candidate;
+    } else {
+      flushBuffer();
     }
   }
 
   if (result.lines.length === 0) {
-    result.warnings.push(
-      'No se detectaron productos en el archivo. Puedes agregar renglones manualmente o subir un CSV con columnas: descripcion, cantidad, total.',
-    );
+    if (!hasAnyTab) {
+      result.warnings.push(
+        'La estructura del PDF no se reconoció (sin columnas detectables). Si es escaneado, prueba subir un CSV con columnas: descripcion, cantidad, total.',
+      );
+    } else {
+      result.warnings.push(
+        'No se detectaron productos en el archivo. Puedes agregar renglones manualmente o subir un CSV con columnas: descripcion, cantidad, total.',
+      );
+    }
   }
 
   return result;
@@ -216,7 +325,8 @@ const normalizeHeader = (h: string) =>
 
 const parseCsvToReceipt = (raw: string): ParsedReceipt => {
   const warnings: string[] = [];
-  const rows = splitCsvRows(raw);
+  const stripped = raw.replace(/^﻿/, '');
+  const rows = splitCsvRows(stripped);
   if (rows.length === 0) {
     return {
       title: null,
@@ -343,13 +453,13 @@ const splitCsvLine = (line: string): string[] => {
       continue;
     }
     if (ch === ',' && !inQuotes) {
-      out.push(cur);
+      out.push(cur.trim());
       cur = '';
       continue;
     }
     cur += ch;
   }
-  out.push(cur);
+  out.push(cur.trim());
   return out;
 };
 
@@ -361,21 +471,33 @@ const extractPdfTextWithColumns = async (pdf: {
     getTextContent: () => Promise<{ items: unknown[] }>;
   }>;
 }): Promise<string> => {
-  const COLUMN_GAP_THRESHOLD = 4;
   const lines: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const rows = new Map<number, Array<{ x: number; w: number; str: string }>>();
+    const items: Array<{ x: number; y: number; w: number; str: string }> = [];
+    let totalChars = 0;
+    let totalWidth = 0;
     for (const raw of content.items) {
       const item = raw as PdfTextItem;
       if (typeof item.str !== 'string' || !Array.isArray(item.transform)) continue;
       const y = Math.round(item.transform[5]);
       const x = item.transform[4];
       const w = item.width ?? 0;
-      const arr = rows.get(y) ?? [];
-      arr.push({ x, w, str: item.str });
-      rows.set(y, arr);
+      items.push({ x, y, w, str: item.str });
+      if (item.str.length > 0 && w > 0) {
+        totalChars += item.str.length;
+        totalWidth += w;
+      }
+    }
+    const avgCharWidth = totalChars > 0 ? totalWidth / totalChars : 4;
+    const columnGapThreshold = Math.max(2, avgCharWidth * 1.6);
+
+    const rows = new Map<number, Array<{ x: number; w: number; str: string }>>();
+    for (const it of items) {
+      const arr = rows.get(it.y) ?? [];
+      arr.push({ x: it.x, w: it.w, str: it.str });
+      rows.set(it.y, arr);
     }
     const ys = Array.from(rows.keys()).sort((a, b) => b - a);
     for (const y of ys) {
@@ -385,7 +507,7 @@ const extractPdfTextWithColumns = async (pdf: {
       for (const cell of cells) {
         const gap = cell.x - prevEnd;
         if (line === '') line = cell.str;
-        else if (gap > COLUMN_GAP_THRESHOLD) line += '\t' + cell.str;
+        else if (gap > columnGapThreshold) line += '\t' + cell.str;
         else line += cell.str;
         prevEnd = cell.x + cell.w;
       }

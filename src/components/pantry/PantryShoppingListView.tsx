@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { CheckCircle2, Clock, ListChecks, Loader2, Plus, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import EmptyState from '@/components/EmptyState';
 import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
+import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
 import { CreateCartSheet } from '@/components/pantry/CreateCartSheet';
 import { PantryShoppingCartCard } from '@/components/pantry/PantryShoppingCartCard';
 import { useFinanceContext } from '@/context/finance-context';
@@ -27,9 +28,25 @@ const FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'ALL', label: 'Todos' },
 ];
 
+const formatRelative = (iso: string | null): string => {
+  if (!iso) return '—';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '—';
+  const diffMs = Date.now() - then;
+  const minutes = Math.round(diffMs / 60_000);
+  if (minutes < 1) return 'ahora';
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `hace ${days} d`;
+  return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+};
+
 export default function PantryShoppingListView() {
   const { context } = useFinanceContext();
   const [carts, setCarts] = useState<PantryShoppingCartSummaryDto[]>([]);
+  const [inProgressCarts, setInProgressCarts] = useState<PantryShoppingCartSummaryDto[]>([]);
   const [filter, setFilter] = useState<StatusFilter>('IN_PROGRESS');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +56,14 @@ export default function PantryShoppingListView() {
     try {
       setLoading(true);
       setError(null);
-      const data = await listShoppingCarts(context, filter);
-      setCarts(data);
+      const [filtered, inProgress] = await Promise.all([
+        listShoppingCarts(context, filter),
+        filter === 'IN_PROGRESS'
+          ? Promise.resolve(null)
+          : listShoppingCarts(context, 'IN_PROGRESS'),
+      ]);
+      setCarts(filtered);
+      setInProgressCarts(inProgress ?? filtered);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar los carritos');
     } finally {
@@ -64,35 +87,53 @@ export default function PantryShoppingListView() {
       ? `/pantry/shopping/${id}?${ownerQuery}`
       : `/pantry/shopping/${id}`;
 
+  const metrics = useMemo(() => {
+    const cartsCount = inProgressCarts.length;
+    const itemsPending = inProgressCarts.reduce(
+      (acc, c) => acc + Math.max(0, c.totals.items_count - c.totals.checked_count),
+      0,
+    );
+    const estimated = inProgressCarts.reduce(
+      (acc, c) => acc + (c.totals.estimated_total ?? 0),
+      0,
+    );
+    const lastUpdated = inProgressCarts.reduce<string | null>((acc, c) => {
+      if (!acc) return c.updated_at;
+      return new Date(c.updated_at) > new Date(acc) ? c.updated_at : acc;
+    }, null);
+    return { cartsCount, itemsPending, estimated, lastUpdated };
+  }, [inProgressCarts]);
+
   const handleCreate = async (data: { title: string; notes: string | null }) => {
     const created = await createShoppingCart(data, context);
     toast.success('Carrito creado');
     setCreateOpen(false);
-    setCarts((prev) => [
-      {
-        id: created.id,
-        title: created.title,
-        notes: created.notes,
-        status: created.status,
-        currency: created.currency,
-        created_by: created.created_by,
-        updated_by: created.updated_by,
-        created_at: created.created_at,
-        updated_at: created.updated_at,
-        totals: created.totals,
-      },
-      ...prev,
-    ]);
+    const summary: PantryShoppingCartSummaryDto = {
+      id: created.id,
+      title: created.title,
+      notes: created.notes,
+      status: created.status,
+      currency: created.currency,
+      created_by: created.created_by,
+      updated_by: created.updated_by,
+      created_at: created.created_at,
+      updated_at: created.updated_at,
+      totals: created.totals,
+    };
+    setCarts((prev) => [summary, ...prev]);
+    if (created.status === 'IN_PROGRESS') {
+      setInProgressCarts((prev) => [summary, ...prev]);
+    }
   };
 
   return (
     <PantryLayoutShell
-      className="flex flex-col gap-4 pb-24"
+      className="space-y-5 pb-24"
       role="region"
       aria-label="Listas de compras"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+      <div className="sticky top-20 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 bg-background/95 px-4 py-2 backdrop-blur supports-backdrop-filter:bg-background/80">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold leading-tight">Listas de compras</h2>
           <p className="text-xs text-muted-foreground">
             Planea lo que tienes que comprar y llévalo en el bolsillo.
@@ -108,8 +149,35 @@ export default function PantryShoppingListView() {
         </Button>
       </div>
 
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <PantryMetricTile
+          icon={ListChecks}
+          label="Carritos en curso"
+          value={String(metrics.cartsCount)}
+          accent="sky"
+        />
+        <PantryMetricTile
+          icon={CheckCircle2}
+          label="Por comprar"
+          value={String(metrics.itemsPending)}
+          accent="amber"
+        />
+        <PantryMetricTile
+          icon={Wallet}
+          label="Estimado"
+          value={formatCurrency(metrics.estimated)}
+          accent="emerald"
+        />
+        <PantryMetricTile
+          icon={Clock}
+          label="Última actividad"
+          value={formatRelative(metrics.lastUpdated)}
+          accent="slate"
+        />
+      </div>
+
       <div
-        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
+        className="flex gap-2 overflow-x-auto pb-1"
         role="tablist"
         aria-label="Filtro por estado"
       >
@@ -153,7 +221,7 @@ export default function PantryShoppingListView() {
           }}
         />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-4">
           {carts.map((cart) => (
             <li key={cart.id}>
               <PantryShoppingCartCard cart={cart} href={hrefFor(cart.id)} />
