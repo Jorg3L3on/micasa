@@ -216,7 +216,7 @@ export default function SummaryBlock({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="min-w-0 truncate text-left text-xs font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200"
+                    className="min-w-0 truncate text-left text-[11px] font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200 sm:text-xs"
                   >
                     Disponible
                   </button>
@@ -283,7 +283,7 @@ export default function SummaryBlock({
                   <button
                     type="button"
                     className={cn(
-                      'min-w-0 truncate text-left text-xs font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      'min-w-0 truncate text-left text-[11px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs',
                       trasPagarPlaneado >= 0
                         ? 'text-primary/85 decoration-primary/30 hover:text-primary'
                         : 'text-destructive/85 decoration-destructive/30 hover:text-destructive',
