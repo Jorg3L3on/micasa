@@ -311,7 +311,7 @@ export default async function MonthlyPage({
   return (
     <>
       <div
-        className="relative mb-4 flex items-center gap-2 overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/10 via-background to-primary/3 px-3 py-3 shadow-sm before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:from-primary/15 dark:via-card dark:to-primary/5 dark:before:via-white/8 sm:mb-6 sm:gap-3 sm:px-4"
+        className="relative mb-5 flex items-center gap-2 overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/10 via-background to-primary/3 px-3 py-3.5 shadow-sm before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:from-primary/15 dark:via-card dark:to-primary/5 dark:before:via-white/8 sm:mb-7 sm:gap-3 sm:px-4"
         role="group"
         aria-label="Selector de mes"
       >
@@ -378,7 +378,7 @@ export default async function MonthlyPage({
         </div>
       </div>
 
-      <div className="mb-6 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2 shadow-sm backdrop-blur-sm dark:bg-card/60">
+      <div className="mb-7 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm dark:bg-card/60">
         <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
       </div>
 

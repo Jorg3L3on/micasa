@@ -680,10 +680,10 @@ export default function FortnightColumn({
 
   return (
     <>
-      <div className="flex flex-col space-y-4">
+      <div className="flex flex-col space-y-4 sm:space-y-5">
         {/* Summary card (toggle desde la barra de planificación) */}
         {showSummaryCard ? (
-          <div className="sticky top-16 z-10 -mx-0.5 px-0.5 pb-1 backdrop-blur-sm">
+          <div className="sticky top-16 z-10 -mx-0.5 px-0.5 pb-0.5 backdrop-blur-sm sm:pb-1">
             <SummaryBlock
               tenemos={tenemos}
               libre={libre}
@@ -732,7 +732,7 @@ export default function FortnightColumn({
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <div className="mb-3 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:gap-2 sm:p-1.5">
+          <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-2 sm:p-1.5">
             <TabsList
               variant="line"
               className={cn(
@@ -740,68 +740,71 @@ export default function FortnightColumn({
                 '[&_[data-slot=tabs-trigger]]:rounded-full',
                 '[&_[data-slot=tabs-trigger]]:transition-all',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:from-primary/95',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:to-primary/80',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:from-primary/90',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:to-primary/75',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:text-primary-foreground',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:shadow-sm',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:ring-1',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:ring-primary/30',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:border-transparent',
+                '[&_[data-slot=tabs-trigger][data-state=inactive]]:text-foreground/70',
+                '[&_[data-slot=tabs-trigger][data-state=inactive]]:hover:text-foreground/90',
+                '[&_[data-slot=tabs-trigger]]:after:hidden',
               )}
             >
-            <TabsTrigger
-              value="expenses"
-              className="px-2.5 py-1.5 text-xs font-semibold sm:px-3.5 sm:py-2 sm:text-sm"
-              aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
-            >
-              <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                Gastos
-                <Badge
-                  variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                  className={cn(
-                    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
-                    columnTab === 'expenses' && unpaidExpenseCount > 0 &&
-                      'bg-primary-foreground/20 text-primary-foreground',
-                  )}
-                  aria-hidden
-                >
-                  {unpaidExpenseCount}
-                </Badge>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="cards"
-              className="px-2.5 py-1.5 text-xs font-semibold sm:px-3.5 sm:py-2 sm:text-sm"
-              aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
-            >
-              <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                <span className="sm:hidden">Tarjeta</span>
-                <span className="hidden sm:inline">Pagos tarjeta</span>
-                <Badge
-                  variant={
-                    pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
-                  }
-                  className={cn(
-                    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
-                    columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
-                      'bg-primary-foreground/20 text-primary-foreground',
-                  )}
-                  aria-hidden
-                >
-                  {pendingCardPaymentsCount}
-                </Badge>
-              </span>
-            </TabsTrigger>
+              <TabsTrigger
+                value="expenses"
+                className="min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm"
+                aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
+              >
+                <span className="inline-flex items-center gap-1.5 sm:gap-2">
+                  Gastos
+                  <Badge
+                    variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
+                    className={cn(
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                      columnTab === 'expenses' && unpaidExpenseCount > 0 &&
+                        'bg-primary-foreground/20 text-primary-foreground',
+                    )}
+                    aria-hidden
+                  >
+                    {unpaidExpenseCount}
+                  </Badge>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="cards"
+                className="min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm"
+                aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
+              >
+                <span className="inline-flex items-center gap-1.5 sm:gap-2">
+                  <span className="sm:hidden">Tarjeta</span>
+                  <span className="hidden sm:inline">Pagos tarjeta</span>
+                  <Badge
+                    variant={
+                      pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
+                    }
+                    className={cn(
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                      columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
+                        'bg-primary-foreground/20 text-primary-foreground',
+                    )}
+                    aria-hidden
+                  >
+                    {pendingCardPaymentsCount}
+                  </Badge>
+                </span>
+              </TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 sm:pl-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
                     onClick={() => setAddExpenseDialogOpen(true)}
                     disabled={!fortnightId || fortnightId <= 0}
-                    className="h-8 w-8 gap-1.5 p-0 shadow-sm sm:w-auto sm:px-3"
+                    className="h-9 w-9 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8 sm:w-auto sm:px-3"
                     aria-label="Agregar gasto a esta quincena"
                     title={
                       !fortnightId || fortnightId <= 0
@@ -825,7 +828,7 @@ export default function FortnightColumn({
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8 shrink-0"
+                        className="h-9 w-9 shrink-0 border-border/70 bg-background/70 text-foreground/85 hover:bg-muted sm:h-8 sm:w-8"
                         disabled={!fortnightId || fortnightId <= 0}
                         aria-label="Más acciones de esta quincena"
                       >
