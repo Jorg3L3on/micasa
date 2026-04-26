@@ -58,21 +58,19 @@ export function LoginForm({
       <form onSubmit={onSubmit}>
         <div className="flex flex-col gap-1">
           <div className="flex flex-col items-center gap-1">
-            <a
-              href="#"
-              className="flex flex-col items-center gap-2 font-medium"
-            >
-              <div className="flex h-60 w-60 items-center justify-center rounded-md">
+            <Link href="/" className="flex flex-col items-center gap-2 font-medium">
+              <div className="flex h-24 w-60 items-center justify-center rounded-md">
                 <Image
                   src="/logo-black.svg"
                   alt="MiCasa logo"
                   width={240}
-                  height={240}
-                  className="size-60"
+                  height={76}
+                  className="h-auto w-60"
+                  unoptimized
                 />
               </div>
               <span className="sr-only">MiCasa</span>
-            </a>
+            </Link>
             <h1 className="text-xl font-bold">Iniciar sesión</h1>
           </div>
           <div className="flex flex-col gap-6">
