@@ -233,9 +233,13 @@ export type LiquidityProjectionMilestone = {
 export type LiquidityProjectionSummary = {
   total_obligations_due_on_or_before_until: number;
   funding_total: number;
+  expected_income_total_on_or_before_until: number;
   net_liquidity_versus_obligations: number;
   shortfall_versus_funding: number;
   first_cumulative_shortfall_date: string | null;
+  net_liquidity_versus_obligations_including_income: number;
+  shortfall_versus_funding_and_income: number;
+  first_projected_shortfall_date: string | null;
 };
 
 export type LiquidityProjectionOptionsEcho = {

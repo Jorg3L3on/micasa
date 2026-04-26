@@ -9,6 +9,20 @@ import {
 import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
 
 type PeriodView = 'month' | 'biweekly';
+type DashboardAlertTarget = {
+  path: string;
+  query?: Record<string, string | number>;
+};
+
+type DashboardAlert = {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  severity: 'error' | 'warning' | 'info';
+  target: DashboardAlertTarget;
+  fingerprint: string;
+};
 
 function getCurrentPeriod() {
   const now = new Date();
@@ -381,14 +395,12 @@ export async function GET(request: NextRequest) {
           )
         : null;
 
-    const alerts: Array<{
-      type: string;
-      title: string;
-      description: string;
-      severity: 'error' | 'warning' | 'info';
-    }> = [];
+    const alertScope = `${current.year}-${current.month}-${view === 'biweekly' ? current.period : 'MONTH'}`;
+    const alerts: DashboardAlert[] = [];
     if (overdueInCurrent.length > 0) {
+      const alertId = `overdue:${alertScope}`;
       alerts.push({
+        id: alertId,
         type: 'overdue',
         title: 'Gastos vencidos',
         description: `${
@@ -398,24 +410,45 @@ export async function GET(request: NextRequest) {
           currency: 'MXN',
         }).format(totalOverdueAmount)}`,
         severity: 'error',
+        target: {
+          path: `/monthly/${current.year}/${current.month}`,
+          query: view === 'biweekly' ? { period: current.period } : undefined,
+        },
+        fingerprint: alertId,
       });
     }
     if (percentCommitted >= 80 && totalIncomeCurrent > 0) {
+      const alertId = `high_commitment:${alertScope}`;
       alerts.push({
+        id: alertId,
         type: 'high_commitment',
         title: 'Compromiso alto',
         description: `El ${Math.round(
           percentCommitted,
         )}% de tus ingresos está comprometido en gastos.`,
         severity: 'warning',
+        target: { path: '/wallets/liquidity' },
+        fingerprint: alertId,
       });
     }
     if (totalIncomeCurrent === 0 && currentFortnightIds.length > 0) {
+      const alertId = `missing_income:${alertScope}`;
       alerts.push({
+        id: alertId,
         type: 'missing_income',
         title: 'Ingresos no registrados',
         description: 'No hay ingresos registrados para este periodo.',
         severity: 'info',
+        target: {
+          path: '/transactions',
+          query: {
+            type: 'income',
+            year: current.year,
+            month: current.month,
+            period: current.period,
+          },
+        },
+        fingerprint: alertId,
       });
     }
 

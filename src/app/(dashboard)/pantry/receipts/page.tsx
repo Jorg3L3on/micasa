@@ -2,17 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
-  ChevronDown,
+  Download,
   FileText,
   FileUp,
   Loader2,
-  Package,
-  Sparkles,
+  MoreHorizontal,
+  Trash2,
 } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -22,17 +21,49 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import EmptyState from '@/components/EmptyState';
 import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, listPantryReceipts, uploadPantryReceipt } from '@/lib/api';
+import {
+  buildOwnerQuery,
+  deletePantryReceipt,
+  listShoppingCarts,
+  listPantryReceipts,
+  getClientApiBaseUrl,
+  updateShoppingCartStatus,
+  updateShoppingCart,
+  uploadPantryReceipt,
+} from '@/lib/api';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
+import type { PantryShoppingCartSummaryDto } from '@/types/pantry-shopping-cart';
+import {
+  SHOPPING_STORE_OPTIONS,
+  SHOPPING_STORE_LABELS,
+  type ShoppingStore,
+} from '@/types/shopping-store';
 
 const formatShortDate = (iso: string | null): string => {
   if (!iso) return '—';
@@ -53,9 +84,23 @@ export default function PantryReceiptsPage() {
   const [listError, setListError] = useState<string | null>(null);
 
   const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [storeFile, setStoreFile] = useState(true);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadPurchasedAt, setUploadPurchasedAt] = useState('');
+  const [uploadStore, setUploadStore] = useState<ShoppingStore | null>(null);
+  const [cartsLoading, setCartsLoading] = useState(false);
+  const [inProgressCarts, setInProgressCarts] = useState<
+    PantryShoppingCartSummaryDto[]
+  >([]);
+  const [selectedCartId, setSelectedCartId] = useState<number | null>(null);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(
+    null,
+  );
+  const [deleteTarget, setDeleteTarget] = useState<PantryReceiptListItemDto | null>(
+    null,
+  );
 
   const receiptDetailHref = useCallback(
     (id: number) => {
@@ -66,9 +111,6 @@ export default function PantryReceiptsPage() {
     },
     [context],
   );
-  const ownerQuery = useMemo(() => buildOwnerQuery(context).toString(), [context]);
-  const productsHref = ownerQuery ? `/pantry/products?${ownerQuery}` : '/pantry/products';
-  const insightsHref = ownerQuery ? `/pantry?${ownerQuery}` : '/pantry';
 
   const loadList = useCallback(async () => {
     try {
@@ -89,22 +131,64 @@ export default function PantryReceiptsPage() {
     void loadList();
   }, [loadList]);
 
-  const handleFileSelected = async (fileList: FileList | null) => {
-    const file = fileList?.[0];
-    if (!file) return;
+  const resetUploadForm = () => {
+    setSelectedFile(null);
+    setUploadTitle('');
+    setUploadPurchasedAt('');
+    setUploadStore(null);
+    setSelectedCartId(null);
+    setStoreFile(true);
+  };
+
+  const handleOpenUpload = async () => {
+    setUploadOpen(true);
+    try {
+      setCartsLoading(true);
+      const carts = await listShoppingCarts(context, 'IN_PROGRESS');
+      setInProgressCarts(carts);
+    } catch {
+      setInProgressCarts([]);
+    } finally {
+      setCartsLoading(false);
+    }
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!selectedFile) {
+      toast.error('Selecciona un archivo');
+      return;
+    }
+    if (!uploadPurchasedAt.trim()) {
+      toast.error('La fecha de compra es obligatoria');
+      return;
+    }
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', selectedFile);
     formData.append('storeFile', storeFile ? 'true' : 'false');
     if (uploadTitle.trim()) formData.append('title', uploadTitle.trim());
-    if (uploadPurchasedAt.trim()) {
-      formData.append('purchased_at', uploadPurchasedAt.trim());
-    }
+    formData.append('purchased_at', uploadPurchasedAt.trim());
+    if (uploadStore) formData.append('store', uploadStore);
     try {
       setUploading(true);
       const created = await uploadPantryReceipt(formData, context);
       toast.success('Recibo guardado');
-      setUploadTitle('');
-      setUploadPurchasedAt('');
+      if (selectedCartId != null) {
+        try {
+          await updateShoppingCartStatus(selectedCartId, 'BOUGHT', context);
+          if (uploadStore) {
+            await updateShoppingCart(selectedCartId, { store: uploadStore }, context);
+          }
+          toast.success('Carrito marcado como comprado');
+        } catch (statusErr) {
+          toast.error(
+            statusErr instanceof Error
+              ? statusErr.message
+              : 'No se pudo actualizar el carrito',
+          );
+        }
+      }
+      setUploadOpen(false);
+      resetUploadForm();
       await loadList();
       if (created.parse_warnings.length > 0) {
         toast.message('Avisos del archivo', {
@@ -120,6 +204,46 @@ export default function PantryReceiptsPage() {
       setUploading(false);
     }
   };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deletePantryReceipt(deleteTarget.id, context);
+      toast.success('Recibo eliminado');
+      setDeleteTarget(null);
+      await loadList();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo eliminar el recibo',
+      );
+    }
+  };
+
+  const handleDownloadFromList = useCallback(
+    async (receipt: PantryReceiptListItemDto) => {
+      if (!receipt.file_name) return;
+      setDownloadingReceiptId(receipt.id);
+      const query = buildOwnerQuery(context).toString();
+      const url = `${getClientApiBaseUrl()}/api/pantry/receipts/${receipt.id}/file${query ? `?${query}` : ''}`;
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) throw new Error('No se pudo descargar el archivo');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = receipt.file_name ?? 'recibo';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'No se pudo descargar el archivo',
+        );
+      } finally {
+        setDownloadingReceiptId(null);
+      }
+    },
+    [context],
+  );
 
   const listColumns = useMemo<ColumnDef<PantryReceiptListItemDto>[]>(
     () => [
@@ -150,6 +274,17 @@ export default function PantryReceiptsPage() {
         cell: ({ row }) => (
           <span className="text-sm font-mono tabular-nums text-muted-foreground">
             {formatShortDate(row.original.purchased_at)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'store',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Tienda" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {row.original.store ? SHOPPING_STORE_LABELS[row.original.store] : '—'}
           </span>
         ),
       },
@@ -188,13 +323,77 @@ export default function PantryReceiptsPage() {
           </span>
         ),
       },
+      {
+        id: 'file',
+        header: () => <span className="sr-only">Archivo</span>,
+        cell: ({ row }) => (
+          <div
+            className="flex justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {row.original.file_name ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Descargar archivo del recibo"
+                disabled={downloadingReceiptId === row.original.id}
+                onClick={() => void handleDownloadFromList(row.original)}
+              >
+                {downloadingReceiptId === row.original.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Acciones</span>,
+        cell: ({ row }) => (
+          <div
+            className="flex justify-end"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Acciones del recibo"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setDeleteTarget(row.original)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar recibo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
+      },
     ],
-    [],
+    [downloadingReceiptId, handleDownloadFromList, setDeleteTarget],
   );
 
   const stats = useMemo(() => {
     const receiptCount = receipts.length;
-    const warningsCount = receipts.filter((r) => r.parse_warnings.length > 0).length;
     const totalGrand = receipts.reduce((acc, r) => acc + (r.grand_total ?? 0), 0);
     const latestPurchasedAt = receipts.reduce<string | null>((latest, r) => {
       if (!r.purchased_at) return latest;
@@ -203,7 +402,6 @@ export default function PantryReceiptsPage() {
     }, null);
     return {
       receiptCount,
-      warningsCount,
       totalGrand,
       latestPurchasedAt,
     };
@@ -216,17 +414,14 @@ export default function PantryReceiptsPage() {
       aria-label="Recibos de despensa"
     >
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
-          <Link href={productsHref}>
-            <Package className="h-4 w-4" />
-            Productos
-          </Link>
-        </Button>
-        <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
-          <Link href={insightsHref}>
-            <Sparkles className="h-4 w-4" />
-            Ver insights
-          </Link>
+        <Button
+          type="button"
+          size="sm"
+          className="h-9 rounded-lg"
+          onClick={() => void handleOpenUpload()}
+        >
+          <FileUp className="h-4 w-4" />
+          Importar archivo
         </Button>
       </div>
 
@@ -240,14 +435,6 @@ export default function PantryReceiptsPage() {
           </p>
           <p className="mt-1 font-mono text-xl font-bold tabular-nums">
             {stats.receiptCount.toLocaleString('es-MX')}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Avisos de importación
-          </p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
-            {stats.warningsCount.toLocaleString('es-MX')}
           </p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
@@ -267,134 +454,6 @@ export default function PantryReceiptsPage() {
           </p>
         </div>
       </section>
-
-      <Card
-        className={cn(
-          'overflow-hidden border-border/60 border-l-[3px] border-l-emerald-500/45 transition-shadow duration-200 hover:shadow-md',
-        )}
-      >
-        <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-            <FileUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-          </span>
-          <div className="flex flex-1 flex-col gap-0.5">
-            <CardTitle className="text-sm font-semibold leading-none">
-              Subir recibo
-            </CardTitle>
-            <p className="text-[10px] text-muted-foreground">
-              PDF (texto seleccionable), CSV o TXT. Los datos se asocian al
-              contexto actual (personal o casa).
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-4">
-            <input
-              type="file"
-              accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain"
-              className="sr-only"
-              id="pantry-receipt-upload"
-              disabled={uploading}
-              onChange={(e) => {
-                void handleFileSelected(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  Arrastra o selecciona un archivo
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  PDF con texto, CSV o TXT. Formato CSV sugerido:
-                  {' '}
-                  <span className="font-mono">descripcion,cantidad,total</span>
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="default"
-                className="rounded-xl sm:shrink-0"
-                disabled={uploading}
-                asChild
-              >
-                <label
-                  htmlFor="pantry-receipt-upload"
-                  className="inline-flex cursor-pointer items-center gap-2"
-                >
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileUp className="h-4 w-4" />
-                  )}
-                  Elegir archivo
-                </label>
-              </Button>
-            </div>
-          </div>
-
-          <Collapsible defaultOpen={false} className="space-y-3">
-            <CollapsibleTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-8 w-fit gap-1.5 px-2 -ml-2 text-muted-foreground hover:text-foreground [&[data-state=open]>svg]:rotate-180"
-                aria-label="Mostrar u ocultar detalles opcionales del recibo"
-              >
-                <ChevronDown className="h-4 w-4 shrink-0 transition-transform" />
-                Detalles opcionales
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="receipt-title"
-                    className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Título (opcional)
-                  </Label>
-                  <Input
-                    id="receipt-title"
-                    value={uploadTitle}
-                    onChange={(e) => setUploadTitle(e.target.value)}
-                    placeholder="Ej. Bodega Aurrera — marzo"
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="receipt-date"
-                    className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Fecha de compra (opcional)
-                  </Label>
-                  <Input
-                    id="receipt-date"
-                    type="date"
-                    value={uploadPurchasedAt}
-                    onChange={(e) => setUploadPurchasedAt(e.target.value)}
-                    className="h-9"
-                  />
-                </div>
-                <div className="flex items-end gap-2 pb-0.5">
-                  <Checkbox
-                    id="store-file"
-                    checked={storeFile}
-                    onCheckedChange={(v) => setStoreFile(v === true)}
-                  />
-                  <Label
-                    htmlFor="store-file"
-                    className="text-sm font-normal leading-snug cursor-pointer"
-                  >
-                    Guardar copia del archivo en MiCasa
-                  </Label>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
-      </Card>
 
       <Card
         className={cn(
@@ -447,6 +506,148 @@ export default function PantryReceiptsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={uploadOpen}
+        onOpenChange={(open) => {
+          setUploadOpen(open);
+          if (!open && !uploading) resetUploadForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Importar recibo</DialogTitle>
+            <DialogDescription>
+              La fecha de compra es obligatoria. Puedes elegir tienda y marcar un carrito
+              en curso como comprado al finalizar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="upload-file">Archivo</Label>
+              <Input
+                id="upload-file"
+                type="file"
+                accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                PDF con texto, CSV o TXT.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="receipt-date-required">Fecha de compra *</Label>
+                <Input
+                  id="receipt-date-required"
+                  type="date"
+                  value={uploadPurchasedAt}
+                  onChange={(e) => setUploadPurchasedAt(e.target.value)}
+                  className="h-9"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="receipt-title-modal">Título (opcional)</Label>
+                <Input
+                  id="receipt-title-modal"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="Ej. Compra quincenal"
+                  className="h-9"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Tienda (opcional)</Label>
+                <Select
+                  value={uploadStore ?? '__NONE__'}
+                  onValueChange={(value) =>
+                    setUploadStore(value === '__NONE__' ? null : (value as ShoppingStore))
+                  }
+                >
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="Sin tienda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__NONE__">Sin tienda</SelectItem>
+                    {SHOPPING_STORE_OPTIONS.map((store) => (
+                      <SelectItem key={store.value} value={store.value}>
+                        {store.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Carrito en curso (opcional)</Label>
+                <Select
+                  value={selectedCartId != null ? String(selectedCartId) : '__NONE__'}
+                  onValueChange={(value) =>
+                    setSelectedCartId(value === '__NONE__' ? null : Number(value))
+                  }
+                  disabled={cartsLoading}
+                >
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue
+                      placeholder={cartsLoading ? 'Cargando...' : 'No marcar carrito'}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__NONE__">No marcar carrito</SelectItem>
+                    {inProgressCarts.map((cart) => (
+                      <SelectItem key={cart.id} value={String(cart.id)}>
+                        {cart.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="store-file-modal"
+                checked={storeFile}
+                onCheckedChange={(v) => setStoreFile(v === true)}
+              />
+              <Label
+                htmlFor="store-file-modal"
+                className="text-sm font-normal leading-snug cursor-pointer"
+              >
+                Guardar copia del archivo en MiCasa
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setUploadOpen(false);
+                resetUploadForm();
+              }}
+              disabled={uploading}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => void handleUploadSubmit()} disabled={uploading}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Importar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar este recibo?"
+        description="Se borrarán todas las líneas y el archivo asociado. Esta acción no se puede deshacer."
+        itemName={deleteTarget?.title ?? undefined}
+      />
     </PantryLayoutShell>
   );
 }

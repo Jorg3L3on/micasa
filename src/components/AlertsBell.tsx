@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bell, AlertTriangle, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { Bell, AlertTriangle, AlertCircle, Info, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import type { FinanceContextType } from '@/types/finance-context';
 import { useClientMounted } from '@/hooks/use-client-mounted';
 
 const STORAGE_KEY_BASE = 'micasa-alerts-seen';
+const DISMISSED_STORAGE_KEY_BASE = 'micasa-alerts-dismissed';
 
 const storageKeyForContext = (context: FinanceContextType): string => {
   if (context.type === 'user' && context.id === 0) {
@@ -24,11 +25,24 @@ const storageKeyForContext = (context: FinanceContextType): string => {
   return `${STORAGE_KEY_BASE}:${context.type}:${context.id}`;
 };
 
+const dismissedStorageKeyForContext = (context: FinanceContextType): string => {
+  if (context.type === 'user' && context.id === 0) {
+    return DISMISSED_STORAGE_KEY_BASE;
+  }
+  return `${DISMISSED_STORAGE_KEY_BASE}:${context.type}:${context.id}`;
+};
+
 type AlertItem = {
+  id?: string;
   type: string;
   title: string;
   description: string;
   severity: 'error' | 'warning' | 'info';
+  target?: {
+    path: string;
+    query?: Record<string, string | number | boolean | undefined>;
+  };
+  fingerprint?: string;
 };
 
 type DashboardAlertsResponse = {
@@ -58,6 +72,7 @@ function getAlertId(
   period: { year: number; month: number; period: string },
   alert: AlertItem,
 ): string {
+  if (alert.fingerprint) return alert.fingerprint;
   return `${period.year}-${period.month}-${period.period}-${alert.type}`;
 }
 
@@ -81,6 +96,23 @@ function saveSeenIds(storageKey: string, ids: Set<string>): void {
   }
 }
 
+function buildAlertHref(
+  alert: AlertItem,
+  context: FinanceContextType,
+): string {
+  if (alert.target?.path) {
+    const params = new URLSearchParams(buildOwnerQuery(context));
+    Object.entries(alert.target.query ?? {}).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      params.set(key, String(value));
+    });
+    const query = params.toString();
+    return query ? `${alert.target.path}?${query}` : alert.target.path;
+  }
+  const ownerQs = buildOwnerQuery(context).toString();
+  return ownerQs ? `/dashboard?${ownerQs}` : '/dashboard';
+}
+
 export function AlertsBell() {
   const mounted = useClientMounted();
   const { context } = useFinanceContext();
@@ -88,16 +120,11 @@ export function AlertsBell() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
 
   const seenStorageKey = storageKeyForContext(context);
-
-  const dashboardActividadHref = (() => {
-    const ownerQs = buildOwnerQuery(context).toString();
-    return ownerQs
-      ? `/dashboard?tab=actividad&${ownerQs}`
-      : '/dashboard?tab=actividad';
-  })();
+  const dismissedStorageKey = dismissedStorageKeyForContext(context);
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
@@ -122,6 +149,10 @@ export function AlertsBell() {
   }, [seenStorageKey]);
 
   useEffect(() => {
+    setDismissedIds(loadSeenIds(dismissedStorageKey));
+  }, [dismissedStorageKey]);
+
+  useEffect(() => {
     setData(null);
     fetchAlerts();
   }, [fetchAlerts]);
@@ -138,8 +169,25 @@ export function AlertsBell() {
     [seenStorageKey],
   );
 
+  const dismissAlert = useCallback(
+    (id: string) => {
+      setDismissedIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        saveSeenIds(dismissedStorageKey, next);
+        return next;
+      });
+      markSeen(id);
+    },
+    [dismissedStorageKey, markSeen],
+  );
+
   const period = data?.period ?? null;
-  const alerts = data?.alerts ?? [];
+  const allAlerts = data?.alerts ?? [];
+  const alerts =
+    period === null
+      ? []
+      : allAlerts.filter((a) => !dismissedIds.has(getAlertId(period, a)));
   const unseenCount =
     period === null
       ? 0
@@ -230,16 +278,17 @@ export function AlertsBell() {
               const Icon = config.icon;
               const id = getAlertId(period, alert);
               const isSeen = seenIds.has(id);
+              const alertHref = buildAlertHref(alert, context);
               return (
                 <Link
                   key={id}
-                  href={dashboardActividadHref}
+                  href={alertHref}
                   onClick={() => handleAlertClick(alert)}
                   className={cn(
                     'flex w-full cursor-pointer items-start gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
                     isSeen && 'opacity-70',
                   )}
-                  aria-label={`Ver en Actividad: ${alert.title}`}
+                  aria-label={`Ver alerta: ${alert.title}`}
                 >
                   <Icon
                     className={cn('mt-0.5 size-4 shrink-0', config.iconClass)}
@@ -251,6 +300,20 @@ export function AlertsBell() {
                       {alert.description}
                     </p>
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label={`Eliminar alerta: ${alert.title}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      dismissAlert(id);
+                    }}
+                  >
+                    <X className="size-3.5" aria-hidden />
+                  </Button>
                 </Link>
               );
             })}

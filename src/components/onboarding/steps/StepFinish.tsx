@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { useOnboarding } from '@/components/onboarding/OnboardingContext';
+import {
+  useOnboarding,
+  type CategoryDraft,
+  type ExpenseTemplateDraft,
+  type IncomeTemplateDraft,
+  type WalletDraft,
+} from '@/components/onboarding/OnboardingContext';
 
 type Props = {
   setCanProceed?: (value: boolean) => void;
@@ -14,20 +20,16 @@ const dateFormatter = new Intl.DateTimeFormat('es-MX', {
 });
 
 export default function StepFinish({ setCanProceed }: Props) {
-  const onboarding = useOnboarding() as any;
+  const onboarding = useOnboarding();
 
   const setProceed: (value: boolean) => void =
     setCanProceed ?? onboarding.setCanProceed;
 
-  const wallets = (onboarding.wallets ?? []) as { name?: string }[];
-  const categories = (onboarding.categories ?? []) as { name?: string }[];
-  const incomeTemplates = (onboarding.incomeTemplates ?? []) as {
-    name?: string;
-  }[];
-  const expenseTemplates = (onboarding.expenseTemplates ?? []) as {
-    name?: string;
-  }[];
-  const rawStartDate = onboarding.startDate as string | null | undefined;
+  const wallets: WalletDraft[] = onboarding.wallets ?? [];
+  const categories: CategoryDraft[] = onboarding.categories ?? [];
+  const incomeTemplates: IncomeTemplateDraft[] = onboarding.incomeTemplates ?? [];
+  const expenseTemplates: ExpenseTemplateDraft[] = onboarding.expenseTemplates ?? [];
+  const rawStartDate = onboarding.startDate;
 
   const startDate: Date | null = useMemo(() => {
     if (!rawStartDate) return null;
@@ -35,18 +37,9 @@ export default function StepFinish({ setCanProceed }: Props) {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }, [rawStartDate]);
 
-  const formattedStartDate = startDate
-    ? dateFormatter.format(startDate)
-    : 'Sin fecha de inicio definida';
-
   useEffect(() => {
     setProceed(true);
   }, [setProceed]);
-
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('Onboarding start date:', startDate);
-  }, [startDate]);
 
   return (
     <div className="space-y-6">
@@ -65,6 +58,13 @@ export default function StepFinish({ setCanProceed }: Props) {
 
       {/* Section 2 — Configuration summary */}
       <div className="space-y-4">
+        <section className="space-y-2 rounded-lg border p-4">
+          <h4 className="text-muted-foreground text-sm font-semibold">
+            Inicio de planificación
+          </h4>
+          <p className="text-sm">{startDate ? dateFormatter.format(startDate) : 'Sin fecha de inicio definida'}</p>
+        </section>
+
         <section className="space-y-2 rounded-lg border p-4">
           <h4 className="text-muted-foreground text-sm font-semibold">
             Billeteras

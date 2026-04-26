@@ -516,6 +516,7 @@ model PantryReceipt {
   merchant_ref   String?
   currency       String   @default("MXN")
   purchased_at   DateTime?
+  store          ShoppingStore?
 
   user_id  Int?
   house_id Int?

@@ -1,3 +1,5 @@
+import type { ShoppingStore } from '@/types/shopping-store';
+
 export type PantryReceiptLineDto = {
   id: number;
   receipt_id: number;
@@ -12,6 +14,7 @@ export type PantryReceiptLineDto = {
 export type PantryReceiptListItemDto = {
   id: number;
   title: string | null;
+  store: ShoppingStore | null;
   currency: string;
   purchased_at: string | null;
   grand_total: number | null;
@@ -26,6 +29,7 @@ export type PantryReceiptListItemDto = {
 export type PantryReceiptDetailDto = {
   id: number;
   title: string | null;
+  store: ShoppingStore | null;
   merchant_ref: string | null;
   currency: string;
   purchased_at: string | null;

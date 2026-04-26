@@ -50,6 +50,7 @@ export async function POST() {
     name: 'Cash',
     amount: 0,
     type: 'CASH',
+    provider_icon_key: 'CASH_GENERIC',
     active: true,
     cutoff_day: null,
     due_day: null,

@@ -17,8 +17,13 @@ import StepCategories from '@/components/onboarding/steps/StepCategories';
 import StepIncomeTemplates from '@/components/onboarding/steps/StepIncomeTemplates';
 import StepExpenseTemplates from '@/components/onboarding/steps/StepExpenseTemplates';
 import StepFortnights from '@/components/onboarding/steps/StepFortnights';
-import StepFinish from '@/components/onboarding/steps/StepFinish';
 import { AnimatePresence, motion } from 'framer-motion';
+import type {
+  CategoryDraft,
+  ExpenseTemplateDraft,
+  IncomeTemplateDraft,
+  WalletDraft,
+} from '@/components/onboarding/OnboardingContext';
 
 const steps = [
   StepWelcome,
@@ -27,7 +32,6 @@ const steps = [
   StepIncomeTemplates,
   StepExpenseTemplates,
   StepFortnights,
-  StepFinish,
 ] as const;
 
 const stepTitles: Record<number, string> = {
@@ -37,7 +41,6 @@ const stepTitles: Record<number, string> = {
   3: 'Plantillas de ingresos',
   4: 'Plantillas de gastos',
   5: 'Quincenas',
-  6: 'Listo',
 };
 
 const stepDescriptions: Record<number, string> = {
@@ -47,7 +50,6 @@ const stepDescriptions: Record<number, string> = {
   3: '',
   4: '',
   5: '',
-  6: '',
 };
 
 const stepContentVariants = {
@@ -59,7 +61,7 @@ const stepContentVariants = {
 const stepContentTransition = { duration: 0.25 };
 
 function OnboardingWizardContent() {
-  const onboarding = useOnboarding() as any;
+  const onboarding = useOnboarding();
   const {
     currentStep,
     totalSteps,
@@ -87,11 +89,17 @@ function OnboardingWizardContent() {
           ? onboarding.startDate
           : null;
 
-      const onboardingPayload = {
-        wallets: (onboarding.wallets ?? []) as unknown[],
-        categories: (onboarding.categories ?? []) as unknown[],
-        incomeTemplates: (onboarding.incomeTemplates ?? []) as unknown[],
-        expenseTemplates: (onboarding.expenseTemplates ?? []) as unknown[],
+      const onboardingPayload: {
+        wallets: WalletDraft[];
+        categories: CategoryDraft[];
+        incomeTemplates: IncomeTemplateDraft[];
+        expenseTemplates: ExpenseTemplateDraft[];
+        startDate: string | null;
+      } = {
+        wallets: onboarding.wallets ?? [],
+        categories: onboarding.categories ?? [],
+        incomeTemplates: onboarding.incomeTemplates ?? [],
+        expenseTemplates: onboarding.expenseTemplates ?? [],
         startDate,
       };
 
@@ -108,17 +116,13 @@ function OnboardingWizardContent() {
         return;
       }
 
-      // eslint-disable-next-line no-console
       try {
         const errorBody = await response.json();
-        // eslint-disable-next-line no-console
         console.error('Onboarding completion failed:', response.status, errorBody);
       } catch {
-        // eslint-disable-next-line no-console
         console.error('Onboarding completion failed with non-JSON response:', response.status);
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('Onboarding completion error', error);
     } finally {
       setStepLoading(false);

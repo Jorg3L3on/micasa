@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import { useOnboarding } from '@/components/onboarding/OnboardingContext';
 
 type Props = {
@@ -21,20 +21,8 @@ function formatFortnightRange(start: Date, end: Date): string {
 export default function StepFortnights({
   setCanProceed: setCanProceedProp,
 }: Props) {
-  const onboarding = useOnboarding();
-  const fromContext = onboarding.setCanProceed;
-  const setCanProceed = setCanProceedProp ?? fromContext;
-
-  const [startDate, setStartDate] = useState<string | null>(null);
-
-  useEffect(() => {
-    const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    firstOfMonth.setHours(0, 0, 0, 0);
-    const iso = firstOfMonth.toISOString().slice(0, 10);
-    setStartDate(iso);
-    onboarding.setStartDate(iso);
-  }, [onboarding]);
+  const { setCanProceed: contextSetCanProceed, startDate } = useOnboarding();
+  const setCanProceed = setCanProceedProp ?? contextSetCanProceed;
 
   useEffect(() => {
     setCanProceed(true);
@@ -85,7 +73,7 @@ export default function StepFortnights({
     return result;
   }
 
-  const startDateParsed = startDate ? new Date(startDate + 'T00:00:00') : null;
+  const startDateParsed = startDate ? new Date(`${startDate}T00:00:00`) : null;
   const fortnights =
     startDateParsed && !Number.isNaN(startDateParsed.getTime())
       ? generateFortnights(startDateParsed, PREVIEW_COUNT)

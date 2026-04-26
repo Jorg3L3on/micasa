@@ -23,9 +23,20 @@ export default function StepIncomeTemplates() {
   const { setCanProceed, incomeTemplates, setIncomeTemplates, wallets } =
     useOnboarding();
 
+  const hasMinimumRows = incomeTemplates.length >= 1;
+  const hasValidTemplates = incomeTemplates.every((income) => {
+    const hasName = income.name.trim() !== '';
+    const hasAmount = Number.isFinite(income.amount) && income.amount > 0;
+    const hasWallet = income.walletId.trim() !== '';
+    const appliesAnyFortnight =
+      income.appliesFirstFortnight || income.appliesSecondFortnight;
+    return hasName && hasAmount && hasWallet && appliesAnyFortnight;
+  });
+  const canContinue = hasMinimumRows && hasValidTemplates;
+
   useEffect(() => {
-    setCanProceed(incomeTemplates.length >= 1);
-  }, [incomeTemplates.length, setCanProceed]);
+    setCanProceed(canContinue);
+  }, [canContinue, setCanProceed]);
 
   const handleNameChange = (id: string, name: string) => {
     setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
@@ -113,10 +124,7 @@ export default function StepIncomeTemplates() {
           ¿De dónde viene tu dinero?
         </h3>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Las plantillas son ingresos que recibes con cierta regularidad (sueldo,
-          freelance, etc.). Para cada una: cómo se llama, de dónde viene, un
-          monto de referencia, en qué billetera cae el dinero y en qué quincena
-          lo recibes.
+          Agrega tus ingresos frecuentes y define monto, billetera y quincena.
         </p>
       </div>
 
@@ -165,8 +173,11 @@ export default function StepIncomeTemplates() {
                   <Label htmlFor={`income-name-${income.id}`}>
                     Nombre del ingreso
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Cómo lo verás en la app (ej. Sueldo, Honorarios).
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Ej. Sueldo
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Como lo veras en la app (ej. Sueldo, Honorarios).
                   </p>
                   <Input
                     id={`income-name-${income.id}`}
@@ -190,7 +201,10 @@ export default function StepIncomeTemplates() {
                       (opcional)
                     </span>
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Empresa o cliente
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
                     Quien paga o de donde sale (empresa, cliente).
                   </p>
                   <Input
@@ -209,8 +223,11 @@ export default function StepIncomeTemplates() {
                   <Label htmlFor={`income-amount-${income.id}`}>
                     Monto de referencia
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Aproximado por quincena; puedes ajustarlo después.
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Monto estimado
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Aproximado por quincena; puedes ajustarlo despues.
                   </p>
                   <div className="flex items-center gap-2">
                     <span
@@ -238,7 +255,10 @@ export default function StepIncomeTemplates() {
                   <Label htmlFor={`income-wallet-${income.id}`}>
                     Billetera de depósito
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Donde cae el ingreso
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
                     Donde entra este dinero al cobrarlo.
                   </p>
                   <Select
@@ -268,8 +288,11 @@ export default function StepIncomeTemplates() {
                   <Label htmlFor={`income-frequency-${income.id}`}>
                     Quincenas en que lo recibes
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Si solo cae en una quincena del mes, elige cuál.
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Elige primera, segunda o ambas
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Si solo cae en una quincena del mes, elige cual.
                   </p>
                   <Select
                     value={frequency}
@@ -309,6 +332,12 @@ export default function StepIncomeTemplates() {
       >
         + Agregar ingreso
       </Button>
+      {!canContinue ? (
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          Para continuar, agrega al menos un ingreso con nombre, monto mayor a 0
+          y billetera de deposito.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Table,
@@ -394,7 +395,134 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
             />
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border/60 shadow-sm dark:border-white/[0.08]">
+          <div className="space-y-2 md:hidden">
+            {editableLines.map((row) => (
+              <div
+                key={row.tempKey}
+                className="rounded-xl border border-border/60 bg-card p-3"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Producto
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    aria-label="Eliminar línea"
+                    onClick={() => handleRemoveLine(row.tempKey)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+                <Input
+                  value={row.description}
+                  onChange={(e) => {
+                    setEditableLines((prev) =>
+                      prev.map((x) =>
+                        x.tempKey === row.tempKey
+                          ? { ...x, description: e.target.value }
+                          : x,
+                      ),
+                    );
+                    setLinesDirty(true);
+                  }}
+                  className="h-9 text-sm"
+                  aria-label="Descripción del producto"
+                />
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Cant.
+                    </Label>
+                    <Input
+                      value={row.quantity}
+                      onChange={(e) => {
+                        setEditableLines((prev) =>
+                          prev.map((x) =>
+                            x.tempKey === row.tempKey
+                              ? { ...x, quantity: e.target.value }
+                              : x,
+                          ),
+                        );
+                        setLinesDirty(true);
+                      }}
+                      className="h-9 text-sm font-mono tabular-nums"
+                      inputMode="decimal"
+                      aria-label="Cantidad"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Ud.
+                    </Label>
+                    <Input
+                      value={row.unit_label}
+                      onChange={(e) => {
+                        setEditableLines((prev) =>
+                          prev.map((x) =>
+                            x.tempKey === row.tempKey
+                              ? { ...x, unit_label: e.target.value }
+                              : x,
+                          ),
+                        );
+                        setLinesDirty(true);
+                      }}
+                      className="h-9 text-sm"
+                      aria-label="Unidad"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      P. unit.
+                    </Label>
+                    <Input
+                      value={row.unit_price}
+                      onChange={(e) => {
+                        setEditableLines((prev) =>
+                          prev.map((x) =>
+                            x.tempKey === row.tempKey
+                              ? { ...x, unit_price: e.target.value }
+                              : x,
+                          ),
+                        );
+                        setLinesDirty(true);
+                      }}
+                      className="h-9 text-sm font-mono tabular-nums"
+                      inputMode="decimal"
+                      aria-label="Precio unitario"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Total
+                    </Label>
+                    <Input
+                      value={row.line_total}
+                      onChange={(e) => {
+                        setEditableLines((prev) =>
+                          prev.map((x) =>
+                            x.tempKey === row.tempKey
+                              ? { ...x, line_total: e.target.value }
+                              : x,
+                          ),
+                        );
+                        setLinesDirty(true);
+                      }}
+                      className="h-9 text-right text-sm font-mono tabular-nums"
+                      inputMode="decimal"
+                      aria-label="Total de línea"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-border/60 shadow-sm dark:border-white/[0.08] md:block">
             <Table>
               <TableHeader>
                 <TableRow>

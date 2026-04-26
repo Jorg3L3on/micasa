@@ -9,7 +9,6 @@ import type {
   PantryShoppingCartSummaryDto,
   ShoppingCartStatus,
 } from '@/types/pantry-shopping-cart';
-import { SHOPPING_STORE_LABELS } from '@/types/shopping-store';
 
 const STATUS_META: Record<
   ShoppingCartStatus,
@@ -66,9 +65,18 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
       className="group block rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-          <ShoppingCart className="h-5 w-5" />
-        </span>
+        {cart.store ? (
+          <ShoppingStoreIcon
+            store={cart.store}
+            variant="badge"
+            className="h-10 min-w-12 rounded-xl border-sky-500/30 bg-sky-500/10 px-2"
+            iconClassName="h-6 w-auto"
+          />
+        ) : (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+            <ShoppingCart className="h-5 w-5" />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3 className="truncate text-sm font-semibold leading-tight">
@@ -91,16 +99,6 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
               <span className="inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 {totals.checked_count}/{totals.items_count}
-              </span>
-            ) : null}
-            {cart.store ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-                <ShoppingStoreIcon
-                  store={cart.store}
-                  className="h-4 w-4 border-none bg-transparent p-0"
-                  showLabel={false}
-                />
-                {SHOPPING_STORE_LABELS[cart.store]}
               </span>
             ) : null}
             <span className="ml-auto font-mono tabular-nums text-foreground">

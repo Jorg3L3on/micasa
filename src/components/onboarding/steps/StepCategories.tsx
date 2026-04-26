@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
@@ -24,61 +24,52 @@ export default function StepCategories() {
     }
   }, [editingId]);
 
-  const handleNameChange = useCallback((id: string, name: string) => {
+  const handleNameChange = (id: string, name: string) => {
     setCategories((prev) =>
       prev.map((c) => (c.id === id ? { ...c, name: name.trim() || c.name } : c)),
     );
-  }, []);
+  };
 
-  const handleStartEdit = useCallback((id: string) => {
+  const handleStartEdit = (id: string) => {
     setEditingId(id);
-  }, []);
+  };
 
-  const handleCommitEdit = useCallback(
-    (id: string, value: string) => {
-      const trimmed = value.trim();
-      if (trimmed) {
-        handleNameChange(id, trimmed);
-      }
-      setEditingId(null);
-    },
-    [handleNameChange],
-  );
+  const handleCommitEdit = (id: string, value: string) => {
+    const trimmed = value.trim();
+    if (trimmed) {
+      handleNameChange(id, trimmed);
+    }
+    setEditingId(null);
+  };
 
-  const handleKeyDown = useCallback(
-    (id: string, e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        handleCommitEdit(id, e.currentTarget.value);
-      }
-    },
-    [handleCommitEdit],
-  );
+  const handleKeyDown = (id: string, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleCommitEdit(id, e.currentTarget.value);
+    }
+  };
 
-  const handleCategoryNameFocus = useCallback(
-    (id: string, currentName: string) => {
-      if (currentName === 'Nueva categoría') {
-        setCategories((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, name: '' } : c)),
-        );
-      }
-    },
-    [],
-  );
+  const handleCategoryNameFocus = (id: string, currentName: string) => {
+    if (currentName === 'Nueva categoría') {
+      setCategories((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, name: '' } : c)),
+      );
+    }
+  };
 
-  const handleAdd = useCallback(() => {
+  const handleAdd = () => {
     const newCategory = {
       id: crypto.randomUUID(),
       name: 'Nueva categoría',
     };
     setCategories((prev) => [...prev, newCategory]);
     setEditingId(newCategory.id);
-  }, []);
+  };
 
-  const handleRemove = useCallback((id: string) => {
+  const handleRemove = (id: string) => {
     if (categories.length <= 1) return;
     setCategories((prev) => prev.filter((c) => c.id !== id));
     if (editingId === id) setEditingId(null);
-  }, [categories.length, editingId]);
+  };
 
   const canDelete = categories.length > 1;
 
@@ -103,7 +94,7 @@ export default function StepCategories() {
           <motion.li
             key={category.id}
             className={cn(
-              'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors',
+              'flex min-h-11 items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors',
               'hover:bg-muted/40',
             )}
             role="listitem"
@@ -132,7 +123,7 @@ export default function StepCategories() {
               <button
                 type="button"
                 onClick={() => handleStartEdit(category.id)}
-                className="min-w-0 truncate text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+                className="min-h-8 min-w-0 truncate rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label={`Editar categoría: ${category.name}`}
               >
                 {category.name}
@@ -142,10 +133,10 @@ export default function StepCategories() {
               type="button"
               onClick={() => handleRemove(category.id)}
               disabled={!canDelete}
-              className="text-muted-foreground hover:text-foreground rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+              className="text-muted-foreground hover:text-foreground rounded p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
               aria-label={`Eliminar categoría ${category.name}`}
             >
-              <X className="size-3.5" strokeWidth={2} />
+              <X className="size-4" strokeWidth={2} />
             </button>
           </motion.li>
         ))}

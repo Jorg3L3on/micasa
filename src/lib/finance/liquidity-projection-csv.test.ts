@@ -33,9 +33,13 @@ const minimalResult = (): LiquidityProjectionResult => ({
   summary: {
     total_obligations_due_on_or_before_until: 50,
     funding_total: 100,
+    expected_income_total_on_or_before_until: 100,
     net_liquidity_versus_obligations: 50,
     shortfall_versus_funding: 0,
     first_cumulative_shortfall_date: null,
+    net_liquidity_versus_obligations_including_income: 150,
+    shortfall_versus_funding_and_income: 0,
+    first_projected_shortfall_date: null,
   },
   assumptions: ['a'],
   options: {

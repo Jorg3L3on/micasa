@@ -1,26 +1,36 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api';
+import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
-const CARD_TYPES = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
-
-const CARD_GRADIENTS = [
-  'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-  'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
-  'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
-  'linear-gradient(135deg, #10b981 0%, #0ea5e9 100%)',
-];
+const CARD_TYPES = ['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
 
 export default function MyCardsPanel() {
   const { context } = useFinanceContext();
   const [cards, setCards] = useState<WalletListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
+  const [balanceInput, setBalanceInput] = useState('');
+  const [savingBalance, setSavingBalance] = useState(false);
 
   const load = useCallback(async () => {
     if (!context || (context.type === 'user' && context.id === 0)) {
@@ -34,7 +44,38 @@ export default function MyCardsPanel() {
         undefined,
         context,
       );
-      setCards(wallets.filter((w) => CARD_TYPES.includes(w.type) && w.active !== false));
+      const sortedCards = wallets
+        .filter((wallet) => CARD_TYPES.includes(wallet.type) && wallet.active)
+        .sort((a, b) => {
+          const getTypeRank = (type: string) => {
+            if (type === 'CASH') return 0;
+            if (type === 'DEBIT_CARD') return 1;
+            if (type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') return 2;
+            return 3;
+          };
+
+          const rankDiff = getTypeRank(a.type) - getTypeRank(b.type);
+          if (rankDiff !== 0) return rankDiff;
+
+          const bothCreditTypes =
+            (a.type === 'CREDIT_CARD' || a.type === 'DEPARTMENT_STORE_CARD') &&
+            (b.type === 'CREDIT_CARD' || b.type === 'DEPARTMENT_STORE_CARD');
+
+          if (bothCreditTypes) {
+            const getUsedPct = (wallet: WalletListItem) => {
+              const limit = Number(wallet.credit_limit ?? 0);
+              if (limit <= 0) return Number.POSITIVE_INFINITY;
+              return Math.max(0, Number(wallet.amount)) / limit;
+            };
+
+            const usedPctDiff = getUsedPct(a) - getUsedPct(b);
+            if (usedPctDiff !== 0) return usedPctDiff;
+          }
+
+          return a.name.localeCompare(b.name);
+        });
+
+      setCards(sortedCards);
     } catch {
       setCards([]);
     } finally {
@@ -45,6 +86,51 @@ export default function MyCardsPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handleOpenCardModal = useCallback((card: WalletListItem) => {
+    setSelectedCard(card);
+    setBalanceInput(String(card.amount));
+  }, []);
+
+  const handleCloseCardModal = useCallback((open: boolean) => {
+    if (open) return;
+    setSelectedCard(null);
+    setBalanceInput('');
+  }, []);
+
+  const handleSaveBalance = useCallback(async () => {
+    if (!context || !selectedCard) return;
+
+    const parsed = Number(balanceInput.replace(/[,\s]/g, ''));
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      toast.error('Ingresa un saldo válido (no negativo)');
+      return;
+    }
+
+    try {
+      setSavingBalance(true);
+      await clientFetchFromApi(
+        `/api/wallets?id=${selectedCard.id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ amount: parsed }),
+        },
+        context,
+      );
+      toast.success('Saldo actualizado');
+      await load();
+      setSelectedCard((prev) => (prev ? { ...prev, amount: parsed } : prev));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo actualizar el saldo',
+      );
+    } finally {
+      setSavingBalance(false);
+    }
+  }, [balanceInput, context, load, selectedCard]);
+
+  const isSelectedCardCredit =
+    selectedCard?.type === 'CREDIT_CARD' || selectedCard?.type === 'DEPARTMENT_STORE_CARD';
 
   if (loading) {
     return (
@@ -74,58 +160,197 @@ export default function MyCardsPanel() {
         <span className="text-xs text-muted-foreground">{cards.length} tarjeta{cards.length !== 1 ? 's' : ''}</span>
       </div>
       <div className="space-y-3 overflow-y-auto max-h-[480px] scrollbar-hide">
-        {cards.map((card, idx) => {
-          const gradient = CARD_GRADIENTS[idx % CARD_GRADIENTS.length];
+        {cards.map((card) => {
+          const cardStyle = getProviderCardStyle(card.provider_icon_key, card.type, 'wow');
           const limit = card.credit_limit ?? 0;
-          const spent = card.spent_amount ?? 0;
-          const usagePercent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+          const usagePercent =
+            limit > 0
+              ? Math.min((Math.max(0, Number(card.amount)) / limit) * 100, 100)
+              : 0;
 
           return (
-            <div
+            <button
               key={card.id}
-              className="rounded-xl p-4 text-white"
-              style={{ background: gradient }}
+              type="button"
+              onClick={() => handleOpenCardModal(card)}
+              aria-label={`Abrir detalles de ${card.name}`}
+              className="group relative block w-full overflow-hidden rounded-xl border p-4 text-left text-white ring-1 ring-inset ring-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01]"
+              style={cardStyle}
             >
-              <div className="mb-6 flex items-start gap-2.5">
+              <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/18 blur-2xl" />
+              <span className="pointer-events-none absolute -left-10 -bottom-12 h-28 w-28 rounded-full bg-black/30 blur-2xl" />
+              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.14)_48%,transparent_72%)] opacity-45 transition-opacity duration-300 group-hover:opacity-70" />
+              <div className="mb-5 flex items-start gap-2.5">
                 <WalletProviderIcon
                   providerIconKey={card.provider_icon_key}
                   className="h-9 w-9 shrink-0 rounded-lg border border-white/35 bg-white/20 shadow-sm ring-1 ring-white/10"
                   iconClassName="h-5 w-5"
                   showTooltipLabel
                 />
-                <span className="min-w-0 flex-1 text-sm font-semibold leading-tight opacity-90">
+                <span className="min-w-0 flex-1 truncate pr-1 text-sm font-semibold leading-tight opacity-90">
                   {card.name}
                 </span>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs opacity-75">
-                  <span>Saldo actual</span>
-                  {limit > 0 && <span>Límite</span>}
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 gap-3 text-xs opacity-75">
+                  <span className="truncate">Saldo actual</span>
+                  {limit > 0 ? (
+                    <span className="truncate text-right">Límite</span>
+                  ) : (
+                    <span />
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-base font-bold">{formatCurrency(spent)}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <span className="min-w-0 truncate text-base font-bold font-mono tabular-nums">
+                    {formatCurrency(card.amount)}
+                  </span>
                   {limit > 0 && (
-                    <span className="text-sm font-medium opacity-90">{formatCurrency(limit)}</span>
+                    <span className="min-w-0 truncate text-right text-base font-bold font-mono tabular-nums opacity-90">
+                      {formatCurrency(limit)}
+                    </span>
                   )}
                 </div>
                 {limit > 0 && (
-                  <div className="mt-1">
+                  <div className="mt-1.5 space-y-1.5">
                     <div className="h-1.5 w-full rounded-full bg-white/20">
                       <div
                         className="h-1.5 rounded-full bg-white/80 transition-all"
                         style={{ width: `${usagePercent}%` }}
                       />
                     </div>
-                    <p className="text-xs opacity-60 mt-1">
+                    <p className="text-center text-xs opacity-70">
                       {usagePercent.toFixed(0)}% utilizado
                     </p>
                   </div>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
+
+      <Dialog open={Boolean(selectedCard)} onOpenChange={handleCloseCardModal}>
+        <DialogContent className="sm:max-w-md">
+          {selectedCard ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-start gap-3">
+                  <WalletProviderIcon
+                    providerIconKey={selectedCard.provider_icon_key}
+                    className="h-9 w-9 shrink-0 rounded-lg border border-border/60 shadow-sm"
+                    iconClassName="h-5 w-5"
+                    showTooltipLabel={false}
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <DialogTitle className="truncate text-left text-base">
+                      {selectedCard.name}
+                    </DialogTitle>
+                    <DialogDescription className="text-left text-xs">
+                      Ajusta el saldo actual y revisa datos clave.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Saldo actual
+                    </p>
+                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
+                      {formatCurrency(selectedCard.amount)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {isSelectedCardCredit ? 'Límite' : 'Tipo'}
+                    </p>
+                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
+                      {isSelectedCardCredit
+                        ? selectedCard.credit_limit != null
+                          ? formatCurrency(selectedCard.credit_limit)
+                          : '—'
+                        : 'Débito'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {isSelectedCardCredit ? 'Disponible' : 'Corte'}
+                    </p>
+                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
+                      {isSelectedCardCredit
+                        ? selectedCard.credit_limit != null
+                          ? formatCurrency(
+                              Math.max(
+                                0,
+                                Number(selectedCard.credit_limit) - Number(selectedCard.amount),
+                              ),
+                            )
+                          : '—'
+                        : selectedCard.cutoff_day != null
+                          ? `Día ${selectedCard.cutoff_day}`
+                          : '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {isSelectedCardCredit ? 'Fecha pago' : 'Estado'}
+                    </p>
+                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
+                      {isSelectedCardCredit
+                        ? selectedCard.due_day != null
+                          ? `Día ${selectedCard.due_day}`
+                          : '—'
+                        : selectedCard.active
+                          ? 'Activa'
+                          : 'Inactiva'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dashboard-card-balance-input" className="text-xs">
+                    Saldo actual
+                  </Label>
+                  <Input
+                    id="dashboard-card-balance-input"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={balanceInput}
+                    onChange={(event) => setBalanceInput(event.target.value)}
+                    disabled={savingBalance}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:justify-between">
+                <Button variant="outline" asChild>
+                  <Link
+                    href={
+                      isSelectedCardCredit
+                        ? `/credit-cards/${selectedCard.id}`
+                        : `/wallets/${selectedCard.id}`
+                    }
+                  >
+                    {isSelectedCardCredit ? 'Ir a página de tarjeta' : 'Ir a página de billetera'}
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveBalance}
+                  disabled={savingBalance}
+                  className="rounded-xl"
+                >
+                  {savingBalance ? 'Guardando…' : 'Guardar saldo'}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
