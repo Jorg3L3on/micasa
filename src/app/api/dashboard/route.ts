@@ -24,6 +24,8 @@ type DashboardAlert = {
   fingerprint: string;
 };
 
+const MIN_ALERTABLE_AMOUNT = 0.005;
+
 function getCurrentPeriod() {
   const now = new Date();
   const year = now.getFullYear();
@@ -376,6 +378,7 @@ export async function GET(request: NextRequest) {
 
     const overdueInCurrent = upcomingWithDue.filter((o) => {
       if (o.is_paid) return false;
+      if (o.amount <= MIN_ALERTABLE_AMOUNT) return false;
       const d = new Date(o.dueDate);
       d.setHours(0, 0, 0, 0);
       return d < today;
@@ -397,7 +400,7 @@ export async function GET(request: NextRequest) {
 
     const alertScope = `${current.year}-${current.month}-${view === 'biweekly' ? current.period : 'MONTH'}`;
     const alerts: DashboardAlert[] = [];
-    if (overdueInCurrent.length > 0) {
+    if (overdueInCurrent.length > 0 && totalOverdueAmount > MIN_ALERTABLE_AMOUNT) {
       const alertId = `overdue:${alertScope}`;
       alerts.push({
         id: alertId,
