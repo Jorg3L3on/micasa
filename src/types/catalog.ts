@@ -2,6 +2,7 @@
  * Shared catalog/list types used across pages and components.
  * Single source of truth for API response shapes and form options.
  */
+import type { WalletProviderIconKey } from '@/lib/wallet-provider-icons';
 
 export type CategoryOption = {
   id: number;
@@ -133,7 +134,7 @@ export type BudgetListItem = {
 export type WalletListItem = {
   id: number;
   name: string;
-  provider_icon_key: string | null;
+  provider_icon_key: WalletProviderIconKey | null;
   amount: number;
   credit_limit?: number | null;
   type: string;
