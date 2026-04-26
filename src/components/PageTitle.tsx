@@ -134,10 +134,17 @@ function getPageTitle(
   }
 
   if (segments[0] === 'pantry') {
-    breadcrumbs.push({
-      label: 'Despensa',
-      href: `/pantry${qs}`,
-    });
+    if (segments[1] === 'shopping') {
+      breadcrumbs.push({
+        label: 'Lista de compras',
+        href: `/pantry/shopping${qs}`,
+      });
+      if (segments[2] && /^\d+$/.test(segments[2])) {
+        breadcrumbs.push({ label: `Lista #${segments[2]}` });
+        return { title: 'Detalle de lista de compras', breadcrumbs };
+      }
+      return { title: 'Lista de compras', breadcrumbs };
+    }
     if (segments[1] === 'receipts') {
       breadcrumbs.push({
         label: 'Recibos',
@@ -147,7 +154,7 @@ function getPageTitle(
         breadcrumbs.push({ label: `Recibo #${segments[2]}` });
         return { title: 'Detalle del recibo', breadcrumbs };
       }
-      return { title: 'Recibos de despensa', breadcrumbs };
+      return { title: 'Recibos', breadcrumbs };
     }
     if (segments[1] === 'products') {
       breadcrumbs.push({
@@ -205,7 +212,7 @@ function getPageTitle(
 export default function PageTitle() {
   const pathname = usePathname();
   const { context } = useFinanceContext();
-  const { title, breadcrumbs } = getPageTitle(pathname, context);
+  const { breadcrumbs } = getPageTitle(pathname, context);
 
   return (
     <Breadcrumb>
