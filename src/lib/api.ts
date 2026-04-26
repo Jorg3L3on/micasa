@@ -486,6 +486,7 @@ export async function getPaymentMethodOptions(
       return {
         id: w.id,
         name: w.name,
+        provider_icon_key: w.provider_icon_key ?? null,
         type: w.type,
         amount,
         credit_limit,

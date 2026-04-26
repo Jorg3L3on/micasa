@@ -34,6 +34,7 @@ import { step2Schema, type Step2Values, type Step2Input } from '@/schemas/budget
 import type { BudgetListItem, CategoryOption, WalletListItem } from '@/types/catalog';
 import { clientFetchFromApi } from '@/lib/api';
 import { useFinanceContext } from '@/context/finance-context';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 type Props = {
   open: boolean;
@@ -235,7 +236,12 @@ export default function BudgetAllocationsDialog({
                             <SelectContent>
                               {wallets.map((w) => (
                                 <SelectItem key={w.id} value={String(w.id)}>
-                                  {w.name}
+                                  <WalletIdentity
+                                    name={w.name}
+                                    providerIconKey={w.provider_icon_key}
+                                    iconClassName="h-4.5 w-4.5 rounded-md"
+                                    nameClassName="text-xs"
+                                  />
                                 </SelectItem>
                               ))}
                             </SelectContent>

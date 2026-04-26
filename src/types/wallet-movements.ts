@@ -16,6 +16,7 @@ export type WalletMovement = {
 export type WalletDetail = {
   id: number;
   name: string;
+  provider_icon_key: string | null;
   type: string;
   amount: number;
   credit_limit: number | null;

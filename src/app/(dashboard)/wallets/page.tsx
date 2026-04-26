@@ -22,17 +22,13 @@ import {
   updateCreditCard,
 } from '@/lib/api';
 import {
-  Banknote,
   BadgeCheck,
   BookmarkIcon,
-  CreditCard,
   Eye,
-  Landmark,
   LineChart,
   Pencil,
-  Store,
   Trash2,
-  WalletIcon,
+  WalletIcon
 } from 'lucide-react';
 import {
   type PaymentMethodType,
@@ -50,6 +46,7 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
 
@@ -65,32 +62,6 @@ type BalanceFilterValue =
   | typeof BALANCE_FILTER_ALL
   | 'nonzero'
   | 'zero';
-
-const WALLET_ICON_CONFIG: Record<
-  PaymentMethodType,
-  { icon: typeof CreditCard; bg: string; fg: string }
-> = {
-  CASH: {
-    icon: Banknote,
-    bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-    fg: 'text-emerald-600 dark:text-emerald-400',
-  },
-  DEBIT_CARD: {
-    icon: Landmark,
-    bg: 'bg-blue-500/10 dark:bg-blue-500/15',
-    fg: 'text-blue-600 dark:text-blue-400',
-  },
-  CREDIT_CARD: {
-    icon: CreditCard,
-    bg: 'bg-violet-500/10 dark:bg-violet-500/15',
-    fg: 'text-violet-600 dark:text-violet-400',
-  },
-  DEPARTMENT_STORE_CARD: {
-    icon: Store,
-    bg: 'bg-violet-500/10 dark:bg-violet-500/15',
-    fg: 'text-violet-600 dark:text-violet-400',
-  },
-};
 
 export default function WalletsPage() {
   const { context } = useFinanceContext();
@@ -172,6 +143,7 @@ export default function WalletsPage() {
         amount: data.amount || 0,
         credit_limit: data.credit_limit ?? null,
         type: data.type,
+        provider_icon_key: data.provider_icon_key ?? null,
         active: data.active || true,
         cutoff_day: data.cutoff_day || null,
         due_day: data.due_day || null,
@@ -263,35 +235,18 @@ export default function WalletsPage() {
         cell: ({ row }) => {
           const wallet = row.original;
           const isCard = isCreditType(wallet.type);
-          const config = WALLET_ICON_CONFIG[wallet.type as PaymentMethodType];
-          const Icon = config?.icon ?? WalletIcon;
+          const subtitle =
+            isCard && wallet.cutoff_day != null && wallet.due_day != null
+              ? `Corte ${wallet.cutoff_day} / Pago ${wallet.due_day}`
+              : null;
 
           return (
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-                  config?.bg ?? 'bg-muted',
-                )}
-              >
-                <Icon className={cn('h-3.5 w-3.5', config?.fg ?? 'text-muted-foreground')} />
-              </span>
-              <div className="min-w-0">
-                <p
-                  className={cn(
-                    'truncate font-medium',
-                    !wallet.active && 'text-muted-foreground',
-                  )}
-                >
-                  {wallet.name}
-                </p>
-                {isCard && wallet.cutoff_day != null && wallet.due_day != null && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Corte {wallet.cutoff_day} / Pago {wallet.due_day}
-                  </p>
-                )}
-              </div>
-            </div>
+            <WalletIdentity
+              name={wallet.name}
+              providerIconKey={wallet.provider_icon_key}
+              subtitle={subtitle}
+              nameClassName={cn(!wallet.active && 'text-muted-foreground')}
+            />
           );
         },
       },
@@ -599,6 +554,7 @@ export default function WalletsPage() {
               amount: selectedWallet.amount ?? 0,
               credit_limit: selectedWallet.credit_limit ?? null,
               type: selectedWallet.type as PaymentMethodType,
+              provider_icon_key: selectedWallet.provider_icon_key ?? null,
               active: selectedWallet.active,
               cutoff_day: selectedWallet.cutoff_day,
               due_day: selectedWallet.due_day,

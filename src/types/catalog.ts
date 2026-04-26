@@ -12,6 +12,7 @@ export type CategoryOption = {
 export type PaymentMethodOption = {
   id: number;
   name: string;
+  provider_icon_key?: string | null;
   type?: string;
   amount?: number;
   credit_limit?: number | null;
@@ -132,6 +133,7 @@ export type BudgetListItem = {
 export type WalletListItem = {
   id: number;
   name: string;
+  provider_icon_key: string | null;
   amount: number;
   credit_limit?: number | null;
   type: string;
@@ -296,6 +298,7 @@ export type CreditCardPaymentListItem = {
   note: string | null;
   source_wallet_id: number;
   source_wallet_name: string;
+  source_wallet_provider_icon_key: string | null;
   credit_card_wallet_id: number;
   credit_card_wallet_name: string;
 };

@@ -35,6 +35,7 @@ import {
   type FortnightIncomeDto,
 } from '@/lib/api';
 import type { WalletListItem } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 type Props = {
   open: boolean;
@@ -331,7 +332,11 @@ export function ReceivePayrollButton({
                         {wallets.map((w) => (
                           <SelectItem key={w.id} value={String(w.id)}>
                             <span className="flex items-center gap-2">
-                              {w.name}
+                              <WalletIdentity
+                                name={w.name}
+                                providerIconKey={w.provider_icon_key}
+                                iconClassName="h-5 w-5 rounded-md"
+                              />
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                                 {w.type === 'CASH' ? 'Efectivo' : 'Débito'}
                               </span>

@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { CreditCard } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 const CARD_TYPES = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
 
@@ -85,9 +86,16 @@ export default function MyCardsPanel() {
               className="rounded-xl p-4 text-white"
               style={{ background: gradient }}
             >
-              <div className="flex items-start justify-between mb-6">
-                <span className="text-sm font-semibold opacity-90 leading-tight">{card.name}</span>
-                <CreditCard className="h-5 w-5 opacity-70" />
+              <div className="mb-6 flex items-start gap-2.5">
+                <WalletProviderIcon
+                  providerIconKey={card.provider_icon_key}
+                  className="h-9 w-9 shrink-0 rounded-lg border border-white/35 bg-white/20 shadow-sm ring-1 ring-white/10"
+                  iconClassName="h-5 w-5"
+                  showTooltipLabel
+                />
+                <span className="min-w-0 flex-1 text-sm font-semibold leading-tight opacity-90">
+                  {card.name}
+                </span>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs opacity-75">

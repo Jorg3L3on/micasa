@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
@@ -200,7 +201,16 @@ const CreditCardPaymentDialog = ({
               <SelectContent>
                 {fundingWalletOptions.map((wallet) => (
                   <SelectItem key={wallet.id} value={String(wallet.id)}>
-                    {`${wallet.name} · ${formatCurrency(wallet.amount ?? 0)}`}
+                    <span className="flex items-center justify-between gap-3">
+                      <WalletIdentity
+                        name={wallet.name}
+                        providerIconKey={wallet.provider_icon_key}
+                        iconClassName="h-5 w-5 rounded-md"
+                      />
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {formatCurrency(wallet.amount ?? 0)}
+                      </span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
