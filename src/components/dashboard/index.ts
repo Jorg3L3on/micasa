@@ -9,5 +9,3 @@ export { default as QuickActionsCard } from './QuickActionsCard';
 export { default as AlertsWarningsCard } from './AlertsWarningsCard';
 export { default as PeriodComparisonCard } from './PeriodComparisonCard';
 export { default as LiquidityTeaserCard } from './LiquidityTeaserCard';
-export { default as DashboardTabs } from './DashboardTabs';
-export { default as DashboardTabsWrapper } from './DashboardTabsWrapper';
