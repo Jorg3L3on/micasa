@@ -22,7 +22,12 @@ export const metadata: Metadata = {
   description:
     'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   icons: {
-    icon: '/icon.ico',
+    icon: [
+      { url: '/icon.ico', sizes: 'any' },
+      { url: '/icon.ico' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],
+    shortcut: ['/icon.ico'],
   },
   openGraph: {
     title: 'MiCasa',
