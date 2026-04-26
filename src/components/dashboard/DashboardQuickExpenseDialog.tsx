@@ -34,6 +34,7 @@ import {
 } from '@/schemas/transaction.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 
 type DashboardQuickExpenseDialogProps = {
   open: boolean;
@@ -333,7 +334,7 @@ export default function DashboardQuickExpenseDialog({
                       <option value="">Selecciona un método de pago</option>
                       {paymentMethods.map((paymentMethod) => (
                         <option key={paymentMethod.id} value={paymentMethod.id}>
-                          {paymentMethod.name}
+                          {`${getWalletProviderOption(paymentMethod.provider_icon_key)?.shortLabel ?? '•'} ${paymentMethod.name}`}
                         </option>
                       ))}
                     </select>

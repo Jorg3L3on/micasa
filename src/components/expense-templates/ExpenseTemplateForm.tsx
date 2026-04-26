@@ -37,6 +37,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { ExpenseTemplateFormValues } from '@/schemas/expense-template.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 type ExpenseTemplateFormProps = {
   form: UseFormReturn<ExpenseTemplateFormValues>;
@@ -226,7 +227,11 @@ export function ExpenseTemplateForm({
                               key={paymentMethod.id}
                               value={String(paymentMethod.id)}
                             >
-                              {paymentMethod.name}
+                              <WalletIdentity
+                                name={paymentMethod.name}
+                                providerIconKey={paymentMethod.provider_icon_key}
+                                iconClassName="h-5 w-5 rounded-md"
+                              />
                             </SelectItem>
                           ))}
                         </SelectContent>

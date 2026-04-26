@@ -325,6 +325,7 @@ model Wallet {
   id               Int               @id @default(autoincrement())
   name             String
   description      String?
+  provider_icon_key String?
   amount           Decimal           @default(0) @db.Decimal(10, 2)
   credit_limit     Decimal?          @db.Decimal(10, 2)
   type             PaymentMethodType

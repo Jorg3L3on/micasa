@@ -6,10 +6,14 @@ import {
   requiredStringSchema,
 } from '@/schemas/common.schema';
 import { PAYMENT_METHODS } from '@/domain/payment-method';
+import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
 
 // Payment method type enum
 export const paymentMethodType = z.enum(PAYMENT_METHODS);
 export const creditCardType = z.enum(['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']);
+export const walletProviderIconKeySchema = z
+  .enum(WALLET_PROVIDER_ICON_KEYS)
+  .nullable();
 
 const nullableCreditLimitSchema = z.preprocess(
   (value) => {
@@ -90,6 +94,7 @@ export const createWalletSchema = z.object({
   amount: positiveAmountSchema.default(0),
   credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType,
+  provider_icon_key: walletProviderIconKeySchema.optional(),
   active: z.boolean().default(true),
   cutoff_day: nullablePositiveInt,
   due_day: nullablePositiveInt,
@@ -100,6 +105,7 @@ export const updateWalletSchema = z.object({
   amount: nonNegativeAmountSchema.optional(),
   credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType.optional(),
+  provider_icon_key: walletProviderIconKeySchema.optional(),
   active: z.boolean().optional(),
   cutoff_day: nullablePositiveInt.optional(),
   due_day: nullablePositiveInt.optional(),
@@ -124,6 +130,7 @@ export const walletSchema = z
     amount: positiveAmountSchema.optional(),
     credit_limit: nullableCreditLimitSchema.default(null),
     type: paymentMethodType,
+    provider_icon_key: walletProviderIconKeySchema.default(null),
     active: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,

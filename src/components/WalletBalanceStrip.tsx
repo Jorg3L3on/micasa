@@ -13,6 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
 
@@ -174,46 +175,70 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                         ? 'emerald'
                         : 'neutral';
 
+                const hasBankIcon = Boolean(wallet.provider_icon_key);
+
                 const cardContent = (
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        'relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
-                        accent === 'violet' &&
-                          'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
-                        accent === 'blue' &&
-                          'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
-                        accent === 'emerald' &&
-                          'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10',
-                        accent === 'neutral' &&
-                          'bg-muted/60 ring-border/60',
-                      )}
-                    >
-                      <WalletIcon
-                        className={cn(
-                          'h-3 w-3',
-                          accent === 'violet' &&
-                            'text-violet-600 dark:text-violet-300',
-                          accent === 'blue' &&
-                            'text-blue-600 dark:text-blue-300',
-                          accent === 'emerald' &&
-                            'text-emerald-600 dark:text-emerald-300',
-                          accent === 'neutral' && 'text-muted-foreground',
+                  <div className="flex items-start gap-1.5">
+                    {hasBankIcon ? (
+                      <span className="relative mt-0.5 shrink-0">
+                        <WalletProviderIcon
+                          providerIconKey={wallet.provider_icon_key}
+                          className="h-7 w-7 rounded-md shadow-sm ring-1 ring-border/50"
+                          iconClassName="h-3.5 w-3.5"
+                          showTooltipLabel={false}
+                        />
+                        {(isDueNear || isDuePast) && !walletAlreadyPaid && (
+                          <span
+                            className={cn(
+                              'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
+                              isDuePast
+                                ? 'bg-destructive animate-pulse'
+                                : 'bg-amber-500',
+                            )}
+                            aria-hidden
+                          />
                         )}
-                        aria-hidden
-                      />
-                      {(isDueNear || isDuePast) && !walletAlreadyPaid && (
-                        <span
+                      </span>
+                    ) : (
+                      <span
+                        className={cn(
+                          'relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
+                          accent === 'violet' &&
+                            'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
+                          accent === 'blue' &&
+                            'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
+                          accent === 'emerald' &&
+                            'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10',
+                          accent === 'neutral' &&
+                            'bg-muted/60 ring-border/60',
+                        )}
+                      >
+                        <WalletIcon
                           className={cn(
-                            'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
-                            isDuePast
-                              ? 'bg-destructive animate-pulse'
-                              : 'bg-amber-500',
+                            'h-3 w-3',
+                            accent === 'violet' &&
+                              'text-violet-600 dark:text-violet-300',
+                            accent === 'blue' &&
+                              'text-blue-600 dark:text-blue-300',
+                            accent === 'emerald' &&
+                              'text-emerald-600 dark:text-emerald-300',
+                            accent === 'neutral' && 'text-muted-foreground',
                           )}
                           aria-hidden
                         />
-                      )}
-                    </span>
+                        {(isDueNear || isDuePast) && !walletAlreadyPaid && (
+                          <span
+                            className={cn(
+                              'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
+                              isDuePast
+                                ? 'bg-destructive animate-pulse'
+                                : 'bg-amber-500',
+                            )}
+                            aria-hidden
+                          />
+                        )}
+                      </span>
+                    )}
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <p className="truncate text-[9.5px] font-semibold leading-tight text-muted-foreground/90">
                         {wallet.name}
@@ -328,17 +353,26 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD';
                 return (
                   <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
-                    <span
-                      className={cn(
-                        'h-1.5 w-1.5 shrink-0 rounded-full',
-                        isCreditType
-                          ? 'bg-violet-500/60'
-                          : wallet.type === 'DEBIT_CARD'
-                            ? 'bg-blue-500/60'
-                            : 'bg-muted-foreground/40',
-                      )}
-                      aria-hidden
-                    />
+                    {wallet.provider_icon_key ? (
+                      <WalletProviderIcon
+                        providerIconKey={wallet.provider_icon_key}
+                        className="h-5 w-5 rounded-md shadow-sm ring-1 ring-border/50"
+                        iconClassName="h-3 w-3"
+                        showTooltipLabel={false}
+                      />
+                    ) : (
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 shrink-0 rounded-full',
+                          isCreditType
+                            ? 'bg-violet-500/60'
+                            : wallet.type === 'DEBIT_CARD'
+                              ? 'bg-blue-500/60'
+                              : 'bg-muted-foreground/40',
+                        )}
+                        aria-hidden
+                      />
+                    )}
                     <span className="max-w-[80px] truncate text-[10px] font-medium text-muted-foreground/80">
                       {wallet.name}
                     </span>

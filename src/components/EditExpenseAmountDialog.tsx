@@ -34,6 +34,7 @@ import {
   ExpenseAmountFormValues,
 } from '@/schemas/expense.schema'
 import type { WalletListItem } from '@/types/catalog'
+import { WalletIdentity } from '@/components/wallets/WalletIdentity'
 
 type EditExpenseAmountDialogProps = {
   open: boolean
@@ -190,7 +191,11 @@ export default function EditExpenseAmountDialog({
                         </SelectItem>
                         {wallets.map((w) => (
                           <SelectItem key={w.id} value={String(w.id)}>
-                            {w.name}
+                            <WalletIdentity
+                              name={w.name}
+                              providerIconKey={w.provider_icon_key}
+                              iconClassName="h-5 w-5 rounded-md"
+                            />
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -10,6 +10,7 @@ import type {
   CreditCardPaymentListItem,
   CreditCardStatementPurchaseItem,
 } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 /** Listas dentro de tarjetas: altura máxima y scroll vertical. */
 const CREDIT_CARD_DETAIL_LIST_SCROLL_CLASS =
@@ -353,7 +354,12 @@ export const PaymentTableBlock = ({
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium">Desde {payment.source_wallet_name}</p>
+                    <WalletIdentity
+                      name={payment.source_wallet_name}
+                      providerIconKey={payment.source_wallet_provider_icon_key}
+                      className="font-medium"
+                      iconClassName="h-5 w-5 rounded-md"
+                    />
                     <p className="text-[10px] text-muted-foreground">
                       {formatDate(payment.paid_at)}
                       {payment.note ? ` · ${payment.note}` : ''}

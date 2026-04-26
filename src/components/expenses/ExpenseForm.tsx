@@ -26,6 +26,7 @@ import type {
   PaymentMethodOption,
 } from '@/types/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 
 export type ExpenseFormProps = {
   mode: 'create' | 'edit';
@@ -383,7 +384,7 @@ export default function ExpenseForm({
                   <option value="">Selecciona un método de pago</option>
                   {paymentMethods.map((pm) => (
                     <option key={pm.id} value={pm.id}>
-                      {pm.name}
+                      {`${getWalletProviderOption(pm.provider_icon_key)?.shortLabel ?? '•'} ${pm.name}`}
                     </option>
                   ))}
                 </select>

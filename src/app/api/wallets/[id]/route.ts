@@ -34,6 +34,7 @@ export async function GET(
     const response: WalletDetail = {
       id: wallet.id,
       name: wallet.name,
+      provider_icon_key: wallet.provider_icon_key ?? null,
       type: wallet.type,
       amount: Number(wallet.amount),
       credit_limit: wallet.credit_limit == null ? null : Number(wallet.credit_limit),

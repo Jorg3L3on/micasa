@@ -25,6 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { expenseSchema, ExpenseFormValues } from '@/schemas/expense.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 
 type ExpenseFormProps = {
   open: boolean;
@@ -194,7 +195,7 @@ export default function ExpenseForm({
                       <option value="">Selecciona un método de pago</option>
                       {paymentMethods.map((pm) => (
                         <option key={pm.id} value={pm.id}>
-                          {pm.name}
+                          {`${getWalletProviderOption(pm.provider_icon_key)?.shortLabel ?? '•'} ${pm.name}`}
                         </option>
                       ))}
                     </select>

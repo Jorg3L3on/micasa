@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
   Loader2,
-  Wallet,
   Banknote,
   Landmark,
   CreditCard,
@@ -45,6 +44,8 @@ import {
 } from '@/schemas/wallet.schema';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { WALLET_PROVIDER_ICON_OPTIONS } from '@/lib/wallet-provider-icons';
 
 type TypeMeta = {
   label: string;
@@ -110,6 +111,7 @@ const buildWalletFormDefaults = (
   amount: toNumericAmount(defaultValues?.amount),
   credit_limit: toNumericOrNull(defaultValues?.credit_limit),
   type: defaultValues?.type ?? 'CASH',
+  provider_icon_key: defaultValues?.provider_icon_key ?? null,
   active: defaultValues?.active ?? true,
   cutoff_day: toNumericOrNull(defaultValues?.cutoff_day),
   due_day: toNumericOrNull(defaultValues?.due_day),
@@ -274,6 +276,46 @@ export default function WalletForm({
                             </SelectItem>
                           );
                         })}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="provider_icon_key"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Empresa o banco</FormLabel>
+                  <FormControl>
+                    <Select
+                      onValueChange={(value) =>
+                        field.onChange(value === '__none__' ? null : value)
+                      }
+                      value={field.value ?? '__none__'}
+                    >
+                      <SelectTrigger aria-label="Empresa o banco de la billetera">
+                        <SelectValue placeholder="Selecciona un proveedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          <span className="text-muted-foreground">Sin asignar</span>
+                        </SelectItem>
+                        {WALLET_PROVIDER_ICON_OPTIONS.map((provider) => (
+                          <SelectItem key={provider.key} value={provider.key}>
+                            <span className="flex items-center gap-2">
+                              <WalletProviderIcon
+                                providerIconKey={provider.key}
+                                className="h-5 w-5 rounded-md border-0"
+                                showTooltipLabel={false}
+                              />
+                              {provider.label}
+                            </span>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormControl>

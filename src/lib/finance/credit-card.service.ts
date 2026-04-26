@@ -36,6 +36,7 @@ const creditCardWalletWhere = {
 const mapWalletToCreditCardDto = (wallet: {
   id: number;
   name: string;
+  provider_icon_key: string | null;
   amount: unknown;
   credit_limit: unknown;
   type: string;
@@ -50,6 +51,7 @@ const mapWalletToCreditCardDto = (wallet: {
   return {
     id: wallet.id,
     name: wallet.name,
+    provider_icon_key: wallet.provider_icon_key,
     amount: currentBalance,
     credit_limit: creditLimit,
     available_credit: getWalletAvailableCredit({
@@ -247,7 +249,7 @@ export async function createCreditCardPayment(
         house_id: creditCardWallet.house_id,
       },
       include: {
-        source_wallet: { select: { id: true, name: true } },
+        source_wallet: { select: { id: true, name: true, provider_icon_key: true } },
         credit_card_wallet: { select: { id: true, name: true } },
       },
     });
@@ -323,6 +325,7 @@ export async function createCreditCardPayment(
       note: payment.note ?? null,
       source_wallet_id: payment.source_wallet_id,
       source_wallet_name: payment.source_wallet.name,
+      source_wallet_provider_icon_key: payment.source_wallet.provider_icon_key ?? null,
       credit_card_wallet_id: payment.credit_card_wallet_id,
       credit_card_wallet_name: payment.credit_card_wallet.name,
       expense_id: expenseId,
@@ -355,7 +358,7 @@ export async function listCreditCardPaymentsByOwner(
       credit_card_wallet_id: creditCardId,
     },
     include: {
-      source_wallet: { select: { id: true, name: true } },
+      source_wallet: { select: { id: true, name: true, provider_icon_key: true } },
       credit_card_wallet: { select: { id: true, name: true } },
     },
     orderBy: { paid_at: 'desc' },
@@ -368,6 +371,7 @@ export async function listCreditCardPaymentsByOwner(
     note: payment.note ?? null,
     source_wallet_id: payment.source_wallet_id,
     source_wallet_name: payment.source_wallet.name,
+    source_wallet_provider_icon_key: payment.source_wallet.provider_icon_key ?? null,
     credit_card_wallet_id: payment.credit_card_wallet_id,
     credit_card_wallet_name: payment.credit_card_wallet.name,
   }));
