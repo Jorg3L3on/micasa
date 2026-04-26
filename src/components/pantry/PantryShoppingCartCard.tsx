@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { CheckCircle2, ShoppingCart, User as UserIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ShoppingStoreIcon } from '@/components/pantry/ShoppingStoreIcon';
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   PantryShoppingCartSummaryDto,
   ShoppingCartStatus,
 } from '@/types/pantry-shopping-cart';
+import { SHOPPING_STORE_LABELS } from '@/types/shopping-store';
 
 const STATUS_META: Record<
   ShoppingCartStatus,
@@ -89,6 +91,16 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
               <span className="inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 {totals.checked_count}/{totals.items_count}
+              </span>
+            ) : null}
+            {cart.store ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
+                <ShoppingStoreIcon
+                  store={cart.store}
+                  className="h-4 w-4 border-none bg-transparent p-0"
+                  showLabel={false}
+                />
+                {SHOPPING_STORE_LABELS[cart.store]}
               </span>
             ) : null}
             <span className="ml-auto font-mono tabular-nums text-foreground">

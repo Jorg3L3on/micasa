@@ -7,6 +7,7 @@ import type {
   ShoppingCartActivityAction,
   ShoppingCartStatus,
 } from '@/types/pantry-shopping-cart';
+import type { ShoppingStore } from '@/types/shopping-store';
 
 type UserRow = { id: number; name: string };
 
@@ -68,6 +69,7 @@ export type ShoppingCartRow = {
   notes: string | null;
   status: ShoppingCartStatus;
   currency: string;
+  store: ShoppingStore | null;
   created_by: UserRow;
   updated_by: UserRow | null;
   created_at: Date;
@@ -92,6 +94,7 @@ export const serializeShoppingCartSummary = (
     notes: row.notes,
     status: row.status,
     currency: row.currency,
+    store: row.store,
     created_by: { id: row.created_by.id, name: row.created_by.name },
     updated_by: row.updated_by
       ? { id: row.updated_by.id, name: row.updated_by.name }

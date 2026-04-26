@@ -65,6 +65,14 @@ enum ShoppingCartActivityAction {
   ITEM_REMOVED
 }
 
+enum ShoppingStore {
+  BODEGA_AURRERA
+  SORIANA
+  CHEDRAUI
+  WALMART
+  SAMS_CLUB
+}
+
 model User {
   id                   Int     @id @default(autoincrement())
   name                 String
@@ -589,6 +597,7 @@ model PantryShoppingCart {
   notes      String?
   status     ShoppingCartStatus @default(IN_PROGRESS)
   currency   String             @default("MXN")
+  store      ShoppingStore?
 
   user_id  Int?
   house_id Int?

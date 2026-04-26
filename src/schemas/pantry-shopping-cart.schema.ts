@@ -9,6 +9,15 @@ export const shoppingCartStatusSchema = z.enum([
 
 export type ShoppingCartStatus = z.infer<typeof shoppingCartStatusSchema>;
 
+export const shoppingStoreSchema = z.enum([
+  'BODEGA_AURRERA',
+  'SORIANA',
+  'CHEDRAUI',
+  'WALMART',
+  'SAMS_CLUB',
+]);
+export type ShoppingStore = z.infer<typeof shoppingStoreSchema>;
+
 const optionalTrimmedString = z
   .string()
   .transform((v) => v.trim())
@@ -16,10 +25,13 @@ const optionalTrimmedString = z
   .nullable()
   .optional();
 
+const optionalNullableStore = shoppingStoreSchema.nullable().optional();
+
 export const createShoppingCartSchema = z.object({
   title: z.string().min(1, 'El título es obligatorio').max(120),
   notes: optionalTrimmedString,
   currency: z.string().min(1).max(8).optional(),
+  store: optionalNullableStore,
 });
 export type CreateShoppingCartInput = z.infer<typeof createShoppingCartSchema>;
 
@@ -27,9 +39,11 @@ export const updateShoppingCartSchema = z
   .object({
     title: z.string().min(1).max(120).optional(),
     notes: optionalTrimmedString,
+    store: optionalNullableStore,
   })
   .refine(
-    (v) => v.title !== undefined || v.notes !== undefined,
+    (v) =>
+      v.title !== undefined || v.notes !== undefined || v.store !== undefined,
     'No hay cambios',
   );
 export type UpdateShoppingCartInput = z.infer<typeof updateShoppingCartSchema>;
