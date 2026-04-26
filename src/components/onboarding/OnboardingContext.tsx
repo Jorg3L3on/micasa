@@ -13,6 +13,7 @@ export type WalletDraft = {
   id: string;
   name: string;
   type: 'CASH' | 'BANK' | 'CREDIT';
+  providerIconKey: string | null;
 };
 
 export type CategoryDraft = {
@@ -70,7 +71,14 @@ type OnboardingContextValue = {
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 6;
+
+const getCurrentMonthFirstDayIso = (): string => {
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  firstOfMonth.setHours(0, 0, 0, 0);
+  return firstOfMonth.toISOString().slice(0, 10);
+};
 
 type OnboardingProviderProps = {
   children: ReactNode;
@@ -81,8 +89,8 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   const [isStepLoading, setStepLoading] = useState(false);
   const [canProceed, setCanProceed] = useState(true);
   const [wallets, setWallets] = useState<WalletDraft[]>([
-    { id: crypto.randomUUID(), name: '', type: 'CASH' },
-    { id: crypto.randomUUID(), name: '', type: 'BANK' },
+    { id: crypto.randomUUID(), name: '', type: 'CASH', providerIconKey: 'CASH_GENERIC' },
+    { id: crypto.randomUUID(), name: '', type: 'BANK', providerIconKey: null },
   ]);
   const [categories, setCategories] = useState<CategoryDraft[]>([
     { id: crypto.randomUUID(), name: 'Comida' },
@@ -126,7 +134,7 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       appliesSecondFortnight: true,
     },
   ]);
-  const [startDate, setStartDate] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<string | null>(getCurrentMonthFirstDayIso);
 
   const goNext = useCallback(() => {
     setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));

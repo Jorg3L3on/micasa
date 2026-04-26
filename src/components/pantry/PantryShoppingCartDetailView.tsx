@@ -297,7 +297,8 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
             >
               <ShoppingStoreIcon
                 store={cart.store}
-                className="h-4 w-4 border-none bg-transparent p-0"
+                variant="badge"
+                className="h-4 min-w-7 border-none bg-transparent px-0"
                 showLabel={false}
               />
               {SHOPPING_STORE_LABELS[cart.store]}

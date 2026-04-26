@@ -12,6 +12,7 @@ import {
   serializePantryReceiptDetail,
 } from '@/lib/server/pantry/serialize-pantry-receipt';
 import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pantry-products-from-lines';
+import { shoppingStoreSchema } from '@/schemas/pantry-shopping-cart.schema';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return {
         id: r.id,
         title: r.title,
+        store: r.store,
         currency: r.currency,
         purchased_at: r.purchased_at?.toISOString() ?? null,
         grand_total: decimalToNumber(r.grand_total),
@@ -110,9 +112,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       typeof purchasedField === 'string' && purchasedField.trim()
         ? new Date(purchasedField.trim())
         : null;
+    if (!purchasedOverride) {
+      return NextResponse.json(
+        { error: 'La fecha de compra es obligatoria' },
+        { status: 400 },
+      );
+    }
     if (purchasedOverride && Number.isNaN(purchasedOverride.getTime())) {
       return NextResponse.json(
         { error: 'Fecha de compra inválida' },
+        { status: 400 },
+      );
+    }
+    const storeField = formData.get('store');
+    const storeRaw =
+      typeof storeField === 'string' && storeField.trim()
+        ? storeField.trim()
+        : null;
+    const parsedStore = storeRaw
+      ? shoppingStoreSchema.safeParse(storeRaw)
+      : null;
+    if (storeRaw && !parsedStore?.success) {
+      return NextResponse.json(
+        { error: 'Tienda inválida' },
         { status: 400 },
       );
     }
@@ -131,7 +153,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         data: {
           title,
           merchant_ref: parsed.merchant_ref,
-          purchased_at: purchasedOverride ?? parsed.purchased_at,
+          purchased_at: purchasedOverride,
+          store: parsedStore?.success ? parsedStore.data : null,
           subtotal: parsed.subtotal,
           discount_total: parsed.discount_total,
           delivery_fee: parsed.delivery_fee,

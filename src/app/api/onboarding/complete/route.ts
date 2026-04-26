@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
+import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
 
 type WalletPayload = {
   id: string;
   name: string;
   type?: 'CASH' | 'BANK' | 'CREDIT';
+  providerIconKey?: string | null;
 };
 
 type CategoryPayload = {
@@ -54,6 +56,19 @@ type GeneratedFortnight = {
   year: number;
   period: FortnightPeriod;
 };
+
+const WALLET_PROVIDER_ICON_KEY_SET = new Set<string>(WALLET_PROVIDER_ICON_KEYS);
+
+function normalizeProviderIconKey(
+  walletType: WalletPayload['type'],
+  providerIconKey: string | null | undefined,
+): string | null {
+  if (walletType === 'CASH') return 'CASH_GENERIC';
+  if (!providerIconKey || providerIconKey === 'CASH_GENERIC') return null;
+  return WALLET_PROVIDER_ICON_KEY_SET.has(providerIconKey)
+    ? providerIconKey
+    : null;
+}
 
 function generateFortnights(startDate: Date, count: number): GeneratedFortnight[] {
   const result: GeneratedFortnight[] = [];
@@ -182,6 +197,10 @@ export async function POST(request: Request) {
             name: wallet.name,
             amount: 0,
             type: prismaType,
+            provider_icon_key: normalizeProviderIconKey(
+              wallet.type,
+              wallet.providerIconKey,
+            ),
             active: true,
             user_id: userId,
             house_id: null,
@@ -409,7 +428,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Onboarding completion failed:', error);
 
     return NextResponse.json(

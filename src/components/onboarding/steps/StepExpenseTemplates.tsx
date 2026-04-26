@@ -28,9 +28,23 @@ export default function StepExpenseTemplates() {
     wallets,
   } = useOnboarding();
 
+  const hasMinimumRows = expenseTemplates.length >= 2;
+  const hasValidTemplates = expenseTemplates.every((expense) => {
+    const hasName = expense.name.trim() !== '';
+    const hasAmount = Number.isFinite(expense.amount) && expense.amount > 0;
+    const hasCategory = expense.categoryId.trim() !== '';
+    const hasWallet = expense.walletId.trim() !== '';
+    const hasValidRecurrence =
+      !expense.isRecurring ||
+      expense.appliesFirstFortnight ||
+      expense.appliesSecondFortnight;
+    return hasName && hasAmount && hasCategory && hasWallet && hasValidRecurrence;
+  });
+  const canContinue = hasMinimumRows && hasValidTemplates;
+
   useEffect(() => {
-    setCanProceed(expenseTemplates.length >= 2);
-  }, [expenseTemplates.length, setCanProceed]);
+    setCanProceed(canContinue);
+  }, [canContinue, setCanProceed]);
 
   const handleNameChange = (id: string, name: string) => {
     setExpenseTemplates((prev: ExpenseTemplateDraft[]) =>
@@ -118,9 +132,7 @@ export default function StepExpenseTemplates() {
           ¿Qué gastos haces frecuentemente?
         </h3>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Las plantillas son gastos que repites (renta, internet, etc.). Para
-          cada una: nombre, monto de referencia, categoría, billetera desde la
-          que sueles pagar y, si aplica, en qué quincena cae el pago.
+          Agrega gastos frecuentes con monto, categoria, billetera y recurrencia.
         </p>
       </div>
 
@@ -169,8 +181,11 @@ export default function StepExpenseTemplates() {
                   <Label htmlFor={`expense-name-${expense.id}`}>
                     Nombre del gasto
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Cómo lo verás en la app (ej. Renta, Internet).
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Ej. Renta
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Como lo veras en la app (ej. Renta, Internet).
                   </p>
                   <Input
                     id={`expense-name-${expense.id}`}
@@ -191,8 +206,11 @@ export default function StepExpenseTemplates() {
                   <Label htmlFor={`expense-amount-${expense.id}`}>
                     Monto de referencia
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Aproximado por pago; puedes ajustarlo después.
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Monto estimado
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Aproximado por pago; puedes ajustarlo despues.
                   </p>
                   <div className="flex items-center gap-2">
                     <span
@@ -220,7 +238,10 @@ export default function StepExpenseTemplates() {
                   <Label htmlFor={`expense-category-${expense.id}`}>
                     Categoría
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Tipo de gasto
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
                     Agrupa el gasto para ver totales por tipo.
                   </p>
                   <Select
@@ -250,8 +271,11 @@ export default function StepExpenseTemplates() {
                   <Label htmlFor={`expense-wallet-${expense.id}`}>
                     Billetera de pago
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Desde dónde sueles pagar este gasto.
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    Desde donde pagas
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Desde donde sueles pagar este gasto.
                   </p>
                   <Select
                     value={expense.walletId || undefined}
@@ -280,9 +304,12 @@ export default function StepExpenseTemplates() {
                   <Label htmlFor={`expense-recurrence-${expense.id}`}>
                     Recurrencia y quincenas
                   </Label>
-                  <p className="text-muted-foreground text-xs leading-snug">
-                    Si no es un pago fijo, elige «No recurrente». Si sí, indica
-                    en qué quincena(s) cae.
+                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
+                    No recurrente, primera, segunda o ambas
+                  </p>
+                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
+                    Si no es un pago fijo, elige No recurrente. Si si, indica en
+                    que quincena(s) cae.
                   </p>
                   <Select
                     value={frequency}
@@ -323,6 +350,12 @@ export default function StepExpenseTemplates() {
       >
         + Agregar gasto
       </Button>
+      {!canContinue ? (
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          Para continuar, necesitas dos gastos con nombre, monto mayor a 0,
+          categoria y billetera.
+        </p>
+      ) : null}
     </div>
   );
 }

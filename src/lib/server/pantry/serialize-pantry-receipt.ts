@@ -41,6 +41,7 @@ const serializeLines = (
 export const serializePantryReceiptDetail = (r: {
   id: number;
   title: string | null;
+  store: string | null;
   merchant_ref: string | null;
   currency: string;
   purchased_at: Date | null;
@@ -59,6 +60,7 @@ export const serializePantryReceiptDetail = (r: {
 }): PantryReceiptDetailDto => ({
   id: r.id,
   title: r.title,
+  store: r.store as PantryReceiptDetailDto['store'],
   merchant_ref: r.merchant_ref,
   currency: r.currency,
   purchased_at: r.purchased_at?.toISOString() ?? null,

@@ -55,9 +55,13 @@ export type LiquidityMilestone = {
 export type LiquidityProjectionSummary = {
   total_obligations_due_on_or_before_until: number;
   funding_total: number;
+  expected_income_total_on_or_before_until: number;
   net_liquidity_versus_obligations: number;
   shortfall_versus_funding: number;
   first_cumulative_shortfall_date: string | null;
+  net_liquidity_versus_obligations_including_income: number;
+  shortfall_versus_funding_and_income: number;
+  first_projected_shortfall_date: string | null;
 };
 
 export type LiquidityProjectionOptionsEcho = {
@@ -678,18 +682,33 @@ export const getLiquidityProjection = async (
   }
 
   const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
+  const monthKeys = buildMonthKeyRange(asOfStr, untilStr);
+  const cumulativeIncomeByMonth = new Map<string, number>();
+  let cumulativeIncome = 0;
+  for (const monthKey of monthKeys) {
+    cumulativeIncome += expectedIncomeByMonth.get(monthKey) ?? 0;
+    cumulativeIncomeByMonth.set(monthKey, cumulativeIncome);
+  }
+  const expectedIncomeTotal = cumulativeIncome;
 
   let cumulative = 0;
   const milestones: LiquidityMilestone[] = [];
   let firstShortfall: string | null = null;
+  let firstProjectedShortfall: string | null = null;
 
   for (const dueDate of sortedDates) {
     const obligations = byDueDate.get(dueDate) ?? [];
     const totalDue = obligations.reduce((s, o) => s + o.next_due_payment, 0);
     cumulative += totalDue;
     const headroom = fundingTotal - cumulative;
+    const dueMonthKey = toMonthKeyUtc(dueDate);
+    const projectedHeadroom =
+      fundingTotal + (cumulativeIncomeByMonth.get(dueMonthKey) ?? 0) - cumulative;
     if (firstShortfall === null && headroom < 0) {
       firstShortfall = dueDate;
+    }
+    if (firstProjectedShortfall === null && projectedHeadroom < 0) {
+      firstProjectedShortfall = dueDate;
     }
     milestones.push({
       due_date: dueDate,
@@ -705,9 +724,17 @@ export const getLiquidityProjection = async (
   const summary: LiquidityProjectionSummary = {
     total_obligations_due_on_or_before_until: cumulative,
     funding_total: fundingTotal,
+    expected_income_total_on_or_before_until: expectedIncomeTotal,
     net_liquidity_versus_obligations: fundingTotal - cumulative,
     shortfall_versus_funding: Math.max(0, cumulative - fundingTotal),
     first_cumulative_shortfall_date: firstShortfall,
+    net_liquidity_versus_obligations_including_income:
+      fundingTotal + expectedIncomeTotal - cumulative,
+    shortfall_versus_funding_and_income: Math.max(
+      0,
+      cumulative - (fundingTotal + expectedIncomeTotal),
+    ),
+    first_projected_shortfall_date: firstProjectedShortfall,
   };
 
   const debtByMonth = new Map<
@@ -718,7 +745,6 @@ export const getLiquidityProjection = async (
       other_debt_components_total: number;
     }
   >();
-  const monthKeys = buildMonthKeyRange(asOfStr, untilStr);
   for (const key of monthKeys) {
     debtByMonth.set(key, {
       msi_debt_total: 0,
