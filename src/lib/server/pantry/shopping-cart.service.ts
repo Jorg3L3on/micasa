@@ -23,6 +23,7 @@ import type {
   PantryShoppingCartSummaryDto,
   ShoppingCartStatus,
 } from '@/types/pantry-shopping-cart';
+import type { ShoppingStore } from '@/types/shopping-store';
 
 const USER_SELECT = { id: true, name: true } as const;
 
@@ -108,6 +109,7 @@ export async function createShoppingCart(
         title: input.title.trim(),
         notes: input.notes ?? null,
         currency: input.currency ?? 'MXN',
+        store: input.store ?? null,
         user_id: filter.user_id,
         house_id: filter.house_id,
         created_by_user_id: userId,
@@ -119,7 +121,7 @@ export async function createShoppingCart(
         cart_id: created.id,
         user_id: userId,
         action: 'CART_CREATED',
-        metadata: { title: created.title },
+        metadata: { title: created.title, store: created.store },
       },
     });
     return created;
@@ -140,7 +142,11 @@ export async function updateShoppingCart(
     if (!existing) throw new ShoppingCartNotFoundError();
 
     const changes: Record<string, { from: unknown; to: unknown }> = {};
-    const data: { title?: string; notes?: string | null } = {};
+    const data: {
+      title?: string;
+      notes?: string | null;
+      store?: ShoppingStore | null;
+    } = {};
 
     if (input.title !== undefined && input.title.trim() !== existing.title) {
       changes.title = { from: existing.title, to: input.title.trim() };
@@ -149,6 +155,10 @@ export async function updateShoppingCart(
     if (input.notes !== undefined && (input.notes ?? null) !== existing.notes) {
       changes.notes = { from: existing.notes, to: input.notes ?? null };
       data.notes = input.notes ?? null;
+    }
+    if (input.store !== undefined && (input.store ?? null) !== existing.store) {
+      changes.store = { from: existing.store, to: input.store ?? null };
+      data.store = input.store ?? null;
     }
 
     if (Object.keys(data).length === 0) return;

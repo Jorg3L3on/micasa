@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -14,26 +21,50 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  SHOPPING_STORE_OPTIONS,
+  type ShoppingStore,
+} from '@/types/shopping-store';
+
+const NO_STORE_VALUE = '__NONE__';
+
+export type CartFormSubmit = {
+  title: string;
+  notes: string | null;
+  store: ShoppingStore | null;
+};
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { title: string; notes: string | null }) => Promise<void>;
+  onSubmit: (data: CartFormSubmit) => Promise<void>;
+  initialTitle?: string;
+  initialNotes?: string | null;
+  initialStore?: ShoppingStore | null;
 };
 
-export function CreateCartSheet({ open, onOpenChange, onSubmit }: Props) {
+export function CreateCartSheet({
+  open,
+  onOpenChange,
+  onSubmit,
+  initialTitle,
+  initialNotes,
+  initialStore,
+}: Props) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
+  const [store, setStore] = useState<ShoppingStore | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setTitle('');
-      setNotes('');
+      setTitle(initialTitle ?? '');
+      setNotes(initialNotes ?? '');
+      setStore(initialStore ?? null);
       setError(null);
     }
-  }, [open]);
+  }, [open, initialTitle, initialNotes, initialStore]);
 
   const handleSubmit = async () => {
     const trimmed = title.trim();
@@ -47,12 +78,17 @@ export function CreateCartSheet({ open, onOpenChange, onSubmit }: Props) {
       await onSubmit({
         title: trimmed,
         notes: notes.trim() || null,
+        store,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleStoreChange = (value: string) => {
+    setStore(value === NO_STORE_VALUE ? null : (value as ShoppingStore));
   };
 
   return (
@@ -86,6 +122,29 @@ export function CreateCartSheet({ open, onOpenChange, onSubmit }: Props) {
               className="h-11 text-base"
             />
           </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cart-store">Tienda (opcional)</Label>
+            <Select
+              value={store ?? NO_STORE_VALUE}
+              onValueChange={handleStoreChange}
+            >
+              <SelectTrigger
+                id="cart-store"
+                className="h-11 w-full text-base"
+                aria-label="Seleccionar tienda"
+              >
+                <SelectValue placeholder="Selecciona una tienda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_STORE_VALUE}>Sin tienda</SelectItem>
+                {SHOPPING_STORE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -99,7 +158,7 @@ export function CreateCartSheet({ open, onOpenChange, onSubmit }: Props) {
             onClick={handleSubmit}
             disabled={saving}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Crear carrito'}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar'}
           </Button>
         </SheetFooter>
       </SheetContent>

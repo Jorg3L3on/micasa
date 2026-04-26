@@ -104,7 +104,11 @@ export default function PantryShoppingListView() {
     return { cartsCount, itemsPending, estimated, lastUpdated };
   }, [inProgressCarts]);
 
-  const handleCreate = async (data: { title: string; notes: string | null }) => {
+  const handleCreate = async (data: {
+    title: string;
+    notes: string | null;
+    store: PantryShoppingCartSummaryDto['store'];
+  }) => {
     const created = await createShoppingCart(data, context);
     toast.success('Carrito creado');
     setCreateOpen(false);
@@ -114,6 +118,7 @@ export default function PantryShoppingListView() {
       notes: created.notes,
       status: created.status,
       currency: created.currency,
+      store: created.store,
       created_by: created.created_by,
       updated_by: created.updated_by,
       created_at: created.created_at,

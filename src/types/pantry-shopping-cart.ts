@@ -1,3 +1,5 @@
+import type { ShoppingStore } from '@/types/shopping-store';
+
 export type ShoppingCartStatus =
   | 'IN_PROGRESS'
   | 'BOUGHT'
@@ -60,6 +62,7 @@ export type PantryShoppingCartSummaryDto = {
   notes: string | null;
   status: ShoppingCartStatus;
   currency: string;
+  store: ShoppingStore | null;
   created_by: CartUserRef;
   updated_by: CartUserRef | null;
   created_at: string;

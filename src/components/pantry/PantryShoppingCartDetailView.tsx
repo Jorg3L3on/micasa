@@ -34,7 +34,10 @@ import {
 } from '@/components/pantry/PantryShoppingItemEditSheet';
 import { PantryShoppingItemRow } from '@/components/pantry/PantryShoppingItemRow';
 import { ShoppingCartStatusBadge } from '@/components/pantry/PantryShoppingCartCard';
+import { ShoppingStoreIcon } from '@/components/pantry/ShoppingStoreIcon';
 import { CreateCartSheet } from '@/components/pantry/CreateCartSheet';
+import { Badge } from '@/components/ui/badge';
+import { SHOPPING_STORE_LABELS, type ShoppingStore } from '@/types/shopping-store';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   deleteShoppingCart,
@@ -210,7 +213,11 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
     }
   };
 
-  const handleRename = async (data: { title: string; notes: string | null }) => {
+  const handleRename = async (data: {
+    title: string;
+    notes: string | null;
+    store: ShoppingStore | null;
+  }) => {
     const updated = await updateShoppingCart(cartId, data, context);
     setCart(updated);
     toast.success('Carrito actualizado');
@@ -277,6 +284,26 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
             {cart.updated_by ? ` · últ. ${cart.updated_by.name}` : ''}
           </p>
         </div>
+        {cart.store ? (
+          <button
+            type="button"
+            onClick={() => setRenameOpen(true)}
+            aria-label="Cambiar tienda"
+            className="rounded-full"
+          >
+            <Badge
+              variant="outline"
+              className="gap-1 border-sky-500/30 bg-sky-500/10 text-[10px] font-semibold text-sky-700 dark:text-sky-300"
+            >
+              <ShoppingStoreIcon
+                store={cart.store}
+                className="h-4 w-4 border-none bg-transparent p-0"
+                showLabel={false}
+              />
+              {SHOPPING_STORE_LABELS[cart.store]}
+            </Badge>
+          </button>
+        ) : null}
         <ShoppingCartStatusBadge status={cart.status} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -434,6 +461,9 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
         open={renameOpen}
         onOpenChange={setRenameOpen}
         onSubmit={handleRename}
+        initialTitle={cart.title}
+        initialNotes={cart.notes}
+        initialStore={cart.store}
       />
 
       <PantryShoppingCartActivityDrawer
