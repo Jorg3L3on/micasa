@@ -121,6 +121,12 @@ export function AppSidebar({
           !pathname.startsWith('/wallets/liquidity')) ||
         pathname.startsWith('/credit-cards'),
     },
+    {
+      title: 'Lista de compras',
+      url: '/pantry/shopping',
+      icon: ShoppingBasket,
+      isActive: pathname.startsWith('/pantry/shopping'),
+    },
   ];
 
   const generalItems = [
@@ -140,23 +146,10 @@ export function AppSidebar({
       title: 'Despensa',
       url: '#',
       icon: ShoppingBasket,
-      isActive: pathname.startsWith('/pantry'),
+      isActive:
+        pathname.startsWith('/pantry/receipts') ||
+        pathname.startsWith('/pantry/products'),
       items: [
-        {
-          title: 'Inicio',
-          url: '/pantry',
-          isActive:
-            pathname === '/pantry' ||
-            (pathname.startsWith('/pantry') &&
-              !pathname.startsWith('/pantry/receipts') &&
-              !pathname.startsWith('/pantry/products') &&
-              !pathname.startsWith('/pantry/shopping')),
-        },
-        {
-          title: 'Lista de compras',
-          url: '/pantry/shopping',
-          isActive: pathname.startsWith('/pantry/shopping'),
-        },
         {
           title: 'Recibos',
           url: '/pantry/receipts',
