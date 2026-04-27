@@ -7,6 +7,10 @@ import {
   Receipt,
   Calendar,
   Coins,
+  CheckSquare,
+  ListChecks,
+  Repeat2,
+  Sparkles,
   Home,
   PiggyBank,
   ShoppingBasket,
@@ -159,6 +163,41 @@ export function AppSidebar({
           title: 'Productos',
           url: '/pantry/products',
           isActive: pathname.startsWith('/pantry/products'),
+        },
+      ],
+    },
+    {
+      title: 'Tareas',
+      url: '#',
+      icon: CheckSquare,
+      isActive: pathname.startsWith('/tasks'),
+      items: [
+        {
+          title: 'Resumen',
+          url: '/tasks',
+          isActive: pathname === '/tasks',
+        },
+        {
+          title: 'Listas de tareas',
+          url: '/tasks/todo-lists',
+          isActive:
+            pathname.startsWith('/tasks/todo-lists') ||
+            pathname.startsWith('/tasks/lists/'),
+        },
+        {
+          title: 'Tareas programadas',
+          url: '/tasks/scheduled',
+          isActive: pathname.startsWith('/tasks/scheduled'),
+        },
+        {
+          title: 'Hábitos',
+          url: '/tasks/habits',
+          isActive: pathname.startsWith('/tasks/habits'),
+        },
+        {
+          title: 'Rutinas diarias',
+          url: '/tasks/routines',
+          isActive: pathname.startsWith('/tasks/routines'),
         },
       ],
     },

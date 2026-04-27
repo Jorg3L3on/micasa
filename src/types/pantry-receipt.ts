@@ -40,6 +40,7 @@ export type PantryReceiptDetailDto = {
   file_name: string | null;
   file_mime: string | null;
   has_file: boolean;
+  linked_cart_id: number | null;
   parse_warnings: string[];
   created_at: string;
   updated_at: string;

@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import { pantryReceiptOwnerWhere } from '@/lib/server/pantry/pantry-receipt-owner';
+import {
+  extractLinkedCartIdFromWarnings,
+  withLinkedCartWarning,
+} from '@/lib/server/pantry/pantry-receipt-links';
 import { serializePantryReceiptDetail } from '@/lib/server/pantry/serialize-pantry-receipt';
 import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pantry-products-from-lines';
 import { patchPantryReceiptSchema } from '@/schemas/pantry-receipt.schema';
@@ -90,6 +94,14 @@ export async function PATCH(
         data: {
           ...(data.title !== undefined ? { title: data.title } : {}),
           ...(purchasedAt !== undefined ? { purchased_at: purchasedAt } : {}),
+          ...(data.linked_cart_id !== undefined
+            ? {
+                parse_warnings: withLinkedCartWarning(
+                  existing.parse_warnings,
+                  data.linked_cart_id,
+                ),
+              }
+            : {}),
         },
       });
 
@@ -162,7 +174,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'Recibo no encontrado' }, { status: 404 });
     }
 
-    await prisma.pantryReceipt.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.pantryReceipt.delete({ where: { id } });
+
+      const linkedCartId = extractLinkedCartIdFromWarnings(existing.parse_warnings);
+      if (linkedCartId == null) return;
+
+      await tx.pantryShoppingCart.deleteMany({
+        where: {
+          id: linkedCartId,
+          ...pantryReceiptOwnerWhere(ownerType, ownerId),
+        },
+      });
+    });
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {

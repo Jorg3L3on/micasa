@@ -30,12 +30,34 @@ import type {
   UpdateShoppingCartItemInput,
 } from '@/schemas/pantry-shopping-cart.schema';
 import type {
+  CreateTaskListInput,
+  UpdateTaskListInput,
+} from '@/schemas/task-list.schema';
+import type {
+  CreateTaskItemInput,
+  UpdateTaskItemInput,
+} from '@/schemas/task-item.schema';
+import type {
+  CompleteHabitInput,
+  CreateHabitInput,
+  UpdateHabitInput,
+} from '@/schemas/habit.schema';
+import type {
+  CompleteRoutineInput,
+  CreateRoutineInput,
+  UpdateRoutineInput,
+} from '@/schemas/routine.schema';
+import type {
   PantryShoppingCartActivityDto,
   PantryShoppingCartDetailDto,
   PantryShoppingCartItemDto,
   PantryShoppingCartSummaryDto,
   ShoppingCartStatus,
 } from '@/types/pantry-shopping-cart';
+import type { TaskListDto } from '@/types/task-list';
+import type { TaskItemDto } from '@/types/task-item';
+import type { HabitDto } from '@/types/habit';
+import type { RoutineDto } from '@/types/routine';
 
 type ApiErrorDetail = {
   message?: string;
@@ -390,6 +412,27 @@ export async function addShoppingCartItem(
   );
 }
 
+export async function addShoppingCartItemsBulk(
+  cartId: number,
+  body: {
+    items: Array<{
+      name: string;
+      quantity?: number;
+      unit_label?: string | null;
+      unit_price?: number | null;
+      notes?: string | null;
+    }>;
+    checked?: boolean;
+  },
+  context?: FinanceContextType,
+): Promise<{ created_count: number }> {
+  return clientFetchFromApi<{ created_count: number }>(
+    `/api/pantry/shopping-carts/${cartId}/items/bulk`,
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
 export async function updateShoppingCartItem(
   cartId: number,
   itemId: number,
@@ -399,6 +442,17 @@ export async function updateShoppingCartItem(
   return clientFetchFromApi<PantryShoppingCartItemDto>(
     `/api/pantry/shopping-carts/${cartId}/items/${itemId}`,
     { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function checkAllShoppingCartItems(
+  cartId: number,
+  context?: FinanceContextType,
+): Promise<{ checked_count: number }> {
+  return clientFetchFromApi<{ checked_count: number }>(
+    `/api/pantry/shopping-carts/${cartId}/check-all`,
+    { method: 'PATCH' },
     context,
   );
 }
@@ -423,6 +477,183 @@ export async function listShoppingCartActivity(
   return clientFetchFromApi<PantryShoppingCartActivityDto[]>(
     `/api/pantry/shopping-carts/${cartId}/activity?limit=${limit}`,
     undefined,
+    context,
+  );
+}
+
+// --- Tasks module -----------------------------------------------------------
+
+export async function listTaskLists(context?: FinanceContextType): Promise<TaskListDto[]> {
+  return clientFetchFromApi<TaskListDto[]>('/api/tasks/lists', undefined, context);
+}
+
+export async function createTaskList(
+  body: CreateTaskListInput,
+  context?: FinanceContextType,
+): Promise<TaskListDto> {
+  return clientFetchFromApi<TaskListDto>(
+    '/api/tasks/lists',
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function updateTaskList(
+  id: number,
+  body: UpdateTaskListInput,
+  context?: FinanceContextType,
+): Promise<TaskListDto> {
+  return clientFetchFromApi<TaskListDto>(
+    `/api/tasks/lists/${id}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function deleteTaskList(id: number, context?: FinanceContextType): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/tasks/lists/${id}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function listTaskItems(
+  context?: FinanceContextType,
+  listId?: number,
+): Promise<TaskItemDto[]> {
+  const qs = listId ? `?listId=${listId}` : '';
+  return clientFetchFromApi<TaskItemDto[]>(`/api/tasks/items${qs}`, undefined, context);
+}
+
+export async function createTaskItem(
+  body: CreateTaskItemInput,
+  context?: FinanceContextType,
+): Promise<TaskItemDto> {
+  return clientFetchFromApi<TaskItemDto>(
+    '/api/tasks/items',
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function updateTaskItem(
+  id: number,
+  body: UpdateTaskItemInput,
+  context?: FinanceContextType,
+): Promise<TaskItemDto> {
+  return clientFetchFromApi<TaskItemDto>(
+    `/api/tasks/items/${id}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function completeTaskItem(
+  id: number,
+  context?: FinanceContextType,
+): Promise<TaskItemDto> {
+  return updateTaskItem(id, { status: 'DONE' }, context);
+}
+
+export async function deleteTaskItem(id: number, context?: FinanceContextType): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/tasks/items/${id}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function listHabits(context?: FinanceContextType): Promise<HabitDto[]> {
+  return clientFetchFromApi<HabitDto[]>('/api/tasks/habits', undefined, context);
+}
+
+export async function createHabit(
+  body: CreateHabitInput,
+  context?: FinanceContextType,
+): Promise<HabitDto> {
+  return clientFetchFromApi<HabitDto>(
+    '/api/tasks/habits',
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function updateHabit(
+  id: number,
+  body: UpdateHabitInput,
+  context?: FinanceContextType,
+): Promise<HabitDto> {
+  return clientFetchFromApi<HabitDto>(
+    `/api/tasks/habits/${id}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function completeHabit(
+  id: number,
+  body: CompleteHabitInput = {},
+  context?: FinanceContextType,
+): Promise<HabitDto> {
+  return clientFetchFromApi<HabitDto>(
+    `/api/tasks/habits/${id}/complete`,
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function deleteHabit(id: number, context?: FinanceContextType): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/tasks/habits/${id}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function listRoutines(context?: FinanceContextType): Promise<RoutineDto[]> {
+  return clientFetchFromApi<RoutineDto[]>('/api/tasks/routines', undefined, context);
+}
+
+export async function createRoutine(
+  body: CreateRoutineInput,
+  context?: FinanceContextType,
+): Promise<RoutineDto> {
+  return clientFetchFromApi<RoutineDto>(
+    '/api/tasks/routines',
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function updateRoutine(
+  id: number,
+  body: UpdateRoutineInput,
+  context?: FinanceContextType,
+): Promise<RoutineDto> {
+  return clientFetchFromApi<RoutineDto>(
+    `/api/tasks/routines/${id}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function completeRoutine(
+  id: number,
+  body: CompleteRoutineInput = {},
+  context?: FinanceContextType,
+): Promise<RoutineDto> {
+  return clientFetchFromApi<RoutineDto>(
+    `/api/tasks/routines/${id}/complete`,
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
+export async function deleteRoutine(id: number, context?: FinanceContextType): Promise<void> {
+  await clientFetchFromApi<{ ok: boolean }>(
+    `/api/tasks/routines/${id}`,
+    { method: 'DELETE' },
     context,
   );
 }

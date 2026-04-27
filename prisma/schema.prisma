@@ -73,6 +73,32 @@ enum ShoppingStore {
   SAMS_CLUB
 }
 
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RecurrenceUnit {
+  DAY
+  WEEK
+  MONTH
+}
+
+enum RoutineTimeOfDay {
+  MORNING
+  AFTERNOON
+  NIGHT
+  CUSTOM
+}
+
 model User {
   id                   Int     @id @default(autoincrement())
   name                 String
@@ -98,15 +124,21 @@ model User {
   credit_card_statement_imports_owned   CreditCardStatementImport[] @relation("CreditCardStatementImportUserOwner")
 
   pantry_receipts_created PantryReceipt[] @relation("PantryReceiptCreatedBy")
-  pantry_receipts_owned  PantryReceipt[] @relation("PantryReceiptUserOwner")
-  pantry_products         PantryProduct[]  @relation("PantryProductUserOwner")
+  pantry_receipts_owned   PantryReceipt[] @relation("PantryReceiptUserOwner")
+  pantry_products         PantryProduct[] @relation("PantryProductUserOwner")
 
-  pantry_shopping_carts_owned      PantryShoppingCart[]       @relation("PantryShoppingCartUserOwner")
-  pantry_shopping_carts_created    PantryShoppingCart[]       @relation("PantryShoppingCartCreatedBy")
-  pantry_shopping_carts_updated    PantryShoppingCart[]       @relation("PantryShoppingCartUpdatedBy")
-  pantry_shopping_items_created    PantryShoppingCartItem[]   @relation("PantryShoppingCartItemCreatedBy")
-  pantry_shopping_items_updated    PantryShoppingCartItem[]   @relation("PantryShoppingCartItemUpdatedBy")
-  pantry_shopping_activities       PantryShoppingCartActivity[] @relation("PantryShoppingCartActivityUser")
+  pantry_shopping_carts_owned   PantryShoppingCart[]         @relation("PantryShoppingCartUserOwner")
+  pantry_shopping_carts_created PantryShoppingCart[]         @relation("PantryShoppingCartCreatedBy")
+  pantry_shopping_carts_updated PantryShoppingCart[]         @relation("PantryShoppingCartUpdatedBy")
+  pantry_shopping_items_created PantryShoppingCartItem[]     @relation("PantryShoppingCartItemCreatedBy")
+  pantry_shopping_items_updated PantryShoppingCartItem[]     @relation("PantryShoppingCartItemUpdatedBy")
+  pantry_shopping_activities    PantryShoppingCartActivity[] @relation("PantryShoppingCartActivityUser")
+  task_lists_owned              TaskList[]                   @relation("TaskListUserOwner")
+  tasks_created                 TaskItem[]                   @relation("TaskItemCreatedBy")
+  habits_owned                  Habit[]                      @relation("HabitUserOwner")
+  habit_logs_completed          HabitLog[]                   @relation("HabitLogCompletedBy")
+  routines_owned                Routine[]                    @relation("RoutineUserOwner")
+  routine_runs_completed        RoutineRun[]                 @relation("RoutineRunCompletedBy")
 
   // Shared
   memberships HouseMember[]
@@ -227,7 +259,7 @@ model Expense {
   statement_import_id Int?
   statement_import    CreditCardStatementImport? @relation(fields: [statement_import_id], references: [id], onDelete: SetNull)
 
-  transferAsUser Transfer? @relation("TransferUserExpense")
+  transferAsUser      Transfer?          @relation("TransferUserExpense")
   credit_card_payment CreditCardPayment?
 
   @@index([user_id])
@@ -308,12 +340,15 @@ model House {
   incomeTemplates  IncomeTemplate[]
   categories       Category[]
 
-  creditCardPayments CreditCardPayment[]
-  budgets            Budget[]
+  creditCardPayments            CreditCardPayment[]
+  budgets                       Budget[]
   credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
-  pantry_receipts    PantryReceipt[]      @relation("PantryReceiptHouseOwner")
-  pantry_products    PantryProduct[]      @relation("PantryProductHouseOwner")
-  pantry_shopping_carts PantryShoppingCart[] @relation("PantryShoppingCartHouseOwner")
+  pantry_receipts               PantryReceipt[]             @relation("PantryReceiptHouseOwner")
+  pantry_products               PantryProduct[]             @relation("PantryProductHouseOwner")
+  pantry_shopping_carts         PantryShoppingCart[]        @relation("PantryShoppingCartHouseOwner")
+  task_lists                    TaskList[]                  @relation("TaskListHouseOwner")
+  habits                        Habit[]                     @relation("HabitHouseOwner")
+  routines                      Routine[]                   @relation("RoutineHouseOwner")
 }
 
 model HouseMember {
@@ -330,17 +365,17 @@ model HouseMember {
 }
 
 model Wallet {
-  id               Int               @id @default(autoincrement())
-  name             String
-  description      String?
+  id                Int               @id @default(autoincrement())
+  name              String
+  description       String?
   provider_icon_key String?
-  amount           Decimal           @default(0) @db.Decimal(10, 2)
-  credit_limit     Decimal?          @db.Decimal(10, 2)
-  type             PaymentMethodType
-  cutoff_day       Int?
-  due_day          Int?
-  active           Boolean           @default(true)
-  last_paid_period String?
+  amount            Decimal           @default(0) @db.Decimal(10, 2)
+  credit_limit      Decimal?          @db.Decimal(10, 2)
+  type              PaymentMethodType
+  cutoff_day        Int?
+  due_day           Int?
+  active            Boolean           @default(true)
+  last_paid_period  String?
 
   user_id  Int?
   house_id Int?
@@ -351,13 +386,13 @@ model Wallet {
   user  User?  @relation(fields: [user_id], references: [id])
   house House? @relation(fields: [house_id], references: [id])
 
-  expenses             Expense[]
-  expense_templates    ExpenseTemplate[]
-  incomes              Income[]
-  credit_card_payments CreditCardPayment[] @relation("CreditCardWalletPayments")
-  source_card_payments CreditCardPayment[] @relation("CreditCardSourceWalletPayments")
+  expenses                      Expense[]
+  expense_templates             ExpenseTemplate[]
+  incomes                       Income[]
+  credit_card_payments          CreditCardPayment[]         @relation("CreditCardWalletPayments")
+  source_card_payments          CreditCardPayment[]         @relation("CreditCardSourceWalletPayments")
   credit_card_statement_imports CreditCardStatementImport[]
-  budgetAllocations    BudgetAllocation[]
+  budgetAllocations             BudgetAllocation[]
 
   @@index([user_id])
   @@index([house_id])
@@ -450,10 +485,10 @@ model CreditCardPayment {
   expense_id            Int?     @unique
   created_at            DateTime @default(now())
 
-  credit_card_wallet Wallet  @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
-  source_wallet      Wallet  @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
-  user               User?   @relation(fields: [user_id], references: [id])
-  house              House?  @relation(fields: [house_id], references: [id])
+  credit_card_wallet Wallet   @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
+  source_wallet      Wallet   @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
+  user               User?    @relation(fields: [user_id], references: [id])
+  house              House?   @relation(fields: [house_id], references: [id])
   expense            Expense? @relation(fields: [expense_id], references: [id], onDelete: SetNull)
 
   @@index([credit_card_wallet_id, paid_at])
@@ -470,33 +505,33 @@ model CreditCardPayment {
  * Provider-specific parsers (e.g. Mercado Pago) live in server code.
  */
 model CreditCardStatementImport {
-  id                   Int                     @id @default(autoincrement())
-  provider             StatementImportProvider
-  wallet_id            Int
-  user_id              Int?
-  house_id             Int?
-  created_by_user_id   Int
+  id                 Int                     @id @default(autoincrement())
+  provider           StatementImportProvider
+  wallet_id          Int
+  user_id            Int?
+  house_id           Int?
+  created_by_user_id Int
 
-  file_name            String?
-  file_mime            String?
-  file_data            Bytes?
+  file_name String?
+  file_mime String?
+  file_data Bytes?
 
   period_start         DateTime?
   period_end           DateTime?
   account_number       String?
   statement_issue_date DateTime?
   payment_due_date     DateTime?
-  total_due            Decimal?                @db.Decimal(12, 2)
-  minimum_payment      Decimal?                @db.Decimal(12, 2)
+  total_due            Decimal?  @db.Decimal(12, 2)
+  minimum_payment      Decimal?  @db.Decimal(12, 2)
 
-  parse_warnings       String[]                @default([])
+  parse_warnings String[] @default([])
 
-  created_at           DateTime                @default(now())
+  created_at DateTime @default(now())
 
-  wallet     Wallet  @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
-  user       User?   @relation("CreditCardStatementImportUserOwner", fields: [user_id], references: [id])
-  house      House?  @relation("CreditCardStatementImportHouseOwner", fields: [house_id], references: [id])
-  created_by User    @relation("CreditCardStatementImportCreatedBy", fields: [created_by_user_id], references: [id])
+  wallet     Wallet    @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+  user       User?     @relation("CreditCardStatementImportUserOwner", fields: [user_id], references: [id])
+  house      House?    @relation("CreditCardStatementImportHouseOwner", fields: [house_id], references: [id])
+  created_by User      @relation("CreditCardStatementImportCreatedBy", fields: [created_by_user_id], references: [id])
   expenses   Expense[]
 
   @@index([wallet_id])
@@ -506,15 +541,17 @@ model CreditCardStatementImport {
 }
 
 model PantryReceipt {
-  id     Int  @id @default(autoincrement())
-  title  String?
-  /** Optional totals parsed from receipt footer (e.g. Subtotal, Total). */
-  subtotal       Decimal? @db.Decimal(12, 2)
-  discount_total Decimal? @db.Decimal(12, 2)
-  delivery_fee   Decimal? @db.Decimal(12, 2)
-  grand_total    Decimal? @db.Decimal(12, 2)
+  id             Int            @id @default(autoincrement())
+  title          String?
+  /**
+   * Optional totals parsed from receipt footer (e.g. Subtotal, Total).
+   */
+  subtotal       Decimal?       @db.Decimal(12, 2)
+  discount_total Decimal?       @db.Decimal(12, 2)
+  delivery_fee   Decimal?       @db.Decimal(12, 2)
+  grand_total    Decimal?       @db.Decimal(12, 2)
   merchant_ref   String?
-  currency       String   @default("MXN")
+  currency       String         @default("MXN")
   purchased_at   DateTime?
   store          ShoppingStore?
 
@@ -532,9 +569,9 @@ model PantryReceipt {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user       User? @relation("PantryReceiptUserOwner", fields: [user_id], references: [id])
-  house      House? @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
-  created_by User   @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
+  user       User?               @relation("PantryReceiptUserOwner", fields: [user_id], references: [id])
+  house      House?              @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
+  created_by User                @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
   lines      PantryReceiptLine[]
 
   @@index([user_id])
@@ -543,11 +580,11 @@ model PantryReceipt {
 }
 
 model PantryReceiptLine {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   receipt_id  Int
-  sort_order  Int     @default(0)
+  sort_order  Int      @default(0)
   description String
-  quantity    Decimal @default(1) @db.Decimal(14, 4)
+  quantity    Decimal  @default(1) @db.Decimal(14, 4)
   /// Unit shown on receipt (pz, kg, etc.)
   unit_label  String?
   unit_price  Decimal? @db.Decimal(12, 2)
@@ -578,10 +615,10 @@ model PantryProduct {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user              User?                 @relation("PantryProductUserOwner", fields: [user_id], references: [id])
-  house             House?                @relation("PantryProductHouseOwner", fields: [house_id], references: [id])
+  user  User?  @relation("PantryProductUserOwner", fields: [user_id], references: [id])
+  house House? @relation("PantryProductHouseOwner", fields: [house_id], references: [id])
 
-  shopping_items    PantryShoppingCartItem[]
+  shopping_items PantryShoppingCartItem[]
 
   @@index([user_id])
   @@index([house_id])
@@ -593,12 +630,12 @@ model PantryProduct {
  * activity log for audit / "who did what".
  */
 model PantryShoppingCart {
-  id         Int                @id @default(autoincrement())
-  title      String
-  notes      String?
-  status     ShoppingCartStatus @default(IN_PROGRESS)
-  currency   String             @default("MXN")
-  store      ShoppingStore?
+  id       Int                @id @default(autoincrement())
+  title    String
+  notes    String?
+  status   ShoppingCartStatus @default(IN_PROGRESS)
+  currency String             @default("MXN")
+  store    ShoppingStore?
 
   user_id  Int?
   house_id Int?
@@ -609,10 +646,10 @@ model PantryShoppingCart {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user       User?  @relation("PantryShoppingCartUserOwner",  fields: [user_id],  references: [id])
+  user       User?  @relation("PantryShoppingCartUserOwner", fields: [user_id], references: [id])
   house      House? @relation("PantryShoppingCartHouseOwner", fields: [house_id], references: [id])
-  created_by User   @relation("PantryShoppingCartCreatedBy",  fields: [created_by_user_id], references: [id])
-  updated_by User?  @relation("PantryShoppingCartUpdatedBy",  fields: [updated_by_user_id], references: [id])
+  created_by User   @relation("PantryShoppingCartCreatedBy", fields: [created_by_user_id], references: [id])
+  updated_by User?  @relation("PantryShoppingCartUpdatedBy", fields: [updated_by_user_id], references: [id])
 
   items      PantryShoppingCartItem[]
   activities PantryShoppingCartActivity[]
@@ -657,7 +694,7 @@ model PantryShoppingCartItem {
  * (no FK) so removed-item events survive the cascade when the item is deleted.
  */
 model PantryShoppingCartActivity {
-  id       Int                         @id @default(autoincrement())
+  id       Int                        @id @default(autoincrement())
   cart_id  Int
   item_id  Int?
   user_id  Int
@@ -671,4 +708,156 @@ model PantryShoppingCartActivity {
 
   @@index([cart_id, created_at])
   @@index([item_id])
+}
+
+model TaskList {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  color       String?
+  archived    Boolean @default(false)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user  User?  @relation("TaskListUserOwner", fields: [user_id], references: [id])
+  house House? @relation("TaskListHouseOwner", fields: [house_id], references: [id])
+
+  items TaskItem[]
+
+  @@index([user_id, archived])
+  @@index([house_id, archived])
+  @@index([created_at])
+}
+
+model TaskItem {
+  id                Int             @id @default(autoincrement())
+  list_id           Int
+  title             String
+  notes             String?
+  status            TaskStatus      @default(TODO)
+  priority          TaskPriority    @default(MEDIUM)
+  due_at            DateTime?
+  completed_at      DateTime?
+  recurrence_unit   RecurrenceUnit?
+  recurrence_every  Int?
+  recurrence_anchor DateTime?
+  sort_order        Int             @default(0)
+
+  created_by_user_id Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  list       TaskList @relation(fields: [list_id], references: [id], onDelete: Cascade)
+  created_by User     @relation("TaskItemCreatedBy", fields: [created_by_user_id], references: [id])
+
+  @@index([list_id, status])
+  @@index([list_id, due_at])
+  @@index([list_id, sort_order])
+}
+
+model Habit {
+  id                Int            @id @default(autoincrement())
+  name              String
+  description       String?
+  active            Boolean        @default(true)
+  recurrence_unit   RecurrenceUnit
+  recurrence_every  Int            @default(1)
+  target_per_period Int            @default(1)
+  reminder_time     String?
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user  User?  @relation("HabitUserOwner", fields: [user_id], references: [id])
+  house House? @relation("HabitHouseOwner", fields: [house_id], references: [id])
+
+  logs HabitLog[]
+
+  @@index([user_id, active])
+  @@index([house_id, active])
+  @@index([created_at])
+}
+
+model HabitLog {
+  id                   Int      @id @default(autoincrement())
+  habit_id             Int
+  completed_on         DateTime
+  note                 String?
+  completed_by_user_id Int?
+
+  created_at DateTime @default(now())
+
+  habit        Habit @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+  completed_by User? @relation("HabitLogCompletedBy", fields: [completed_by_user_id], references: [id])
+
+  @@unique([habit_id, completed_on])
+  @@index([habit_id, completed_on])
+}
+
+model Routine {
+  id          Int              @id @default(autoincrement())
+  name        String
+  description String?
+  time_of_day RoutineTimeOfDay @default(CUSTOM)
+  active_days Int[]            @default([])
+  active      Boolean          @default(true)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user  User?  @relation("RoutineUserOwner", fields: [user_id], references: [id])
+  house House? @relation("RoutineHouseOwner", fields: [house_id], references: [id])
+
+  steps RoutineStep[]
+  runs  RoutineRun[]
+
+  @@index([user_id, active])
+  @@index([house_id, active])
+  @@index([created_at])
+}
+
+model RoutineStep {
+  id          Int     @id @default(autoincrement())
+  routine_id  Int
+  title       String
+  description String?
+  sort_order  Int     @default(0)
+  is_optional Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  routine Routine @relation(fields: [routine_id], references: [id], onDelete: Cascade)
+
+  @@index([routine_id, sort_order])
+}
+
+model RoutineRun {
+  id                   Int      @id @default(autoincrement())
+  routine_id           Int
+  run_on               DateTime
+  completed_steps      Int      @default(0)
+  total_steps          Int      @default(0)
+  completed            Boolean  @default(false)
+  completed_by_user_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  routine      Routine @relation(fields: [routine_id], references: [id], onDelete: Cascade)
+  completed_by User?   @relation("RoutineRunCompletedBy", fields: [completed_by_user_id], references: [id])
+
+  @@unique([routine_id, run_on])
+  @@index([routine_id, run_on])
 }

@@ -53,6 +53,7 @@ describe('parsePantryReceiptText', () => {
     expect(r.lines[0]?.line_total).toBe(35.5);
     expect(r.lines[1]?.quantity).toBe(2);
     expect(r.lines[1]?.unit_label).toBe('pz');
+    expect(r.grand_total).toBe(83.5);
   });
 
   it('joins a wrapped product description across two lines', () => {

@@ -186,12 +186,15 @@ const parseSummaryLine = (
   key: 'subtotal' | 'discount_total' | 'delivery_fee' | 'grand_total',
   target: ParsedReceipt,
 ): void => {
-  if (!line.includes('\t')) return;
   const parts = line.split('\t');
   const last = parts[parts.length - 1]?.trim() ?? '';
-  const amount = extractLastMoneyOnLine(last) ?? parseMoneyToken(last);
+  const amount =
+    extractLastMoneyOnLine(last) ??
+    parseMoneyToken(last) ??
+    extractLastMoneyOnLine(line) ??
+    parseMoneyToken(line);
   if (amount == null) return;
-  if (key === 'discount_total' && last.startsWith('-')) {
+  if (key === 'discount_total' && (last.startsWith('-') || line.includes('-'))) {
     target.discount_total = Math.abs(amount);
     return;
   }

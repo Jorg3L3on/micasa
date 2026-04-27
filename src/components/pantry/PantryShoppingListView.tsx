@@ -45,8 +45,7 @@ const formatRelative = (iso: string | null): string => {
 
 export default function PantryShoppingListView() {
   const { context } = useFinanceContext();
-  const [carts, setCarts] = useState<PantryShoppingCartSummaryDto[]>([]);
-  const [inProgressCarts, setInProgressCarts] = useState<PantryShoppingCartSummaryDto[]>([]);
+  const [allCarts, setAllCarts] = useState<PantryShoppingCartSummaryDto[]>([]);
   const [filter, setFilter] = useState<StatusFilter>('IN_PROGRESS');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,24 +55,45 @@ export default function PantryShoppingListView() {
     try {
       setLoading(true);
       setError(null);
-      const [filtered, inProgress] = await Promise.all([
-        listShoppingCarts(context, filter),
-        filter === 'IN_PROGRESS'
-          ? Promise.resolve(null)
-          : listShoppingCarts(context, 'IN_PROGRESS'),
-      ]);
-      setCarts(filtered);
-      setInProgressCarts(inProgress ?? filtered);
+      const carts = await listShoppingCarts(context, 'ALL');
+      setAllCarts(carts);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar los carritos');
     } finally {
       setLoading(false);
     }
-  }, [context, filter]);
+  }, [context]);
 
   useEffect(() => {
     void loadList();
   }, [loadList]);
+
+  const carts = useMemo(
+    () =>
+      filter === 'ALL'
+        ? allCarts
+        : allCarts.filter((cart) => cart.status === filter),
+    [allCarts, filter],
+  );
+
+  const inProgressCarts = useMemo(
+    () => allCarts.filter((cart) => cart.status === 'IN_PROGRESS'),
+    [allCarts],
+  );
+
+  const filterCounts = useMemo(() => {
+    const counts: Record<StatusFilter, number> = {
+      IN_PROGRESS: 0,
+      BOUGHT: 0,
+      CANCELED: 0,
+      ARCHIVED: 0,
+      ALL: allCarts.length,
+    };
+    for (const cart of allCarts) {
+      counts[cart.status] += 1;
+    }
+    return counts;
+  }, [allCarts]);
 
   const ownerQuery = useMemo(() => {
     const q = new URLSearchParams();
@@ -125,10 +145,7 @@ export default function PantryShoppingListView() {
       updated_at: created.updated_at,
       totals: created.totals,
     };
-    setCarts((prev) => [summary, ...prev]);
-    if (created.status === 'IN_PROGRESS') {
-      setInProgressCarts((prev) => [summary, ...prev]);
-    }
+    setAllCarts((prev) => [summary, ...prev]);
   };
 
   return (
@@ -200,7 +217,7 @@ export default function PantryShoppingListView() {
                 : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
             )}
           >
-            {f.label}
+            {f.label} ({filterCounts[f.value]})
           </button>
         ))}
       </div>
