@@ -95,7 +95,13 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
               {totals.items_count}
               {totals.items_count === 1 ? ' ítem' : ' ítems'}
             </span>
-            {totals.items_count > 0 ? (
+            {totals.items_count > 0 && cart.status === 'BOUGHT' ? (
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" />
+                Completado
+              </span>
+            ) : null}
+            {totals.items_count > 0 && cart.status !== 'BOUGHT' ? (
               <span className="inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 {totals.checked_count}/{totals.items_count}

@@ -7,10 +7,12 @@ import {
   parsePantryReceiptUpload,
   PANTRY_RECEIPT_MAX_FILE_BYTES,
 } from '@/lib/server/pantry/parse-receipt-upload';
+import { withLinkedCartWarning } from '@/lib/server/pantry/pantry-receipt-links';
 import {
   decimalToNumber,
   serializePantryReceiptDetail,
 } from '@/lib/server/pantry/serialize-pantry-receipt';
+import { stripReceiptSystemWarnings } from '@/lib/server/pantry/pantry-receipt-links';
 import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pantry-products-from-lines';
 import { shoppingStoreSchema } from '@/schemas/pantry-shopping-cart.schema';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         line_count: r.lines.length,
         lines_sum: Math.round(linesSum * 100) / 100,
         file_name: r.file_name,
-        parse_warnings: r.parse_warnings,
+        parse_warnings: stripReceiptSystemWarnings(r.parse_warnings),
         created_at: r.created_at.toISOString(),
         created_by_user_id: r.created_by_user_id,
       };
@@ -138,6 +140,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 },
       );
     }
+    const cartModeField = formData.get('cartMode');
+    const cartMode =
+      cartModeField === 'new' || cartModeField === 'none'
+        ? cartModeField
+        : 'none';
+    const newCartTitleField = formData.get('newCartTitle');
+    const newCartTitle =
+      typeof newCartTitleField === 'string' && newCartTitleField.trim().length > 0
+        ? newCartTitleField.trim()
+        : null;
 
     const parsed = await parsePantryReceiptUpload({
       buffer: buf,
@@ -149,6 +161,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const title = titleOverride ?? parsed.title ?? defaultTitle;
 
     const receipt = await prisma.$transaction(async (tx) => {
+      let linkedCartId: number | null = null;
       const created = await tx.pantryReceipt.create({
         data: {
           title,
@@ -166,7 +179,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           file_name: storeFile ? file.name : null,
           file_mime: storeFile ? file.type || null : null,
           file_data: storeFile ? buf : null,
-          parse_warnings: parsed.warnings,
+          parse_warnings: withLinkedCartWarning(parsed.warnings, null),
           lines: {
             create: parsed.lines.map((l, i) => ({
               sort_order: i,
@@ -179,6 +192,77 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           },
         },
       });
+
+      if (cartMode === 'new') {
+        const fallbackDate = purchasedOverride.toLocaleDateString('es-MX', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+        const cartTitle = newCartTitle ?? title ?? `Compra ${fallbackDate}`;
+        const cart = await tx.pantryShoppingCart.create({
+          data: {
+            title: cartTitle,
+            notes: null,
+            status: 'BOUGHT',
+            currency: 'MXN',
+            store: parsedStore?.success ? parsedStore.data : null,
+            user_id: ownerFilter.user_id,
+            house_id: ownerFilter.house_id,
+            created_by_user_id: createdBy,
+            updated_by_user_id: createdBy,
+          },
+        });
+        linkedCartId = cart.id;
+
+        const linesForCart = parsed.lines
+          .map((line, index) => ({
+            cart_id: cart.id,
+            product_id: null,
+            name: line.description.trim(),
+            quantity: line.quantity > 0 ? line.quantity : 1,
+            unit_label: line.unit_label,
+            unit_price: line.unit_price,
+            notes: null,
+            checked: true,
+            sort_order: index,
+            created_by_user_id: createdBy,
+            updated_by_user_id: createdBy,
+          }))
+          .filter((line) => line.name.length > 0);
+        if (linesForCart.length > 0) {
+          await tx.pantryShoppingCartItem.createMany({ data: linesForCart });
+          await tx.pantryShoppingCartActivity.create({
+            data: {
+              cart_id: cart.id,
+              user_id: createdBy,
+              action: 'ITEM_ADDED',
+              metadata: {
+                bulk: true,
+                created_count: linesForCart.length,
+                checked: true,
+              },
+            },
+          });
+        }
+        await tx.pantryShoppingCartActivity.create({
+          data: {
+            cart_id: cart.id,
+            user_id: createdBy,
+            action: 'CART_CREATED',
+            metadata: { title: cart.title, store: cart.store },
+          },
+        });
+      }
+
+      if (linkedCartId != null) {
+        await tx.pantryReceipt.update({
+          where: { id: created.id },
+          data: {
+            parse_warnings: withLinkedCartWarning(parsed.warnings, linkedCartId),
+          },
+        });
+      }
 
       await syncPantryProductsFromReceiptLines({
         ownerType,

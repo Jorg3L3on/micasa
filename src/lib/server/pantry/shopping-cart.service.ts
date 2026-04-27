@@ -44,6 +44,8 @@ const ITEM_INCLUDE = {
   updated_by: { select: USER_SELECT },
 } satisfies Prisma.PantryShoppingCartItemInclude;
 
+const SHOPPING_CART_TX_OPTIONS = { timeout: 30000, maxWait: 10000 } as const;
+
 export type OwnerParams = {
   ownerType: 'user' | 'house';
   ownerId: number;
@@ -102,30 +104,33 @@ export async function createShoppingCart(
   userId: number,
   input: CreateShoppingCartInput,
 ): Promise<PantryShoppingCartDetailDto> {
-  const cart = await prisma.$transaction(async (tx) => {
-    const filter = ownerWhere(owner);
-    const created = await tx.pantryShoppingCart.create({
-      data: {
-        title: input.title.trim(),
-        notes: input.notes ?? null,
-        currency: input.currency ?? 'MXN',
-        store: input.store ?? null,
-        user_id: filter.user_id,
-        house_id: filter.house_id,
-        created_by_user_id: userId,
-        updated_by_user_id: userId,
-      },
-    });
-    await tx.pantryShoppingCartActivity.create({
-      data: {
-        cart_id: created.id,
-        user_id: userId,
-        action: 'CART_CREATED',
-        metadata: { title: created.title, store: created.store },
-      },
-    });
-    return created;
-  });
+  const cart = await prisma.$transaction(
+    async (tx) => {
+      const filter = ownerWhere(owner);
+      const created = await tx.pantryShoppingCart.create({
+        data: {
+          title: input.title.trim(),
+          notes: input.notes ?? null,
+          currency: input.currency ?? 'MXN',
+          store: input.store ?? null,
+          user_id: filter.user_id,
+          house_id: filter.house_id,
+          created_by_user_id: userId,
+          updated_by_user_id: userId,
+        },
+      });
+      await tx.pantryShoppingCartActivity.create({
+        data: {
+          cart_id: created.id,
+          user_id: userId,
+          action: 'CART_CREATED',
+          metadata: { title: created.title, store: created.store },
+        },
+      });
+      return created;
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
   return getShoppingCartDetail(owner, cart.id);
 }
 
@@ -135,47 +140,50 @@ export async function updateShoppingCart(
   cartId: number,
   input: UpdateShoppingCartInput,
 ): Promise<PantryShoppingCartDetailDto> {
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.pantryShoppingCart.findFirst({
-      where: { id: cartId, ...ownerWhere(owner) },
-    });
-    if (!existing) throw new ShoppingCartNotFoundError();
+  await prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.pantryShoppingCart.findFirst({
+        where: { id: cartId, ...ownerWhere(owner) },
+      });
+      if (!existing) throw new ShoppingCartNotFoundError();
 
-    const changes: Record<string, { from: unknown; to: unknown }> = {};
-    const data: {
-      title?: string;
-      notes?: string | null;
-      store?: ShoppingStore | null;
-    } = {};
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      const data: {
+        title?: string;
+        notes?: string | null;
+        store?: ShoppingStore | null;
+      } = {};
 
-    if (input.title !== undefined && input.title.trim() !== existing.title) {
-      changes.title = { from: existing.title, to: input.title.trim() };
-      data.title = input.title.trim();
-    }
-    if (input.notes !== undefined && (input.notes ?? null) !== existing.notes) {
-      changes.notes = { from: existing.notes, to: input.notes ?? null };
-      data.notes = input.notes ?? null;
-    }
-    if (input.store !== undefined && (input.store ?? null) !== existing.store) {
-      changes.store = { from: existing.store, to: input.store ?? null };
-      data.store = input.store ?? null;
-    }
+      if (input.title !== undefined && input.title.trim() !== existing.title) {
+        changes.title = { from: existing.title, to: input.title.trim() };
+        data.title = input.title.trim();
+      }
+      if (input.notes !== undefined && (input.notes ?? null) !== existing.notes) {
+        changes.notes = { from: existing.notes, to: input.notes ?? null };
+        data.notes = input.notes ?? null;
+      }
+      if (input.store !== undefined && (input.store ?? null) !== existing.store) {
+        changes.store = { from: existing.store, to: input.store ?? null };
+        data.store = input.store ?? null;
+      }
 
-    if (Object.keys(data).length === 0) return;
+      if (Object.keys(data).length === 0) return;
 
-    await tx.pantryShoppingCart.update({
-      where: { id: cartId },
-      data: { ...data, updated_by_user_id: userId },
-    });
-    await tx.pantryShoppingCartActivity.create({
-      data: {
-        cart_id: cartId,
-        user_id: userId,
-        action: 'CART_UPDATED',
-        metadata: { changes } as Prisma.InputJsonValue,
-      },
-    });
-  });
+      await tx.pantryShoppingCart.update({
+        where: { id: cartId },
+        data: { ...data, updated_by_user_id: userId },
+      });
+      await tx.pantryShoppingCartActivity.create({
+        data: {
+          cart_id: cartId,
+          user_id: userId,
+          action: 'CART_UPDATED',
+          metadata: { changes } as Prisma.InputJsonValue,
+        },
+      });
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
   return getShoppingCartDetail(owner, cartId);
 }
 
@@ -185,26 +193,29 @@ export async function updateShoppingCartStatus(
   cartId: number,
   status: ShoppingCartStatus,
 ): Promise<PantryShoppingCartDetailDto> {
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.pantryShoppingCart.findFirst({
-      where: { id: cartId, ...ownerWhere(owner) },
-    });
-    if (!existing) throw new ShoppingCartNotFoundError();
-    if (existing.status === status) return;
+  await prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.pantryShoppingCart.findFirst({
+        where: { id: cartId, ...ownerWhere(owner) },
+      });
+      if (!existing) throw new ShoppingCartNotFoundError();
+      if (existing.status === status) return;
 
-    await tx.pantryShoppingCart.update({
-      where: { id: cartId },
-      data: { status, updated_by_user_id: userId },
-    });
-    await tx.pantryShoppingCartActivity.create({
-      data: {
-        cart_id: cartId,
-        user_id: userId,
-        action: 'CART_STATUS_CHANGED',
-        metadata: { from: existing.status, to: status },
-      },
-    });
-  });
+      await tx.pantryShoppingCart.update({
+        where: { id: cartId },
+        data: { status, updated_by_user_id: userId },
+      });
+      await tx.pantryShoppingCartActivity.create({
+        data: {
+          cart_id: cartId,
+          user_id: userId,
+          action: 'CART_STATUS_CHANGED',
+          metadata: { from: existing.status, to: status },
+        },
+      });
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
   return getShoppingCartDetail(owner, cartId);
 }
 
@@ -213,22 +224,25 @@ export async function deleteShoppingCart(
   userId: number,
   cartId: number,
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.pantryShoppingCart.findFirst({
-      where: { id: cartId, ...ownerWhere(owner) },
-    });
-    if (!existing) throw new ShoppingCartNotFoundError();
+  await prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.pantryShoppingCart.findFirst({
+        where: { id: cartId, ...ownerWhere(owner) },
+      });
+      if (!existing) throw new ShoppingCartNotFoundError();
 
-    await tx.pantryShoppingCartActivity.create({
-      data: {
-        cart_id: cartId,
-        user_id: userId,
-        action: 'CART_DELETED',
-        metadata: { title: existing.title, status: existing.status },
-      },
-    });
-    await tx.pantryShoppingCart.delete({ where: { id: cartId } });
-  });
+      await tx.pantryShoppingCartActivity.create({
+        data: {
+          cart_id: cartId,
+          user_id: userId,
+          action: 'CART_DELETED',
+          metadata: { title: existing.title, status: existing.status },
+        },
+      });
+      await tx.pantryShoppingCart.delete({ where: { id: cartId } });
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
 }
 
 export async function addShoppingCartItem(
@@ -237,85 +251,165 @@ export async function addShoppingCartItem(
   cartId: number,
   input: CreateShoppingCartItemInput,
 ): Promise<PantryShoppingCartItemDto> {
-  const item = await prisma.$transaction(async (tx) => {
-    const cart = await tx.pantryShoppingCart.findFirst({
-      where: { id: cartId, ...ownerWhere(owner) },
-    });
-    if (!cart) throw new ShoppingCartNotFoundError();
-
-    let name = input.name?.trim() ?? '';
-    let unitLabel: string | null = input.unit_label ?? null;
-    let unitPrice: number | null =
-      input.unit_price === undefined ? null : (input.unit_price ?? null);
-
-    if (input.product_id != null) {
-      const product = await tx.pantryProduct.findFirst({
-        where: { id: input.product_id, ...ownerWhere(owner) },
+  const item = await prisma.$transaction(
+    async (tx) => {
+      const cart = await tx.pantryShoppingCart.findFirst({
+        where: { id: cartId, ...ownerWhere(owner) },
       });
-      if (!product) {
-        throw new ShoppingCartValidationError(
-          'El producto no existe o no te pertenece',
-        );
+      if (!cart) throw new ShoppingCartNotFoundError();
+
+      let name = input.name?.trim() ?? '';
+      let unitLabel: string | null = input.unit_label ?? null;
+      let unitPrice: number | null =
+        input.unit_price === undefined ? null : (input.unit_price ?? null);
+
+      if (input.product_id != null) {
+        const product = await tx.pantryProduct.findFirst({
+          where: { id: input.product_id, ...ownerWhere(owner) },
+        });
+        if (!product) {
+          throw new ShoppingCartValidationError(
+            'El producto no existe o no te pertenece',
+          );
+        }
+        if (!name) name = product.name;
+        if (input.unit_label === undefined)
+          unitLabel = product.unit_label ?? null;
+        if (input.unit_price === undefined) {
+          unitPrice = decimalToNumber(product.default_unit_price);
+        }
       }
-      if (!name) name = product.name;
-      if (input.unit_label === undefined)
-        unitLabel = product.unit_label ?? null;
-      if (input.unit_price === undefined) {
-        unitPrice = decimalToNumber(product.default_unit_price);
+
+      if (!name) {
+        throw new ShoppingCartValidationError('El nombre es obligatorio');
       }
-    }
 
-    if (!name) {
-      throw new ShoppingCartValidationError('El nombre es obligatorio');
-    }
+      const maxSort = await tx.pantryShoppingCartItem.aggregate({
+        where: { cart_id: cartId },
+        _max: { sort_order: true },
+      });
+      const nextSort = (maxSort._max.sort_order ?? -1) + 1;
 
-    const maxSort = await tx.pantryShoppingCartItem.aggregate({
-      where: { cart_id: cartId },
-      _max: { sort_order: true },
-    });
-    const nextSort = (maxSort._max.sort_order ?? -1) + 1;
-
-    const created = await tx.pantryShoppingCartItem.create({
-      data: {
-        cart_id: cartId,
-        product_id: input.product_id ?? null,
-        name,
-        quantity: input.quantity ?? 1,
-        unit_label: unitLabel,
-        unit_price: unitPrice,
-        notes: input.notes ?? null,
-        sort_order: nextSort,
-        created_by_user_id: userId,
-        updated_by_user_id: userId,
-      },
-      include: ITEM_INCLUDE,
-    });
-
-    await tx.pantryShoppingCart.update({
-      where: { id: cartId },
-      data: { updated_by_user_id: userId },
-    });
-
-    await tx.pantryShoppingCartActivity.create({
-      data: {
-        cart_id: cartId,
-        item_id: created.id,
-        user_id: userId,
-        action: 'ITEM_ADDED',
-        metadata: {
-          name: created.name,
-          product_id: created.product_id,
-          quantity: decimalToNumber(created.quantity),
-          unit_price: decimalToNumber(created.unit_price),
-          unit_label: created.unit_label,
+      const created = await tx.pantryShoppingCartItem.create({
+        data: {
+          cart_id: cartId,
+          product_id: input.product_id ?? null,
+          name,
+          quantity: input.quantity ?? 1,
+          unit_label: unitLabel,
+          unit_price: unitPrice,
+          notes: input.notes ?? null,
+          sort_order: nextSort,
+          created_by_user_id: userId,
+          updated_by_user_id: userId,
         },
-      },
-    });
+        include: ITEM_INCLUDE,
+      });
 
-    return created;
-  });
+      await tx.pantryShoppingCart.update({
+        where: { id: cartId },
+        data: { updated_by_user_id: userId },
+      });
+
+      await tx.pantryShoppingCartActivity.create({
+        data: {
+          cart_id: cartId,
+          item_id: created.id,
+          user_id: userId,
+          action: 'ITEM_ADDED',
+          metadata: {
+            name: created.name,
+            product_id: created.product_id,
+            quantity: decimalToNumber(created.quantity),
+            unit_price: decimalToNumber(created.unit_price),
+            unit_label: created.unit_label,
+          },
+        },
+      });
+
+      return created;
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
 
   return serializeShoppingCartItem(item as unknown as ShoppingCartItemRow);
+}
+
+type BulkCartItemInput = {
+  name: string;
+  quantity?: number;
+  unit_label?: string | null;
+  unit_price?: number | null;
+  notes?: string | null;
+};
+
+export async function addShoppingCartItemsBulk(
+  owner: OwnerParams,
+  userId: number,
+  cartId: number,
+  items: BulkCartItemInput[],
+  options: { checked?: boolean } = {},
+): Promise<{ created_count: number }> {
+  if (items.length === 0) return { created_count: 0 };
+
+  return prisma.$transaction(
+    async (tx) => {
+      const cart = await tx.pantryShoppingCart.findFirst({
+        where: { id: cartId, ...ownerWhere(owner) },
+        select: { id: true },
+      });
+      if (!cart) throw new ShoppingCartNotFoundError();
+
+      const maxSort = await tx.pantryShoppingCartItem.aggregate({
+        where: { cart_id: cartId },
+        _max: { sort_order: true },
+      });
+      const startSort = (maxSort._max.sort_order ?? -1) + 1;
+
+      const normalized = items.map((item, index) => {
+        const name = item.name.trim();
+        if (!name) {
+          throw new ShoppingCartValidationError('El nombre es obligatorio');
+        }
+        return {
+          cart_id: cartId,
+          product_id: null,
+          name,
+          quantity: item.quantity && item.quantity > 0 ? item.quantity : 1,
+          unit_label: item.unit_label ?? null,
+          unit_price: item.unit_price ?? null,
+          notes: item.notes ?? null,
+          checked: options.checked === true,
+          sort_order: startSort + index,
+          created_by_user_id: userId,
+          updated_by_user_id: userId,
+        };
+      });
+
+      await tx.pantryShoppingCartItem.createMany({ data: normalized });
+
+      await tx.pantryShoppingCart.update({
+        where: { id: cartId },
+        data: { updated_by_user_id: userId },
+      });
+
+      await tx.pantryShoppingCartActivity.create({
+        data: {
+          cart_id: cartId,
+          user_id: userId,
+          action: 'ITEM_ADDED',
+          metadata: {
+            bulk: true,
+            created_count: normalized.length,
+            checked: options.checked === true,
+          },
+        },
+      });
+
+      return { created_count: normalized.length };
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
 }
 
 type ItemDiff = Record<string, { from: unknown; to: unknown }>;
@@ -462,7 +556,7 @@ export async function updateShoppingCartItem(
     }
 
     return existing.id;
-  });
+  }, SHOPPING_CART_TX_OPTIONS);
 
   const refreshed = await prisma.pantryShoppingCartItem.findFirstOrThrow({
     where: { id: updated },
@@ -509,7 +603,48 @@ export async function removeShoppingCartItem(
       where: { id: cartId },
       data: { updated_by_user_id: userId },
     });
-  });
+  }, SHOPPING_CART_TX_OPTIONS);
+}
+
+export async function checkAllShoppingCartItems(
+  owner: OwnerParams,
+  userId: number,
+  cartId: number,
+): Promise<{ checked_count: number }> {
+  const checkedCount = await prisma.$transaction(
+    async (tx) => {
+      const cart = await tx.pantryShoppingCart.findFirst({
+        where: { id: cartId, ...ownerWhere(owner) },
+      });
+      if (!cart) throw new ShoppingCartNotFoundError();
+
+      const updated = await tx.pantryShoppingCartItem.updateMany({
+        where: { cart_id: cartId, checked: false },
+        data: { checked: true, updated_by_user_id: userId },
+      });
+
+      await tx.pantryShoppingCart.update({
+        where: { id: cartId },
+        data: { updated_by_user_id: userId },
+      });
+
+      if (updated.count > 0) {
+        await tx.pantryShoppingCartActivity.create({
+          data: {
+            cart_id: cartId,
+            user_id: userId,
+            action: 'ITEM_CHECKED',
+            metadata: { bulk: true, count: updated.count },
+          },
+        });
+      }
+
+      return updated.count;
+    },
+    SHOPPING_CART_TX_OPTIONS,
+  );
+
+  return { checked_count: checkedCount };
 }
 
 export async function listShoppingCartActivity(

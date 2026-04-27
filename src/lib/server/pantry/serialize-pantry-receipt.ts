@@ -1,4 +1,8 @@
 import type { PantryReceiptDetailDto } from '@/types/pantry-receipt';
+import {
+  extractLinkedCartIdFromWarnings,
+  stripReceiptSystemWarnings,
+} from '@/lib/server/pantry/pantry-receipt-links';
 
 export const decimalToNumber = (value: unknown): number | null => {
   if (value == null) return null;
@@ -71,7 +75,8 @@ export const serializePantryReceiptDetail = (r: {
   file_name: r.file_name,
   file_mime: r.file_mime,
   has_file: r.file_data != null && r.file_data.length > 0,
-  parse_warnings: r.parse_warnings,
+  linked_cart_id: extractLinkedCartIdFromWarnings(r.parse_warnings),
+  parse_warnings: stripReceiptSystemWarnings(r.parse_warnings),
   created_at: r.created_at.toISOString(),
   updated_at: r.updated_at.toISOString(),
   created_by_user_id: r.created_by_user_id,

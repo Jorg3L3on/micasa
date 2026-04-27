@@ -33,9 +33,10 @@ const formatPercent = (n: number | null): string => {
   return `${sign}${n.toFixed(1)}%`;
 };
 
-const formatQty = (n: number): string => {
-  if (!Number.isFinite(n)) return '—';
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+const formatPurchaseCount = (count: number): string => {
+  if (!Number.isFinite(count) || count <= 0) return '0 compras';
+  const safeCount = Math.round(count);
+  return `${safeCount.toLocaleString('es-MX')} ${safeCount === 1 ? 'compra' : 'compras'}`;
 };
 
 const PANTRY_CARD_LIST_SCROLL_CLASS =
@@ -504,10 +505,7 @@ export const PantryHomeInsights = () => {
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
-                            <span>{p.purchase_count} en recibos</span>
-                            {p.total_quantity > 0 ? (
-                              <span>{formatQty(p.total_quantity)} uds. acumuladas</span>
-                            ) : null}
+                            <span>{formatPurchaseCount(p.purchase_count)}</span>
                           </div>
                         </li>
                       ))}

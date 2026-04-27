@@ -196,6 +196,42 @@ function getPageTitle(
     return { title: 'Usuarios de la casa', breadcrumbs };
   }
 
+  if (segments[0] === 'tasks') {
+    breadcrumbs.push({ label: 'Tareas', href: `/tasks${qs}` });
+
+    if (!segments[1]) {
+      return { title: 'Tareas', breadcrumbs };
+    }
+
+    if (segments[1] === 'todo-lists') {
+      breadcrumbs.push({ label: 'Listas de tareas' });
+      return { title: 'Listas de tareas', breadcrumbs };
+    }
+
+    if (segments[1] === 'scheduled') {
+      breadcrumbs.push({ label: 'Tareas programadas' });
+      return { title: 'Tareas programadas', breadcrumbs };
+    }
+
+    if (segments[1] === 'habits') {
+      breadcrumbs.push({ label: 'Hábitos' });
+      return { title: 'Hábitos', breadcrumbs };
+    }
+
+    if (segments[1] === 'routines') {
+      breadcrumbs.push({ label: 'Rutinas diarias' });
+      return { title: 'Rutinas diarias', breadcrumbs };
+    }
+
+    if (segments[1] === 'lists' && segments[2] && /^\d+$/.test(segments[2])) {
+      breadcrumbs.push({ label: 'Listas de tareas', href: `/tasks/todo-lists${qs}` });
+      breadcrumbs.push({ label: `Lista #${segments[2]}` });
+      return { title: `Lista #${segments[2]}`, breadcrumbs };
+    }
+
+    return { title: 'Tareas', breadcrumbs };
+  }
+
   // Handle other pages
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',

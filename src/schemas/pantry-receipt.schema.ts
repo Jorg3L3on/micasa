@@ -13,6 +13,7 @@ export const patchPantryReceiptSchema = z.object({
   title: z.string().min(1).max(500).nullable().optional(),
   /** ISO date string (e.g. 2026-03-16) or null to clear */
   purchased_at: z.string().nullable().optional(),
+  linked_cart_id: z.number().int().positive().nullable().optional(),
   lines: z.array(linePatchSchema).min(1).optional(),
 });
 

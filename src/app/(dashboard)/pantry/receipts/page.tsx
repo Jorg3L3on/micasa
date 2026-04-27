@@ -48,7 +48,9 @@ import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
+  checkAllShoppingCartItems,
   deletePantryReceipt,
+  patchPantryReceipt,
   listShoppingCarts,
   listPantryReceipts,
   getClientApiBaseUrl,
@@ -76,6 +78,9 @@ const formatShortDate = (iso: string | null): string => {
   });
 };
 
+const getReceiptDisplayTotal = (receipt: PantryReceiptListItemDto): number =>
+  receipt.grand_total ?? receipt.lines_sum;
+
 export default function PantryReceiptsPage() {
   const router = useRouter();
   const { context } = useFinanceContext();
@@ -86,7 +91,7 @@ export default function PantryReceiptsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [storeFile, setStoreFile] = useState(true);
+  const [storeFile, setStoreFile] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadPurchasedAt, setUploadPurchasedAt] = useState('');
   const [uploadStore, setUploadStore] = useState<ShoppingStore | null>(null);
@@ -94,7 +99,10 @@ export default function PantryReceiptsPage() {
   const [inProgressCarts, setInProgressCarts] = useState<
     PantryShoppingCartSummaryDto[]
   >([]);
+  const [linkCartOnImport, setLinkCartOnImport] = useState(false);
+  const [cartLinkMode, setCartLinkMode] = useState<'existing' | 'new'>('existing');
   const [selectedCartId, setSelectedCartId] = useState<number | null>(null);
+  const [newCartTitle, setNewCartTitle] = useState('');
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(
     null,
   );
@@ -136,8 +144,11 @@ export default function PantryReceiptsPage() {
     setUploadTitle('');
     setUploadPurchasedAt('');
     setUploadStore(null);
+    setLinkCartOnImport(false);
+    setCartLinkMode('existing');
     setSelectedCartId(null);
-    setStoreFile(true);
+    setNewCartTitle('');
+    setStoreFile(false);
   };
 
   const handleOpenUpload = async () => {
@@ -162,22 +173,38 @@ export default function PantryReceiptsPage() {
       toast.error('La fecha de compra es obligatoria');
       return;
     }
+    if (linkCartOnImport && cartLinkMode === 'existing' && selectedCartId == null) {
+      toast.error('Selecciona un carrito en curso');
+      return;
+    }
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('storeFile', storeFile ? 'true' : 'false');
     if (uploadTitle.trim()) formData.append('title', uploadTitle.trim());
     formData.append('purchased_at', uploadPurchasedAt.trim());
     if (uploadStore) formData.append('store', uploadStore);
+    if (linkCartOnImport && cartLinkMode === 'new') {
+      formData.append('cartMode', 'new');
+      if (newCartTitle.trim()) {
+        formData.append('newCartTitle', newCartTitle.trim());
+      }
+    }
     try {
       setUploading(true);
       const created = await uploadPantryReceipt(formData, context);
       toast.success('Recibo guardado');
-      if (selectedCartId != null) {
+      if (linkCartOnImport && cartLinkMode === 'existing' && selectedCartId != null) {
         try {
+          await checkAllShoppingCartItems(selectedCartId, context);
           await updateShoppingCartStatus(selectedCartId, 'BOUGHT', context);
           if (uploadStore) {
             await updateShoppingCart(selectedCartId, { store: uploadStore }, context);
           }
+          await patchPantryReceipt(
+            created.id,
+            { linked_cart_id: selectedCartId },
+            context,
+          );
           toast.success('Carrito marcado como comprado');
         } catch (statusErr) {
           toast.error(
@@ -186,6 +213,14 @@ export default function PantryReceiptsPage() {
               : 'No se pudo actualizar el carrito',
           );
         }
+      }
+      if (linkCartOnImport && cartLinkMode === 'new') {
+        const importedLineCount = created.lines.filter(
+          (line) => line.description.trim().length > 0,
+        ).length;
+        toast.success(
+          `Carrito nuevo creado como comprado (${importedLineCount} ítems)`,
+        );
       }
       setUploadOpen(false);
       resetUploadForm();
@@ -315,13 +350,14 @@ export default function PantryReceiptsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Total recibo" />
         ),
-        cell: ({ row }) => (
-          <span className="text-sm font-bold font-mono tabular-nums">
-            {row.original.grand_total != null
-              ? formatCurrency(row.original.grand_total)
-              : '—'}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const total = getReceiptDisplayTotal(row.original);
+          return (
+            <span className="text-sm font-bold font-mono tabular-nums">
+              {formatCurrency(total)}
+            </span>
+          );
+        },
       },
       {
         id: 'file',
@@ -394,7 +430,10 @@ export default function PantryReceiptsPage() {
 
   const stats = useMemo(() => {
     const receiptCount = receipts.length;
-    const totalGrand = receipts.reduce((acc, r) => acc + (r.grand_total ?? 0), 0);
+    const totalGrand = receipts.reduce(
+      (acc, r) => acc + getReceiptDisplayTotal(r),
+      0,
+    );
     const latestPurchasedAt = receipts.reduce<string | null>((latest, r) => {
       if (!r.purchased_at) return latest;
       if (!latest) return r.purchased_at;
@@ -518,8 +557,8 @@ export default function PantryReceiptsPage() {
           <DialogHeader>
             <DialogTitle>Importar recibo</DialogTitle>
             <DialogDescription>
-              La fecha de compra es obligatoria. Puedes elegir tienda y marcar un carrito
-              en curso como comprado al finalizar.
+              La fecha de compra es obligatoria. Puedes elegir si quieres vincular un
+              carrito en curso o crear uno nuevo como comprado.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -581,29 +620,85 @@ export default function PantryReceiptsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Carrito en curso (opcional)</Label>
-                <Select
-                  value={selectedCartId != null ? String(selectedCartId) : '__NONE__'}
-                  onValueChange={(value) =>
-                    setSelectedCartId(value === '__NONE__' ? null : Number(value))
-                  }
-                  disabled={cartsLoading}
-                >
-                  <SelectTrigger className="h-9 w-full">
-                    <SelectValue
-                      placeholder={cartsLoading ? 'Cargando...' : 'No marcar carrito'}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__NONE__">No marcar carrito</SelectItem>
-                    {inProgressCarts.map((cart) => (
-                      <SelectItem key={cart.id} value={String(cart.id)}>
-                        {cart.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="sr-only">Opciones de carrito</Label>
               </div>
+            </div>
+            <div className="space-y-3 rounded-lg border border-border/60 p-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="link-cart-on-import"
+                  checked={linkCartOnImport}
+                  onCheckedChange={(v) => setLinkCartOnImport(v === true)}
+                />
+                <Label
+                  htmlFor="link-cart-on-import"
+                  className="text-sm font-normal leading-snug cursor-pointer"
+                >
+                  Vincular carrito al importar recibo
+                </Label>
+              </div>
+              {linkCartOnImport && (
+                <div className="grid gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Acción de carrito</Label>
+                    <Select
+                      value={cartLinkMode}
+                      onValueChange={(value) =>
+                        setCartLinkMode(value as 'existing' | 'new')
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="existing">
+                          Marcar carrito en curso como comprado
+                        </SelectItem>
+                        <SelectItem value="new">
+                          Crear carrito nuevo como comprado
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {cartLinkMode === 'existing' ? (
+                    <div className="space-y-1.5">
+                      <Label>Carrito en curso *</Label>
+                      <Select
+                        value={selectedCartId != null ? String(selectedCartId) : '__NONE__'}
+                        onValueChange={(value) =>
+                          setSelectedCartId(value === '__NONE__' ? null : Number(value))
+                        }
+                        disabled={cartsLoading}
+                      >
+                        <SelectTrigger className="h-9 w-full">
+                          <SelectValue
+                            placeholder={cartsLoading ? 'Cargando...' : 'Selecciona un carrito'}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__NONE__">Selecciona un carrito</SelectItem>
+                          {inProgressCarts.map((cart) => (
+                            <SelectItem key={cart.id} value={String(cart.id)}>
+                              {cart.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-cart-title">Título del nuevo carrito (opcional)</Label>
+                      <Input
+                        id="new-cart-title"
+                        value={newCartTitle}
+                        onChange={(e) => setNewCartTitle(e.target.value)}
+                        placeholder="Si lo dejas vacío, se autogenera con el recibo"
+                        className="h-9"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
