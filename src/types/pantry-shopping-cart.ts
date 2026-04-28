@@ -72,4 +72,10 @@ export type PantryShoppingCartSummaryDto = {
 
 export type PantryShoppingCartDetailDto = PantryShoppingCartSummaryDto & {
   items: PantryShoppingCartItemDto[];
+  variance?: {
+    linked_receipt_id: number;
+    estimated_total: number;
+    receipt_total: number;
+    delta: number;
+  } | null;
 };

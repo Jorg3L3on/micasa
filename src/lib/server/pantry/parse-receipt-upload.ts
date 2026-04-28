@@ -6,6 +6,13 @@ export type ParsedReceiptLine = {
   line_total: number;
 };
 
+export type ParsedReceiptDebugEvent = {
+  phase: 'extract' | 'profile' | 'classify' | 'parse' | 'validate';
+  message: string;
+  line?: string;
+  profile?: string;
+};
+
 export type ParsedReceipt = {
   title: string | null;
   merchant_ref: string | null;
@@ -16,6 +23,34 @@ export type ParsedReceipt = {
   grand_total: number | null;
   lines: ParsedReceiptLine[];
   warnings: string[];
+  debug_trace?: ParsedReceiptDebugEvent[];
+};
+
+type ReceiptTextCell = {
+  text: string;
+  x?: number;
+  width?: number;
+};
+
+type ReceiptTextRow = {
+  text: string;
+  cells: ReceiptTextCell[];
+  page?: number;
+  y?: number;
+};
+
+type ReceiptSummaryKey =
+  | 'subtotal'
+  | 'discount_total'
+  | 'delivery_fee'
+  | 'grand_total';
+
+type ReceiptFormatProfile = {
+  id: string;
+  name: string;
+  detect: (allText: string) => boolean;
+  noisePatterns: RegExp[];
+  summaryPatterns: Array<{ key: ReceiptSummaryKey; pattern: RegExp }>;
 };
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -77,6 +112,7 @@ const parseMoneyToken = (token: string): number | null => {
 };
 
 const MONEY_TOKEN_RE = /\$?\s*-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\$?\s*-?\d+(?:[.,]\d{1,2})?/g;
+const MONEY_AT_END_RE = /\$?\s*-?\d[\d.,]*(?:[.,]\d{1,2})?\s*$/;
 
 const extractLastMoneyOnLine = (line: string): number | null => {
   let last: number | null = null;
@@ -108,12 +144,160 @@ const parsePedidoDate = (line: string): Date | null => {
 
 const QTY_UNIT_RE = /(\d+(?:[.,]\d+)?)\s*(kg|pz|g|ml|l|lt|pieza|piezas|unidad|unidades|paq|paquete)\b/i;
 
+const PRINTED_PAGE_FOOTER_RE =
+  /^\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.|am|pm)?\b/i;
+
+const isReceiptNoiseLine = (line: string): boolean =>
+  PRINTED_PAGE_FOOTER_RE.test(line) ||
+  /^\d+\s*\/\s*\d+$/.test(line) ||
+  /^Detalles del pedido\b/i.test(line) ||
+  /Detalles del pedido\s*-\s*BodegaAurrera\.com\.mx/i.test(line);
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const roundQuantity = (value: number): number => {
+  if (!Number.isFinite(value)) return 1;
+  return Math.round(value * 10_000) / 10_000;
+};
+
+const createEmptyReceipt = (): ParsedReceipt => ({
+  title: null,
+  merchant_ref: null,
+  purchased_at: null,
+  subtotal: null,
+  discount_total: null,
+  delivery_fee: null,
+  grand_total: null,
+  lines: [],
+  warnings: [],
+  debug_trace:
+    process.env.NODE_ENV !== 'production' || process.env.PANTRY_RECEIPT_DEBUG === '1'
+      ? []
+      : undefined,
+});
+
+const trace = (
+  receipt: ParsedReceipt,
+  event: ParsedReceiptDebugEvent,
+): void => {
+  receipt.debug_trace?.push(event);
+};
+
 const parseQuantityCell = (cell: string): { quantity: number; unit_label: string | null } | null => {
   const m = cell.match(QTY_UNIT_RE);
   if (!m) return null;
   const n = Number.parseFloat(m[1].replace(',', '.'));
   if (!Number.isFinite(n) || n <= 0) return null;
-  return { quantity: n, unit_label: m[2].toLowerCase() };
+  return { quantity: roundQuantity(n), unit_label: m[2].toLowerCase() };
+};
+
+const RECEIPT_PROFILES: ReceiptFormatProfile[] = [
+  {
+    id: 'bodega_aurrera',
+    name: 'Bodega Aurrera',
+    detect: (text) => /bodega\s*aurrera|bodegaaurrera\.com\.mx/i.test(text),
+    noisePatterns: [
+      /^Código de barras/i,
+      /Detalles del pedido\s*-\s*BodegaAurrera\.com\.mx/i,
+      /^Método$/i,
+      /^de$/i,
+      /^pago$/i,
+    ],
+    summaryPatterns: [
+      { key: 'subtotal', pattern: /^Subtotal\b/i },
+      { key: 'discount_total', pattern: /^Descuento\b(?!.*envío)/i },
+      { key: 'delivery_fee', pattern: /^Costo de entrega\b/i },
+      { key: 'grand_total', pattern: /^Total\b/i },
+    ],
+  },
+  {
+    id: 'walmart',
+    name: 'Walmart',
+    detect: (text) => /walmart/i.test(text),
+    noisePatterns: [/^Código de barras/i, /^Método$/i, /^Pago$/i],
+    summaryPatterns: [
+      { key: 'subtotal', pattern: /^Subtotal\b/i },
+      { key: 'discount_total', pattern: /^Descuento\b/i },
+      { key: 'delivery_fee', pattern: /^(Costo de entrega|Envío)\b/i },
+      { key: 'grand_total', pattern: /^Total\b/i },
+    ],
+  },
+  {
+    id: 'soriana',
+    name: 'Soriana',
+    detect: (text) => /soriana/i.test(text),
+    noisePatterns: [/^Ticket\b/i, /^Gracias por su compra/i],
+    summaryPatterns: [
+      { key: 'subtotal', pattern: /^Subtotal\b/i },
+      { key: 'discount_total', pattern: /^(Descuento|Ahorro)\b/i },
+      { key: 'delivery_fee', pattern: /^(Envío|Entrega)\b/i },
+      { key: 'grand_total', pattern: /^Total\b/i },
+    ],
+  },
+  {
+    id: 'chedraui',
+    name: 'Chedraui',
+    detect: (text) => /chedraui/i.test(text),
+    noisePatterns: [/^Ticket\b/i, /^Gracias por su compra/i],
+    summaryPatterns: [
+      { key: 'subtotal', pattern: /^Subtotal\b/i },
+      { key: 'discount_total', pattern: /^(Descuento|Ahorro)\b/i },
+      { key: 'delivery_fee', pattern: /^(Envío|Entrega)\b/i },
+      { key: 'grand_total', pattern: /^Total\b/i },
+    ],
+  },
+  {
+    id: 'generic',
+    name: 'Genérico',
+    detect: () => true,
+    noisePatterns: [],
+    summaryPatterns: [
+      { key: 'subtotal', pattern: /^Subtotal\b/i },
+      { key: 'discount_total', pattern: /^Descuento\b/i },
+      { key: 'delivery_fee', pattern: /^(Costo de entrega|Envío|Entrega)\b/i },
+      { key: 'grand_total', pattern: /^Total\b/i },
+    ],
+  },
+];
+
+const detectProfile = (rows: ReceiptTextRow[]): ReceiptFormatProfile => {
+  const allText = rows.map((row) => row.text).join('\n');
+  return RECEIPT_PROFILES.find((profile) => profile.detect(allText)) ?? RECEIPT_PROFILES.at(-1)!;
+};
+
+const rowsFromPlainText = (raw: string): ReceiptTextRow[] =>
+  raw.split(/\r?\n/).map((line) => {
+    const cells = line
+      .split('\t')
+      .map((text) => ({ text: text.trim() }))
+      .filter((cell) => cell.text.length > 0);
+    return {
+      text: line.trim(),
+      cells,
+    };
+  });
+
+const rowText = (row: ReceiptTextRow): string =>
+  row.cells.length > 0 ? row.cells.map((cell) => cell.text).join('\t') : row.text;
+
+const isNoiseRow = (row: ReceiptTextRow, profile: ReceiptFormatProfile): boolean => {
+  const line = rowText(row).trim();
+  return (
+    line.length === 0 ||
+    /^--\s*\d+\s+of\s+\d+\s*--$/i.test(line) ||
+    line.startsWith('http://') ||
+    line.startsWith('https://') ||
+    isReceiptNoiseLine(line) ||
+    profile.noisePatterns.some((pattern) => pattern.test(line))
+  );
+};
+
+const classifySummaryRow = (
+  row: ReceiptTextRow,
+  profile: ReceiptFormatProfile,
+): ReceiptSummaryKey | null => {
+  const line = rowText(row).trim();
+  return profile.summaryPatterns.find((entry) => entry.pattern.test(line))?.key ?? null;
 };
 
 /**
@@ -127,6 +311,8 @@ const parseQuantityCell = (cell: string): { quantity: number; unit_label: string
  * by anchoring on the trailing money token.
  */
 const parseProductLine = (line: string): ParsedReceiptLine | null => {
+  if (!line.includes('$') && !QTY_UNIT_RE.test(line)) return null;
+
   const lineTotal = extractLastMoneyOnLine(line);
   if (lineTotal == null || lineTotal <= 0) return null;
 
@@ -134,17 +320,42 @@ const parseProductLine = (line: string): ParsedReceiptLine | null => {
   let qtyCell: string | null = null;
 
   if (line.includes('\t')) {
-    const dollarIdx = line.lastIndexOf('$');
-    const head =
-      dollarIdx >= 0 ? line.slice(0, dollarIdx) : line.replace(/[\d.,\s-]+$/, '');
-    const cells = head
+    const cells = line
       .split('\t')
       .map((c) => c.trim())
       .filter((c) => c.length > 0);
-    desc = cells[0] ?? '';
-    qtyCell = cells.length >= 2 ? cells[cells.length - 1]! : null;
+    let totalCellIndex = -1;
+    for (let i = cells.length - 1; i >= 0; i--) {
+      if (extractLastMoneyOnLine(cells[i]!) != null) {
+        totalCellIndex = i;
+        break;
+      }
+    }
+    const headCells =
+      totalCellIndex >= 0 ? cells.slice(0, totalCellIndex) : cells.slice(0, -1);
+    let qtyIndex = -1;
+    for (let i = headCells.length - 1; i >= 1; i--) {
+      if (QTY_UNIT_RE.test(headCells[i]!)) {
+        qtyIndex = i;
+        break;
+      }
+    }
+    if (qtyIndex >= 0) {
+      qtyCell = headCells[qtyIndex]!;
+      desc = headCells.slice(0, qtyIndex).join(' ').trim();
+    } else {
+      const dollarIdx = line.lastIndexOf('$');
+      const head =
+        dollarIdx >= 0 ? line.slice(0, dollarIdx) : line.replace(/[\d.,\s-]+$/, '');
+      const fallbackCells = head
+        .split('\t')
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+      desc = fallbackCells[0] ?? '';
+      qtyCell = fallbackCells.length >= 2 ? fallbackCells[fallbackCells.length - 1]! : null;
+    }
   } else {
-    const moneyMatch = line.match(/\$?\s*-?\d[\d.,]*(?:[.,]\d{1,2})?\s*$/);
+    const moneyMatch = line.match(MONEY_AT_END_RE);
     const moneyStart = moneyMatch ? line.lastIndexOf(moneyMatch[0]) : -1;
     if (moneyStart < 0) return null;
     const head = line.slice(0, moneyStart).trimEnd();
@@ -168,13 +379,13 @@ const parseProductLine = (line: string): ParsedReceiptLine | null => {
     if (parsed) {
       quantity = parsed.quantity;
       unit_label = parsed.unit_label;
-      unit_price = Math.round((lineTotal / quantity) * 100) / 100;
+      unit_price = roundMoney(lineTotal / quantity);
     }
   }
 
   return {
     description: desc,
-    quantity: Number.isFinite(quantity) ? quantity : 1,
+    quantity: roundQuantity(quantity),
     unit_label,
     unit_price,
     line_total: lineTotal,
@@ -201,40 +412,70 @@ const parseSummaryLine = (
   target[key] = Math.abs(amount);
 };
 
+const validateReceiptTotals = (receipt: ParsedReceipt): void => {
+  if (receipt.lines.length === 0) return;
+  const linesSum = roundMoney(
+    receipt.lines.reduce((acc, line) => acc + line.line_total, 0),
+  );
+  trace(receipt, {
+    phase: 'validate',
+    message: `line_sum=${linesSum}, subtotal=${receipt.subtotal ?? 'n/a'}, total=${receipt.grand_total ?? 'n/a'}`,
+  });
+
+  if (receipt.subtotal != null) {
+    const diff = Math.abs(roundMoney(linesSum - receipt.subtotal));
+    if (diff > 1) {
+      receipt.warnings.push(
+        `La suma de productos (${linesSum.toFixed(2)}) no coincide con el subtotal (${receipt.subtotal.toFixed(2)}). Revisa renglones omitidos o importes duplicados.`,
+      );
+    }
+  }
+
+  if (receipt.grand_total == null) return;
+  const expectedTotal = roundMoney(
+    linesSum - (receipt.discount_total ?? 0) + (receipt.delivery_fee ?? 0),
+  );
+  const totalDiff = Math.abs(roundMoney(expectedTotal - receipt.grand_total));
+  if (totalDiff > 1) {
+    receipt.warnings.push(
+      `El total esperado con descuentos/envío (${expectedTotal.toFixed(2)}) difiere del total del recibo (${receipt.grand_total.toFixed(2)}).`,
+    );
+  }
+};
+
 /**
  * Parses plain text / PDF-extracted text from grocery receipts (e.g. Bodega Aurrera despensa PDFs).
  */
 export const parsePantryReceiptText = (raw: string): ParsedReceipt => {
-  const result: ParsedReceipt = {
-    title: null,
-    merchant_ref: null,
-    purchased_at: null,
-    subtotal: null,
-    discount_total: null,
-    delivery_fee: null,
-    grand_total: null,
-    lines: [],
-    warnings: [],
-  };
+  return parsePantryReceiptRows(rowsFromPlainText(raw), raw.includes('\t'));
+};
 
-  const lines = raw.split(/\r?\n/);
-  const hasAnyTab = raw.includes('\t');
+const parsePantryReceiptRows = (
+  rows: ReceiptTextRow[],
+  hasAnyTab: boolean,
+): ParsedReceipt => {
+  const result = createEmptyReceipt();
+  const profile = detectProfile(rows);
+  trace(result, {
+    phase: 'profile',
+    profile: profile.id,
+    message: `Detected ${profile.name}`,
+  });
   let descBuffer = '';
 
   const flushBuffer = () => {
     descBuffer = '';
   };
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
+  for (const row of rows) {
+    const line = rowText(row).trim();
     if (!line) {
       flushBuffer();
       continue;
     }
 
-    if (/^--\s*\d+\s+of\s+\d+\s*--$/i.test(line)) continue;
-    if (line.startsWith('http://') || line.startsWith('https://')) continue;
-    if (/^Código de barras/i.test(line)) {
+    if (isNoiseRow(row, profile)) {
+      trace(result, { phase: 'classify', message: 'noise', line, profile: profile.id });
       flushBuffer();
       continue;
     }
@@ -260,31 +501,19 @@ export const parsePantryReceiptText = (raw: string): ParsedReceipt => {
       continue;
     }
 
-    if (/^Subtotal\b/i.test(line)) {
-      parseSummaryLine(line, 'subtotal', result);
-      flushBuffer();
-      continue;
-    }
-    if (/^Descuento\b/i.test(line) && !/envío/i.test(line)) {
-      parseSummaryLine(line, 'discount_total', result);
-      flushBuffer();
-      continue;
-    }
     if (/^Descuento en envío/i.test(line)) {
       flushBuffer();
       continue;
     }
-    if (/^Costo de entrega/i.test(line)) {
-      parseSummaryLine(line, 'delivery_fee', result);
-      flushBuffer();
-      continue;
-    }
-    if (/^Total\b/i.test(line)) {
-      parseSummaryLine(line, 'grand_total', result);
-      flushBuffer();
-      continue;
-    }
-    if (/^(Método|Pago)\b/i.test(line)) {
+    const summaryKey = classifySummaryRow(row, profile);
+    if (summaryKey) {
+      parseSummaryLine(line, summaryKey, result);
+      trace(result, {
+        phase: 'classify',
+        message: `summary:${summaryKey}`,
+        line,
+        profile: profile.id,
+      });
       flushBuffer();
       continue;
     }
@@ -293,13 +522,21 @@ export const parsePantryReceiptText = (raw: string): ParsedReceipt => {
     const product = parseProductLine(candidate);
     if (product) {
       result.lines.push(product);
+      trace(result, {
+        phase: 'parse',
+        message: `product:${product.description}`,
+        line: candidate,
+        profile: profile.id,
+      });
       flushBuffer();
       continue;
     }
 
     if (!/[\d.,]+/.test(line) || line.length < 40) {
       descBuffer = candidate;
+      trace(result, { phase: 'classify', message: 'buffer', line, profile: profile.id });
     } else {
+      trace(result, { phase: 'classify', message: 'discard', line, profile: profile.id });
       flushBuffer();
     }
   }
@@ -316,6 +553,7 @@ export const parsePantryReceiptText = (raw: string): ParsedReceipt => {
     }
   }
 
+  validateReceiptTotals(result);
   return result;
 };
 
@@ -468,13 +706,13 @@ const splitCsvLine = (line: string): string[] => {
 
 type PdfTextItem = { str: string; transform: number[]; width?: number };
 
-const extractPdfTextWithColumns = async (pdf: {
+const extractPdfRowsWithLayout = async (pdf: {
   numPages: number;
   getPage: (n: number) => Promise<{
     getTextContent: () => Promise<{ items: unknown[] }>;
   }>;
-}): Promise<string> => {
-  const lines: string[] = [];
+}): Promise<ReceiptTextRow[]> => {
+  const rowsOut: ReceiptTextRow[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
@@ -505,19 +743,36 @@ const extractPdfTextWithColumns = async (pdf: {
     const ys = Array.from(rows.keys()).sort((a, b) => b - a);
     for (const y of ys) {
       const cells = rows.get(y)!.sort((a, b) => a.x - b.x);
-      let line = '';
+      const rowCells: ReceiptTextCell[] = [];
+      let currentCell = '';
+      let currentX = 0;
+      let currentWidth = 0;
       let prevEnd = -Infinity;
       for (const cell of cells) {
         const gap = cell.x - prevEnd;
-        if (line === '') line = cell.str;
-        else if (gap > columnGapThreshold) line += '\t' + cell.str;
-        else line += cell.str;
+        if (currentCell === '') {
+          currentCell = cell.str;
+          currentX = cell.x;
+          currentWidth = cell.w;
+        } else if (gap > columnGapThreshold) {
+          rowCells.push({ text: currentCell.trim(), x: currentX, width: currentWidth });
+          currentCell = cell.str;
+          currentX = cell.x;
+          currentWidth = cell.w;
+        } else {
+          currentCell += cell.str;
+          currentWidth = cell.x + cell.w - currentX;
+        }
         prevEnd = cell.x + cell.w;
       }
-      if (line.trim()) lines.push(line);
+      if (currentCell.trim()) {
+        rowCells.push({ text: currentCell.trim(), x: currentX, width: currentWidth });
+      }
+      const text = rowCells.map((cell) => cell.text).join('\t').trim();
+      if (text) rowsOut.push({ text, cells: rowCells, page: i, y });
     }
   }
-  return lines.join('\n');
+  return rowsOut;
 };
 
 export type ParseUploadInput = {
@@ -564,8 +819,8 @@ export const parsePantryReceiptUpload = async ({
     try {
       const { getDocumentProxy } = await import('unpdf');
       const pdf = await getDocumentProxy(new Uint8Array(buffer));
-      const text = await extractPdfTextWithColumns(pdf);
-      if (!text.trim()) {
+      const rows = await extractPdfRowsWithLayout(pdf);
+      if (rows.length === 0) {
         warnings.push(
           'El PDF no contiene texto seleccionable (puede ser solo imagen). Prueba exportar o subir CSV.',
         );
@@ -581,7 +836,14 @@ export const parsePantryReceiptUpload = async ({
           warnings,
         };
       }
-      const parsed = parsePantryReceiptText(text);
+      const parsed = parsePantryReceiptRows(
+        rows,
+        rows.some((row) => row.cells.length > 1),
+      );
+      trace(parsed, {
+        phase: 'extract',
+        message: `Extracted ${rows.length} layout rows from PDF`,
+      });
       parsed.warnings = [...parsed.warnings, ...warnings];
       return parsed;
     } catch (e) {

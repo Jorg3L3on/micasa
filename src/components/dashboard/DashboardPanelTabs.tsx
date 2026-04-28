@@ -8,6 +8,7 @@ import type { DashboardData } from '@/types/dashboard';
 import StatCard from '@/components/dashboard/StatCard';
 import MonthlyOverviewChart from '@/components/dashboard/MonthlyOverviewChart';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
+import CurrentPeriodSummaryCard from '@/components/dashboard/CurrentPeriodSummaryCard';
 import RecentTransactionsTable from '@/components/dashboard/RecentTransactionsTable';
 
 type DashboardPanelTabsProps = {
@@ -108,11 +109,14 @@ export default function DashboardPanelTabs({
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <div className="order-1 lg:col-span-6">
             <MonthlyOverviewChart />
           </div>
-          <div className="lg:col-span-2">
+          <div className="order-2 lg:col-span-3">
+            <CurrentPeriodSummaryCard data={data} />
+          </div>
+          <div className="order-3 lg:col-span-3">
             <MyCardsPanel />
           </div>
         </div>

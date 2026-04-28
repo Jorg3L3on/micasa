@@ -16,6 +16,21 @@ const normalizeProductName = (raw: string): string | null => {
   return name;
 };
 
+const normalizeProductKey = (raw: string): string | null => {
+  const name = normalizeProductName(raw);
+  if (!name) return null;
+  return name.toLowerCase();
+};
+
+const normalizeUnitLabel = (value: string | null): string | null => {
+  const cleaned = value?.trim() ?? '';
+  if (!cleaned) return null;
+  const normalized = cleaned.toLowerCase();
+  if (normalized === 'pieza' || normalized === 'pza') return 'pz';
+  if (normalized === 'kilo' || normalized === 'kilogramo') return 'kg';
+  return normalized;
+};
+
 const trimToNull = (value: string | null | undefined): string | null => {
   if (value == null) return null;
   const t = value.trim();
@@ -43,9 +58,11 @@ export const syncPantryProductsFromReceiptLines = async (params: {
 
   for (const line of lines) {
     const name = normalizeProductName(line.description);
+    const normalizedName = normalizeProductKey(line.description);
     if (!name) continue;
 
     const unitLabel = trimToNull(line.unit_label ?? null);
+    const normalizedUnit = normalizeUnitLabel(unitLabel);
     const unitPrice =
       line.unit_price != null && Number.isFinite(line.unit_price)
         ? roundMoney(line.unit_price)
@@ -53,7 +70,7 @@ export const syncPantryProductsFromReceiptLines = async (params: {
 
     const existing = await client.pantryProduct.findFirst({
       where: {
-        name,
+        normalized_name: normalizedName,
         ...pantryReceiptOwnerWhere(ownerType, ownerId),
       },
     });
@@ -65,6 +82,8 @@ export const syncPantryProductsFromReceiptLines = async (params: {
           user_id: ownerFilter.user_id,
           house_id: ownerFilter.house_id,
           unit_label: unitLabel,
+          normalized_name: normalizedName,
+          normalized_unit: normalizedUnit,
           default_unit_price: unitPrice,
           active: true,
         },
@@ -74,11 +93,19 @@ export const syncPantryProductsFromReceiptLines = async (params: {
 
     const data: {
       unit_label?: string | null;
+      normalized_unit?: string | null;
+      normalized_name?: string | null;
       default_unit_price?: number | null;
     } = {};
 
     if (unitLabel != null) {
       data.unit_label = unitLabel;
+    }
+    if (normalizedUnit != null) {
+      data.normalized_unit = normalizedUnit;
+    }
+    if (normalizedName != null) {
+      data.normalized_name = normalizedName;
     }
     if (unitPrice != null) {
       data.default_unit_price = unitPrice;

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   BarChart3,
   CalendarDays,
   CircleDollarSign,
@@ -149,6 +150,8 @@ export const PantryHomeInsights = () => {
   const topProducts = data.top_products.slice(0, TOP_LIST_N);
   const priceUps = data.price_increases.slice(0, TOP_LIST_N);
   const priceDowns = data.price_decreases.slice(0, TOP_LIST_N);
+  const spendByStore = data.spend_by_store.slice(0, 5);
+  const buyBetter = data.buy_better_recommendations.slice(0, TOP_LIST_N);
 
   return (
     <div className="space-y-6">
@@ -425,6 +428,86 @@ export const PantryHomeInsights = () => {
                     )}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      ) : null}
+
+      {hasReceipts ? (
+        <section className="space-y-2" aria-labelledby="pantry-decision-heading">
+          <PantrySectionLabel id="pantry-decision-heading">
+            Decisiones y alertas
+          </PantrySectionLabel>
+          <div className="grid gap-5 xl:grid-cols-12">
+            <Card className={cn(PANTRY_CARD_SHELL, 'xl:col-span-6')}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold leading-none">
+                  Gasto por tienda
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {spendByStore.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sin datos por tienda.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {spendByStore.map((row) => (
+                      <li key={row.store} className={PANTRY_LIST_ROW}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm">{row.store}</span>
+                          <span className="font-mono text-sm font-semibold tabular-nums">
+                            {formatCurrency(row.total_spend)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {row.receipt_count} recibos · ticket promedio{' '}
+                          {row.average_ticket != null
+                            ? formatCurrency(row.average_ticket)
+                            : '—'}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <Card className={cn(PANTRY_CARD_SHELL, 'xl:col-span-6')}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold leading-none">
+                  Buy Better
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {buyBetter.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aún no hay comparativas suficientes entre tiendas.
+                  </p>
+                ) : (
+                  <ul className="space-y-1">
+                    {buyBetter.map((row, idx) => (
+                      <li key={`${row.label}-${idx}`} className={PANTRY_LIST_ROW}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="line-clamp-1 text-sm">{row.label}</span>
+                          <span className="font-mono text-xs tabular-nums text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(row.latest_unit_price)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Mejor en {row.recommended_store}. {row.recommendation_reason}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {data.guardrail_alerts.length > 0 ? (
+                  <div className="mt-3 rounded-lg border border-amber-500/35 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                    <div className="mb-1 flex items-center gap-1.5 font-medium">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Guardrail
+                    </div>
+                    {data.guardrail_alerts[0]?.message}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </div>

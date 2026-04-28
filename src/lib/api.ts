@@ -268,6 +268,25 @@ export async function patchPantryReceipt(
   );
 }
 
+export async function reconcilePantryReceiptToCart(
+  id: number,
+  body: { cart_id?: number; apply?: boolean },
+  context?: FinanceContextType,
+): Promise<{
+  cart_id: number;
+  receipt_id: number;
+  matched_count: number;
+  missing_count: number;
+  total_receipt_lines: number;
+  applied: boolean;
+}> {
+  return clientFetchFromApi(
+    `/api/pantry/receipts/${id}/reconcile`,
+    { method: 'POST', body: JSON.stringify(body) },
+    context,
+  );
+}
+
 export async function deletePantryReceipt(
   id: number,
   context?: FinanceContextType,

@@ -18,6 +18,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         title: true,
         grand_total: true,
         currency: true,
+        store: true,
         purchased_at: true,
         created_at: true,
         lines: {

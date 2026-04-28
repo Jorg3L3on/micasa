@@ -17,6 +17,21 @@ import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pan
 import { shoppingStoreSchema } from '@/schemas/pantry-shopping-cart.schema';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 
+const normalizeTextKey = (value: string): string =>
+  value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const normalizeUnitLabel = (value: string | null): string | null => {
+  if (!value) return null;
+  const normalized = normalizeTextKey(value);
+  if (normalized === 'pieza' || normalized === 'pza' || normalized === 'pz') {
+    return 'pz';
+  }
+  if (normalized === 'kilogramo' || normalized === 'kilo') {
+    return 'kg';
+  }
+  return normalized;
+};
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const context = await getOwnerContext(request);
@@ -180,12 +195,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           file_mime: storeFile ? file.type || null : null,
           file_data: storeFile ? buf : null,
           parse_warnings: withLinkedCartWarning(parsed.warnings, null),
+          source_type: (file.name.split('.').pop() ?? '').toUpperCase() || null,
           lines: {
             create: parsed.lines.map((l, i) => ({
               sort_order: i,
               description: l.description,
+              normalized_name: normalizeTextKey(l.description),
               quantity: l.quantity,
               unit_label: l.unit_label,
+              normalized_unit: normalizeUnitLabel(l.unit_label),
               unit_price: l.unit_price,
               line_total: l.line_total,
             })),
@@ -260,6 +278,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           where: { id: created.id },
           data: {
             parse_warnings: withLinkedCartWarning(parsed.warnings, linkedCartId),
+            linked_cart_id: linkedCartId,
           },
         });
       }

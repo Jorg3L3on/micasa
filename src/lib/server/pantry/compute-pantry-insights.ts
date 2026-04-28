@@ -1,10 +1,13 @@
 import type {
   PantryChartsDto,
+  PantryGuardrailAlertDto,
   PantryHighlightsDto,
   PantryInsightsDto,
   PantryMonthlySeriesPointDto,
   PantryPriceChangeDto,
   PantryProductSpendPointDto,
+  PantryStoreInsightDto,
+  PantryStoreRecommendationDto,
   PantryTopProductDto,
 } from '@/types/pantry-insights';
 import { decimalToNumber } from '@/lib/server/pantry/serialize-pantry-receipt';
@@ -23,6 +26,7 @@ type ReceiptRow = {
   title: string | null;
   grand_total: unknown;
   currency: string;
+  store?: string | null;
   purchased_at: Date | null;
   created_at: Date;
   lines: ReceiptLineRow[];
@@ -69,6 +73,7 @@ const receiptTotalAmount = (r: ReceiptRow): number => {
 
 const MAX_MONTH_BUCKETS = 36;
 const CHART_TOP_SPEND_PRODUCTS = 10;
+const BUY_BETTER_LIMIT = 8;
 
 const monthKeyFromDate = (d: Date): string => {
   const y = d.getFullYear();
@@ -303,6 +308,107 @@ const buildCharts = (receipts: ReceiptRow[]): PantryChartsDto => ({
   products_by_spend: buildProductsBySpend(receipts, CHART_TOP_SPEND_PRODUCTS),
 });
 
+const buildSpendByStore = (receipts: ReceiptRow[]): PantryStoreInsightDto[] => {
+  const rows = new Map<string, { receipt_count: number; total_spend: number }>();
+  for (const receipt of receipts) {
+    const store = receipt.store?.trim();
+    if (!store) continue;
+    const prev = rows.get(store) ?? { receipt_count: 0, total_spend: 0 };
+    prev.receipt_count += 1;
+    prev.total_spend += receiptTotalAmount(receipt);
+    rows.set(store, prev);
+  }
+  return [...rows.entries()]
+    .map(([store, value]) => ({
+      store,
+      receipt_count: value.receipt_count,
+      total_spend: roundMoney(value.total_spend),
+      average_ticket:
+        value.receipt_count > 0
+          ? roundMoney(value.total_spend / value.receipt_count)
+          : null,
+    }))
+    .sort((a, b) => b.total_spend - a.total_spend);
+};
+
+const buildBuyBetterRecommendations = (
+  receipts: ReceiptRow[],
+): PantryStoreRecommendationDto[] => {
+  const byProduct = new Map<
+    string,
+    Map<string, { label: string; latest_at: Date; latest_unit_price: number }>
+  >();
+  for (const receipt of receipts) {
+    const store = receipt.store?.trim();
+    if (!store) continue;
+    const at = receiptTimestamp(receipt);
+    for (const line of receipt.lines) {
+      const key = normalizePantryProductKey(line.description);
+      if (!key) continue;
+      const unitPrice = effectiveUnitPrice(line);
+      if (unitPrice == null) continue;
+      const productBucket = byProduct.get(key) ?? new Map();
+      const current = productBucket.get(store);
+      if (!current || at.getTime() >= current.latest_at.getTime()) {
+        productBucket.set(store, {
+          label: line.description.trim(),
+          latest_at: at,
+          latest_unit_price: unitPrice,
+        });
+      }
+      byProduct.set(key, productBucket);
+    }
+  }
+
+  const output: PantryStoreRecommendationDto[] = [];
+  for (const [, stores] of byProduct) {
+    if (stores.size < 2) continue;
+    const points = [...stores.entries()].sort(
+      (a, b) => a[1].latest_unit_price - b[1].latest_unit_price,
+    );
+    const best = points[0];
+    const second = points[1];
+    if (!best || !second) continue;
+    const diff = second[1].latest_unit_price - best[1].latest_unit_price;
+    if (diff <= 0) continue;
+    output.push({
+      label: best[1].label,
+      recommended_store: best[0],
+      candidate_stores: points.map(([store]) => store),
+      latest_unit_price: best[1].latest_unit_price,
+      recommendation_reason: `Ahorro estimado de ${roundMoney(diff)} vs la segunda mejor opción.`,
+    });
+  }
+
+  return output.slice(0, BUY_BETTER_LIMIT);
+};
+
+const buildGuardrailAlerts = (
+  monthlySpend: PantryMonthlySeriesPointDto[],
+): PantryGuardrailAlertDto[] => {
+  if (monthlySpend.length < 2) return [];
+  const recent = monthlySpend.slice(-4);
+  const last = recent[recent.length - 1];
+  if (!last) return [];
+  const baselineRows = recent.slice(0, -1).filter((r) => r.total_spend > 0);
+  if (baselineRows.length === 0) return [];
+  const baseline =
+    baselineRows.reduce((acc, row) => acc + row.total_spend, 0) /
+    baselineRows.length;
+  if (baseline <= 0) return [];
+  const ratio = last.total_spend / baseline;
+  if (ratio < 1.25) return [];
+  const severity: PantryGuardrailAlertDto['severity'] =
+    ratio >= 1.6 ? 'high' : ratio >= 1.4 ? 'medium' : 'low';
+  return [
+    {
+      type: 'CART_ESTIMATE_SPIKE',
+      severity,
+      message: `El gasto del último mes está ${Math.round((ratio - 1) * 100)}% arriba del promedio reciente.`,
+    },
+  ];
+};
+
 const buildPriceChanges = (receipts: ReceiptRow[]): {
   increases: PantryPriceChangeDto[];
   decreases: PantryPriceChangeDto[];
@@ -413,6 +519,9 @@ export const computePantryInsights = (
   const { increases, decreases } = buildPriceChanges(receipts);
   const highlights = buildHighlights(receipts, totalSpend, totalLineItems);
   const charts = buildCharts(receipts);
+  const spendByStore = buildSpendByStore(receipts);
+  const buyBetterRecommendations = buildBuyBetterRecommendations(receipts);
+  const guardrailAlerts = buildGuardrailAlerts(charts.spend_by_month);
 
   return {
     currency,
@@ -429,5 +538,8 @@ export const computePantryInsights = (
     top_products: buildTopProducts(receipts, topProductsLimit),
     price_increases: increases,
     price_decreases: decreases,
+    spend_by_store: spendByStore,
+    buy_better_recommendations: buyBetterRecommendations,
+    guardrail_alerts: guardrailAlerts,
   };
 };

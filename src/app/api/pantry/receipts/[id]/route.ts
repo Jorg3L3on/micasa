@@ -11,6 +11,21 @@ import { serializePantryReceiptDetail } from '@/lib/server/pantry/serialize-pant
 import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pantry-products-from-lines';
 import { patchPantryReceiptSchema } from '@/schemas/pantry-receipt.schema';
 
+const normalizeTextKey = (value: string): string =>
+  value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const normalizeUnitLabel = (value: string | null): string | null => {
+  if (!value) return null;
+  const normalized = normalizeTextKey(value);
+  if (normalized === 'pieza' || normalized === 'pza' || normalized === 'pz') {
+    return 'pz';
+  }
+  if (normalized === 'kilogramo' || normalized === 'kilo') {
+    return 'kg';
+  }
+  return normalized;
+};
+
 export const runtime = 'nodejs';
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -100,6 +115,7 @@ export async function PATCH(
                   existing.parse_warnings,
                   data.linked_cart_id,
                 ),
+                linked_cart_id: data.linked_cart_id,
               }
             : {}),
         },
@@ -112,8 +128,10 @@ export async function PATCH(
             receipt_id: id,
             sort_order: i,
             description: l.description,
+            normalized_name: normalizeTextKey(l.description),
             quantity: l.quantity,
             unit_label: l.unit_label ?? null,
+            normalized_unit: normalizeUnitLabel(l.unit_label ?? null),
             unit_price: l.unit_price ?? null,
             line_total: l.line_total,
           })),
@@ -177,7 +195,9 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       await tx.pantryReceipt.delete({ where: { id } });
 
-      const linkedCartId = extractLinkedCartIdFromWarnings(existing.parse_warnings);
+      const linkedCartId =
+        existing.linked_cart_id ??
+        extractLinkedCartIdFromWarnings(existing.parse_warnings);
       if (linkedCartId == null) return;
 
       await tx.pantryShoppingCart.deleteMany({
