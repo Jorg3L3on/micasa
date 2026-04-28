@@ -48,13 +48,12 @@ import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
-  checkAllShoppingCartItems,
   deletePantryReceipt,
   patchPantryReceipt,
+  reconcilePantryReceiptToCart,
   listShoppingCarts,
   listPantryReceipts,
   getClientApiBaseUrl,
-  updateShoppingCartStatus,
   updateShoppingCart,
   uploadPantryReceipt,
 } from '@/lib/api';
@@ -195,8 +194,11 @@ export default function PantryReceiptsPage() {
       toast.success('Recibo guardado');
       if (linkCartOnImport && cartLinkMode === 'existing' && selectedCartId != null) {
         try {
-          await checkAllShoppingCartItems(selectedCartId, context);
-          await updateShoppingCartStatus(selectedCartId, 'BOUGHT', context);
+          const reconcile = await reconcilePantryReceiptToCart(
+            created.id,
+            { cart_id: selectedCartId, apply: true },
+            context,
+          );
           if (uploadStore) {
             await updateShoppingCart(selectedCartId, { store: uploadStore }, context);
           }
@@ -205,7 +207,9 @@ export default function PantryReceiptsPage() {
             { linked_cart_id: selectedCartId },
             context,
           );
-          toast.success('Carrito marcado como comprado');
+          toast.success(
+            `Reconciliación aplicada: ${reconcile.matched_count}/${reconcile.total_receipt_lines} líneas.`,
+          );
         } catch (statusErr) {
           toast.error(
             statusErr instanceof Error

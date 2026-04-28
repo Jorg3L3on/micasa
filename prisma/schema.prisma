@@ -554,6 +554,8 @@ model PantryReceipt {
   currency       String         @default("MXN")
   purchased_at   DateTime?
   store          ShoppingStore?
+  source_type    String?
+  linked_cart_id Int?
 
   user_id  Int?
   house_id Int?
@@ -573,10 +575,12 @@ model PantryReceipt {
   house      House?              @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
   created_by User                @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
   lines      PantryReceiptLine[]
+  linked_cart PantryShoppingCart? @relation(fields: [linked_cart_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([house_id])
   @@index([created_at])
+  @@index([linked_cart_id])
 }
 
 model PantryReceiptLine {
@@ -584,9 +588,11 @@ model PantryReceiptLine {
   receipt_id  Int
   sort_order  Int      @default(0)
   description String
+  normalized_name String?
   quantity    Decimal  @default(1) @db.Decimal(14, 4)
   /// Unit shown on receipt (pz, kg, etc.)
   unit_label  String?
+  normalized_unit String?
   unit_price  Decimal? @db.Decimal(12, 2)
   line_total  Decimal  @db.Decimal(12, 2)
 
@@ -601,11 +607,13 @@ model PantryReceiptLine {
 model PantryProduct {
   id                 Int      @id @default(autoincrement())
   name               String
+  normalized_name    String?
   description        String?
   barcode            String?
   brand              String?
   /// Default unit (pz, kg, L, etc.)
   unit_label         String?
+  normalized_unit    String?
   default_unit_price Decimal? @db.Decimal(12, 2)
   active             Boolean  @default(true)
 

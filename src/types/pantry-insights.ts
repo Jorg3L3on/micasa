@@ -60,6 +60,27 @@ export type PantryChartsDto = {
   products_by_spend: PantryProductSpendPointDto[];
 };
 
+export type PantryStoreInsightDto = {
+  store: string;
+  receipt_count: number;
+  total_spend: number;
+  average_ticket: number | null;
+};
+
+export type PantryStoreRecommendationDto = {
+  label: string;
+  recommended_store: string;
+  candidate_stores: string[];
+  recommendation_reason: string;
+  latest_unit_price: number;
+};
+
+export type PantryGuardrailAlertDto = {
+  type: 'CART_ESTIMATE_SPIKE';
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+};
+
 export type PantryInsightsDto = {
   currency: string;
   metrics: {
@@ -75,4 +96,7 @@ export type PantryInsightsDto = {
   top_products: PantryTopProductDto[];
   price_increases: PantryPriceChangeDto[];
   price_decreases: PantryPriceChangeDto[];
+  spend_by_store: PantryStoreInsightDto[];
+  buy_better_recommendations: PantryStoreRecommendationDto[];
+  guardrail_alerts: PantryGuardrailAlertDto[];
 };

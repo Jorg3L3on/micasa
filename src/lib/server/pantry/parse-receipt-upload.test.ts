@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { parsePantryReceiptText } from './parse-receipt-upload';
 
 describe('parsePantryReceiptText', () => {
@@ -81,5 +82,42 @@ describe('parsePantryReceiptText', () => {
     const text = ['Pedido # 1234-5678', 'Total \t$0.00'].join('\n');
     const r = parsePantryReceiptText(text);
     expect(r.merchant_ref).toBe('1234-5678');
+  });
+
+  it('parses the January Bodega receipt and ignores browser print footers', () => {
+    const text = readFileSync(
+      new URL('./__fixtures__/bodega-aurrera-15-enero.txt', import.meta.url),
+      'utf8',
+    );
+
+    const r = parsePantryReceiptText(text);
+    expect(r.lines).toHaveLength(30);
+    expect(r.lines.some((line) => /Detalles del pedido/i.test(line.description))).toBe(
+      false,
+    );
+    expect(r.lines[9]).toMatchObject({
+      description: 'Zanahoria por kilo',
+      quantity: 0.196,
+      unit_label: 'kg',
+      line_total: 2.72,
+    });
+    expect(r.lines[24]).toMatchObject({
+      description: 'Pepino por kilo',
+      quantity: 0.6072,
+      unit_label: 'kg',
+      line_total: 8.81,
+    });
+    expect(r.subtotal).toBe(1523.15);
+    expect(r.discount_total).toBe(190.35);
+    expect(r.delivery_fee).toBe(44);
+    expect(r.grand_total).toBe(1342.2);
+    expect(r.merchant_ref).toBe('2162626-001315');
+    expect(r.warnings.some((warning) => /suma de productos/i.test(warning))).toBe(
+      true,
+    );
+    expect(
+      r.warnings.some((warning) => /total esperado con descuentos/i.test(warning)),
+    ).toBe(true);
+    expect(r.debug_trace?.some((event) => event.phase === 'profile')).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  AlertTriangle,
   ChevronLeft,
   History,
   Loader2,
@@ -40,6 +41,8 @@ import { Badge } from '@/components/ui/badge';
 import { SHOPPING_STORE_LABELS, type ShoppingStore } from '@/types/shopping-store';
 import { useFinanceContext } from '@/context/finance-context';
 import {
+  addShoppingCartItemsBulk,
+  getPantryInsights,
   deleteShoppingCart,
   deleteShoppingCartItem,
   getShoppingCart,
@@ -55,6 +58,15 @@ import type {
   PantryShoppingCartItemDto,
   ShoppingCartStatus,
 } from '@/types/pantry-shopping-cart';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 type Props = { cartId: number };
 
@@ -81,6 +93,11 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
     null,
   );
   const [activityOpen, setActivityOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [cartGuardrail, setCartGuardrail] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<PantryShoppingCartItemDto | null>(
     null,
   );
@@ -124,6 +141,23 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
     void loadCart();
     void loadProducts();
   }, [loadCart, loadProducts]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadGuardrail = async () => {
+      try {
+        const insights = await getPantryInsights(context);
+        if (cancelled) return;
+        setCartGuardrail(insights.guardrail_alerts[0]?.message ?? null);
+      } catch {
+        if (!cancelled) setCartGuardrail(null);
+      }
+    };
+    void loadGuardrail();
+    return () => {
+      cancelled = true;
+    };
+  }, [context]);
 
   const readOnly = cart
     ? cart.status === 'CANCELED' || cart.status === 'ARCHIVED'
@@ -231,6 +265,69 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
       router.push(backHref);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo eliminar');
+    }
+  };
+
+  const parseBulkItems = (raw: string) =>
+    raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const qtyMatch = line.match(/(.+?)\s+[xX]\s*(\d+(?:[.,]\d+)?)$/);
+        if (!qtyMatch) return { name: line, quantity: 1 };
+        return {
+          name: qtyMatch[1]!.trim(),
+          quantity: Number(qtyMatch[2]!.replace(',', '.')) || 1,
+        };
+      });
+
+  const handleBulkCreate = async () => {
+    const items = parseBulkItems(bulkText);
+    if (items.length === 0) {
+      toast.error('Pega al menos una línea');
+      return;
+    }
+    try {
+      setBulkSaving(true);
+      const result = await addShoppingCartItemsBulk(
+        cartId,
+        { items },
+        context,
+      );
+      toast.success(`Se agregaron ${result.created_count} ítems`);
+      setBulkText('');
+      setBulkOpen(false);
+      await loadCart();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo agregar');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const handleAutoFillFromHistory = async () => {
+    try {
+      setAutoFilling(true);
+      const insights = await getPantryInsights(context);
+      const common = insights.top_products.slice(0, 8);
+      if (common.length === 0) {
+        toast.error('Aún no hay historial suficiente');
+        return;
+      }
+      await addShoppingCartItemsBulk(
+        cartId,
+        {
+          items: common.map((product) => ({ name: product.label, quantity: 1 })),
+        },
+        context,
+      );
+      toast.success('Canasta recurrente agregada');
+      await loadCart();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo autollenar');
+    } finally {
+      setAutoFilling(false);
     }
   };
 
@@ -361,6 +458,49 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
           {cart.notes}
         </p>
       ) : null}
+
+      {cartGuardrail ? (
+        <Alert className="border-amber-500/40">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle>Guardrail de gasto</AlertTitle>
+          <AlertDescription>{cartGuardrail}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {cart.variance ? (
+        <Alert>
+          <AlertTitle>Variación carrito vs recibo</AlertTitle>
+          <AlertDescription>
+            Estimado {formatCurrency(cart.variance.estimated_total)} · Real{' '}
+            {formatCurrency(cart.variance.receipt_total)} · Delta{' '}
+            <span className={cn(cart.variance.delta > 0 ? 'text-amber-600' : 'text-emerald-600')}>
+              {formatCurrency(cart.variance.delta)}
+            </span>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8"
+          onClick={() => setBulkOpen(true)}
+          disabled={readOnly}
+        >
+          Carga masiva
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8"
+          onClick={() => void handleAutoFillFromHistory()}
+          disabled={readOnly || autoFilling}
+        >
+          {autoFilling ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Autollenar recurrentes
+        </Button>
+      </div>
 
       <PantryShoppingAddBar
         cartId={cart.id}
@@ -494,6 +634,41 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
           itemName={deleteItem.name}
         />
       ) : null}
+
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agregar ítems en bloque</DialogTitle>
+            <DialogDescription>
+              Un ítem por línea. También puedes usar formato: `Producto x 2`.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            rows={8}
+            placeholder={'Leche x 2\nHuevos x 1\nPan integral'}
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBulkOpen(false)}
+              disabled={bulkSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleBulkCreate()}
+              disabled={bulkSaving}
+            >
+              {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Agregar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PantryLayoutShell>
   );
 }

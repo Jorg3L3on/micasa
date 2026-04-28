@@ -94,9 +94,33 @@ export async function getShoppingCartDetail(
     include: CART_INCLUDE,
   });
   if (!row) throw new ShoppingCartNotFoundError();
-  return serializeShoppingCartDetail(
+  const detail = serializeShoppingCartDetail(
     row as unknown as ShoppingCartRow & { items: ShoppingCartItemRow[] },
   );
+  const linkedReceipt = await prisma.pantryReceipt.findFirst({
+    where: { linked_cart_id: cartId, ...ownerWhere(owner) },
+    include: { lines: { select: { line_total: true } } },
+    orderBy: { created_at: 'desc' },
+  });
+  if (!linkedReceipt) return detail;
+  const receiptTotalFromLines = linkedReceipt.lines.reduce(
+    (acc, line) => acc + (decimalToNumber(line.line_total) ?? 0),
+    0,
+  );
+  const receiptTotal =
+    receiptTotalFromLines > 0
+      ? Math.round(receiptTotalFromLines * 100) / 100
+      : (decimalToNumber(linkedReceipt.grand_total) ?? 0);
+  const delta = Math.round((receiptTotal - detail.totals.estimated_total) * 100) / 100;
+  return {
+    ...detail,
+    variance: {
+      linked_receipt_id: linkedReceipt.id,
+      estimated_total: detail.totals.estimated_total,
+      receipt_total: receiptTotal,
+      delta,
+    },
+  };
 }
 
 export async function createShoppingCart(
