@@ -11,12 +11,12 @@ import BudgetFormDialog from '@/components/BudgetFormDialog';
 import BudgetAllocationsDialog from '@/components/BudgetAllocationsDialog';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
-  clientFetchFromApi,
   createBudget,
   deleteBudget,
   updateBudgetAllocations,
-} from '@/lib/api';
+} from '@/lib/api/budgets';
 import { PiggyBank, LayoutList, Trash2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem } from '@/types/catalog';

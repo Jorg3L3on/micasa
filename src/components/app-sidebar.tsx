@@ -198,7 +198,7 @@ export function AppSidebar({
       isActive: pathname.startsWith('/tasks'),
       items: [
         {
-          title: 'Resumen',
+          title: 'Hoy',
           url: '/tasks',
           isActive: pathname === '/tasks',
         },

@@ -200,7 +200,8 @@ function getPageTitle(
     breadcrumbs.push({ label: 'Tareas', href: `/tasks${qs}` });
 
     if (!segments[1]) {
-      return { title: 'Tareas', breadcrumbs };
+      breadcrumbs.push({ label: 'Hoy' });
+      return { title: 'Hoy', breadcrumbs };
     }
 
     if (segments[1] === 'todo-lists') {
@@ -209,8 +210,8 @@ function getPageTitle(
     }
 
     if (segments[1] === 'scheduled') {
-      breadcrumbs.push({ label: 'Tareas programadas' });
-      return { title: 'Tareas programadas', breadcrumbs };
+      breadcrumbs.push({ label: 'Agenda' });
+      return { title: 'Agenda', breadcrumbs };
     }
 
     if (segments[1] === 'habits') {

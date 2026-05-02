@@ -10,7 +10,7 @@ import {
   type ProductPickValue,
 } from '@/components/pantry/PantryProductCombobox';
 import { useFinanceContext } from '@/context/finance-context';
-import { addShoppingCartItem, createPantryProduct } from '@/lib/api';
+import { addShoppingCartItem, createPantryProduct } from '@/lib/api/pantry';
 import type { PantryProductDto } from '@/types/pantry-product';
 import type { PantryShoppingCartItemDto } from '@/types/pantry-shopping-cart';
 

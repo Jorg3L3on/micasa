@@ -42,11 +42,13 @@ import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
-  deletePantryReceipt,
   getClientApiBaseUrl,
+} from '@/lib/api/client-fetch';
+import {
+  deletePantryReceipt,
   getPantryReceipt,
   patchPantryReceipt,
-} from '@/lib/api';
+} from '@/lib/api/pantry';
 import { formatCurrency } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { PantryReceiptDetailDto, PantryReceiptLineDto } from '@/types/pantry-receipt';

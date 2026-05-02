@@ -17,7 +17,8 @@ import {
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi, deleteExpenseTemplate } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { ExpenseTemplateListItem } from '@/types/catalog';

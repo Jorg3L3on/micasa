@@ -1,7 +1,21 @@
 import type { HabitDto, HabitLogDto } from '@/types/habit';
 import type { RoutineDto, RoutineRunDto, RoutineStepDto } from '@/types/routine';
+import type { AssigneeSummaryDto } from '@/types/tasks-assignee';
 import type { TaskItemDto } from '@/types/task-item';
 import type { TaskListDto } from '@/types/task-list';
+
+type AssigneeJoinRow = { id: number; name: string } | null;
+
+const assigneeDto = (
+  assigneeUserId: number | null,
+  assignee: AssigneeJoinRow | undefined,
+): { assignee_user_id: number | null; assignee: AssigneeSummaryDto | null } => ({
+  assignee_user_id: assigneeUserId,
+  assignee:
+    assigneeUserId != null && assignee
+      ? { id: assignee.id, name: assignee.name }
+      : null,
+});
 
 type TaskListRow = {
   id: number;
@@ -9,6 +23,8 @@ type TaskListRow = {
   description: string | null;
   color: string | null;
   archived: boolean;
+  assignee_user_id: number | null;
+  assignee?: AssigneeJoinRow;
   created_at: Date;
   updated_at: Date;
   items: Array<{ id: number; status: string }>;
@@ -22,6 +38,7 @@ export const serializeTaskList = (row: TaskListRow): TaskListDto => ({
   archived: row.archived,
   tasks_count: row.items.length,
   completed_count: row.items.filter((item) => item.status === 'DONE').length,
+  ...assigneeDto(row.assignee_user_id, row.assignee ?? null),
   created_at: row.created_at.toISOString(),
   updated_at: row.updated_at.toISOString(),
 });
@@ -39,6 +56,8 @@ type TaskItemRow = {
   recurrence_every: number | null;
   recurrence_anchor: Date | null;
   sort_order: number;
+  assignee_user_id: number | null;
+  assignee?: AssigneeJoinRow;
   created_at: Date;
   updated_at: Date;
 };
@@ -61,6 +80,7 @@ export const serializeTaskItem = (row: TaskItemRow): TaskItemDto => ({
         }
       : null,
   sort_order: row.sort_order,
+  ...assigneeDto(row.assignee_user_id, row.assignee ?? null),
   created_at: row.created_at.toISOString(),
   updated_at: row.updated_at.toISOString(),
 });
@@ -88,6 +108,8 @@ type HabitRow = {
   recurrence_every: number;
   target_per_period: number;
   reminder_time: string | null;
+  assignee_user_id: number | null;
+  assignee?: AssigneeJoinRow;
   created_at: Date;
   updated_at: Date;
   logs: HabitLogRow[];
@@ -102,6 +124,7 @@ export const serializeHabit = (row: HabitRow): HabitDto => ({
   recurrence_every: row.recurrence_every,
   target_per_period: row.target_per_period,
   reminder_time: row.reminder_time,
+  ...assigneeDto(row.assignee_user_id, row.assignee ?? null),
   current_streak: computeCurrentStreak(row.logs.map((entry) => entry.completed_on)),
   logs: row.logs.map(serializeHabitLog),
   created_at: row.created_at.toISOString(),
@@ -151,6 +174,8 @@ type RoutineRow = {
   time_of_day: 'MORNING' | 'AFTERNOON' | 'NIGHT' | 'CUSTOM';
   active_days: number[];
   active: boolean;
+  assignee_user_id: number | null;
+  assignee?: AssigneeJoinRow;
   created_at: Date;
   updated_at: Date;
   steps: RoutineStepRow[];
@@ -164,6 +189,7 @@ export const serializeRoutine = (row: RoutineRow): RoutineDto => ({
   time_of_day: row.time_of_day,
   active_days: row.active_days,
   active: row.active,
+  ...assigneeDto(row.assignee_user_id, row.assignee ?? null),
   steps: row.steps.map(serializeRoutineStep),
   latest_run: row.runs[0] ? serializeRoutineRun(row.runs[0]) : null,
   created_at: row.created_at.toISOString(),

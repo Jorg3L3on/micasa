@@ -134,10 +134,14 @@ model User {
   pantry_shopping_items_updated PantryShoppingCartItem[]     @relation("PantryShoppingCartItemUpdatedBy")
   pantry_shopping_activities    PantryShoppingCartActivity[] @relation("PantryShoppingCartActivityUser")
   task_lists_owned              TaskList[]                   @relation("TaskListUserOwner")
+  task_lists_assigned           TaskList[]                   @relation("TaskListAssignee")
   tasks_created                 TaskItem[]                   @relation("TaskItemCreatedBy")
+  tasks_assigned                TaskItem[]                   @relation("TaskItemAssignee")
   habits_owned                  Habit[]                      @relation("HabitUserOwner")
+  habits_assigned               Habit[]                      @relation("HabitAssignee")
   habit_logs_completed          HabitLog[]                   @relation("HabitLogCompletedBy")
   routines_owned                Routine[]                    @relation("RoutineUserOwner")
+  routines_assigned             Routine[]                    @relation("RoutineAssignee")
   routine_runs_completed        RoutineRun[]                 @relation("RoutineRunCompletedBy")
 
   // Shared
@@ -575,7 +579,7 @@ model PantryReceipt {
   house      House?              @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
   created_by User                @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
   lines      PantryReceiptLine[]
-  linked_cart PantryShoppingCart? @relation(fields: [linked_cart_id], references: [id], onDelete: SetNull)
+  linked_cart PantryShoppingCart? @relation("PantryReceiptLinkedCart", fields: [linked_cart_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([house_id])
@@ -661,6 +665,7 @@ model PantryShoppingCart {
 
   items      PantryShoppingCartItem[]
   activities PantryShoppingCartActivity[]
+  receipts_linked_from PantryReceipt[] @relation("PantryReceiptLinkedCart")
 
   @@index([user_id])
   @@index([house_id])
@@ -728,16 +733,21 @@ model TaskList {
   user_id  Int?
   house_id Int?
 
+  /// En contexto casa: miembro al que aplica la lista (predetermina nuevas tareas).
+  assignee_user_id Int?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user  User?  @relation("TaskListUserOwner", fields: [user_id], references: [id])
-  house House? @relation("TaskListHouseOwner", fields: [house_id], references: [id])
+  user     User?  @relation("TaskListUserOwner", fields: [user_id], references: [id])
+  house    House? @relation("TaskListHouseOwner", fields: [house_id], references: [id])
+  assignee User?  @relation("TaskListAssignee", fields: [assignee_user_id], references: [id])
 
   items TaskItem[]
 
   @@index([user_id, archived])
   @@index([house_id, archived])
+  @@index([house_id, assignee_user_id])
   @@index([created_at])
 }
 
@@ -757,15 +767,20 @@ model TaskItem {
 
   created_by_user_id Int
 
+  /// En contexto casa: miembro responsable de la tarea.
+  assignee_user_id Int?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   list       TaskList @relation(fields: [list_id], references: [id], onDelete: Cascade)
   created_by User     @relation("TaskItemCreatedBy", fields: [created_by_user_id], references: [id])
+  assignee   User?    @relation("TaskItemAssignee", fields: [assignee_user_id], references: [id])
 
   @@index([list_id, status])
   @@index([list_id, due_at])
   @@index([list_id, sort_order])
+  @@index([assignee_user_id])
 }
 
 model Habit {
@@ -781,16 +796,21 @@ model Habit {
   user_id  Int?
   house_id Int?
 
+  /// En contexto casa: miembro al que pertenece el hábito.
+  assignee_user_id Int?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user  User?  @relation("HabitUserOwner", fields: [user_id], references: [id])
-  house House? @relation("HabitHouseOwner", fields: [house_id], references: [id])
+  user     User?  @relation("HabitUserOwner", fields: [user_id], references: [id])
+  house    House? @relation("HabitHouseOwner", fields: [house_id], references: [id])
+  assignee User?  @relation("HabitAssignee", fields: [assignee_user_id], references: [id])
 
   logs HabitLog[]
 
   @@index([user_id, active])
   @@index([house_id, active])
+  @@index([house_id, assignee_user_id])
   @@index([created_at])
 }
 
@@ -821,17 +841,22 @@ model Routine {
   user_id  Int?
   house_id Int?
 
+  /// En contexto casa: miembro al que pertenece la rutina.
+  assignee_user_id Int?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user  User?  @relation("RoutineUserOwner", fields: [user_id], references: [id])
-  house House? @relation("RoutineHouseOwner", fields: [house_id], references: [id])
+  user     User?  @relation("RoutineUserOwner", fields: [user_id], references: [id])
+  house    House? @relation("RoutineHouseOwner", fields: [house_id], references: [id])
+  assignee User?  @relation("RoutineAssignee", fields: [assignee_user_id], references: [id])
 
   steps RoutineStep[]
   runs  RoutineRun[]
 
   @@index([user_id, active])
   @@index([house_id, active])
+  @@index([house_id, assignee_user_id])
   @@index([created_at])
 }
 

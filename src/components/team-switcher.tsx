@@ -43,7 +43,7 @@ const TeamSwitcherShell = () => (
 );
 import { CreateHouseDialog } from '@/components/create-house-dialog';
 import type { CreatedHouse } from '@/components/create-house-dialog';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 type TeamSwitcherProps = {
   /** @deprecated No longer used; context comes from session and useFinanceContext */

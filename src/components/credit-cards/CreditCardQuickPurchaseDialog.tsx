@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/select';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CategoryOption, CreditCardListItem } from '@/types/catalog';
-import { clientFetchFromApi, createCreditCardPurchase } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { createCreditCardPurchase } from '@/lib/api/credit-cards';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatCurrency } from '@/lib/utils';
 

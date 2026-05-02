@@ -13,17 +13,13 @@ export default async function TaskListDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <Link
-          href="/tasks/todo-lists"
-          className="mb-2 inline-flex text-xs text-muted-foreground hover:text-foreground"
-        >
-          Volver a listas
-        </Link>
-        <h2 className="text-lg font-semibold leading-tight">Detalle de lista</h2>
-        <p className="text-xs text-muted-foreground">Gestiona tareas y estados de esta lista.</p>
-      </div>
+    <div className="space-y-4">
+      <Link
+        href="/tasks/todo-lists"
+        className="inline-flex text-xs text-muted-foreground hover:text-foreground"
+      >
+        Volver a listas
+      </Link>
       <TaskListDetailView listId={listId} />
     </div>
   );

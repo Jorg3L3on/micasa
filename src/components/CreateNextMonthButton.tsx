@@ -7,7 +7,7 @@ import { CalendarPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
-import { createMonthFortnights } from '@/lib/api';
+import { createMonthFortnights } from '@/lib/api/fortnights';
 
 type CreateNextMonthButtonProps = {
   nextYear: number;

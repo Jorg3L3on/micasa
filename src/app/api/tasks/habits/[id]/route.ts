@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { HabitNotFoundError, deleteHabit, updateHabit } from '@/lib/server/tasks/habit.service';
+import { AssigneeInvalidError } from '@/lib/server/tasks/validate-assignee';
 import { updateHabitSchema } from '@/schemas/habit.schema';
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -32,6 +33,9 @@ export async function PATCH(
         { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
+    }
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error('tasks habit PATCH', error);
     return NextResponse.json({ error: 'No se pudo actualizar el hábito' }, { status: 500 });

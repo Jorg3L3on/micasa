@@ -25,9 +25,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useFinanceContext } from '@/context/finance-context';
-import {
-  fetchLiquidityProjection,
-} from '@/lib/api';
+import { fetchLiquidityProjection } from '@/lib/api/liquidity';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import {

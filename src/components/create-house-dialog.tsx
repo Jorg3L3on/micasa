@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 export type CreatedHouse = { id: number; name: string };
 

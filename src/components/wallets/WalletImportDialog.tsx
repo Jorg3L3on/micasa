@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { downloadWalletImportCsvTemplate } from '@/lib/finance/wallet-movements-csv';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { WalletImportResult } from '@/types/wallet-movements';

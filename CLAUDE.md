@@ -46,7 +46,7 @@ The active context is managed client-side in `src/context/finance-context.tsx` a
 
 ### Request Flow
 1. **Server-side fetches** (layouts/pages): `src/lib/api-server.ts` → `fetchFromApi()`
-2. **Client-side mutations** (components): `src/lib/api.ts` → `clientFetchFromApi()` and domain-specific helpers
+2. **Client-side mutations** (components): `src/lib/api/*` (e.g. `client-fetch.ts`, `wallets.ts`) → `clientFetchFromApi()` and domain helpers
 3. **Route Handlers** (`src/app/api/**`): validate with Zod schemas → query via Prisma → return JSON
 4. **Validation schemas** live in `src/schemas/` (one per domain)
 
@@ -81,7 +81,7 @@ src/
     prisma.ts            # Prisma singleton — `export default prisma` (used everywhere, 51 imports)
     db.ts                # Duplicate singleton with `export const db` — currently unused, candidate for removal
     auth.ts              # NextAuth config
-    api.ts               # Client-side fetch helpers
+    api/                 # Client-side fetch helpers (`client-fetch.ts`, domain modules)
     api-server.ts        # Server-side fetch helpers
     fortnights.ts        # Fortnight date calculation utilities
     transfers.ts         # Transfer domain utilities

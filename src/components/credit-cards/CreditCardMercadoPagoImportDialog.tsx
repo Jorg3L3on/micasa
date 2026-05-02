@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { uploadMercadoPagoCreditCardStatement } from '@/lib/api';
+import { uploadMercadoPagoCreditCardStatement } from '@/lib/api/credit-cards';
 import { cn, formatDate } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 import type {

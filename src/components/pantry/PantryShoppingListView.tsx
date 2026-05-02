@@ -12,7 +12,7 @@ import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
 import { CreateCartSheet } from '@/components/pantry/CreateCartSheet';
 import { PantryShoppingCartCard } from '@/components/pantry/PantryShoppingCartCard';
 import { useFinanceContext } from '@/context/finance-context';
-import { createShoppingCart, listShoppingCarts } from '@/lib/api';
+import { createShoppingCart, listShoppingCarts } from '@/lib/api/pantry';
 import type {
   PantryShoppingCartSummaryDto,
   ShoppingCartStatus,

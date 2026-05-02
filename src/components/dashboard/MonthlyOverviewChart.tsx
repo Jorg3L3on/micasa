@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { formatCurrency } from '@/lib/utils';
 import type { MonthlySummaryItem } from '@/app/api/dashboard/monthly-summary/route';
 

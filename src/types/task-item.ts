@@ -8,6 +8,8 @@ export type TaskRecurrenceDto = {
   anchor: string | null;
 };
 
+import type { AssigneeSummaryDto } from '@/types/tasks-assignee';
+
 export type TaskItemDto = {
   id: number;
   list_id: number;
@@ -19,6 +21,8 @@ export type TaskItemDto = {
   completed_at: string | null;
   recurrence: TaskRecurrenceDto | null;
   sort_order: number;
+  assignee_user_id: number | null;
+  assignee: AssigneeSummaryDto | null;
   created_at: string;
   updated_at: string;
 };

@@ -1,6 +1,10 @@
 import prisma from '@/lib/prisma';
 import { serializeTaskItem } from '@/lib/server/tasks/serialize-tasks';
 import { tasksOwnerWhere } from '@/lib/server/tasks/tasks-owner';
+import {
+  resolveAssigneeForCreate,
+  resolveAssigneeForUpdate,
+} from '@/lib/server/tasks/validate-assignee';
 import type {
   CreateTaskItemInput,
   UpdateTaskItemInput,
@@ -22,15 +26,22 @@ export class TaskItemNotFoundError extends Error {
 const resolveCompletion = (status?: 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELED') =>
   status === 'DONE' ? new Date() : status ? null : undefined;
 
+const TASK_ITEM_INCLUDE = {
+  assignee: { select: { id: true, name: true } },
+} as const;
+
 export async function listTaskItems(
   owner: TaskOwnerParams,
   listId?: number,
+  assigneeUserIdFilter?: number,
 ): Promise<TaskItemDto[]> {
   const rows = await prisma.taskItem.findMany({
     where: {
       ...(listId ? { list_id: listId } : {}),
+      ...(assigneeUserIdFilter != null ? { assignee_user_id: assigneeUserIdFilter } : {}),
       list: { ...tasksOwnerWhere(owner.ownerType, owner.ownerId) },
     },
+    include: TASK_ITEM_INCLUDE,
     orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
   });
   return rows.map(serializeTaskItem);
@@ -43,9 +54,12 @@ export async function createTaskItem(
 ): Promise<TaskItemDto> {
   const list = await prisma.taskList.findFirst({
     where: { id: input.list_id, ...tasksOwnerWhere(owner.ownerType, owner.ownerId) },
-    select: { id: true },
+    select: { id: true, assignee_user_id: true },
   });
   if (!list) throw new TaskItemNotFoundError('Lista no encontrada');
+
+  const mergedAssignee = input.assignee_user_id ?? list.assignee_user_id;
+  const assignee_user_id = await resolveAssigneeForCreate(owner, mergedAssignee ?? undefined);
 
   const maxSort = await prisma.taskItem.aggregate({
     where: { list_id: input.list_id },
@@ -64,7 +78,9 @@ export async function createTaskItem(
       recurrence_anchor: input.recurrence?.anchor ? new Date(input.recurrence.anchor) : null,
       sort_order: (maxSort._max.sort_order ?? -1) + 1,
       created_by_user_id: userId,
+      assignee_user_id,
     },
+    include: TASK_ITEM_INCLUDE,
   });
   return serializeTaskItem(row);
 }
@@ -79,6 +95,8 @@ export async function updateTaskItem(
     select: { id: true },
   });
   if (!exists) throw new TaskItemNotFoundError();
+
+  const assigneePatch = await resolveAssigneeForUpdate(owner, input.assignee_user_id);
 
   const row = await prisma.taskItem.update({
     where: { id },
@@ -102,7 +120,11 @@ export async function updateTaskItem(
           }
         : {}),
       ...(input.sort_order !== undefined ? { sort_order: input.sort_order } : {}),
+      ...(assigneePatch.kind === 'value'
+        ? { assignee_user_id: assigneePatch.assignee_user_id }
+        : {}),
     },
+    include: TASK_ITEM_INCLUDE,
   });
   return serializeTaskItem(row);
 }

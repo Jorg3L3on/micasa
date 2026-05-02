@@ -26,6 +26,7 @@ export const createRoutineSchema = z.object({
   time_of_day: routineTimeOfDaySchema.optional(),
   active_days: z.array(z.number().int().min(0).max(6)).optional(),
   steps: z.array(routineStepSchema).min(1, 'Agrega al menos un paso'),
+  assignee_user_id: z.number().int().positive().optional(),
 });
 
 export type CreateRoutineInput = z.infer<typeof createRoutineSchema>;
@@ -38,6 +39,7 @@ export const updateRoutineSchema = z
     active_days: z.array(z.number().int().min(0).max(6)).optional(),
     active: z.boolean().optional(),
     steps: z.array(routineStepSchema).min(1).optional(),
+    assignee_user_id: z.number().int().positive().optional().nullable(),
   })
   .refine((value) => Object.values(value).some((entry) => entry !== undefined), {
     message: 'No hay cambios',

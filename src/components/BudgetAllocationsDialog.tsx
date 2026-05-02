@@ -32,7 +32,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { cn, formatCurrency } from '@/lib/utils';
 import { step2Schema, type Step2Values, type Step2Input } from '@/schemas/budget.schema';
 import type { BudgetListItem, CategoryOption, WalletListItem } from '@/types/catalog';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 

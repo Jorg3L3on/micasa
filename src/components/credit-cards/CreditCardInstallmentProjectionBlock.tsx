@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
-import { getCreditCardInstallmentProjection } from '@/lib/api';
+import { getCreditCardInstallmentProjection } from '@/lib/api/credit-cards';
 import { formatCurrency } from '@/lib/utils';
 import type { InstallmentProjectionMonthItem } from '@/types/catalog';
 

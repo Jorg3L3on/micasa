@@ -25,15 +25,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFinanceContext } from '@/context/finance-context';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
-  listIncomeTemplates,
-  getFortnightIncomes,
   createIncome,
+  getFortnightIncomes,
+  listIncomeTemplates,
   updateIncomeAmount,
-  clientFetchFromApi,
-  type IncomeTemplateDto,
   type FortnightIncomeDto,
-} from '@/lib/api';
+  type IncomeTemplateDto,
+} from '@/lib/api/incomes';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 

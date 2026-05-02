@@ -16,7 +16,8 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, getPantryInsights } from '@/lib/api';
+import { buildOwnerQuery } from '@/lib/api/client-fetch';
+import { getPantryInsights } from '@/lib/api/pantry';
 import { Button } from '@/components/ui/button';
 import type { PantryInsightsDto } from '@/types/pantry-insights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

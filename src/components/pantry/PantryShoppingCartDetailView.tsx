@@ -42,15 +42,15 @@ import { SHOPPING_STORE_LABELS, type ShoppingStore } from '@/types/shopping-stor
 import { useFinanceContext } from '@/context/finance-context';
 import {
   addShoppingCartItemsBulk,
-  getPantryInsights,
   deleteShoppingCart,
   deleteShoppingCartItem,
+  getPantryInsights,
   getShoppingCart,
   listPantryProducts,
   updateShoppingCart,
   updateShoppingCartItem,
   updateShoppingCartStatus,
-} from '@/lib/api';
+} from '@/lib/api/pantry';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { PantryProductDto } from '@/types/pantry-product';
 import type {

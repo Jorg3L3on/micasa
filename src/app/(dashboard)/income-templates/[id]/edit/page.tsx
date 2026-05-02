@@ -26,7 +26,8 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi, updateIncomeTemplate } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { updateIncomeTemplate } from '@/lib/api/incomes';
 import Link from 'next/link';
 import {
   incomeTemplateSchema,

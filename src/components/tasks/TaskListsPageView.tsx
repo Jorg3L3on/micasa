@@ -1,22 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { ListChecks, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AssigneeWithName } from '@/components/tasks/AssigneeAvatar';
 import EmptyState from '@/components/EmptyState';
+import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useFinanceContext } from '@/context/finance-context';
-import { createTaskList, listTaskLists } from '@/lib/api';
+import { createTaskList, listTaskLists } from '@/lib/api/tasks';
 import type { TaskListDto } from '@/types/task-list';
 
 export default function TaskListsPageView() {
   const { context } = useFinanceContext();
+  const { data: session } = useSession();
+  const sessionUserId = Number(session?.user?.id);
   const [loading, setLoading] = useState(true);
   const [lists, setLists] = useState<TaskListDto[]>([]);
   const [newListName, setNewListName] = useState('');
+  const [newAssignee, setNewAssignee] = useState<number | ''>('');
+  const [creatingList, setCreatingList] = useState(false);
 
   const loadLists = useCallback(async () => {
     try {
@@ -35,11 +43,38 @@ export default function TaskListsPageView() {
     void loadLists();
   }, [loadLists]);
 
+  useEffect(() => {
+    if (context.type === 'house' && Number.isFinite(sessionUserId) && sessionUserId > 0) {
+      setNewAssignee((prev) => (prev === '' ? sessionUserId : prev));
+    }
+    if (context.type === 'user') {
+      setNewAssignee('');
+    }
+  }, [context.type, sessionUserId]);
+
   const handleCreateList = async () => {
     if (!newListName.trim()) return;
-    await createTaskList({ name: newListName.trim() }, context);
-    setNewListName('');
-    await loadLists();
+    if (context.type === 'house' && newAssignee === '') {
+      toast.error('Selecciona un miembro de la casa');
+      return;
+    }
+    try {
+      setCreatingList(true);
+      await createTaskList(
+        {
+          name: newListName.trim(),
+          ...(context.type === 'house' ? { assignee_user_id: newAssignee as number } : {}),
+        },
+        context,
+      );
+      setNewListName('');
+      if (context.type === 'house' && Number.isFinite(sessionUserId)) {
+        setNewAssignee(sessionUserId);
+      }
+      await loadLists();
+    } finally {
+      setCreatingList(false);
+    }
   };
 
   if (loading) {
@@ -61,15 +96,36 @@ export default function TaskListsPageView() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={newListName}
-            placeholder="Nueva lista"
-            onChange={(event) => setNewListName(event.target.value)}
-            aria-label="Nombre de lista"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={newListName}
+              placeholder="Nueva lista"
+              onChange={(event) => setNewListName(event.target.value)}
+              aria-label="Nombre de lista"
+              disabled={creatingList}
+            />
+          </div>
+          <MemberAssigneeSelect
+            id="new-list-assignee"
+            value={newAssignee}
+            onChange={setNewAssignee}
+            disabled={creatingList}
           />
-          <Button className="w-full sm:w-auto" onClick={() => void handleCreateList()}>
-            Crear
+          <Button
+            className="w-full shrink-0 sm:w-auto"
+            onClick={() => void handleCreateList()}
+            disabled={creatingList}
+            aria-busy={creatingList}
+          >
+            {creatingList ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                Creando…
+              </>
+            ) : (
+              'Crear'
+            )}
           </Button>
         </div>
         {lists.length === 0 ? (
@@ -83,9 +139,22 @@ export default function TaskListsPageView() {
                 href={`/tasks/lists/${list.id}`}
               >
                 <p className="text-sm font-medium">{list.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {list.completed_count}/{list.tasks_count} completadas
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    {list.completed_count}/{list.tasks_count} completadas
+                  </p>
+                  {context.type === 'house' &&
+                    (list.assignee ? (
+                      <AssigneeWithName
+                        name={list.assignee.name}
+                        nameClassName="text-[10px] text-muted-foreground"
+                      />
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        Sin asignar
+                      </Badge>
+                    ))}
+                </div>
               </Link>
             ))}
           </div>

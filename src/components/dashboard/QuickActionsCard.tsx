@@ -16,7 +16,8 @@ import {
 import CreateMonthForm from '@/components/CreateMonthForm';
 import { cn } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi, createExpenseTransaction } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { createExpenseTransaction } from '@/lib/api/transactions';
 import type { DashboardData } from '@/types/dashboard';
 import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { DASHBOARD_CARD_CLASS } from './constants';

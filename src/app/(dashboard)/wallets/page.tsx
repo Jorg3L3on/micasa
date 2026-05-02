@@ -20,12 +20,13 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
+} from '@/lib/api/client-fetch';
+import { createCreditCard, updateCreditCard } from '@/lib/api/credit-cards';
+import {
   createWallet,
-  updateWallet,
   deleteWallet,
-  createCreditCard,
-  updateCreditCard,
-} from '@/lib/api';
+  updateWallet,
+} from '@/lib/api/wallets';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_OPTIONS,

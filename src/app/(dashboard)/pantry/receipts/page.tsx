@@ -48,15 +48,17 @@ import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
+  getClientApiBaseUrl,
+} from '@/lib/api/client-fetch';
+import {
   deletePantryReceipt,
+  listPantryReceipts,
   patchPantryReceipt,
   reconcilePantryReceiptToCart,
   listShoppingCarts,
-  listPantryReceipts,
-  getClientApiBaseUrl,
   updateShoppingCart,
   uploadPantryReceipt,
-} from '@/lib/api';
+} from '@/lib/api/pantry';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 import type { PantryShoppingCartSummaryDto } from '@/types/pantry-shopping-cart';

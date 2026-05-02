@@ -6,11 +6,9 @@ import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFinanceContext } from '@/context/finance-context';
-import {
-  clientFetchFromApi,
-  getPaymentMethodOptions,
-  updateExpenseTemplate,
-} from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { updateExpenseTemplate } from '@/lib/api/expense-templates';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   expenseTemplateSchema,
   ExpenseTemplateFormValues,

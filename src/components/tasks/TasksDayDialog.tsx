@@ -1,6 +1,10 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
+import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,10 +13,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
+import { useFinanceContext } from '@/context/finance-context';
 import type { RoutineDto } from '@/types/routine';
 import type { TaskItemDto } from '@/types/task-item';
-import { filterTasksBySelectedDay, isSameDay } from '@/components/tasks/task-time-groups';
+import {
+  filterTasksBySelectedDay,
+  getStartOfDay,
+  isSameDay,
+} from '@/components/tasks/task-time-groups';
 
 type TasksDayDialogProps = {
   open: boolean;
@@ -20,8 +36,14 @@ type TasksDayDialogProps = {
   selectedDate: Date;
   tasks: TaskItemDto[];
   routines: RoutineDto[];
-  onCreateTask: (payload: { title: string; dueAt: Date }) => Promise<void>;
+  onCreateTask: (payload: {
+    title: string;
+    dueAt: Date;
+    assignee_user_id?: number;
+  }) => Promise<void>;
   onCompleteTask: (taskId: number) => Promise<void>;
+  /** Use Sheet (e.g. vista Hoy) instead of modal Dialog */
+  presentation?: 'dialog' | 'sheet';
 };
 
 const formatDay = (value: Date): string =>
@@ -39,110 +61,261 @@ export default function TasksDayDialog({
   routines,
   onCreateTask,
   onCompleteTask,
+  presentation = 'dialog',
 }: TasksDayDialogProps) {
+  const { context } = useFinanceContext();
+  const { data: session } = useSession();
+  const sessionUserId = Number(session?.user?.id);
   const [newTitle, setNewTitle] = useState('');
+  const [assigneeUserId, setAssigneeUserId] = useState<number | ''>('');
+  const [viewDate, setViewDate] = useState(selectedDate);
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
+
+  const handleOverlayOpenChange = (next: boolean) => {
+    if (next) {
+      setViewDate(selectedDate);
+      if (context.type !== 'house') {
+        setAssigneeUserId('');
+      } else if (Number.isFinite(sessionUserId) && sessionUserId > 0) {
+        setAssigneeUserId(sessionUserId);
+      }
+    }
+    onOpenChange(next);
+  };
+
+  const calendarTaskDates = useMemo(() => {
+    const dayMap = new Map<number, Date>();
+    for (const task of tasks) {
+      if (!task.due_at) continue;
+      const day = getStartOfDay(new Date(task.due_at));
+      dayMap.set(day.getTime(), day);
+    }
+    return Array.from(dayMap.values());
+  }, [tasks]);
+
   const dayTasks = useMemo(
-    () => filterTasksBySelectedDay(tasks, selectedDate),
-    [tasks, selectedDate],
+    () => filterTasksBySelectedDay(tasks, viewDate),
+    [tasks, viewDate],
   );
-  const dayNumber = selectedDate.getDay();
+  const dayNumber = viewDate.getDay();
   const dayRoutines = useMemo(
     () =>
       routines.filter(
         (routine) =>
-          routine.active_days.length === 0 || routine.active_days.includes(dayNumber),
+          routine.active &&
+          (routine.active_days.length === 0 || routine.active_days.includes(dayNumber)),
       ),
     [routines, dayNumber],
   );
 
   const handleCreateTask = async () => {
     if (!newTitle.trim()) return;
-    await onCreateTask({ title: newTitle.trim(), dueAt: selectedDate });
-    setNewTitle('');
+    if (context.type === 'house' && assigneeUserId === '') {
+      toast.error('Selecciona un miembro de la casa');
+      return;
+    }
+    try {
+      setCreatingTask(true);
+      await onCreateTask({
+        title: newTitle.trim(),
+        dueAt: viewDate,
+        ...(context.type === 'house' ? { assignee_user_id: assigneeUserId as number } : {}),
+      });
+      setNewTitle('');
+    } finally {
+      setCreatingTask(false);
+    }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{formatDay(selectedDate)}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="rounded-md border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Crear tarea del dia
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={newTitle}
-                onChange={(event) => setNewTitle(event.target.value)}
-                placeholder="Nueva tarea para este dia"
-                aria-label="Nueva tarea para este día"
-              />
-              <Button className="w-full sm:w-auto" onClick={() => void handleCreateTask()}>
-                Crear
-              </Button>
+  const handleCompleteTaskClick = async (taskId: number) => {
+    try {
+      setCompletingTaskId(taskId);
+      await onCompleteTask(taskId);
+    } finally {
+      setCompletingTaskId(null);
+    }
+  };
+
+  const createSection = (
+    <div className="rounded-md border border-border/60 p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Crear tarea del dia
+      </p>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Esta tarea queda con la fecha del día que elijas en el calendario de arriba.
+      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <Input
+            value={newTitle}
+            onChange={(event) => setNewTitle(event.target.value)}
+            placeholder="Nueva tarea para este dia"
+            aria-label="Nueva tarea para este día"
+            disabled={creatingTask}
+          />
+        </div>
+        <MemberAssigneeSelect
+          id="day-dialog-assignee"
+          value={assigneeUserId}
+          onChange={setAssigneeUserId}
+          disabled={creatingTask}
+        />
+        <Button
+          className="w-full shrink-0 sm:w-auto"
+          onClick={() => void handleCreateTask()}
+          disabled={creatingTask}
+          aria-busy={creatingTask}
+        >
+          {creatingTask ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              Creando…
+            </>
+          ) : (
+            'Crear'
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const tasksSection = (
+    <div className="rounded-md border border-border/60 p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Tareas programadas
+      </p>
+      {dayTasks.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No hay tareas para este día.</p>
+      ) : (
+        <div className="space-y-2">
+          {dayTasks.map((task) => (
+            <div
+              key={task.id}
+              className="flex flex-col gap-2 rounded-md border border-border/60 p-2 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="min-w-0 truncate text-sm font-medium">{task.title}</p>
+              {task.status === 'DONE' ? (
+                <Badge variant="secondary">Completada</Badge>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={completingTaskId !== null}
+                  aria-busy={completingTaskId === task.id}
+                  onClick={() => void handleCompleteTaskClick(task.id)}
+                >
+                  {completingTaskId === task.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                      Completando…
+                    </>
+                  ) : (
+                    'Completar'
+                  )}
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const routinesSection = (
+    <div className="rounded-md border border-border/60 p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Rutinas del dia
+      </p>
+      {dayRoutines.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No hay rutinas para este día.</p>
+      ) : (
+        <div className="space-y-2">
+          {dayRoutines.map((routine) => {
+            const latestRunIsSameDay =
+              routine.latest_run &&
+              isSameDay(new Date(routine.latest_run.run_on), viewDate);
+            return (
+              <div key={routine.id} className="rounded-md border border-border/60 p-2">
+                <p className="text-sm font-medium">{routine.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {routine.steps.length} pasos
+                  {latestRunIsSameDay ? ' · Con ejecución registrada' : ''}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const bodyDialog = (
+    <div className="space-y-4">
+      {createSection}
+      {tasksSection}
+      {routinesSection}
+    </div>
+  );
+
+  const calendarBlock =
+    presentation === 'sheet' ? (
+      <div className="flex justify-center rounded-md border border-border/60 bg-muted/20 p-2">
+        <Calendar
+          mode="single"
+          selected={viewDate}
+          onSelect={(date) => {
+            if (!date) return;
+            setViewDate(date);
+          }}
+          modifiers={{ hasTasks: calendarTaskDates }}
+          modifiersClassNames={{
+            hasTasks:
+              'relative after:absolute after:bottom-1 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-primary',
+          }}
+          className="rounded-md"
+        />
+      </div>
+    ) : null;
+
+  if (presentation === 'sheet') {
+    return (
+      <Sheet open={open} onOpenChange={handleOverlayOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[90vh] overflow-y-auto rounded-t-xl sm:max-w-2xl sm:mx-auto sm:left-1/2 sm:right-auto sm:w-full sm:-translate-x-1/2"
+        >
+          <SheetHeader>
+            <SheetTitle>{formatDay(viewDate)}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            {calendarBlock}
+            {/* Mobile: create → tasks → routines. md+: tasks column on the right. */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-4">
+              <div className="min-w-0 md:col-start-1 md:row-start-1">
+                {createSection}
+              </div>
+              <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1 md:border-l md:border-border/60 md:pl-4">
+                {tasksSection}
+              </div>
+              <div className="min-w-0 md:col-start-1 md:row-start-2">
+                {routinesSection}
+              </div>
             </div>
           </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
-          <div className="rounded-md border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Tareas programadas
-            </p>
-            {dayTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay tareas para este día.</p>
-            ) : (
-              <div className="space-y-2">
-                {dayTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex flex-col gap-2 rounded-md border p-2 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <p className="min-w-0 truncate text-sm font-medium">{task.title}</p>
-                    {task.status === 'DONE' ? (
-                      <Badge variant="secondary">Completada</Badge>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full sm:w-auto"
-                        onClick={() => void onCompleteTask(task.id)}
-                      >
-                        Completar
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-md border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Rutinas del dia
-            </p>
-            {dayRoutines.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay rutinas para este día.</p>
-            ) : (
-              <div className="space-y-2">
-                {dayRoutines.map((routine) => {
-                  const latestRunIsSameDay =
-                    routine.latest_run &&
-                    isSameDay(new Date(routine.latest_run.run_on), selectedDate);
-                  return (
-                    <div key={routine.id} className="rounded-md border p-2">
-                      <p className="text-sm font-medium">{routine.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {routine.steps.length} pasos
-                        {latestRunIsSameDay ? ' · Con ejecución registrada' : ''}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+  return (
+    <Dialog open={open} onOpenChange={handleOverlayOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{formatDay(viewDate)}</DialogTitle>
+        </DialogHeader>
+        {bodyDialog}
       </DialogContent>
     </Dialog>
   );

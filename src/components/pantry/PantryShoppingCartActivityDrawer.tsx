@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useFinanceContext } from '@/context/finance-context';
-import { listShoppingCartActivity } from '@/lib/api';
+import { listShoppingCartActivity } from '@/lib/api/pantry';
 import type {
   PantryShoppingCartActivityDto,
   ShoppingCartActivityAction,

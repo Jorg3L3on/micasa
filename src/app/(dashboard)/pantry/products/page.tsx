@@ -26,7 +26,7 @@ import {
   deletePantryProduct,
   listPantryProducts,
   patchPantryProduct,
-} from '@/lib/api';
+} from '@/lib/api/pantry';
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   CreatePantryProductInput,

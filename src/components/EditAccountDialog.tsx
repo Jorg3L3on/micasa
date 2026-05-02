@@ -26,7 +26,7 @@ import {
   updateAccountSchema,
   UpdateAccountValues,
 } from '@/schemas/account.schema';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 type EditAccountDialogProps = {
   open: boolean;
