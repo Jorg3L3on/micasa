@@ -86,7 +86,7 @@ export default function TaskListsPageView() {
   }
 
   return (
-    <Card className="rounded-xl border-border/60 border-l-[3px] border-l-sky-500/50">
+    <Card className="rounded-xl border-border/60">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">

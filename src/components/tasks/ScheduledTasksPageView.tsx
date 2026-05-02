@@ -143,7 +143,7 @@ export default function ScheduledTasksPageView() {
   }
 
   return (
-    <Card className="rounded-xl border-border/60 border-l-[3px] border-l-amber-500/50">
+    <Card className="rounded-xl border-border/60">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
