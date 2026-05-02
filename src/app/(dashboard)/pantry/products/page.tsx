@@ -1,21 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Loader2, Package, Pencil, Receipt, Sparkles, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Package,
+  Receipt,
+  Sparkles,
+} from 'lucide-react';
 
-import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import { PantryProductListRow } from '@/components/pantry/PantryProductListRow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import EmptyState from '@/components/EmptyState';
 import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -27,7 +28,7 @@ import {
   listPantryProducts,
   patchPantryProduct,
 } from '@/lib/api/pantry';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type {
   CreatePantryProductInput,
   PantryProductFormValues,
@@ -85,6 +86,10 @@ export default function PantryProductsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<PantryProductDto | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const PRODUCTS_PAGE_SIZE = 10;
+  const [productSearch, setProductSearch] = useState('');
+  const [productPageIndex, setProductPageIndex] = useState(0);
 
   const loadList = useCallback(async () => {
     try {
@@ -174,115 +179,30 @@ export default function PantryProductsPage() {
   const receiptsHref = ownerQuery ? `/pantry/receipts?${ownerQuery}` : '/pantry/receipts';
   const insightsHref = ownerQuery ? `/pantry?${ownerQuery}` : '/pantry';
 
-  const columns = useMemo<ColumnDef<PantryProductDto>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Producto" />
-        ),
-        cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">{row.original.name}</span>
-            {row.original.description ? (
-              <span className="text-[10px] text-muted-foreground line-clamp-1">
-                {row.original.description}
-              </span>
-            ) : null}
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'brand',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Marca" />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.brand ?? '—'}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'unit_label',
-        header: 'Unidad',
-        cell: ({ row }) => (
-          <span className="font-mono text-sm tabular-nums text-muted-foreground">
-            {row.original.unit_label ?? '—'}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'default_unit_price',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Precio ref." />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm font-mono tabular-nums">
-            {row.original.default_unit_price != null
-              ? formatCurrency(row.original.default_unit_price)
-              : '—'}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'active',
-        header: 'Estado',
-        cell: ({ row }) =>
-          row.original.active ? (
-            <Badge variant="secondary" className="text-[10px] font-medium">
-              Activo
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-              Inactivo
-            </Badge>
-          ),
-      },
-      {
-        id: 'actions',
-        header: () => <span className="sr-only">Acciones</span>,
-        cell: ({ row }) => {
-          const p = row.original;
-          return (
-            <div className="flex justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openEdit(p)}
-                    aria-label={`Editar ${p.name}`}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Editar producto</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openDelete(p)}
-                    aria-label={`Eliminar ${p.name}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Eliminar del catálogo</TooltipContent>
-              </Tooltip>
-            </div>
-          );
-        },
-      },
-    ],
-    [openEdit, openDelete],
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, productSearch]);
+
+  const productPageCount = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE),
   );
+
+  const paginatedProducts = useMemo(() => {
+    const start = productPageIndex * PRODUCTS_PAGE_SIZE;
+    return filteredProducts.slice(start, start + PRODUCTS_PAGE_SIZE);
+  }, [filteredProducts, productPageIndex]);
+
+  useEffect(() => {
+    setProductPageIndex(0);
+  }, [productSearch]);
+
+  useEffect(() => {
+    const maxIdx = Math.max(0, productPageCount - 1);
+    setProductPageIndex((i) => Math.min(i, maxIdx));
+  }, [productPageCount, filteredProducts.length]);
 
   const stats = useMemo(() => {
     const activeCount = products.filter((p) => p.active).length;
@@ -357,7 +277,7 @@ export default function PantryProductsPage() {
 
       <Card
         className={cn(
-          'overflow-hidden border-border/60 border-l-[3px] border-l-sky-500/45 transition-shadow duration-200 hover:shadow-md',
+          'overflow-hidden border-border/60 transition-shadow duration-200 hover:shadow-md',
         )}
       >
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-2">
@@ -418,16 +338,74 @@ export default function PantryProductsPage() {
               }}
             />
           ) : (
-            <DataTable
-              data={products}
-              columns={columns}
-              filterColumn="name"
-              filterPlaceholder="Buscar producto…"
-              pagination
-              columnVisibility
-              emptyMessage="Sin resultados."
-              onRowClick={openEdit}
-            />
+            <div className="w-full min-w-0 space-y-4">
+              <Input
+                placeholder="Buscar producto…"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="max-w-full sm:max-w-xs"
+                aria-label="Buscar producto…"
+              />
+              {filteredProducts.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  Sin resultados.
+                </p>
+              ) : (
+                <>
+                  <ul
+                    role="list"
+                    className="flex flex-col gap-2"
+                    aria-label="Lista de productos"
+                  >
+                    {paginatedProducts.map((product) => (
+                      <PantryProductListRow
+                        key={product.id}
+                        product={product}
+                        onOpenEdit={() => openEdit(product)}
+                        onOpenDelete={() => openDelete(product)}
+                      />
+                    ))}
+                  </ul>
+                  {productPageCount > 1 ? (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Página {productPageIndex + 1} de {productPageCount} (
+                        {filteredProducts.length}{' '}
+                        {filteredProducts.length === 1 ? 'producto' : 'productos'})
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={productPageIndex <= 0}
+                          onClick={() =>
+                            setProductPageIndex((p) => Math.max(0, p - 1))
+                          }
+                          aria-label="Página anterior"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={productPageIndex >= productPageCount - 1}
+                          onClick={() =>
+                            setProductPageIndex((p) =>
+                              Math.min(productPageCount - 1, p + 1),
+                            )
+                          }
+                          aria-label="Página siguiente"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
