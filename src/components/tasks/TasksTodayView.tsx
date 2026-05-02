@@ -290,7 +290,7 @@ export default function TasksTodayView() {
         </Button>
       </div>
 
-      <Card className="rounded-xl border-border/60 border-l-[3px] border-l-emerald-500/50">
+      <Card className="rounded-xl border-border/60">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Progreso de hoy</CardTitle>
         </CardHeader>

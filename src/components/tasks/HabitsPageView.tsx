@@ -289,7 +289,7 @@ export default function HabitsPageView() {
 
   return (
     <TooltipProvider>
-      <Card className="rounded-xl border-border/60 border-l-[3px] border-l-emerald-500/50">
+      <Card className="rounded-xl border-border/60">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-sm">

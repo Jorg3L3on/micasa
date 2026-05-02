@@ -1,16 +1,31 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   ArrowDownAZ,
   ArrowDownZA,
+  ChevronDown,
   LineChart,
   ListFilter,
   WalletIcon,
+  X,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
 import WalletForm from '@/components/WalletForm';
@@ -30,6 +45,7 @@ import {
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_OPTIONS,
+  PAYMENT_METHODS,
 } from '@/domain/payment-method';
 import {
   Select,
@@ -106,6 +122,116 @@ const CREDIT_LINE_OPTIONS: { value: CreditLineFilterValue; label: string }[] =
     { value: 'no_line', label: 'Sin línea registrada' },
     { value: 'negative_available', label: 'Disponible negativo' },
   ];
+
+/** Efectivo/débito vs tarjetas; al elegir un tipo concreto en chips, se vuelve a «all». */
+type KindFilterValue = 'all' | 'funding' | 'credit';
+
+const KIND_FILTER_CHIPS: { value: KindFilterValue; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'funding', label: 'Efectivo y débito' },
+  { value: 'credit', label: 'Tarjetas' },
+];
+
+const FILTERS_STORAGE_KEY = 'micasa.wallets.listFilters';
+
+const isStoredTypeFilter = (v: unknown): v is string =>
+  v === TYPE_FILTER_ALL ||
+  (typeof v === 'string' &&
+    (PAYMENT_METHODS as readonly string[]).includes(v));
+
+type StoredWalletListFilters = Partial<{
+  typeFilter: string;
+  statusFilter: StatusFilterValue;
+  balanceFilter: BalanceFilterValue;
+  creditLineFilter: CreditLineFilterValue;
+  sortKey: SortKey;
+  sortDir: 'asc' | 'desc';
+  kindFilter: KindFilterValue;
+}>;
+
+const parseStoredFilters = (): StoredWalletListFilters | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    const out: StoredWalletListFilters = {};
+    if (isStoredTypeFilter(o.typeFilter)) out.typeFilter = o.typeFilter;
+    if (
+      o.statusFilter === STATUS_FILTER_ALL ||
+      o.statusFilter === 'active' ||
+      o.statusFilter === 'inactive'
+    ) {
+      out.statusFilter = o.statusFilter;
+    }
+    if (
+      o.balanceFilter === BALANCE_FILTER_ALL ||
+      o.balanceFilter === 'nonzero' ||
+      o.balanceFilter === 'zero'
+    ) {
+      out.balanceFilter = o.balanceFilter;
+    }
+    if (
+      o.creditLineFilter === 'all' ||
+      o.creditLineFilter === 'with_line' ||
+      o.creditLineFilter === 'no_line' ||
+      o.creditLineFilter === 'negative_available'
+    ) {
+      out.creditLineFilter = o.creditLineFilter;
+    }
+    if (o.sortKey === 'name' || o.sortKey === 'amount' || o.sortKey === 'available') {
+      out.sortKey = o.sortKey;
+    }
+    if (o.sortDir === 'asc' || o.sortDir === 'desc') {
+      out.sortDir = o.sortDir;
+    }
+    if (o.kindFilter === 'all' || o.kindFilter === 'funding' || o.kindFilter === 'credit') {
+      out.kindFilter = o.kindFilter;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+};
+
+const ScrollFadeChipRow = ({
+  ariaLabel,
+  children,
+  mode = 'tablist',
+}: {
+  ariaLabel: string;
+  children: ReactNode;
+  mode?: 'tablist' | 'group';
+}) => (
+  <div className="relative -mx-1">
+    <div
+      className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-background to-transparent"
+      aria-hidden
+    />
+    <div
+      className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l from-background to-transparent"
+      aria-hidden
+    />
+    <div
+      className="flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide"
+      role={mode === 'tablist' ? 'tablist' : 'group'}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </div>
+  </div>
+);
+
+const walletMatchesKindFilter = (
+  w: WalletListItem,
+  kindFilter: KindFilterValue,
+): boolean => {
+  if (kindFilter === 'all') return true;
+  if (kindFilter === 'funding') {
+    return w.type === 'CASH' || w.type === 'DEBIT_CARD';
+  }
+  return isCreditType(w.type);
+};
 
 const walletMatchesSearch = (w: WalletListItem, q: string): boolean => {
   const t = q.trim().toLowerCase();
@@ -210,11 +336,15 @@ export default function WalletsPage() {
     useState<BalanceFilterValue>(BALANCE_FILTER_ALL);
   const [creditLineFilter, setCreditLineFilter] =
     useState<CreditLineFilterValue>('all');
+  const [kindFilter, setKindFilter] = useState<KindFilterValue>('all');
+  const [filtersReady, setFiltersReady] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const displayWallets = useMemo(() => {
     const q = searchQuery;
     const filtered = wallets.filter((w) => {
       if (!walletMatchesSearch(w, q)) return false;
+      if (!walletMatchesKindFilter(w, kindFilter)) return false;
       if (!walletMatchesTypeFilter(w, typeFilter)) return false;
       if (!walletMatchesStatusFilter(w, statusFilter)) return false;
       if (!walletMatchesBalanceFilter(w, balanceFilter)) return false;
@@ -227,6 +357,7 @@ export default function WalletsPage() {
   }, [
     wallets,
     searchQuery,
+    kindFilter,
     typeFilter,
     statusFilter,
     balanceFilter,
@@ -240,6 +371,7 @@ export default function WalletsPage() {
     const q = searchQuery;
     const matchExceptStatus = (w: WalletListItem) =>
       walletMatchesSearch(w, q) &&
+      walletMatchesKindFilter(w, kindFilter) &&
       walletMatchesTypeFilter(w, typeFilter) &&
       walletMatchesBalanceFilter(w, balanceFilter) &&
       walletMatchesCreditLineFilter(w, creditLineFilter);
@@ -253,6 +385,7 @@ export default function WalletsPage() {
   }, [
     wallets,
     searchQuery,
+    kindFilter,
     typeFilter,
     balanceFilter,
     creditLineFilter,
@@ -262,6 +395,7 @@ export default function WalletsPage() {
     const q = searchQuery;
     const matchExceptType = (w: WalletListItem) =>
       walletMatchesSearch(w, q) &&
+      walletMatchesKindFilter(w, kindFilter) &&
       walletMatchesStatusFilter(w, statusFilter) &&
       walletMatchesBalanceFilter(w, balanceFilter) &&
       walletMatchesCreditLineFilter(w, creditLineFilter);
@@ -278,6 +412,7 @@ export default function WalletsPage() {
   }, [
     wallets,
     searchQuery,
+    kindFilter,
     statusFilter,
     balanceFilter,
     creditLineFilter,
@@ -287,6 +422,7 @@ export default function WalletsPage() {
     const q = searchQuery;
     const matchExceptBalance = (w: WalletListItem) =>
       walletMatchesSearch(w, q) &&
+      walletMatchesKindFilter(w, kindFilter) &&
       walletMatchesTypeFilter(w, typeFilter) &&
       walletMatchesStatusFilter(w, statusFilter) &&
       walletMatchesCreditLineFilter(w, creditLineFilter);
@@ -302,17 +438,87 @@ export default function WalletsPage() {
   }, [
     wallets,
     searchQuery,
+    kindFilter,
     typeFilter,
     statusFilter,
     creditLineFilter,
   ]);
 
+  const kindChipCounts = useMemo(() => {
+    const q = searchQuery;
+    const matchExceptKind = (w: WalletListItem) =>
+      walletMatchesSearch(w, q) &&
+      walletMatchesTypeFilter(w, typeFilter) &&
+      walletMatchesStatusFilter(w, statusFilter) &&
+      walletMatchesBalanceFilter(w, balanceFilter) &&
+      walletMatchesCreditLineFilter(w, creditLineFilter);
+
+    const pool = wallets.filter(matchExceptKind);
+    return {
+      all: pool.length,
+      funding: pool.filter(
+        (w) => w.type === 'CASH' || w.type === 'DEBIT_CARD',
+      ).length,
+      credit: pool.filter((w) => isCreditType(w.type)).length,
+    };
+  }, [
+    wallets,
+    searchQuery,
+    typeFilter,
+    statusFilter,
+    balanceFilter,
+    creditLineFilter,
+  ]);
+
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
+    kindFilter !== 'all' ||
     typeFilter !== TYPE_FILTER_ALL ||
     statusFilter !== STATUS_FILTER_ALL ||
     balanceFilter !== BALANCE_FILTER_ALL ||
     creditLineFilter !== 'all';
+
+  const listIsFiltered =
+    hasActiveFilters || displayWallets.length !== wallets.length;
+
+  const activeFilterDimensionCount = useMemo(() => {
+    let n = 0;
+    if (searchQuery.trim()) n += 1;
+    if (kindFilter !== 'all') n += 1;
+    if (typeFilter !== TYPE_FILTER_ALL) n += 1;
+    if (statusFilter !== STATUS_FILTER_ALL) n += 1;
+    if (balanceFilter !== BALANCE_FILTER_ALL) n += 1;
+    if (creditLineFilter !== 'all') n += 1;
+    return n;
+  }, [
+    searchQuery,
+    kindFilter,
+    typeFilter,
+    statusFilter,
+    balanceFilter,
+    creditLineFilter,
+  ]);
+
+  const presetTarjetasConDeudaActive =
+    kindFilter === 'credit' &&
+    typeFilter === TYPE_FILTER_ALL &&
+    statusFilter === 'active' &&
+    balanceFilter === 'nonzero' &&
+    creditLineFilter === 'all';
+
+  const presetLiquidezEfectivoActive =
+    kindFilter === 'funding' &&
+    typeFilter === TYPE_FILTER_ALL &&
+    statusFilter === 'active' &&
+    balanceFilter === 'nonzero' &&
+    creditLineFilter === 'all';
+
+  const presetCupoNegativoActive =
+    kindFilter === 'credit' &&
+    typeFilter === TYPE_FILTER_ALL &&
+    statusFilter === STATUS_FILTER_ALL &&
+    balanceFilter === BALANCE_FILTER_ALL &&
+    creditLineFilter === 'negative_available';
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -322,11 +528,91 @@ export default function WalletsPage() {
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery('');
+    setKindFilter('all');
     setTypeFilter(TYPE_FILTER_ALL);
     setStatusFilter(STATUS_FILTER_ALL);
     setBalanceFilter(BALANCE_FILTER_ALL);
     setCreditLineFilter('all');
   }, []);
+
+  const handleTypeFilterChange = useCallback((v: string) => {
+    setTypeFilter(v);
+    if (v !== TYPE_FILTER_ALL) {
+      setKindFilter('all');
+    }
+  }, []);
+
+  const handleKindFilterChange = useCallback((v: KindFilterValue) => {
+    setKindFilter(v);
+    if (v !== 'all') {
+      setTypeFilter(TYPE_FILTER_ALL);
+    }
+  }, []);
+
+  const applyPresetTarjetasConDeuda = useCallback(() => {
+    setKindFilter('credit');
+    setTypeFilter(TYPE_FILTER_ALL);
+    setStatusFilter('active');
+    setBalanceFilter('nonzero');
+    setCreditLineFilter('all');
+  }, []);
+
+  const applyPresetLiquidezEfectivo = useCallback(() => {
+    setKindFilter('funding');
+    setTypeFilter(TYPE_FILTER_ALL);
+    setStatusFilter('active');
+    setBalanceFilter('nonzero');
+    setCreditLineFilter('all');
+  }, []);
+
+  const applyPresetCupoNegativo = useCallback(() => {
+    setKindFilter('credit');
+    setTypeFilter(TYPE_FILTER_ALL);
+    setStatusFilter(STATUS_FILTER_ALL);
+    setBalanceFilter(BALANCE_FILTER_ALL);
+    setCreditLineFilter('negative_available');
+  }, []);
+
+  useLayoutEffect(() => {
+    const s = parseStoredFilters();
+    if (s) {
+      if (s.typeFilter != null) setTypeFilter(s.typeFilter);
+      if (s.statusFilter != null) setStatusFilter(s.statusFilter);
+      if (s.balanceFilter != null) setBalanceFilter(s.balanceFilter);
+      if (s.creditLineFilter != null) setCreditLineFilter(s.creditLineFilter);
+      if (s.sortKey != null) setSortKey(s.sortKey);
+      if (s.sortDir != null) setSortDir(s.sortDir);
+      if (s.kindFilter != null) setKindFilter(s.kindFilter);
+    }
+    setFiltersReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    try {
+      const payload: StoredWalletListFilters = {
+        typeFilter,
+        statusFilter,
+        balanceFilter,
+        creditLineFilter,
+        sortKey,
+        sortDir,
+        kindFilter,
+      };
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [
+    filtersReady,
+    typeFilter,
+    statusFilter,
+    balanceFilter,
+    creditLineFilter,
+    sortKey,
+    sortDir,
+    kindFilter,
+  ]);
 
   const fetchWallets = useCallback(async () => {
     try {
@@ -511,15 +797,76 @@ export default function WalletsPage() {
             <EmptyState message="No se encontraron billeteras" />
           ) : (
             <div className="space-y-4">
-              <div className="flex flex-col gap-4">
+              <Collapsible
+                open={filtersOpen}
+                onOpenChange={setFiltersOpen}
+                className="w-full"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-full justify-between gap-2 sm:max-w-md"
+                    >
+                      <span className="flex min-w-0 items-center gap-2 text-left">
+                        <ListFilter className="h-4 w-4 shrink-0" />
+                        <span className="truncate font-medium">
+                          Filtros, búsqueda y orden
+                        </span>
+                        {activeFilterDimensionCount > 0 ? (
+                          <Badge
+                            variant="secondary"
+                            className="h-5 shrink-0 px-1.5 tabular-nums"
+                          >
+                            {activeFilterDimensionCount}
+                          </Badge>
+                        ) : null}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                          filtersOpen && 'rotate-180',
+                        )}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                  {!filtersOpen && hasActiveFilters ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-10 shrink-0 text-muted-foreground sm:self-center"
+                      onClick={() => handleClearFilters()}
+                      aria-label="Limpiar todos los filtros"
+                    >
+                      Limpiar
+                    </Button>
+                  ) : null}
+                </div>
+                <CollapsibleContent className="data-[state=open]:pt-4">
+                  <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                  <Input
-                    placeholder="Buscar por nombre..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full max-w-full sm:max-w-xs"
-                    aria-label="Buscar por nombre"
-                  />
+                  <div className="relative w-full max-w-full sm:max-w-xs">
+                    <Input
+                      placeholder="Buscar por nombre..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pr-10"
+                      aria-label="Buscar por nombre"
+                    />
+                    {searchQuery.trim() ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0.5 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setSearchQuery('')}
+                        aria-label="Borrar búsqueda"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </div>
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     <Select
                       value={sortKey}
@@ -569,13 +916,100 @@ export default function WalletsPage() {
 
                 <div>
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Atajos
+                  </p>
+                  <ScrollFadeChipRow
+                    mode="group"
+                    ariaLabel="Atajos de filtro rápido"
+                  >
+                    <Button
+                      type="button"
+                      variant={
+                        presetTarjetasConDeudaActive ? 'default' : 'outline'
+                      }
+                      size="sm"
+                      className="h-8 shrink-0 rounded-full px-3 text-xs font-medium"
+                      onClick={applyPresetTarjetasConDeuda}
+                    >
+                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      TC con deuda
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        presetLiquidezEfectivoActive ? 'default' : 'outline'
+                      }
+                      size="sm"
+                      className="h-8 shrink-0 rounded-full px-3 text-xs font-medium"
+                      onClick={applyPresetLiquidezEfectivo}
+                    >
+                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      Liquidez (efectivo)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        presetCupoNegativoActive ? 'default' : 'outline'
+                      }
+                      size="sm"
+                      className="h-8 shrink-0 rounded-full px-3 text-xs font-medium"
+                      onClick={applyPresetCupoNegativo}
+                    >
+                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      Cupo en rojo
+                    </Button>
+                  </ScrollFadeChipRow>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Combinan varios filtros de una vez; no borran tu búsqueda por
+                    nombre.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Ámbito
+                  </p>
+                  <ScrollFadeChipRow ariaLabel="Filtrar por efectivo o tarjetas">
+                    {KIND_FILTER_CHIPS.map(({ value: v, label }) => {
+                      const selected = kindFilter === v;
+                      const count =
+                        v === 'all'
+                          ? kindChipCounts.all
+                          : v === 'funding'
+                            ? kindChipCounts.funding
+                            : kindChipCounts.credit;
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          onClick={() => handleKindFilterChange(v)}
+                          className={cn(
+                            'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                            selected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {label}{' '}
+                          <span className="tabular-nums opacity-80">
+                            ({count})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </ScrollFadeChipRow>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Si eliges un tipo concreto abajo, el ámbito vuelve a «Todas».
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Estado
                   </p>
-                  <div
-                    className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
-                    role="tablist"
-                    aria-label="Filtrar por estado"
-                  >
+                  <ScrollFadeChipRow ariaLabel="Filtrar por estado">
                     {STATUS_FILTER_CHIPS.map(({ value: v, label }) => {
                       const selected = statusFilter === v;
                       const count =
@@ -605,18 +1039,14 @@ export default function WalletsPage() {
                         </button>
                       );
                     })}
-                  </div>
+                  </ScrollFadeChipRow>
                 </div>
 
                 <div>
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Tipo
                   </p>
-                  <div
-                    className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
-                    role="tablist"
-                    aria-label="Filtrar por tipo de billetera"
-                  >
+                  <ScrollFadeChipRow ariaLabel="Filtrar por tipo de billetera">
                     {TYPE_FILTER_CHIPS.map(({ value: v, label }) => {
                       const selected = typeFilter === v;
                       const count =
@@ -631,7 +1061,7 @@ export default function WalletsPage() {
                           type="button"
                           role="tab"
                           aria-selected={selected}
-                          onClick={() => setTypeFilter(v)}
+                          onClick={() => handleTypeFilterChange(v)}
                           className={cn(
                             'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
                             selected
@@ -646,7 +1076,7 @@ export default function WalletsPage() {
                         </button>
                       );
                     })}
-                  </div>
+                  </ScrollFadeChipRow>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
@@ -654,11 +1084,7 @@ export default function WalletsPage() {
                     <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Monto registrado
                     </p>
-                    <div
-                      className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
-                      role="tablist"
-                      aria-label="Filtrar por monto en libros"
-                    >
+                    <ScrollFadeChipRow ariaLabel="Filtrar por monto en libros">
                       {BALANCE_FILTER_CHIPS.map(({ value: v, label }) => {
                         const selected = balanceFilter === v;
                         const count =
@@ -688,7 +1114,7 @@ export default function WalletsPage() {
                           </button>
                         );
                       })}
-                    </div>
+                    </ScrollFadeChipRow>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <DropdownMenu>
@@ -748,6 +1174,31 @@ export default function WalletsPage() {
                     ) : null}
                   </div>
                 </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <div
+                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Mostrando{' '}
+                  <span className="font-mono font-medium tabular-nums text-foreground">
+                    {displayWallets.length}
+                  </span>
+                  {' '}
+                  de{' '}
+                  <span className="font-mono tabular-nums text-foreground">
+                    {wallets.length}
+                  </span>
+                  {' '}
+                  billeteras
+                  {listIsFiltered ? (
+                    <span className="text-xs"> · filtrado</span>
+                  ) : null}
+                </p>
               </div>
 
               {displayWallets.length === 0 ? (
