@@ -1,20 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  AlertTriangle,
-  Download,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   FileUp,
   Loader2,
-  MoreHorizontal,
-  Trash2,
 } from 'lucide-react';
 
-import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import { PantryReceiptListRow } from '@/components/pantry/PantryReceiptListRow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,12 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -62,11 +53,7 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 import type { PantryShoppingCartSummaryDto } from '@/types/pantry-shopping-cart';
-import {
-  SHOPPING_STORE_OPTIONS,
-  SHOPPING_STORE_LABELS,
-  type ShoppingStore,
-} from '@/types/shopping-store';
+import { SHOPPING_STORE_OPTIONS, type ShoppingStore } from '@/types/shopping-store';
 
 const formatShortDate = (iso: string | null): string => {
   if (!iso) return '—';
@@ -110,6 +97,10 @@ export default function PantryReceiptsPage() {
   const [deleteTarget, setDeleteTarget] = useState<PantryReceiptListItemDto | null>(
     null,
   );
+
+  const RECEIPTS_PAGE_SIZE = 10;
+  const [receiptSearch, setReceiptSearch] = useState('');
+  const [receiptPageIndex, setReceiptPageIndex] = useState(0);
 
   const receiptDetailHref = useCallback(
     (id: number) => {
@@ -286,153 +277,30 @@ export default function PantryReceiptsPage() {
     [context],
   );
 
-  const listColumns = useMemo<ColumnDef<PantryReceiptListItemDto>[]>(
-    () => [
-      {
-        accessorKey: 'title',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Recibo" />
-        ),
-        cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">
-              {row.original.title ?? 'Sin título'}
-            </span>
-            {row.original.parse_warnings.length > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
-                <AlertTriangle className="h-3 w-3 shrink-0" />
-                Avisos al importar
-              </span>
-            )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'purchased_at',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Compra" />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm font-mono tabular-nums text-muted-foreground">
-            {formatShortDate(row.original.purchased_at)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'store',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Tienda" />
-        ),
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
-            {row.original.store ? SHOPPING_STORE_LABELS[row.original.store] : '—'}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'line_count',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Ítems" />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm font-mono tabular-nums">
-            {row.original.line_count}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'lines_sum',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Suma líneas" />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm font-mono tabular-nums">
-            {formatCurrency(row.original.lines_sum)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'grand_total',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Total recibo" />
-        ),
-        cell: ({ row }) => {
-          const total = getReceiptDisplayTotal(row.original);
-          return (
-            <span className="text-sm font-bold font-mono tabular-nums">
-              {formatCurrency(total)}
-            </span>
-          );
-        },
-      },
-      {
-        id: 'file',
-        header: () => <span className="sr-only">Archivo</span>,
-        cell: ({ row }) => (
-          <div
-            className="flex justify-center"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            {row.original.file_name ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                aria-label="Descargar archivo del recibo"
-                disabled={downloadingReceiptId === row.original.id}
-                onClick={() => void handleDownloadFromList(row.original)}
-              >
-                {downloadingReceiptId === row.original.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-              </Button>
-            ) : (
-              <span className="text-xs text-muted-foreground">—</span>
-            )}
-          </div>
-        ),
-      },
-      {
-        id: 'actions',
-        header: () => <span className="sr-only">Acciones</span>,
-        cell: ({ row }) => (
-          <div
-            className="flex justify-end"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  aria-label="Acciones del recibo"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setDeleteTarget(row.original)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar recibo
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ),
-      },
-    ],
-    [downloadingReceiptId, handleDownloadFromList, setDeleteTarget],
+  const filteredReceipts = useMemo(() => {
+    const q = receiptSearch.trim().toLowerCase();
+    if (!q) return receipts;
+    return receipts.filter((r) => (r.title ?? '').toLowerCase().includes(q));
+  }, [receipts, receiptSearch]);
+
+  const receiptPageCount = Math.max(
+    1,
+    Math.ceil(filteredReceipts.length / RECEIPTS_PAGE_SIZE),
   );
+
+  const paginatedReceipts = useMemo(() => {
+    const start = receiptPageIndex * RECEIPTS_PAGE_SIZE;
+    return filteredReceipts.slice(start, start + RECEIPTS_PAGE_SIZE);
+  }, [filteredReceipts, receiptPageIndex]);
+
+  useEffect(() => {
+    setReceiptPageIndex(0);
+  }, [receiptSearch]);
+
+  useEffect(() => {
+    const maxIdx = Math.max(0, receiptPageCount - 1);
+    setReceiptPageIndex((i) => Math.min(i, maxIdx));
+  }, [receiptPageCount, filteredReceipts.length]);
 
   const stats = useMemo(() => {
     const receiptCount = receipts.length;
@@ -502,7 +370,7 @@ export default function PantryReceiptsPage() {
 
       <Card
         className={cn(
-          'overflow-hidden border-border/60 border-l-[3px] border-l-violet-500/45 transition-shadow duration-200 hover:shadow-md',
+          'overflow-hidden border-border/60 transition-shadow duration-200 hover:shadow-md',
         )}
       >
         <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
@@ -514,7 +382,7 @@ export default function PantryReceiptsPage() {
               Recibos guardados
             </CardTitle>
             <p className="text-[10px] text-muted-foreground">
-              Haz clic en una fila para abrir el detalle en otra página.
+              Toca un recibo para abrir el detalle.
             </p>
           </div>
           <span className="rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
@@ -538,16 +406,80 @@ export default function PantryReceiptsPage() {
               description="Sube tu primer archivo para comenzar a ver comparativas y tendencias."
             />
           ) : (
-            <DataTable
-              data={receipts}
-              columns={listColumns}
-              filterColumn="title"
-              filterPlaceholder="Buscar recibo…"
-              pagination
-              columnVisibility
-              emptyMessage="Sin resultados."
-              onRowClick={(row) => router.push(receiptDetailHref(row.id))}
-            />
+            <div className="w-full min-w-0 space-y-4">
+              <Input
+                placeholder="Buscar recibo…"
+                value={receiptSearch}
+                onChange={(e) => setReceiptSearch(e.target.value)}
+                className="max-w-full sm:max-w-xs"
+                aria-label="Buscar recibo…"
+              />
+              {filteredReceipts.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  Sin resultados.
+                </p>
+              ) : (
+                <>
+                  <ul
+                    role="list"
+                    className="flex flex-col gap-2"
+                    aria-label="Lista de recibos"
+                  >
+                    {paginatedReceipts.map((receipt) => (
+                      <PantryReceiptListRow
+                        key={receipt.id}
+                        receipt={receipt}
+                        downloading={downloadingReceiptId === receipt.id}
+                        onOpenDetail={() =>
+                          router.push(receiptDetailHref(receipt.id))
+                        }
+                        onDownload={() =>
+                          void handleDownloadFromList(receipt)
+                        }
+                        onDelete={() => setDeleteTarget(receipt)}
+                      />
+                    ))}
+                  </ul>
+                  {receiptPageCount > 1 ? (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Página {receiptPageIndex + 1} de {receiptPageCount} (
+                        {filteredReceipts.length}{' '}
+                        {filteredReceipts.length === 1 ? 'recibo' : 'recibos'})
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={receiptPageIndex <= 0}
+                          onClick={() =>
+                            setReceiptPageIndex((p) => Math.max(0, p - 1))
+                          }
+                          aria-label="Página anterior"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={receiptPageIndex >= receiptPageCount - 1}
+                          onClick={() =>
+                            setReceiptPageIndex((p) =>
+                              Math.min(receiptPageCount - 1, p + 1),
+                            )
+                          }
+                          aria-label="Página siguiente"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
