@@ -27,7 +27,8 @@ import {
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
+/** Ancho del drawer móvil: tope 20rem y margen al viewport. */
+const SIDEBAR_WIDTH_MOBILE = "min(20rem, calc(100vw - 1rem))"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -148,6 +149,32 @@ function SidebarProvider({
   )
 }
 
+function MobileSidebarSheetBody({
+  children,
+  setOpenMobile,
+}: {
+  children: React.ReactNode
+  setOpenMobile: (open: boolean) => void
+}) {
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col pt-[env(safe-area-inset-top)]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </div>
+      <div className="border-sidebar-border shrink-0 border-t px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-11 w-full justify-center rounded-md"
+          onClick={() => setOpenMobile(false)}
+        >
+          Cerrar menú
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function Sidebar({
   side = "left",
   variant = "sidebar",
@@ -184,7 +211,11 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          showCloseButton={false}
+          className={cn(
+            "bg-sidebar text-sidebar-foreground gap-0 p-0",
+            "w-(--sidebar-width) max-w-none sm:max-w-none"
+          )}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -196,7 +227,9 @@ function Sidebar({
             <SheetTitle>Menú</SheetTitle>
             <SheetDescription>Muestra el menú lateral en móvil.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <MobileSidebarSheetBody setOpenMobile={setOpenMobile}>
+            {children}
+          </MobileSidebarSheetBody>
         </SheetContent>
       </Sheet>
     )
@@ -514,7 +547,13 @@ function SidebarMenuButton({
       data-sidebar="menu-button"
       data-size={size}
       data-active={isActive}
-      className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      className={cn(
+        sidebarMenuButtonVariants({ variant, size }),
+        isMobile &&
+          size === "default" &&
+          "min-h-11 h-auto py-2.5",
+        className
+      )}
       {...props}
     />
   )
