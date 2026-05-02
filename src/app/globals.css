@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import 'react-day-picker/style.css';
 
 /* ==========================================================================
    Design System – Indigo-accented fintech palette
@@ -180,4 +181,17 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* react-day-picker — match MiCasa primary / muted accents */
+.rdp-root {
+  --rdp-accent-color: oklch(0.585 0.233 264);
+  --rdp-accent-background-color: oklch(0.93 0.02 265);
+  --rdp-today-color: oklch(0.585 0.233 264);
+}
+
+.dark .rdp-root {
+  --rdp-accent-color: oklch(0.68 0.18 264);
+  --rdp-accent-background-color: oklch(0.22 0.04 264);
+  --rdp-today-color: oklch(0.72 0.16 264);
 }

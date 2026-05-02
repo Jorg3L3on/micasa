@@ -32,6 +32,7 @@ export const createTaskItemSchema = z.object({
   priority: taskPrioritySchema.optional(),
   due_at: z.string().datetime().optional().nullable(),
   recurrence: recurrenceSchema,
+  assignee_user_id: z.number().int().positive().optional(),
 });
 
 export type CreateTaskItemInput = z.infer<typeof createTaskItemSchema>;
@@ -45,6 +46,7 @@ export const updateTaskItemSchema = z
     due_at: z.string().datetime().optional().nullable(),
     recurrence: recurrenceSchema,
     sort_order: z.number().int().min(0).max(100_000).optional(),
+    assignee_user_id: z.number().int().positive().optional().nullable(),
   })
   .refine((value) => Object.values(value).some((entry) => entry !== undefined), {
     message: 'No hay cambios',

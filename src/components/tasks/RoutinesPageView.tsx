@@ -1,22 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AssigneeWithName } from '@/components/tasks/AssigneeAvatar';
 import EmptyState from '@/components/EmptyState';
+import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useFinanceContext } from '@/context/finance-context';
-import { completeRoutine, createRoutine, listRoutines } from '@/lib/api';
+import { completeRoutine, createRoutine, listRoutines } from '@/lib/api/tasks';
 import type { RoutineDto } from '@/types/routine';
 
 export default function RoutinesPageView() {
   const { context } = useFinanceContext();
+  const { data: session } = useSession();
+  const sessionUserId = Number(session?.user?.id);
   const [loading, setLoading] = useState(true);
   const [routines, setRoutines] = useState<RoutineDto[]>([]);
   const [newRoutineName, setNewRoutineName] = useState('');
+  const [newAssignee, setNewAssignee] = useState<number | ''>('');
+  const [creatingRoutine, setCreatingRoutine] = useState(false);
+  const [executingRoutineId, setExecutingRoutineId] = useState<number | null>(null);
 
   const loadRoutines = useCallback(async () => {
     try {
@@ -35,19 +43,51 @@ export default function RoutinesPageView() {
     void loadRoutines();
   }, [loadRoutines]);
 
+  useEffect(() => {
+    if (context.type === 'house' && Number.isFinite(sessionUserId) && sessionUserId > 0) {
+      setNewAssignee((prev) => (prev === '' ? sessionUserId : prev));
+    }
+    if (context.type === 'user') {
+      setNewAssignee('');
+    }
+  }, [context.type, sessionUserId]);
+
   const handleCreateRoutine = async () => {
     if (!newRoutineName.trim()) return;
-    await createRoutine(
-      {
-        name: newRoutineName.trim(),
-        time_of_day: 'MORNING',
-        active_days: [1, 2, 3, 4, 5],
-        steps: [{ title: 'Primer paso' }],
-      },
-      context,
-    );
-    setNewRoutineName('');
-    await loadRoutines();
+    if (context.type === 'house' && newAssignee === '') {
+      toast.error('Selecciona un miembro de la casa');
+      return;
+    }
+    try {
+      setCreatingRoutine(true);
+      await createRoutine(
+        {
+          name: newRoutineName.trim(),
+          time_of_day: 'MORNING',
+          active_days: [1, 2, 3, 4, 5],
+          steps: [{ title: 'Primer paso' }],
+          ...(context.type === 'house' ? { assignee_user_id: newAssignee as number } : {}),
+        },
+        context,
+      );
+      setNewRoutineName('');
+      if (context.type === 'house' && Number.isFinite(sessionUserId)) {
+        setNewAssignee(sessionUserId);
+      }
+      await loadRoutines();
+    } finally {
+      setCreatingRoutine(false);
+    }
+  };
+
+  const handleExecuteRoutine = async (routineId: number) => {
+    try {
+      setExecutingRoutineId(routineId);
+      await completeRoutine(routineId, {}, context);
+      await loadRoutines();
+    } finally {
+      setExecutingRoutineId(null);
+    }
   };
 
   if (loading) {
@@ -69,15 +109,36 @@ export default function RoutinesPageView() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={newRoutineName}
-            placeholder="Nueva rutina diaria"
-            onChange={(event) => setNewRoutineName(event.target.value)}
-            aria-label="Nombre de rutina diaria"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={newRoutineName}
+              placeholder="Nueva rutina diaria"
+              onChange={(event) => setNewRoutineName(event.target.value)}
+              aria-label="Nombre de rutina diaria"
+              disabled={creatingRoutine}
+            />
+          </div>
+          <MemberAssigneeSelect
+            id="new-routine-assignee"
+            value={newAssignee}
+            onChange={setNewAssignee}
+            disabled={creatingRoutine}
           />
-          <Button className="w-full sm:w-auto" onClick={() => void handleCreateRoutine()}>
-            Crear
+          <Button
+            className="w-full shrink-0 sm:w-auto"
+            onClick={() => void handleCreateRoutine()}
+            disabled={creatingRoutine}
+            aria-busy={creatingRoutine}
+          >
+            {creatingRoutine ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                Creando…
+              </>
+            ) : (
+              'Crear'
+            )}
           </Button>
         </div>
         {routines.length === 0 ? (
@@ -91,9 +152,20 @@ export default function RoutinesPageView() {
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-medium">{routine.name}</p>
                       <RoutineReadyBadge routine={routine} />
+                      {context.type === 'house' &&
+                        (routine.assignee ? (
+                          <AssigneeWithName
+                            name={routine.assignee.name}
+                            nameClassName="text-xs text-muted-foreground"
+                          />
+                        ) : (
+                          <Badge variant="destructive" className="font-normal">
+                            Sin asignar
+                          </Badge>
+                        ))}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {routine.steps.length} pasos · {getRoutineProgressCopy(routine)}
@@ -103,11 +175,18 @@ export default function RoutinesPageView() {
                     size="sm"
                     variant="outline"
                     className="w-full sm:w-auto"
-                    onClick={() =>
-                      void completeRoutine(routine.id, {}, context).then(loadRoutines)
-                    }
+                    disabled={executingRoutineId !== null}
+                    aria-busy={executingRoutineId === routine.id}
+                    onClick={() => void handleExecuteRoutine(routine.id)}
                   >
-                    Ejecutar
+                    {executingRoutineId === routine.id ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                        Ejecutando…
+                      </>
+                    ) : (
+                      'Ejecutar'
+                    )}
                   </Button>
                 </div>
               </div>

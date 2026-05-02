@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LineChart } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
-import { fetchLiquidityProjection } from '@/lib/api';
+import { fetchLiquidityProjection } from '@/lib/api/liquidity';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { LiquidityProjectionResponse } from '@/types/catalog';

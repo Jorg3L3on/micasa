@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { clientFetchFromApi, buildOwnerQuery } from '@/lib/api';
+import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import type { FinanceContextType } from '@/types/finance-context';
 import { useClientMounted } from '@/hooks/use-client-mounted';

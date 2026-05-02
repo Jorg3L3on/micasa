@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi, getPaymentMethodOptions } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   addExpenseSchema,
   AddExpenseFormValues,

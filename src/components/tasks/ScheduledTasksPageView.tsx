@@ -1,15 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { CalendarClock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AssigneeWithName } from '@/components/tasks/AssigneeAvatar';
 import EmptyState from '@/components/EmptyState';
+import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useFinanceContext } from '@/context/finance-context';
-import { completeTaskItem, createTaskItem, listTaskItems, listTaskLists } from '@/lib/api';
+import { completeTaskItem, createTaskItem, listTaskItems, listTaskLists } from '@/lib/api/tasks';
 import {
   compareTasksByUrgency,
   getTaskTemporalBucket,
@@ -17,26 +26,39 @@ import {
   type TaskTemporalBucket,
 } from '@/components/tasks/task-time-groups';
 import type { TaskItemDto } from '@/types/task-item';
+import type { TaskListDto } from '@/types/task-list';
 
 type TemporalFilter = 'TODAS' | 'HOY' | 'PROXIMAS' | 'ATRASADAS' | 'SIN_FECHA';
 
 export default function ScheduledTasksPageView() {
   const { context } = useFinanceContext();
+  const { data: session } = useSession();
+  const sessionUserId = Number(session?.user?.id);
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<TaskItemDto[]>([]);
+  const [lists, setLists] = useState<TaskListDto[]>([]);
   const [activeListId, setActiveListId] = useState<number | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newAssignee, setNewAssignee] = useState<number | ''>('');
   const [activeFilter, setActiveFilter] = useState<TemporalFilter>('TODAS');
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
+
+  const selectedList = useMemo(
+    () => lists.find((l) => l.id === activeListId) ?? null,
+    [lists, activeListId],
+  );
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [taskRows, lists] = await Promise.all([
+      const [taskRows, listRows] = await Promise.all([
         listTaskItems(context),
         listTaskLists(context),
       ]);
       setTasks(taskRows);
-      setActiveListId(lists[0]?.id ?? null);
+      setLists(listRows);
+      setActiveListId((prev) => (prev && listRows.some((l) => l.id === prev) ? prev : (listRows[0]?.id ?? null)));
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'No se pudieron cargar las tareas',
@@ -49,6 +71,21 @@ export default function ScheduledTasksPageView() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (context.type !== 'house') {
+      setNewAssignee('');
+      return;
+    }
+    const fromList = selectedList?.assignee_user_id;
+    if (fromList) {
+      setNewAssignee(fromList);
+      return;
+    }
+    if (Number.isFinite(sessionUserId) && sessionUserId > 0) {
+      setNewAssignee(sessionUserId);
+    }
+  }, [context.type, selectedList?.assignee_user_id, sessionUserId, activeListId]);
 
   const pendingTasks = useMemo(() => {
     const filtered = tasks.filter((task) => task.status !== 'DONE');
@@ -66,9 +103,35 @@ export default function ScheduledTasksPageView() {
 
   const handleCreateTask = async () => {
     if (!newTaskTitle.trim() || !activeListId) return;
-    await createTaskItem({ list_id: activeListId, title: newTaskTitle.trim() }, context);
-    setNewTaskTitle('');
-    await loadData();
+    if (context.type === 'house' && newAssignee === '') {
+      toast.error('Selecciona un miembro de la casa');
+      return;
+    }
+    try {
+      setCreatingTask(true);
+      await createTaskItem(
+        {
+          list_id: activeListId,
+          title: newTaskTitle.trim(),
+          ...(context.type === 'house' ? { assignee_user_id: newAssignee as number } : {}),
+        },
+        context,
+      );
+      setNewTaskTitle('');
+      await loadData();
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
+  const handleCompleteTask = async (taskId: number) => {
+    try {
+      setCompletingTaskId(taskId);
+      await completeTaskItem(taskId, context);
+      await loadData();
+    } finally {
+      setCompletingTaskId(null);
+    }
   };
 
   if (loading) {
@@ -88,26 +151,47 @@ export default function ScheduledTasksPageView() {
           </span>
           Tareas programadas
         </CardTitle>
+        <CardDescription>
+          Las tareas que creas aquí no llevan fecha: aparecen en Sin fecha hasta que las edites.
+          Para asignar un día concreto, usa Tareas → Hoy, abre el calendario y crea la tarea desde
+          ahí.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={newTaskTitle}
-            placeholder={
-              activeListId
-                ? 'Nueva tarea programada'
-                : 'Primero crea una lista de tareas'
-            }
-            onChange={(event) => setNewTaskTitle(event.target.value)}
-            aria-label="Título de tarea programada"
-            disabled={!activeListId}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={newTaskTitle}
+              placeholder={
+                activeListId
+                  ? 'Nueva tarea (sin fecha)'
+                  : 'Primero crea una lista de tareas'
+              }
+              onChange={(event) => setNewTaskTitle(event.target.value)}
+              aria-label="Título de tarea programada"
+              disabled={!activeListId || creatingTask}
+            />
+          </div>
+          <MemberAssigneeSelect
+            id="scheduled-task-assignee"
+            value={newAssignee}
+            onChange={setNewAssignee}
+            disabled={creatingTask}
           />
           <Button
-            className="w-full sm:w-auto"
+            className="w-full shrink-0 sm:w-auto"
             onClick={() => void handleCreateTask()}
-            disabled={!activeListId}
+            disabled={!activeListId || creatingTask}
+            aria-busy={creatingTask}
           >
-            Crear
+            {creatingTask ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                Creando…
+              </>
+            ) : (
+              'Crear'
+            )}
           </Button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -140,20 +224,40 @@ export default function ScheduledTasksPageView() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{task.title}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <TemporalBadge bucket={getTaskTemporalBucket(task)} />
-                    <p className="text-xs text-muted-foreground">
-                      {getTaskUrgencyLabel(getTaskTemporalBucket(task), task.due_at)}
-                    </p>
-                  </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <TemporalBadge bucket={getTaskTemporalBucket(task)} />
+                      <p className="text-xs text-muted-foreground">
+                        {getTaskUrgencyLabel(getTaskTemporalBucket(task), task.due_at)}
+                      </p>
+                      {context.type === 'house' &&
+                        (task.assignee ? (
+                          <AssigneeWithName
+                            name={task.assignee.name}
+                            nameClassName="text-xs text-muted-foreground"
+                          />
+                        ) : (
+                          <Badge variant="secondary" className="font-normal">
+                            Sin asignar
+                          </Badge>
+                        ))}
+                    </div>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
                     className="w-full sm:w-auto"
-                    onClick={() => void completeTaskItem(task.id, context).then(loadData)}
+                    disabled={completingTaskId !== null}
+                    aria-busy={completingTaskId === task.id}
+                    onClick={() => void handleCompleteTask(task.id)}
                   >
-                    Completar
+                    {completingTaskId === task.id ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                        Completando…
+                      </>
+                    ) : (
+                      'Completar'
+                    )}
                   </Button>
                 </div>
               </div>

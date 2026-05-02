@@ -6,6 +6,7 @@ import {
   deleteRoutine,
   updateRoutine,
 } from '@/lib/server/tasks/routine.service';
+import { AssigneeInvalidError } from '@/lib/server/tasks/validate-assignee';
 import { updateRoutineSchema } from '@/schemas/routine.schema';
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -36,6 +37,9 @@ export async function PATCH(
         { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
+    }
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error('tasks routine PATCH', error);
     return NextResponse.json({ error: 'No se pudo actualizar la rutina' }, { status: 500 });

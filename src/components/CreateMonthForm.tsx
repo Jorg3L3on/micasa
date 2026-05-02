@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
-import { createMonthFortnights, getCreatedMonths } from '@/lib/api';
+import { createMonthFortnights, getCreatedMonths } from '@/lib/api/fortnights';
 import { formatMonth } from '@/lib/utils';
 
 const currentYear = new Date().getFullYear();

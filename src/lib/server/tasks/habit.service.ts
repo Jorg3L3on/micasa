@@ -1,6 +1,10 @@
 import prisma from '@/lib/prisma';
 import { serializeHabit } from '@/lib/server/tasks/serialize-tasks';
 import { tasksOwnerWhere } from '@/lib/server/tasks/tasks-owner';
+import {
+  resolveAssigneeForCreate,
+  resolveAssigneeForUpdate,
+} from '@/lib/server/tasks/validate-assignee';
 import type {
   CompleteHabitInput,
   CreateHabitInput,
@@ -22,11 +26,18 @@ export class HabitNotFoundError extends Error {
 
 const HABIT_INCLUDE = {
   logs: { orderBy: { completed_on: 'desc' as const }, take: 20 },
-};
+  assignee: { select: { id: true, name: true } },
+} as const;
 
-export async function listHabits(owner: TaskOwnerParams): Promise<HabitDto[]> {
+export async function listHabits(
+  owner: TaskOwnerParams,
+  assigneeUserIdFilter?: number,
+): Promise<HabitDto[]> {
   const rows = await prisma.habit.findMany({
-    where: tasksOwnerWhere(owner.ownerType, owner.ownerId),
+    where: {
+      ...tasksOwnerWhere(owner.ownerType, owner.ownerId),
+      ...(assigneeUserIdFilter != null ? { assignee_user_id: assigneeUserIdFilter } : {}),
+    },
     include: HABIT_INCLUDE,
     orderBy: [{ active: 'desc' }, { updated_at: 'desc' }],
   });
@@ -38,6 +49,7 @@ export async function createHabit(
   input: CreateHabitInput,
 ): Promise<HabitDto> {
   const ownerFilter = tasksOwnerWhere(owner.ownerType, owner.ownerId);
+  const assignee_user_id = await resolveAssigneeForCreate(owner, input.assignee_user_id);
   const row = await prisma.habit.create({
     data: {
       name: input.name.trim(),
@@ -48,6 +60,7 @@ export async function createHabit(
       reminder_time: input.reminder_time ?? null,
       user_id: ownerFilter.user_id,
       house_id: ownerFilter.house_id,
+      assignee_user_id,
     },
     include: HABIT_INCLUDE,
   });
@@ -65,6 +78,8 @@ export async function updateHabit(
   });
   if (!exists) throw new HabitNotFoundError();
 
+  const assigneePatch = await resolveAssigneeForUpdate(owner, input.assignee_user_id);
+
   const row = await prisma.habit.update({
     where: { id },
     data: {
@@ -77,6 +92,9 @@ export async function updateHabit(
         ? { target_per_period: input.target_per_period }
         : {}),
       ...(input.reminder_time !== undefined ? { reminder_time: input.reminder_time ?? null } : {}),
+      ...(assigneePatch.kind === 'value'
+        ? { assignee_user_id: assigneePatch.assignee_user_id }
+        : {}),
     },
     include: HABIT_INCLUDE,
   });

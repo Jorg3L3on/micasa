@@ -11,12 +11,12 @@ import CategoryForm from '@/components/CategoryForm';
 import { CategoryFormValues } from '@/schemas/category.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
-  clientFetchFromApi,
   createCategory,
-  updateCategory,
   deleteCategory,
-} from '@/lib/api';
+  updateCategory,
+} from '@/lib/api/categories';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { CategoryOption } from '@/types/catalog';
 

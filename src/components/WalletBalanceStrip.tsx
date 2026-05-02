@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api';
+import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, CreditCard, Landmark, Wallet } from 'lucide-react';

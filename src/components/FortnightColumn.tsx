@@ -34,13 +34,15 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
-  createCreditCardPayment,
-  createExpenseTemplate,
+} from '@/lib/api/client-fetch';
+import { createCreditCardPayment } from '@/lib/api/credit-cards';
+import { createExpenseTemplate } from '@/lib/api/expense-templates';
+import { updateIncomeAmount } from '@/lib/api/incomes';
+import {
   createExpenseTransaction,
-  getPaymentMethodOptions,
   updateFortnightOverrideAmount,
-  updateIncomeAmount,
-} from '@/lib/api';
+} from '@/lib/api/transactions';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { ReceivePayrollButton } from '@/components/ReceivePayrollButton';
 import type {
   CategoryOption,

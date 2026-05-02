@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { uploadCreditCardStatement } from '@/lib/api';
+import { uploadCreditCardStatement } from '@/lib/api/credit-cards';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 import type {

@@ -1,3 +1,5 @@
+import type { AssigneeSummaryDto } from '@/types/tasks-assignee';
+
 export type RoutineTimeOfDay = 'MORNING' | 'AFTERNOON' | 'NIGHT' | 'CUSTOM';
 
 export type RoutineStepDto = {
@@ -25,6 +27,8 @@ export type RoutineDto = {
   time_of_day: RoutineTimeOfDay;
   active_days: number[];
   active: boolean;
+  assignee_user_id: number | null;
+  assignee: AssigneeSummaryDto | null;
   steps: RoutineStepDto[];
   latest_run: RoutineRunDto | null;
   created_at: string;

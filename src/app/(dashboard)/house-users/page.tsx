@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { Trash2, UserPlus } from 'lucide-react';
 
 type HouseUserItem = {

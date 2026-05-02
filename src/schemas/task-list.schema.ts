@@ -16,6 +16,7 @@ export const createTaskListSchema = z.object({
     .regex(/^#?[0-9a-fA-F]{3,8}$/, 'Color inválido')
     .optional()
     .nullable(),
+  assignee_user_id: z.number().int().positive().optional(),
 });
 
 export type CreateTaskListInput = z.infer<typeof createTaskListSchema>;
@@ -31,13 +32,15 @@ export const updateTaskListSchema = z
       .optional()
       .nullable(),
     archived: z.boolean().optional(),
+    assignee_user_id: z.number().int().positive().optional().nullable(),
   })
   .refine(
     (value) =>
       value.name !== undefined ||
       value.description !== undefined ||
       value.color !== undefined ||
-      value.archived !== undefined,
+      value.archived !== undefined ||
+      value.assignee_user_id !== undefined,
     'No hay cambios',
   );
 

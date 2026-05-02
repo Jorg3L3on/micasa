@@ -40,10 +40,10 @@ import {
 import { formatCurrency, toDisplayAmount } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import {
-  updateExpensePaidStatus,
-  updateExpenseAmount,
   deleteTransaction,
-} from '@/lib/api';
+  updateExpenseAmount,
+  updateExpensePaidStatus,
+} from '@/lib/api/transactions';
 import { MoreVertical, Pencil, Trash2, CheckCircle2, Receipt } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';

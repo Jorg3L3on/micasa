@@ -1,6 +1,10 @@
 import prisma from '@/lib/prisma';
 import { serializeRoutine } from '@/lib/server/tasks/serialize-tasks';
 import { tasksOwnerWhere } from '@/lib/server/tasks/tasks-owner';
+import {
+  resolveAssigneeForCreate,
+  resolveAssigneeForUpdate,
+} from '@/lib/server/tasks/validate-assignee';
 import type {
   CompleteRoutineInput,
   CreateRoutineInput,
@@ -23,11 +27,18 @@ export class RoutineNotFoundError extends Error {
 const ROUTINE_INCLUDE = {
   steps: { orderBy: { sort_order: 'asc' as const } },
   runs: { orderBy: { run_on: 'desc' as const }, take: 1 },
-};
+  assignee: { select: { id: true, name: true } },
+} as const;
 
-export async function listRoutines(owner: TaskOwnerParams): Promise<RoutineDto[]> {
+export async function listRoutines(
+  owner: TaskOwnerParams,
+  assigneeUserIdFilter?: number,
+): Promise<RoutineDto[]> {
   const rows = await prisma.routine.findMany({
-    where: tasksOwnerWhere(owner.ownerType, owner.ownerId),
+    where: {
+      ...tasksOwnerWhere(owner.ownerType, owner.ownerId),
+      ...(assigneeUserIdFilter != null ? { assignee_user_id: assigneeUserIdFilter } : {}),
+    },
     include: ROUTINE_INCLUDE,
     orderBy: [{ active: 'desc' }, { updated_at: 'desc' }],
   });
@@ -39,6 +50,7 @@ export async function createRoutine(
   input: CreateRoutineInput,
 ): Promise<RoutineDto> {
   const ownerFilter = tasksOwnerWhere(owner.ownerType, owner.ownerId);
+  const assignee_user_id = await resolveAssigneeForCreate(owner, input.assignee_user_id);
   const row = await prisma.routine.create({
     data: {
       name: input.name.trim(),
@@ -47,6 +59,7 @@ export async function createRoutine(
       active_days: input.active_days ?? [],
       user_id: ownerFilter.user_id,
       house_id: ownerFilter.house_id,
+      assignee_user_id,
       steps: {
         create: input.steps.map((step, index) => ({
           title: step.title.trim(),
@@ -72,6 +85,8 @@ export async function updateRoutine(
   });
   if (!exists) throw new RoutineNotFoundError();
 
+  const assigneePatch = await resolveAssigneeForUpdate(owner, input.assignee_user_id);
+
   await prisma.$transaction(async (tx) => {
     await tx.routine.update({
       where: { id },
@@ -81,6 +96,9 @@ export async function updateRoutine(
         ...(input.time_of_day !== undefined ? { time_of_day: input.time_of_day } : {}),
         ...(input.active_days !== undefined ? { active_days: input.active_days } : {}),
         ...(input.active !== undefined ? { active: input.active } : {}),
+        ...(assigneePatch.kind === 'value'
+          ? { assignee_user_id: assigneePatch.assignee_user_id }
+          : {}),
       },
     });
 

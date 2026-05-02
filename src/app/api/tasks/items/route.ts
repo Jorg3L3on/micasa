@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { createTaskItem, listTaskItems } from '@/lib/server/tasks/task-item.service';
+import { parseAssigneeUserIdFilter } from '@/lib/server/tasks/parse-assignee-query';
+import { AssigneeInvalidError } from '@/lib/server/tasks/validate-assignee';
 import { createTaskItemSchema } from '@/schemas/task-item.schema';
 
 const parseListId = (raw: string | null): number | undefined => {
@@ -22,7 +24,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
     const listId = parseListId(request.nextUrl.searchParams.get('listId'));
-    return NextResponse.json(await listTaskItems(context, listId), { status: 200 });
+    const assigneeUserId = parseAssigneeUserIdFilter(request.nextUrl.searchParams);
+    return NextResponse.json(await listTaskItems(context, listId, assigneeUserId), {
+      status: 200,
+    });
   } catch (error) {
     console.error('tasks items GET', error);
     return NextResponse.json({ error: 'No se pudieron cargar las tareas' }, { status: 500 });
@@ -43,6 +48,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
+    }
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error('tasks items POST', error);
     return NextResponse.json({ error: 'No se pudo crear la tarea' }, { status: 500 });

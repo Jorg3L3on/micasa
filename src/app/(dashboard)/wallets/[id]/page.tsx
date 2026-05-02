@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api';
+import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type {

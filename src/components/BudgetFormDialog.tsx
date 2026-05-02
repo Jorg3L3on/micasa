@@ -42,7 +42,7 @@ import {
   type Step2Input,
 } from '@/schemas/budget.schema';
 import type { CategoryOption, WalletListItem } from '@/types/catalog';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 

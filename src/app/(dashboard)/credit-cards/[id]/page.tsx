@@ -27,13 +27,15 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
+} from '@/lib/api/client-fetch';
+import {
   createCreditCardPayment,
   downloadCreditCardStatementImportFile,
   getCreditCardStatement,
-  getPaymentMethodOptions,
   listCreditCardStatementImports,
   rollbackCreditCardStatementImport,
-} from '@/lib/api';
+} from '@/lib/api/credit-cards';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';

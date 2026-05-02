@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi, createIncome } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { createIncome } from '@/lib/api/incomes';
 
 type HouseUserItem = {
   id: number;

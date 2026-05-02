@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import ExpenseCard from '@/components/expenses/ExpenseCard';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
 import RepeatChips from '@/components/expenses/RepeatChips';

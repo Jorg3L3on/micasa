@@ -6,6 +6,7 @@ import {
   deleteTaskItem,
   updateTaskItem,
 } from '@/lib/server/tasks/task-item.service';
+import { AssigneeInvalidError } from '@/lib/server/tasks/validate-assignee';
 import { updateTaskItemSchema } from '@/schemas/task-item.schema';
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -36,6 +37,9 @@ export async function PATCH(
         { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
+    }
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error('tasks item PATCH', error);
     return NextResponse.json({ error: 'No se pudo actualizar la tarea' }, { status: 500 });

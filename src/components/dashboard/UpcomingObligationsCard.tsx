@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { Check, ChevronRight, ListTodo } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
-import { updateExpensePaidStatus } from '@/lib/api';
+import { updateExpensePaidStatus } from '@/lib/api/transactions';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
