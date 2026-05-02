@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import {
   LayoutDashboard,
   FolderTree,
@@ -16,7 +17,7 @@ import {
   ShoppingBasket,
   Wallet,
 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import { TeamSwitcher } from '@/components/team-switcher';
 import { NavUser } from '@/components/nav-user';
@@ -28,7 +29,31 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
+
+/** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
+function MobileSidebarCloseOnRouteInner() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchKey = searchParams.toString();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  React.useEffect(() => {
+    if (!isMobile) return;
+    setOpenMobile(false);
+  }, [pathname, searchKey, isMobile, setOpenMobile]);
+
+  return null;
+}
+
+function MobileSidebarCloseOnRoute() {
+  return (
+    <Suspense fallback={null}>
+      <MobileSidebarCloseOnRouteInner />
+    </Suspense>
+  );
+}
 
 /** Mes calendario en UTC (misma fecha en Node SSR y en el navegador para el mismo instante). */
 function getCurrentMonthHrefUtc(): string {
@@ -212,18 +237,21 @@ export function AppSidebar({
   ];
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={teams} />
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain groupLabel="Menú" items={menuItems} />
-        <NavMain groupLabel="General" items={generalItems} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={navUser} />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    <>
+      <MobileSidebarCloseOnRoute />
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader>
+          <TeamSwitcher teams={teams} />
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain groupLabel="Menú" items={menuItems} />
+          <NavMain groupLabel="General" items={generalItems} />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={navUser} />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    </>
   );
 }

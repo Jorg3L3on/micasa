@@ -3,8 +3,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import type { ColumnDef } from '@tanstack/react-table';
-import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import {
+  ArrowDownAZ,
+  ArrowDownZA,
+  LineChart,
+  ListFilter,
+  WalletIcon,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
@@ -22,20 +27,9 @@ import {
   updateCreditCard,
 } from '@/lib/api';
 import {
-  BadgeCheck,
-  BookmarkIcon,
-  Eye,
-  LineChart,
-  Pencil,
-  Trash2,
-  WalletIcon
-} from 'lucide-react';
-import {
   type PaymentMethodType,
-  PAYMENT_METHOD_LABELS,
   PAYMENT_METHOD_OPTIONS,
 } from '@/domain/payment-method';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -43,10 +37,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
-import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { WalletListCard } from '@/components/wallets/WalletListCard';
+import { cn } from '@/lib/utils';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
 
@@ -63,6 +72,121 @@ type BalanceFilterValue =
   | 'nonzero'
   | 'zero';
 
+/** Solo aplica a tarjetas (crédito / departamental); el resto se excluye si no es «all». */
+type CreditLineFilterValue =
+  | 'all'
+  | 'with_line'
+  | 'no_line'
+  | 'negative_available';
+
+type SortKey = 'name' | 'amount' | 'available';
+
+const STATUS_FILTER_CHIPS: { value: StatusFilterValue; label: string }[] = [
+  { value: STATUS_FILTER_ALL, label: 'Todos' },
+  { value: 'active', label: 'Activas' },
+  { value: 'inactive', label: 'Inactivas' },
+];
+
+const TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
+  { value: TYPE_FILTER_ALL, label: 'Todos' },
+  ...PAYMENT_METHOD_OPTIONS.map(({ value, label }) => ({ value, label })),
+];
+
+const BALANCE_FILTER_CHIPS: { value: BalanceFilterValue; label: string }[] = [
+  { value: BALANCE_FILTER_ALL, label: 'Cualquier monto' },
+  { value: 'nonzero', label: 'Con saldo o deuda' },
+  { value: 'zero', label: 'En cero' },
+];
+
+const CREDIT_LINE_OPTIONS: { value: CreditLineFilterValue; label: string }[] =
+  [
+    { value: 'all', label: 'Cualquiera' },
+    { value: 'with_line', label: 'Con línea asignada' },
+    { value: 'no_line', label: 'Sin línea registrada' },
+    { value: 'negative_available', label: 'Disponible negativo' },
+  ];
+
+const walletMatchesSearch = (w: WalletListItem, q: string): boolean => {
+  const t = q.trim().toLowerCase();
+  if (!t) return true;
+  return w.name.toLowerCase().includes(t);
+};
+
+const walletMatchesTypeFilter = (
+  w: WalletListItem,
+  typeFilter: string,
+): boolean => {
+  if (typeFilter === TYPE_FILTER_ALL) return true;
+  return w.type === typeFilter;
+};
+
+const walletMatchesStatusFilter = (
+  w: WalletListItem,
+  statusFilter: StatusFilterValue,
+): boolean => {
+  if (statusFilter === 'active' && !w.active) return false;
+  if (statusFilter === 'inactive' && w.active) return false;
+  return true;
+};
+
+const walletMatchesBalanceFilter = (
+  w: WalletListItem,
+  balanceFilter: BalanceFilterValue,
+): boolean => {
+  const amt = Number(w.amount);
+  if (balanceFilter === 'nonzero' && !(amt > 0)) return false;
+  if (balanceFilter === 'zero' && amt !== 0) return false;
+  return true;
+};
+
+const walletMatchesCreditLineFilter = (
+  w: WalletListItem,
+  creditLineFilter: CreditLineFilterValue,
+): boolean => {
+  if (creditLineFilter === 'all') return true;
+  if (!isCreditType(w.type)) return false;
+  if (creditLineFilter === 'with_line') {
+    return w.credit_limit != null;
+  }
+  if (creditLineFilter === 'no_line') {
+    return w.credit_limit == null;
+  }
+  if (creditLineFilter === 'negative_available') {
+    if (w.credit_limit == null) return false;
+    return w.credit_limit - w.amount < 0;
+  }
+  return true;
+};
+
+const availableSortValue = (w: WalletListItem): number | null => {
+  if (isCreditType(w.type)) {
+    if (w.credit_limit == null) return null;
+    return w.credit_limit - w.amount;
+  }
+  return w.amount;
+};
+
+const compareWallets = (
+  a: WalletListItem,
+  b: WalletListItem,
+  sortKey: SortKey,
+  sortDir: 'asc' | 'desc',
+): number => {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  if (sortKey === 'name') {
+    return dir * a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+  }
+  if (sortKey === 'amount') {
+    return dir * (a.amount - b.amount);
+  }
+  const na = availableSortValue(a);
+  const nb = availableSortValue(b);
+  if (na === null && nb === null) return 0;
+  if (na === null) return 1;
+  if (nb === null) return -1;
+  return dir * (na - nb);
+};
+
 export default function WalletsPage() {
   const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
@@ -75,30 +199,119 @@ export default function WalletsPage() {
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [typeFilter, setTypeFilter] = useState<string>(TYPE_FILTER_ALL);
   const [statusFilter, setStatusFilter] =
     useState<StatusFilterValue>(STATUS_FILTER_ALL);
   const [balanceFilter, setBalanceFilter] =
     useState<BalanceFilterValue>(BALANCE_FILTER_ALL);
+  const [creditLineFilter, setCreditLineFilter] =
+    useState<CreditLineFilterValue>('all');
 
-  const filteredWallets = useMemo(() => {
-    return wallets.filter((w) => {
-      if (typeFilter !== TYPE_FILTER_ALL && w.type !== typeFilter) {
-        return false;
-      }
-      if (statusFilter === 'active' && !w.active) return false;
-      if (statusFilter === 'inactive' && w.active) return false;
-      const amt = Number(w.amount);
-      if (balanceFilter === 'nonzero' && !(amt > 0)) return false;
-      if (balanceFilter === 'zero' && amt !== 0) return false;
+  const displayWallets = useMemo(() => {
+    const q = searchQuery;
+    const filtered = wallets.filter((w) => {
+      if (!walletMatchesSearch(w, q)) return false;
+      if (!walletMatchesTypeFilter(w, typeFilter)) return false;
+      if (!walletMatchesStatusFilter(w, statusFilter)) return false;
+      if (!walletMatchesBalanceFilter(w, balanceFilter)) return false;
+      if (!walletMatchesCreditLineFilter(w, creditLineFilter)) return false;
       return true;
     });
-  }, [wallets, typeFilter, statusFilter, balanceFilter]);
+    return [...filtered].sort((a, b) =>
+      compareWallets(a, b, sortKey, sortDir),
+    );
+  }, [
+    wallets,
+    searchQuery,
+    typeFilter,
+    statusFilter,
+    balanceFilter,
+    creditLineFilter,
+    sortKey,
+    sortDir,
+  ]);
+
+  /** Conteos para chips: aplica búsqueda y todos los filtros excepto la dimensión del chip. */
+  const statusChipCounts = useMemo(() => {
+    const q = searchQuery;
+    const matchExceptStatus = (w: WalletListItem) =>
+      walletMatchesSearch(w, q) &&
+      walletMatchesTypeFilter(w, typeFilter) &&
+      walletMatchesBalanceFilter(w, balanceFilter) &&
+      walletMatchesCreditLineFilter(w, creditLineFilter);
+
+    const pool = wallets.filter(matchExceptStatus);
+    return {
+      all: pool.length,
+      active: pool.filter((w) => w.active).length,
+      inactive: pool.filter((w) => !w.active).length,
+    };
+  }, [
+    wallets,
+    searchQuery,
+    typeFilter,
+    balanceFilter,
+    creditLineFilter,
+  ]);
+
+  const typeChipCounts = useMemo(() => {
+    const q = searchQuery;
+    const matchExceptType = (w: WalletListItem) =>
+      walletMatchesSearch(w, q) &&
+      walletMatchesStatusFilter(w, statusFilter) &&
+      walletMatchesBalanceFilter(w, balanceFilter) &&
+      walletMatchesCreditLineFilter(w, creditLineFilter);
+
+    const pool = wallets.filter(matchExceptType);
+    const byType = (t: string) => pool.filter((w) => w.type === t).length;
+    return {
+      all: pool.length,
+      CASH: byType('CASH'),
+      DEBIT_CARD: byType('DEBIT_CARD'),
+      CREDIT_CARD: byType('CREDIT_CARD'),
+      DEPARTMENT_STORE_CARD: byType('DEPARTMENT_STORE_CARD'),
+    };
+  }, [
+    wallets,
+    searchQuery,
+    statusFilter,
+    balanceFilter,
+    creditLineFilter,
+  ]);
+
+  const balanceChipCounts = useMemo(() => {
+    const q = searchQuery;
+    const matchExceptBalance = (w: WalletListItem) =>
+      walletMatchesSearch(w, q) &&
+      walletMatchesTypeFilter(w, typeFilter) &&
+      walletMatchesStatusFilter(w, statusFilter) &&
+      walletMatchesCreditLineFilter(w, creditLineFilter);
+
+    const pool = wallets.filter(matchExceptBalance);
+    const nonzero = pool.filter((w) => Number(w.amount) > 0).length;
+    const zero = pool.filter((w) => Number(w.amount) === 0).length;
+    return {
+      all: pool.length,
+      nonzero,
+      zero,
+    };
+  }, [
+    wallets,
+    searchQuery,
+    typeFilter,
+    statusFilter,
+    creditLineFilter,
+  ]);
 
   const hasActiveFilters =
+    searchQuery.trim() !== '' ||
     typeFilter !== TYPE_FILTER_ALL ||
     statusFilter !== STATUS_FILTER_ALL ||
-    balanceFilter !== BALANCE_FILTER_ALL;
+    balanceFilter !== BALANCE_FILTER_ALL ||
+    creditLineFilter !== 'all';
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -107,9 +320,11 @@ export default function WalletsPage() {
   }, [context]);
 
   const handleClearFilters = useCallback(() => {
+    setSearchQuery('');
     setTypeFilter(TYPE_FILTER_ALL);
     setStatusFilter(STATUS_FILTER_ALL);
     setBalanceFilter(BALANCE_FILTER_ALL);
+    setCreditLineFilter('all');
   }, []);
 
   const fetchWallets = useCallback(async () => {
@@ -225,198 +440,58 @@ export default function WalletsPage() {
     setError(null);
   }, []);
 
-  const columns = useMemo<ColumnDef<WalletListItem>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Nombre" />
-        ),
-        cell: ({ row }) => {
-          const wallet = row.original;
-          const isCard = isCreditType(wallet.type);
-          const subtitle =
-            isCard && wallet.cutoff_day != null && wallet.due_day != null
-              ? `Corte ${wallet.cutoff_day} / Pago ${wallet.due_day}`
-              : null;
-
-          return (
-            <WalletIdentity
-              name={wallet.name}
-              providerIconKey={wallet.provider_icon_key}
-              subtitle={subtitle}
-              nameClassName={cn(!wallet.active && 'text-muted-foreground')}
-            />
-          );
-        },
-      },
-      {
-        accessorKey: 'amount',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Deuda / saldo" />
-        ),
-        cell: ({ row }) => {
-          const wallet = row.original;
-          const isCard = isCreditType(wallet.type);
-
-          return (
-            <div className="flex flex-col gap-0.5">
-              <span
-                className={cn(
-                  'font-mono tabular-nums text-sm',
-                  isCard && wallet.amount > 0 && 'font-bold text-foreground',
-                )}
-              >
-                {formatCurrency(wallet.amount)}
-              </span>
-              <span className="text-[9px] text-muted-foreground">
-                {isCard ? 'Deuda' : 'Saldo'}
-              </span>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'available',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Disponible" />
-        ),
-        accessorFn: (row) => {
-          if (isCreditType(row.type)) {
-            return row.credit_limit != null ? row.credit_limit - row.amount : null;
-          }
-          return row.amount;
-        },
-        cell: ({ row }) => {
-          const wallet = row.original;
-          const isCard = isCreditType(wallet.type);
-
-          if (isCard) {
-            if (wallet.credit_limit == null) {
-              return <span className="text-muted-foreground">Sin línea</span>;
-            }
-            const available = wallet.credit_limit - wallet.amount;
-            return (
-              <span
-                className={cn(
-                  'font-mono tabular-nums text-sm font-bold',
-                  available < 0
-                    ? 'text-destructive'
-                    : 'text-emerald-600 dark:text-emerald-400',
-                )}
-              >
-                {formatCurrency(available)}
-              </span>
-            );
-          }
-
-          return (
-            <span
-              className={cn(
-                'font-mono tabular-nums text-sm',
-                wallet.amount > 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-muted-foreground',
-              )}
-            >
-              {formatCurrency(wallet.amount)}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: 'type',
-        header: 'Tipo',
-        cell: ({ row }) =>
-          PAYMENT_METHOD_LABELS[row.original.type as PaymentMethodType],
-      },
-      {
-        accessorKey: 'active',
-        header: 'Estado',
-        cell: ({ row }) =>
-          row.original.active ? (
-            <Badge variant="secondary">
-              <BadgeCheck data-icon="inline-start" />
-              Activo
-            </Badge>
-          ) : (
-            <Badge variant="outline">
-              <BookmarkIcon data-icon="inline-end" />
-              Inactivo
-            </Badge>
-          ),
-      },
-      {
-        id: 'actions',
-        header: () => <span className="text-right">Acciones</span>,
-        cell: ({ row }) => {
-          const wallet = row.original;
-          const isCard = isCreditType(wallet.type);
-          const isFunding =
-            wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
-
-          return (
-            <div className="flex justify-end gap-2">
-              {isCard && (
-                <Button asChild variant="ghost" size="icon">
-                  <Link
-                    href={`/credit-cards/${wallet.id}${ownerQueryString}`}
-                    aria-label={`Ver estado de cuenta de ${wallet.name}`}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
-              {isFunding && (
-                <Button asChild variant="ghost" size="icon">
-                  <Link
-                    href={`/wallets/${wallet.id}${ownerQueryString}`}
-                    aria-label={`Ver movimientos de ${wallet.name}`}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => openEditDialog(wallet)}
-                aria-label={`Editar ${wallet.name}`}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => openDeleteDialog(wallet)}
-                aria-label={`Eliminar ${wallet.name}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          );
-        },
-      },
-    ],
-    [openEditDialog, openDeleteDialog, ownerQueryString],
-  );
+  const handleToggleSortDir = useCallback(() => {
+    setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+  }, []);
 
   return (
-    <>
+    <div className="space-y-4 pb-24">
       <div
-        className="sticky top-20 z-20 mb-4 flex flex-wrap items-center justify-end gap-2 bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
+        className="sticky top-20 z-20 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background/95 px-4 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
         aria-label="Acciones de billeteras"
       >
-        <Button variant="outline" asChild>
-          <Link href="/wallets/liquidity" aria-label="Ver proyección de liquidez">
-            <LineChart className="h-4 w-4" />
-            Proyección de liquidez
-          </Link>
-        </Button>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <WalletIcon />
-          Agregar billetera o tarjeta
-        </Button>
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">Billeteras</h2>
+          <p className="text-xs text-muted-foreground">
+            Saldo, tarjetas y líneas disponibles en tu contexto actual.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 sm:hidden"
+                asChild
+              >
+                <Link
+                  href="/wallets/liquidity"
+                  aria-label="Ver proyección de liquidez"
+                >
+                  <LineChart className="h-4 w-4" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Proyección de liquidez
+            </TooltipContent>
+          </Tooltip>
+          <Button variant="outline" asChild className="hidden sm:inline-flex">
+            <Link href="/wallets/liquidity" aria-label="Ver proyección de liquidez">
+              <LineChart className="h-4 w-4" />
+              Proyección de liquidez
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            className="hidden h-9 rounded-xl sm:inline-flex"
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            <WalletIcon className="h-4 w-4" />
+            Agregar billetera o tarjeta
+          </Button>
+        </div>
       </div>
 
       {error && !deleteDialogOpen && (
@@ -434,95 +509,281 @@ export default function WalletsPage() {
           ) : wallets.length === 0 ? (
             <EmptyState message="No se encontraron billeteras" />
           ) : (
-            <DataTable
-              data={filteredWallets}
-              columns={columns}
-              filterColumn="name"
-              filterPlaceholder="Buscar por nombre..."
-              emptyMessage="Ninguna billetera coincide con los filtros."
-              filterSlot={
-                <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                  <Select
-                    value={typeFilter}
-                    onValueChange={setTypeFilter}
-                  >
-                    <SelectTrigger
-                      className="w-full sm:w-[200px]"
-                      aria-label="Filtrar por tipo"
+            <div className="space-y-4">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                  <Input
+                    placeholder="Buscar por nombre..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full max-w-full sm:max-w-xs"
+                    aria-label="Buscar por nombre"
+                  />
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <Select
+                      value={sortKey}
+                      onValueChange={(v) => setSortKey(v as SortKey)}
                     >
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={TYPE_FILTER_ALL}>
-                        Todos los tipos
-                      </SelectItem>
-                      {PAYMENT_METHOD_OPTIONS.map(({ value, label }) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(v) =>
-                      setStatusFilter(v as StatusFilterValue)
-                    }
-                  >
-                    <SelectTrigger
-                      className="w-full sm:w-[180px]"
-                      aria-label="Filtrar por estado"
-                    >
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={STATUS_FILTER_ALL}>
-                        Todos los estados
-                      </SelectItem>
-                      <SelectItem value="active">Solo activas</SelectItem>
-                      <SelectItem value="inactive">Solo inactivas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={balanceFilter}
-                    onValueChange={(v) =>
-                      setBalanceFilter(v as BalanceFilterValue)
-                    }
-                  >
-                    <SelectTrigger
-                      className="w-full sm:w-[220px]"
-                      aria-label="Filtrar por saldo o deuda"
-                    >
-                      <SelectValue placeholder="Saldo / deuda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={BALANCE_FILTER_ALL}>
-                        Cualquier saldo o deuda
-                      </SelectItem>
-                      <SelectItem value="nonzero">
-                        Con saldo o deuda mayor a cero
-                      </SelectItem>
-                      <SelectItem value="zero">En cero</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {hasActiveFilters ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 shrink-0 text-muted-foreground"
-                      onClick={handleClearFilters}
-                      aria-label="Limpiar filtros de billeteras"
-                    >
-                      Limpiar filtros
-                    </Button>
-                  ) : null}
+                      <SelectTrigger
+                        className="w-full sm:w-[200px]"
+                        aria-label="Ordenar por"
+                      >
+                        <SelectValue placeholder="Ordenar por" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Nombre</SelectItem>
+                        <SelectItem value="amount">Saldo o deuda</SelectItem>
+                        <SelectItem value="available">Disponible</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 shrink-0"
+                          onClick={handleToggleSortDir}
+                          aria-label={
+                            sortDir === 'asc'
+                              ? 'Orden ascendente; cambiar a descendente'
+                              : 'Orden descendente; cambiar a ascendente'
+                          }
+                        >
+                          {sortDir === 'asc' ? (
+                            <ArrowDownAZ className="h-4 w-4" />
+                          ) : (
+                            <ArrowDownZA className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {sortDir === 'asc'
+                          ? 'Ascendente (tocar para descendente)'
+                          : 'Descendente (tocar para ascendente)'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
-              }
-            />
+
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Estado
+                  </p>
+                  <div
+                    className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
+                    role="tablist"
+                    aria-label="Filtrar por estado"
+                  >
+                    {STATUS_FILTER_CHIPS.map(({ value: v, label }) => {
+                      const selected = statusFilter === v;
+                      const count =
+                        v === STATUS_FILTER_ALL
+                          ? statusChipCounts.all
+                          : v === 'active'
+                            ? statusChipCounts.active
+                            : statusChipCounts.inactive;
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          onClick={() => setStatusFilter(v)}
+                          className={cn(
+                            'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                            selected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {label}{' '}
+                          <span className="tabular-nums opacity-80">
+                            ({count})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Tipo
+                  </p>
+                  <div
+                    className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
+                    role="tablist"
+                    aria-label="Filtrar por tipo de billetera"
+                  >
+                    {TYPE_FILTER_CHIPS.map(({ value: v, label }) => {
+                      const selected = typeFilter === v;
+                      const count =
+                        v === TYPE_FILTER_ALL
+                          ? typeChipCounts.all
+                          : typeChipCounts[
+                              v as keyof typeof typeChipCounts
+                            ] ?? 0;
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          onClick={() => setTypeFilter(v)}
+                          className={cn(
+                            'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                            selected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {label}{' '}
+                          <span className="tabular-nums opacity-80">
+                            ({count})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Monto registrado
+                    </p>
+                    <div
+                      className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
+                      role="tablist"
+                      aria-label="Filtrar por monto en libros"
+                    >
+                      {BALANCE_FILTER_CHIPS.map(({ value: v, label }) => {
+                        const selected = balanceFilter === v;
+                        const count =
+                          v === BALANCE_FILTER_ALL
+                            ? balanceChipCounts.all
+                            : v === 'nonzero'
+                              ? balanceChipCounts.nonzero
+                              : balanceChipCounts.zero;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            role="tab"
+                            aria-selected={selected}
+                            onClick={() => setBalanceFilter(v)}
+                            className={cn(
+                              'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                              selected
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {label}{' '}
+                            <span className="tabular-nums opacity-80">
+                              ({count})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 gap-1.5"
+                          aria-label="Filtros de línea de crédito para tarjetas"
+                        >
+                          <ListFilter className="h-4 w-4" />
+                          <span className="hidden sm:inline">Tarjetas</span>
+                          <span className="sm:hidden">TC</span>
+                          {creditLineFilter !== 'all' ? (
+                            <Badge
+                              variant="secondary"
+                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]"
+                            >
+                              1
+                            </Badge>
+                          ) : null}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                          Línea de crédito (solo tarjetas)
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={creditLineFilter}
+                          onValueChange={(val) =>
+                            setCreditLineFilter(val as CreditLineFilterValue)
+                          }
+                        >
+                          {CREDIT_LINE_OPTIONS.map((opt) => (
+                            <DropdownMenuRadioItem
+                              key={opt.value}
+                              value={opt.value}
+                            >
+                              {opt.label}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {hasActiveFilters ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 shrink-0 text-muted-foreground"
+                        onClick={handleClearFilters}
+                        aria-label="Limpiar filtros de billeteras"
+                      >
+                        Limpiar filtros
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {displayWallets.length === 0 ? (
+                <p className="py-8 text-center text-muted-foreground">
+                  Ninguna billetera coincide con los filtros.
+                </p>
+              ) : (
+                <ul
+                  className="grid list-none gap-3 p-0 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
+                  role="list"
+                >
+                  {displayWallets.map((wallet) => (
+                    <li key={wallet.id}>
+                      <WalletListCard
+                        wallet={wallet}
+                        ownerQueryString={ownerQueryString}
+                        onEdit={openEditDialog}
+                        onDelete={openDeleteDialog}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
+
+      <Button
+        type="button"
+        size="icon"
+        aria-label="Agregar billetera o tarjeta"
+        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        onClick={() => setCreateDialogOpen(true)}
+      >
+        <WalletIcon className="h-6 w-6" />
+      </Button>
 
       <WalletForm
         open={createDialogOpen}
@@ -578,6 +839,6 @@ export default function WalletsPage() {
           />
         </>
       )}
-    </>
+    </div>
   );
 }
