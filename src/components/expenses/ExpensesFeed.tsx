@@ -1,12 +1,28 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Coins } from 'lucide-react';
+import { Loader2, Plus, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { formatCurrency } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import ExpenseCard from '@/components/expenses/ExpenseCard';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
+import SwipeableExpenseRow from '@/components/expenses/SwipeableExpenseRow';
 import RepeatChips from '@/components/expenses/RepeatChips';
 import { groupByDay } from '@/components/expenses/groupByDay';
 import type {
@@ -46,6 +62,15 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
 
+  const [repeatConfirmItem, setRepeatConfirmItem] =
+    useState<ExpenseFeedItem | null>(null);
+  const [isRepeatSubmitting, setIsRepeatSubmitting] = useState(false);
+
+  const [openRowId, setOpenRowId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ExpenseFeedItem | null>(
+    null,
+  );
+
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // Refetch first page when owner context changes (but skip initial mount if context matches SSR).
@@ -64,6 +89,8 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         if (cancelled) return;
         setItems(res.items);
         setNextCursor(res.nextCursor);
+        setOpenRowId(null);
+        setPendingDelete(null);
       } catch (err) {
         if (cancelled) return;
         setLoadError(
@@ -213,37 +240,53 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
     }
   };
 
-  const handleRepeat = async (source: ExpenseFeedItem) => {
-    setCreateError(null);
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const tempId = -Date.now();
-    const optimistic: ExpenseFeedItem = {
-      ...source,
-      id: tempId,
-      date: today,
-      isRecurring: false,
-      creditInstallmentCurrent: null,
-      creditInstallmentTotal: null,
-    };
-    setItems((prev) => [optimistic, ...prev]);
+  const executeRepeatFromPill = useCallback(
+    async (source: ExpenseFeedItem) => {
+      setCreateError(null);
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const tempId = -Date.now();
+      const optimistic: ExpenseFeedItem = {
+        ...source,
+        id: tempId,
+        date: today,
+        isRecurring: false,
+        creditInstallmentCurrent: null,
+        creditInstallmentTotal: null,
+      };
+      setItems((prev) => [optimistic, ...prev]);
+      try {
+        const created = await clientFetchFromApi<ExpenseFeedItem>(
+          '/api/expenses/duplicate',
+          {
+            method: 'POST',
+            body: JSON.stringify({ id: source.id }),
+          },
+          context,
+        );
+        setItems((prev) => prev.map((i) => (i.id === tempId ? created : i)));
+      } catch (err) {
+        setItems((prev) => prev.filter((i) => i.id !== tempId));
+        setLoadError(
+          err instanceof Error ? err.message : 'No se pudo repetir el gasto',
+        );
+        throw err;
+      }
+    },
+    [context],
+  );
+
+  const handleConfirmRepeatPill = useCallback(async () => {
+    if (!repeatConfirmItem) return;
+    setIsRepeatSubmitting(true);
     try {
-      const created = await clientFetchFromApi<ExpenseFeedItem>(
-        '/api/expenses/duplicate',
-        {
-          method: 'POST',
-          body: JSON.stringify({ id: source.id }),
-        },
-        context,
-      );
-      setItems((prev) => prev.map((i) => (i.id === tempId ? created : i)));
-    } catch (err) {
-      setItems((prev) => prev.filter((i) => i.id !== tempId));
-      setLoadError(
-        err instanceof Error ? err.message : 'No se pudo repetir el gasto',
-      );
+      await executeRepeatFromPill(repeatConfirmItem);
+      setRepeatConfirmItem(null);
+    } catch {
+    } finally {
+      setIsRepeatSubmitting(false);
     }
-  };
+  }, [executeRepeatFromPill, repeatConfirmItem]);
 
   const handleCustomizeRepeat = (source: ExpenseFeedItem) => {
     if (source.categoryId == null || source.walletId == null) return;
@@ -263,20 +306,31 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
     setCreateOpen(true);
   };
 
-  const handleDelete = async () => {
-    if (!editing) return;
-    const originalId = editing.item.id;
-    const previous = items;
-    setItems((prev) => prev.filter((i) => i.id !== originalId));
+  const deleteExpenseById = useCallback(async (id: number) => {
+    let previous: ExpenseFeedItem[] = [];
+    setItems((prev) => {
+      previous = prev;
+      return prev.filter((i) => i.id !== id);
+    });
     try {
       await clientFetchFromApi(
-        `/api/transactions?id=${originalId}`,
+        `/api/transactions?id=${id}`,
         { method: 'DELETE' },
         context,
       );
-      setEditing(null);
     } catch (err) {
       setItems(previous);
+      throw err;
+    }
+  }, [context]);
+
+  const handleDelete = async () => {
+    if (!editing) return;
+    const originalId = editing.item.id;
+    try {
+      await deleteExpenseById(originalId);
+      setEditing(null);
+    } catch (err) {
       setEditError(
         err instanceof Error ? err.message : 'No se pudo eliminar el gasto',
       );
@@ -295,26 +349,52 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
       }
     : undefined;
 
-  return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-        <h1 className="text-lg font-semibold">Gastos</h1>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => {
-            setCreateError(null);
-            setCreateDefaults(undefined);
-            setCreateOpen(true);
-          }}
-          className="gap-1.5"
-        >
-          <Plus className="size-4" aria-hidden />
-          <span>Agregar gasto</span>
-        </Button>
-      </header>
+  const handleOpenCreate = useCallback(() => {
+    setCreateError(null);
+    setCreateDefaults(undefined);
+    setCreateOpen(true);
+  }, []);
 
-      <div className="flex-1 px-4 py-4">
+  return (
+    <div className="space-y-4 pb-24">
+      <div
+        className="sticky top-16 z-20 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        aria-label="Acciones de gastos"
+      >
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">Gastos</h2>
+          <p className="text-xs text-muted-foreground">
+            Planeados, recurrentes y movimientos por día en tu contexto actual.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0 sm:hidden"
+                onClick={handleOpenCreate}
+                aria-label="Agregar gasto"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Agregar gasto</TooltipContent>
+          </Tooltip>
+          <Button
+            type="button"
+            className="hidden h-9 gap-1.5 rounded-xl sm:inline-flex"
+            onClick={handleOpenCreate}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Agregar gasto
+          </Button>
+        </div>
+      </div>
+
+      <div className="py-4">
         {isInitialLoading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             Cargando...
@@ -332,14 +412,10 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             </div>
             <Button
               type="button"
-              onClick={() => {
-                setCreateError(null);
-                setCreateDefaults(undefined);
-                setCreateOpen(true);
-              }}
-              className="gap-1.5"
+              onClick={handleOpenCreate}
+              className="h-9 gap-1.5 rounded-xl"
             >
-              <Plus className="size-4" aria-hidden />
+              <Plus className="h-4 w-4" aria-hidden />
               Agregar gasto
             </Button>
           </div>
@@ -347,21 +423,29 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
           <div className="flex flex-col gap-6">
             <RepeatChips
               items={items}
-              onRepeat={handleRepeat}
+              onRepeat={setRepeatConfirmItem}
               onCustomize={handleCustomizeRepeat}
             />
             {groups.map((group) => (
               <section key={group.key} className="flex flex-col gap-2">
-                <div className="sticky top-[57px] z-[5] -mx-4 bg-background/95 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/75">
+                <div className="sticky top-[calc(4rem+3.75rem)] z-[5] -mx-4 bg-background px-4 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground group-has-data-[collapsible=icon]/sidebar-wrapper:top-[calc(3rem+3.75rem)]">
                   {group.label}
                 </div>
                 <div className="flex flex-col gap-2">
                   {group.items.map((item) => (
-                    <ExpenseCard
+                    <SwipeableExpenseRow
                       key={item.id}
                       expense={item}
                       pending={item.id < 0}
-                      onClick={
+                      isOpen={openRowId === item.id}
+                      onOpenChange={(open) => {
+                        setOpenRowId((current) => {
+                          if (open) return item.id;
+                          if (current === item.id) return null;
+                          return current;
+                        });
+                      }}
+                      onCardClick={
                         item.id > 0
                           ? () => {
                               setEditError(null);
@@ -369,6 +453,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
                             }
                           : undefined
                       }
+                      onRequestDelete={setPendingDelete}
                     />
                   ))}
                 </div>
@@ -395,6 +480,81 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={repeatConfirmItem != null}
+        onOpenChange={(open) => {
+          if (!open && !isRepeatSubmitting) {
+            setRepeatConfirmItem(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Registrar este gasto hoy?</AlertDialogTitle>
+            <AlertDialogDescription className="grid gap-2">
+              <span>
+                Se creará un movimiento para hoy con el mismo monto, categoría y
+                forma de pago.
+              </span>
+              {repeatConfirmItem ? (
+                <span className="font-semibold text-foreground">
+                  {repeatConfirmItem.description} —{' '}
+                  {formatCurrency(repeatConfirmItem.amount)}
+                </span>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRepeatSubmitting}>
+              Cancelar
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={isRepeatSubmitting}
+              className="rounded-xl"
+              onClick={() => void handleConfirmRepeatPill()}
+            >
+              {isRepeatSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                  Registrando…
+                </>
+              ) : (
+                'Sí, registrar'
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ConfirmDeleteDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title="Eliminar gasto"
+        description="Esta acción no se puede deshacer."
+        itemName={
+          pendingDelete
+            ? `${pendingDelete.description} — ${formatCurrency(pendingDelete.amount)}`
+            : undefined
+        }
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          try {
+            await deleteExpenseById(pendingDelete.id);
+            setPendingDelete(null);
+            setOpenRowId(null);
+          } catch (err) {
+            setLoadError(
+              err instanceof Error
+                ? err.message
+                : 'No se pudo eliminar el gasto',
+            );
+          }
+        }}
+      />
 
       <ExpenseFormSheet
         open={createOpen}

@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import AssigneeAvatar from '@/components/tasks/AssigneeAvatar';
 import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -138,50 +139,71 @@ export default function TasksDayDialog({
   };
 
   const createSection = (
-    <div className="rounded-md border border-border/60 p-3">
+    <div className="min-w-0 overflow-hidden rounded-md border border-border/60 p-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Crear tarea del dia
       </p>
       <p className="mb-2 text-xs text-muted-foreground">
         Esta tarea queda con la fecha del día que elijas en el calendario de arriba.
       </p>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1">
-          <Input
-            value={newTitle}
-            onChange={(event) => setNewTitle(event.target.value)}
-            placeholder="Nueva tarea para este dia"
-            aria-label="Nueva tarea para este día"
-            disabled={creatingTask}
-          />
-        </div>
-        <MemberAssigneeSelect
-          id="day-dialog-assignee"
-          value={assigneeUserId}
-          onChange={setAssigneeUserId}
+      <div className="flex flex-col gap-3">
+        <Input
+          className="min-h-11 text-base"
+          value={newTitle}
+          onChange={(event) => setNewTitle(event.target.value)}
+          placeholder="Nueva tarea para este dia"
+          aria-label="Nueva tarea para este día"
           disabled={creatingTask}
         />
-        <Button
-          className="w-full shrink-0 sm:w-auto"
-          onClick={() => void handleCreateTask()}
-          disabled={creatingTask}
-          aria-busy={creatingTask}
-        >
-          {creatingTask ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Creando…
-            </>
-          ) : (
-            'Crear'
-          )}
-        </Button>
+        {context.type === 'house' ? (
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <MemberAssigneeSelect
+                id="day-dialog-assignee"
+                value={assigneeUserId}
+                onChange={setAssigneeUserId}
+                disabled={creatingTask}
+              />
+            </div>
+            <Button
+              className="w-full shrink-0 sm:w-auto"
+              onClick={() => void handleCreateTask()}
+              disabled={creatingTask}
+              aria-busy={creatingTask}
+            >
+              {creatingTask ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  Creando…
+                </>
+              ) : (
+                'Crear'
+              )}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            className="h-11 w-full shrink-0 sm:w-auto sm:self-start"
+            onClick={() => void handleCreateTask()}
+            disabled={creatingTask}
+            aria-busy={creatingTask}
+          >
+            {creatingTask ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                Creando…
+              </>
+            ) : (
+              'Crear'
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
 
   const tasksSection = (
-    <div className="rounded-md border border-border/60 p-3">
+    <div className="min-w-0 rounded-md border border-border/60 p-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Tareas programadas
       </p>
@@ -194,7 +216,17 @@ export default function TasksDayDialog({
               key={task.id}
               className="flex flex-col gap-2 rounded-md border border-border/60 p-2 sm:flex-row sm:items-center sm:justify-between"
             >
-              <p className="min-w-0 truncate text-sm font-medium">{task.title}</p>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                {task.assignee ? (
+                  <AssigneeAvatar name={task.assignee.name} size="sm" hideFromAccessibility />
+                ) : null}
+                <p className="min-w-0 truncate text-sm font-medium">
+                  {task.assignee ? (
+                    <span className="sr-only">{task.assignee.name}: </span>
+                  ) : null}
+                  {task.title}
+                </p>
+              </div>
               {task.status === 'DONE' ? (
                 <Badge variant="secondary">Completada</Badge>
               ) : (
@@ -261,7 +293,7 @@ export default function TasksDayDialog({
 
   const calendarBlock =
     presentation === 'sheet' ? (
-      <div className="flex justify-center rounded-md border border-border/60 bg-muted/20 p-2">
+      <div className="flex justify-center rounded-md border border-border/60 bg-muted/20 p-2 md:justify-start">
         <Calendar
           mode="single"
           selected={viewDate}
@@ -284,24 +316,22 @@ export default function TasksDayDialog({
       <Sheet open={open} onOpenChange={handleOverlayOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[90vh] overflow-y-auto rounded-t-xl sm:max-w-2xl sm:mx-auto sm:left-1/2 sm:right-auto sm:w-full sm:-translate-x-1/2"
+          className="max-h-[90vh] overflow-y-auto rounded-t-xl sm:mx-auto sm:left-1/2 sm:right-auto sm:w-full sm:max-w-3xl sm:-translate-x-1/2"
         >
           <SheetHeader>
             <SheetTitle>{formatDay(viewDate)}</SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-4">
-            {calendarBlock}
-            {/* Mobile: create → tasks → routines. md+: tasks column on the right. */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-4">
-              <div className="min-w-0 md:col-start-1 md:row-start-1">
-                {createSection}
-              </div>
-              <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1 md:border-l md:border-border/60 md:pl-4">
+            {/* Calendario y tareas del día en la misma fila (md+) para no dejar hueco vacío */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+              {calendarBlock}
+              <div className="min-w-0 md:max-h-[min(52vh,28rem)] md:overflow-y-auto md:pr-1">
                 {tasksSection}
               </div>
-              <div className="min-w-0 md:col-start-1 md:row-start-2">
-                {routinesSection}
-              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-4">
+              <div className="min-w-0">{createSection}</div>
+              <div className="min-w-0">{routinesSection}</div>
             </div>
           </div>
         </SheetContent>

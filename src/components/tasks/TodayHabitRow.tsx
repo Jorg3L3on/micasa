@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Flame, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { AssigneeWithName } from '@/components/tasks/AssigneeAvatar';
 import { habitDoneToday } from '@/components/tasks/habit-ui-utils';
 import { useFinanceContext } from '@/context/finance-context';
@@ -29,6 +30,7 @@ export default function TodayHabitRow({ habit, onUpdated }: TodayHabitRowProps) 
   const { context } = useFinanceContext();
   const done = habitDoneToday(habit);
   const [marking, setMarking] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const ownerQs = buildOwnerQuery(context).toString();
   const habitsHref = `/tasks/habits${ownerQs ? `?${ownerQs}` : ''}`;
 
@@ -46,16 +48,16 @@ export default function TodayHabitRow({ habit, onUpdated }: TodayHabitRowProps) 
     }
   };
 
-  const handleDelete = async () => {
-    if (!globalThis.confirm(`¿Eliminar el hábito «${habit.name}»?`)) return;
+  const handleConfirmDelete = useCallback(async () => {
     try {
       await deleteHabit(habit.id, context);
       toast.success('Hábito eliminado');
+      setDeleteDialogOpen(false);
       await onUpdated();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo eliminar');
     }
-  };
+  }, [context, habit.id, onUpdated]);
 
   return (
     <div
@@ -121,7 +123,7 @@ export default function TodayHabitRow({ habit, onUpdated }: TodayHabitRowProps) 
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={() => void handleDelete()}
+              onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Eliminar
@@ -129,6 +131,16 @@ export default function TodayHabitRow({ habit, onUpdated }: TodayHabitRowProps) 
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar hábito?"
+        description="Se borrará el hábito y su historial de registros. Esta acción no se puede deshacer."
+        itemName={habit.name}
+        loadingLabel="Eliminando…"
+      />
     </div>
   );
 }

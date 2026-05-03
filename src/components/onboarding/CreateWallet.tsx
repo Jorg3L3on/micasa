@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function CreateWallet() {
   const [loading, setLoading] = useState(false);
@@ -17,9 +18,9 @@ export default function CreateWallet() {
         router.push(`/dashboard${queryString ? `?${queryString}` : ''}`);
         return;
       }
-      alert('No se pudo crear la billetera');
+      toast.error('No se pudo crear la billetera');
     } catch {
-      alert('No se pudo crear la billetera');
+      toast.error('No se pudo crear la billetera');
     } finally {
       setLoading(false);
     }
