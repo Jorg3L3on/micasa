@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AssigneeWithName } from '@/components/tasks/AssigneeAvatar';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import EmptyState from '@/components/EmptyState';
 import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 import {
@@ -113,6 +114,7 @@ export default function HabitsPageView() {
   const [creatingHabit, setCreatingHabit] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingHabitId, setDeletingHabitId] = useState<number | null>(null);
+  const [habitToDelete, setHabitToDelete] = useState<HabitDto | null>(null);
 
   useEffect(() => {
     localStorage.setItem(HABITS_VIEW_FILTER_KEY, viewFilter);
@@ -243,12 +245,13 @@ export default function HabitsPageView() {
     }
   };
 
-  const handleDelete = async (habit: HabitDto) => {
-    if (!globalThis.confirm(`¿Eliminar el hábito «${habit.name}»?`)) return;
+  const handleConfirmDeleteHabit = async () => {
+    if (!habitToDelete) return;
     try {
-      setDeletingHabitId(habit.id);
-      await deleteHabit(habit.id, context);
+      setDeletingHabitId(habitToDelete.id);
+      await deleteHabit(habitToDelete.id, context);
       toast.success('Hábito eliminado');
+      setHabitToDelete(null);
       await loadHabits();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo eliminar');
@@ -377,7 +380,7 @@ export default function HabitsPageView() {
                     setCompleteDialog({ habit });
                   }}
                   onEdit={() => handleOpenEdit(habit)}
-                  onDelete={() => void handleDelete(habit)}
+                  onDelete={() => setHabitToDelete(habit)}
                 />
               ))}
             </div>
@@ -568,6 +571,18 @@ export default function HabitsPageView() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <ConfirmDeleteDialog
+        open={habitToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setHabitToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteHabit}
+        title="¿Eliminar hábito?"
+        description="Se borrará el hábito y su historial de registros. Esta acción no se puede deshacer."
+        itemName={habitToDelete?.name}
+        loadingLabel="Eliminando…"
+      />
     </TooltipProvider>
   );
 }

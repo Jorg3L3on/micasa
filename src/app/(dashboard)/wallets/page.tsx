@@ -734,7 +734,7 @@ export default function WalletsPage() {
   return (
     <div className="space-y-4 pb-24">
       <div
-        className="sticky top-20 z-20 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background/95 px-4 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
+        className="sticky top-16 z-20 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
         aria-label="Acciones de billeteras"
       >
         <div className="min-w-0">
