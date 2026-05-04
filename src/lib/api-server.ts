@@ -41,7 +41,9 @@ export async function fetchFromApi<T>(
   })
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch from ${endpoint}`)
+    throw new Error(
+      `Failed to fetch from ${endpoint} (HTTP ${res.status})`,
+    );
   }
 
   return res.json()

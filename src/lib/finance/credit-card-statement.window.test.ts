@@ -21,6 +21,35 @@ describe('resolveCreditCardStatementWindow', () => {
   });
 });
 
+describe('due before cutoff: open-cycle projection (doc)', () => {
+  it('corte 15 / pago 8: while asOf is inside currentCycle, due date precedes the next cutoff in the month', () => {
+    const asOf = new Date(Date.UTC(2026, 4, 4));
+    const w = resolveCreditCardStatementWindow(asOf, 15, 8);
+    expect(toYmd(w.statementEnd)).toBe('2026-04-15');
+    expect(toYmd(w.statementDueDate)).toBe('2026-05-08');
+    expect(toYmd(w.currentCycleStart)).toBe('2026-04-16');
+    expect(toYmd(w.currentCycleEnd)).toBe('2026-05-15');
+    expect(toDateOnlyString(asOf) <= toYmd(w.currentCycleEnd)).toBe(true);
+  });
+});
+
+function toDateOnlyString(d: Date) {
+  return d.toISOString().split('T')[0];
+}
+
+describe('planner primera quincena: evitar asOf en el día de corte 15', () => {
+  it('asOf 15 may (corte 15) ya cierra el estado de abr; asOf 14 mantiene el ciclo con venc. 8 may', () => {
+    const asOnCutoff = new Date(Date.UTC(2026, 4, 15, 12, 0, 0, 0));
+    const asBeforeCutoff = new Date(Date.UTC(2026, 4, 14, 12, 0, 0, 0));
+    const wCutoff = resolveCreditCardStatementWindow(asOnCutoff, 15, 8);
+    const wBefore = resolveCreditCardStatementWindow(asBeforeCutoff, 15, 8);
+    expect(toYmd(wCutoff.statementEnd)).toBe('2026-05-15');
+    expect(toYmd(wCutoff.statementDueDate)).toBe('2026-06-08');
+    expect(toYmd(wBefore.statementEnd)).toBe('2026-04-15');
+    expect(toYmd(wBefore.statementDueDate)).toBe('2026-05-08');
+  });
+});
+
 describe('nextDuePayment formula', () => {
   const nextDue = (lastStatement: number, appliedToStatement: number) =>
     Math.max(lastStatement - appliedToStatement, 0);

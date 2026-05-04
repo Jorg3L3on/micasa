@@ -1,9 +1,11 @@
+import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type {
   CreateWalletInput,
   UpdateWalletInput,
 } from '@/schemas/wallet.schema';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
 import { resolveWalletAssignee } from '@/lib/server/wallets/resolve-wallet-assignee';
 
 const ASSIGNEE_INCLUDE = {
@@ -81,15 +83,30 @@ export async function listWalletsByOwner(ownerFilter: OwnerFilter) {
     ],
   });
 
-  const walletIds = wallets.map((w) => w.id);
-  const expenseSums = await prisma.expense.groupBy({
-    by: ['wallet_id'],
-    where: {
-      wallet_id: { in: walletIds },
-      is_paid: false,
-    },
-    _sum: { amount: true },
+  wallets.sort((a, b) => {
+    if (a.active !== b.active) {
+      return a.active ? -1 : 1;
+    }
+    const ca = isCreditWalletType(a.type as PaymentMethodType);
+    const cb = isCreditWalletType(b.type as PaymentMethodType);
+    if (ca !== cb) {
+      return ca ? 1 : -1;
+    }
+    return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
   });
+
+  const walletIds = wallets.map((w) => w.id);
+  const expenseSums =
+    walletIds.length === 0
+      ? []
+      : await prisma.expense.groupBy({
+          by: ['wallet_id'],
+          where: {
+            wallet_id: { in: walletIds },
+            is_paid: false,
+          },
+          _sum: { amount: true },
+        });
 
   const spentMap = new Map(
     expenseSums.map((e) => [e.wallet_id, Number(e._sum.amount ?? 0)]),

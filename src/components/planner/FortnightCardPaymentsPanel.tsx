@@ -250,17 +250,44 @@ const FortnightCardPaymentsPanel = ({
 
                 {/* Amount + pay button */}
                 <div className="flex shrink-0 items-center gap-2">
-                  <span
+                  <div
                     className={cn(
-                      'font-mono font-bold tabular-nums',
-                      isCompact ? 'text-xs' : 'text-sm',
+                      'flex items-end gap-2',
                       status === 'pagado'
-                        ? 'text-muted-foreground/60 line-through'
-                        : 'text-foreground',
+                        ? 'flex-col items-end gap-0.5'
+                        : 'flex-row',
                     )}
                   >
-                    {formatCurrency(item.nextDuePayment)}
-                  </span>
+                    <span
+                      className={cn(
+                        'font-mono font-bold tabular-nums',
+                        isCompact ? 'text-xs' : 'text-sm',
+                        status === 'pagado'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-foreground',
+                      )}
+                      aria-label={
+                        status === 'pagado'
+                          ? `${item.walletName}: pagado al corte ${formatCurrency(
+                              item.paymentsAppliedToStatement,
+                            )}`
+                          : `${item.walletName}: pendiente ${formatCurrency(item.nextDuePayment)}`
+                      }
+                    >
+                      {status === 'pagado'
+                        ? formatCurrency(item.paymentsAppliedToStatement)
+                        : formatCurrency(item.nextDuePayment)}
+                    </span>
+                    {status === 'pagado' &&
+                    item.paymentsAppliedToStatement > 0 ? (
+                      <span
+                        className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/80"
+                        aria-hidden
+                      >
+                        Pagado al corte
+                      </span>
+                    ) : null}
+                  </div>
                   {onPayCard && status !== 'pagado' && (
                     <Tooltip>
                       <TooltipTrigger asChild>

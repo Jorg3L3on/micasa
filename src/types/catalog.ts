@@ -77,6 +77,22 @@ export type PlannerCardStatementDueSummary = {
   cardCount: number;
 };
 
+/** Una billetera efectivo/débito incluida en el desglose del resumen. */
+export type FundingWalletBreakdownItem = {
+  id: number;
+  name: string;
+  amount: number;
+  /** `PaymentMethodType`, ej. CASH | DEBIT_CARD */
+  type: string;
+};
+
+/** Respuesta de GET /api/reports?type=summary: saldos activos Efectivo+Débito y neto vs solo lo pendiente (no pagado) del período. */
+export type ReportsSummaryFundingFields = {
+  fundingWalletBalanceTotal: number;
+  fundingNetVsPendingExpense: number;
+  fundingWalletBreakdown: FundingWalletBreakdownItem[];
+};
+
 export type ExpenseTemplateListItem = {
   id: number;
   name: string;
@@ -186,6 +202,11 @@ export type DuePaymentItem = {
   dueDay: number;
   cutoff_day: number;
   nextDuePayment: number;
+  /**
+   * Pagos a tarjeta (CreditCardPayment) que cuentan contra el estado de cuenta
+   * de esta ventana; en fila “pagada” es el monto liquidado hacia ese corte.
+   */
+  paymentsAppliedToStatement: number;
   statementDueDate: string;
   /** Deuda actual en la billetera tarjeta (para tope de pago y “saldo total”). */
   outstandingBalance: number;

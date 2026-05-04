@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { Prisma } from '@/generated/prisma/client';
+import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -365,6 +366,35 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const fundingWallets = await prisma.wallet.findMany({
+        where: {
+          ...ownerFilter,
+          active: true,
+          type: {
+            in: [PaymentMethodType.CASH, PaymentMethodType.DEBIT_CARD],
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          amount: true,
+          type: true,
+        },
+        orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      });
+      const fundingWalletBreakdown = fundingWallets.map((w) => ({
+        id: w.id,
+        name: w.name,
+        amount: Number(w.amount),
+        type: w.type,
+      }));
+      const fundingWalletBalanceTotal = fundingWalletBreakdown.reduce(
+        (s, w) => s + w.amount,
+        0,
+      );
+      const fundingNetVsPendingExpense =
+        fundingWalletBalanceTotal - totalUnpaid;
+
       return NextResponse.json(
         {
           totalIncome,
@@ -372,6 +402,9 @@ export async function GET(request: NextRequest) {
           totalPaid,
           totalUnpaid,
           balance,
+          fundingWalletBalanceTotal,
+          fundingNetVsPendingExpense,
+          fundingWalletBreakdown,
           userIncome: userIncomeData,
           incomeItems,
           ...(excludeCreditInstallment

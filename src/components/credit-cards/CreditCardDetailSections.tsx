@@ -9,6 +9,7 @@ import {
   Download,
   FileText,
   Landmark,
+  Pencil,
   Receipt,
   RotateCcw,
   ShoppingCart,
@@ -32,6 +33,7 @@ type HeaderActionsProps = {
   onOpenImportDialog: () => void;
   onExportCsv: () => void;
   onExportPdf: () => void;
+  onEditCard: () => void;
 };
 
 export const CreditCardDetailHeaderActions = ({
@@ -39,6 +41,7 @@ export const CreditCardDetailHeaderActions = ({
   onOpenImportDialog,
   onExportCsv,
   onExportPdf,
+  onEditCard,
 }: HeaderActionsProps) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-center gap-3">
@@ -65,6 +68,10 @@ export const CreditCardDetailHeaderActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem onClick={onEditCard} className="cursor-pointer">
+          <Pencil className="mr-2 h-4 w-4 shrink-0" />
+          Editar tarjeta
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={onOpenImportDialog} className="cursor-pointer">
           <Upload className="mr-2 h-4 w-4 shrink-0" />
           Importar PDF

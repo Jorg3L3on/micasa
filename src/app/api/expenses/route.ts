@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
-import {
-  resolveOrCreateFortnight,
-  getFortnightPeriodForDay,
-} from '@/lib/fortnights';
+import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createExpense } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 

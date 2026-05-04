@@ -1,4 +1,10 @@
 import { fetchFromApi, type OwnerContext } from '@/lib/api-server'
+import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context'
+import { listWalletsByOwner } from '@/lib/finance/wallet.service'
+import {
+  getDuePaymentsForCurrentFortnight,
+  getDuePaymentsForPlannerMonth,
+} from '@/lib/finance/credit-card-statement.service'
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import MonthlyFortnightView from '@/components/MonthlyFortnightView'
@@ -14,6 +20,7 @@ import type {
   PlannerCardChargesSummary,
   PlannerOrphanCardPaymentsSummary,
   PlannerCardStatementDueSummary,
+  ReportsSummaryFundingFields,
 } from '@/types/catalog'
 
 type Transaction = {
@@ -42,7 +49,7 @@ type Summary = {
   cardCharges?: PlannerCardChargesSummary | null
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null
   planningCardStatementDue?: PlannerCardStatementDueSummary | null
-}
+} & ReportsSummaryFundingFields
 
 type FortnightInfo = {
   label: string
@@ -134,43 +141,50 @@ async function getSummary(
       totalPaid: 0,
       totalUnpaid: 0,
       balance: 0,
+      fundingWalletBalanceTotal: 0,
+      fundingNetVsPendingExpense: 0,
+      fundingWalletBreakdown: [],
     }
   }
 }
 
-async function getWallets(ownerContext?: OwnerContext): Promise<WalletListItem[]> {
+/** Sin fetch HTTP interno (evita 401 y errores de cookies en RSC). */
+async function loadActiveWalletsForMonthlyPage(
+  searchParams: Record<string, string | string[] | undefined>,
+): Promise<WalletListItem[]> {
   try {
-    const wallets = await fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext)
-    return wallets.filter((wallet) => wallet.active)
+    const ctx = await getOwnerContextFromPageSearchParams(searchParams)
+    if ('error' in ctx) return []
+    const wallets = await listWalletsByOwner(ctx.ownerFilter)
+    return wallets.filter((w) => w.active)
   } catch (error) {
     console.error('Error fetching wallets:', error)
     return []
   }
 }
 
-async function getDuePayments(ownerContext?: OwnerContext): Promise<DuePaymentItem[]> {
+async function loadDuePaymentsForCurrentFortnightPage(
+  searchParams: Record<string, string | string[] | undefined>,
+): Promise<DuePaymentItem[]> {
   try {
-    return await fetchFromApi<DuePaymentItem[]>('/api/wallets/due-payments', ownerContext)
+    const ctx = await getOwnerContextFromPageSearchParams(searchParams)
+    if ('error' in ctx) return []
+    return await getDuePaymentsForCurrentFortnight(ctx.ownerFilter)
   } catch (error) {
     console.error('Error fetching due payments:', error)
     return []
   }
 }
 
-async function getPlannerDuePayments(
+async function loadPlannerDuePaymentsForMonthPage(
   year: number,
   month: number,
-  ownerContext?: OwnerContext,
+  searchParams: Record<string, string | string[] | undefined>,
 ): Promise<PlannerDuePaymentsResponse> {
   try {
-    const params = new URLSearchParams({
-      year: String(year),
-      month: String(month),
-    })
-    return await fetchFromApi<PlannerDuePaymentsResponse>(
-      `/api/wallets/due-payments?${params.toString()}`,
-      ownerContext,
-    )
+    const ctx = await getOwnerContextFromPageSearchParams(searchParams)
+    if ('error' in ctx) return { first: [], second: [] }
+    return await getDuePaymentsForPlannerMonth(ctx.ownerFilter, year, month)
   } catch (error) {
     console.error('Error fetching planner due payments:', error)
     return { first: [], second: [] }
@@ -204,6 +218,11 @@ export default async function MonthlyPage({
   const nextYear = month === 12 ? year + 1 : year
   const prevMonthStr = prevMonth.toString().padStart(2, '0')
   const nextMonthStr = nextMonth.toString().padStart(2, '0')
+
+  const ownerSearchParams: Record<string, string | string[] | undefined> = {
+    ownerType: resolvedSearchParams.ownerType,
+    ownerId: resolvedSearchParams.ownerId,
+  }
 
   const ownerQuery =
     ownerContext &&
@@ -244,9 +263,11 @@ export default async function MonthlyPage({
     getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND', ownerContext),
     getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST', ownerContext),
     getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND', ownerContext),
-    getWallets(ownerContext),
-    isCurrentMonth ? getDuePayments(ownerContext) : Promise.resolve([] as DuePaymentItem[]),
-    getPlannerDuePayments(year, month, ownerContext),
+    loadActiveWalletsForMonthlyPage(ownerSearchParams),
+    isCurrentMonth
+      ? loadDuePaymentsForCurrentFortnightPage(ownerSearchParams)
+      : Promise.resolve([] as DuePaymentItem[]),
+    loadPlannerDuePaymentsForMonthPage(year, month, ownerSearchParams),
   ])
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null

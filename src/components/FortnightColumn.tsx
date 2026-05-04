@@ -34,6 +34,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
+  type ClientApiError,
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
@@ -51,6 +52,7 @@ import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
+  ReportsSummaryFundingFields,
   TransactionRow,
 } from '@/types/catalog';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
@@ -87,7 +89,7 @@ type Summary = {
   cardCharges?: PlannerCardChargesSummary | null;
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
-};
+} & ReportsSummaryFundingFields;
 
 type FortnightColumnProps = {
   label: string;
@@ -571,10 +573,17 @@ export default function FortnightColumn({
 
       setAddExpenseDialogOpen(false);
     } catch (err) {
-      const message =
+      const base =
         err instanceof Error ? err.message : 'Error al crear el gasto';
+      const code =
+        err && typeof err === 'object' && 'code' in err
+          ? (err as ClientApiError).code
+          : undefined;
+      const message =
+        code === 'INSUFFICIENT_WALLET_BALANCE'
+          ? `${base} Puedes quitar «Pagado» para guardarlo como pendiente, elegir otra billetera con saldo o registrar fondos en Billeteras.`
+          : base;
       setAddExpenseError(message);
-      throw err;
     }
   };
 
@@ -709,6 +718,13 @@ export default function FortnightColumn({
               planningCardStatementDue={
                 summary.planningCardStatementDue ?? null
               }
+              fundingWalletBalanceTotal={
+                summary.fundingWalletBalanceTotal ?? 0
+              }
+              fundingNetVsPendingExpense={
+                summary.fundingNetVsPendingExpense ?? 0
+              }
+              fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
               onEditIncome={handleOpenOverrideDialog}
               onEditIncomeSource={handleOpenEditIncomeSource}
             />

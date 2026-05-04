@@ -8,6 +8,7 @@ import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
+  ReportsSummaryFundingFields,
   TransactionRow,
 } from '@/types/catalog';
 
@@ -27,7 +28,7 @@ type Summary = {
   cardCharges?: PlannerCardChargesSummary | null;
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
-};
+} & ReportsSummaryFundingFields;
 
 function groupTransactionsByDate(
   transactions: TransactionRow[],
@@ -100,6 +101,9 @@ async function getSummary(
       totalPaid: 0,
       totalUnpaid: 0,
       balance: 0,
+      fundingWalletBalanceTotal: 0,
+      fundingNetVsPendingExpense: 0,
+      fundingWalletBreakdown: [],
     };
   }
 }
@@ -203,6 +207,9 @@ export default async function FortnightPage({
             summary.planningOrphanCardPayments ?? null
           }
           planningCardStatementDue={summary.planningCardStatementDue ?? null}
+          fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
+          fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
+          fundingWalletBreakdown={summary.fundingWalletBreakdown}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}

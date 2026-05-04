@@ -17,10 +17,8 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { createWalletForOwner, updateWalletMetadataForOwner } from '@/lib/finance/wallet.service';
 import { createExpense } from '@/lib/finance/expense.service';
-import {
-  getFortnightPeriodForDay,
-  resolveOrCreateFortnight,
-} from '@/lib/fortnights';
+import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { resolveOrCreateFortnight } from '@/lib/fortnights';
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -91,14 +89,17 @@ export async function listCreditCardsByOwner(ownerFilter: OwnerFilter) {
   });
 
   const walletIds = wallets.map((w) => w.id);
-  const expenseSums = await prisma.expense.groupBy({
-    by: ['wallet_id'],
-    where: {
-      wallet_id: { in: walletIds },
-      is_paid: false,
-    },
-    _sum: { amount: true },
-  });
+  const expenseSums =
+    walletIds.length === 0
+      ? []
+      : await prisma.expense.groupBy({
+          by: ['wallet_id'],
+          where: {
+            wallet_id: { in: walletIds },
+            is_paid: false,
+          },
+          _sum: { amount: true },
+        });
 
   const spentMap = new Map(
     expenseSums.map((e) => [e.wallet_id, Number(e._sum.amount ?? 0)]),
@@ -381,7 +382,7 @@ export async function createCreditCardPayment(
       credit_card_wallet_name: payment.credit_card_wallet.name,
       expense_id: expenseId,
     };
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 }
 
 export async function listCreditCardPaymentsByOwner(

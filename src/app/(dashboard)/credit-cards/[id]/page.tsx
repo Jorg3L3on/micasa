@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import { CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import WalletForm from '@/components/WalletForm';
+import { WalletFormValues } from '@/schemas/wallet.schema';
 import {
   CreditCardCycleSummary,
   CreditCardDetailHeaderActions,
@@ -20,7 +22,6 @@ import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPay
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
@@ -34,12 +35,17 @@ import {
   getCreditCardStatement,
   listCreditCardStatementImports,
   rollbackCreditCardStatementImport,
+  updateCreditCard,
 } from '@/lib/api/credit-cards';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import {
+  type PaymentMethodType,
+  isCreditOrStoreCardWalletType,
+} from '@/domain/payment-method';
+import { formatDate } from '@/lib/utils';
 import type {
   CategoryOption,
   CreditCardListItem,
@@ -58,8 +64,6 @@ const shiftDateByDays = (dateStr: string, days: number): string => {
 
 const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
-
-type SortDir = 'asc' | 'desc';
 
 const CreditCardDetailSkeleton = () => (
   <div className="space-y-6">
@@ -119,6 +123,8 @@ export default function CreditCardDetailPage() {
   >([]);
   const [mpImportDialogOpen, setMpImportDialogOpen] = useState(false);
   const [rollbackImportId, setRollbackImportId] = useState<number | null>(null);
+  const [editCardDialogOpen, setEditCardDialogOpen] = useState(false);
+  const [editCardFormError, setEditCardFormError] = useState<string | null>(null);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -303,6 +309,28 @@ export default function CreditCardDetailPage() {
     }
   }, [context, creditCardId, loadData, rollbackImportId]);
 
+  const handleEditCard = useCallback(
+    async (data: WalletFormValues) => {
+      try {
+        setEditCardFormError(null);
+        await updateCreditCard(creditCardId, data, context);
+        toast.success('Tarjeta actualizada');
+        await loadData();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Error al actualizar la tarjeta';
+        setEditCardFormError(message);
+        throw err;
+      }
+    },
+    [context, creditCardId, loadData],
+  );
+
+  const handleOpenEditCardDialog = useCallback(() => {
+    setEditCardFormError(null);
+    setEditCardDialogOpen(true);
+  }, []);
+
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
     const today = new Date(getTodayDateString() + 'T12:00:00Z');
@@ -338,6 +366,7 @@ export default function CreditCardDetailPage() {
         onOpenImportDialog={() => setMpImportDialogOpen(true)}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}
+        onEditCard={handleOpenEditCardDialog}
       />
 
       {/* ── Hero: pago próximo ─────────────────────────────────────── */}
@@ -531,6 +560,32 @@ export default function CreditCardDetailPage() {
               ? `${formatDate(rollbackImportSummary.period_start.slice(0, 10))} – ${formatDate(rollbackImportSummary.period_end.slice(0, 10))}`
               : rollbackImportSummary.file_name ?? `Importación #${rollbackImportSummary.id}`
             : undefined
+        }
+      />
+
+      <WalletForm
+        open={editCardDialogOpen}
+        onOpenChange={(open) => {
+          setEditCardDialogOpen(open);
+          if (!open) setEditCardFormError(null);
+        }}
+        onSubmit={handleEditCard}
+        mode="edit"
+        showAmountField={!isCreditOrStoreCardWalletType(card.type)}
+        allowedTypes={['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}
+        defaultValues={{
+          name: card.name,
+          amount: card.amount ?? 0,
+          credit_limit: card.credit_limit ?? null,
+          type: card.type as PaymentMethodType,
+          provider_icon_key: card.provider_icon_key ?? null,
+          active: card.active,
+          cutoff_day: card.cutoff_day,
+          due_day: card.due_day,
+          assignee_user_id: card.assignee_user_id ?? null,
+        }}
+        error={
+          editCardFormError && editCardDialogOpen ? editCardFormError : null
         }
       />
     </div>

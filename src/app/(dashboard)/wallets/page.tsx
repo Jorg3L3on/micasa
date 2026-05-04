@@ -320,12 +320,26 @@ const availableSortValue = (w: WalletListItem): number | null => {
   return w.amount;
 };
 
+/** Efectivo y débito antes que tarjetas; dentro de cada grupo aplica el criterio elegido. */
+const compareFundingBeforeCredit = (
+  a: WalletListItem,
+  b: WalletListItem,
+): number | null => {
+  const ca = isCreditType(a.type);
+  const cb = isCreditType(b.type);
+  if (ca === cb) return null;
+  return ca ? 1 : -1;
+};
+
 const compareWallets = (
   a: WalletListItem,
   b: WalletListItem,
   sortKey: SortKey,
   sortDir: 'asc' | 'desc',
 ): number => {
+  const group = compareFundingBeforeCredit(a, b);
+  if (group !== null) return group;
+
   const dir = sortDir === 'asc' ? 1 : -1;
   if (sortKey === 'name') {
     return dir * a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });

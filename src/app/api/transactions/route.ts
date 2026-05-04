@@ -344,6 +344,7 @@ export async function POST(request: NextRequest) {
         {
           error:
             error instanceof Error ? error.message : 'Invalid transaction',
+          code: (error as { code: string }).code,
         },
         { status: 400 },
       );
@@ -519,6 +520,7 @@ export async function PUT(request: NextRequest) {
         {
           error:
             error instanceof Error ? error.message : 'Invalid transaction',
+          code: (error as { code: string }).code,
         },
         { status: 400 },
       );
