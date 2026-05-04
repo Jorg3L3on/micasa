@@ -139,6 +139,7 @@ model User {
   tasks_assigned                TaskItem[]                   @relation("TaskItemAssignee")
   habits_owned                  Habit[]                      @relation("HabitUserOwner")
   habits_assigned               Habit[]                      @relation("HabitAssignee")
+  wallets_assigned              Wallet[]                     @relation("WalletAssignee")
   habit_logs_completed          HabitLog[]                   @relation("HabitLogCompletedBy")
   routines_owned                Routine[]                    @relation("RoutineUserOwner")
   routines_assigned             Routine[]                    @relation("RoutineAssignee")
@@ -384,11 +385,15 @@ model Wallet {
   user_id  Int?
   house_id Int?
 
+  /// En contexto casa: miembro al que se atribuye la billetera (opcional; null = compartida).
+  assignee_user_id Int?
+
   created_at DateTime @default(now())
 
   // Relationships
-  user  User?  @relation(fields: [user_id], references: [id])
-  house House? @relation(fields: [house_id], references: [id])
+  user     User?  @relation(fields: [user_id], references: [id])
+  house    House? @relation(fields: [house_id], references: [id])
+  assignee User?  @relation("WalletAssignee", fields: [assignee_user_id], references: [id])
 
   expenses                      Expense[]
   expense_templates             ExpenseTemplate[]
@@ -402,6 +407,7 @@ model Wallet {
   @@index([house_id])
   @@index([user_id, type, active])
   @@index([house_id, type, active])
+  @@index([house_id, assignee_user_id])
 }
 
 model Budget {

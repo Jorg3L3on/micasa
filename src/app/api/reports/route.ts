@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -47,6 +48,38 @@ async function buildWhereClause(
   return where;
 }
 
+/** Same rolling calendar window as `dashboard/monthly-summary` (oldest month first in implied iteration). */
+async function fortnightIdsForRollingCalendarMonths(
+  ownerFilter: OwnerFilter,
+  windowMonths: number,
+): Promise<number[]> {
+  if (windowMonths < 1 || windowMonths > 120) {
+    return [];
+  }
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const months: { year: number; month: number }[] = [];
+  for (let i = windowMonths - 1; i >= 0; i--) {
+    let m = currentMonth - i;
+    let y = currentYear;
+    while (m <= 0) {
+      m += 12;
+      y -= 1;
+    }
+    months.push({ year: y, month: m });
+  }
+  const yearMonthConditions = months.map(({ year, month }) => ({ year, month }));
+  const fortnights = await prisma.fortnight.findMany({
+    where: {
+      ...ownerFilter,
+      OR: yearMonthConditions,
+    },
+    select: { id: true },
+  });
+  return fortnights.map((f) => f.id);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
@@ -58,6 +91,7 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const period = searchParams.get('period');
+    const windowMonthsRaw = searchParams.get('windowMonths');
     const excludeCreditInstallment =
       searchParams.get('exclude_credit_installment') === 'true' ||
       searchParams.get('exclude_credit_msi') === 'true';
@@ -376,10 +410,31 @@ export async function GET(request: NextRequest) {
     }
 
     if (reportType === 'by-category') {
-      const where = await buildWhereClause(ownerFilter, month, year, period);
+      let where: Prisma.ExpenseWhereInput;
+      if (month || year || period) {
+        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+      } else if (windowMonthsRaw != null && windowMonthsRaw !== '') {
+        const n = parseInt(windowMonthsRaw, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 120) {
+          return NextResponse.json(
+            { error: 'windowMonths must be between 1 and 120' },
+            { status: 400 },
+          );
+        }
+        const fortnightIds = await fortnightIdsForRollingCalendarMonths(
+          ownerFilter,
+          n,
+        );
+        where = {
+          ...ownerFilter,
+          fortnight_id: { in: fortnightIds.length > 0 ? fortnightIds : [] },
+        };
+      } else {
+        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+      }
 
       const expenses = await prisma.expense.findMany({
-        where: where as any,
+        where,
         include: {
           category: {
             select: {
@@ -412,10 +467,31 @@ export async function GET(request: NextRequest) {
     }
 
     if (reportType === 'by-payment-method') {
-      const where = await buildWhereClause(ownerFilter, month, year, period);
+      let where: Prisma.ExpenseWhereInput;
+      if (month || year || period) {
+        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+      } else if (windowMonthsRaw != null && windowMonthsRaw !== '') {
+        const n = parseInt(windowMonthsRaw, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 120) {
+          return NextResponse.json(
+            { error: 'windowMonths must be between 1 and 120' },
+            { status: 400 },
+          );
+        }
+        const fortnightIds = await fortnightIdsForRollingCalendarMonths(
+          ownerFilter,
+          n,
+        );
+        where = {
+          ...ownerFilter,
+          fortnight_id: { in: fortnightIds.length > 0 ? fortnightIds : [] },
+        };
+      } else {
+        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+      }
 
       const expenses = await prisma.expense.findMany({
-        where: where as any,
+        where,
         include: {
           wallet: {
             select: {
@@ -446,7 +522,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method',
+          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method. For by-category / by-payment-method, optional ?windowMonths=1-120 (rolling calendar months) when month/year/period are omitted.',
       },
       { status: 400 },
     );

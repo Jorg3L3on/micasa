@@ -71,6 +71,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
+import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
 import { cn } from '@/lib/utils';
 
@@ -97,6 +98,12 @@ type CreditLineFilterValue =
   | 'negative_available';
 
 type SortKey = 'name' | 'amount' | 'available';
+
+const ASSIGNEE_FILTER_ALL = 'all' as const;
+type AssigneeFilterValue =
+  | typeof ASSIGNEE_FILTER_ALL
+  | 'unassigned'
+  | number;
 
 const STATUS_FILTER_CHIPS: { value: StatusFilterValue; label: string }[] = [
   { value: STATUS_FILTER_ALL, label: 'Todos' },
@@ -147,6 +154,7 @@ type StoredWalletListFilters = Partial<{
   sortKey: SortKey;
   sortDir: 'asc' | 'desc';
   kindFilter: KindFilterValue;
+  assigneeFilter: AssigneeFilterValue;
 }>;
 
 const parseStoredFilters = (): StoredWalletListFilters | null => {
@@ -187,6 +195,15 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
     }
     if (o.kindFilter === 'all' || o.kindFilter === 'funding' || o.kindFilter === 'credit') {
       out.kindFilter = o.kindFilter;
+    }
+    if (
+      o.assigneeFilter === ASSIGNEE_FILTER_ALL ||
+      o.assigneeFilter === 'unassigned' ||
+      (typeof o.assigneeFilter === 'number' &&
+        Number.isInteger(o.assigneeFilter) &&
+        o.assigneeFilter > 0)
+    ) {
+      out.assigneeFilter = o.assigneeFilter as AssigneeFilterValue;
     }
     return out;
   } catch {
@@ -285,6 +302,16 @@ const walletMatchesCreditLineFilter = (
   return true;
 };
 
+const walletMatchesAssigneeFilter = (
+  w: WalletListItem,
+  assigneeFilter: AssigneeFilterValue,
+  isHouseContext: boolean,
+): boolean => {
+  if (!isHouseContext || assigneeFilter === ASSIGNEE_FILTER_ALL) return true;
+  if (assigneeFilter === 'unassigned') return w.assignee_user_id == null;
+  return w.assignee_user_id === assigneeFilter;
+};
+
 const availableSortValue = (w: WalletListItem): number | null => {
   if (isCreditType(w.type)) {
     if (w.credit_limit == null) return null;
@@ -325,6 +352,7 @@ export default function WalletsPage() {
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(
     null,
   );
+  const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -337,8 +365,15 @@ export default function WalletsPage() {
   const [creditLineFilter, setCreditLineFilter] =
     useState<CreditLineFilterValue>('all');
   const [kindFilter, setKindFilter] = useState<KindFilterValue>('all');
+  const [assigneeFilter, setAssigneeFilter] =
+    useState<AssigneeFilterValue>(ASSIGNEE_FILTER_ALL);
+  const [houseMembers, setHouseMembers] = useState<
+    { id: number; name: string }[]
+  >([]);
   const [filtersReady, setFiltersReady] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const isHouseContext = context?.type === 'house';
 
   const displayWallets = useMemo(() => {
     const q = searchQuery;
@@ -349,6 +384,9 @@ export default function WalletsPage() {
       if (!walletMatchesStatusFilter(w, statusFilter)) return false;
       if (!walletMatchesBalanceFilter(w, balanceFilter)) return false;
       if (!walletMatchesCreditLineFilter(w, creditLineFilter)) return false;
+      if (!walletMatchesAssigneeFilter(w, assigneeFilter, isHouseContext)) {
+        return false;
+      }
       return true;
     });
     return [...filtered].sort((a, b) =>
@@ -362,6 +400,8 @@ export default function WalletsPage() {
     statusFilter,
     balanceFilter,
     creditLineFilter,
+    assigneeFilter,
+    isHouseContext,
     sortKey,
     sortDir,
   ]);
@@ -374,7 +414,8 @@ export default function WalletsPage() {
       walletMatchesKindFilter(w, kindFilter) &&
       walletMatchesTypeFilter(w, typeFilter) &&
       walletMatchesBalanceFilter(w, balanceFilter) &&
-      walletMatchesCreditLineFilter(w, creditLineFilter);
+      walletMatchesCreditLineFilter(w, creditLineFilter) &&
+      walletMatchesAssigneeFilter(w, assigneeFilter, isHouseContext);
 
     const pool = wallets.filter(matchExceptStatus);
     return {
@@ -389,6 +430,8 @@ export default function WalletsPage() {
     typeFilter,
     balanceFilter,
     creditLineFilter,
+    assigneeFilter,
+    isHouseContext,
   ]);
 
   const typeChipCounts = useMemo(() => {
@@ -398,7 +441,8 @@ export default function WalletsPage() {
       walletMatchesKindFilter(w, kindFilter) &&
       walletMatchesStatusFilter(w, statusFilter) &&
       walletMatchesBalanceFilter(w, balanceFilter) &&
-      walletMatchesCreditLineFilter(w, creditLineFilter);
+      walletMatchesCreditLineFilter(w, creditLineFilter) &&
+      walletMatchesAssigneeFilter(w, assigneeFilter, isHouseContext);
 
     const pool = wallets.filter(matchExceptType);
     const byType = (t: string) => pool.filter((w) => w.type === t).length;
@@ -416,6 +460,8 @@ export default function WalletsPage() {
     statusFilter,
     balanceFilter,
     creditLineFilter,
+    assigneeFilter,
+    isHouseContext,
   ]);
 
   const balanceChipCounts = useMemo(() => {
@@ -425,7 +471,8 @@ export default function WalletsPage() {
       walletMatchesKindFilter(w, kindFilter) &&
       walletMatchesTypeFilter(w, typeFilter) &&
       walletMatchesStatusFilter(w, statusFilter) &&
-      walletMatchesCreditLineFilter(w, creditLineFilter);
+      walletMatchesCreditLineFilter(w, creditLineFilter) &&
+      walletMatchesAssigneeFilter(w, assigneeFilter, isHouseContext);
 
     const pool = wallets.filter(matchExceptBalance);
     const nonzero = pool.filter((w) => Number(w.amount) > 0).length;
@@ -442,6 +489,8 @@ export default function WalletsPage() {
     typeFilter,
     statusFilter,
     creditLineFilter,
+    assigneeFilter,
+    isHouseContext,
   ]);
 
   const kindChipCounts = useMemo(() => {
@@ -451,7 +500,8 @@ export default function WalletsPage() {
       walletMatchesTypeFilter(w, typeFilter) &&
       walletMatchesStatusFilter(w, statusFilter) &&
       walletMatchesBalanceFilter(w, balanceFilter) &&
-      walletMatchesCreditLineFilter(w, creditLineFilter);
+      walletMatchesCreditLineFilter(w, creditLineFilter) &&
+      walletMatchesAssigneeFilter(w, assigneeFilter, isHouseContext);
 
     const pool = wallets.filter(matchExceptKind);
     return {
@@ -468,6 +518,39 @@ export default function WalletsPage() {
     statusFilter,
     balanceFilter,
     creditLineFilter,
+    assigneeFilter,
+    isHouseContext,
+  ]);
+
+  const assigneeChipCounts = useMemo(() => {
+    const q = searchQuery;
+    const matchExceptAssignee = (w: WalletListItem) =>
+      walletMatchesSearch(w, q) &&
+      walletMatchesKindFilter(w, kindFilter) &&
+      walletMatchesTypeFilter(w, typeFilter) &&
+      walletMatchesStatusFilter(w, statusFilter) &&
+      walletMatchesBalanceFilter(w, balanceFilter) &&
+      walletMatchesCreditLineFilter(w, creditLineFilter);
+
+    const pool = wallets.filter(matchExceptAssignee);
+    const byMember: Record<number, number> = {};
+    for (const m of houseMembers) {
+      byMember[m.id] = pool.filter((w) => w.assignee_user_id === m.id).length;
+    }
+    return {
+      all: pool.length,
+      unassigned: pool.filter((w) => w.assignee_user_id == null).length,
+      byMember,
+    };
+  }, [
+    wallets,
+    houseMembers,
+    searchQuery,
+    kindFilter,
+    typeFilter,
+    statusFilter,
+    balanceFilter,
+    creditLineFilter,
   ]);
 
   const hasActiveFilters =
@@ -476,7 +559,8 @@ export default function WalletsPage() {
     typeFilter !== TYPE_FILTER_ALL ||
     statusFilter !== STATUS_FILTER_ALL ||
     balanceFilter !== BALANCE_FILTER_ALL ||
-    creditLineFilter !== 'all';
+    creditLineFilter !== 'all' ||
+    (isHouseContext && assigneeFilter !== ASSIGNEE_FILTER_ALL);
 
   const listIsFiltered =
     hasActiveFilters || displayWallets.length !== wallets.length;
@@ -489,6 +573,7 @@ export default function WalletsPage() {
     if (statusFilter !== STATUS_FILTER_ALL) n += 1;
     if (balanceFilter !== BALANCE_FILTER_ALL) n += 1;
     if (creditLineFilter !== 'all') n += 1;
+    if (isHouseContext && assigneeFilter !== ASSIGNEE_FILTER_ALL) n += 1;
     return n;
   }, [
     searchQuery,
@@ -497,6 +582,8 @@ export default function WalletsPage() {
     statusFilter,
     balanceFilter,
     creditLineFilter,
+    isHouseContext,
+    assigneeFilter,
   ]);
 
   const presetTarjetasConDeudaActive =
@@ -533,6 +620,7 @@ export default function WalletsPage() {
     setStatusFilter(STATUS_FILTER_ALL);
     setBalanceFilter(BALANCE_FILTER_ALL);
     setCreditLineFilter('all');
+    setAssigneeFilter(ASSIGNEE_FILTER_ALL);
   }, []);
 
   const handleTypeFilterChange = useCallback((v: string) => {
@@ -583,6 +671,7 @@ export default function WalletsPage() {
       if (s.sortKey != null) setSortKey(s.sortKey);
       if (s.sortDir != null) setSortDir(s.sortDir);
       if (s.kindFilter != null) setKindFilter(s.kindFilter);
+      if (s.assigneeFilter != null) setAssigneeFilter(s.assigneeFilter);
     }
     setFiltersReady(true);
   }, []);
@@ -598,6 +687,7 @@ export default function WalletsPage() {
         sortKey,
         sortDir,
         kindFilter,
+        assigneeFilter,
       };
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(payload));
     } catch {
@@ -612,7 +702,40 @@ export default function WalletsPage() {
     sortKey,
     sortDir,
     kindFilter,
+    assigneeFilter,
   ]);
+
+  useEffect(() => {
+    if (!isHouseContext) {
+      setAssigneeFilter(ASSIGNEE_FILTER_ALL);
+    }
+  }, [isHouseContext]);
+
+  useEffect(() => {
+    if (context?.type !== 'house') {
+      setHouseMembers([]);
+      return;
+    }
+    let cancelled = false;
+    void clientFetchFromApi<{ users: { id: number; name: string }[] }>(
+      '/api/house-users',
+      undefined,
+      context,
+    )
+      .then((data) => {
+        if (!cancelled) {
+          setHouseMembers(
+            data.users.map((u) => ({ id: u.id, name: u.name })),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setHouseMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [context]);
 
   const fetchWallets = useCallback(async () => {
     try {
@@ -649,6 +772,7 @@ export default function WalletsPage() {
         active: data.active || true,
         cutoff_day: data.cutoff_day || null,
         due_day: data.due_day || null,
+        assignee_user_id: data.assignee_user_id ?? null,
       };
 
       if (isCreditType(data.type)) {
@@ -1042,6 +1166,78 @@ export default function WalletsPage() {
                   </ScrollFadeChipRow>
                 </div>
 
+                {isHouseContext ? (
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Asignado a
+                    </p>
+                    <ScrollFadeChipRow ariaLabel="Filtrar por asignación">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={assigneeFilter === ASSIGNEE_FILTER_ALL}
+                        onClick={() => setAssigneeFilter(ASSIGNEE_FILTER_ALL)}
+                        className={cn(
+                          'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                          assigneeFilter === ASSIGNEE_FILTER_ALL
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        Todas{' '}
+                        <span className="tabular-nums opacity-80">
+                          ({assigneeChipCounts.all})
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={assigneeFilter === 'unassigned'}
+                        onClick={() => setAssigneeFilter('unassigned')}
+                        className={cn(
+                          'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                          assigneeFilter === 'unassigned'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        Sin asignar{' '}
+                        <span className="tabular-nums opacity-80">
+                          ({assigneeChipCounts.unassigned})
+                        </span>
+                      </button>
+                      {houseMembers.map((m) => {
+                        const selected = assigneeFilter === m.id;
+                        const count = assigneeChipCounts.byMember[m.id] ?? 0;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={selected}
+                            onClick={() => setAssigneeFilter(m.id)}
+                            className={cn(
+                              'h-8 max-w-[200px] shrink-0 truncate rounded-full border px-3 text-xs font-medium transition-colors',
+                              selected
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {m.name}{' '}
+                            <span className="tabular-nums opacity-80">
+                              ({count})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </ScrollFadeChipRow>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Solo en contexto casa: billeteras compartidas o asignadas a
+                      un miembro.
+                    </p>
+                  </div>
+                ) : null}
+
                 <div>
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Tipo
@@ -1217,6 +1413,7 @@ export default function WalletsPage() {
                         ownerQueryString={ownerQueryString}
                         onEdit={openEditDialog}
                         onDelete={openDeleteDialog}
+                        onOpenBalance={setBalanceWallet}
                       />
                     </li>
                   ))}
@@ -1248,6 +1445,22 @@ export default function WalletsPage() {
         error={formError && createDialogOpen ? formError : null}
       />
 
+      <WalletBalanceEditDialog
+        wallet={balanceWallet}
+        ownerQueryString={ownerQueryString}
+        onOpenChange={(open) => {
+          if (!open) setBalanceWallet(null);
+        }}
+        onSaved={(walletId, newAmount) => {
+          setWallets((prev) =>
+            prev.map((w) => (w.id === walletId ? { ...w, amount: newAmount } : w)),
+          );
+          setBalanceWallet((prev) =>
+            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
+          );
+        }}
+      />
+
       {selectedWallet && (
         <>
           <WalletForm
@@ -1271,6 +1484,7 @@ export default function WalletsPage() {
               active: selectedWallet.active,
               cutoff_day: selectedWallet.cutoff_day,
               due_day: selectedWallet.due_day,
+              assignee_user_id: selectedWallet.assignee_user_id ?? null,
             }}
             error={formError && editDialogOpen ? formError : null}
           />

@@ -682,7 +682,7 @@ export default function FortnightColumn({
 
   return (
     <>
-      <div className="flex flex-col space-y-4 sm:space-y-5">
+      <div className="flex flex-col space-y-3 sm:space-y-4">
         {/* Summary card (toggle desde la barra de planificación) */}
         {showSummaryCard ? (
           <div className="sticky top-16 z-10 -mx-0.5 px-0.5 pb-0.5 backdrop-blur-sm sm:pb-1">
@@ -877,7 +877,7 @@ export default function FortnightColumn({
           </div>
 
           <TabsContent value="expenses" className="mt-0 outline-none">
-            <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
+            <div className="flex h-[min(52vh,28rem)] min-h-[11rem] flex-col overflow-hidden sm:h-[min(58vh,36rem)] lg:h-[min(72vh,56rem)]">
               {sortedTransactions.length === 0 ? (
                 <EmptyState
                   message="Sin gastos en esta quincena"
@@ -899,6 +899,7 @@ export default function FortnightColumn({
                   period={period}
                   density={tableDensity}
                   wallets={wallets}
+                  pinTotalsToBottom
                 />
               )}
             </div>

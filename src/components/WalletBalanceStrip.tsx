@@ -1,30 +1,19 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { toast } from 'sonner';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
+import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, CreditCard, Landmark, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
@@ -32,13 +21,17 @@ const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
   paidWalletIds?: number[];
+  /** Past/future monthly views must not use “today” due reminders */
+  isCurrentMonth?: boolean;
 };
 
-const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripProps) => {
+const WalletBalanceStrip = ({
+  wallets,
+  paidWalletIds = [],
+  isCurrentMonth = true,
+}: WalletBalanceStripProps) => {
   const { context } = useFinanceContext();
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
-  const [balanceInput, setBalanceInput] = useState('');
-  const [savingBalance, setSavingBalance] = useState(false);
   const [balanceOverrides, setBalanceOverrides] = useState<Record<number, number>>({});
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -79,49 +72,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
   const handleOpenWalletModal = useCallback((wallet: WalletListItem) => {
     const effectiveAmount = balanceOverrides[wallet.id] ?? wallet.amount;
     setSelectedWallet({ ...wallet, amount: effectiveAmount });
-    setBalanceInput(String(effectiveAmount));
   }, [balanceOverrides]);
-
-  const handleCloseWalletModal = useCallback((open: boolean) => {
-    if (open) return;
-    setSelectedWallet(null);
-    setBalanceInput('');
-  }, []);
-
-  const handleSaveBalance = useCallback(async () => {
-    if (!selectedWallet) return;
-    if (!context) {
-      toast.error('No hay contexto activo para guardar');
-      return;
-    }
-
-    const parsed = Number(balanceInput.replace(/[,\s]/g, ''));
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      toast.error('Ingresa un saldo válido (no negativo)');
-      return;
-    }
-
-    try {
-      setSavingBalance(true);
-      await clientFetchFromApi(
-        `/api/wallets?id=${selectedWallet.id}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({ amount: parsed }),
-        },
-        context,
-      );
-      setBalanceOverrides((prev) => ({ ...prev, [selectedWallet.id]: parsed }));
-      setSelectedWallet((prev) => (prev ? { ...prev, amount: parsed } : prev));
-      toast.success('Saldo actualizado');
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo actualizar el saldo',
-      );
-    } finally {
-      setSavingBalance(false);
-    }
-  }, [balanceInput, context, selectedWallet]);
 
   const sortedWallets = [...wallets].sort((a, b) => {
     const getTypeRank = (type: string) => {
@@ -235,6 +186,11 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                   return wallet.due_day! < currentDay;
                 })();
 
+                const showDueReminder =
+                  isCurrentMonth &&
+                  (isDueNear || isDuePast) &&
+                  !walletAlreadyPaid;
+
                 const WalletIcon =
                   wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD'
                     ? CreditCard
@@ -286,7 +242,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                           iconClassName="h-3.5 w-3.5"
                           showTooltipLabel={false}
                         />
-                        {(isDueNear || isDuePast) && !walletAlreadyPaid && (
+                        {showDueReminder && (
                           <span
                             className={cn(
                               'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
@@ -325,7 +281,7 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                           )}
                           aria-hidden
                         />
-                        {(isDueNear || isDuePast) && !walletAlreadyPaid && (
+                        {showDueReminder && (
                           <span
                             className={cn(
                               'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
@@ -390,17 +346,21 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
                                   ? useProviderGradient
                                     ? 'bg-emerald-500/25 text-emerald-50'
                                     : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                                  : isDuePast
-                                  ? useProviderGradient
-                                    ? 'text-red-100'
-                                    : 'text-destructive'
-                                  : isDueNear
+                                  : !isCurrentMonth
                                     ? useProviderGradient
-                                      ? 'text-amber-100'
-                                      : 'text-amber-600 dark:text-amber-400'
-                                    : useProviderGradient
                                       ? 'text-white/75'
-                                      : 'text-muted-foreground/70',
+                                      : 'text-muted-foreground/70'
+                                    : isDuePast
+                                      ? useProviderGradient
+                                        ? 'text-red-100'
+                                        : 'text-destructive'
+                                      : isDueNear
+                                        ? useProviderGradient
+                                          ? 'text-amber-100'
+                                          : 'text-amber-600 dark:text-amber-400'
+                                        : useProviderGradient
+                                          ? 'text-white/75'
+                                          : 'text-muted-foreground/70',
                               )}
                             >
                               {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
@@ -516,109 +476,19 @@ const WalletBalanceStrip = ({ wallets, paidWalletIds = [] }: WalletBalanceStripP
         </div>
       )}
 
-      <Dialog open={Boolean(selectedWallet)} onOpenChange={handleCloseWalletModal}>
-        <DialogContent className="sm:max-w-md">
-          {selectedWallet ? (
-            <>
-              <DialogHeader>
-                <div className="flex items-start gap-3">
-                  <WalletProviderIcon
-                    providerIconKey={selectedWallet.provider_icon_key}
-                    className="h-9 w-9 shrink-0 rounded-lg border border-border/60 shadow-sm"
-                    iconClassName="h-5 w-5"
-                    showTooltipLabel={false}
-                  />
-                  <div className="min-w-0 space-y-1">
-                    <DialogTitle className="truncate text-left text-base">
-                      {selectedWallet.name}
-                    </DialogTitle>
-                    <DialogDescription className="text-left text-xs">
-                      Ajusta el saldo actual y revisa la información principal de la billetera.
-                    </DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Saldo actual
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {formatCurrency(selectedWallet.amount)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Tipo
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {selectedWallet.type === 'CASH'
-                        ? 'Efectivo'
-                        : selectedWallet.type === 'DEBIT_CARD'
-                          ? 'Débito'
-                          : selectedWallet.type === 'DEPARTMENT_STORE_CARD'
-                            ? 'Departamental'
-                            : 'Crédito'}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Límite
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {selectedWallet.credit_limit != null
-                        ? formatCurrency(selectedWallet.credit_limit)
-                        : '—'}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Fecha pago
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {selectedWallet.due_day != null ? `Día ${selectedWallet.due_day}` : '—'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="plan-wallet-balance-input" className="text-xs">
-                    Saldo actual
-                  </Label>
-                  <Input
-                    id="plan-wallet-balance-input"
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.01"
-                    value={balanceInput}
-                    onChange={(event) => setBalanceInput(event.target.value)}
-                    disabled={savingBalance}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter className="gap-2 sm:justify-between">
-                <Button variant="outline" asChild>
-                  <Link href={`/wallets/${selectedWallet.id}${ownerQueryString}`}>
-                    Ir a página de billetera
-                  </Link>
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSaveBalance}
-                  disabled={savingBalance}
-                  className="rounded-xl"
-                >
-                  {savingBalance ? 'Guardando…' : 'Guardar saldo'}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <WalletBalanceEditDialog
+        wallet={selectedWallet}
+        ownerQueryString={ownerQueryString}
+        onOpenChange={(open) => {
+          if (!open) setSelectedWallet(null);
+        }}
+        onSaved={(walletId, newAmount) => {
+          setBalanceOverrides((prev) => ({ ...prev, [walletId]: newAmount }));
+          setSelectedWallet((prev) =>
+            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
+          );
+        }}
+      />
     </div>
   );
 };

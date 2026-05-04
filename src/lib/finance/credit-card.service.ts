@@ -33,17 +33,26 @@ const creditCardWalletWhere = {
   },
 };
 
-const mapWalletToCreditCardDto = (wallet: {
-  id: number;
-  name: string;
-  provider_icon_key: string | null;
-  amount: unknown;
-  credit_limit: unknown;
-  type: string;
-  active: boolean;
-  cutoff_day: number | null;
-  due_day: number | null;
-}) => {
+const CREDIT_CARD_ASSIGNEE_INCLUDE = {
+  assignee: { select: { id: true, name: true } },
+} as const;
+
+const mapWalletToCreditCardDto = (
+  wallet: {
+    id: number;
+    name: string;
+    provider_icon_key: string | null;
+    amount: unknown;
+    credit_limit: unknown;
+    type: string;
+    active: boolean;
+    cutoff_day: number | null;
+    due_day: number | null;
+    assignee_user_id: number | null;
+    assignee: { id: number; name: string } | null;
+  },
+  spent: number,
+) => {
   const currentBalance = Number(wallet.amount);
   const creditLimit =
     wallet.credit_limit == null ? null : Number(wallet.credit_limit);
@@ -62,6 +71,12 @@ const mapWalletToCreditCardDto = (wallet: {
     active: wallet.active,
     cutoff_day: wallet.cutoff_day,
     due_day: wallet.due_day,
+    spent_amount: spent,
+    remaining_amount: currentBalance - spent,
+    assignee_user_id: wallet.assignee_user_id ?? null,
+    assignee: wallet.assignee
+      ? { id: wallet.assignee.id, name: wallet.assignee.name }
+      : null,
   };
 };
 
@@ -71,10 +86,27 @@ export async function listCreditCardsByOwner(ownerFilter: OwnerFilter) {
       ...ownerFilter,
       ...creditCardWalletWhere,
     },
+    include: CREDIT_CARD_ASSIGNEE_INCLUDE,
     orderBy: [{ active: 'desc' }, { name: 'asc' }],
   });
 
-  return wallets.map(mapWalletToCreditCardDto);
+  const walletIds = wallets.map((w) => w.id);
+  const expenseSums = await prisma.expense.groupBy({
+    by: ['wallet_id'],
+    where: {
+      wallet_id: { in: walletIds },
+      is_paid: false,
+    },
+    _sum: { amount: true },
+  });
+
+  const spentMap = new Map(
+    expenseSums.map((e) => [e.wallet_id, Number(e._sum.amount ?? 0)]),
+  );
+
+  return wallets.map((w) =>
+    mapWalletToCreditCardDto(w, spentMap.get(w.id) ?? 0),
+  );
 }
 
 export async function getCreditCardByOwner(
@@ -87,6 +119,7 @@ export async function getCreditCardByOwner(
       ...ownerFilter,
       ...creditCardWalletWhere,
     },
+    include: CREDIT_CARD_ASSIGNEE_INCLUDE,
   });
 
   if (!wallet) {
@@ -95,7 +128,16 @@ export async function getCreditCardByOwner(
     throw error;
   }
 
-  return mapWalletToCreditCardDto(wallet);
+  const spentAgg = await prisma.expense.aggregate({
+    where: {
+      wallet_id: id,
+      is_paid: false,
+    },
+    _sum: { amount: true },
+  });
+  const spent = Number(spentAgg._sum.amount ?? 0);
+
+  return mapWalletToCreditCardDto(wallet, spent);
 }
 
 export async function createCreditCardForOwner(
@@ -104,7 +146,7 @@ export async function createCreditCardForOwner(
   data: CreateCreditCardInput,
 ) {
   const wallet = await createWalletForOwner(ownerType, ownerId, data);
-  return mapWalletToCreditCardDto(wallet);
+  return mapWalletToCreditCardDto(wallet, 0);
 }
 
 export async function updateCreditCardForOwner(
@@ -120,7 +162,16 @@ export async function updateCreditCardForOwner(
     throw error;
   }
 
-  return mapWalletToCreditCardDto(wallet);
+  const spentAgg = await prisma.expense.aggregate({
+    where: {
+      wallet_id: id,
+      is_paid: false,
+    },
+    _sum: { amount: true },
+  });
+  const spent = Number(spentAgg._sum.amount ?? 0);
+
+  return mapWalletToCreditCardDto(wallet, spent);
 }
 
 export async function createCreditCardPurchase(

@@ -18,6 +18,7 @@ import TodayHabitRow from '@/components/tasks/TodayHabitRow';
 import { habitDoneToday } from '@/components/tasks/habit-ui-utils';
 import {
   compareTasksByUrgency,
+  getStartOfDay,
   getTaskTemporalBucket,
   getTaskUrgencyLabel,
 } from '@/components/tasks/task-time-groups';
@@ -235,6 +236,7 @@ export default function TasksTodayView() {
         {
           list_id: firstList.id,
           title,
+          due_at: getStartOfDay(new Date()).toISOString(),
           ...(context.type === 'house' ? { assignee_user_id: quickAssignee as number } : {}),
         },
         context,

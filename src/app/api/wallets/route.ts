@@ -11,6 +11,7 @@ import {
   updateWalletMetadataForOwner,
   deleteWalletIfUnusedForOwner,
 } from '@/lib/finance/wallet.service';
+import { AssigneeInvalidError } from '@/lib/server/house-members';
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
         { error: 'Validation error', details: error.issues },
         { status: 400 },
       );
+    }
+
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     if (
@@ -96,6 +101,10 @@ export async function PUT(request: NextRequest) {
         { error: 'Validation error', details: error.issues },
         { status: 400 },
       );
+    }
+
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     if (
@@ -209,6 +218,17 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(wallet, { status: 200 });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
+
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Wallet not found' },

@@ -104,6 +104,8 @@ type ExpenseTableProps = {
   period?: 'FIRST' | 'SECOND';
   density?: ExpenseTableDensity;
   wallets?: WalletListItem[];
+  /** When true (planificación por quincena), totals stay fixed under the list scroll area */
+  pinTotalsToBottom?: boolean;
 };
 
 export default function ExpenseTable({
@@ -117,6 +119,7 @@ export default function ExpenseTable({
   period,
   density = 'comfortable',
   wallets = [],
+  pinTotalsToBottom = false,
 }: ExpenseTableProps) {
   const isCompact = density === 'compact';
   const { context } = useFinanceContext();
@@ -730,14 +733,112 @@ export default function ExpenseTable({
 
   const sortedRows = table.getRowModel().rows;
 
+  const mobileTotalsPinned =
+    pinTotalsToBottom && sortedRows.length > 0 ? (
+      <div
+        className="shrink-0 border-t border-border/50 bg-background/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:shadow-[0_-8px_28px_-14px_rgba(0,0,0,0.65)]"
+        role="region"
+        aria-label="Totales de efectivo y débito"
+      >
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-border/30 bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 px-3 py-2 shadow-sm dark:from-muted/40 dark:via-muted/20 dark:to-muted/5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+            Total efectivo/débito
+          </span>
+          <span className="font-mono text-base font-black tabular-nums text-foreground">
+            {formatCurrency(total)}
+          </span>
+        </div>
+        {cardGrandTotal > 0 ? (
+          <div className="mt-1.5 flex items-center justify-between gap-2 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 via-violet-500/3 to-transparent px-3 py-2 dark:from-violet-500/14 dark:via-violet-500/5">
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/80">
+                Cargos a tarjeta
+              </span>
+              <span className="text-[10px] text-muted-foreground/60">
+                No suman hasta pagar el estado de cuenta
+              </span>
+            </div>
+            <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
+              {formatCurrency(cardGrandTotal)}
+            </span>
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
+  const desktopTotalsPinned =
+    pinTotalsToBottom && sortedRows.length > 0 ? (
+      <div
+        className="shrink-0 border-t border-border/50 bg-background/95 px-0 pt-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 sm:rounded-b-xl"
+        role="region"
+        aria-label="Totales de efectivo y débito"
+      >
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-gradient-to-r from-muted/50 to-muted/30 px-3 py-2 dark:from-muted/30 dark:to-muted/10">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+            Total efectivo/débito
+          </span>
+          <span
+            className={cn(
+              'font-black font-mono tabular-nums',
+              isCompact ? 'text-sm' : 'text-base',
+            )}
+          >
+            {formatCurrency(total)}
+          </span>
+        </div>
+        {cardGrandTotal > 0 ? (
+          <div className="mt-1.5 flex items-center justify-between gap-3 rounded-lg border border-violet-500/20 bg-violet-50/20 px-3 py-2 dark:bg-violet-950/10">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
+                Cargos a tarjeta
+              </span>
+              <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground/60">
+                No suman al efectivo hasta pagar el estado de cuenta
+              </span>
+            </div>
+            <span
+              className={cn(
+                'font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300',
+                isCompact ? 'text-xs' : 'text-sm',
+              )}
+            >
+              {formatCurrency(cardGrandTotal)}
+            </span>
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
   return (
     <>
-      <Card className="overflow-hidden rounded-xl border-0 bg-transparent shadow-none sm:border sm:border-border/40 sm:bg-card sm:shadow-md">
-        <CardContent className="px-0 pb-0 pt-0 space-y-0 sm:pb-3">
+      <Card
+        className={cn(
+          'overflow-hidden rounded-xl border-0 bg-transparent shadow-none sm:border sm:border-border/40 sm:bg-card sm:shadow-md',
+          pinTotalsToBottom && 'flex h-full min-h-0 flex-col',
+        )}
+      >
+        <CardContent
+          className={cn(
+            'space-y-0 px-0 pb-0 pt-0 sm:pb-3',
+            pinTotalsToBottom && 'flex min-h-0 flex-1 flex-col pb-0 sm:pb-0',
+          )}
+        >
           {/* Mobile list (hidden on sm+) */}
+          <div
+            className={cn(
+              'sm:hidden',
+              pinTotalsToBottom && 'flex min-h-0 flex-1 flex-col',
+            )}
+          >
           <ul
             role="list"
-            className="flex flex-col gap-1.5 px-2 pb-2 pt-1 sm:hidden"
+            className={cn(
+              // [&>li]:shrink-0 — rows must not flex-shrink inside the scroll region or they collapse when pinTotalsToBottom constrains height
+              'flex flex-col gap-1.5 px-2 pt-1 [&>li]:shrink-0',
+              pinTotalsToBottom
+                ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 scrollbar-hide'
+                : 'pb-2',
+            )}
             aria-label="Gastos de la quincena"
           >
             {sortedRows.length === 0 ? (
@@ -958,36 +1059,47 @@ export default function ExpenseTable({
                     </li>
                   );
                 })}
-                <li className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/30 bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 px-3 py-2.5 shadow-sm dark:from-muted/40 dark:via-muted/20 dark:to-muted/5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                    Total efectivo/débito
-                  </span>
-                  <span className="font-mono text-base font-black tabular-nums text-foreground">
-                    {formatCurrency(total)}
-                  </span>
-                </li>
-                {cardGrandTotal > 0 && (
-                  <li className="flex items-center justify-between gap-2 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 via-violet-500/3 to-transparent px-3 py-2 dark:from-violet-500/14 dark:via-violet-500/5">
-                    <div className="flex min-w-0 flex-col">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/80">
-                        Cargos a tarjeta
+                {!pinTotalsToBottom ? (
+                  <>
+                    <li className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/30 bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 px-3 py-2.5 shadow-sm dark:from-muted/40 dark:via-muted/20 dark:to-muted/5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                        Total efectivo/débito
                       </span>
-                      <span className="text-[10px] text-muted-foreground/60">
-                        No suman hasta pagar el estado de cuenta
+                      <span className="font-mono text-base font-black tabular-nums text-foreground">
+                        {formatCurrency(total)}
                       </span>
-                    </div>
-                    <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
-                      {formatCurrency(cardGrandTotal)}
-                    </span>
-                  </li>
-                )}
+                    </li>
+                    {cardGrandTotal > 0 ? (
+                      <li className="flex items-center justify-between gap-2 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 via-violet-500/3 to-transparent px-3 py-2 dark:from-violet-500/14 dark:via-violet-500/5">
+                        <div className="flex min-w-0 flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/80">
+                            Cargos a tarjeta
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/60">
+                            No suman hasta pagar el estado de cuenta
+                          </span>
+                        </div>
+                        <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
+                          {formatCurrency(cardGrandTotal)}
+                        </span>
+                      </li>
+                    ) : null}
+                  </>
+                ) : null}
               </>
             )}
           </ul>
+          {mobileTotalsPinned}
+          </div>
 
           {/* Desktop table (hidden below sm) */}
-          <div className="hidden sm:block">
-          <div className="relative w-full">
+          <div
+            className={cn(
+              'hidden sm:flex sm:min-h-0 sm:flex-col',
+              pinTotalsToBottom && 'min-h-0 flex-1',
+            )}
+          >
+          <div className="relative w-full shrink-0">
             <Table className={isCompact ? 'text-xs' : undefined}>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -1025,7 +1137,11 @@ export default function ExpenseTable({
           <div
             className={cn(
               'relative w-full overflow-y-auto',
-              isCompact ? 'max-h-[min(380px,55vh)]' : 'max-h-[380px]',
+              pinTotalsToBottom
+                ? 'min-h-0 flex-1'
+                : isCompact
+                  ? 'max-h-[min(380px,55vh)]'
+                  : 'max-h-[380px]',
             )}
           >
             <Table className={isCompact ? 'text-xs' : undefined}>
@@ -1080,74 +1196,79 @@ export default function ExpenseTable({
                         ))}
                       </TableRow>
                     ))}
-                    <TableRow className="border-t-2 border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/10">
-                      <TableCell
-                        colSpan={2}
-                        className={cn(
-                          'text-right',
-                          isCompact ? 'py-2' : 'py-3',
-                        )}
-                      >
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                          Total efectivo/débito
-                        </span>
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          'text-right',
-                          isCompact ? 'py-2' : 'py-3',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'font-black font-mono tabular-nums',
-                            isCompact ? 'text-sm' : 'text-base',
-                          )}
-                        >
-                          {formatCurrency(total)}
-                        </span>
-                      </TableCell>
-                      <TableCell className={isCompact ? 'py-2' : 'py-3'} />
-                    </TableRow>
-                    {cardGrandTotal > 0 ? (
-                      <TableRow className="border-border/30 bg-violet-50/20 dark:bg-violet-950/10">
-                        <TableCell
-                          colSpan={2}
-                          className={cn(
-                            'text-right',
-                            isCompact ? 'py-1.5' : 'py-2',
-                          )}
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
-                            Cargos a tarjeta
-                          </span>
-                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground/60">
-                            No suman al efectivo hasta pagar el estado de cuenta
-                          </span>
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right',
-                            isCompact ? 'py-1.5' : 'py-2',
-                          )}
-                        >
-                          <span
+                    {!pinTotalsToBottom ? (
+                      <>
+                        <TableRow className="border-t-2 border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/10">
+                          <TableCell
+                            colSpan={2}
                             className={cn(
-                              'font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300',
-                              isCompact ? 'text-xs' : 'text-sm',
+                              'text-right',
+                              isCompact ? 'py-2' : 'py-3',
                             )}
                           >
-                            {formatCurrency(cardGrandTotal)}
-                          </span>
-                        </TableCell>
-                        <TableCell className={isCompact ? 'py-1.5' : 'py-2'} />
-                      </TableRow>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                              Total efectivo/débito
+                            </span>
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'text-right',
+                              isCompact ? 'py-2' : 'py-3',
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'font-black font-mono tabular-nums',
+                                isCompact ? 'text-sm' : 'text-base',
+                              )}
+                            >
+                              {formatCurrency(total)}
+                            </span>
+                          </TableCell>
+                          <TableCell className={isCompact ? 'py-2' : 'py-3'} />
+                        </TableRow>
+                        {cardGrandTotal > 0 ? (
+                          <TableRow className="border-border/30 bg-violet-50/20 dark:bg-violet-950/10">
+                            <TableCell
+                              colSpan={2}
+                              className={cn(
+                                'text-right',
+                                isCompact ? 'py-1.5' : 'py-2',
+                              )}
+                            >
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
+                                Cargos a tarjeta
+                              </span>
+                              <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground/60">
+                                No suman al efectivo hasta pagar el estado de cuenta
+                              </span>
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                'text-right',
+                                isCompact ? 'py-1.5' : 'py-2',
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  'font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300',
+                                  isCompact ? 'text-xs' : 'text-sm',
+                                )}
+                              >
+                                {formatCurrency(cardGrandTotal)}
+                              </span>
+                            </TableCell>
+                            <TableCell className={isCompact ? 'py-1.5' : 'py-2'} />
+                          </TableRow>
+                        ) : null}
+                      </>
                     ) : null}
                   </>
                 )}
               </TableBody>
             </Table>
           </div>
+          {desktopTotalsPinned}
           </div>
         </CardContent>
       </Card>

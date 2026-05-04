@@ -1,25 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CreditCard } from 'lucide-react';
-import { toast } from 'sonner';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 const CARD_TYPES = ['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -29,8 +17,12 @@ export default function MyCardsPanel() {
   const [cards, setCards] = useState<WalletListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
-  const [balanceInput, setBalanceInput] = useState('');
-  const [savingBalance, setSavingBalance] = useState(false);
+
+  const ownerQueryString = useMemo(() => {
+    const q = buildOwnerQuery(context);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [context]);
 
   const load = useCallback(async () => {
     if (!context || (context.type === 'user' && context.id === 0)) {
@@ -89,48 +81,7 @@ export default function MyCardsPanel() {
 
   const handleOpenCardModal = useCallback((card: WalletListItem) => {
     setSelectedCard(card);
-    setBalanceInput(String(card.amount));
   }, []);
-
-  const handleCloseCardModal = useCallback((open: boolean) => {
-    if (open) return;
-    setSelectedCard(null);
-    setBalanceInput('');
-  }, []);
-
-  const handleSaveBalance = useCallback(async () => {
-    if (!context || !selectedCard) return;
-
-    const parsed = Number(balanceInput.replace(/[,\s]/g, ''));
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      toast.error('Ingresa un saldo válido (no negativo)');
-      return;
-    }
-
-    try {
-      setSavingBalance(true);
-      await clientFetchFromApi(
-        `/api/wallets?id=${selectedCard.id}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({ amount: parsed }),
-        },
-        context,
-      );
-      toast.success('Saldo actualizado');
-      await load();
-      setSelectedCard((prev) => (prev ? { ...prev, amount: parsed } : prev));
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo actualizar el saldo',
-      );
-    } finally {
-      setSavingBalance(false);
-    }
-  }, [balanceInput, context, load, selectedCard]);
-
-  const isSelectedCardCredit =
-    selectedCard?.type === 'CREDIT_CARD' || selectedCard?.type === 'DEPARTMENT_STORE_CARD';
 
   if (loading) {
     return (
@@ -229,128 +180,19 @@ export default function MyCardsPanel() {
         })}
       </div>
 
-      <Dialog open={Boolean(selectedCard)} onOpenChange={handleCloseCardModal}>
-        <DialogContent className="sm:max-w-md">
-          {selectedCard ? (
-            <>
-              <DialogHeader>
-                <div className="flex items-start gap-3">
-                  <WalletProviderIcon
-                    providerIconKey={selectedCard.provider_icon_key}
-                    className="h-9 w-9 shrink-0 rounded-lg border border-border/60 shadow-sm"
-                    iconClassName="h-5 w-5"
-                    showTooltipLabel={false}
-                  />
-                  <div className="min-w-0 space-y-1">
-                    <DialogTitle className="truncate text-left text-base">
-                      {selectedCard.name}
-                    </DialogTitle>
-                    <DialogDescription className="text-left text-xs">
-                      Ajusta el saldo actual y revisa datos clave.
-                    </DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Saldo actual
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {formatCurrency(selectedCard.amount)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {isSelectedCardCredit ? 'Límite' : 'Tipo'}
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {isSelectedCardCredit
-                        ? selectedCard.credit_limit != null
-                          ? formatCurrency(selectedCard.credit_limit)
-                          : '—'
-                        : 'Débito'}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {isSelectedCardCredit ? 'Disponible' : 'Corte'}
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {isSelectedCardCredit
-                        ? selectedCard.credit_limit != null
-                          ? formatCurrency(
-                              Math.max(
-                                0,
-                                Number(selectedCard.credit_limit) - Number(selectedCard.amount),
-                              ),
-                            )
-                          : '—'
-                        : selectedCard.cutoff_day != null
-                          ? `Día ${selectedCard.cutoff_day}`
-                          : '—'}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {isSelectedCardCredit ? 'Fecha pago' : 'Estado'}
-                    </p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                      {isSelectedCardCredit
-                        ? selectedCard.due_day != null
-                          ? `Día ${selectedCard.due_day}`
-                          : '—'
-                        : selectedCard.active
-                          ? 'Activa'
-                          : 'Inactiva'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dashboard-card-balance-input" className="text-xs">
-                    Saldo actual
-                  </Label>
-                  <Input
-                    id="dashboard-card-balance-input"
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.01"
-                    value={balanceInput}
-                    onChange={(event) => setBalanceInput(event.target.value)}
-                    disabled={savingBalance}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter className="gap-2 sm:justify-between">
-                <Button variant="outline" asChild>
-                  <Link
-                    href={
-                      isSelectedCardCredit
-                        ? `/credit-cards/${selectedCard.id}`
-                        : `/wallets/${selectedCard.id}`
-                    }
-                  >
-                    {isSelectedCardCredit ? 'Ir a página de tarjeta' : 'Ir a página de billetera'}
-                  </Link>
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSaveBalance}
-                  disabled={savingBalance}
-                  className="rounded-xl"
-                >
-                  {savingBalance ? 'Guardando…' : 'Guardar saldo'}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <WalletBalanceEditDialog
+        wallet={selectedCard}
+        ownerQueryString={ownerQueryString}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCard(null);
+        }}
+        onSaved={(walletId, newAmount) => {
+          setSelectedCard((prev) =>
+            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
+          );
+          void load();
+        }}
+      />
     </div>
   );
 }

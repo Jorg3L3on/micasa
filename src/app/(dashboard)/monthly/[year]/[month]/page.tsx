@@ -367,7 +367,11 @@ export default async function MonthlyPage({
       </div>
 
       <div className="mb-7 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm dark:bg-card/60">
-        <WalletBalanceStrip wallets={wallets} paidWalletIds={paidWalletIds} />
+        <WalletBalanceStrip
+          wallets={wallets}
+          paidWalletIds={paidWalletIds}
+          isCurrentMonth={isCurrentMonth}
+        />
       </div>
 
       <MonthlyFortnightView
