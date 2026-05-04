@@ -9,11 +9,13 @@ type ApiErrorDetail = {
 type ApiErrorResponse = {
   error?: string;
   details?: ApiErrorDetail[];
+  code?: string;
 };
 
 export type ClientApiError = Error & {
   status?: number;
   details?: ApiErrorDetail[];
+  code?: string;
 };
 
 /**
@@ -65,8 +67,12 @@ export async function clientFetchFromApi<T>(
   if (!res.ok) {
     let errorMessage = `No se pudo completar la solicitud (${endpoint})`;
     let errorDetails: ApiErrorDetail[] | undefined;
+    let apiCode: string | undefined;
     try {
       const error = (await res.json()) as ApiErrorResponse;
+      if (typeof error.code === 'string') {
+        apiCode = error.code;
+      }
       if (error.error) {
         errorMessage = error.error;
       }
@@ -88,6 +94,7 @@ export async function clientFetchFromApi<T>(
     const error = new Error(errorMessage) as ClientApiError;
     error.status = res.status;
     error.details = errorDetails;
+    error.code = apiCode;
     throw error;
   }
 

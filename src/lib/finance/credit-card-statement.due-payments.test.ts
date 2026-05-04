@@ -67,6 +67,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       walletId: 7,
       walletName: 'Visa',
       nextDuePayment: 400,
+      paymentsAppliedToStatement: 100,
       dueDay: 18,
       cutoff_day: 15,
     });

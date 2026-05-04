@@ -7,10 +7,8 @@ import {
   getPaidExpenseWalletDelta,
   isCreditWalletType,
 } from '@/lib/finance/wallet-accounting';
-import {
-  getFortnightPeriodForDay,
-  resolveOrCreateFortnight,
-} from '@/lib/fortnights';
+import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   extractMercadoPagoStatementText,

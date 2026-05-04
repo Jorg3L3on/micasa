@@ -159,6 +159,12 @@ export default function ExpenseForm({
     selectedPaymentMethod?.type === 'CREDIT_CARD' ||
     selectedPaymentMethod?.type === 'DEPARTMENT_STORE_CARD';
 
+  const isFundingPaymentMethod =
+    selectedPaymentMethod?.type === 'CASH' ||
+    selectedPaymentMethod?.type === 'DEBIT_CARD';
+
+  const isPaidWatch = form.watch('isPaid');
+
   const projectedCardDebt = useMemo(() => {
     if (!isCreditCardPaymentMethod) return null;
     const currentDebt = Number(selectedPaymentMethod?.amount ?? 0);
@@ -185,6 +191,13 @@ export default function ExpenseForm({
     isCreditCardPaymentMethod &&
     projectedAvailableCredit != null &&
     projectedAvailableCredit < 0;
+
+  const fundingBalance = Number(selectedPaymentMethod?.amount ?? 0);
+  const exceedsFundingBalance =
+    isFundingPaymentMethod &&
+    isPaidWatch &&
+    Number.isFinite(fundingBalance) &&
+    Number(selectedAmount || 0) > fundingBalance + 1e-9;
 
   useEffect(() => {
     if (!isCreditCardPaymentMethod) return;
@@ -398,11 +411,13 @@ export default function ExpenseForm({
           <div
             className={cn(
               'rounded-md border px-3 py-2 text-xs',
-              exceedsCreditLimit
+              exceedsCreditLimit || exceedsFundingBalance
                 ? 'border-destructive/50 bg-destructive/10 text-destructive'
                 : 'border-border/60 bg-muted/30 text-muted-foreground',
             )}
-            role={exceedsCreditLimit ? 'alert' : undefined}
+            role={
+              exceedsCreditLimit || exceedsFundingBalance ? 'alert' : undefined
+            }
           >
             {isCreditCardPaymentMethod ? (
               <>
@@ -422,6 +437,35 @@ export default function ExpenseForm({
                   <p className="mt-2 font-medium">
                     El monto supera el crédito disponible de la tarjeta.
                     Ajusta el monto o el método de pago antes de guardar.
+                  </p>
+                )}
+              </>
+            ) : isFundingPaymentMethod ? (
+              <>
+                <p
+                  className={cn(
+                    exceedsFundingBalance ? 'text-destructive' : undefined,
+                  )}
+                >
+                  Con «Pagado», MiCasa descuenta el monto del saldo de efectivo o
+                  débito de esa billetera.
+                </p>
+                <p className="mt-1 font-mono tabular-nums text-foreground">
+                  Saldo en billetera: {formatCurrency(fundingBalance)}
+                  {isPaidWatch && Number(selectedAmount || 0) > 0 ? (
+                    <>
+                      {' '}
+                      · Después del gasto:{' '}
+                      {formatCurrency(
+                        fundingBalance - Number(selectedAmount || 0),
+                      )}
+                    </>
+                  ) : null}
+                </p>
+                {exceedsFundingBalance && (
+                  <p className="mt-2 font-medium">
+                    El saldo no alcanza para registrar este gasto como pagado.
+                    Quita «Pagado», reduce el monto o elige otra billetera.
                   </p>
                 )}
               </>
@@ -532,7 +576,13 @@ export default function ExpenseForm({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || isDeleting || loading || exceedsCreditLimit}
+            disabled={
+              isSubmitting ||
+              isDeleting ||
+              loading ||
+              exceedsCreditLimit ||
+              exceedsFundingBalance
+            }
           >
             {isSubmitting
               ? 'Guardando...'

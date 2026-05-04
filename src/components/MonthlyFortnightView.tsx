@@ -21,6 +21,7 @@ import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
+  ReportsSummaryFundingFields,
   TransactionRow,
   WalletListItem,
 } from '@/types/catalog';
@@ -59,7 +60,7 @@ type FortnightSummary = {
   cardCharges?: PlannerCardChargesSummary | null;
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
-};
+} & ReportsSummaryFundingFields;
 
 type FortnightBundle = {
   label: string;

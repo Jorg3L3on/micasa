@@ -19,6 +19,35 @@ export type OwnerContextResult =
   | OwnerContextSuccess
   | { error: NextResponse };
 
+function normalizeSearchParam(
+  value: string | string[] | undefined,
+): string | undefined {
+  if (value == null) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/**
+ * Misma resolución de propietario que las rutas `/api/*` sin hacer HTTP interno.
+ * La sesión sigue saliendo de `auth()` (petición actual del RSC); el Request solo
+ * aporta `ownerType` / `ownerId` en la query.
+ */
+export function createRequestWithOwnerSearchParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): Request {
+  const u = new URL('http://localhost.local/internal-owner-context');
+  const ot = normalizeSearchParam(searchParams.ownerType);
+  const oi = normalizeSearchParam(searchParams.ownerId);
+  if (ot) u.searchParams.set('ownerType', ot);
+  if (oi) u.searchParams.set('ownerId', oi);
+  return new Request(u);
+}
+
+export async function getOwnerContextFromPageSearchParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): Promise<OwnerContextResult> {
+  return getOwnerContext(createRequestWithOwnerSearchParams(searchParams));
+}
+
 export async function getOwnerContext(
   request: Request,
 ): Promise<OwnerContextResult> {

@@ -21,12 +21,15 @@ import {
   BarChart3,
   Receipt,
   CreditCard,
+  Banknote,
 } from 'lucide-react';
 import type {
+  FundingWalletBreakdownItem,
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
 } from '@/types/catalog';
+import { isCalendarFortnightCurrent } from '@/lib/fortnight-calendar';
 
 export type IncomeItemBySource = {
   id: number;
@@ -59,6 +62,12 @@ type SummaryBlockProps = {
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   /** Adeudo al estado de cuenta (próximo pago) dentro del período; suma al pendiente planificado. */
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
+  /** Saldos activos Efectivo + Débito (API resumen). */
+  fundingWalletBalanceTotal?: number;
+  /** Saldos efectivo/débito menos solo lo pendiente (no pagado) del período (API resumen). */
+  fundingNetVsPendingExpense?: number;
+  /** Desglose por billetera (solo resumen expandido). */
+  fundingWalletBreakdown?: FundingWalletBreakdownItem[];
   onEditIncome?: () => void;
   onEditIncomeSource?: (id: number, amount: number) => void;
 };
@@ -79,6 +88,9 @@ export default function SummaryBlock({
   cardCharges = null,
   planningOrphanCardPayments = null,
   planningCardStatementDue = null,
+  fundingWalletBalanceTotal = 0,
+  fundingNetVsPendingExpense = 0,
+  fundingWalletBreakdown = [],
   onEditIncome,
   onEditIncomeSource,
 }: SummaryBlockProps) {
@@ -120,6 +132,22 @@ export default function SummaryBlock({
   /** Ingreso menos todo lo comprometido (pagado + pendiente), mismo criterio que el resumen del API. */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
+  /** Billeteras vs pendiente solo para la quincena calendario actual (hoy). */
+  const billeterasVsPendienteAplica =
+    year != null && month != null && period != null
+      ? isCalendarFortnightCurrent(year, month, period)
+      : true;
+
+  const displayFundingNet = billeterasVsPendienteAplica
+    ? fundingNetVsPendingExpense
+    : 0;
+  const displayFundingWalletTotal = billeterasVsPendienteAplica
+    ? fundingWalletBalanceTotal
+    : 0;
+  const displayPendienteFundingRow = billeterasVsPendienteAplica
+    ? pendiente
+    : 0;
+
   const tooltipIngresosHero =
     'Total de ingresos planificados para esta quincena (suma de las fuentes que registraste).';
 
@@ -127,6 +155,21 @@ export default function SummaryBlock({
     planningCardStatementDue != null && planningCardStatementDue.total > 0
       ? 'Ingreso menos gastos en efectivo/débito (pagados y pendientes), pagos a tarjeta ya hechos y lo que aún debes al estado de cuenta en esta quincena (ver pestaña Pagos tarjeta). Las compras recién cargadas a la TC no suman hasta integrarse al corte.'
       : 'Ingreso de la quincena menos todo lo comprometido en efectivo o débito: gastos planeados (pagados y pendientes) y pagos a tarjeta que ya descontaron tu efectivo. Las compras cargadas a la tarjeta no entran aquí hasta que pagues el estado de cuenta.';
+
+  const tooltipFundingVsPendingLive = `Suma de saldos en billeteras activas de efectivo y débito (${formatCurrency(fundingWalletBalanceTotal)}) menos lo pendiente de esta quincena (${formatCurrency(pendiente)}): gastos y pagos aún no marcados como pagados.`;
+
+  const tooltipFundingVsPendingInactive =
+    'Solo aplica a la quincena calendario en curso (hoy). En quincenas pasadas o futuras se muestra $0,00.';
+
+  const tooltipFundingVsPendingEffective = billeterasVsPendienteAplica
+    ? tooltipFundingVsPendingLive
+    : tooltipFundingVsPendingInactive;
+
+  const fundingWalletTypeLabel = (t: string) => {
+    if (t === 'CASH') return 'Efectivo';
+    if (t === 'DEBIT_CARD') return 'Débito';
+    return t;
+  };
 
   return (
     <Card className="relative gap-0 overflow-hidden rounded-2xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:ring-primary/10 dark:shadow-black/50 dark:before:via-white/8">
@@ -198,8 +241,8 @@ export default function SummaryBlock({
       </CardHeader>
 
       <CardContent className="space-y-2 px-3 pb-2.5 pt-2 sm:space-y-2.5 sm:px-3.5 sm:pb-3 sm:pt-2.5">
-        {/* Hero: ingresos de la quincena vs tras pagar todo lo planeado */}
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
+        {/* Hero: ingresos, tras gastos planeados, billeteras vs pendiente */}
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-2">
           {/* Left: Ingresos (total quincena) */}
           <div
             className={cn(
@@ -258,7 +301,7 @@ export default function SummaryBlock({
             )}
           </div>
 
-          {/* Right: Tras gastos planeados — hero */}
+          {/* Center: Tras gastos planeados — un solo monto */}
           <div
             className={cn(
               'relative overflow-hidden rounded-xl border px-2 py-2 shadow-sm sm:px-2.5 sm:py-2.5',
@@ -345,6 +388,77 @@ export default function SummaryBlock({
                 (salida de efectivo).
               </p>
             ) : null}
+          </div>
+
+          {/* Right: saldos Efectivo + Débito menos solo lo pendiente (solo quincena calendario actual) */}
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-xl border px-2 py-2 shadow-sm sm:px-2.5 sm:py-2.5',
+              billeterasVsPendienteAplica
+                ? displayFundingNet >= 0
+                  ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-background to-emerald-500/3 dark:from-emerald-500/16 dark:via-card dark:to-emerald-500/5'
+                  : 'border-destructive/35 bg-gradient-to-br from-destructive/12 via-background to-destructive/3 dark:from-destructive/20 dark:via-card dark:to-destructive/5'
+                : 'border-border/50 bg-gradient-to-br from-muted/30 via-background to-muted/10 text-muted-foreground dark:from-muted/20 dark:via-card dark:to-muted/5',
+              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
+            )}
+          >
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span
+                className={cn(
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-6 sm:w-6 sm:rounded-lg',
+                  billeterasVsPendienteAplica
+                    ? displayFundingNet >= 0
+                      ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
+                      : 'bg-gradient-to-br from-destructive/30 to-destructive/10 ring-destructive/35'
+                    : 'bg-muted/50 ring-border/60',
+                )}
+              >
+                <Banknote
+                  className={cn(
+                    'h-2.5 w-2.5 sm:h-3 sm:w-3',
+                    billeterasVsPendienteAplica
+                      ? displayFundingNet >= 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-destructive'
+                      : 'text-muted-foreground',
+                  )}
+                  aria-hidden
+                />
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'min-w-0 truncate text-left text-[11px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs',
+                      billeterasVsPendienteAplica
+                        ? displayFundingNet >= 0
+                          ? 'text-emerald-700/85 decoration-emerald-500/30 hover:text-emerald-700 dark:text-emerald-300/85 dark:hover:text-emerald-200'
+                          : 'text-destructive/85 decoration-destructive/30 hover:text-destructive'
+                        : 'text-muted-foreground decoration-muted-foreground/40',
+                    )}
+                  >
+                    <span className="sm:hidden">Billeteras</span>
+                    <span className="hidden sm:inline">Billeteras vs pendiente</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
+                  {tooltipFundingVsPendingEffective}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <p
+              className={cn(
+                'mt-0.5 font-mono text-lg font-black tabular-nums leading-none tracking-tight sm:text-xl',
+                billeterasVsPendienteAplica
+                  ? displayFundingNet >= 0
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-destructive'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {formatCurrency(displayFundingNet)}
+            </p>
           </div>
         </div>
 
@@ -583,6 +697,146 @@ export default function SummaryBlock({
                 </p>
               </div>
             ) : null}
+
+            {/* Desglose billeteras vs pendiente (mismo criterio que la tarjeta héroe) */}
+            <div
+              className={cn(
+                'rounded-xl border px-3 py-2.5',
+                billeterasVsPendienteAplica
+                  ? 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 to-transparent dark:from-emerald-500/10 dark:to-transparent'
+                  : 'border-border/50 bg-gradient-to-br from-muted/20 to-transparent text-muted-foreground dark:from-muted/15',
+              )}
+              role="region"
+              aria-label="Desglose de billeteras frente al pendiente de la quincena"
+            >
+              <h4
+                className={cn(
+                  'mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider',
+                  billeterasVsPendienteAplica
+                    ? 'text-emerald-700/90 dark:text-emerald-400/90'
+                    : 'text-muted-foreground',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1',
+                    billeterasVsPendienteAplica
+                      ? 'bg-emerald-500/15 ring-emerald-500/25'
+                      : 'bg-muted/50 ring-border/50',
+                  )}
+                >
+                  <Banknote
+                    className={cn(
+                      'h-3 w-3',
+                      billeterasVsPendienteAplica
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-muted-foreground',
+                    )}
+                    aria-hidden
+                  />
+                </span>
+                Desglose de billeteras vs pendiente
+              </h4>
+              {!billeterasVsPendienteAplica ? (
+                <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+                  Solo aplica a la quincena calendario en curso. Aquí se muestran
+                  $0,00.
+                </p>
+              ) : fundingWalletBreakdown.length > 0 ? (
+                <div className="space-y-1">
+                  {fundingWalletBreakdown.map((w) => (
+                    <div
+                      key={w.id}
+                      className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted/40"
+                    >
+                      <span className="min-w-0 truncate text-muted-foreground">
+                        <span className="text-foreground/90">{w.name}</span>
+                        <span className="ml-1.5 text-[10px] text-muted-foreground/80">
+                          ({fundingWalletTypeLabel(w.type)})
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
+                        {formatCurrency(w.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+                  No hay billeteras activas de efectivo o débito.
+                </p>
+              )}
+              <Separator
+                className={cn(
+                  'my-2',
+                  billeterasVsPendienteAplica
+                    ? 'bg-emerald-500/15'
+                    : 'bg-border/50',
+                )}
+              />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">
+                    Total billeteras (efectivo + débito)
+                  </span>
+                  <span
+                    className={cn(
+                      'font-mono font-semibold tabular-nums',
+                      billeterasVsPendienteAplica
+                        ? 'text-foreground'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {formatCurrency(displayFundingWalletTotal)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">
+                    Menos pendiente de la quincena (no pagado)
+                  </span>
+                  <span
+                    className={cn(
+                      'font-mono font-semibold tabular-nums',
+                      billeterasVsPendienteAplica
+                        ? 'text-amber-700 dark:text-amber-400'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    −{formatCurrency(displayPendienteFundingRow)}
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    'flex items-center justify-between gap-2 border-t pt-2 text-xs font-semibold',
+                    billeterasVsPendienteAplica
+                      ? 'border-emerald-500/20'
+                      : 'border-border/50',
+                  )}
+                >
+                  <span
+                    className={
+                      billeterasVsPendienteAplica
+                        ? 'text-emerald-800 dark:text-emerald-300'
+                        : 'text-muted-foreground'
+                    }
+                  >
+                    = Billeteras vs pendiente
+                  </span>
+                  <span
+                    className={cn(
+                      'font-mono tabular-nums',
+                      billeterasVsPendienteAplica
+                        ? displayFundingNet >= 0
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-destructive'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {formatCurrency(displayFundingNet)}
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* Income breakdown */}
             {(incomeItems.length > 0 || hasUserIncome) && (

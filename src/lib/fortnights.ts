@@ -1,13 +1,6 @@
 import prisma from '@/lib/prisma';
 import { FortnightPeriod, Prisma } from '@/generated/prisma/client';
 
-export const getFortnightPeriodForDay = (day: number): FortnightPeriod => {
-  if (day >= 1 && day <= 15) {
-    return 'FIRST';
-  }
-  return 'SECOND';
-};
-
 type ResolveFortnightOwner =
   | { ownerType: 'user'; ownerId: number }
   | { ownerType: 'house'; ownerId: number };

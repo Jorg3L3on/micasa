@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
-import {
-  resolveOrCreateFortnight,
-  getFortnightPeriodForDay,
-} from '@/lib/fortnights';
+import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
 
 const bodySchema = z.object({

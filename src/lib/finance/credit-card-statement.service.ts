@@ -318,6 +318,26 @@ export async function getCreditCardStatementByOwner(
   const currentBalance = Number(card.amount);
   const creditLimit = card.credit_limit == null ? null : Number(card.credit_limit);
 
+  let nextDuePayment = Math.max(
+    (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatementTotal,
+    0,
+  );
+
+  /**
+   * Tarjetas con **pago antes del corte** en el mes (ej. pago día 8, corte día 15): el vencimiento
+   * cae antes del siguiente corte en el calendario. Mientras el estado de cuenta **cerrado** en
+   * MiCasa siga en $0 (o sin import), las compras del **ciclo abierto** ya cargadas son el mejor
+   * estimado de lo que habrá que pagar en el próximo vencimiento — hasta que pase el fin del ciclo.
+   */
+  if (
+    card.due_day < card.cutoff_day &&
+    nextDuePayment === 0 &&
+    currentCyclePurchasesTotal > 0 &&
+    toDateOnlyString(normalizedAsOf) <= toDateOnlyString(window.currentCycleEnd)
+  ) {
+    nextDuePayment = currentCyclePurchasesTotal;
+  }
+
   return {
     credit_card_id: card.id,
     name: card.name,
@@ -342,10 +362,7 @@ export async function getCreditCardStatementByOwner(
     payments_since_last_cutoff: paymentsAfterCutoffTotal,
     payments_applied_to_statement: paymentsAppliedToStatementTotal,
     imported_statement_total: importedTotalDue,
-    next_due_payment: Math.max(
-      (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatementTotal,
-      0,
-    ),
+    next_due_payment: nextDuePayment,
     minimum_payment: importedMinimumPayment,
     current_cycle_purchases: currentCyclePurchasesTotal,
     current_cycle_payments: currentCyclePaymentsTotal,
@@ -770,6 +787,7 @@ async function getDuePaymentsWithAsOf(
       dueDay: card.due_day!,
       cutoff_day: card.cutoff_day!,
       nextDuePayment,
+      paymentsAppliedToStatement,
       statementDueDate: statementDueByWallet.get(card.id)!,
       outstandingBalance: Number(card.amount),
     };
@@ -838,7 +856,11 @@ export async function getDuePaymentsForPlannerMonth(
   year: number,
   month: number,
 ) {
-  const asOfFirst = createUtcDate(year, month, 15);
+  // Use día 14 (no 15): si `asOf` cae exactamente en el día de corte 15, las TC con
+  // corte 15 pasan al ciclo siguiente y los pagos ya hechos hacia el estado anterior
+  // (p. ej. pago 4 may → cierre 15 abr / venc. 8 may) dejan de contar en SQL y la UI
+  // sigue mostrando “por pagar”.
+  const asOfFirst = createUtcDate(year, month, 14);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const asOfSecond = createUtcDate(year, month, lastDay);
 

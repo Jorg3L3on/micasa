@@ -22,9 +22,11 @@ export async function GET(request: NextRequest) {
     const wallets = await listWalletsByOwner(ownerFilter);
     return NextResponse.json(wallets, { status: 200 });
   } catch (error) {
-    console.error('Error fetching wallets:', error);
+    const message =
+      error instanceof Error ? error.message : 'Unknown error fetching wallets';
+    console.error('Error fetching wallets:', message, error);
     return NextResponse.json(
-      { error: 'Failed to fetch wallets', status: 500 },
+      { error: 'Failed to fetch wallets', detail: message },
       { status: 500 },
     );
   }
