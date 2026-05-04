@@ -21,6 +21,7 @@ import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCar
 import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
+import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -118,6 +119,7 @@ export default function CreditCardDetailPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [asOfDate, setAsOfDate] = useState(getTodayDateString());
+  const [balanceDialogOpen, setBalanceDialogOpen] = useState(false);
   const [statementImports, setStatementImports] = useState<
     CreditCardStatementImportListItem[]
   >([]);
@@ -367,6 +369,7 @@ export default function CreditCardDetailPage() {
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}
         onEditCard={handleOpenEditCardDialog}
+        onAdjustBalance={() => setBalanceDialogOpen(true)}
       />
 
       {/* ── Hero: pago próximo ─────────────────────────────────────── */}
@@ -386,6 +389,7 @@ export default function CreditCardDetailPage() {
         onNextCycle={handleNextCycle}
         onResetToToday={handleResetToToday}
         formatCycleRange={formatCycleRange}
+        onAdjustDebt={() => setBalanceDialogOpen(true)}
       />
 
       {/* ── Chart + Statement summary ──────────────────────────────── */}
@@ -528,6 +532,18 @@ export default function CreditCardDetailPage() {
         context={context}
         onSuccess={loadData}
         availableCredit={statement.available_credit}
+        creditLimit={statement.credit_limit}
+      />
+
+      <WalletBalanceDialog
+        open={balanceDialogOpen}
+        onOpenChange={setBalanceDialogOpen}
+        walletId={creditCardId}
+        walletName={card.name}
+        currentAmount={statement.outstanding_balance}
+        context={context}
+        onSuccess={loadData}
+        variant="credit"
         creditLimit={statement.credit_limit}
       />
 

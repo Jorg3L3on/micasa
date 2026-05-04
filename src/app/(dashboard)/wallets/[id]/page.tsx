@@ -8,14 +8,16 @@ import {
   ArrowUp,
   Banknote,
   ChevronDown,
-  Coins,
   ChevronLeft,
   ChevronRight,
+  Coins,
+  CreditCard,
   Download,
   Landmark,
   Pencil,
   Plus,
   RotateCcw,
+  Store,
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -195,6 +197,8 @@ export default function WalletDetailPage() {
   }, [context]);
 
   const canImport = wallet?.type === 'CASH' || wallet?.type === 'DEBIT_CARD';
+  const isCreditWallet =
+    wallet?.type === 'CREDIT_CARD' || wallet?.type === 'DEPARTMENT_STORE_CARD';
 
   const loadData = useCallback(async () => {
     if (context.id === 0) return;
@@ -315,15 +319,30 @@ export default function WalletDetailPage() {
     return `${MONTH_LABEL[monthIdx]} ${year}`;
   }, [range.from]);
 
-  const Icon = wallet?.type === 'DEBIT_CARD' ? Landmark : Banknote;
+  const Icon =
+    wallet.type === 'CREDIT_CARD'
+      ? CreditCard
+      : wallet.type === 'DEPARTMENT_STORE_CARD'
+        ? Store
+        : wallet.type === 'DEBIT_CARD'
+          ? Landmark
+          : Banknote;
   const iconColorBg =
-    wallet?.type === 'DEBIT_CARD'
-      ? 'bg-blue-500/10 dark:bg-blue-500/15'
-      : 'bg-emerald-500/10 dark:bg-emerald-500/15';
+    wallet.type === 'CREDIT_CARD'
+      ? 'bg-violet-500/10 dark:bg-violet-500/15'
+      : wallet.type === 'DEPARTMENT_STORE_CARD'
+        ? 'bg-amber-500/10 dark:bg-amber-500/15'
+        : wallet.type === 'DEBIT_CARD'
+          ? 'bg-blue-500/10 dark:bg-blue-500/15'
+          : 'bg-emerald-500/10 dark:bg-emerald-500/15';
   const iconColorFg =
-    wallet?.type === 'DEBIT_CARD'
-      ? 'text-blue-600 dark:text-blue-400'
-      : 'text-emerald-600 dark:text-emerald-400';
+    wallet.type === 'CREDIT_CARD'
+      ? 'text-violet-600 dark:text-violet-400'
+      : wallet.type === 'DEPARTMENT_STORE_CARD'
+        ? 'text-amber-600 dark:text-amber-400'
+        : wallet.type === 'DEBIT_CARD'
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-emerald-600 dark:text-emerald-400';
 
   if (context.id === 0 || (loading && !data)) {
     return <WalletDetailSkeleton />;
@@ -354,21 +373,26 @@ export default function WalletDetailPage() {
             <h1 className="text-xl font-semibold">{wallet.name}</h1>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <span>
-                {wallet.type === 'DEBIT_CARD' ? 'Tarjeta de débito' : 'Efectivo'} ·{' '}
-                Saldo {formatCurrency(wallet.amount)}
+                {wallet.type === 'DEBIT_CARD'
+                  ? 'Tarjeta de débito'
+                  : wallet.type === 'CREDIT_CARD'
+                    ? 'Tarjeta de crédito'
+                    : wallet.type === 'DEPARTMENT_STORE_CARD'
+                      ? 'Tarjeta tienda'
+                      : 'Efectivo'}{' '}
+                · {isCreditWallet ? 'Deuda' : 'Saldo'}{' '}
+                {formatCurrency(wallet.amount)}
               </span>
-              {canImport && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setBalanceOpen(true)}
-                  aria-label="Ajustar saldo"
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setBalanceOpen(true)}
+                aria-label={isCreditWallet ? 'Ajustar deuda' : 'Ajustar saldo'}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
             </div>
           </div>
         </div>
@@ -410,15 +434,13 @@ export default function WalletDetailPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            {canImport && (
-              <DropdownMenuItem
-                onClick={() => setBalanceOpen(true)}
-                className="cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4 shrink-0" />
-                Ajustar saldo
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              onClick={() => setBalanceOpen(true)}
+              className="cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4 shrink-0" />
+              {isCreditWallet ? 'Ajustar deuda' : 'Ajustar saldo'}
+            </DropdownMenuItem>
             {canImport && (
               <DropdownMenuItem
                 onClick={() => setImportOpen(true)}
@@ -674,17 +696,17 @@ export default function WalletDetailPage() {
         />
       )}
 
-      {canImport && (
-        <WalletBalanceDialog
-          open={balanceOpen}
-          onOpenChange={setBalanceOpen}
-          walletId={walletId}
-          walletName={wallet.name}
-          currentAmount={wallet.amount}
-          context={context}
-          onSuccess={loadData}
-        />
-      )}
+      <WalletBalanceDialog
+        open={balanceOpen}
+        onOpenChange={setBalanceOpen}
+        walletId={walletId}
+        walletName={wallet.name}
+        currentAmount={wallet.amount}
+        context={context}
+        onSuccess={loadData}
+        variant={isCreditWallet ? 'credit' : 'funding'}
+        creditLimit={wallet.credit_limit}
+      />
     </div>
   );
 }
