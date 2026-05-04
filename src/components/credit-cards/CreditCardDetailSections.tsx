@@ -103,17 +103,22 @@ export const CreditCardNextPaymentHero = ({
   utilizationPct,
   onOpenPaymentDialog,
   onOpenPurchaseDialog,
-}: NextPaymentHeroProps) => (
+}: NextPaymentHeroProps) => {
+  const hasPendingDue = statement.next_due_payment > 0;
+
+  return (
   <div
     className={cn(
       'rounded-xl border-2 p-5 transition-colors',
-      daysUntilDue < 0
-        ? 'border-destructive/60 bg-destructive/5'
-        : daysUntilDue <= 5
-          ? 'border-amber-500/60 bg-amber-500/5'
-          : daysUntilDue <= 10
-            ? 'border-yellow-500/40 bg-yellow-500/5'
-            : 'border-border/60 bg-card',
+      !hasPendingDue
+        ? 'border-border/60 bg-card'
+        : daysUntilDue < 0
+          ? 'border-destructive/60 bg-destructive/5'
+          : daysUntilDue <= 5
+            ? 'border-amber-500/60 bg-amber-500/5'
+            : daysUntilDue <= 10
+              ? 'border-yellow-500/40 bg-yellow-500/5'
+              : 'border-border/60 bg-card',
     )}
   >
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -129,21 +134,25 @@ export const CreditCardNextPaymentHero = ({
             variant="outline"
             className={cn(
               'gap-1.5 text-xs font-medium',
-              daysUntilDue < 0
-                ? 'border-destructive/40 bg-destructive/10 text-destructive'
-                : daysUntilDue <= 5
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                  : daysUntilDue <= 10
-                    ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-                    : 'border-border/60 text-muted-foreground',
+              !hasPendingDue
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : daysUntilDue < 0
+                  ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                  : daysUntilDue <= 5
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : daysUntilDue <= 10
+                      ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                      : 'border-border/60 text-muted-foreground',
             )}
           >
             <CalendarClock className="h-3 w-3" />
-            {daysUntilDue < 0
-              ? `Vencido hace ${Math.abs(daysUntilDue)} dia${Math.abs(daysUntilDue) === 1 ? '' : 's'}`
-              : daysUntilDue === 0
-                ? 'Vence hoy'
-                : `Vence en ${daysUntilDue} dia${daysUntilDue === 1 ? '' : 's'}`}
+            {!hasPendingDue
+              ? 'Sin pago pendiente'
+              : daysUntilDue < 0
+                ? `Vencido hace ${Math.abs(daysUntilDue)} dia${Math.abs(daysUntilDue) === 1 ? '' : 's'}`
+                : daysUntilDue === 0
+                  ? 'Vence hoy'
+                  : `Vence en ${daysUntilDue} dia${daysUntilDue === 1 ? '' : 's'}`}
           </Badge>
           <span className="text-xs text-muted-foreground">
             {formatDate(statement.statement_due_date)}
@@ -198,7 +207,8 @@ export const CreditCardNextPaymentHero = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 type CycleSummaryProps = {
   statement: CreditCardStatementResponse;
@@ -303,7 +313,10 @@ type StatementSummaryCardProps = {
 export const CreditCardStatementSummaryCard = ({
   statement,
   daysUntilDue,
-}: StatementSummaryCardProps) => (
+}: StatementSummaryCardProps) => {
+  const hasPendingDue = statement.next_due_payment > 0;
+
+  return (
   <Card className="overflow-hidden border-border/60">
     <CardHeader className="pb-2">
       <CardTitle className="text-sm font-semibold">Estado de cuenta</CardTitle>
@@ -346,11 +359,13 @@ export const CreditCardStatementSummaryCard = ({
       <div
         className={cn(
           'flex items-center justify-between px-4 py-3 text-sm font-semibold',
-          daysUntilDue < 0
-            ? 'bg-destructive/8 text-destructive'
-            : daysUntilDue <= 5
-              ? 'bg-amber-500/8 text-amber-700 dark:text-amber-300'
-              : 'bg-muted/30',
+          !hasPendingDue
+            ? 'bg-muted/30 text-foreground'
+            : daysUntilDue < 0
+              ? 'bg-destructive/8 text-destructive'
+              : daysUntilDue <= 5
+                ? 'bg-amber-500/8 text-amber-700 dark:text-amber-300'
+                : 'bg-muted/30',
         )}
       >
         <span>Por pagar</span>
@@ -360,4 +375,5 @@ export const CreditCardStatementSummaryCard = ({
       </div>
     </CardContent>
   </Card>
-);
+  );
+};
