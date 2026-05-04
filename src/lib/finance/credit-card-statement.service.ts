@@ -327,7 +327,8 @@ export async function getCreditCardStatementByOwner(
    * Tarjetas con **pago antes del corte** en el mes (ej. pago día 8, corte día 15): el vencimiento
    * cae antes del siguiente corte en el calendario. Mientras el estado de cuenta **cerrado** en
    * MiCasa siga en $0 (o sin import), las compras del **ciclo abierto** ya cargadas son el mejor
-   * estimado de lo que habrá que pagar en el próximo vencimiento — hasta que pase el fin del ciclo.
+   * estimado de lo que falta para el próximo vencimiento — restando los **pagos ya registrados**
+   * en ese ciclo (misma fuente que `current_cycle_payments`).
    */
   if (
     card.due_day < card.cutoff_day &&
@@ -335,7 +336,10 @@ export async function getCreditCardStatementByOwner(
     currentCyclePurchasesTotal > 0 &&
     toDateOnlyString(normalizedAsOf) <= toDateOnlyString(window.currentCycleEnd)
   ) {
-    nextDuePayment = currentCyclePurchasesTotal;
+    nextDuePayment = Math.max(
+      currentCyclePurchasesTotal - currentCyclePaymentsTotal,
+      0,
+    );
   }
 
   return {
