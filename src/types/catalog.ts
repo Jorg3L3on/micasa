@@ -143,6 +143,9 @@ export type WalletListItem = {
   due_day: number | null;
   spent_amount: number;
   remaining_amount: number;
+  /** Solo billeteras de casa: miembro atribuido; null = compartida. */
+  assignee_user_id: number | null;
+  assignee: { id: number; name: string } | null;
 };
 
 export type CreditCardListItem = WalletListItem & {

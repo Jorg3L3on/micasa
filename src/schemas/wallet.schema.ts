@@ -98,6 +98,8 @@ export const createWalletSchema = z.object({
   active: z.boolean().default(true),
   cutoff_day: nullablePositiveInt,
   due_day: nullablePositiveInt,
+  /** Solo en contexto casa: miembro atribuido (null = compartida). */
+  assignee_user_id: z.number().int().positive().nullable().optional(),
 }).superRefine(applyWalletBusinessRules);
 
 export const updateWalletSchema = z.object({
@@ -109,6 +111,7 @@ export const updateWalletSchema = z.object({
   active: z.boolean().optional(),
   cutoff_day: nullablePositiveInt.optional(),
   due_day: nullablePositiveInt.optional(),
+  assignee_user_id: z.number().int().positive().nullable().optional(),
 }).superRefine((data, ctx) => {
   const type = data.type;
   if (!type) return;
@@ -134,6 +137,7 @@ export const walletSchema = z
     active: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,
+    assignee_user_id: z.number().int().positive().nullable().optional().default(null),
   })
 
   .superRefine(applyWalletBusinessRules);

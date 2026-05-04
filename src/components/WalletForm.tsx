@@ -46,6 +46,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WALLET_PROVIDER_ICON_OPTIONS } from '@/lib/wallet-provider-icons';
+import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 
 type TypeMeta = {
   label: string;
@@ -115,6 +116,7 @@ const buildWalletFormDefaults = (
   active: defaultValues?.active ?? true,
   cutoff_day: toNumericOrNull(defaultValues?.cutoff_day),
   due_day: toNumericOrNull(defaultValues?.due_day),
+  assignee_user_id: defaultValues?.assignee_user_id ?? null,
 });
 
 export default function WalletForm({
@@ -242,6 +244,31 @@ export default function WalletForm({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="assignee_user_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <div className="space-y-1">
+                      <MemberAssigneeSelect
+                        id="micasa-wallet-assignee"
+                        value={field.value ?? ''}
+                        onChange={(userId) =>
+                          field.onChange(userId === '' ? null : userId)
+                        }
+                        label="Asignar a miembro (opcional)"
+                      />
+                      <p className="text-[10px] text-muted-foreground pl-0.5">
+                        En la casa: deja vacío para una billetera compartida.
+                      </p>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

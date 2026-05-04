@@ -93,7 +93,7 @@ export function AppSidebar({
       isActive: pathname.startsWith('/categories'),
     },
     {
-      title: 'Proyección de liquidez',
+      title: 'Liquidez y análisis',
       url: '/wallets/liquidity',
       isActive: pathname.startsWith('/wallets/liquidity'),
     },

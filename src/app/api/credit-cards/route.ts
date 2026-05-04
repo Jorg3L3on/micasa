@@ -8,6 +8,7 @@ import {
   createCreditCardForOwner,
   listCreditCardsByOwner,
 } from '@/lib/finance/credit-card.service';
+import { AssigneeInvalidError } from '@/lib/server/house-members';
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
         { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
+    }
+
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     console.error('Error creating credit card:', error);

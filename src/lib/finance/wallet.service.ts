@@ -4,6 +4,45 @@ import type {
   UpdateWalletInput,
 } from '@/schemas/wallet.schema';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { resolveWalletAssignee } from '@/lib/server/wallets/resolve-wallet-assignee';
+
+const ASSIGNEE_INCLUDE = {
+  assignee: { select: { id: true, name: true } },
+} as const;
+
+const mapWalletRowToListDto = (
+  w: {
+    id: number;
+    name: string;
+    provider_icon_key: string | null;
+    amount: unknown;
+    credit_limit: unknown;
+    type: string;
+    active: boolean;
+    cutoff_day: number | null;
+    due_day: number | null;
+    assignee_user_id: number | null;
+    assignee: { id: number; name: string } | null;
+  },
+  spent: number,
+) => {
+  const amountNum = Number(w.amount);
+  return {
+    id: w.id,
+    name: w.name,
+    provider_icon_key: w.provider_icon_key ?? null,
+    amount: amountNum,
+    credit_limit: w.credit_limit == null ? null : Number(w.credit_limit),
+    type: w.type,
+    active: w.active,
+    cutoff_day: w.cutoff_day,
+    due_day: w.due_day,
+    spent_amount: spent,
+    remaining_amount: amountNum - spent,
+    assignee_user_id: w.assignee_user_id ?? null,
+    assignee: w.assignee ? { id: w.assignee.id, name: w.assignee.name } : null,
+  };
+};
 
 type WalletServiceError = Error & { code?: string };
 
@@ -35,6 +74,7 @@ export async function listWallets(userId: number) {
 export async function listWalletsByOwner(ownerFilter: OwnerFilter) {
   const wallets = await prisma.wallet.findMany({
     where: ownerFilter,
+    include: ASSIGNEE_INCLUDE,
     orderBy: [
       { active: 'desc' },
       { name: 'asc' },
@@ -57,15 +97,7 @@ export async function listWalletsByOwner(ownerFilter: OwnerFilter) {
 
   return wallets.map((w) => {
     const spent = spentMap.get(w.id) ?? 0;
-    const amountNum = Number(w.amount);
-    return {
-      ...w,
-      amount: amountNum,
-      provider_icon_key: w.provider_icon_key ?? null,
-      credit_limit: w.credit_limit == null ? null : Number(w.credit_limit),
-      spent_amount: spent,
-      remaining_amount: amountNum - spent,
-    };
+    return mapWalletRowToListDto(w, spent);
   });
 }
 
@@ -81,6 +113,12 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
     throw error;
   }
 
+  const assignee_user_id = await resolveWalletAssignee(
+    'user',
+    defaultUser.id,
+    data.assignee_user_id,
+  );
+
   return prisma.wallet.create({
     data: {
       name: data.name,
@@ -93,6 +131,7 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
       due_day: data.due_day,
       user_id: defaultUser.id,
       house_id: null,
+      assignee_user_id,
     },
   });
 }
@@ -101,6 +140,8 @@ export async function createWalletForUser(
   userId: number,
   data: CreateWalletInput,
 ) {
+  const assignee_user_id = await resolveWalletAssignee('user', userId, data.assignee_user_id);
+
   return prisma.wallet.create({
     data: {
       name: data.name,
@@ -113,6 +154,7 @@ export async function createWalletForUser(
       due_day: data.due_day,
       user_id: userId,
       house_id: null,
+      assignee_user_id,
     },
   });
 }
@@ -122,6 +164,12 @@ export async function createWalletForOwner(
   ownerId: number,
   data: CreateWalletInput,
 ) {
+  const assignee_user_id = await resolveWalletAssignee(
+    ownerType,
+    ownerId,
+    data.assignee_user_id,
+  );
+
   return prisma.wallet.create({
     data: {
       name: data.name,
@@ -134,7 +182,9 @@ export async function createWalletForOwner(
       due_day: data.due_day,
       user_id: ownerType === 'user' ? ownerId : null,
       house_id: ownerType === 'house' ? ownerId : null,
+      assignee_user_id,
     },
+    include: ASSIGNEE_INCLUDE,
   });
 }
 
@@ -158,9 +208,30 @@ export async function updateWalletMetadataForOwner(
     error.code = 'P2025';
     throw error;
   }
+
+  const { assignee_user_id: assigneePatch, ...rest } = data;
+  const ownerType = existing.house_id != null ? 'house' : 'user';
+  const ownerId = existing.house_id ?? existing.user_id;
+  if (ownerId == null) {
+    const error = new Error('Wallet has no owner') as WalletServiceError;
+    error.code = 'P2025';
+    throw error;
+  }
+
+  let assignee_user_id: number | null | undefined;
+  if (assigneePatch !== undefined) {
+    assignee_user_id = await resolveWalletAssignee(ownerType, ownerId, assigneePatch);
+  }
+
+  const prismaData = {
+    ...rest,
+    ...(assigneePatch !== undefined ? { assignee_user_id } : {}),
+  };
+
   return prisma.wallet.update({
     where: { id },
-    data,
+    data: prismaData,
+    include: ASSIGNEE_INCLUDE,
   });
 }
 

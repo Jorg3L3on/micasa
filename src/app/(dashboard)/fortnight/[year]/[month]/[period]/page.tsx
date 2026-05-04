@@ -179,7 +179,7 @@ export default async function FortnightPage({
         }
       />
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* TOP SECTION - Summary Cards */}
         <SummaryBlock
           tenemos={tenemos}

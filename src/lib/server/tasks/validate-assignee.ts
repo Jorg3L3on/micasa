@@ -1,26 +1,14 @@
-import prisma from '@/lib/prisma';
+import {
+  AssigneeInvalidError,
+  assertHouseMember,
+} from '@/lib/server/house-members';
 
 export type TaskOwnerContext = {
   ownerType: 'user' | 'house';
   ownerId: number;
 };
 
-export class AssigneeInvalidError extends Error {
-  constructor(message = 'Asignación inválida') {
-    super(message);
-    this.name = 'AssigneeInvalidError';
-  }
-}
-
-const assertHouseMember = async (houseId: number, userId: number): Promise<void> => {
-  const membership = await prisma.houseMember.findFirst({
-    where: { house_id: houseId, user_id: userId },
-    select: { id: true },
-  });
-  if (!membership) {
-    throw new AssigneeInvalidError('El usuario seleccionado no es miembro de esta casa');
-  }
-};
+export { AssigneeInvalidError };
 
 /**
  * Resolves assignee for create. House requires a valid member id.

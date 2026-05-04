@@ -6,6 +6,7 @@ import {
   getCreditCardByOwner,
   updateCreditCardForOwner,
 } from '@/lib/finance/credit-card.service';
+import { AssigneeInvalidError } from '@/lib/server/house-members';
 
 const parseCreditCardId = async (params: Promise<{ id: string }>) => {
   const { id } = await params;
@@ -86,6 +87,10 @@ export async function PATCH(
         { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
+    }
+
+    if (error instanceof AssigneeInvalidError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     if (
