@@ -13,6 +13,7 @@ import {
   Receipt,
   RotateCcw,
   ShoppingCart,
+  SlidersHorizontal,
   Upload,
   Wallet,
 } from 'lucide-react';
@@ -25,7 +26,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import type { CreditCardListItem, CreditCardStatementResponse } from '@/types/catalog';
 
 type HeaderActionsProps = {
@@ -34,6 +41,7 @@ type HeaderActionsProps = {
   onExportCsv: () => void;
   onExportPdf: () => void;
   onEditCard: () => void;
+  onAdjustBalance?: () => void;
 };
 
 export const CreditCardDetailHeaderActions = ({
@@ -42,12 +50,21 @@ export const CreditCardDetailHeaderActions = ({
   onExportCsv,
   onExportPdf,
   onEditCard,
+  onAdjustBalance,
 }: HeaderActionsProps) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-center gap-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-        <CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-      </span>
+      {card.provider_icon_key ? (
+        <WalletProviderIcon
+          providerIconKey={card.provider_icon_key}
+          className="h-8 w-8 shrink-0 rounded-lg border border-border/60 shadow-sm"
+          iconClassName="h-4 w-4"
+        />
+      ) : (
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+          <CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+        </span>
+      )}
       <div>
         <h1 className="text-xl font-semibold">{card.name}</h1>
         <p className="text-xs text-muted-foreground">
@@ -72,6 +89,15 @@ export const CreditCardDetailHeaderActions = ({
           <Pencil className="mr-2 h-4 w-4 shrink-0" />
           Editar tarjeta
         </DropdownMenuItem>
+        {onAdjustBalance ? (
+          <DropdownMenuItem
+            onClick={onAdjustBalance}
+            className="cursor-pointer"
+          >
+            <SlidersHorizontal className="mr-2 h-4 w-4 shrink-0" />
+            Ajustar deuda
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={onOpenImportDialog} className="cursor-pointer">
           <Upload className="mr-2 h-4 w-4 shrink-0" />
           Importar PDF
@@ -217,6 +243,7 @@ type CycleSummaryProps = {
   onNextCycle: () => void;
   onResetToToday: () => void;
   formatCycleRange: (start: string, end: string) => string;
+  onAdjustDebt?: () => void;
 };
 
 export const CreditCardCycleSummary = ({
@@ -226,6 +253,7 @@ export const CreditCardCycleSummary = ({
   onNextCycle,
   onResetToToday,
   formatCycleRange,
+  onAdjustDebt,
 }: CycleSummaryProps) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-center gap-1 self-start rounded-lg border border-border/60 bg-muted/40 px-1 py-1">
@@ -271,12 +299,35 @@ export const CreditCardCycleSummary = ({
     </div>
     <div className="flex flex-wrap gap-2">
       <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 px-3 py-2 dark:bg-violet-500/8">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Deuda actual
-        </p>
-        <p className="text-sm font-bold font-mono tabular-nums">
-          {formatCurrency(statement.outstanding_balance)}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Deuda actual
+            </p>
+            <p className="text-sm font-bold font-mono tabular-nums">
+              {formatCurrency(statement.outstanding_balance)}
+            </p>
+          </div>
+          {onAdjustDebt ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={onAdjustDebt}
+                  aria-label="Ajustar deuda registrada"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                Alinear deuda con el emisor (no crea movimientos)
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
+        </div>
       </div>
       <div className="rounded-lg border border-l-[3px] border-l-emerald-500/50 bg-emerald-500/5 px-3 py-2 dark:bg-emerald-500/8">
         <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
