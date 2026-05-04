@@ -15,6 +15,16 @@ export const WALLET_PROVIDER_ICON_KEYS = [
 
 export type WalletProviderIconKey = (typeof WALLET_PROVIDER_ICON_KEYS)[number];
 
+const WALLET_PROVIDER_ICON_KEY_SET = new Set<string>(WALLET_PROVIDER_ICON_KEYS);
+
+/** Coerce DB/string values to the catalog union; unknown values become null. */
+export const parseWalletProviderIconKey = (
+  key: string | null | undefined,
+): WalletProviderIconKey | null => {
+  if (key == null) return null;
+  return WALLET_PROVIDER_ICON_KEY_SET.has(key) ? (key as WalletProviderIconKey) : null;
+};
+
 export type WalletProviderIconOption = {
   key: WalletProviderIconKey;
   label: string;

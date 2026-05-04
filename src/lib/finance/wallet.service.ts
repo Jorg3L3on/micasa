@@ -7,6 +7,8 @@ import type {
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
 import { resolveWalletAssignee } from '@/lib/server/wallets/resolve-wallet-assignee';
+import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
+import type { WalletListItem } from '@/types/catalog';
 
 const ASSIGNEE_INCLUDE = {
   assignee: { select: { id: true, name: true } },
@@ -32,7 +34,7 @@ const mapWalletRowToListDto = (
   return {
     id: w.id,
     name: w.name,
-    provider_icon_key: w.provider_icon_key ?? null,
+    provider_icon_key: parseWalletProviderIconKey(w.provider_icon_key),
     amount: amountNum,
     credit_limit: w.credit_limit == null ? null : Number(w.credit_limit),
     type: w.type,
@@ -73,7 +75,9 @@ export async function listWallets(userId: number) {
   });
 }
 
-export async function listWalletsByOwner(ownerFilter: OwnerFilter) {
+export async function listWalletsByOwner(
+  ownerFilter: OwnerFilter,
+): Promise<WalletListItem[]> {
   const wallets = await prisma.wallet.findMany({
     where: ownerFilter,
     include: ASSIGNEE_INCLUDE,
