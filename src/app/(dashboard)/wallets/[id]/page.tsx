@@ -319,6 +319,18 @@ export default function WalletDetailPage() {
     return `${MONTH_LABEL[monthIdx]} ${year}`;
   }, [range.from]);
 
+  if (context.id === 0 || (loading && !data)) {
+    return <WalletDetailSkeleton />;
+  }
+
+  if (error || !wallet || !data) {
+    return (
+      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        {error ?? 'No se pudo cargar la billetera'}
+      </div>
+    );
+  }
+
   const Icon =
     wallet.type === 'CREDIT_CARD'
       ? CreditCard
@@ -343,18 +355,6 @@ export default function WalletDetailPage() {
         : wallet.type === 'DEBIT_CARD'
           ? 'text-blue-600 dark:text-blue-400'
           : 'text-emerald-600 dark:text-emerald-400';
-
-  if (context.id === 0 || (loading && !data)) {
-    return <WalletDetailSkeleton />;
-  }
-
-  if (error || !wallet || !data) {
-    return (
-      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-        {error ?? 'No se pudo cargar la billetera'}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
