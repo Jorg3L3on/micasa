@@ -22,7 +22,7 @@ async function getDashboardData(
 ): Promise<DashboardData | null> {
   try {
     const query = new URLSearchParams();
-    if (searchParams.view) query.set('view', searchParams.view);
+    query.set('view', searchParams.view ?? 'biweekly');
     if (searchParams.month) query.set('month', searchParams.month);
     if (searchParams.year) query.set('year', searchParams.year);
     if (searchParams.period) query.set('period', searchParams.period);

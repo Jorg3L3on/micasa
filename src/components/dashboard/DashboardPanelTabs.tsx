@@ -11,7 +11,6 @@ import StatCard from '@/components/dashboard/StatCard';
 import MonthlyOverviewChart from '@/components/dashboard/MonthlyOverviewChart';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
 import CurrentPeriodSummaryCard from '@/components/dashboard/CurrentPeriodSummaryCard';
-import RecentTransactionsTable from '@/components/dashboard/RecentTransactionsTable';
 
 export type DashboardHomeTab = 'panel' | 'despensa' | 'tareas';
 
@@ -43,13 +42,6 @@ const TAB_CONFIG = [
 
 const STAT_CARDS = [
   {
-    key: 'balance' as const,
-    title: 'Balance total',
-    iconKey: 'wallet' as const,
-    iconGradient: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
-    subtitle: 'Saldo en billeteras',
-  },
-  {
     key: 'income' as const,
     title: 'Ingresos del periodo',
     iconKey: 'trending-up' as const,
@@ -61,14 +53,35 @@ const STAT_CARDS = [
     title: 'Gastos del periodo',
     iconKey: 'trending-down' as const,
     iconGradient: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
-    subtitle: 'Total gastado',
+    subtitle: 'Comprometido (pagado y pendiente)',
   },
   {
-    key: 'available' as const,
-    title: 'Disponible',
+    key: 'fundingBalance' as const,
+    title: 'Efectivo y débito',
+    iconKey: 'banknote' as const,
+    iconGradient: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
+    subtitle: 'Suma de saldos en billeteras',
+  },
+  {
+    key: 'fundingNet' as const,
+    title: 'Efectivo tras pendientes',
+    iconKey: 'scale' as const,
+    iconGradient: 'linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%)',
+    subtitle: 'Billeteras menos gastos no pagados del periodo',
+  },
+  {
+    key: 'creditDebt' as const,
+    title: 'Deuda en tarjetas',
+    iconKey: 'credit-card' as const,
+    iconGradient: 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)',
+    subtitle: 'Saldo utilizado en TC y tiendas',
+  },
+  {
+    key: 'creditAvailable' as const,
+    title: 'Crédito disponible',
     iconKey: 'circle-dollar' as const,
     iconGradient: 'linear-gradient(135deg, #eab308 0%, #facc15 100%)',
-    subtitle: 'Libre de compromisos',
+    subtitle: 'Límite menos saldo (con límite definido)',
   },
 ] as const;
 
@@ -86,7 +99,7 @@ export default function DashboardPanelTabs({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<DashboardHomeTab>(initialTab);
-  const { summary, availableVsCommitted } = data;
+  const { summary } = data;
 
   useEffect(() => {
     setTab(tabFromQueryParam(searchParams.get('tab')));
@@ -106,10 +119,12 @@ export default function DashboardPanelTabs({
   };
 
   const statValues = {
-    balance: summary.balance,
     income: summary.totalIncome,
     expense: summary.totalExpense,
-    available: availableVsCommitted.libre,
+    fundingBalance: data.fundingWalletBalanceTotal,
+    fundingNet: data.fundingNetVsPendingExpense,
+    creditDebt: data.creditWalletDebtTotal,
+    creditAvailable: data.creditWalletAvailableTotal,
   };
 
   return (
@@ -132,7 +147,7 @@ export default function DashboardPanelTabs({
       </TabsList>
 
       <TabsContent value="panel" className="mt-0 space-y-5">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           {STAT_CARDS.map((card) => (
             <StatCard
               key={card.key}
@@ -157,7 +172,6 @@ export default function DashboardPanelTabs({
           </div>
         </div>
 
-        <RecentTransactionsTable data={data} />
       </TabsContent>
 
       <TabsContent value="despensa" className="mt-0">

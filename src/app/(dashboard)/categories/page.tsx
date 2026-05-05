@@ -17,7 +17,7 @@ import {
   deleteCategory,
   updateCategory,
 } from '@/lib/api/categories';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { CategoryOption } from '@/types/catalog';
 
 export default function CategoriesPage() {
@@ -173,14 +173,26 @@ export default function CategoriesPage() {
   return (
     <>
       <div
-        className="sticky top-20 z-20 mb-4 flex justify-end bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
-        aria-label="Acciones de categorías"
+        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        aria-label="Categorías"
       >
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">Categorías</h2>
+          <p className="text-xs text-muted-foreground">
+            Etiquetas para clasificar gastos e ingresos en tu contexto actual.
+          </p>
+        </div>
+        <Button
+          className="h-9 shrink-0 rounded-xl"
+          onClick={() => setCreateDialogOpen(true)}
+          aria-label="Agregar categoría"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
           Agregar categoría
         </Button>
       </div>
 
+      <div className="relative z-0">
       {error && !deleteDialogOpen && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
@@ -206,6 +218,7 @@ export default function CategoriesPage() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <CategoryForm
         open={createDialogOpen}

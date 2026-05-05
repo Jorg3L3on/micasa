@@ -1,4 +1,7 @@
-import type { PantryReceiptDetailDto } from '@/types/pantry-receipt';
+import type {
+  PantryReceiptDetailDto,
+  PantryReceiptLinkedExpenseDto,
+} from '@/types/pantry-receipt';
 import {
   extractLinkedCartIdFromWarnings,
   stripReceiptSystemWarnings,
@@ -18,6 +21,20 @@ export const decimalToNumber = (value: unknown): number | null => {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
+
+export const serializePantryReceiptLinkedExpense = (e: {
+  id: number;
+  description: string;
+  amount: unknown;
+  payment_date: Date | null;
+}): PantryReceiptLinkedExpenseDto => ({
+  id: e.id,
+  description: e.description,
+  amount: decimalToNumber(e.amount) ?? 0,
+  payment_date: e.payment_date
+    ? (e.payment_date.toISOString().split('T')[0] ?? null)
+    : null,
+});
 
 const serializeLines = (
   lines: Array<{
@@ -60,6 +77,13 @@ export const serializePantryReceiptDetail = (r: {
   created_at: Date;
   updated_at: Date;
   created_by_user_id: number;
+  linked_expense_id?: number | null;
+  linked_expense?: {
+    id: number;
+    description: string;
+    amount: unknown;
+    payment_date: Date | null;
+  } | null;
   lines: Parameters<typeof serializeLines>[0];
 }): PantryReceiptDetailDto => ({
   id: r.id,
@@ -76,6 +100,10 @@ export const serializePantryReceiptDetail = (r: {
   file_mime: r.file_mime,
   has_file: r.file_data != null && r.file_data.length > 0,
   linked_cart_id: extractLinkedCartIdFromWarnings(r.parse_warnings),
+  linked_expense_id: r.linked_expense_id ?? null,
+  linked_expense: r.linked_expense
+    ? serializePantryReceiptLinkedExpense(r.linked_expense)
+    : null,
   parse_warnings: stripReceiptSystemWarnings(r.parse_warnings),
   created_at: r.created_at.toISOString(),
   updated_at: r.updated_at.toISOString(),

@@ -185,18 +185,30 @@ export default function HouseUsersPage() {
 
   return (
     <>
-      {isOwner && (
-        <div
-          className="sticky top-20 z-20 mb-4 flex justify-end bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
-          aria-label="Acciones de usuarios de la casa"
-        >
-          <Button onClick={() => setAddUserDialogOpen(true)}>
-            <UserPlus />
+      <div
+        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        aria-label="Usuarios de la casa"
+      >
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">
+            Usuarios de la casa
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Quién comparte este hogar y puede colaborar en gastos y listas.
+          </p>
+        </div>
+        {isOwner ? (
+          <Button
+            className="h-9 shrink-0 rounded-xl"
+            onClick={() => setAddUserDialogOpen(true)}
+          >
+            <UserPlus className="h-4 w-4" aria-hidden />
             Agregar usuario
           </Button>
-        </div>
-      )}
+        ) : null}
+      </div>
 
+      <div className="relative z-0">
       {error && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
@@ -222,6 +234,7 @@ export default function HouseUsersPage() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

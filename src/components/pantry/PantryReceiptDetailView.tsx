@@ -36,20 +36,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
+  clientFetchFromApi,
   getClientApiBaseUrl,
 } from '@/lib/api/client-fetch';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   deletePantryReceipt,
   getPantryReceipt,
   patchPantryReceipt,
+  registerPantryReceiptExpense,
 } from '@/lib/api/pantry';
 import { formatCurrency } from '@/lib/utils';
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { PantryReceiptDetailDto, PantryReceiptLineDto } from '@/types/pantry-receipt';
 
@@ -99,6 +110,18 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
   const [savingLines, setSavingLines] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
+  const [expenseCategories, setExpenseCategories] = useState<CategoryOption[]>(
+    [],
+  );
+  const [expenseWallets, setExpenseWallets] = useState<PaymentMethodOption[]>(
+    [],
+  );
+  const [expenseCatalogLoading, setExpenseCatalogLoading] = useState(false);
+  const [regCategoryId, setRegCategoryId] = useState<number | null>(null);
+  const [regWalletId, setRegWalletId] = useState<number | null>(null);
+  const [regExpenseDate, setRegExpenseDate] = useState('');
+  const [registeringExpense, setRegisteringExpense] = useState(false);
+
   const load = useCallback(async () => {
     if (!Number.isFinite(receiptId) || receiptId < 1) {
       setNotFound(true);
@@ -136,6 +159,80 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!detail?.purchased_at) return;
+    const d = detail.purchased_at.split('T')[0] ?? '';
+    if (d) setRegExpenseDate(d);
+  }, [detail?.id, detail?.purchased_at]);
+
+  useEffect(() => {
+    if (!detail) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setExpenseCatalogLoading(true);
+        const [cats, wals] = await Promise.all([
+          clientFetchFromApi<CategoryOption[]>(
+            '/api/categories',
+            undefined,
+            context,
+          ),
+          getPaymentMethodOptions(context),
+        ]);
+        if (!cancelled) {
+          setExpenseCategories(cats);
+          setExpenseWallets(wals);
+        }
+      } catch {
+        if (!cancelled) {
+          setExpenseCategories([]);
+          setExpenseWallets([]);
+        }
+      } finally {
+        if (!cancelled) setExpenseCatalogLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail, context]);
+
+  const transactionsHref = ownerHref('/transactions', context);
+
+  const handleRegisterExpense = async () => {
+    if (regCategoryId == null) {
+      toast.error('Selecciona una categoría');
+      return;
+    }
+    if (regWalletId == null) {
+      toast.error('Selecciona una cartera');
+      return;
+    }
+    if (!regExpenseDate.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(regExpenseDate.trim())) {
+      toast.error('Indica la fecha del gasto');
+      return;
+    }
+    try {
+      setRegisteringExpense(true);
+      await registerPantryReceiptExpense(
+        receiptId,
+        {
+          categoryId: regCategoryId,
+          walletId: regWalletId,
+          date: regExpenseDate.trim(),
+        },
+        context,
+      );
+      toast.success('Gasto registrado y vinculado');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo registrar el gasto');
+    } finally {
+      setRegisteringExpense(false);
+    }
+  };
 
   const linesSum = useMemo(() => {
     let sum = 0;
@@ -396,6 +493,140 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
               accent="emerald"
             />
           </div>
+
+          {detail.linked_expense ? (
+            <div
+              className="rounded-lg border border-border/60 border-l-[3px] border-l-violet-500/50 bg-transparent px-3 py-3"
+              role="region"
+              aria-label="Gasto vinculado"
+            >
+              <div className="flex flex-wrap items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+                  <Wallet className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Gasto vinculado
+                  </p>
+                  <p className="text-sm font-medium leading-snug">
+                    {detail.linked_expense.description}
+                  </p>
+                  <p className="text-sm font-bold font-mono tabular-nums">
+                    {formatCurrency(detail.linked_expense.amount)}
+                  </p>
+                  {detail.linked_expense.payment_date ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Fecha de pago:{' '}
+                      {new Date(
+                        `${detail.linked_expense.payment_date}T12:00:00`,
+                      ).toLocaleDateString('es-MX', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  ) : null}
+                  <Link
+                    href={transactionsHref}
+                    className="inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Ver en movimientos
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="rounded-lg border border-border/60 p-3"
+              role="region"
+              aria-label="Registrar gasto desde recibo"
+            >
+              <p className="text-sm font-semibold leading-none mb-3">
+                Registrar en gastos
+              </p>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Usa el total del recibo y registra el pago en la cartera elegida.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Categoría</Label>
+                  <Select
+                    value={regCategoryId != null ? String(regCategoryId) : '__NONE__'}
+                    onValueChange={(value) =>
+                      setRegCategoryId(value === '__NONE__' ? null : Number(value))
+                    }
+                    disabled={expenseCatalogLoading}
+                  >
+                    <SelectTrigger className="h-9 w-full">
+                      <SelectValue
+                        placeholder={
+                          expenseCatalogLoading ? 'Cargando…' : 'Selecciona categoría'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__NONE__">Selecciona categoría</SelectItem>
+                      {expenseCategories.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Cartera</Label>
+                  <Select
+                    value={regWalletId != null ? String(regWalletId) : '__NONE__'}
+                    onValueChange={(value) =>
+                      setRegWalletId(value === '__NONE__' ? null : Number(value))
+                    }
+                    disabled={expenseCatalogLoading}
+                  >
+                    <SelectTrigger className="h-9 w-full">
+                      <SelectValue
+                        placeholder={
+                          expenseCatalogLoading ? 'Cargando…' : 'Selecciona cartera'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__NONE__">Selecciona cartera</SelectItem>
+                      {expenseWallets.map((w) => (
+                        <SelectItem key={w.id} value={String(w.id)}>
+                          {w.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-expense-date">Fecha del gasto</Label>
+                  <Input
+                    id="reg-expense-date"
+                    type="date"
+                    value={regExpenseDate}
+                    onChange={(e) => setRegExpenseDate(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="button"
+                  className="h-9 rounded-xl"
+                  onClick={() => void handleRegisterExpense()}
+                  disabled={registeringExpense || expenseCatalogLoading}
+                >
+                  {registeringExpense ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Registrar gasto'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2 md:hidden">
             {editableLines.map((row) => (

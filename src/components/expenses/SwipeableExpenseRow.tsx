@@ -122,7 +122,7 @@ export default function SwipeableExpenseRow({
         </div>
       </div>
       <motion.div
-        className="relative z-10"
+        className="relative z-[1]"
         drag={pending ? false : 'x'}
         dragConstraints={{ left: -ACTION_WIDTH, right: 0 }}
         dragElastic={0.05}

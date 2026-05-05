@@ -154,7 +154,7 @@ export default function PantryShoppingListView() {
       role="region"
       aria-label="Listas de compras"
     >
-      <div className="sticky top-20 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 bg-background/95 px-4 py-2 backdrop-blur supports-backdrop-filter:bg-background/80">
+      <div className="sticky top-16 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold leading-tight">Listas de compras</h2>
           <p className="text-xs text-muted-foreground">

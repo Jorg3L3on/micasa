@@ -267,6 +267,9 @@ model Expense {
   transferAsUser      Transfer?          @relation("TransferUserExpense")
   credit_card_payment CreditCardPayment?
 
+  /// Optional link from a Despensa pantry receipt (one expense ↔ one receipt).
+  pantry_receipt PantryReceipt? @relation("ExpensePantryReceipt")
+
   @@index([user_id])
   @@index([house_id])
   @@index([fortnight_id])
@@ -566,6 +569,7 @@ model PantryReceipt {
   store          ShoppingStore?
   source_type    String?
   linked_cart_id Int?
+  linked_expense_id Int? @unique
 
   user_id  Int?
   house_id Int?
@@ -586,11 +590,13 @@ model PantryReceipt {
   created_by User                @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
   lines      PantryReceiptLine[]
   linked_cart PantryShoppingCart? @relation("PantryReceiptLinkedCart", fields: [linked_cart_id], references: [id], onDelete: SetNull)
+  linked_expense Expense? @relation("ExpensePantryReceipt", fields: [linked_expense_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([house_id])
   @@index([created_at])
   @@index([linked_cart_id])
+  @@index([linked_expense_id])
 }
 
 model PantryReceiptLine {

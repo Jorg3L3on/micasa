@@ -4,14 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
   FileText,
   FileUp,
   Loader2,
+  Receipt,
 } from 'lucide-react';
 
 import { PantryReceiptListRow } from '@/components/pantry/PantryReceiptListRow';
+import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,12 +39,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import EmptyState from '@/components/EmptyState';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { PantryLayoutShell } from '@/components/pantry/PantryLayoutShell';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
+  clientFetchFromApi,
   getClientApiBaseUrl,
 } from '@/lib/api/client-fetch';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   deletePantryReceipt,
   listPantryReceipts,
@@ -51,6 +62,7 @@ import {
   uploadPantryReceipt,
 } from '@/lib/api/pantry';
 import { cn, formatCurrency } from '@/lib/utils';
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 import type { PantryShoppingCartSummaryDto } from '@/types/pantry-shopping-cart';
 import { SHOPPING_STORE_OPTIONS, type ShoppingStore } from '@/types/shopping-store';
@@ -91,6 +103,19 @@ export default function PantryReceiptsPage() {
   const [cartLinkMode, setCartLinkMode] = useState<'existing' | 'new'>('existing');
   const [selectedCartId, setSelectedCartId] = useState<number | null>(null);
   const [newCartTitle, setNewCartTitle] = useState('');
+  const [registerExpenseOnImport, setRegisterExpenseOnImport] = useState(false);
+  const [expenseCatalogLoading, setExpenseCatalogLoading] = useState(false);
+  const [expenseCategories, setExpenseCategories] = useState<CategoryOption[]>(
+    [],
+  );
+  const [expenseWallets, setExpenseWallets] = useState<PaymentMethodOption[]>(
+    [],
+  );
+  const [expenseCategoryId, setExpenseCategoryId] = useState<number | null>(
+    null,
+  );
+  const [expenseWalletId, setExpenseWalletId] = useState<number | null>(null);
+  const [expenseDate, setExpenseDate] = useState('');
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(
     null,
   );
@@ -140,6 +165,10 @@ export default function PantryReceiptsPage() {
     setCartLinkMode('existing');
     setSelectedCartId(null);
     setNewCartTitle('');
+    setRegisterExpenseOnImport(false);
+    setExpenseCategoryId(null);
+    setExpenseWalletId(null);
+    setExpenseDate('');
     setStoreFile(false);
   };
 
@@ -147,12 +176,26 @@ export default function PantryReceiptsPage() {
     setUploadOpen(true);
     try {
       setCartsLoading(true);
-      const carts = await listShoppingCarts(context, 'IN_PROGRESS');
+      setExpenseCatalogLoading(true);
+      const [carts, categoriesData, walletsData] = await Promise.all([
+        listShoppingCarts(context, 'IN_PROGRESS'),
+        clientFetchFromApi<CategoryOption[]>(
+          '/api/categories',
+          undefined,
+          context,
+        ),
+        getPaymentMethodOptions(context),
+      ]);
       setInProgressCarts(carts);
+      setExpenseCategories(categoriesData);
+      setExpenseWallets(walletsData);
     } catch {
       setInProgressCarts([]);
+      setExpenseCategories([]);
+      setExpenseWallets([]);
     } finally {
       setCartsLoading(false);
+      setExpenseCatalogLoading(false);
     }
   };
 
@@ -169,6 +212,20 @@ export default function PantryReceiptsPage() {
       toast.error('Selecciona un carrito en curso');
       return;
     }
+    if (registerExpenseOnImport) {
+      if (expenseCategoryId == null) {
+        toast.error('Selecciona una categoría para el gasto');
+        return;
+      }
+      if (expenseWalletId == null) {
+        toast.error('Selecciona una cartera para el gasto');
+        return;
+      }
+      if (!expenseDate.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(expenseDate.trim())) {
+        toast.error('Indica la fecha del gasto');
+        return;
+      }
+    }
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('storeFile', storeFile ? 'true' : 'false');
@@ -180,6 +237,12 @@ export default function PantryReceiptsPage() {
       if (newCartTitle.trim()) {
         formData.append('newCartTitle', newCartTitle.trim());
       }
+    }
+    if (registerExpenseOnImport) {
+      formData.append('registerExpense', 'true');
+      formData.append('expenseCategoryId', String(expenseCategoryId));
+      formData.append('expenseWalletId', String(expenseWalletId));
+      formData.append('expenseDate', expenseDate.trim());
     }
     try {
       setUploading(true);
@@ -320,17 +383,27 @@ export default function PantryReceiptsPage() {
     };
   }, [receipts]);
 
+  const receiptSearchActive = Boolean(receiptSearch.trim());
+  const savedListSubtitle = receiptSearchActive
+    ? `Mostrando ${filteredReceipts.length.toLocaleString('es-MX')} de ${receipts.length.toLocaleString('es-MX')} recibos.`
+    : 'Toca un recibo para abrir el detalle.';
+
   return (
     <PantryLayoutShell
-      className="flex flex-col gap-5"
+      className="flex flex-col gap-5 pb-24"
       role="region"
       aria-label="Recibos de despensa"
     >
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="sticky top-16 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">Recibos</h2>
+          <p className="text-xs text-muted-foreground">
+            Recibos guardados y totales en este contexto.
+          </p>
+        </div>
         <Button
           type="button"
-          size="sm"
-          className="h-9 rounded-lg"
+          className="hidden h-9 rounded-xl sm:inline-flex"
           onClick={() => void handleOpenUpload()}
         >
           <FileUp className="h-4 w-4" />
@@ -339,33 +412,27 @@ export default function PantryReceiptsPage() {
       </div>
 
       <section
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
         aria-label="Resumen de recibos"
       >
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Recibos
-          </p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums">
-            {stats.receiptCount.toLocaleString('es-MX')}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Total acumulado
-          </p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums">
-            {formatCurrency(stats.totalGrand)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Última compra
-          </p>
-          <p className="mt-1 text-base font-semibold text-foreground">
-            {formatShortDate(stats.latestPurchasedAt)}
-          </p>
-        </div>
+        <PantryMetricTile
+          icon={Receipt}
+          label="Recibos"
+          value={stats.receiptCount.toLocaleString('es-MX')}
+          accent="blue"
+        />
+        <PantryMetricTile
+          icon={CircleDollarSign}
+          label="Total acumulado"
+          value={formatCurrency(stats.totalGrand)}
+          accent="violet"
+        />
+        <PantryMetricTile
+          icon={CalendarDays}
+          label="Última compra"
+          value={formatShortDate(stats.latestPurchasedAt)}
+          accent="slate"
+        />
       </section>
 
       <Card
@@ -382,12 +449,9 @@ export default function PantryReceiptsPage() {
               Recibos guardados
             </CardTitle>
             <p className="text-[10px] text-muted-foreground">
-              Toca un recibo para abrir el detalle.
+              {savedListSubtitle}
             </p>
           </div>
-          <span className="rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
-            {stats.receiptCount.toLocaleString('es-MX')}
-          </span>
         </CardHeader>
         <CardContent>
           {listError && (
@@ -448,32 +512,44 @@ export default function PantryReceiptsPage() {
                         {filteredReceipts.length === 1 ? 'recibo' : 'recibos'})
                       </p>
                       <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={receiptPageIndex <= 0}
-                          onClick={() =>
-                            setReceiptPageIndex((p) => Math.max(0, p - 1))
-                          }
-                          aria-label="Página anterior"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={receiptPageIndex >= receiptPageCount - 1}
-                          onClick={() =>
-                            setReceiptPageIndex((p) =>
-                              Math.min(receiptPageCount - 1, p + 1),
-                            )
-                          }
-                          aria-label="Página siguiente"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={receiptPageIndex <= 0}
+                              onClick={() =>
+                                setReceiptPageIndex((p) => Math.max(0, p - 1))
+                              }
+                              aria-label="Página anterior"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Página anterior</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={
+                                receiptPageIndex >= receiptPageCount - 1
+                              }
+                              onClick={() =>
+                                setReceiptPageIndex((p) =>
+                                  Math.min(receiptPageCount - 1, p + 1),
+                                )
+                              }
+                              aria-label="Página siguiente"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Página siguiente</TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
                   ) : null}
@@ -484,6 +560,16 @@ export default function PantryReceiptsPage() {
         </CardContent>
       </Card>
 
+      <Button
+        type="button"
+        size="icon"
+        aria-label="Importar archivo"
+        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        onClick={() => void handleOpenUpload()}
+      >
+        <FileUp className="h-6 w-6" />
+      </Button>
+
       <Dialog
         open={uploadOpen}
         onOpenChange={(open) => {
@@ -491,15 +577,24 @@ export default function PantryReceiptsPage() {
           if (!open && !uploading) resetUploadForm();
         }}
       >
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Importar recibo</DialogTitle>
-            <DialogDescription>
-              La fecha de compra es obligatoria. Puedes elegir si quieres vincular un
-              carrito en curso o crear uno nuevo como comprado.
+        <DialogContent
+          className={cn(
+            'flex w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0',
+            'max-h-[92dvh] sm:max-h-[min(90vh,920px)] sm:max-w-2xl',
+          )}
+        >
+          <DialogHeader className="shrink-0 space-y-2 px-4 pb-2 pt-5 text-left sm:px-6 sm:pb-3 sm:pt-6 sm:text-left">
+            <DialogTitle className="text-base sm:text-lg">Importar recibo</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              La fecha de compra es obligatoria. Opcionalmente vincula un carrito y registra
+              el gasto en tus cuentas.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4">
+
+          <div
+            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-1 [-webkit-overflow-scrolling:touch] sm:px-6"
+          >
+          <div className="grid gap-4 pb-2">
             <div className="space-y-1.5">
               <Label htmlFor="upload-file">Archivo</Label>
               <Input
@@ -520,7 +615,7 @@ export default function PantryReceiptsPage() {
                   type="date"
                   value={uploadPurchasedAt}
                   onChange={(e) => setUploadPurchasedAt(e.target.value)}
-                  className="h-9"
+                  className="h-11 min-h-11 sm:h-9 sm:min-h-9"
                   required
                 />
               </div>
@@ -531,40 +626,36 @@ export default function PantryReceiptsPage() {
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
                   placeholder="Ej. Compra quincenal"
-                  className="h-9"
+                  className="h-11 min-h-11 sm:h-9 sm:min-h-9"
                 />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Tienda (opcional)</Label>
-                <Select
-                  value={uploadStore ?? '__NONE__'}
-                  onValueChange={(value) =>
-                    setUploadStore(value === '__NONE__' ? null : (value as ShoppingStore))
-                  }
-                >
-                  <SelectTrigger className="h-9 w-full">
-                    <SelectValue placeholder="Sin tienda" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__NONE__">Sin tienda</SelectItem>
-                    {SHOPPING_STORE_OPTIONS.map((store) => (
-                      <SelectItem key={store.value} value={store.value}>
-                        {store.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="sr-only">Opciones de carrito</Label>
-              </div>
+            <div className="space-y-1.5">
+              <Label>Tienda (opcional)</Label>
+              <Select
+                value={uploadStore ?? '__NONE__'}
+                onValueChange={(value) =>
+                  setUploadStore(value === '__NONE__' ? null : (value as ShoppingStore))
+                }
+              >
+                <SelectTrigger className="h-11 w-full min-h-11 sm:h-9 sm:min-h-9">
+                  <SelectValue placeholder="Sin tienda" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
+                  <SelectItem value="__NONE__">Sin tienda</SelectItem>
+                  {SHOPPING_STORE_OPTIONS.map((store) => (
+                    <SelectItem key={store.value} value={store.value}>
+                      {store.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-3 rounded-lg border border-border/60 p-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-3">
                 <Checkbox
                   id="link-cart-on-import"
+                  className="mt-0.5 shrink-0"
                   checked={linkCartOnImport}
                   onCheckedChange={(v) => setLinkCartOnImport(v === true)}
                 />
@@ -585,10 +676,10 @@ export default function PantryReceiptsPage() {
                         setCartLinkMode(value as 'existing' | 'new')
                       }
                     >
-                      <SelectTrigger className="h-9 w-full">
+                      <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
                         <SelectItem value="existing">
                           Marcar carrito en curso como comprado
                         </SelectItem>
@@ -608,12 +699,12 @@ export default function PantryReceiptsPage() {
                         }
                         disabled={cartsLoading}
                       >
-                        <SelectTrigger className="h-9 w-full">
+                        <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
                           <SelectValue
                             placeholder={cartsLoading ? 'Cargando...' : 'Selecciona un carrito'}
                           />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
                           <SelectItem value="__NONE__">Selecciona un carrito</SelectItem>
                           {inProgressCarts.map((cart) => (
                             <SelectItem key={cart.id} value={String(cart.id)}>
@@ -631,16 +722,110 @@ export default function PantryReceiptsPage() {
                         value={newCartTitle}
                         onChange={(e) => setNewCartTitle(e.target.value)}
                         placeholder="Si lo dejas vacío, se autogenera con el recibo"
-                        className="h-9"
+                        className="h-11 min-h-11 sm:h-9 sm:min-h-9"
                       />
                     </div>
                   )}
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="space-y-3 rounded-lg border border-border/60 p-3">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="register-expense-on-import"
+                  className="mt-0.5 shrink-0"
+                  checked={registerExpenseOnImport}
+                  onCheckedChange={(v) => {
+                    const on = v === true;
+                    setRegisterExpenseOnImport(on);
+                    if (on && uploadPurchasedAt.trim()) {
+                      setExpenseDate(uploadPurchasedAt.trim());
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="register-expense-on-import"
+                  className="text-sm font-normal leading-snug cursor-pointer"
+                >
+                  Registrar como gasto
+                </Label>
+              </div>
+              {registerExpenseOnImport && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Categoría *</Label>
+                    <Select
+                      value={expenseCategoryId != null ? String(expenseCategoryId) : '__NONE__'}
+                      onValueChange={(value) =>
+                        setExpenseCategoryId(
+                          value === '__NONE__' ? null : Number(value),
+                        )
+                      }
+                      disabled={expenseCatalogLoading}
+                    >
+                      <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
+                        <SelectValue
+                          placeholder={
+                            expenseCatalogLoading ? 'Cargando…' : 'Selecciona categoría'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
+                        <SelectItem value="__NONE__">Selecciona categoría</SelectItem>
+                        {expenseCategories.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Cartera *</Label>
+                    <Select
+                      value={expenseWalletId != null ? String(expenseWalletId) : '__NONE__'}
+                      onValueChange={(value) =>
+                        setExpenseWalletId(
+                          value === '__NONE__' ? null : Number(value),
+                        )
+                      }
+                      disabled={expenseCatalogLoading}
+                    >
+                      <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
+                        <SelectValue
+                          placeholder={
+                            expenseCatalogLoading ? 'Cargando…' : 'Selecciona cartera'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
+                        <SelectItem value="__NONE__">Selecciona cartera</SelectItem>
+                        {expenseWallets.map((w) => (
+                          <SelectItem key={w.id} value={String(w.id)}>
+                            {w.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="expense-date-import">Fecha del gasto *</Label>
+                    <Input
+                      id="expense-date-import"
+                      type="date"
+                      value={expenseDate}
+                      onChange={(e) => setExpenseDate(e.target.value)}
+                      className="h-11 min-h-11 sm:h-9 sm:min-h-9"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex items-start gap-3">
               <Checkbox
                 id="store-file-modal"
+                className="mt-0.5 shrink-0"
                 checked={storeFile}
                 onCheckedChange={(v) => setStoreFile(v === true)}
               />
@@ -652,10 +837,18 @@ export default function PantryReceiptsPage() {
               </Label>
             </div>
           </div>
-          <DialogFooter>
+          </div>
+
+          <DialogFooter
+            className={cn(
+              'shrink-0 gap-2 border-t border-border/60 bg-background px-4 py-3 sm:px-6',
+              'flex-col pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-end',
+            )}
+          >
             <Button
               type="button"
               variant="outline"
+              className="h-11 w-full sm:h-9 sm:w-auto"
               onClick={() => {
                 setUploadOpen(false);
                 resetUploadForm();
@@ -664,7 +857,12 @@ export default function PantryReceiptsPage() {
             >
               Cancelar
             </Button>
-            <Button type="button" onClick={() => void handleUploadSubmit()} disabled={uploading}>
+            <Button
+              type="button"
+              className="h-11 w-full sm:h-9 sm:w-auto"
+              onClick={() => void handleUploadSubmit()}
+              disabled={uploading}
+            >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Importar'}
             </Button>
           </DialogFooter>

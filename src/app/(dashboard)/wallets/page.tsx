@@ -872,7 +872,7 @@ export default function WalletsPage() {
   return (
     <div className="space-y-4 pb-24">
       <div
-        className="sticky top-16 z-20 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
         aria-label="Acciones de billeteras"
       >
         <div className="min-w-0">
@@ -919,6 +919,7 @@ export default function WalletsPage() {
         </div>
       </div>
 
+      <div className="relative z-0">
       {error && !deleteDialogOpen && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
@@ -1437,12 +1438,13 @@ export default function WalletsPage() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <Button
         type="button"
         size="icon"
         aria-label="Agregar billetera o tarjeta"
-        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg sm:hidden"
         onClick={() => setCreateDialogOpen(true)}
       >
         <WalletIcon className="h-6 w-6" />

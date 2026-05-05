@@ -1,14 +1,22 @@
 'use client';
 
-import { Wallet, TrendingDown, TrendingUp, CircleDollarSign } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import {
+  Banknote,
+  CreditCard,
+  CircleDollarSign,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
+import { formatCurrency, cn } from '@/lib/utils';
 
 const ICON_MAP = {
-  wallet: Wallet,
   'trending-up': TrendingUp,
   'trending-down': TrendingDown,
   'circle-dollar': CircleDollarSign,
+  banknote: Banknote,
+  scale: Scale,
+  'credit-card': CreditCard,
 } as const;
 
 type IconKey = keyof typeof ICON_MAP;
@@ -49,7 +57,12 @@ export default function StatCard({
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-2xl font-bold tracking-tight text-foreground">
+        <span
+          className={cn(
+            'text-2xl font-bold font-mono tabular-nums tracking-tight',
+            amount < 0 ? 'text-destructive' : 'text-foreground',
+          )}
+        >
           {formatCurrency(amount)}
         </span>
         {subtitle && (
