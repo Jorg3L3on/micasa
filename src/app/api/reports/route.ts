@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get('year');
     const period = searchParams.get('period');
     const windowMonthsRaw = searchParams.get('windowMonths');
+    const planningCashFlow = searchParams.get('planningCashFlow') === 'true';
     const excludeCreditInstallment =
       searchParams.get('exclude_credit_installment') === 'true' ||
       searchParams.get('exclude_credit_msi') === 'true';
@@ -466,8 +467,12 @@ export async function GET(request: NextRequest) {
         where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
       }
 
+      const categoryWhere: Prisma.ExpenseWhereInput = planningCashFlow
+        ? { AND: [where, wherePlanningCashFlowExpenses()] }
+        : where;
+
       const expenses = await prisma.expense.findMany({
-        where,
+        where: categoryWhere,
         include: {
           category: {
             select: {
@@ -555,7 +560,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method. For by-category / by-payment-method, optional ?windowMonths=1-120 (rolling calendar months) when month/year/period are omitted.',
+          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method. For by-category / by-payment-method, optional ?windowMonths=1-120 (rolling calendar months) when month/year/period are omitted. For by-category, optional ?planningCashFlow=true (same expense scope as dashboard planning KPIs).',
       },
       { status: 400 },
     );

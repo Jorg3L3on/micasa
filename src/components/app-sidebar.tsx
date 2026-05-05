@@ -122,7 +122,7 @@ export function AppSidebar({
       isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
     },
     {
-      title: 'Planificación',
+      title: 'Panel financiero',
       url: getCurrentMonthHrefUtc(),
       icon: Calendar,
       isActive: pathname.startsWith('/monthly/'),

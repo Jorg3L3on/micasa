@@ -85,11 +85,11 @@ export default function MyCardsPanel() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm animate-pulse h-[320px]">
-        <div className="h-5 w-24 bg-muted/40 rounded mb-4" />
-        <div className="space-y-3">
-          <div className="h-28 bg-muted/30 rounded-xl" />
-          <div className="h-28 bg-muted/20 rounded-xl" />
+      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm animate-pulse">
+        <div className="mb-4 h-5 w-24 rounded bg-muted/40" />
+        <div className="flex gap-3">
+          <div className="h-32 min-w-[70vw] shrink-0 rounded-xl bg-muted/30 sm:min-w-[220px]" />
+          <div className="h-32 min-w-[70vw] shrink-0 rounded-xl bg-muted/20 sm:min-w-[220px]" />
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ export default function MyCardsPanel() {
 
   if (cards.length === 0) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm flex flex-col items-center justify-center gap-2 h-full min-h-[200px]">
+      <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-border/60 bg-card p-5 shadow-sm">
         <CreditCard className="h-8 w-8 text-muted-foreground/40" />
         <p className="text-sm text-muted-foreground">No hay tarjetas registradas</p>
       </div>
@@ -110,7 +110,16 @@ export default function MyCardsPanel() {
         <h3 className="text-base font-semibold text-foreground">Mis tarjetas</h3>
         <span className="text-xs text-muted-foreground">{cards.length} tarjeta{cards.length !== 1 ? 's' : ''}</span>
       </div>
-      <div className="space-y-3 overflow-y-auto max-h-[480px] scrollbar-hide">
+      <div className="relative">
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-linear-to-r from-card to-transparent sm:w-8"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-linear-to-l from-card to-transparent sm:w-8"
+          aria-hidden
+        />
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide [-webkit-overflow-scrolling:touch]">
         {cards.map((card) => {
           const cardStyle = getProviderCardStyle(card.provider_icon_key, card.type, 'wow');
           const limit = card.credit_limit ?? 0;
@@ -125,25 +134,25 @@ export default function MyCardsPanel() {
               type="button"
               onClick={() => handleOpenCardModal(card)}
               aria-label={`Abrir detalles de ${card.name}`}
-              className="group relative block w-full overflow-hidden rounded-xl border p-4 text-left text-white ring-1 ring-inset ring-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01]"
+              className="group relative block w-[70vw] max-w-[260px] snap-start shrink-0 overflow-hidden rounded-xl border p-3 text-left text-white ring-1 ring-inset ring-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01] sm:w-[220px] sm:max-w-none"
               style={cardStyle}
             >
               <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/18 blur-2xl" />
               <span className="pointer-events-none absolute -left-10 -bottom-12 h-28 w-28 rounded-full bg-black/30 blur-2xl" />
               <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.14)_48%,transparent_72%)] opacity-45 transition-opacity duration-300 group-hover:opacity-70" />
-              <div className="mb-5 flex items-start gap-2.5">
+              <div className="mb-3 flex items-start gap-2">
                 <WalletProviderIcon
                   providerIconKey={card.provider_icon_key}
-                  className="h-9 w-9 shrink-0 rounded-lg border border-white/35 bg-white/20 shadow-sm ring-1 ring-white/10"
-                  iconClassName="h-5 w-5"
+                  className="h-7 w-7 shrink-0 rounded-lg border border-white/35 bg-white/20 shadow-sm ring-1 ring-white/10"
+                  iconClassName="h-4 w-4"
                   showTooltipLabel
                 />
-                <span className="min-w-0 flex-1 truncate pr-1 text-sm font-semibold leading-tight opacity-90">
+                <span className="min-w-0 flex-1 truncate pr-1 text-sm font-semibold leading-tight opacity-90 sm:text-xs">
                   {card.name}
                 </span>
               </div>
-              <div className="space-y-2.5">
-                <div className="grid grid-cols-2 gap-3 text-xs opacity-75">
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-xs opacity-75 sm:text-[11px]">
                   <span className="truncate">Saldo actual</span>
                   {limit > 0 ? (
                     <span className="truncate text-right">Límite</span>
@@ -151,25 +160,25 @@ export default function MyCardsPanel() {
                     <span />
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <span className="min-w-0 truncate text-base font-bold font-mono tabular-nums">
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="min-w-0 truncate text-base font-bold font-mono tabular-nums sm:text-[15px]">
                     {formatCurrency(card.amount)}
                   </span>
                   {limit > 0 && (
-                    <span className="min-w-0 truncate text-right text-base font-bold font-mono tabular-nums opacity-90">
+                    <span className="min-w-0 truncate text-right text-base font-bold font-mono tabular-nums opacity-90 sm:text-[15px]">
                       {formatCurrency(limit)}
                     </span>
                   )}
                 </div>
                 {limit > 0 && (
-                  <div className="mt-1.5 space-y-1.5">
+                  <div className="mt-1 space-y-1">
                     <div className="h-1.5 w-full rounded-full bg-white/20">
                       <div
                         className="h-1.5 rounded-full bg-white/80 transition-all"
                         style={{ width: `${usagePercent}%` }}
                       />
                     </div>
-                    <p className="text-center text-xs opacity-70">
+                    <p className="text-center text-xs opacity-70 sm:text-[11px]">
                       {usagePercent.toFixed(0)}% utilizado
                     </p>
                   </div>
@@ -178,6 +187,7 @@ export default function MyCardsPanel() {
             </button>
           );
         })}
+        </div>
       </div>
 
       <WalletBalanceEditDialog
