@@ -136,7 +136,7 @@ npm run ci
 
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Release checklist: [`docs/release-process.md`](./docs/release-process.md)
-- GitHub releases: `https://github.com/<owner>/<repo>/releases`
+- GitHub releases: `https://github.com/Jorg3L3on/micasa/releases`
 
 ## Roadmap
 
