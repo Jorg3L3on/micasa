@@ -1,0 +1,40 @@
+Bodega Aurrera
+Detalles del pedido - BodegaAurrera.com.mx
+15/1/2026, 10:30 a.m.
+Pedido el 15 de enero
+Pedido#2162626-001315
+Artículo despensa 01	1 pz	$49.59
+Artículo despensa 02	1 pz	$49.59
+Artículo despensa 03	1 pz	$49.59
+Artículo despensa 04	1 pz	$49.59
+Artículo despensa 05	1 pz	$49.59
+Artículo despensa 06	1 pz	$49.59
+Artículo despensa 07	1 pz	$49.59
+Artículo despensa 08	1 pz	$49.59
+Artículo despensa 09	1 pz	$49.59
+Zanahoria por kilo	0.196 kg	$2.72
+1 / 2
+Artículo despensa 10	1 pz	$49.59
+Artículo despensa 11	1 pz	$49.59
+Artículo despensa 12	1 pz	$49.59
+Artículo despensa 13	1 pz	$49.59
+Artículo despensa 14	1 pz	$49.59
+Artículo despensa 15	1 pz	$49.59
+Artículo despensa 16	1 pz	$49.59
+Artículo despensa 17	1 pz	$49.59
+Artículo despensa 18	1 pz	$49.59
+Artículo despensa 19	1 pz	$49.59
+Artículo despensa 20	1 pz	$49.59
+Artículo despensa 21	1 pz	$49.59
+Artículo despensa 22	1 pz	$49.59
+Artículo despensa 23	1 pz	$49.59
+Pepino por kilo	0.6072 kg	$8.81
+Artículo despensa 24	1 pz	$49.59
+Artículo despensa 25	1 pz	$49.59
+Artículo despensa 26	1 pz	$49.59
+Artículo despensa 27	1 pz	$49.59
+Artículo despensa 28	1 pz	$49.59
+Subtotal	$1,523.15
+Descuento	-$190.35
+Costo de entrega	$44.00
+Total	$1,342.20
