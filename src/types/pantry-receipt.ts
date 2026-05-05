@@ -1,5 +1,12 @@
 import type { ShoppingStore } from '@/types/shopping-store';
 
+export type PantryReceiptLinkedExpenseDto = {
+  id: number;
+  description: string;
+  amount: number;
+  payment_date: string | null;
+};
+
 export type PantryReceiptLineDto = {
   id: number;
   receipt_id: number;
@@ -24,6 +31,8 @@ export type PantryReceiptListItemDto = {
   parse_warnings: string[];
   created_at: string;
   created_by_user_id: number;
+  linked_expense_id: number | null;
+  linked_expense: PantryReceiptLinkedExpenseDto | null;
 };
 
 export type PantryReceiptDetailDto = {
@@ -41,6 +50,8 @@ export type PantryReceiptDetailDto = {
   file_mime: string | null;
   has_file: boolean;
   linked_cart_id: number | null;
+  linked_expense_id: number | null;
+  linked_expense: PantryReceiptLinkedExpenseDto | null;
   parse_warnings: string[];
   created_at: string;
   updated_at: string;

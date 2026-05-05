@@ -7,6 +7,7 @@ import {
   Loader2,
   MoreHorizontal,
   Trash2,
+  Wallet,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 import { SHOPPING_STORE_LABELS } from '@/types/shopping-store';
@@ -108,6 +114,19 @@ export const PantryReceiptListRow = ({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
+          {receipt.linked_expense_id != null ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center text-violet-600 dark:text-violet-400"
+                  aria-label="Registrado en gastos"
+                >
+                  <Wallet className="h-4 w-4" aria-hidden />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Registrado en gastos</TooltipContent>
+            </Tooltip>
+          ) : null}
           {receipt.file_name ? (
             <Button
               type="button"

@@ -251,12 +251,16 @@ export default function ExpenseTemplatesPage() {
 
   const addButton = (
     <Button
-      size="sm"
-      onClick={() => router.push(`/expense-templates/new${queryString ? `?${queryString}` : ''}`)}
+      className="h-9 shrink-0 rounded-xl"
+      onClick={() =>
+        router.push(
+          `/expense-templates/new${queryString ? `?${queryString}` : ''}`,
+        )
+      }
       aria-label="Agregar plantilla de gastos"
     >
-      <Plus className="mr-2 h-4 w-4" aria-hidden />
-      Agregar
+      <Plus className="h-4 w-4" aria-hidden />
+      Agregar plantilla
     </Button>
   );
 
@@ -296,18 +300,27 @@ export default function ExpenseTemplatesPage() {
 
   return (
     <>
+      <div
+        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        aria-label="Plantillas de gastos"
+      >
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">
+            Plantillas de gastos
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Recurrentes, suscripciones y montos estimados en tu contexto actual.
+          </p>
+        </div>
+        <div className="flex shrink-0">{addButton}</div>
+      </div>
+
+      <div className="relative z-0">
       {error && !deleteDialogOpen && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
-
-      <div
-        className="sticky top-20 z-20 mb-4 flex justify-end bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
-        aria-label="Acciones de plantillas de gastos"
-      >
-        {addButton}
-      </div>
 
       <Card className="overflow-hidden">
         <CardContent className="p-6">
@@ -330,6 +343,7 @@ export default function ExpenseTemplatesPage() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       {selectedTemplate && (
         <ConfirmDeleteDialog

@@ -64,4 +64,48 @@ describe('serialize-tasks', () => {
     expect(result.current_streak).toBe(3);
     expect(result.logs).toHaveLength(3);
   });
+
+  it('treats multiple habit logs on the same calendar day as one day for streak', () => {
+    const result = serializeHabit({
+      id: 2,
+      name: 'Agua',
+      description: null,
+      active: true,
+      recurrence_unit: 'DAY',
+      recurrence_every: 1,
+      target_per_period: 8,
+      reminder_time: null,
+      created_at: new Date('2026-01-03T10:00:00.000Z'),
+      updated_at: new Date('2026-01-03T10:00:00.000Z'),
+      logs: [
+        {
+          id: 4,
+          completed_on: new Date('2026-01-03T18:00:00.000Z'),
+          note: null,
+          created_at: new Date('2026-01-03T18:00:00.000Z'),
+        },
+        {
+          id: 3,
+          completed_on: new Date('2026-01-03T12:00:00.000Z'),
+          note: null,
+          created_at: new Date('2026-01-03T12:00:00.000Z'),
+        },
+        {
+          id: 2,
+          completed_on: new Date('2026-01-02T08:00:00.000Z'),
+          note: null,
+          created_at: new Date('2026-01-02T08:00:00.000Z'),
+        },
+        {
+          id: 1,
+          completed_on: new Date('2026-01-01T08:00:00.000Z'),
+          note: null,
+          created_at: new Date('2026-01-01T08:00:00.000Z'),
+        },
+      ],
+    });
+
+    expect(result.current_streak).toBe(3);
+    expect(result.logs).toHaveLength(4);
+  });
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { PaymentMethodType } from '@/generated/prisma/client';
 import { wherePlanningCashFlowExpenses } from '@/lib/finance/expense-planning-scope';
 import {
   aggregateOrphanCreditCardPaymentsForPlanning,
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
     const { ownerFilter } = context;
 
     const { searchParams } = new URL(request.url);
-    const view = (searchParams.get('view') as PeriodView) || 'month';
+    const view = (searchParams.get('view') as PeriodView) || 'biweekly';
     const monthParam = searchParams.get('month');
     const yearParam = searchParams.get('year');
     const periodParam = searchParams.get('period') as 'FIRST' | 'SECOND' | null;
@@ -150,6 +151,7 @@ export async function GET(request: NextRequest) {
       orphanPayPrev,
       cardDueCurrent,
       cardDuePrev,
+      dashboardWalletSnapshot,
     ] = await Promise.all([
       prisma.expense.findMany({
         where: expenseWhereCurrent,
@@ -220,6 +222,25 @@ export async function GET(request: NextRequest) {
         prev.month,
         prev.period,
       ),
+      prisma.wallet.findMany({
+        where: {
+          ...ownerFilter,
+          active: true,
+          type: {
+            in: [
+              PaymentMethodType.CASH,
+              PaymentMethodType.DEBIT_CARD,
+              PaymentMethodType.CREDIT_CARD,
+              PaymentMethodType.DEPARTMENT_STORE_CARD,
+            ],
+          },
+        },
+        select: {
+          amount: true,
+          credit_limit: true,
+          type: true,
+        },
+      }),
     ]);
 
     const overrideIncome = incomeCurrent.find(
@@ -249,6 +270,30 @@ export async function GET(request: NextRequest) {
     }
     const totalUnpaidCurrent = totalExpenseCurrent - totalPaidCurrent;
     const balanceCurrent = totalIncomeCurrent - totalExpenseCurrent;
+
+    let fundingWalletBalanceTotal = 0;
+    let creditWalletDebtTotal = 0;
+    let creditWalletAvailableTotal = 0;
+    for (const w of dashboardWalletSnapshot) {
+      const amt = Number(w.amount);
+      if (
+        w.type === PaymentMethodType.CASH ||
+        w.type === PaymentMethodType.DEBIT_CARD
+      ) {
+        fundingWalletBalanceTotal += amt;
+      }
+      if (
+        w.type === PaymentMethodType.CREDIT_CARD ||
+        w.type === PaymentMethodType.DEPARTMENT_STORE_CARD
+      ) {
+        creditWalletDebtTotal += amt;
+        if (w.credit_limit != null) {
+          creditWalletAvailableTotal += Number(w.credit_limit) - amt;
+        }
+      }
+    }
+    const fundingNetVsPendingExpense =
+      fundingWalletBalanceTotal - totalUnpaidCurrent;
 
     const totalIncomePrev = incomePrev.reduce(
       (s, i) => s + Number(i.amount),
@@ -475,6 +520,10 @@ export async function GET(request: NextRequest) {
           pagado: totalPaidCurrent,
           pendiente: totalUnpaidCurrent,
         },
+        fundingWalletBalanceTotal,
+        fundingNetVsPendingExpense,
+        creditWalletDebtTotal,
+        creditWalletAvailableTotal,
         planningCardPayments:
           orphanPayCurrent.count > 0
             ? {

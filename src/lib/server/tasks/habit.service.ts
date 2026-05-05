@@ -24,8 +24,9 @@ export class HabitNotFoundError extends Error {
   }
 }
 
+/** Recent logs for UI streaks, history chips, and period counts (multi-check habits need headroom). */
 const HABIT_INCLUDE = {
-  logs: { orderBy: { completed_on: 'desc' as const }, take: 20 },
+  logs: { orderBy: { completed_on: 'desc' as const }, take: 250 },
   assignee: { select: { id: true, name: true } },
 } as const;
 
@@ -114,15 +115,10 @@ export async function completeHabit(
   if (!habit) throw new HabitNotFoundError();
 
   const completedOn = input.completed_on ? new Date(input.completed_on) : new Date();
-  await prisma.habitLog.upsert({
-    where: { habit_id_completed_on: { habit_id: habitId, completed_on: completedOn } },
-    create: {
+  await prisma.habitLog.create({
+    data: {
       habit_id: habitId,
       completed_on: completedOn,
-      note: input.note ?? null,
-      completed_by_user_id: userId,
-    },
-    update: {
       note: input.note ?? null,
       completed_by_user_id: userId,
     },

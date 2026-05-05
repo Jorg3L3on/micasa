@@ -45,11 +45,13 @@ Use `space-y-5` for the standard rhythm; `space-y-6` when sections are visually 
 Right-aligned filters + primary action. Mirrors `wallets/page.tsx:451`:
 
 ```tsx
-<div className="sticky top-20 z-20 mb-4 flex flex-wrap items-center justify-end gap-2 bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/80">
+<div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-end gap-2 border-b border-border/60 bg-background py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
   <Button variant="outline" asChild>…</Button>
   <Button onClick={…}>…</Button>
 </div>
 ```
+
+Match `(dashboard)/layout.tsx`: the shell header is **`h-16`** (`4rem`). Sticky page chrome must use **`top-16`** (not `top-20`) so no scrolled content appears in the strip between the shell header and this bar. When the sidebar is **icon-collapsed**, the header becomes **`h-12`** — add **`group-has-data-[collapsible=icon]/sidebar-wrapper:top-12`** (same pattern as `wallets/page.tsx`). Prefer opaque **`bg-background`** (and optional `border-b`) over semi-transparent + blur for the same reason.
 
 If the page has both a title and an action, use **justify-between** instead of justify-end so the title sits on the left.
 

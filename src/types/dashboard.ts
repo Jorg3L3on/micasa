@@ -19,6 +19,14 @@ export type DashboardData = {
     pagado: number;
     pendiente: number;
   };
+  /** Saldos en billeteras efectivo + débito (activas). */
+  fundingWalletBalanceTotal: number;
+  /** Misma lógica que planificación: efectivo/débito menos pendiente del periodo en efectivo/débito. */
+  fundingNetVsPendingExpense: number;
+  /** Saldo utilizado (campo amount) en TC + tiendas departamentales. */
+  creditWalletDebtTotal: number;
+  /** Suma de (límite − saldo) en tarjetas con límite definido. */
+  creditWalletAvailableTotal: number;
   /** Pagos a TC sin gasto duplicado, ya incluidos en gastos/balance del periodo. */
   planningCardPayments?: {
     total: number;

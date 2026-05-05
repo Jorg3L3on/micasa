@@ -11,7 +11,15 @@ import { withLinkedCartWarning } from '@/lib/server/pantry/pantry-receipt-links'
 import {
   decimalToNumber,
   serializePantryReceiptDetail,
+  serializePantryReceiptLinkedExpense,
 } from '@/lib/server/pantry/serialize-pantry-receipt';
+import {
+  buildPantryReceiptExpenseDescription,
+  linkExpenseToPantryReceiptInTransaction,
+  resolveParsedReceiptExpenseAmount,
+  responseForPantryExpenseRegistrationError,
+} from '@/lib/server/pantry/pantry-receipt-expense';
+import { SHOPPING_STORE_LABELS } from '@/types/shopping-store';
 import { stripReceiptSystemWarnings } from '@/lib/server/pantry/pantry-receipt-links';
 import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pantry-products-from-lines';
 import { shoppingStoreSchema } from '@/schemas/pantry-shopping-cart.schema';
@@ -43,6 +51,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       orderBy: { created_at: 'desc' },
       include: {
         lines: { select: { line_total: true } },
+        linked_expense: {
+          select: {
+            id: true,
+            description: true,
+            amount: true,
+            payment_date: true,
+          },
+        },
       },
     });
 
@@ -64,6 +80,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         parse_warnings: stripReceiptSystemWarnings(r.parse_warnings),
         created_at: r.created_at.toISOString(),
         created_by_user_id: r.created_by_user_id,
+        linked_expense_id: r.linked_expense_id,
+        linked_expense: r.linked_expense
+          ? serializePantryReceiptLinkedExpense(r.linked_expense)
+          : null,
       };
     });
 
@@ -166,6 +186,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? newCartTitleField.trim()
         : null;
 
+    const registerExpense = formData.get('registerExpense') === 'true';
+    const expenseCategoryField = formData.get('expenseCategoryId');
+    const expenseWalletField = formData.get('expenseWalletId');
+    const expenseDateField = formData.get('expenseDate');
+
+    let expenseCategoryId: number | null = null;
+    let expenseWalletId: number | null = null;
+    let expenseDateYmd: string | null = null;
+
+    if (registerExpense) {
+      if (
+        typeof expenseCategoryField !== 'string' ||
+        !/^\d+$/.test(expenseCategoryField.trim())
+      ) {
+        return NextResponse.json(
+          { error: 'Selecciona una categoría para el gasto' },
+          { status: 400 },
+        );
+      }
+      expenseCategoryId = Number.parseInt(expenseCategoryField.trim(), 10);
+      if (
+        typeof expenseWalletField !== 'string' ||
+        !/^\d+$/.test(expenseWalletField.trim())
+      ) {
+        return NextResponse.json(
+          { error: 'Selecciona una cartera para el gasto' },
+          { status: 400 },
+        );
+      }
+      expenseWalletId = Number.parseInt(expenseWalletField.trim(), 10);
+      if (
+        typeof expenseDateField !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(expenseDateField.trim())
+      ) {
+        return NextResponse.json(
+          { error: 'La fecha del gasto debe ser válida (AAAA-MM-DD)' },
+          { status: 400 },
+        );
+      }
+      expenseDateYmd = expenseDateField.trim();
+    }
+
     const parsed = await parsePantryReceiptUpload({
       buffer: buf,
       mimeType: file.type || 'application/octet-stream',
@@ -174,6 +236,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const defaultTitle = file.name.replace(/\.[^.]+$/, '') || 'Recibo';
     const title = titleOverride ?? parsed.title ?? defaultTitle;
+
+    let expenseAmountForTx: number | null = null;
+    if (registerExpense) {
+      expenseAmountForTx = resolveParsedReceiptExpenseAmount({
+        grand_total: parsed.grand_total,
+        lines: parsed.lines.map((l) => ({ line_total: l.line_total })),
+      });
+      if (expenseAmountForTx == null) {
+        return NextResponse.json(
+          {
+            error:
+              'No hay total válido para registrar el gasto (revisa el total o las líneas del recibo)',
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     const receipt = await prisma.$transaction(async (tx) => {
       let linkedCartId: number | null = null;
@@ -283,6 +362,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
       }
 
+      if (
+        registerExpense &&
+        expenseAmountForTx != null &&
+        expenseCategoryId != null &&
+        expenseWalletId != null &&
+        expenseDateYmd != null
+      ) {
+        const storeLabel = parsedStore?.success
+          ? SHOPPING_STORE_LABELS[parsedStore.data]
+          : null;
+        await linkExpenseToPantryReceiptInTransaction(tx, {
+          ownerType,
+          ownerId,
+          ownerFilter,
+          receiptId: created.id,
+          categoryId: expenseCategoryId,
+          walletId: expenseWalletId,
+          expenseDateYmd,
+          amount: expenseAmountForTx,
+          description: buildPantryReceiptExpenseDescription(title, storeLabel),
+        });
+      }
+
       await syncPantryProductsFromReceiptLines({
         ownerType,
         ownerId,
@@ -297,7 +399,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       return tx.pantryReceipt.findFirstOrThrow({
         where: { id: created.id },
-        include: { lines: { orderBy: { sort_order: 'asc' } } },
+        include: {
+          lines: { orderBy: { sort_order: 'asc' } },
+          linked_expense: {
+            select: {
+              id: true,
+              description: true,
+              amount: true,
+              payment_date: true,
+            },
+          },
+        },
       });
     }, { timeout: 30000, maxWait: 10000 });
 
@@ -305,6 +417,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       status: 201,
     });
   } catch (error) {
+    const mapped = responseForPantryExpenseRegistrationError(error);
+    if (mapped) {
+      return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+    }
     console.error('pantry receipts POST', error);
     return NextResponse.json(
       { error: 'No se pudo guardar el recibo' },

@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import {
   applyWalletAmountDelta,
   assertPaidChargeAllowedForWallet,
@@ -22,7 +22,7 @@ type ExpenseTransactionDtoSource = {
   wallet?: { name: string | null } | null;
 };
 
-type CreateExpenseInput = {
+export type CreateExpenseInput = {
   fortnightId: number;
   categoryId: number;
   description: string;
@@ -122,7 +122,11 @@ export async function listExpenses(
   });
 }
 
-export async function createExpense(input: CreateExpenseInput) {
+/** Creates expense + wallet delta inside an existing transaction (e.g. pantry receipt import). */
+export async function createExpenseInTransaction(
+  tx: Prisma.TransactionClient,
+  input: CreateExpenseInput,
+) {
   const {
     fortnightId,
     categoryId,
@@ -143,7 +147,7 @@ export async function createExpense(input: CreateExpenseInput) {
     throw error;
   }
 
-  const category = await prisma.category.findUnique({
+  const category = await tx.category.findUnique({
     where: { id: categoryId },
   });
   if (!category) {
@@ -152,7 +156,7 @@ export async function createExpense(input: CreateExpenseInput) {
     throw error;
   }
 
-  const fortnight = await prisma.fortnight.findUnique({
+  const fortnight = await tx.fortnight.findUnique({
     where: { id: fortnightId },
     select: { id: true, user_id: true, house_id: true, period: true },
   });
@@ -168,12 +172,10 @@ export async function createExpense(input: CreateExpenseInput) {
   }
 
   const effectiveWalletId: number | null = walletId ?? null;
-  let walletOwnerUserId: number | null = null;
-  let walletOwnerHouseId: number | null = null;
   let walletType: PaymentMethodType | null = null;
 
   if (effectiveWalletId) {
-    const wallet = await prisma.wallet.findUnique({
+    const wallet = await tx.wallet.findUnique({
       where: { id: effectiveWalletId },
       select: {
         id: true,
@@ -190,12 +192,10 @@ export async function createExpense(input: CreateExpenseInput) {
       throw error;
     }
 
-    walletOwnerUserId = wallet.user_id;
-    walletOwnerHouseId = wallet.house_id;
     walletType = wallet.type;
 
     if (fortnight.user_id != null) {
-      if (walletOwnerUserId !== fortnight.user_id || walletOwnerHouseId !== null) {
+      if (wallet.user_id !== fortnight.user_id || wallet.house_id !== null) {
         const error = new Error(
           'Wallet does not belong to the same user as the fortnight',
         ) as ExpenseServiceError;
@@ -203,7 +203,7 @@ export async function createExpense(input: CreateExpenseInput) {
         throw error;
       }
     } else if (fortnight.house_id != null) {
-      if (walletOwnerHouseId !== fortnight.house_id || walletOwnerUserId !== null) {
+      if (wallet.house_id !== fortnight.house_id || wallet.user_id !== null) {
         const error = new Error(
           'Wallet does not belong to the same house as the fortnight',
         ) as ExpenseServiceError;
@@ -219,7 +219,7 @@ export async function createExpense(input: CreateExpenseInput) {
 
   let resolvedDueDay: number | null = null;
   if (expenseTemplateId) {
-    const template = await prisma.expenseTemplate.findUnique({
+    const template = await tx.expenseTemplate.findUnique({
       where: { id: expenseTemplateId },
       select: { due_day: true, due_day_first_fortnight: true, due_day_second_fortnight: true },
     });
@@ -228,41 +228,44 @@ export async function createExpense(input: CreateExpenseInput) {
     }
   }
 
-  const created = await prisma.$transaction(async (tx) => {
-    const expense = await tx.expense.create({
-      data: {
-        fortnight_id: fortnightId,
-        wallet_id: effectiveWalletId ?? undefined,
-        category_id: categoryId,
-        description,
-        amount,
-        is_paid: isPaid,
-        payment_date: paymentDate ? new Date(paymentDate) : null,
-        expense_template_id: expenseTemplateId || null,
-        due_day: resolvedDueDay,
-        statement_import_id: statementImportId ?? null,
-        credit_installment_current: creditInstallmentCurrent ?? null,
-        credit_installment_total: creditInstallmentTotal ?? null,
-        user_id: fortnight.user_id,
-        house_id: fortnight.house_id,
-      },
-      include: {
-        category: { select: { name: true } },
-        wallet: { select: { id: true, name: true } },
-      },
-    });
-
-    if (expense.is_paid && expense.wallet_id != null && walletType != null) {
-      await applyWalletAmountDelta(
-        tx,
-        expense.wallet_id,
-        getPaidExpenseWalletDelta(walletType, Number(expense.amount)),
-      );
-    }
-
-    return expense;
+  const expense = await tx.expense.create({
+    data: {
+      fortnight_id: fortnightId,
+      wallet_id: effectiveWalletId ?? undefined,
+      category_id: categoryId,
+      description,
+      amount,
+      is_paid: isPaid,
+      payment_date: paymentDate ? new Date(paymentDate) : null,
+      expense_template_id: expenseTemplateId || null,
+      due_day: resolvedDueDay,
+      statement_import_id: statementImportId ?? null,
+      credit_installment_current: creditInstallmentCurrent ?? null,
+      credit_installment_total: creditInstallmentTotal ?? null,
+      user_id: fortnight.user_id,
+      house_id: fortnight.house_id,
+    },
+    include: {
+      category: { select: { name: true } },
+      wallet: { select: { id: true, name: true } },
+    },
   });
 
+  if (expense.is_paid && expense.wallet_id != null && walletType != null) {
+    await applyWalletAmountDelta(
+      tx,
+      expense.wallet_id,
+      getPaidExpenseWalletDelta(walletType, Number(expense.amount)),
+    );
+  }
+
+  return expense;
+}
+
+export async function createExpense(input: CreateExpenseInput) {
+  const created = await prisma.$transaction(async (tx) =>
+    createExpenseInTransaction(tx, input),
+  );
   return mapExpenseToTransactionDto(created);
 }
 

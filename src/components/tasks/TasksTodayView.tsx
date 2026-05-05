@@ -299,7 +299,7 @@ export default function TasksTodayView() {
         <CardContent className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              Hábitos completados
+              Con al menos una repetición hoy
             </p>
             <p className="text-sm font-semibold tabular-nums">
               {habitsDoneToday} de {activeHabits.length}

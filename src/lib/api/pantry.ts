@@ -7,6 +7,7 @@ import type {
 } from '@/types/pantry-receipt';
 import type { PantryInsightsDto } from '@/types/pantry-insights';
 import type { PatchPantryReceiptInput } from '@/schemas/pantry-receipt.schema';
+import type { RegisterPantryReceiptExpenseBody } from '@/schemas/pantry-receipt-expense.schema';
 import type {
   CreatePantryProductInput,
   PatchPantryProductInput,
@@ -78,6 +79,21 @@ export async function patchPantryReceipt(
     `/api/pantry/receipts/${id}`,
     {
       method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+    context,
+  );
+}
+
+export async function registerPantryReceiptExpense(
+  id: number,
+  body: RegisterPantryReceiptExpenseBody,
+  context?: FinanceContextType,
+): Promise<PantryReceiptDetailDto> {
+  return clientFetchFromApi<PantryReceiptDetailDto>(
+    `/api/pantry/receipts/${id}/expense`,
+    {
+      method: 'POST',
       body: JSON.stringify(body),
     },
     context,

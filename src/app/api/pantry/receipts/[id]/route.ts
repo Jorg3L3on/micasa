@@ -46,7 +46,17 @@ export async function GET(
 
     const receipt = await prisma.pantryReceipt.findFirst({
       where: { id, ...pantryReceiptOwnerWhere(ownerType, ownerId) },
-      include: { lines: { orderBy: { sort_order: 'asc' } } },
+      include: {
+        lines: { orderBy: { sort_order: 'asc' } },
+        linked_expense: {
+          select: {
+            id: true,
+            description: true,
+            amount: true,
+            payment_date: true,
+          },
+        },
+      },
     });
 
     if (!receipt) {
@@ -152,7 +162,17 @@ export async function PATCH(
 
     const updated = await prisma.pantryReceipt.findFirstOrThrow({
       where: { id },
-      include: { lines: { orderBy: { sort_order: 'asc' } } },
+      include: {
+        lines: { orderBy: { sort_order: 'asc' } },
+        linked_expense: {
+          select: {
+            id: true,
+            description: true,
+            amount: true,
+            payment_date: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json(serializePantryReceiptDetail(updated), { status: 200 });

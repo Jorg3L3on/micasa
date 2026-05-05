@@ -17,7 +17,6 @@ import EmptyState from '@/components/EmptyState';
 import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
 import {
   countCompletionsInCurrentPeriod,
-  habitDoneToday,
   habitWeekCompletionFlags,
 } from '@/components/tasks/habit-ui-utils';
 import { Badge } from '@/components/ui/badge';
@@ -602,11 +601,11 @@ const HabitCard = ({
   onEdit: () => void;
   onDelete: () => void;
 }) => {
-  const doneToday = habitDoneToday(habit);
   const weekFlags = habitWeekCompletionFlags(habit);
   const periodCount = countCompletionsInCurrentPeriod(habit);
   const target = Math.max(1, habit.target_per_period);
   const progressPct = Math.min(100, Math.round((periodCount / target) * 100));
+  const goalMet = periodCount >= target;
 
   return (
     <div className="rounded-md border border-border/60 p-3">
@@ -693,14 +692,13 @@ const HabitCard = ({
           </DropdownMenu>
           <Button
             size="sm"
-            variant={doneToday ? 'secondary' : 'outline'}
+            variant={goalMet ? 'secondary' : 'outline'}
             className={
-              doneToday ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300' : ''
+              goalMet ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300' : ''
             }
-            disabled={doneToday}
             onClick={() => onCompleteClick()}
           >
-            {doneToday ? 'Hecho hoy' : 'Marcar hoy'}
+            {goalMet ? 'Añadir registro' : 'Marcar hoy'}
           </Button>
         </div>
       </div>

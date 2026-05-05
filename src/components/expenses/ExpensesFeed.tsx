@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Loader2, Plus, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +48,9 @@ type EditingState = {
 
 const PAGE_SIZE = 25;
 
+/** Measured shell header + gastos chrome so sticky tops stay aligned (fixed top-16 mismatches real header height on mobile). */
+const DEFAULT_STICKY_OFFSETS = { shellTop: 64, dayBandTop: 136 };
+
 export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
   const { context } = useFinanceContext();
   const contextKey = `${context.type}:${context.id}`;
@@ -72,6 +82,44 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
   );
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const stickyChromeRef = useRef<HTMLDivElement | null>(null);
+  const [stickyOffsets, setStickyOffsets] = useState(DEFAULT_STICKY_OFFSETS);
+
+  const updateStickyOffsets = useCallback(() => {
+    const inset = document.querySelector('[data-slot="sidebar-inset"]');
+    const shellHeader = inset?.querySelector(':scope > header');
+    const chrome = stickyChromeRef.current;
+    const shellH =
+      shellHeader instanceof HTMLElement ? shellHeader.offsetHeight : 64;
+    const rawChrome = chrome?.offsetHeight ?? 0;
+    /** Avoid day-band top=shell-only before layout; Framer layers could peek above bands. */
+    const chromeH = rawChrome > 0 ? rawChrome : 72;
+    setStickyOffsets({
+      shellTop: shellH,
+      dayBandTop: shellH + chromeH,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    updateStickyOffsets();
+    const postLayoutId = requestAnimationFrame(() => {
+      updateStickyOffsets();
+    });
+    const chrome = stickyChromeRef.current;
+    const inset = document.querySelector('[data-slot="sidebar-inset"]');
+    const shellHeader = inset?.querySelector(':scope > header');
+    const ro = new ResizeObserver(() => {
+      updateStickyOffsets();
+    });
+    if (chrome) ro.observe(chrome);
+    if (shellHeader instanceof HTMLElement) ro.observe(shellHeader);
+    window.addEventListener('resize', updateStickyOffsets);
+    return () => {
+      cancelAnimationFrame(postLayoutId);
+      ro.disconnect();
+      window.removeEventListener('resize', updateStickyOffsets);
+    };
+  }, [updateStickyOffsets]);
 
   // Refetch first page when owner context changes (but skip initial mount if context matches SSR).
   useEffect(() => {
@@ -358,7 +406,9 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
   return (
     <div className="space-y-4 pb-24">
       <div
-        className="sticky top-16 z-20 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        ref={stickyChromeRef}
+        className="sticky z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm"
+        style={{ top: stickyOffsets.shellTop }}
         aria-label="Acciones de gastos"
       >
         <div className="min-w-0">
@@ -394,7 +444,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         </div>
       </div>
 
-      <div className="py-4">
+      <div className="relative z-0 py-4">
         {isInitialLoading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             Cargando...
@@ -428,7 +478,10 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             />
             {groups.map((group) => (
               <section key={group.key} className="flex flex-col gap-2">
-                <div className="sticky top-[calc(4rem+3.75rem)] z-[5] -mx-4 bg-background px-4 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground group-has-data-[collapsible=icon]/sidebar-wrapper:top-[calc(3rem+3.75rem)]">
+                <div
+                  className="sticky z-30 -mx-4 border-b border-border/60 bg-background px-4 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-sm"
+                  style={{ top: stickyOffsets.dayBandTop }}
+                >
                   {group.label}
                 </div>
                 <div className="flex flex-col gap-2">
