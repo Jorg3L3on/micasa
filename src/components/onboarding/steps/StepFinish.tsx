@@ -60,7 +60,7 @@ export default function StepFinish({ setCanProceed }: Props) {
       <div className="space-y-4">
         <section className="space-y-2 rounded-lg border p-4">
           <h4 className="text-muted-foreground text-sm font-semibold">
-            Inicio de planificación
+            Inicio del panel financiero
           </h4>
           <p className="text-sm">{startDate ? dateFormatter.format(startDate) : 'Sin fecha de inicio definida'}</p>
         </section>

@@ -344,7 +344,7 @@ export default async function MonthlyPage({
           </h1>
           <div className="mt-0.5 flex items-center justify-center gap-1.5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60 sm:text-[11px]">
-              Planificación mensual
+              Panel financiero mensual
             </p>
             {isCurrentMonth ? (
               <span className="inline-flex h-4 shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">

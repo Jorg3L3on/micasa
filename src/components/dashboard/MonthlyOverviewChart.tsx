@@ -91,7 +91,10 @@ export default function MonthlyOverviewChart() {
         </div>
         <div className="flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ background: '#6366f1' }}
+            />
             <span className="text-muted-foreground">Ingresos</span>
           </span>
           <span className="flex items-center gap-1.5">
@@ -112,7 +115,12 @@ export default function MonthlyOverviewChart() {
               <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" vertical={false} />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#8888a0"
+            strokeOpacity={0.22}
+            vertical={false}
+          />
           <XAxis
             dataKey="label"
             tick={{ fontSize: 11, fill: '#8888a0' }}

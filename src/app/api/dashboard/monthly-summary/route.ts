@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { wherePlanningCashFlowExpenses } from '@/lib/finance/expense-planning-scope';
+import { effectiveFortnightIncome } from '@/lib/finance/monthly-dashboard-chart';
 
 export type MonthlySummaryItem = {
   year: number;
@@ -49,35 +51,44 @@ export async function GET(request: NextRequest) {
     const fortnightIds = fortnights.map((f) => f.id);
     const fortnightMap = new Map(fortnights.map((f) => [f.id, { month: f.month, year: f.year }]));
 
-    if (fortnightIds.length === 0) {
-      return NextResponse.json(
-        months.map(({ year, month }) => ({
-          year,
-          month,
-          label: MONTH_LABELS[month - 1],
-          income: 0,
-          expense: 0,
-        })),
-      );
-    }
-
-    // Aggregate expenses and incomes
-    const [expenses, incomes] = await Promise.all([
-      prisma.expense.findMany({
-        where: { AND: [{ fortnight_id: { in: fortnightIds } }, ownerFilter] },
-        select: { amount: true, fortnight_id: true },
-      }),
-      prisma.income.findMany({
-        where: { AND: [{ fortnight_id: { in: fortnightIds } }, ownerFilter] },
-        select: { amount: true, fortnight_id: true },
-      }),
-    ]);
-
-    // Sum by month
     const byMonth = new Map<string, { income: number; expense: number }>();
     for (const { year, month } of months) {
       byMonth.set(`${year}-${month}`, { income: 0, expense: 0 });
     }
+
+    const firstCal = months[0];
+    const lastCal = months[months.length - 1];
+    const orphanPaidFrom = new Date(Date.UTC(firstCal.year, firstCal.month - 1, 1));
+    const orphanPaidTo = new Date(Date.UTC(lastCal.year, lastCal.month, 0, 23, 59, 59, 999));
+
+    const [expenses, incomes, orphanPayments] = await Promise.all([
+      fortnightIds.length === 0
+        ? Promise.resolve([])
+        : prisma.expense.findMany({
+            where: {
+              AND: [
+                { fortnight_id: { in: fortnightIds } },
+                ownerFilter,
+                wherePlanningCashFlowExpenses(),
+              ],
+            },
+            select: { amount: true, fortnight_id: true },
+          }),
+      fortnightIds.length === 0
+        ? Promise.resolve([])
+        : prisma.income.findMany({
+            where: { AND: [{ fortnight_id: { in: fortnightIds } }, ownerFilter] },
+            select: { amount: true, fortnight_id: true, source: true },
+          }),
+      prisma.creditCardPayment.findMany({
+        where: {
+          ...ownerFilter,
+          expense_id: null,
+          paid_at: { gte: orphanPaidFrom, lte: orphanPaidTo },
+        },
+        select: { amount: true, paid_at: true },
+      }),
+    ]);
 
     for (const e of expenses) {
       const fn = fortnightMap.get(e.fortnight_id);
@@ -87,12 +98,33 @@ export async function GET(request: NextRequest) {
       if (entry) entry.expense += Number(e.amount);
     }
 
-    for (const i of incomes) {
-      const fn = fortnightMap.get(i.fortnight_id);
+    const incomesByFortnight = new Map<
+      number,
+      Array<{ amount: number; source: string | null }>
+    >();
+    for (const row of incomes) {
+      const id = row.fortnight_id;
+      const list = incomesByFortnight.get(id) ?? [];
+      list.push({ amount: Number(row.amount), source: row.source });
+      incomesByFortnight.set(id, list);
+    }
+
+    for (const fnId of fortnightIds) {
+      const rows = incomesByFortnight.get(fnId);
+      if (!rows?.length) continue;
+      const fn = fortnightMap.get(fnId);
       if (!fn) continue;
       const key = `${fn.year}-${fn.month}`;
       const entry = byMonth.get(key);
-      if (entry) entry.income += Number(i.amount);
+      if (entry) entry.income += effectiveFortnightIncome(rows);
+    }
+
+    for (const p of orphanPayments) {
+      const y = p.paid_at.getUTCFullYear();
+      const m = p.paid_at.getUTCMonth() + 1;
+      const key = `${y}-${m}`;
+      const entry = byMonth.get(key);
+      if (entry) entry.expense += Number(p.amount);
     }
 
     const result: MonthlySummaryItem[] = months.map(({ year, month }) => {
