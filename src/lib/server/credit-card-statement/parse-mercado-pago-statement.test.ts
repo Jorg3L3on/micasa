@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseMercadoPagoStatementText } from './parse-mercado-pago-statement';
 
+/** Synthetic Mercado Pago–shaped extract (no real account or merchant names). */
 const SAMPLE_TEXT = `
 Fecha: 8 marzo 2026
-Número de cuenta: 572126643
+Número de cuenta: 900112233
 Período
 8 febrero - 7 marzo
 (28 días)
@@ -18,11 +19,11 @@ Resumen de movimientos
 Movimientos
 MXN$
 08/02 Uso de la tarjeta de crédito - $ 5,030.24
-23/04 Compra en MERCADO PAGO 1 11 de 15 $ 463.96
-18/10 Compra en MERCADO PAGO 5 de 12 $ 192.16
-31/12 Compra en MERCADO PAGO 3 de 9 $ 380.82
-08/02 Compra en TODOMODA TUXTLAFASHION $ 59.90
-23/02 Compra en CURSOR, AI POWERED IDE US$ 20.00 $ 344.40
+23/04 Compra en PLAZO DEMO 1 11 de 15 $ 463.96
+18/10 Compra en PLAZO DEMO 2 5 de 12 $ 192.16
+31/12 Compra en PLAZO DEMO 3 3 de 9 $ 380.82
+08/02 Compra en BAZAR DEMO SUR $ 59.90
+23/02 Compra en SERVICIO SaaS DEMO US$ 20.00 $ 344.40
 Subtotal $ 1,216.46
 `;
 
@@ -30,7 +31,7 @@ describe('parseMercadoPagoStatementText', () => {
   it('parses metadata and compras from Movimientos (skips saldo inicial)', () => {
     const r = parseMercadoPagoStatementText(SAMPLE_TEXT);
 
-    expect(r.accountNumber).toBe('572126643');
+    expect(r.accountNumber).toBe('900112233');
     expect(r.statementYear).toBe(2026);
     expect(r.periodStart?.toISOString().slice(0, 10)).toBe('2026-02-08');
     expect(r.periodEnd?.toISOString().slice(0, 10)).toBe('2026-03-07');
@@ -41,12 +42,12 @@ describe('parseMercadoPagoStatementText', () => {
 
     expect(r.movements).toHaveLength(5);
 
-    const todomoda = r.movements.find((m) => m.description.includes('TODOMODA'));
-    expect(todomoda?.amount).toBe(59.9);
-    expect(todomoda?.paymentDate.toISOString().slice(0, 10)).toBe('2026-02-08');
+    const bazar = r.movements.find((m) => m.description.includes('BAZAR DEMO SUR'));
+    expect(bazar?.amount).toBe(59.9);
+    expect(bazar?.paymentDate.toISOString().slice(0, 10)).toBe('2026-02-08');
 
-    const cursor = r.movements.find((m) => m.description.includes('CURSOR'));
-    expect(cursor?.amount).toBe(344.4);
+    const saas = r.movements.find((m) => m.description.includes('SERVICIO SaaS DEMO'));
+    expect(saas?.amount).toBe(344.4);
 
     const withInstallments = r.movements.find((m) =>
       m.description.includes('11 de 15'),
@@ -58,8 +59,7 @@ describe('parseMercadoPagoStatementText', () => {
     expect(withInstallments?.paymentDate.getUTCMonth()).toBe(3);
     expect(withInstallments?.paymentDate.getUTCDate()).toBe(23);
 
-    const plain = r.movements.find((m) => m.description.includes('TODOMODA'));
-    expect(plain?.installmentCurrent).toBeUndefined();
-    expect(plain?.installmentTotal).toBeUndefined();
+    expect(bazar?.installmentCurrent).toBeUndefined();
+    expect(bazar?.installmentTotal).toBeUndefined();
   });
 });

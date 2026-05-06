@@ -28,6 +28,10 @@ import {
   extractCaEfectivoStatementText,
   parseCaEfectivoStatementText,
 } from '@/lib/server/credit-card-statement/parse-ca-efectivo-statement';
+import {
+  extractDidiCardStatementText,
+  parseDidiCardStatementText,
+} from '@/lib/server/credit-card-statement/parse-didi-card-statement';
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -52,6 +56,8 @@ type ParsedStatement = {
   minimumPayment: number | null;
   /** When set, the wallet amount is synced to this value after import (C&A Efectivo). */
   currentBalance: number | null;
+  /** DiDi Card: promotional temporary limit from the PDF (MXN). */
+  temporaryCreditLimit?: number | null;
   movements: ParsedMovement[];
   warnings: string[];
 };
@@ -97,6 +103,55 @@ const startEndUtcDay = (d: Date): { start: Date; end: Date } => ({
   start: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)),
   end: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999)),
 });
+
+async function syncWalletTemporaryCreditFromDidiStatement(
+  walletId: number,
+  parsed: ParsedStatement,
+  tx: Prisma.TransactionClient,
+): Promise<string[]> {
+  const messages: string[] = [];
+  const temp = parsed.temporaryCreditLimit;
+  const asOf = parsed.statementIssueDate;
+
+  const wallet = await tx.wallet.findUnique({
+    where: { id: walletId },
+    select: { credit_limit: true },
+  });
+  const base = wallet?.credit_limit == null ? null : Number(wallet.credit_limit);
+
+  const tempOk = temp != null && Number.isFinite(temp) && temp > 0;
+  const raisesCeiling = base == null || (tempOk && temp > base);
+
+  if (tempOk && raisesCeiling) {
+    await tx.wallet.update({
+      where: { id: walletId },
+      data: {
+        temporary_credit_limit: temp,
+        temporary_credit_limit_as_of: asOf,
+      },
+    });
+    messages.push(
+      `Límite temporal DiDi (MXN ${temp.toFixed(2)}) guardado. MiCasa usa el mayor entre tu línea de crédito y este valor como tope.`,
+    );
+    return messages;
+  }
+
+  await tx.wallet.update({
+    where: { id: walletId },
+    data: {
+      temporary_credit_limit: null,
+      temporary_credit_limit_as_of: null,
+    },
+  });
+
+  if (tempOk && base != null && temp <= base) {
+    messages.push(
+      'Este estado de cuenta no muestra límite temporal por encima de tu línea de crédito; se quitó el límite temporal guardado.',
+    );
+  }
+
+  return messages;
+}
 
 async function resolveCategory(
   ownerType: 'user' | 'house',
@@ -175,7 +230,15 @@ async function runImport(
       ...ownerFilter,
       type: { in: creditCardWalletTypes },
     },
-    select: { id: true, type: true, amount: true, credit_limit: true, user_id: true, house_id: true },
+    select: {
+      id: true,
+      type: true,
+      amount: true,
+      credit_limit: true,
+      temporary_credit_limit: true,
+      user_id: true,
+      house_id: true,
+    },
   });
 
   if (!wallet) {
@@ -187,6 +250,8 @@ async function runImport(
   let expensesCreated = 0;
   let duplicatesSkipped = 0;
   let linesSkipped = 0;
+  let diDiLimitMessages: string[] = [];
+  let overLimitImportWarningAdded = false;
 
   const importRow = await prisma.$transaction(async (tx) => {
     const createdImport = await tx.creditCardStatementImport.create({
@@ -210,6 +275,40 @@ async function runImport(
       },
     });
 
+    if (provider === StatementImportProvider.DIDI_CARD) {
+      diDiLimitMessages = await syncWalletTemporaryCreditFromDidiStatement(
+        creditCardWalletId,
+        parsed,
+        tx,
+      );
+    }
+
+    const walletSnapshot = provider === StatementImportProvider.DIDI_CARD
+      ? await tx.wallet.findUnique({
+          where: { id: creditCardWalletId },
+          select: {
+            type: true,
+            amount: true,
+            credit_limit: true,
+            temporary_credit_limit: true,
+          },
+        })
+      : {
+          type: wallet.type,
+          amount: wallet.amount,
+          credit_limit: wallet.credit_limit,
+          temporary_credit_limit: wallet.temporary_credit_limit,
+        };
+
+    if (!walletSnapshot || !isCreditWalletType(walletSnapshot.type)) {
+      const err = new Error('Tarjeta no válida para importación') as Error & { code?: string };
+      err.code = 'CARD_NOT_FOUND';
+      throw err;
+    }
+
+    let runningWalletAmount = Number(walletSnapshot.amount);
+    let walletDeltaAccumulated = 0;
+
     for (const mov of parsed.movements) {
       const period = getFortnightPeriodForDay(mov.paymentDate.getUTCDate());
       const fortnight = await resolveOrCreateFortnight({
@@ -231,6 +330,8 @@ async function runImport(
             amount: mov.amount,
             description: mov.description,
             payment_date: { gte: start, lte: end },
+            /** Evita que dos filas idénticas del mismo PDF se salten entre sí. */
+            NOT: { statement_import_id: createdImport.id },
           },
         });
         if (dup) {
@@ -239,16 +340,33 @@ async function runImport(
         }
       }
 
-      const walletRow = await tx.wallet.findUnique({
-        where: { id: creditCardWalletId },
-        select: { type: true, amount: true, credit_limit: true },
-      });
-      if (!walletRow || !isCreditWalletType(walletRow.type)) {
-        linesSkipped += 1;
-        continue;
+      try {
+        assertPaidChargeAllowedForWallet(
+          {
+            type: walletSnapshot.type,
+            amount: runningWalletAmount,
+            credit_limit: walletSnapshot.credit_limit,
+            temporary_credit_limit: walletSnapshot.temporary_credit_limit,
+          },
+          mov.amount,
+        );
+      } catch (error) {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'CREDIT_LIMIT_EXCEEDED'
+        ) {
+          if (!overLimitImportWarningAdded) {
+            warnings.push(
+              'Se detectaron compras que superan el límite registrado de la tarjeta durante la importación. Se importaron de todos modos porque el estado de cuenta es la fuente de verdad.',
+            );
+            overLimitImportWarningAdded = true;
+          }
+        } else {
+          throw error;
+        }
       }
-
-      assertPaidChargeAllowedForWallet(walletRow, mov.amount);
 
       await tx.expense.create({
         data: {
@@ -267,28 +385,36 @@ async function runImport(
         },
       });
 
-      await applyWalletAmountDelta(
-        tx,
-        creditCardWalletId,
-        getPaidExpenseWalletDelta(walletRow.type, mov.amount),
-      );
+      const delta = getPaidExpenseWalletDelta(walletSnapshot.type, mov.amount);
+      walletDeltaAccumulated += delta;
+      runningWalletAmount += delta;
 
       expensesCreated += 1;
     }
 
-    return createdImport;
-  });
+    if (walletDeltaAccumulated !== 0) {
+      await applyWalletAmountDelta(tx, creditCardWalletId, walletDeltaAccumulated);
+    }
 
-  // Sync wallet balance to the authoritative Saldo Total from the statement (C&A Efectivo).
+    return createdImport;
+  }, { timeout: 20_000, maxWait: 10_000 });
+
+  // Sync wallet balance to the authoritative Saldo Total from the statement.
   if (parsed.currentBalance != null) {
     await prisma.wallet.update({
       where: { id: creditCardWalletId },
       data: { amount: parsed.currentBalance },
     });
+    if (provider === StatementImportProvider.DIDI_CARD) {
+      warnings.push(
+        `Deuda actual de la tarjeta sincronizada desde el estado de cuenta DiDi (MXN ${parsed.currentBalance.toFixed(2)}).`,
+      );
+    }
   }
 
   const finalWarnings = [
     ...warnings,
+    ...diDiLimitMessages,
     `Resumen: ${expensesCreated} gasto(s) creado(s), ${duplicatesSkipped} duplicado(s) omitido(s), ${linesSkipped} línea(s) omitida(s).`,
   ];
 
@@ -304,6 +430,7 @@ const PROVIDER_LABELS: Record<StatementImportProvider, string> = {
   MERCADO_PAGO: 'Mercado Pago',
   CA_DEPARTAMENTAL: 'C&A Departamental',
   CA_EFECTIVO: 'C&A Efectivo',
+  DIDI_CARD: 'DiDi Card',
 };
 
 export async function importStatementPdf(
@@ -329,8 +456,6 @@ export async function importStatementPdf(
           description: m.description,
           amount: m.amount,
           paymentDate: m.paymentDate,
-          installmentCurrent: m.installmentCurrent,
-          installmentTotal: m.installmentTotal,
         })),
         warnings: r.warnings,
       };
@@ -377,6 +502,29 @@ export async function importStatementPdf(
           paymentDate: m.paymentDate,
           installmentCurrent: m.installmentCurrent,
           installmentTotal: m.installmentTotal,
+        })),
+        warnings: r.warnings,
+      };
+      break;
+    }
+    case StatementImportProvider.DIDI_CARD: {
+      const text = await extractDidiCardStatementText(input.buffer);
+      const r = parseDidiCardStatementText(text);
+      parsed = {
+        accountNumber: r.accountNumber,
+        statementIssueDate: r.statementIssueDate,
+        paymentDueDate: r.paymentDueDate,
+        periodStart: r.periodStart,
+        periodEnd: r.periodEnd,
+        totalDue: r.totalDue,
+        minimumPayment: r.minimumPayment,
+        // DiDi: Saldo total del periodo es la fuente de verdad para la deuda al corte.
+        currentBalance: r.totalDue,
+        temporaryCreditLimit: r.temporaryCreditLimit,
+        movements: r.movements.map((m) => ({
+          description: m.description,
+          amount: m.amount,
+          paymentDate: m.paymentDate,
         })),
         warnings: r.warnings,
       };

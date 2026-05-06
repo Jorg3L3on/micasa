@@ -80,6 +80,19 @@ const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD
 const isCreditType = (type: string) =>
   CREDIT_TYPES.includes(type as PaymentMethodType);
 
+const getEffectiveCreditLimit = ({
+  credit_limit,
+  temporary_credit_limit,
+}: {
+  credit_limit: number | null | undefined;
+  temporary_credit_limit: number | null | undefined;
+}): number | null => {
+  if (credit_limit == null && temporary_credit_limit == null) return null;
+  if (credit_limit == null) return temporary_credit_limit ?? null;
+  if (temporary_credit_limit == null) return credit_limit ?? null;
+  return Math.max(credit_limit, temporary_credit_limit);
+};
+
 const TYPE_FILTER_ALL = 'all';
 const STATUS_FILTER_ALL = 'all';
 const BALANCE_FILTER_ALL = 'all';
@@ -289,15 +302,19 @@ const walletMatchesCreditLineFilter = (
 ): boolean => {
   if (creditLineFilter === 'all') return true;
   if (!isCreditType(w.type)) return false;
+  const cap = getEffectiveCreditLimit({
+    credit_limit: w.credit_limit,
+    temporary_credit_limit: w.temporary_credit_limit,
+  });
   if (creditLineFilter === 'with_line') {
-    return w.credit_limit != null;
+    return cap != null;
   }
   if (creditLineFilter === 'no_line') {
-    return w.credit_limit == null;
+    return cap == null;
   }
   if (creditLineFilter === 'negative_available') {
-    if (w.credit_limit == null) return false;
-    return w.credit_limit - w.amount < 0;
+    if (cap == null) return false;
+    return cap - w.amount < 0;
   }
   return true;
 };
@@ -314,8 +331,12 @@ const walletMatchesAssigneeFilter = (
 
 const availableSortValue = (w: WalletListItem): number | null => {
   if (isCreditType(w.type)) {
-    if (w.credit_limit == null) return null;
-    return w.credit_limit - w.amount;
+    const cap = getEffectiveCreditLimit({
+      credit_limit: w.credit_limit,
+      temporary_credit_limit: w.temporary_credit_limit,
+    });
+    if (cap == null) return null;
+    return cap - w.amount;
   }
   return w.amount;
 };
@@ -781,6 +802,7 @@ export default function WalletsPage() {
         name: data.name,
         amount: data.amount || 0,
         credit_limit: data.credit_limit ?? null,
+        temporary_credit_limit: data.temporary_credit_limit ?? null,
         type: data.type,
         provider_icon_key: data.provider_icon_key ?? null,
         active: data.active || true,
@@ -1495,6 +1517,7 @@ export default function WalletsPage() {
               name: selectedWallet.name,
               amount: selectedWallet.amount ?? 0,
               credit_limit: selectedWallet.credit_limit ?? null,
+              temporary_credit_limit: selectedWallet.temporary_credit_limit ?? null,
               type: selectedWallet.type as PaymentMethodType,
               provider_icon_key: selectedWallet.provider_icon_key ?? null,
               active: selectedWallet.active,

@@ -44,6 +44,7 @@ enum StatementImportProvider {
   MERCADO_PAGO
   CA_DEPARTAMENTAL
   CA_EFECTIVO
+  DIDI_CARD
 }
 
 enum ShoppingCartStatus {
@@ -379,6 +380,10 @@ model Wallet {
   provider_icon_key String?
   amount            Decimal           @default(0) @db.Decimal(10, 2)
   credit_limit      Decimal?          @db.Decimal(10, 2)
+  /// DiDi Card y similares: límite promocional/temporal mayor que la línea contractual (último valor conocido).
+  temporary_credit_limit       Decimal?   @db.Decimal(10, 2)
+  /// Fecha de corte del estado de cuenta donde se detectó `temporary_credit_limit` (opcional).
+  temporary_credit_limit_as_of DateTime?
   type              PaymentMethodType
   cutoff_day        Int?
   due_day           Int?

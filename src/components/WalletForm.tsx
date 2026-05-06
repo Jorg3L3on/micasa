@@ -111,6 +111,7 @@ const buildWalletFormDefaults = (
   name: defaultValues?.name ?? '',
   amount: toNumericAmount(defaultValues?.amount),
   credit_limit: toNumericOrNull(defaultValues?.credit_limit),
+  temporary_credit_limit: toNumericOrNull(defaultValues?.temporary_credit_limit),
   type: defaultValues?.type ?? 'CASH',
   provider_icon_key: defaultValues?.provider_icon_key ?? null,
   active: defaultValues?.active ?? true,
@@ -438,6 +439,46 @@ export default function WalletForm({
                           />
                         </div>
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="temporary_credit_limit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Límite temporal (opcional)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                            $
+                          </span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="pl-7 font-mono tabular-nums"
+                            aria-label="Límite temporal promocional"
+                            value={
+                              field.value == null || field.value === ''
+                                ? ''
+                                : Number(field.value)
+                            }
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ''
+                                  ? null
+                                  : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </FormControl>
+                      <p className="text-[10px] text-muted-foreground pl-0.5">
+                        Promoción por encima de tu línea (p. ej. DiDi). Dejar vacío quita el tope extra. También se puede actualizar al importar el estado de cuenta.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

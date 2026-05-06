@@ -593,6 +593,7 @@ export default function CreditCardDetailPage() {
           name: card.name,
           amount: card.amount ?? 0,
           credit_limit: card.credit_limit ?? null,
+          temporary_credit_limit: card.temporary_credit_limit ?? null,
           type: card.type as PaymentMethodType,
           provider_icon_key: card.provider_icon_key ?? null,
           active: card.active,

@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { StatementImportProvider } from '@/generated/prisma/client';
 import {
   applyWalletAmountDelta,
   getPaidExpenseWalletDelta,
@@ -26,7 +27,7 @@ export async function rollbackCreditCardStatementImport(input: {
       wallet_id: creditCardWalletId,
       ...ownerFilter,
     },
-    select: { id: true },
+    select: { id: true, provider: true, total_due: true, created_at: true },
   });
 
   if (!importRow) {
@@ -38,6 +39,17 @@ export async function rollbackCreditCardStatementImport(input: {
   }
 
   return prisma.$transaction(async (tx) => {
+    const previousImport = await tx.creditCardStatementImport.findFirst({
+      where: {
+        wallet_id: creditCardWalletId,
+        ...ownerFilter,
+        id: { not: importId },
+        created_at: { lt: importRow.created_at },
+      },
+      orderBy: { created_at: 'desc' },
+      select: { total_due: true },
+    });
+
     const expenses = await tx.expense.findMany({
       where: { statement_import_id: importId },
       select: {
@@ -96,6 +108,17 @@ export async function rollbackCreditCardStatementImport(input: {
     await tx.creditCardStatementImport.delete({
       where: { id: importId },
     });
+
+    if (
+      importRow.provider === StatementImportProvider.DIDI_CARD &&
+      importRow.total_due != null &&
+      previousImport?.total_due != null
+    ) {
+      await tx.wallet.update({
+        where: { id: creditCardWalletId },
+        data: { amount: Number(previousImport.total_due) },
+      });
+    }
 
     return { expensesRemoved: expenses.length };
   });

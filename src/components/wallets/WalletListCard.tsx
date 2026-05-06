@@ -47,6 +47,19 @@ const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD
 const isCreditType = (type: string) =>
   CREDIT_TYPES.includes(type as PaymentMethodType);
 
+const getEffectiveCreditLimit = ({
+  credit_limit,
+  temporary_credit_limit,
+}: {
+  credit_limit: number | null | undefined;
+  temporary_credit_limit: number | null | undefined;
+}): number | null => {
+  if (credit_limit == null && temporary_credit_limit == null) return null;
+  if (credit_limit == null) return temporary_credit_limit ?? null;
+  if (temporary_credit_limit == null) return credit_limit ?? null;
+  return Math.max(credit_limit, temporary_credit_limit);
+};
+
 const DOUBLE_CLICK_MS = 250;
 
 type WalletListCardProps = {
@@ -140,10 +153,17 @@ export const WalletListCard = ({
     [],
   );
 
-  const limit = wallet.credit_limit ?? 0;
+  const effectiveLimit =
+    getEffectiveCreditLimit({
+      credit_limit: wallet.credit_limit,
+      temporary_credit_limit: wallet.temporary_credit_limit,
+    }) ?? 0;
   const usagePercent =
-    isCard && limit > 0
-      ? Math.min((Math.max(0, Number(wallet.amount)) / limit) * 100, 100)
+    isCard && effectiveLimit > 0
+      ? Math.min(
+          (Math.max(0, Number(wallet.amount)) / effectiveLimit) * 100,
+          100,
+        )
       : 0;
 
   const labelMuted = useProviderGradient ? 'text-white/70' : 'text-muted-foreground';
@@ -240,14 +260,21 @@ export const WalletListCard = ({
                     {formatCurrency(wallet.amount)}
                   </span>
                   {isCard ? (
-                    wallet.credit_limit != null ? (
+                    effectiveLimit > 0 ? (
                       <span
                         className={cn(
                           'min-w-0 truncate text-right text-base font-bold font-mono tabular-nums',
                           useProviderGradient ? 'text-white/90' : 'text-foreground',
                         )}
+                        title={
+                          wallet.temporary_credit_limit != null &&
+                          wallet.credit_limit != null &&
+                          wallet.temporary_credit_limit > wallet.credit_limit
+                            ? `Tope efectivo: mayor entre línea ${formatCurrency(wallet.credit_limit)} y temporal ${formatCurrency(wallet.temporary_credit_limit)}`
+                            : 'Tope de crédito usado para uso y disponible'
+                        }
                       >
-                        {formatCurrency(wallet.credit_limit)}
+                        {formatCurrency(effectiveLimit)}
                       </span>
                     ) : (
                       <span
@@ -271,7 +298,7 @@ export const WalletListCard = ({
                   )}
                 </div>
 
-                {isCard && limit > 0 ? (
+                {isCard && effectiveLimit > 0 ? (
                   <div className="mt-1.5 space-y-1.5">
                     <div
                       className={cn(
