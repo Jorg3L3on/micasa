@@ -553,8 +553,11 @@ model CreditCardStatementImport {
   expenses   Expense[]
 
   @@index([wallet_id])
+  @@index([wallet_id, payment_due_date])
   @@index([user_id])
+  @@index([user_id, payment_due_date])
   @@index([house_id])
+  @@index([house_id, payment_due_date])
   @@index([created_at])
 }
 

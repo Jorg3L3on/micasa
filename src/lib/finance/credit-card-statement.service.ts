@@ -741,8 +741,7 @@ async function getDuePaymentsWithAsOf(
 
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-  await Promise.all(
-    [...groups.values()].map(async (cardsInGroup) => {
+  for (const cardsInGroup of groups.values()) {
       const head = cardsInGroup[0];
       const window = resolveCreditCardStatementWindow(
         asOf,
@@ -763,33 +762,31 @@ async function getDuePaymentsWithAsOf(
       const statementDueMatchStart = new Date(window.statementDueDate.getTime() - SEVEN_DAYS_MS);
       const statementDueMatchEnd = new Date(window.statementDueDate.getTime() + SEVEN_DAYS_MS);
 
-      const [purchases, payments, importsNearPreviousDue, importsNearStatementDue] =
-        await Promise.all([
-          sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
-          sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
-          prisma.creditCardStatementImport.findMany({
-            where: {
-              wallet_id: { in: cardIds },
-              payment_due_date: {
-                gte: new Date(previousDueDate.getTime() - SEVEN_DAYS_MS),
-                lte: new Date(previousDueDate.getTime() + SEVEN_DAYS_MS),
-              },
-            },
-            orderBy: { created_at: 'desc' },
-            select: { wallet_id: true, total_due: true },
-          }),
-          prisma.creditCardStatementImport.findMany({
-            where: {
-              wallet_id: { in: cardIds },
-              payment_due_date: {
-                gte: statementDueMatchStart,
-                lte: statementDueMatchEnd,
-              },
-            },
-            orderBy: { created_at: 'desc' },
-            select: { wallet_id: true, total_due: true },
-          }),
-        ]);
+      // Avoid large burst fan-out against Postgres while rendering monthly planner.
+      const purchases = await sumStatementPurchasesByWallet(cardIds, window, ownerFilter);
+      const payments = await sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter);
+      const importsNearPreviousDue = await prisma.creditCardStatementImport.findMany({
+        where: {
+          wallet_id: { in: cardIds },
+          payment_due_date: {
+            gte: new Date(previousDueDate.getTime() - SEVEN_DAYS_MS),
+            lte: new Date(previousDueDate.getTime() + SEVEN_DAYS_MS),
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        select: { wallet_id: true, total_due: true },
+      });
+      const importsNearStatementDue = await prisma.creditCardStatementImport.findMany({
+        where: {
+          wallet_id: { in: cardIds },
+          payment_due_date: {
+            gte: statementDueMatchStart,
+            lte: statementDueMatchEnd,
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        select: { wallet_id: true, total_due: true },
+      });
 
       /**
        * Prefer imports aligned with `window.statementDueDate` (matches pantalla de estado
@@ -808,8 +805,7 @@ async function getDuePaymentsWithAsOf(
       for (const [id, value] of payments) {
         paymentSums.set(id, value);
       }
-    }),
-  );
+  }
 
   const items = dueCards.map((card) => {
     const lastStatementBalance = purchaseSums.get(card.id) ?? 0;
