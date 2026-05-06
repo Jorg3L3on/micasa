@@ -51,12 +51,6 @@ type Summary = {
   planningCardStatementDue?: PlannerCardStatementDueSummary | null
 } & ReportsSummaryFundingFields
 
-type FortnightInfo = {
-  label: string
-  id: number
-  period: 'FIRST' | 'SECOND'
-}
-
 function getMonthName(month: number): string {
   const months = [
     'Enero',
@@ -241,10 +235,6 @@ export default async function MonthlyPage({
   const [
     firstFortnightInfo,
     secondFortnightInfo,
-    firstTransactions,
-    secondTransactions,
-    firstSummary,
-    secondSummary,
     prevFirstInfo,
     prevSecondInfo,
     nextFirstInfo,
@@ -255,10 +245,6 @@ export default async function MonthlyPage({
   ] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
     getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
-    getTransactions(yearParam, monthParam, 'FIRST', ownerContext),
-    getTransactions(yearParam, monthParam, 'SECOND', ownerContext),
-    getSummary(yearParam, monthParam, 'FIRST', ownerContext),
-    getSummary(yearParam, monthParam, 'SECOND', ownerContext),
     getFortnightInfo(String(prevYear), prevMonthStr, 'FIRST', ownerContext),
     getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND', ownerContext),
     getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST', ownerContext),
@@ -269,6 +255,31 @@ export default async function MonthlyPage({
       : Promise.resolve([] as DuePaymentItem[]),
     loadPlannerDuePaymentsForMonthPage(year, month, ownerSearchParams),
   ])
+
+  const firstTransactions = await getTransactions(
+    yearParam,
+    monthParam,
+    'FIRST',
+    ownerContext,
+  )
+  const secondTransactions = await getTransactions(
+    yearParam,
+    monthParam,
+    'SECOND',
+    ownerContext,
+  )
+  const firstSummary = await getSummary(
+    yearParam,
+    monthParam,
+    'FIRST',
+    ownerContext,
+  )
+  const secondSummary = await getSummary(
+    yearParam,
+    monthParam,
+    'SECOND',
+    ownerContext,
+  )
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null
   const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null

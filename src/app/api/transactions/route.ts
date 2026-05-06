@@ -85,36 +85,37 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const [expenses, orphanCardPayments] = await Promise.all([
-      prisma.expense.findMany({
-        where: expenseWhere,
-        include: {
-          category: { select: { name: true } },
-          wallet: { select: { name: true, type: true } },
-        },
-        orderBy: { created_at: 'desc' },
-      }),
-      (async () => {
-        if (!excludeCreditInstallment || type === 'income') {
-          return [];
-        }
-        const fnWhere = buildFortnightWhereForReport(
-          ownerFilter,
-          month,
-          year,
-          period,
-        );
-        if (fnWhere == null) {
-          return [];
-        }
+    const expenses = await prisma.expense.findMany({
+      where: expenseWhere,
+      include: {
+        category: { select: { name: true } },
+        wallet: { select: { name: true, type: true } },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    let orphanCardPayments: Awaited<
+      ReturnType<typeof listOrphanCreditCardPaymentsForPlanning>
+    > = [];
+    if (excludeCreditInstallment && type !== 'income') {
+      const fnWhere = buildFortnightWhereForReport(
+        ownerFilter,
+        month,
+        year,
+        period,
+      );
+      if (fnWhere != null) {
         const planningFortnights = await prisma.fortnight.findMany({
           where: fnWhere as Prisma.FortnightWhereInput,
           select: { start_date: true, end_date: true },
         });
         const paidAtRange = unionPaidAtRangeFromFortnights(planningFortnights);
-        return listOrphanCreditCardPaymentsForPlanning(ownerFilter, paidAtRange);
-      })(),
-    ]);
+        orphanCardPayments = await listOrphanCreditCardPaymentsForPlanning(
+          ownerFilter,
+          paidAtRange,
+        );
+      }
+    }
 
     const expenseTransactions = expenses.map((expense) => {
       const dateValue = expense.payment_date || expense.created_at;
