@@ -6,7 +6,10 @@ import {
   loadCreditCardActivityLedger,
   resolveCreditCardStatementWindow,
 } from '@/lib/finance/credit-card-statement.service';
-import { isFundingWalletType } from '@/lib/finance/wallet-accounting';
+import {
+  getEffectiveCreditLimit,
+  isFundingWalletType,
+} from '@/lib/finance/wallet-accounting';
 import {
   addDaysUtc,
   compareUtcDateOnly,
@@ -526,6 +529,7 @@ export const getLiquidityProjection = async (
         type: true,
         amount: true,
         credit_limit: true,
+        temporary_credit_limit: true,
       },
       orderBy: { name: 'asc' },
     }),
@@ -795,7 +799,11 @@ export const getLiquidityProjection = async (
 
   const utilizationCards: LiquidityCardUtilizationItem[] = creditCardsForUtilization.map((card) => {
     const usedAmount = Math.max(Number(card.amount ?? 0), 0);
-    const creditLimitRaw = Number(card.credit_limit ?? 0);
+    const effectiveCap = getEffectiveCreditLimit({
+      credit_limit: card.credit_limit,
+      temporary_credit_limit: card.temporary_credit_limit,
+    });
+    const creditLimitRaw = effectiveCap ?? 0;
     const hasLimit = Number.isFinite(creditLimitRaw) && creditLimitRaw > 0;
     if (!hasLimit) {
       return {

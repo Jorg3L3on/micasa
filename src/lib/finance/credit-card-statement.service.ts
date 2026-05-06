@@ -139,6 +139,7 @@ export async function getCreditCardStatementByOwner(
       type: true,
       amount: true,
       credit_limit: true,
+      temporary_credit_limit: true,
       cutoff_day: true,
       due_day: true,
     },
@@ -177,7 +178,7 @@ export async function getCreditCardStatementByOwner(
   // Most recent statement import whose period_end falls within ±7 days of
   // the statement window end — used to override next_due_payment and due date.
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  const [purchases, payments, paymentTotals, recentImport] = await Promise.all([
+  const [purchases, payments, paymentTotals, recentImportByWindow, latestImport] = await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -241,9 +242,21 @@ export async function getCreditCardStatementByOwner(
         },
       },
       orderBy: { created_at: 'desc' },
-      select: { total_due: true, payment_due_date: true, minimum_payment: true },
+      select: { total_due: true, payment_due_date: true, minimum_payment: true, created_at: true },
+    }),
+    prisma.creditCardStatementImport.findFirst({
+      where: { wallet_id: creditCardId },
+      orderBy: { created_at: 'desc' },
+      select: { total_due: true, payment_due_date: true, minimum_payment: true, created_at: true },
     }),
   ]);
+
+  const recentImport =
+    latestImport &&
+    (!recentImportByWindow ||
+      latestImport.created_at.getTime() > recentImportByWindow.created_at.getTime())
+      ? latestImport
+      : recentImportByWindow;
 
   const importedTotalDue =
     recentImport?.total_due != null ? Number(recentImport.total_due) : null;
@@ -317,6 +330,8 @@ export async function getCreditCardStatementByOwner(
   const currentCyclePaymentsTotal = Number(currentCycleAgg._sum.amount ?? 0);
   const currentBalance = Number(card.amount);
   const creditLimit = card.credit_limit == null ? null : Number(card.credit_limit);
+  const temporaryCreditLimit =
+    card.temporary_credit_limit == null ? null : Number(card.temporary_credit_limit);
 
   let nextDuePayment = Math.max(
     (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatementTotal,
@@ -348,9 +363,11 @@ export async function getCreditCardStatementByOwner(
     type: card.type,
     current_balance: currentBalance,
     credit_limit: creditLimit,
+    temporary_credit_limit: temporaryCreditLimit,
     available_credit: getWalletAvailableCredit({
       amount: currentBalance,
       credit_limit: creditLimit,
+      temporary_credit_limit: temporaryCreditLimit,
     }),
     cutoff_day: card.cutoff_day,
     due_day: card.due_day,
@@ -743,24 +760,42 @@ async function getDuePaymentsWithAsOf(
       // = day before window.statementStart). Compute its due date and search ±7d.
       const previousStatementEnd = new Date(window.statementStart.getTime() - 24 * 60 * 60 * 1000);
       const previousDueDate = resolveDueDate(previousStatementEnd, head.due_day!);
+      const statementDueMatchStart = new Date(window.statementDueDate.getTime() - SEVEN_DAYS_MS);
+      const statementDueMatchEnd = new Date(window.statementDueDate.getTime() + SEVEN_DAYS_MS);
 
-      const [purchases, payments, recentImports] = await Promise.all([
-        sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
-        sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
-        prisma.creditCardStatementImport.findMany({
-          where: {
-            wallet_id: { in: cardIds },
-            payment_due_date: {
-              gte: new Date(previousDueDate.getTime() - SEVEN_DAYS_MS),
-              lte: new Date(previousDueDate.getTime() + SEVEN_DAYS_MS),
+      const [purchases, payments, importsNearPreviousDue, importsNearStatementDue] =
+        await Promise.all([
+          sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
+          sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
+          prisma.creditCardStatementImport.findMany({
+            where: {
+              wallet_id: { in: cardIds },
+              payment_due_date: {
+                gte: new Date(previousDueDate.getTime() - SEVEN_DAYS_MS),
+                lte: new Date(previousDueDate.getTime() + SEVEN_DAYS_MS),
+              },
             },
-          },
-          orderBy: { created_at: 'desc' },
-          select: { wallet_id: true, total_due: true },
-        }),
-      ]);
+            orderBy: { created_at: 'desc' },
+            select: { wallet_id: true, total_due: true },
+          }),
+          prisma.creditCardStatementImport.findMany({
+            where: {
+              wallet_id: { in: cardIds },
+              payment_due_date: {
+                gte: statementDueMatchStart,
+                lte: statementDueMatchEnd,
+              },
+            },
+            orderBy: { created_at: 'desc' },
+            select: { wallet_id: true, total_due: true },
+          }),
+        ]);
 
-      // Keep only the most recent import per wallet
+      /**
+       * Prefer imports aligned with `window.statementDueDate` (matches pantalla de estado
+       * de cuenta); fallback al período anterior si no hay match (legacy / datos viejos).
+       */
+      const recentImports = [...importsNearStatementDue, ...importsNearPreviousDue];
       for (const imp of recentImports) {
         if (!importedTotalByWallet.has(imp.wallet_id) && imp.total_due != null) {
           importedTotalByWallet.set(imp.wallet_id, Number(imp.total_due));
@@ -780,10 +815,23 @@ async function getDuePaymentsWithAsOf(
     const lastStatementBalance = purchaseSums.get(card.id) ?? 0;
     const paymentsAppliedToStatement = paymentSums.get(card.id) ?? 0;
     const importedTotalDue = importedTotalByWallet.get(card.id) ?? null;
-    const nextDuePayment = Math.max(
-      (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatement,
-      0,
-    );
+    const outstandingBalance = Number(card.amount);
+
+    const ledgerDue = Math.max(lastStatementBalance - paymentsAppliedToStatement, 0);
+    const outstandingDue = Math.max(outstandingBalance - paymentsAppliedToStatement, 0);
+
+    let nextDuePayment: number;
+    if (importedTotalDue != null) {
+      nextDuePayment = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+    } else if (ledgerDue <= 0 && outstandingDue > 0) {
+      /**
+       * Sin importación alineada al período: reconstruir desde movimientos suele ser frágil.
+       * Si la tarjeta tiene deuda registrada (sync/saldo manual), úsala como respaldo.
+       */
+      nextDuePayment = outstandingDue;
+    } else {
+      nextDuePayment = ledgerDue;
+    }
     return {
       walletId: card.id,
       walletName: card.name,
@@ -793,7 +841,7 @@ async function getDuePaymentsWithAsOf(
       nextDuePayment,
       paymentsAppliedToStatement,
       statementDueDate: statementDueByWallet.get(card.id)!,
-      outstandingBalance: Number(card.amount),
+      outstandingBalance,
     };
   });
 

@@ -10,4 +10,24 @@ describe('getWalletAvailableCredit', () => {
   it('returns limit minus balance (debt)', () => {
     expect(getWalletAvailableCredit({ amount: 200, credit_limit: 1000 })).toBe(800);
   });
+
+  it('uses the greater of contractual limit and temporary limit', () => {
+    expect(
+      getWalletAvailableCredit({
+        amount: 500,
+        credit_limit: 1500,
+        temporary_credit_limit: 2700,
+      }),
+    ).toBe(2200);
+  });
+
+  it('ignores temporary limit when it is not above base semantics', () => {
+    expect(
+      getWalletAvailableCredit({
+        amount: 100,
+        credit_limit: 2000,
+        temporary_credit_limit: 1500,
+      }),
+    ).toBe(1900);
+  });
 });

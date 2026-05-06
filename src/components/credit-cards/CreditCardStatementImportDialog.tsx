@@ -33,12 +33,13 @@ import type {
 const IMPORT_LIST_SCROLL_CLASS =
   'max-h-[min(16rem,40vh)] overflow-y-auto scrollbar-hide pr-0.5';
 
-type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO';
+type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO' | 'DIDI_CARD';
 
 const PROVIDER_OPTIONS: { value: Provider; label: string }[] = [
   { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
   { value: 'CA_DEPARTAMENTAL', label: 'C&A Departamental' },
   { value: 'CA_EFECTIVO', label: 'C&A Efectivo' },
+  { value: 'DIDI_CARD', label: 'DiDi Card' },
 ];
 
 export type CreditCardStatementImportDialogProps = {
@@ -57,6 +58,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   MERCADO_PAGO: 'Mercado Pago',
   CA_DEPARTAMENTAL: 'C&A Departamental',
   CA_EFECTIVO: 'C&A Efectivo',
+  DIDI_CARD: 'DiDi Card',
 };
 
 const CreditCardStatementImportDialog = ({

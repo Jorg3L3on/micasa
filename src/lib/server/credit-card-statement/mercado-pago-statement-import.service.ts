@@ -156,6 +156,7 @@ export async function importMercadoPagoStatementPdf(input: {
       type: true,
       amount: true,
       credit_limit: true,
+      temporary_credit_limit: true,
       user_id: true,
       house_id: true,
     },
@@ -226,6 +227,7 @@ export async function importMercadoPagoStatementPdf(input: {
           type: true,
           amount: true,
           credit_limit: true,
+          temporary_credit_limit: true,
         },
       });
       if (!walletRow || !isCreditWalletType(walletRow.type)) {

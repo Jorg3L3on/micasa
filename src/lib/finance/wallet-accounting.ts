@@ -36,6 +36,23 @@ type PaidChargeWalletShape = {
   type: PaymentMethodType;
   amount: unknown;
   credit_limit: unknown;
+  temporary_credit_limit?: unknown;
+};
+
+/** Tope usado para cargos y disponible: el mayor entre línea contractual y límite temporal (ej. DiDi). */
+export const getEffectiveCreditLimit = (wallet: {
+  credit_limit: unknown;
+  temporary_credit_limit?: unknown;
+}): number | null => {
+  const base = wallet.credit_limit == null ? null : Number(wallet.credit_limit);
+  const temp =
+    wallet.temporary_credit_limit == null
+      ? null
+      : Number(wallet.temporary_credit_limit);
+  if (base == null && temp == null) return null;
+  if (base == null) return temp;
+  if (temp == null) return base;
+  return Math.max(base, temp);
 };
 
 export const assertPaidChargeAllowedForWallet = (
@@ -44,8 +61,7 @@ export const assertPaidChargeAllowedForWallet = (
 ) => {
   const balance = Number(wallet.amount);
   if (isCreditWalletType(wallet.type)) {
-    const limit =
-      wallet.credit_limit == null ? null : Number(wallet.credit_limit);
+    const limit = getEffectiveCreditLimit(wallet);
     if (limit != null && balance + chargeAmount > limit) {
       const error = new Error(
         'El gasto supera el crédito disponible',
@@ -67,15 +83,18 @@ export const assertPaidChargeAllowedForWallet = (
 export const getWalletAvailableCredit = ({
   amount,
   credit_limit,
+  temporary_credit_limit,
 }: {
   amount: number | null | undefined;
   credit_limit: number | null | undefined;
+  temporary_credit_limit?: number | null | undefined;
 }) => {
-  if (credit_limit == null) {
+  const limit = getEffectiveCreditLimit({ credit_limit, temporary_credit_limit });
+  if (limit == null) {
     return null;
   }
 
-  return credit_limit - (amount ?? 0);
+  return limit - (amount ?? 0);
 };
 
 export const applyWalletAmountDelta = async (

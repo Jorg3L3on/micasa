@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { parseCaDepartamentalStatementText } from './parse-ca-departamental-statement';
 
 /**
- * Representative text extracted from Marzo-2026_C&A_DEP.pdf.
- * Captures the key sections needed for parser correctness:
- *   - EN POCAS PALABRAS data row: $ 48.00 $ 0.00 $ 217.00 $ 3.25 $ -48.00 $ 220.25
- *   - Saldo Total (header table): $437.25
- *   - ELIGE 1 DE ESTAS OPCIONES box: $ 220.25  $ 23.00
- *   - Two COMPRA movements
+ * Synthetic C&A Departamental–shaped extract: layout matches real statements,
+ * labels and merchants are fictional.
  */
 const SAMPLE_TEXT = `
 TARJETA C&A BRADESCARD
@@ -34,8 +30,8 @@ $ 220.25 $ 23.00
 
 TARJETA TITULAR NO. 1234567890123456
 
-15/03 COMPRA SUBURBIA XALAPA $ 217.00
-01/03 COMPRA SUBURBIA CUOTA $ 48.00
+15/03 COMPRA TIENDA DEMO NORTE $ 217.00
+01/03 COMPRA TIENDA DEMO CUOTA $ 48.00
 TOTAL: $ 265.00
 `;
 

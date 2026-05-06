@@ -42,6 +42,8 @@ const mapWalletToCreditCardDto = (
     provider_icon_key: string | null;
     amount: unknown;
     credit_limit: unknown;
+    temporary_credit_limit?: unknown;
+    temporary_credit_limit_as_of?: Date | null;
     type: string;
     active: boolean;
     cutoff_day: number | null;
@@ -54,6 +56,10 @@ const mapWalletToCreditCardDto = (
   const currentBalance = Number(wallet.amount);
   const creditLimit =
     wallet.credit_limit == null ? null : Number(wallet.credit_limit);
+  const temporaryCreditLimit =
+    wallet.temporary_credit_limit == null
+      ? null
+      : Number(wallet.temporary_credit_limit);
 
   return {
     id: wallet.id,
@@ -61,9 +67,15 @@ const mapWalletToCreditCardDto = (
     provider_icon_key: wallet.provider_icon_key,
     amount: currentBalance,
     credit_limit: creditLimit,
+    temporary_credit_limit: temporaryCreditLimit,
+    temporary_credit_limit_as_of:
+      wallet.temporary_credit_limit_as_of == null
+        ? null
+        : wallet.temporary_credit_limit_as_of.toISOString(),
     available_credit: getWalletAvailableCredit({
       amount: currentBalance,
       credit_limit: creditLimit,
+      temporary_credit_limit: temporaryCreditLimit,
     }),
     type: wallet.type,
     active: wallet.active,

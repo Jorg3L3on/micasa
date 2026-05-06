@@ -1,3 +1,4 @@
+import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type {
@@ -21,6 +22,8 @@ const mapWalletRowToListDto = (
     provider_icon_key: string | null;
     amount: unknown;
     credit_limit: unknown;
+    temporary_credit_limit?: unknown;
+    temporary_credit_limit_as_of?: Date | null;
     type: string;
     active: boolean;
     cutoff_day: number | null;
@@ -37,6 +40,12 @@ const mapWalletRowToListDto = (
     provider_icon_key: parseWalletProviderIconKey(w.provider_icon_key),
     amount: amountNum,
     credit_limit: w.credit_limit == null ? null : Number(w.credit_limit),
+    temporary_credit_limit:
+      w.temporary_credit_limit == null ? null : Number(w.temporary_credit_limit),
+    temporary_credit_limit_as_of:
+      w.temporary_credit_limit_as_of == null
+        ? null
+        : w.temporary_credit_limit_as_of.toISOString(),
     type: w.type,
     active: w.active,
     cutoff_day: w.cutoff_day,
@@ -145,6 +154,11 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
       name: data.name,
       amount: data.amount,
       credit_limit: data.credit_limit,
+      temporary_credit_limit: data.temporary_credit_limit ?? null,
+      temporary_credit_limit_as_of:
+        data.temporary_credit_limit != null && data.temporary_credit_limit > 0
+          ? new Date()
+          : null,
       type: data.type,
       provider_icon_key: data.provider_icon_key ?? null,
       active: data.active,
@@ -168,6 +182,11 @@ export async function createWalletForUser(
       name: data.name,
       amount: data.amount,
       credit_limit: data.credit_limit,
+      temporary_credit_limit: data.temporary_credit_limit ?? null,
+      temporary_credit_limit_as_of:
+        data.temporary_credit_limit != null && data.temporary_credit_limit > 0
+          ? new Date()
+          : null,
       type: data.type,
       provider_icon_key: data.provider_icon_key ?? null,
       active: data.active,
@@ -196,6 +215,11 @@ export async function createWalletForOwner(
       name: data.name,
       amount: data.amount,
       credit_limit: data.credit_limit,
+      temporary_credit_limit: data.temporary_credit_limit ?? null,
+      temporary_credit_limit_as_of:
+        data.temporary_credit_limit != null && data.temporary_credit_limit > 0
+          ? new Date()
+          : null,
       type: data.type,
       provider_icon_key: data.provider_icon_key ?? null,
       active: data.active,
@@ -244,14 +268,28 @@ export async function updateWalletMetadataForOwner(
     assignee_user_id = await resolveWalletAssignee(ownerType, ownerId, assigneePatch);
   }
 
-  const prismaData = {
+  const prismaData: Record<string, unknown> = {
     ...rest,
     ...(assigneePatch !== undefined ? { assignee_user_id } : {}),
   };
 
+  if (data.temporary_credit_limit !== undefined) {
+    if (data.temporary_credit_limit == null) {
+      prismaData.temporary_credit_limit_as_of = null;
+    } else {
+      const prev =
+        existing.temporary_credit_limit == null
+          ? null
+          : Number(existing.temporary_credit_limit);
+      if (prev !== data.temporary_credit_limit) {
+        prismaData.temporary_credit_limit_as_of = new Date();
+      }
+    }
+  }
+
   return prisma.wallet.update({
     where: { id },
-    data: prismaData,
+    data: prismaData as Prisma.WalletUpdateInput,
     include: ASSIGNEE_INCLUDE,
   });
 }

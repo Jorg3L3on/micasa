@@ -20,6 +20,7 @@ export type WalletDetail = {
   type: string;
   amount: number;
   credit_limit: number | null;
+  temporary_credit_limit: number | null;
   active: boolean;
 };
 

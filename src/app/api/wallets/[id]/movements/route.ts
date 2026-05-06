@@ -77,6 +77,10 @@ export async function GET(
       type: wallet.type,
       amount: Number(wallet.amount),
       credit_limit: wallet.credit_limit == null ? null : Number(wallet.credit_limit),
+      temporary_credit_limit:
+        wallet.temporary_credit_limit == null
+          ? null
+          : Number(wallet.temporary_credit_limit),
       active: wallet.active,
     };
 

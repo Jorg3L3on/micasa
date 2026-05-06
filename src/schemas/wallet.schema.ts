@@ -29,6 +29,7 @@ const applyWalletBusinessRules = (
     cutoff_day: number | null;
     due_day: number | null;
     credit_limit?: number | null;
+    temporary_credit_limit?: number | null;
   },
   ctx: z.RefinementCtx,
 ) => {
@@ -63,6 +64,14 @@ const applyWalletBusinessRules = (
     return;
   }
 
+  if (data.temporary_credit_limit != null && data.temporary_credit_limit > 0) {
+    ctx.addIssue({
+      path: ['temporary_credit_limit'],
+      message: 'El límite temporal solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
+
   if (data.credit_limit != null) {
     ctx.addIssue({
       path: ['credit_limit'],
@@ -93,6 +102,7 @@ export const createWalletSchema = z.object({
   name: requiredStringSchema,
   amount: positiveAmountSchema.default(0),
   credit_limit: nullableCreditLimitSchema.optional(),
+  temporary_credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType,
   provider_icon_key: walletProviderIconKeySchema.optional(),
   active: z.boolean().default(true),
@@ -106,6 +116,7 @@ export const updateWalletSchema = z.object({
   name: requiredStringSchema.optional(),
   amount: nonNegativeAmountSchema.optional(),
   credit_limit: nullableCreditLimitSchema.optional(),
+  temporary_credit_limit: nullableCreditLimitSchema.optional(),
   type: paymentMethodType.optional(),
   provider_icon_key: walletProviderIconKeySchema.optional(),
   active: z.boolean().optional(),
@@ -122,6 +133,7 @@ export const updateWalletSchema = z.object({
       cutoff_day: data.cutoff_day ?? null,
       due_day: data.due_day ?? null,
       credit_limit: data.credit_limit ?? null,
+      temporary_credit_limit: data.temporary_credit_limit ?? null,
     },
     ctx,
   );
@@ -132,6 +144,7 @@ export const walletSchema = z
     name: requiredStringSchema,
     amount: positiveAmountSchema.optional(),
     credit_limit: nullableCreditLimitSchema.default(null),
+    temporary_credit_limit: nullableCreditLimitSchema.default(null),
     type: paymentMethodType,
     provider_icon_key: walletProviderIconKeySchema.default(null),
     active: z.boolean().default(true),

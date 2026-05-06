@@ -3,6 +3,7 @@ import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import {
   applyWalletAmountDelta,
   assertPaidChargeAllowedForWallet,
+  getEffectiveCreditLimit,
   getPaidExpenseWalletDelta,
   isCreditWalletType,
   isFundingWalletType,
@@ -184,6 +185,7 @@ export async function createExpenseInTransaction(
         type: true,
         amount: true,
         credit_limit: true,
+        temporary_credit_limit: true,
       },
     });
     if (!wallet) {
@@ -414,13 +416,17 @@ export async function updateExpense(input: UpdateExpenseInput) {
       const walletIdNum = Number(walletIdStr);
       const w = await tx.wallet.findUnique({
         where: { id: walletIdNum },
-        select: { type: true, amount: true, credit_limit: true },
+        select: {
+          type: true,
+          amount: true,
+          credit_limit: true,
+          temporary_credit_limit: true,
+        },
       });
       if (!w) continue;
       const projected = Number(w.amount) + delta;
       if (isCreditWalletType(w.type)) {
-        const limit =
-          w.credit_limit == null ? null : Number(w.credit_limit);
+        const limit = getEffectiveCreditLimit(w);
         if (limit != null && projected > limit) {
           const error = new Error(
             'El gasto supera el crédito disponible',
@@ -512,7 +518,12 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
       if (willBePaid) {
         const w = await tx.wallet.findUnique({
           where: { id: existing.wallet_id },
-          select: { type: true, amount: true, credit_limit: true },
+          select: {
+            type: true,
+            amount: true,
+            credit_limit: true,
+            temporary_credit_limit: true,
+          },
         });
         if (w) {
           assertPaidChargeAllowedForWallet(w, Number(existing.amount));

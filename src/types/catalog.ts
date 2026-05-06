@@ -17,6 +17,7 @@ export type PaymentMethodOption = {
   type?: string;
   amount?: number;
   credit_limit?: number | null;
+  temporary_credit_limit?: number | null;
   available_credit?: number | null;
 };
 
@@ -153,6 +154,9 @@ export type WalletListItem = {
   provider_icon_key: WalletProviderIconKey | null;
   amount: number;
   credit_limit?: number | null;
+  /** Tope promocional temporal por encima de la línea (ej. DiDi); MiCasa usa max(contrato, este). */
+  temporary_credit_limit?: number | null;
+  temporary_credit_limit_as_of?: string | null;
   type: string;
   active: boolean;
   cutoff_day: number | null;
@@ -363,6 +367,7 @@ export type CreditCardStatementResponse = {
   type: string;
   current_balance: number;
   credit_limit: number | null;
+  temporary_credit_limit: number | null;
   available_credit: number | null;
   cutoff_day: number;
   due_day: number;

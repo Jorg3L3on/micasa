@@ -8,6 +8,7 @@ import {
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
+import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
 
 type PeriodView = 'month' | 'biweekly';
 type DashboardAlertTarget = {
@@ -238,6 +239,7 @@ export async function GET(request: NextRequest) {
         select: {
           amount: true,
           credit_limit: true,
+          temporary_credit_limit: true,
           type: true,
         },
       }),
@@ -287,8 +289,12 @@ export async function GET(request: NextRequest) {
         w.type === PaymentMethodType.DEPARTMENT_STORE_CARD
       ) {
         creditWalletDebtTotal += amt;
-        if (w.credit_limit != null) {
-          creditWalletAvailableTotal += Number(w.credit_limit) - amt;
+        const cap = getEffectiveCreditLimit({
+          credit_limit: w.credit_limit,
+          temporary_credit_limit: w.temporary_credit_limit,
+        });
+        if (cap != null) {
+          creditWalletAvailableTotal += cap - amt;
         }
       }
     }
