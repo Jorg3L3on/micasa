@@ -88,6 +88,11 @@ export function AppSidebar({
       isActive: pathname.startsWith('/income-templates'),
     },
     {
+      title: 'Plantillas de presupuestos',
+      url: '/budget-templates',
+      isActive: pathname.startsWith('/budget-templates'),
+    },
+    {
       title: 'Categorías',
       url: '/categories',
       isActive: pathname.startsWith('/categories'),
@@ -166,6 +171,7 @@ export function AppSidebar({
       isActive:
         pathname.startsWith('/expense-templates') ||
         pathname.startsWith('/income-templates') ||
+        pathname.startsWith('/budget-templates') ||
         pathname.startsWith('/categories') ||
         pathname.startsWith('/wallets/liquidity') ||
         pathname.startsWith('/house-users'),

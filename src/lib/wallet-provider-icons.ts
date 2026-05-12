@@ -1,4 +1,5 @@
 export const WALLET_PROVIDER_ICON_KEYS = [
+  'AMEX',
   'BANAMEX',
   'BBVA',
   'SANTANDER',
@@ -7,6 +8,7 @@ export const WALLET_PROVIDER_ICON_KEYS = [
   'LIVERPOOL',
   'MERCADO_PAGO',
   'MERCADO_LIBRE',
+  'NU_BANK',
   'PAYPAL',
   'SEARS',
   'GENERIC_BANK',
@@ -34,6 +36,13 @@ export type WalletProviderIconOption = {
 };
 
 export const WALLET_PROVIDER_ICON_OPTIONS: readonly WalletProviderIconOption[] = [
+  {
+    key: 'AMEX',
+    label: 'Amex',
+    shortLabel: 'AX',
+    logoPath: '/wallet-providers/amex.png',
+    brandClassName: '',
+  },
   {
     key: 'BANAMEX',
     label: 'Banamex',
@@ -89,6 +98,13 @@ export const WALLET_PROVIDER_ICON_OPTIONS: readonly WalletProviderIconOption[] =
     shortLabel: 'ML',
     logoPath: '/wallet-providers/mercadolibre.png',
     brandClassName: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
+  },
+  {
+    key: 'NU_BANK',
+    label: 'NU',
+    shortLabel: 'NU',
+    logoPath: '/wallet-providers/nubank.png',
+    brandClassName: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
   },
   {
     key: 'PAYPAL',

@@ -135,17 +135,49 @@ export type BudgetAllocationItem = {
   amount: number;
 };
 
+// Template definition returned by GET /api/budget-templates
 export type BudgetListItem = {
   id: number;
   name: string;
   allocated_amount: number;
-  remaining_amount: number;
-  spent_amount: number;
   frequency: string;
   start_date: string | null;
   end_date: string | null;
   active: boolean;
+  recurrent: boolean;
   allocations: BudgetAllocationItem[];
+};
+
+// Active period returned by GET /api/budgets
+export type BudgetPeriodItem = {
+  period_id: number;
+  budget_id: number;
+  name: string;
+  frequency: string;
+  start_date: string;
+  end_date: string;
+  allocated_amount: number;
+  spent_amount: number;
+  remaining_amount: number;
+  active: boolean;
+  recurrent: boolean;
+  allocations: BudgetAllocationItem[];
+};
+
+// History group returned by GET /api/budgets/history
+export type BudgetHistoryGroup = {
+  budget_id: number;
+  name: string;
+  frequency: string;
+  allocated_amount: number;
+  periods: Array<{
+    period_id: number;
+    start_date: string;
+    end_date: string;
+    allocated_amount: number;
+    spent_amount: number;
+    remaining_amount: number;
+  }>;
 };
 
 export type WalletListItem = {

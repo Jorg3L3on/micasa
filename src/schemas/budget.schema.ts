@@ -23,6 +23,7 @@ export const step1Schema = z.object({
   name: requiredStringSchema.max(25, 'El nombre no puede tener más de 25 caracteres'),
   allocated_amount: positiveAmountSchema,
   frequency: budgetFrequencyEnum,
+  recurrent: z.boolean().default(true),
   start_date: z.string().optional().nullable(),
   end_date: z.string().optional().nullable(),
 }).superRefine((data, ctx) => {
@@ -47,6 +48,7 @@ export const createBudgetSchema = z.object({
   name: requiredStringSchema.max(25, 'El nombre no puede tener más de 25 caracteres'),
   allocated_amount: positiveAmountSchema,
   frequency: budgetFrequencyEnum,
+  recurrent: z.boolean().default(true),
   start_date: z.string().optional().nullable(),
   end_date: z.string().optional().nullable(),
   allocations: z.array(allocationSchema).min(1, 'Debes agregar al menos una asignación'),

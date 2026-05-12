@@ -426,6 +426,7 @@ model Budget {
   start_date   DateTime?
   end_date     DateTime?
   active       Boolean         @default(true)
+  recurrent    Boolean         @default(true)
 
   user_id  Int?
   house_id Int?
@@ -436,9 +437,24 @@ model Budget {
   user        User?              @relation(fields: [user_id], references: [id])
   house       House?             @relation(fields: [house_id], references: [id])
   allocations BudgetAllocation[]
+  periods     BudgetPeriod[]
 
   @@index([user_id])
   @@index([house_id])
+}
+
+model BudgetPeriod {
+  id         Int      @id @default(autoincrement())
+  budget_id  Int
+  start_date DateTime
+  end_date   DateTime
+
+  created_at DateTime @default(now())
+
+  budget Budget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+
+  @@index([budget_id])
+  @@index([start_date, end_date])
 }
 
 model BudgetAllocation {

@@ -1,65 +1,7 @@
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { BudgetFrequency, CreateBudgetInput, AllocationInput } from '@/schemas/budget.schema';
-
-async function computeDateWindow(
-  frequency: BudgetFrequency,
-  created_at: Date,
-  start_date: Date | null,
-  end_date: Date | null,
-  ownerFilter: OwnerFilter,
-): Promise<{ start: Date; end: Date }> {
-  switch (frequency) {
-    case 'DAILY': {
-      const start = new Date(created_at.getFullYear(), created_at.getMonth(), created_at.getDate(), 0, 0, 0, 0);
-      const end = new Date(created_at.getFullYear(), created_at.getMonth(), created_at.getDate(), 23, 59, 59, 999);
-      return { start, end };
-    }
-    case 'WEEKLY': {
-      const day = created_at.getDay(); // 0 = Sunday
-      const diffToSunday = -day;
-      const start = new Date(created_at.getFullYear(), created_at.getMonth(), created_at.getDate() + diffToSunday, 0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      return { start, end };
-    }
-    case 'BIWEEKLY': {
-      const fortnight = await prisma.fortnight.findFirst({
-        where: {
-          ...ownerFilter,
-          start_date: { lte: created_at },
-          end_date: { gte: created_at },
-        },
-      });
-      if (fortnight) {
-        return { start: fortnight.start_date, end: fortnight.end_date };
-      }
-      // Fallback: use raw calendar halves if no matching fortnight record
-      const d = created_at.getDate();
-      const year = created_at.getFullYear();
-      const month = created_at.getMonth();
-      if (d <= 15) {
-        return {
-          start: new Date(year, month, 1, 0, 0, 0, 0),
-          end: new Date(year, month, 15, 23, 59, 59, 999),
-        };
-      } else {
-        const lastDay = new Date(year, month + 1, 0).getDate();
-        return {
-          start: new Date(year, month, 16, 0, 0, 0, 0),
-          end: new Date(year, month, lastDay, 23, 59, 59, 999),
-        };
-      }
-    }
-    case 'CUSTOM': {
-      return {
-        start: start_date ?? created_at,
-        end: end_date ?? created_at,
-      };
-    }
-  }
-}
+import { generatePeriodsOnCreate } from '@/lib/finance/budget-period.service';
 
 export async function listBudgetsByOwner(ownerFilter: OwnerFilter) {
   const budgets = await prisma.budget.findMany({
@@ -75,54 +17,24 @@ export async function listBudgetsByOwner(ownerFilter: OwnerFilter) {
     },
   });
 
-  return Promise.all(
-    budgets.map(async (budget) => {
-      const window = await computeDateWindow(
-        budget.frequency as BudgetFrequency,
-        budget.created_at,
-        budget.start_date,
-        budget.end_date,
-        ownerFilter,
-      );
-
-      const walletIds = budget.allocations.map((a) => a.wallet_id);
-      const categoryIds = budget.allocations.map((a) => a.category_id);
-      let spentAmount = 0;
-
-      if (walletIds.length > 0) {
-        const agg = await prisma.expense.aggregate({
-          where: {
-            wallet_id: { in: walletIds },
-            category_id: { in: categoryIds },
-            payment_date: { gte: window.start, lte: window.end },
-          },
-          _sum: { amount: true }
-        });
-
-        spentAmount = Number(agg._sum.amount ?? 0);
-      }
-
-      return {
-        id: budget.id,
-        name: budget.name,
-        allocated_amount: Number(budget.total_amount),
-        remaining_amount: Number(budget.total_amount) - spentAmount,
-        spent_amount: spentAmount,
-        frequency: budget.frequency,
-        start_date: budget.start_date?.toISOString() ?? null,
-        end_date: budget.end_date?.toISOString() ?? null,
-        active: budget.active,
-        allocations: budget.allocations.map((a) => ({
-          id: a.id,
-          wallet_id: a.wallet_id,
-          wallet_name: a.wallet.name,
-          category_id: a.category_id,
-          category_name: a.category.name,
-          amount: Number(a.amount),
-        })),
-      };
-    }),
-  );
+  return budgets.map((budget) => ({
+    id: budget.id,
+    name: budget.name,
+    allocated_amount: Number(budget.total_amount),
+    frequency: budget.frequency,
+    start_date: budget.start_date?.toISOString() ?? null,
+    end_date: budget.end_date?.toISOString() ?? null,
+    active: budget.active,
+    recurrent: budget.recurrent,
+    allocations: budget.allocations.map((a) => ({
+      id: a.id,
+      wallet_id: a.wallet_id,
+      wallet_name: a.wallet.name,
+      category_id: a.category_id,
+      category_name: a.category.name,
+      amount: Number(a.amount),
+    })),
+  }));
 }
 
 export async function createBudget(
@@ -135,12 +47,18 @@ export async function createBudget(
     throw Object.assign(new Error('La suma de asignaciones supera el presupuesto total'), { code: 'ALLOC_EXCEEDS_BUDGET' });
   }
 
-  return prisma.$transaction(async (tx) => {
-    const budget = await tx.budget.create({
+  const ownerFilter: OwnerFilter =
+    ownerType === 'user'
+      ? { user_id: ownerId, house_id: null }
+      : { user_id: null, house_id: ownerId };
+
+  const budget = await prisma.$transaction(async (tx) => {
+    const created = await tx.budget.create({
       data: {
         name: data.name,
         total_amount: data.allocated_amount,
-        frequency: data.frequency,
+        frequency: data.frequency as BudgetFrequency,
+        recurrent: data.frequency === 'CUSTOM' ? false : (data.recurrent ?? true),
         start_date: data.start_date ? new Date(data.start_date) : null,
         end_date: data.end_date ? new Date(data.end_date) : null,
         active: true,
@@ -151,15 +69,25 @@ export async function createBudget(
 
     await tx.budgetAllocation.createMany({
       data: data.allocations.map((a) => ({
-        budget_id: budget.id,
+        budget_id: created.id,
         wallet_id: a.wallet_id,
         category_id: a.category_id,
         amount: a.amount,
       })),
     });
 
-    return budget;
+    return created;
   });
+
+  await generatePeriodsOnCreate(
+    budget.id,
+    data.frequency as BudgetFrequency,
+    data.start_date,
+    data.end_date,
+    ownerFilter,
+  );
+
+  return budget;
 }
 
 export async function updateBudgetAllocations(

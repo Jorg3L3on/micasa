@@ -2,7 +2,28 @@
 
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CreateBudgetInput, AllocationInput } from '@/schemas/budget.schema';
+import type { BudgetPeriodItem, BudgetHistoryGroup, BudgetListItem } from '@/types/catalog';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
+
+export async function fetchActivePeriods(context?: FinanceContextType): Promise<BudgetPeriodItem[]> {
+  return clientFetchFromApi<BudgetPeriodItem[]>('/api/budgets', undefined, context);
+}
+
+export async function fetchBudgetHistory(
+  year: number,
+  month: number,
+  context?: FinanceContextType,
+): Promise<BudgetHistoryGroup[]> {
+  return clientFetchFromApi<BudgetHistoryGroup[]>(
+    `/api/budgets/history?year=${year}&month=${month}`,
+    undefined,
+    context,
+  );
+}
+
+export async function fetchBudgetTemplates(context?: FinanceContextType): Promise<BudgetListItem[]> {
+  return clientFetchFromApi<BudgetListItem[]>('/api/budget-templates', undefined, context);
+}
 
 export async function createBudget(
   data: CreateBudgetInput,

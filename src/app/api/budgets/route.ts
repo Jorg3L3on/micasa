@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import { listBudgetsByOwner, createBudget } from '@/lib/finance/budget.service';
+import { createBudget } from '@/lib/finance/budget.service';
+import { listActivePeriods } from '@/lib/finance/budget-period.service';
 import { createBudgetSchema } from '@/schemas/budget.schema';
 
 export async function GET(request: NextRequest) {
@@ -10,10 +11,10 @@ export async function GET(request: NextRequest) {
     if ('error' in context) return context.error;
     const { ownerFilter } = context;
 
-    const budgets = await listBudgetsByOwner(ownerFilter);
-    return NextResponse.json(budgets, { status: 200 });
+    const periods = await listActivePeriods(ownerFilter, new Date());
+    return NextResponse.json(periods, { status: 200 });
   } catch (error) {
-    console.error('Error fetching budgets:', error);
+    console.error('Error fetching active budget periods:', error);
     return NextResponse.json({ error: 'Failed to fetch budgets' }, { status: 500 });
   }
 }

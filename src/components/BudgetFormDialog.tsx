@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -123,6 +124,7 @@ export default function BudgetFormDialog({
       name: '',
       allocated_amount: 0,
       frequency: 'BIWEEKLY',
+      recurrent: true,
       start_date: null,
       end_date: null,
     },
@@ -142,6 +144,12 @@ export default function BudgetFormDialog({
 
   const watchedAllocations = useWatch({ control: form2.control, name: 'allocations' });
   const watchedFrequency = form1.watch('frequency');
+
+  useEffect(() => {
+    if (watchedFrequency === 'CUSTOM') {
+      form1.setValue('recurrent', false);
+    }
+  }, [watchedFrequency, form1]);
 
   const allocated = (watchedAllocations ?? []).reduce(
     (sum: number, a: { amount: unknown }) => sum + (Number(a.amount) || 0),
@@ -306,6 +314,26 @@ export default function BudgetFormDialog({
                   </FormItem>
                 )}
               />
+
+              {watchedFrequency !== 'CUSTOM' && (
+                <FormField
+                  control={form1.control}
+                  name="recurrent"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer font-normal">
+                        Recurrente (genera periodos al crear nuevo mes)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {watchedFrequency === 'CUSTOM' && (
                 <div className="grid grid-cols-2 gap-3">
