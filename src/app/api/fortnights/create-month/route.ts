@@ -7,6 +7,7 @@ import {
   expandIncomeTemplatesForFortnight,
 } from '@/lib/finance/template.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
 
 const createMonthSchema = z.object({
   year: z.number().int().min(2010).max(2030),
@@ -153,6 +154,12 @@ export async function POST(request: NextRequest) {
         await expandIncomeTemplatesForFortnight(existingSecond.id, 'SECOND');
     }
 
+    const { total: budgetPeriodsCreated } = await generatePeriodsForMonth(
+      year,
+      month,
+      ownerFilter,
+    );
+
     const totalExpenses =
       expensesByPeriod.FIRST.count + expensesByPeriod.SECOND.count;
     const totalIncomeFromTemplates =
@@ -187,6 +194,7 @@ export async function POST(request: NextRequest) {
           secondFortnight: incomeTemplatesByPeriod.SECOND,
           total: totalIncomeFromTemplates,
         },
+        budgetPeriodsCreated,
       },
       { status: created.length > 0 ? 201 : 200 },
     );
