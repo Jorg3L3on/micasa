@@ -133,4 +133,37 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.find((r) => r.walletId === 1)?.nextDuePayment).toBe(50);
     expect(result.find((r) => r.walletId === 2)?.nextDuePayment).toBe(200);
   });
+
+  it('prefers newer statement import total_due over an older same-window import (card screen parity)', async () => {
+    findManyWallets.mockResolvedValue([
+      {
+        id: 99,
+        name: 'Mercado Pago',
+        type: 'CREDIT_CARD',
+        amount: 4494.74,
+        cutoff_day: 7,
+        due_day: 17,
+      },
+    ]);
+    findManyStatementImports.mockResolvedValue([
+      {
+        wallet_id: 99,
+        total_due: 3941.76,
+        period_end: new Date(Date.UTC(2026, 2, 7)),
+        created_at: new Date(Date.UTC(2026, 2, 10, 12, 0, 0)),
+      },
+      {
+        wallet_id: 99,
+        total_due: 4494.74,
+        period_end: new Date(Date.UTC(2026, 2, 7)),
+        created_at: new Date(Date.UTC(2026, 2, 15, 12, 0, 0)),
+      },
+    ]);
+    queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const result = await getDuePaymentsForCurrentFortnight(userOwner);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.nextDuePayment).toBe(4494.74);
+  });
 });

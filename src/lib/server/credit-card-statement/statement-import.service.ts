@@ -217,8 +217,14 @@ async function runImport(
   if (parsed.movements.length === 0) {
     const msg = 'No se encontraron compras importables en el PDF.';
     warnings.push(msg);
-    const err = new Error(msg) as Error & { code?: string };
+    const err = new Error(msg) as Error & {
+      code?: string;
+      parse_warnings?: string[];
+      statement_import_provider?: StatementImportProvider;
+    };
     err.code = 'NO_MOVEMENTS';
+    err.parse_warnings = warnings;
+    err.statement_import_provider = provider;
     throw err;
   }
 
@@ -249,7 +255,7 @@ async function runImport(
 
   let expensesCreated = 0;
   let duplicatesSkipped = 0;
-  let linesSkipped = 0;
+  const linesSkipped = 0;
   let diDiLimitMessages: string[] = [];
   let overLimitImportWarningAdded = false;
 
@@ -399,17 +405,15 @@ async function runImport(
     return createdImport;
   }, { timeout: 20_000, maxWait: 10_000 });
 
-  // Sync wallet balance to the authoritative Saldo Total from the statement.
+  // Sync wallet balance to the authoritative total from the statement (PDF).
   if (parsed.currentBalance != null) {
     await prisma.wallet.update({
       where: { id: creditCardWalletId },
       data: { amount: parsed.currentBalance },
     });
-    if (provider === StatementImportProvider.DIDI_CARD) {
-      warnings.push(
-        `Deuda actual de la tarjeta sincronizada desde el estado de cuenta DiDi (MXN ${parsed.currentBalance.toFixed(2)}).`,
-      );
-    }
+    warnings.push(
+      `Deuda actual de la tarjeta sincronizada con el total del estado de cuenta (${PROVIDER_LABELS[provider]}): MXN ${parsed.currentBalance.toFixed(2)}.`,
+    );
   }
 
   const finalWarnings = [
@@ -451,7 +455,9 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: null,
-        currentBalance: null,
+        /** Misma idea que DiDi: el PDF es fuente de verdad para la deuda al cierre. */
+        currentBalance:
+          r.totalDue != null && Number.isFinite(r.totalDue) ? r.totalDue : null,
         movements: r.movements.map((m) => ({
           description: m.description,
           amount: m.amount,

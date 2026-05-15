@@ -554,6 +554,8 @@ export default function CreditCardDetailPage() {
         context={context}
         categoryOptions={categoryOptions}
         statementImports={statementImports}
+        walletProviderIconKey={card?.provider_icon_key ?? null}
+        walletName={card?.name ?? ''}
         onSuccess={loadData}
         onDownloadImport={handleDownloadStatementImport}
         onRollbackClick={(id) => setRollbackImportId(id)}

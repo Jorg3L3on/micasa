@@ -3,6 +3,8 @@
  * Expects text extracted via unpdf.
  */
 
+import '@/lib/polyfills';
+
 const MONTHS_CA: Record<string, number> = {
   ENE: 0, FEB: 1, MAR: 2, ABR: 3, MAY: 4, JUN: 5,
   JUL: 6, AGO: 7, SEP: 8, OCT: 9, NOV: 10, DIC: 11,

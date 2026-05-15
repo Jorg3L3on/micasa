@@ -27,6 +27,20 @@ MXN$
 Subtotal $ 1,216.46
 `;
 
+const ALT_LAYOUT = `
+Mercado Pago
+Fecha de emisión: 5 abril 2026
+Número de cuenta: 900009999
+Período 1 marzo - 31 marzo
+Total a pagar del periodo $ 50.00
+
+Movimientos
+MXN$
+03/03 Compra nacional DEMO SHOP $ 25.00
+04/03 Retiro cajero DEMO $ 25.00
+Subtotal $ 50.00
+`;
+
 describe('parseMercadoPagoStatementText', () => {
   it('parses metadata and compras from Movimientos (skips saldo inicial)', () => {
     const r = parseMercadoPagoStatementText(SAMPLE_TEXT);
@@ -61,5 +75,14 @@ describe('parseMercadoPagoStatementText', () => {
 
     expect(bazar?.installmentCurrent).toBeUndefined();
     expect(bazar?.installmentTotal).toBeUndefined();
+  });
+
+  it('accepts Fecha de emisión, one-line period, Movimientos/MXN block, Compra/Retiro sin «en»', () => {
+    const r = parseMercadoPagoStatementText(ALT_LAYOUT);
+    expect(r.movements).toHaveLength(2);
+    expect(r.movements[0]?.description).toContain('DEMO SHOP');
+    expect(r.movements[0]?.amount).toBe(25);
+    expect(r.movements[1]?.description.toLowerCase()).toContain('retiro');
+    expect(r.statementIssueDate?.getUTCFullYear()).toBe(2026);
   });
 });

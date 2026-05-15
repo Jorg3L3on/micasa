@@ -30,6 +30,35 @@ No hay movimientos en este periodo
 0.00
 `;
 
+/** Layout where "Intereses y comisiones" appears before the movement table (2025+ exports). */
+const NEW_LAYOUT_BEFORE_TABLE = `
+DiDi Card
+Este es tu estado de cuenta de MAY.
+Fecha de corte: 03 MAY. 2026
+Número de contrato: 9000000000999
+Saldo total del periodo
+MXN$100.00
+Pago mínimo: MXN$ 10.00
+Periodo: 04 ABR. 2026-03 MAY. 2026
+Fecha límite de pago:
+18 MAY. 2026
+
+Compras y retiros de efectivo (+) Unidades: MXN$
+3,396.91
+Intereses y comisiones (+) Unidades: MXN$
+No hay movimientos en este periodo
+0.00
+Pagos, reembolsos y otros ajustes (±) Unidades: MXN$
+Fecha del
+movimiento
+# Tarjeta
+Comercio Monto
+08-05-2026 7901 DLO*DIDI FOODS 143.84
+06-05-2026 7901 Didi Mexico 44.00
+
+Regigold, S.A. DE C.V. recibe las consultas
+`;
+
 describe('parseDidiCardStatementText', () => {
   it('extracts statement metadata correctly', () => {
     const r = parseDidiCardStatementText(SAMPLE_TEXT);
@@ -96,5 +125,13 @@ ${oneLineSection}
     expect(r.movements).toHaveLength(2);
     expect(r.movements[0]?.amount).toBe(48);
     expect(r.movements[1]?.amount).toBe(475.4);
+  });
+
+  it('parses purchases when Intereses block precedes the movement table', () => {
+    const r = parseDidiCardStatementText(NEW_LAYOUT_BEFORE_TABLE);
+    expect(r.movements).toHaveLength(2);
+    expect(r.movements[0]?.amount).toBe(143.84);
+    expect(r.movements[1]?.description).toContain('Didi Mexico');
+    expect(r.movements[1]?.amount).toBe(44);
   });
 });

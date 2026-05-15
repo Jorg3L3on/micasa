@@ -3,6 +3,7 @@
  * Expects text extracted via unpdf (see extractMercadoPagoStatementText).
  */
 
+import '@/lib/polyfills';
 import { parseInstallmentFromDescription } from '@/lib/finance/expense-planning-scope';
 
 const MONTHS_ES: Record<string, number> = {
@@ -114,7 +115,8 @@ export type MercadoPagoStatementParseResult = {
 
 const isPurchaseOrWithdrawalLine = (description: string): boolean => {
   const d = description.trim();
-  if (/^compra en\b/i.test(d)) return true;
+  /** PDFs may use «Compra en …», «Compra internacional …», or «Compra …» sin «en». */
+  if (/^compra\b/i.test(d)) return true;
   if (/^retiro\b/i.test(d)) return true;
   return false;
 };
@@ -133,7 +135,7 @@ export const parseMercadoPagoStatementText = (
   fullText: string,
 ): MercadoPagoStatementParseResult => {
   const warnings: string[] = [];
-  const text = fullText.replace(/\r\n/g, '\n');
+  const text = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   if (!/mercado\s*pago/i.test(text) && !/MERCADO\s*PAGO/i.test(text)) {
     warnings.push(
@@ -144,18 +146,26 @@ export const parseMercadoPagoStatementText = (
   const accountMatch = text.match(/Número de cuenta:\s*(\d+)/);
   const accountNumber = accountMatch?.[1] ?? null;
 
-  const issueMatch = text.match(/Fecha:\s*(\d{1,2})\s+(\w+)\s+(\d{4})/);
+  const issueMatch =
+    text.match(/Fecha:\s*(\d{1,2})\s+(\w+)\s+(\d{4})/i) ??
+    text.match(/Fecha\s+de\s+emisi[oó]n:?\s*(\d{1,2})\s+(\w+)\s+(\d{4})/i) ??
+    text.match(/Fecha\s+del\s+estado:?\s*(\d{1,2})\s+(\w+)\s+(\d{4})/i);
   const statementIssueDate = issueMatch
     ? parseSpanishCalendarDate(issueMatch[1], issueMatch[2], issueMatch[3])
     : null;
-  const statementYear = statementIssueDate?.getUTCFullYear() ?? null;
+  let statementYear = statementIssueDate?.getUTCFullYear() ?? null;
 
-  const periodMatch = text.match(
+  let periodMatch = text.match(
     /Per[ií]odo\s*\n\s*(\d{1,2})\s+(\w+)\s*-\s*(\d{1,2})\s+(\w+)/i,
   );
+  if (!periodMatch) {
+    periodMatch = text.match(
+      /Per[ií]odo\s+(\d{1,2})\s+(\w+)\s*-\s*(\d{1,2})\s+(\w+)/i,
+    );
+  }
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
-  if (periodMatch && statementYear != null) {
+  if (periodMatch) {
     const d1 = Number.parseInt(periodMatch[1], 10);
     const m1n = MONTHS_ES[normalizeMonthToken(periodMatch[2])];
     const d2 = Number.parseInt(periodMatch[3], 10);
@@ -166,10 +176,25 @@ export const parseMercadoPagoStatementText = (
       m1n !== undefined &&
       m2n !== undefined
     ) {
-      periodStart = new Date(Date.UTC(statementYear, m1n, d1, 12, 0, 0, 0));
-      periodEnd = new Date(Date.UTC(statementYear, m2n, d2, 12, 0, 0, 0));
+      let year = statementYear;
+      if (year == null) {
+        const yFromHeader = text.match(
+          /(?:Fecha|emis[ií]on|Generad[oa]|estado)\b[^\d\n]{0,120}(20\d{2})/i,
+        );
+        year = yFromHeader ? Number.parseInt(yFromHeader[1], 10) : null;
+      }
+      if (year == null) {
+        const yLoose = text.match(/\b(20[2-9]\d)\b/);
+        year = yLoose ? Number.parseInt(yLoose[1], 10) : new Date().getUTCFullYear();
+        warnings.push(
+          'No se encontró la fecha del estado de cuenta; se usó un año inferido del PDF para el periodo.',
+        );
+      }
+      statementYear = year;
+      periodStart = new Date(Date.UTC(year, m1n, d1, 12, 0, 0, 0));
+      periodEnd = new Date(Date.UTC(year, m2n, d2, 12, 0, 0, 0));
       if (periodEnd.getTime() < periodStart.getTime()) {
-        periodEnd = new Date(Date.UTC(statementYear + 1, m2n, d2, 12, 0, 0, 0));
+        periodEnd = new Date(Date.UTC(year + 1, m2n, d2, 12, 0, 0, 0));
         warnings.push(
           'El periodo cruza año civil; se ajustó la fecha de fin al año siguiente.',
         );
@@ -178,9 +203,9 @@ export const parseMercadoPagoStatementText = (
   }
 
   if (periodEnd == null && statementYear != null) {
-    const cutMatch = text.match(
-      /Fecha de corte\s*\n\s*(\d{1,2})\s+(\w+)/i,
-    );
+    const cutMatch =
+      text.match(/Fecha de corte\s*\n\s*(\d{1,2})\s+(\w+)/i) ??
+      text.match(/Fecha de corte:?\s*(\d{1,2})\s+(\w+)/i);
     if (cutMatch) {
       const d = Number.parseInt(cutMatch[1], 10);
       const mn = MONTHS_ES[normalizeMonthToken(cutMatch[2])];
@@ -194,14 +219,33 @@ export const parseMercadoPagoStatementText = (
     }
   }
 
-  const totalMatch = text.match(
-    /Total a pagar del periodo\s*\$\s*([\d,]+\.\d{2})/i,
-  );
+  const totalMatch =
+    text.match(/Total a pagar del periodo\s*\$\s*([\d,]+\.\d{2})/i) ??
+    text.match(/Total a pagar\s*\$\s*([\d,]+\.\d{2})/i);
   const totalDue = totalMatch
     ? Number.parseFloat(totalMatch[1].replace(/,/g, ''))
     : null;
 
-  const movIdx = text.search(/\nMovimientos\s*\n/i);
+  if (statementYear == null && periodEnd != null) {
+    statementYear = periodEnd.getUTCFullYear();
+  }
+
+  const findMovimientosSliceStart = (t: string): number => {
+    const candidates: RegExp[] = [
+      /\n\s*Movimientos\s*\n/i,
+      /\n\s*Movimientos\s+MXN/i,
+      /\n\s*Movimientos\s+\$/i,
+      /(?:^|\n)\s*Movimientos\s*\n/i,
+      /\n\s*Movimientos\b/i,
+    ];
+    for (const re of candidates) {
+      const ix = t.search(re);
+      if (ix >= 0) return ix;
+    }
+    return -1;
+  };
+
+  const movIdx = findMovimientosSliceStart(text);
   if (movIdx < 0) {
     warnings.push('No se encontró la sección «Movimientos» en el PDF.');
     return {
@@ -220,18 +264,20 @@ export const parseMercadoPagoStatementText = (
   const lines = fromMov.split('\n').map((l) => l.trim());
   const movementLines: string[] = [];
   let i = 0;
-  if (/^movimientos$/i.test(lines[i] ?? '')) i += 1;
-  if (/^mxn\$?$/i.test(lines[i] ?? '')) i += 1;
+  if (/^movimientos\b/i.test(lines[i] ?? '')) i += 1;
+  if (/^mxn\s*\$?\s*$/i.test(lines[i] ?? '')) i += 1;
 
   for (; i < lines.length; i += 1) {
     const line = lines[i];
     if (!line || line.startsWith('--')) continue;
     if (/^subtotal\b/i.test(line)) break;
+    if (/^total\s+a\s+pagar\b/i.test(line)) break;
+    if (/^resumen\s+de\s+movimientos\b/i.test(line)) break;
     movementLines.push(line);
   }
 
   const movements: MercadoPagoParsedMovement[] = [];
-  const lineRe = /^(\d{2})\/(\d{2})\s+(.+)$/;
+  const lineRe = /^(\d{1,2})\/(\d{1,2})\s+(.+)$/;
 
   if (periodEnd == null || statementYear == null) {
     warnings.push(
@@ -294,6 +340,13 @@ export const extractMercadoPagoStatementText = async (
 ): Promise<string> => {
   const { extractText, getDocumentProxy } = await import('unpdf');
   const pdf = await getDocumentProxy(new Uint8Array(buffer));
-  const result = await extractText(pdf, { mergePages: true });
-  return (Array.isArray(result.text) ? result.text.join('\n') : result.text) ?? '';
+  /**
+   * Per-page text (mergePages:false) keeps line breaks closer to the PDF layout.
+   * mergePages:true collapses whitespace and often breaks «Movimientos» / DD/MM rows.
+   */
+  const result = await extractText(pdf, { mergePages: false });
+  if (Array.isArray(result.text)) {
+    return result.text.join('\n');
+  }
+  return result.text ?? '';
 };
