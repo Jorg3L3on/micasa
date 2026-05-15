@@ -1,6 +1,9 @@
 /**
  * `Promise.try` (ES2024) — used by some dependencies. Older Node / browsers lack it.
  * Mirrors spec behavior via `Promise.resolve().then` (sync throws → rejection).
+ *
+ * Loaded from `instrumentation.ts` at server boot; statement/receipt parsers also import
+ * this module so `tsx`, Vitest, and any code path that skips instrumentation still works.
  */
 if (typeof Promise !== "undefined" && typeof (Promise as { try?: unknown }).try !== "function") {
   Object.assign(Promise, {

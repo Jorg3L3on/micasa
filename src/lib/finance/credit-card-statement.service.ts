@@ -754,48 +754,53 @@ async function getDuePaymentsWithAsOf(
         statementDueByWallet.set(id, dueStr);
       }
 
-      // The import we want is the one whose payment_due_date falls in this
-      // planner fortnight. That corresponds to the PREVIOUS statement (period_end
-      // = day before window.statementStart). Compute its due date and search ±7d.
-      const previousStatementEnd = new Date(window.statementStart.getTime() - 24 * 60 * 60 * 1000);
-      const previousDueDate = resolveDueDate(previousStatementEnd, head.due_day!);
-      const statementDueMatchStart = new Date(window.statementDueDate.getTime() - SEVEN_DAYS_MS);
-      const statementDueMatchEnd = new Date(window.statementDueDate.getTime() + SEVEN_DAYS_MS);
-
       // Avoid large burst fan-out against Postgres while rendering monthly planner.
       const purchases = await sumStatementPurchasesByWallet(cardIds, window, ownerFilter);
       const payments = await sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter);
-      const importsNearPreviousDue = await prisma.creditCardStatementImport.findMany({
-        where: {
-          wallet_id: { in: cardIds },
-          payment_due_date: {
-            gte: new Date(previousDueDate.getTime() - SEVEN_DAYS_MS),
-            lte: new Date(previousDueDate.getTime() + SEVEN_DAYS_MS),
-          },
-        },
-        orderBy: { created_at: 'desc' },
-        select: { wallet_id: true, total_due: true },
-      });
-      const importsNearStatementDue = await prisma.creditCardStatementImport.findMany({
-        where: {
-          wallet_id: { in: cardIds },
-          payment_due_date: {
-            gte: statementDueMatchStart,
-            lte: statementDueMatchEnd,
-          },
-        },
-        orderBy: { created_at: 'desc' },
-        select: { wallet_id: true, total_due: true },
-      });
 
       /**
-       * Prefer imports aligned with `window.statementDueDate` (matches pantalla de estado
-       * de cuenta); fallback al período anterior si no hay match (legacy / datos viejos).
+       * Misma regla que `getCreditCardStatement`: import alineado al `period_end` del
+       * cierre ±7 días, o si hay uno **más reciente** (p. ej. PDF recién subido), ese
+       * gana — evita que planificación muestre un `total_due` viejo mientras la ficha
+       * de la tarjeta ya muestra el import nuevo.
        */
-      const recentImports = [...importsNearStatementDue, ...importsNearPreviousDue];
-      for (const imp of recentImports) {
-        if (!importedTotalByWallet.has(imp.wallet_id) && imp.total_due != null) {
-          importedTotalByWallet.set(imp.wallet_id, Number(imp.total_due));
+      const windowEndMin = new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS);
+      const windowEndMax = new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS);
+      const allImportsForGroup = await prisma.creditCardStatementImport.findMany({
+        where: { wallet_id: { in: cardIds } },
+        orderBy: { created_at: 'desc' },
+        select: {
+          wallet_id: true,
+          total_due: true,
+          period_end: true,
+          created_at: true,
+        },
+      });
+
+      for (const wid of cardIds) {
+        const forWallet = allImportsForGroup
+          .filter((i) => i.wallet_id === wid)
+          .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+        if (forWallet.length === 0) continue;
+
+        const latest = forWallet[0] ?? null;
+        const recentByWindow =
+          forWallet.find(
+            (i) =>
+              i.period_end != null &&
+              i.period_end.getTime() >= windowEndMin.getTime() &&
+              i.period_end.getTime() <= windowEndMax.getTime(),
+          ) ?? null;
+
+        const chosen =
+          latest &&
+          (!recentByWindow ||
+            latest.created_at.getTime() > recentByWindow.created_at.getTime())
+            ? latest
+            : recentByWindow;
+
+        if (chosen?.total_due != null) {
+          importedTotalByWallet.set(wid, Number(chosen.total_due));
         }
       }
 

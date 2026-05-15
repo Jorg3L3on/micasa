@@ -185,12 +185,28 @@ export async function POST(
       'code' in error &&
       (error as { code: string }).code === 'NO_MOVEMENTS'
     ) {
+      const noMov = error as Error & {
+        parse_warnings?: string[];
+        statement_import_provider?: StatementImportProvider;
+      };
+      const parseWarnings = noMov.parse_warnings ?? [];
+      const importProvider = noMov.statement_import_provider;
+      let hint: string | undefined;
+      if (importProvider === StatementImportProvider.MERCADO_PAGO) {
+        hint =
+          'Si el PDF es de DiDi Card, elige «DiDi Card» en Banco / Proveedor (el valor por defecto es Mercado Pago).';
+      } else if (importProvider === StatementImportProvider.DIDI_CARD) {
+        hint =
+          'Confirma que es un PDF de DiDi Card con texto seleccionable (no solo escaneo) y que el archivo no esté dañado.';
+      }
       return NextResponse.json(
         {
           error:
             error instanceof Error
               ? error.message
               : 'No hay movimientos importables',
+          parse_warnings: parseWarnings,
+          hint,
         },
         { status: 422 },
       );

@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { uploadCreditCardStatement } from '@/lib/api/credit-cards';
+import type { ClientApiError } from '@/lib/api/client-fetch';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 import type {
@@ -42,6 +43,10 @@ const PROVIDER_OPTIONS: { value: Provider; label: string }[] = [
   { value: 'DIDI_CARD', label: 'DiDi Card' },
 ];
 
+const VALID_STATEMENT_PROVIDERS = new Set<Provider>(
+  PROVIDER_OPTIONS.map((o) => o.value),
+);
+
 export type CreditCardStatementImportDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +54,9 @@ export type CreditCardStatementImportDialogProps = {
   context: FinanceContextType;
   categoryOptions: CategoryOption[];
   statementImports: CreditCardStatementImportListItem[];
+  /** Used to default «Banco / Proveedor» (e.g. icon DIDI → DiDi Card). */
+  walletProviderIconKey: string | null;
+  walletName: string;
   onSuccess: () => Promise<void>;
   onDownloadImport: (importId: number) => Promise<void>;
   onRollbackClick: (importId: number) => void;
@@ -68,6 +76,8 @@ const CreditCardStatementImportDialog = ({
   context,
   categoryOptions,
   statementImports,
+  walletProviderIconKey,
+  walletName,
   onSuccess,
   onDownloadImport,
   onRollbackClick,
@@ -79,6 +89,7 @@ const CreditCardStatementImportDialog = ({
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
+  const prevOpenForProviderRef = useRef(false);
 
   const resetForm = useCallback(() => {
     setImportFile(null);
@@ -95,6 +106,23 @@ const CreditCardStatementImportDialog = ({
     }
     prevOpenRef.current = open;
   }, [open, resetForm]);
+
+  useEffect(() => {
+    if (open && !prevOpenForProviderRef.current) {
+      const fromWallet: Provider | null =
+        walletProviderIconKey === 'DIDI' ||
+        walletName.toLowerCase().includes('didi')
+          ? 'DIDI_CARD'
+          : null;
+      const lastProv = statementImports[0]?.provider;
+      const fromHistory: Provider | null =
+        lastProv && VALID_STATEMENT_PROVIDERS.has(lastProv as Provider)
+          ? (lastProv as Provider)
+          : null;
+      setProvider(fromWallet ?? fromHistory ?? 'MERCADO_PAGO');
+    }
+    prevOpenForProviderRef.current = open;
+  }, [open, walletProviderIconKey, walletName, statementImports]);
 
   const handleImport = async () => {
     if (!importFile) {
@@ -131,9 +159,14 @@ const CreditCardStatementImportDialog = ({
       resetForm();
       await onSuccess();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : 'No se pudo importar el PDF',
-      );
+      const e = err as ClientApiError;
+      toast.error(e.message ?? 'No se pudo importar el PDF');
+      const followUp = [e.hint, e.parse_warnings?.filter(Boolean).join(' · ')]
+        .filter(Boolean)
+        .join('\n\n');
+      if (followUp) {
+        toast.info(followUp, { duration: 14_000 });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -153,7 +186,8 @@ const CreditCardStatementImportDialog = ({
               </DialogTitle>
               <DialogDescription className="text-left text-xs leading-relaxed">
                 Sube el PDF del banco: guardamos el archivo (opcional) y creamos
-                un gasto pagado por cada compra del periodo. Si ya registraste
+                un gasto pagado por cada compra del periodo. Elige el proveedor
+                que coincida con el PDF (p. ej. DiDi Card). Si ya registraste
                 cargos, activa omitir duplicados para evitar dobles.
               </DialogDescription>
             </div>

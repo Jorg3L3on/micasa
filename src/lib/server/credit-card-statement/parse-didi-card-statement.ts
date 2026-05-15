@@ -3,6 +3,8 @@
  * Expects text extracted via unpdf.
  */
 
+import '@/lib/polyfills';
+
 const MONTHS_DIDI: Record<string, number> = {
   ENE: 0, FEB: 1, MAR: 2, ABR: 3, MAY: 4, JUN: 5,
   JUL: 6, AGO: 7, SEP: 8, OCT: 9, NOV: 10, DIC: 11,
@@ -139,7 +141,7 @@ export const parseDidiCardStatementText = (
   fullText: string,
 ): DidiCardStatementParseResult => {
   const warnings: string[] = [];
-  const text = fullText.replace(/\r\n/g, '\n');
+  const text = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   if (!/Estado de cuenta de/i.test(text) || !/DiDi Card/i.test(text)) {
     warnings.push('El PDF no parece ser un estado de cuenta de DiDi Card.');
@@ -180,11 +182,15 @@ export const parseDidiCardStatementText = (
     if (tempAfterLabel) temporaryCreditLimit = parseMoneyAmount(tempAfterLabel[1]);
   }
 
-  const movementsSectionMatch = text.match(
-    /Compras y retiros de efectivo \(\+\)[\s\S]*?Unidades:\s*MXN\$\s*[\d,\s]+\.\d{2}([\s\S]*?)Intereses y comisiones \(\+\)/i,
+  /**
+   * Header through "Unidades" line (amount). Some PDFs list purchases immediately after;
+   * newer layouts insert "Intereses y comisiones (+)" before the movement table.
+   */
+  const comprasHeader = text.match(
+    /Compras y retiros de efectivo \(\+\)[\s\S]*?Unidades:\s*MXN\$\s*[\d,\s]+\.\d{2}/i,
   );
 
-  if (!movementsSectionMatch) {
+  if (!comprasHeader || comprasHeader.index === undefined) {
     warnings.push('No se encontró la sección de compras y retiros en el PDF.');
     return {
       accountNumber,
@@ -201,7 +207,21 @@ export const parseDidiCardStatementText = (
     };
   }
 
-  const movements = extractMovementsFromSectionBody(movementsSectionMatch[1]);
+  const legacyBetweenIntereses = text.match(
+    /Compras y retiros de efectivo \(\+\)[\s\S]*?Unidades:\s*MXN\$\s*[\d,\s]+\.\d{2}([\s\S]*?)Intereses y comisiones \(\+\)/i,
+  );
+
+  let movements = extractMovementsFromSectionBody(legacyBetweenIntereses?.[1] ?? '');
+
+  if (movements.length === 0) {
+    const fromAfterUnidades = text.slice(comprasHeader.index + comprasHeader[0].length);
+    const footerIdx = fromAfterUnidades.search(
+      /\bRegigold,\s*S\.A\b|\brecibe las consultas\b|800\s*953\s*3300|Paseo de la Reforma\s*509/i,
+    );
+    const wideBody =
+      footerIdx === -1 ? fromAfterUnidades : fromAfterUnidades.slice(0, footerIdx);
+    movements = extractMovementsFromSectionBody(wideBody);
+  }
 
   return {
     accountNumber,

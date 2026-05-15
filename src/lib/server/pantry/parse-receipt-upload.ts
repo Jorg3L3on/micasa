@@ -1,3 +1,5 @@
+import '@/lib/polyfills';
+
 export type ParsedReceiptLine = {
   description: string;
   quantity: number;

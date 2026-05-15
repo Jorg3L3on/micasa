@@ -10,12 +10,16 @@ type ApiErrorResponse = {
   error?: string;
   details?: ApiErrorDetail[];
   code?: string;
+  hint?: string;
+  parse_warnings?: string[];
 };
 
 export type ClientApiError = Error & {
   status?: number;
   details?: ApiErrorDetail[];
   code?: string;
+  hint?: string;
+  parse_warnings?: string[];
 };
 
 /**
@@ -130,10 +134,18 @@ export async function clientFetchMultipartJson<T>(
         'El archivo supera el límite de tamaño del servidor o del proxy (p. ej. nginx, Vercel). Prueba en local, sube un CSV más pequeño o aumenta client_max_body_size / el límite de tu proveedor.';
     }
     let errorDetails: ApiErrorDetail[] | undefined;
+    let hint: string | undefined;
+    let parseWarnings: string[] | undefined;
     try {
       const error = (await res.json()) as ApiErrorResponse;
       if (error.error) {
         errorMessage = error.error;
+      }
+      if (typeof error.hint === 'string' && error.hint.trim()) {
+        hint = error.hint.trim();
+      }
+      if (Array.isArray(error.parse_warnings) && error.parse_warnings.length > 0) {
+        parseWarnings = error.parse_warnings;
       }
       if (error.details && Array.isArray(error.details)) {
         errorDetails = error.details;
@@ -153,6 +165,8 @@ export async function clientFetchMultipartJson<T>(
     const err = new Error(errorMessage) as ClientApiError;
     err.status = res.status;
     err.details = errorDetails;
+    if (hint) err.hint = hint;
+    if (parseWarnings) err.parse_warnings = parseWarnings;
     throw err;
   }
 
