@@ -11,6 +11,13 @@ const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 const creditCardWalletTypes = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'] as const;
 
+/** Thrown by `importStatementPdf` when `code === 'NO_MOVEMENTS'`. */
+type NoMovementsStatementImportError = Error & {
+  code: 'NO_MOVEMENTS';
+  parse_warnings?: string[];
+  statement_import_provider?: StatementImportProvider;
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -185,10 +192,7 @@ export async function POST(
       'code' in error &&
       (error as { code: string }).code === 'NO_MOVEMENTS'
     ) {
-      const noMov = error as Error & {
-        parse_warnings?: string[];
-        statement_import_provider?: StatementImportProvider;
-      };
+      const noMov = error as unknown as NoMovementsStatementImportError;
       const parseWarnings = noMov.parse_warnings ?? [];
       const importProvider = noMov.statement_import_provider;
       let hint: string | undefined;
