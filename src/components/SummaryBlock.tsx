@@ -29,7 +29,10 @@ import type {
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
 } from '@/types/catalog';
-import { isCalendarFortnightCurrent } from '@/lib/fortnight-calendar';
+import {
+  isCalendarFortnightCurrent,
+  isCalendarFortnightNext,
+} from '@/lib/fortnight-calendar';
 
 export type IncomeItemBySource = {
   id: number;
@@ -132,10 +135,14 @@ export default function SummaryBlock({
   /** Ingreso menos todo lo comprometido (pagado + pendiente), mismo criterio que el resumen del API. */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
-  /** Billeteras vs pendiente solo para la quincena calendario actual (hoy). */
+  /**
+   * Billeteras vs pendiente cuando la página es la quincena calendario en curso
+   * o la inmediata siguiente (mismo mes u otro mes).
+   */
   const billeterasVsPendienteAplica =
     year != null && month != null && period != null
-      ? isCalendarFortnightCurrent(year, month, period)
+      ? isCalendarFortnightCurrent(year, month, period) ||
+        isCalendarFortnightNext(year, month, period)
       : true;
 
   const displayFundingNet = billeterasVsPendienteAplica
@@ -159,7 +166,7 @@ export default function SummaryBlock({
   const tooltipFundingVsPendingLive = `Suma de saldos en billeteras activas de efectivo y débito (${formatCurrency(fundingWalletBalanceTotal)}) menos lo pendiente de esta quincena (${formatCurrency(pendiente)}): gastos y pagos aún no marcados como pagados.`;
 
   const tooltipFundingVsPendingInactive =
-    'Solo aplica a la quincena calendario en curso (hoy). En quincenas pasadas o futuras se muestra $0,00.';
+    'Solo aplica a la quincena en curso y a la siguiente según el calendario (hoy). En el resto de quincenas se muestra $0,00.';
 
   const tooltipFundingVsPendingEffective = billeterasVsPendienteAplica
     ? tooltipFundingVsPendingLive
@@ -390,7 +397,7 @@ export default function SummaryBlock({
             ) : null}
           </div>
 
-          {/* Right: saldos Efectivo + Débito menos solo lo pendiente (solo quincena calendario actual) */}
+          {/* Right: saldos Efectivo + Débito menos solo lo pendiente (quincena en curso o siguiente) */}
           <div
             className={cn(
               'relative overflow-hidden rounded-xl border px-2 py-2 shadow-sm sm:px-2.5 sm:py-2.5',
@@ -739,8 +746,8 @@ export default function SummaryBlock({
               </h4>
               {!billeterasVsPendienteAplica ? (
                 <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-                  Solo aplica a la quincena calendario en curso. Aquí se muestran
-                  $0,00.
+                  Solo aplica a la quincena en curso o a la siguiente. Aquí se
+                  muestran $0,00.
                 </p>
               ) : fundingWalletBreakdown.length > 0 ? (
                 <div className="space-y-1">

@@ -6,6 +6,7 @@ import {
   DashboardAppSidebarDynamic,
   DashboardHeaderToolbarDynamic,
 } from '@/components/dashboard-shell-dynamic';
+import { DashboardTooltipProvider } from '@/components/dashboard/DashboardTooltipProvider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 export default async function DashboardLayout({
@@ -30,23 +31,25 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <DashboardAppSidebarDynamic
-        navUser={{
-          name: session.user.name ?? 'Usuario',
-          email: session.user.email ?? '',
-          avatar: session.user.image ?? '',
-        }}
-      />
-      <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background shadow-sm transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <DashboardHeaderToolbarDynamic />
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-background">
-          <div className="container mx-auto">
-            <Suspense>{children}</Suspense>
+      <DashboardTooltipProvider>
+        <DashboardAppSidebarDynamic
+          navUser={{
+            name: session.user.name ?? 'Usuario',
+            email: session.user.email ?? '',
+            avatar: session.user.image ?? '',
+          }}
+        />
+        <SidebarInset className="min-w-0">
+          <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background shadow-sm transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+            <DashboardHeaderToolbarDynamic />
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-background">
+            <div className="container mx-auto">
+              <Suspense>{children}</Suspense>
+            </div>
           </div>
-        </div>
-      </SidebarInset>
+        </SidebarInset>
+      </DashboardTooltipProvider>
     </SidebarProvider>
   );
 }

@@ -8,11 +8,7 @@ import {
 import MonthlyHeader from '@/components/MonthlyHeader'
 import CreateNextMonthButton from '@/components/CreateNextMonthButton'
 import MonthlyFortnightView from '@/components/MonthlyFortnightView'
-import WalletBalanceStrip from '../../../../../components/WalletBalanceStrip'
-import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink'
 import type {
   WalletListItem,
   DuePaymentItem,
@@ -368,25 +364,7 @@ export default async function MonthlyPage({
 
         <div className="shrink-0">
           {hasNextMonth ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-lg" asChild>
-                  <Link
-                    href={nextHref}
-                    aria-label={`Ir al mes siguiente: ${nextMonthLabel}`}
-                  >
-                    <ChevronRight
-                      className="size-5 shrink-0"
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                  </Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}>
-                {`Ir al mes siguiente (${nextMonthLabel})`}
-              </TooltipContent>
-            </Tooltip>
+            <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
           ) : (
             <CreateNextMonthButton
               nextYear={nextYear}
@@ -398,20 +376,14 @@ export default async function MonthlyPage({
         </div>
       </div>
 
-      <div className="mb-7 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm dark:bg-card/60">
-        <WalletBalanceStrip
-          wallets={wallets}
-          paidWalletIds={paidWalletIds}
-          isCurrentMonth={isCurrentMonth}
-        />
-      </div>
-
       <MonthlyFortnightView
         ownerKey={ownerKey}
         year={year}
         month={month}
         suggestedPeriod={suggestedPeriod}
         wallets={wallets}
+        paidWalletIds={paidWalletIds}
+        isCurrentMonth={isCurrentMonth}
         first={{
           label: firstLabel,
           transactions: firstTransactions,
