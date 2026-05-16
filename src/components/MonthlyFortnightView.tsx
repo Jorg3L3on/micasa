@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
+import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -79,6 +80,8 @@ export type MonthlyFortnightViewProps = {
   first: FortnightBundle;
   second: FortnightBundle;
   wallets?: WalletListItem[];
+  paidWalletIds: number[];
+  isCurrentMonth: boolean;
 };
 
 const readStoredLayout = (): LayoutMode | null => {
@@ -170,6 +173,8 @@ export default function MonthlyFortnightView({
   first,
   second,
   wallets = [],
+  paidWalletIds,
+  isCurrentMonth,
 }: MonthlyFortnightViewProps) {
   const [prefsReady, setPrefsReady] = useState(false);
   const [layout, setLayout] = useState<LayoutMode>('single');
@@ -177,6 +182,12 @@ export default function MonthlyFortnightView({
   const [summaryVisible, setSummaryVisible] = useState(true);
   const [tableDensity, setTableDensity] =
     useState<ExpenseTableDensity>('comfortable');
+  const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] = useState(0);
+
+  const handleWalletBalancesPersisted = useCallback(() => {
+    setSummaryFundingRefreshNonce((n) => n + 1);
+  }, []);
+
   useEffect(() => {
     const storedLayout = readStoredLayout();
     const storedPeriod = readStoredPeriod();
@@ -232,20 +243,40 @@ export default function MonthlyFortnightView({
   const showFirst = layout === 'both' || period === 'FIRST';
   const showSecond = layout === 'both' || period === 'SECOND';
 
+  const walletStripSection =
+    wallets.length > 0 ? (
+      <div className="mb-7 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm dark:bg-card/60">
+        <WalletBalanceStrip
+          wallets={wallets}
+          paidWalletIds={paidWalletIds}
+          isCurrentMonth={isCurrentMonth}
+          onBalancesPersisted={handleWalletBalancesPersisted}
+        />
+      </div>
+    ) : null;
+
   if (!prefsReady) {
     return (
       <div
-        className="space-y-3"
-        role="status"
-        aria-busy="true"
-        aria-label="Cargando preferencias de vista"
+        className={cn(
+          'space-y-4',
+          layout === 'single' && 'mx-auto w-full max-w-4xl xl:max-w-5xl',
+        )}
       >
-        <div className="flex justify-start sm:justify-end">
-          <Skeleton className="h-8 w-40 rounded-lg" />
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
-          <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
+        {walletStripSection}
+        <div
+          className="space-y-3"
+          role="status"
+          aria-busy="true"
+          aria-label="Cargando preferencias de vista"
+        >
+          <div className="flex justify-start sm:justify-end">
+            <Skeleton className="h-8 w-40 rounded-lg" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
+            <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
+          </div>
         </div>
       </div>
     );
@@ -266,6 +297,7 @@ export default function MonthlyFortnightView({
         layout === 'single' && 'mx-auto w-full max-w-4xl xl:max-w-5xl',
       )}
     >
+      {walletStripSection}
       <div
         className="flex items-center justify-end gap-1.5"
         role="region"
@@ -398,6 +430,7 @@ export default function MonthlyFortnightView({
               tableDensity={tableDensity}
               cardDueItems={first.cardDueItems}
               wallets={wallets}
+              summaryFundingRefreshNonce={summaryFundingRefreshNonce}
             />
           </div>
         ) : null}
@@ -435,6 +468,7 @@ export default function MonthlyFortnightView({
               tableDensity={tableDensity}
               cardDueItems={second.cardDueItems}
               wallets={wallets}
+              summaryFundingRefreshNonce={summaryFundingRefreshNonce}
             />
           </div>
         ) : null}

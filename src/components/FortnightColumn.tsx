@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -104,6 +104,8 @@ type FortnightColumnProps = {
   tableDensity?: ExpenseTableDensity;
   cardDueItems?: DuePaymentItem[];
   wallets?: WalletListItem[];
+  /** Bump from parent after external saldo changes so resumen refreshes funding vs pendiente. */
+  summaryFundingRefreshNonce?: number;
 };
 
 export default function FortnightColumn({
@@ -119,6 +121,7 @@ export default function FortnightColumn({
   tableDensity = 'comfortable',
   cardDueItems = [],
   wallets = [],
+  summaryFundingRefreshNonce,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -127,6 +130,7 @@ export default function FortnightColumn({
     return s ? `?${s}` : '';
   }, [context]);
   const router = useRouter();
+  const lastAppliedFundingNonceRef = useRef(0);
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
   const [summary, setSummary] = useState<Summary>(initialSummary);
@@ -276,6 +280,14 @@ export default function FortnightColumn({
       setIsRefreshing(false);
     }
   }, [year, month, period, context, router]);
+
+  useEffect(() => {
+    if (summaryFundingRefreshNonce == null) return;
+    if (summaryFundingRefreshNonce < 1) return;
+    if (summaryFundingRefreshNonce === lastAppliedFundingNonceRef.current) return;
+    lastAppliedFundingNonceRef.current = summaryFundingRefreshNonce;
+    void refreshData();
+  }, [summaryFundingRefreshNonce, refreshData]);
 
   const handlePlannerCardPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {

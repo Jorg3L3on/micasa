@@ -23,12 +23,15 @@ type WalletBalanceStripProps = {
   paidWalletIds?: number[];
   /** Past/future monthly views must not use “today” due reminders */
   isCurrentMonth?: boolean;
+  /** After saldo persists to the API (e.g. refetch resumen / billeteras vs pendiente). */
+  onBalancesPersisted?: () => void;
 };
 
 const WalletBalanceStrip = ({
   wallets,
   paidWalletIds = [],
   isCurrentMonth = true,
+  onBalancesPersisted,
 }: WalletBalanceStripProps) => {
   const { context } = useFinanceContext();
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
@@ -487,6 +490,7 @@ const WalletBalanceStrip = ({
           setSelectedWallet((prev) =>
             prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
           );
+          onBalancesPersisted?.();
         }}
       />
     </div>
