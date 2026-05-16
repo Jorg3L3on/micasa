@@ -1,0 +1,7 @@
+[mcp_servers.postgres]
+args = [
+    "-y",
+    "@modelcontextprotocol/server-postgres",
+    "postgresql://jorgeleon:@localhost:5432/micasa",
+]
+command = "npx"

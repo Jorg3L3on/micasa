@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { Prisma } from '@/generated/prisma/client';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { FortnightPeriod, PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -15,27 +15,34 @@ import {
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForFortnight } from '@/lib/finance/credit-card-statement.service';
 
+function parseFortnightPeriod(value: string | null | undefined): FortnightPeriod | undefined {
+  if (value === FortnightPeriod.FIRST) return FortnightPeriod.FIRST;
+  if (value === FortnightPeriod.SECOND) return FortnightPeriod.SECOND;
+  return undefined;
+}
+
 async function buildWhereClause(
   ownerFilter: OwnerFilter,
   month?: string | null,
   year?: string | null,
   period?: string | null,
-) {
-  const where: Record<string, unknown> = { ...ownerFilter };
+): Promise<Prisma.ExpenseWhereInput> {
+  const where: Prisma.ExpenseWhereInput = { ...ownerFilter };
   if (month || year || period) {
-    const fortnightWhere: Record<string, unknown> = { ...ownerFilter };
+    const fortnightWhere: Prisma.FortnightWhereInput = { ...ownerFilter };
+    const parsedPeriod = parseFortnightPeriod(period);
     if (month) {
       fortnightWhere.month = parseInt(month, 10);
     }
     if (year) {
       fortnightWhere.year = parseInt(year, 10);
     }
-    if (period) {
-      fortnightWhere.period = period;
+    if (parsedPeriod) {
+      fortnightWhere.period = parsedPeriod;
     }
 
     const fortnights = await prisma.fortnight.findMany({
-      where: fortnightWhere as any,
+      where: fortnightWhere,
       select: { id: true },
     });
 
@@ -106,7 +113,7 @@ export async function GET(request: NextRequest) {
 
       const [expenses, cardExpenses] = await Promise.all([
         prisma.expense.findMany({
-          where: where as any,
+          where,
           select: {
             amount: true,
             is_paid: true,
@@ -116,7 +123,7 @@ export async function GET(request: NextRequest) {
           ? prisma.expense.findMany({
               where: {
                 AND: [baseWhere, whereCreditOrStoreCardWalletOnly()],
-              } as any,
+              },
               select: {
                 amount: true,
                 is_paid: true,
@@ -125,15 +132,16 @@ export async function GET(request: NextRequest) {
           : Promise.resolve([] as { amount: unknown; is_paid: boolean }[]),
       ]);
 
-      let incomeWhere: Record<string, unknown> = { ...ownerFilter };
+      const incomeWhere: Prisma.IncomeWhereInput = { ...ownerFilter };
       if (month || year || period) {
-        const fortnightWhere: Record<string, unknown> = { ...ownerFilter };
+        const fortnightWhere: Prisma.FortnightWhereInput = { ...ownerFilter };
+        const parsedPeriod = parseFortnightPeriod(period);
         if (month) fortnightWhere.month = parseInt(month, 10);
         if (year) fortnightWhere.year = parseInt(year, 10);
-        if (period) fortnightWhere.period = period;
+        if (parsedPeriod) fortnightWhere.period = parsedPeriod;
 
         const fortnights = await prisma.fortnight.findMany({
-          where: fortnightWhere as any,
+          where: fortnightWhere,
           select: { id: true },
         });
 
@@ -146,7 +154,7 @@ export async function GET(request: NextRequest) {
       }
 
       const income = await prisma.income.findMany({
-        where: incomeWhere as any,
+        where: incomeWhere,
       });
 
       let totalExpense = expenses.reduce((sum, expense) => {
@@ -172,7 +180,7 @@ export async function GET(request: NextRequest) {
         );
         if (fnWhere != null) {
           const planningFortnights = await prisma.fortnight.findMany({
-            where: fnWhere as any,
+            where: fnWhere as Prisma.FortnightWhereInput,
             select: { start_date: true, end_date: true },
           });
           const paidAtRange = unionPaidAtRangeFromFortnights(planningFortnights);
@@ -245,7 +253,7 @@ export async function GET(request: NextRequest) {
       let planningPaidExpenseCount = excludeCreditInstallment
         ? expenses.filter((e) => e.is_paid).length
         : undefined;
-      let planningUnpaidExpenseCount = excludeCreditInstallment
+      const planningUnpaidExpenseCount = excludeCreditInstallment
         ? expenses.filter((e) => !e.is_paid).length
         : undefined;
 
@@ -271,13 +279,14 @@ export async function GET(request: NextRequest) {
       }> = [];
 
       if (month || year || period) {
-        const fortnightWhere: Record<string, unknown> = { ...ownerFilter };
+        const fortnightWhere: Prisma.FortnightWhereInput = { ...ownerFilter };
+        const parsedPeriod = parseFortnightPeriod(period);
         if (month) fortnightWhere.month = parseInt(month, 10);
         if (year) fortnightWhere.year = parseInt(year, 10);
-        if (period) fortnightWhere.period = period;
+        if (parsedPeriod) fortnightWhere.period = parsedPeriod;
 
         const fortnights = await prisma.fortnight.findMany({
-          where: fortnightWhere as any,
+          where: fortnightWhere,
           select: { id: true },
         });
 
@@ -446,7 +455,7 @@ export async function GET(request: NextRequest) {
     if (reportType === 'by-category') {
       let where: Prisma.ExpenseWhereInput;
       if (month || year || period) {
-        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+        where = await buildWhereClause(ownerFilter, month, year, period);
       } else if (windowMonthsRaw != null && windowMonthsRaw !== '') {
         const n = parseInt(windowMonthsRaw, 10);
         if (!Number.isFinite(n) || n < 1 || n > 120) {
@@ -464,7 +473,7 @@ export async function GET(request: NextRequest) {
           fortnight_id: { in: fortnightIds.length > 0 ? fortnightIds : [] },
         };
       } else {
-        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+        where = await buildWhereClause(ownerFilter, month, year, period);
       }
 
       const categoryWhere: Prisma.ExpenseWhereInput = planningCashFlow
@@ -507,7 +516,7 @@ export async function GET(request: NextRequest) {
     if (reportType === 'by-payment-method') {
       let where: Prisma.ExpenseWhereInput;
       if (month || year || period) {
-        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+        where = await buildWhereClause(ownerFilter, month, year, period);
       } else if (windowMonthsRaw != null && windowMonthsRaw !== '') {
         const n = parseInt(windowMonthsRaw, 10);
         if (!Number.isFinite(n) || n < 1 || n > 120) {
@@ -525,7 +534,7 @@ export async function GET(request: NextRequest) {
           fortnight_id: { in: fortnightIds.length > 0 ? fortnightIds : [] },
         };
       } else {
-        where = (await buildWhereClause(ownerFilter, month, year, period)) as Prisma.ExpenseWhereInput;
+        where = await buildWhereClause(ownerFilter, month, year, period);
       }
 
       const expenses = await prisma.expense.findMany({

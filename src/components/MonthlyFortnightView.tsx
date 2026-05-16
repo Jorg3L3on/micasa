@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getMonthlyPreferenceScope } from '@/lib/planner/monthly-page';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type {
   DuePaymentItem,
@@ -84,10 +85,12 @@ export type MonthlyFortnightViewProps = {
   isCurrentMonth: boolean;
 };
 
-const readStoredLayout = (): LayoutMode | null => {
+const storageKey = (base: string, scope: string) => `${base}:${scope}`;
+
+const readStoredLayout = (scope: string): LayoutMode | null => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(LAYOUT_STORAGE_KEY, scope));
     if (raw === 'single' || raw === 'both') return raw;
   } catch {
     return null;
@@ -95,10 +98,10 @@ const readStoredLayout = (): LayoutMode | null => {
   return null;
 };
 
-const readStoredPeriod = (): FortnightPeriod | null => {
+const readStoredPeriod = (scope: string): FortnightPeriod | null => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(PERIOD_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(PERIOD_STORAGE_KEY, scope));
     if (raw === 'FIRST' || raw === 'SECOND') return raw;
   } catch {
     return null;
@@ -106,28 +109,28 @@ const readStoredPeriod = (): FortnightPeriod | null => {
   return null;
 };
 
-const persistLayout = (layout: LayoutMode) => {
+const persistLayout = (scope: string, layout: LayoutMode) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(LAYOUT_STORAGE_KEY, layout);
+    localStorage.setItem(storageKey(LAYOUT_STORAGE_KEY, scope), layout);
   } catch {
     /* ignore */
   }
 };
 
-const persistPeriod = (period: FortnightPeriod) => {
+const persistPeriod = (scope: string, period: FortnightPeriod) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(PERIOD_STORAGE_KEY, period);
+    localStorage.setItem(storageKey(PERIOD_STORAGE_KEY, scope), period);
   } catch {
     /* ignore */
   }
 };
 
-const readStoredSummaryVisible = (): boolean | null => {
+const readStoredSummaryVisible = (scope: string): boolean | null => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(SUMMARY_VISIBLE_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(SUMMARY_VISIBLE_STORAGE_KEY, scope));
     if (raw === 'true') return true;
     if (raw === 'false') return false;
   } catch {
@@ -136,19 +139,22 @@ const readStoredSummaryVisible = (): boolean | null => {
   return null;
 };
 
-const persistSummaryVisible = (visible: boolean) => {
+const persistSummaryVisible = (scope: string, visible: boolean) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(SUMMARY_VISIBLE_STORAGE_KEY, visible ? 'true' : 'false');
+    localStorage.setItem(
+      storageKey(SUMMARY_VISIBLE_STORAGE_KEY, scope),
+      visible ? 'true' : 'false',
+    );
   } catch {
     /* ignore */
   }
 };
 
-const readStoredTableDensity = (): ExpenseTableDensity | null => {
+const readStoredTableDensity = (scope: string): ExpenseTableDensity | null => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(TABLE_DENSITY_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(TABLE_DENSITY_STORAGE_KEY, scope));
     if (raw === 'comfortable' || raw === 'compact') return raw;
   } catch {
     return null;
@@ -156,10 +162,10 @@ const readStoredTableDensity = (): ExpenseTableDensity | null => {
   return null;
 };
 
-const persistTableDensity = (density: ExpenseTableDensity) => {
+const persistTableDensity = (scope: string, density: ExpenseTableDensity) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(TABLE_DENSITY_STORAGE_KEY, density);
+    localStorage.setItem(storageKey(TABLE_DENSITY_STORAGE_KEY, scope), density);
   } catch {
     /* ignore */
   }
@@ -183,16 +189,18 @@ export default function MonthlyFortnightView({
   const [tableDensity, setTableDensity] =
     useState<ExpenseTableDensity>('comfortable');
   const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] = useState(0);
+  const preferenceScope = getMonthlyPreferenceScope(ownerKey, year, month);
 
   const handleWalletBalancesPersisted = useCallback(() => {
     setSummaryFundingRefreshNonce((n) => n + 1);
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Preferences come from localStorage after hydration. */
   useEffect(() => {
-    const storedLayout = readStoredLayout();
-    const storedPeriod = readStoredPeriod();
-    const storedSummary = readStoredSummaryVisible();
-    const storedDensity = readStoredTableDensity();
+    const storedLayout = readStoredLayout(preferenceScope);
+    const storedPeriod = readStoredPeriod(preferenceScope);
+    const storedSummary = readStoredSummaryVisible(preferenceScope);
+    const storedDensity = readStoredTableDensity(preferenceScope);
     if (storedLayout) {
       setLayout(storedLayout);
     }
@@ -206,39 +214,40 @@ export default function MonthlyFortnightView({
       setTableDensity(storedDensity);
     }
     setPrefsReady(true);
-  }, []);
+  }, [preferenceScope]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleLayoutRadio = useCallback((value: string) => {
     if (value === 'single') {
       setLayout('single');
-      persistLayout('single');
+      persistLayout(preferenceScope, 'single');
     } else if (value === 'both') {
       setLayout('both');
-      persistLayout('both');
+      persistLayout(preferenceScope, 'both');
     }
-  }, []);
+  }, [preferenceScope]);
 
   const handlePeriodChange = useCallback((value: string) => {
     if (value !== 'FIRST' && value !== 'SECOND') return;
     setPeriod(value);
-    persistPeriod(value);
-  }, []);
+    persistPeriod(preferenceScope, value);
+  }, [preferenceScope]);
 
   const handleSummaryChecked = useCallback((checked: boolean) => {
     setSummaryVisible(checked);
-    persistSummaryVisible(checked);
-  }, []);
+    persistSummaryVisible(preferenceScope, checked);
+  }, [preferenceScope]);
 
   const handleTableDensityChange = useCallback((value: string) => {
     if (value !== 'comfortable' && value !== 'compact') return;
     setTableDensity(value);
-    persistTableDensity(value);
-  }, []);
+    persistTableDensity(preferenceScope, value);
+  }, [preferenceScope]);
 
   const handleShowSummaryFromColumn = useCallback(() => {
     setSummaryVisible(true);
-    persistSummaryVisible(true);
-  }, []);
+    persistSummaryVisible(preferenceScope, true);
+  }, [preferenceScope]);
 
   const showFirst = layout === 'both' || period === 'FIRST';
   const showSecond = layout === 'both' || period === 'SECOND';
@@ -431,6 +440,7 @@ export default function MonthlyFortnightView({
               cardDueItems={first.cardDueItems}
               wallets={wallets}
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
+              preferenceScope={preferenceScope}
             />
           </div>
         ) : null}
@@ -469,6 +479,7 @@ export default function MonthlyFortnightView({
               cardDueItems={second.cardDueItems}
               wallets={wallets}
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
+              preferenceScope={preferenceScope}
             />
           </div>
         ) : null}
