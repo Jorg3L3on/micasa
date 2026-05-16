@@ -63,6 +63,9 @@ import { cn } from '@/lib/utils';
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
 
+const scopedFortnightTabStorageKey = (scope: string, p: 'FIRST' | 'SECOND') =>
+  `${fortnightTabStorageKey(p)}:${scope}`;
+
 type IncomeItemBySource = {
   fortnightId: number;
   id: number;
@@ -106,6 +109,7 @@ type FortnightColumnProps = {
   wallets?: WalletListItem[];
   /** Bump from parent after external saldo changes so resumen refreshes funding vs pendiente. */
   summaryFundingRefreshNonce?: number;
+  preferenceScope?: string;
 };
 
 export default function FortnightColumn({
@@ -122,6 +126,7 @@ export default function FortnightColumn({
   cardDueItems = [],
   wallets = [],
   summaryFundingRefreshNonce,
+  preferenceScope = 'default',
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -205,7 +210,7 @@ export default function FortnightColumn({
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(fortnightTabStorageKey(period));
+      const raw = localStorage.getItem(scopedFortnightTabStorageKey(preferenceScope, period));
       if (raw === 'cards' || raw === 'expenses') {
         setColumnTab(raw);
       } else {
@@ -214,17 +219,17 @@ export default function FortnightColumn({
     } catch {
       setColumnTab('expenses');
     }
-  }, [period]);
+  }, [period, preferenceScope]);
 
   const handleColumnTabChange = useCallback((value: string) => {
     if (value !== 'expenses' && value !== 'cards') return;
     setColumnTab(value);
     try {
-      localStorage.setItem(fortnightTabStorageKey(period), value);
+      localStorage.setItem(scopedFortnightTabStorageKey(preferenceScope, period), value);
     } catch {
       /* ignore */
     }
-  }, [period]);
+  }, [period, preferenceScope]);
 
   // Atajo: tecla "A" abre agregar gasto (solo pestaña Gastos); ignorar si hay diálogo abierto o el foco está en un campo editable.
   useEffect(() => {
