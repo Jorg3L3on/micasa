@@ -167,3 +167,23 @@ DATABASE_URL    # PostgreSQL / Neon connection string (required)
 NEXTAUTH_SECRET # JWT signing secret (required)
 NEXTAUTH_URL    # App base URL, e.g. http://localhost:3000
 ```
+
+## Agent skills
+
+PRD → issues → PR workflow: [docs/agents/workflow.md](docs/agents/workflow.md).
+
+### Issue tracker
+
+GitHub Issues on **Jorg3L3on/micasa** via `gh`. See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+See [docs/agents/triage-labels.md](docs/agents/triage-labels.md).
+
+### Domain docs
+
+See [docs/agents/domain.md](docs/agents/domain.md).
+
+### Deployment
+
+**`main` = production.** Slice PRs on **`feat/<feature-slug>`**; one release PR to `main`. See [docs/agents/deployment.md](docs/agents/deployment.md).

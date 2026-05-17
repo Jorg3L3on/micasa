@@ -1,0 +1,5 @@
+blank_issues: true
+contact_links:
+  - name: Contributing & AI workflow
+    url: https://github.com/Jorg3L3on/micasa/blob/main/CONTRIBUTING.md
+    about: PR checks and Cursor agent workflow

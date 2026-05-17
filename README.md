@@ -43,6 +43,10 @@ MiCasa also supports both individual and shared household contexts, so financial
 - **Tables and Charts**: TanStack Table, Recharts
 - **Testing**: Vitest
 
+## Contributing & AI workflow
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/agents/workflow.md](docs/agents/workflow.md) for PR checks and Cursor skills (`/ship-feature`, `/prd`).
+
 ## Getting Started
 
 ### 1) Clone and install
@@ -149,7 +153,7 @@ Planned open-source improvements:
 
 ## Contributing
 
-Contributions are welcome. For now:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, PR checks, and the **Cursor agent workflow** (`/ship-feature`, `/prd`).
 
 1. Open an issue describing the bug/feature.
 2. Create a branch with focused changes.

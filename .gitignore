@@ -55,3 +55,6 @@ next-env.d.ts
 
 # MCP server config (contains connection strings)
 .mcp.json
+
+# Local PRD drafts from the `prd` skill (commit with git add -f if needed)
+/tasks/prd-*.md
