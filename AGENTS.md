@@ -167,3 +167,7 @@ DATABASE_URL    # PostgreSQL / Neon connection string (required)
 NEXTAUTH_SECRET # JWT signing secret (required)
 NEXTAUTH_URL    # App base URL, e.g. http://localhost:3000
 ```
+
+## Agent skills
+
+Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/workflow.md](docs/agents/workflow.md). Canonical agent file: [CLAUDE.md](CLAUDE.md#agent-skills).
