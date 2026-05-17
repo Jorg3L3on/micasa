@@ -9,9 +9,6 @@ import {
   Calendar,
   Coins,
   CheckSquare,
-  ListChecks,
-  Repeat2,
-  Sparkles,
   Home,
   PiggyBank,
   ShoppingBasket,
@@ -121,16 +118,16 @@ export function AppSidebar({
       isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),
     },
     {
-      title: 'Gastos',
-      url: '/expenses',
-      icon: Coins,
-      isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
-    },
-    {
       title: 'Panel financiero',
       url: getCurrentMonthHrefUtc(),
       icon: Calendar,
       isActive: pathname.startsWith('/monthly/'),
+    },
+    {
+      title: 'Gastos',
+      url: '/expenses',
+      icon: Coins,
+      isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
     },
     {
       title: 'Operaciones',
