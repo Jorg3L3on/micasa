@@ -67,6 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: {
         name: validatedData.name,
         description: validatedData.description || null,
+        icon: validatedData.icon || null,
         ...(ownerType === 'user'
           ? { user_id: ownerId, house_id: null }
           : { user_id: null, house_id: ownerId }),
@@ -139,12 +140,19 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    const updateData: { name?: string; description?: string | null } = {};
+    const updateData: {
+      name?: string;
+      description?: string | null;
+      icon?: string | null;
+    } = {};
     if (validatedData.name) {
       updateData.name = validatedData.name;
     }
     if (validatedData.description !== undefined) {
       updateData.description = validatedData.description || null;
+    }
+    if (validatedData.icon !== undefined) {
+      updateData.icon = validatedData.icon || null;
     }
 
     const category = await prisma.category.update({

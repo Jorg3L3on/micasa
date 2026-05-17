@@ -19,6 +19,7 @@ import {
 } from '@/lib/api/categories';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { CategoryOption } from '@/types/catalog';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 export default function CategoriesPage() {
   const { context } = useFinanceContext();
@@ -131,7 +132,11 @@ export default function CategoriesPage() {
           <DataTableColumnHeader column={column} title="Nombre" />
         ),
         cell: ({ row }) => (
-          <span className="font-medium">{row.original.name}</span>
+          <CategoryLabel
+            name={row.original.name}
+            icon={row.original.icon}
+            className="font-medium"
+          />
         ),
       },
       {
@@ -245,6 +250,7 @@ export default function CategoriesPage() {
             defaultValues={{
               name: selectedCategory.name,
               description: selectedCategory.description || '',
+              icon: selectedCategory.icon || '',
             }}
             error={formError && editDialogOpen ? formError : null}
           />
