@@ -123,10 +123,6 @@ export default function SummaryBlock({
     userIncome.length > 0 &&
     userIncome.some((fi) => fi.userIncome && fi.userIncome.length > 0);
 
-  const paidPercent = tenemos > 0 ? (pagado / tenemos) * 100 : 0;
-  const pendingPercent = tenemos > 0 ? (pendiente / tenemos) * 100 : 0;
-  const totalSpentPercent = paidPercent + pendingPercent;
-
   /** Compromiso en efectivo/débito: alinea héroe, barra y tarjetas Pagado/Pendiente. */
   const comprometidoEfectivo = pagado + pendiente;
 
@@ -210,12 +206,14 @@ export default function SummaryBlock({
               <span
                 className={cn(
                   'font-mono text-xs font-bold tabular-nums leading-tight sm:text-sm',
-                  trasPagarPlaneado < 0
-                    ? 'text-destructive'
-                    : 'text-primary',
+                  billeterasVsPendienteAplica
+                    ? displayFundingNet >= 0
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : 'text-destructive'
+                    : 'text-muted-foreground',
                 )}
               >
-                {formatCurrency(trasPagarPlaneado)}
+                {formatCurrency(displayFundingNet)}
               </span>
             </div>
           )}
@@ -249,24 +247,24 @@ export default function SummaryBlock({
 
       <CardContent className="space-y-2 px-3 pb-2.5 pt-2 sm:space-y-2.5 sm:px-3.5 sm:pb-3 sm:pt-2.5">
         {/* Hero: ingresos, tras gastos planeados, billeteras vs pendiente */}
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-2">
+        <div className="grid grid-cols-1 gap-1 sm:grid-cols-3 sm:gap-1.5">
           {/* Left: Ingresos (total quincena) */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border border-blue-500/25 px-2 py-2 sm:px-2.5 sm:py-2.5',
+              'relative overflow-hidden rounded-xl border border-blue-500/25 px-1.5 py-1.5 sm:px-2 sm:py-2',
               'bg-gradient-to-br from-blue-500/10 via-background to-blue-500/3 dark:from-blue-500/18 dark:via-card dark:to-blue-500/5',
               'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
             )}
           >
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500/25 to-blue-600/10 shadow-sm ring-1 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10 sm:h-6 sm:w-6 sm:rounded-lg">
-                <Wallet className="h-2.5 w-2.5 text-blue-600 dark:text-blue-300 sm:h-3 sm:w-3" aria-hidden />
+            <div className="flex items-center gap-1">
+              <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500/25 to-blue-600/10 shadow-sm ring-1 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10 sm:h-5 sm:w-5">
+                <Wallet className="h-2.5 w-2.5 text-blue-600 dark:text-blue-300" aria-hidden />
               </span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="min-w-0 truncate text-left text-[11px] font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200 sm:text-xs"
+                    className="min-w-0 truncate text-left text-[10px] font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200 sm:text-[11px]"
                   >
                     Ingresos
                   </button>
@@ -278,7 +276,7 @@ export default function SummaryBlock({
             </div>
             <p
               className={cn(
-                'mt-0.5 font-mono text-lg font-bold tabular-nums leading-none sm:text-xl',
+                'mt-0.5 font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
                 tenemos >= 0 ? 'text-foreground/90' : 'text-destructive',
               )}
             >
@@ -287,16 +285,16 @@ export default function SummaryBlock({
             {tenemos > 0 && pagado > 0 && (
               <div
                 className={cn(
-                  'mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5',
+                  'mt-0.5 flex flex-wrap items-baseline gap-x-1 gap-y-0.5',
                   !isExpanded && 'hidden sm:flex',
                 )}
               >
-                <span className="text-[10px] text-muted-foreground/60">
+                <span className="text-[9px] text-muted-foreground/60">
                   Disponible tras pagos en efectivo/débito
                 </span>
                 <span
                   className={cn(
-                    'font-mono text-[10px] font-semibold tabular-nums',
+                    'font-mono text-[9px] font-semibold tabular-nums',
                     disponibleAhora >= 0
                       ? 'text-muted-foreground/80'
                       : 'text-destructive',
@@ -311,17 +309,17 @@ export default function SummaryBlock({
           {/* Center: Tras gastos planeados — un solo monto */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border px-2 py-2 shadow-sm sm:px-2.5 sm:py-2.5',
+              'relative overflow-hidden rounded-xl border px-1.5 py-1.5 shadow-sm sm:px-2 sm:py-2',
               trasPagarPlaneado >= 0
                 ? 'border-primary/35 bg-gradient-to-br from-primary/15 via-background to-primary/4 dark:from-primary/22 dark:via-card dark:to-primary/6'
                 : 'border-destructive/35 bg-gradient-to-br from-destructive/12 via-background to-destructive/3 dark:from-destructive/20 dark:via-card dark:to-destructive/5',
               'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:before:via-white/10',
             )}
           >
-            <div className="flex items-center gap-1 sm:gap-1.5">
+            <div className="flex items-center gap-1">
               <span
                 className={cn(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-6 sm:w-6 sm:rounded-lg',
+                  'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-5 sm:w-5',
                   trasPagarPlaneado >= 0
                     ? 'bg-gradient-to-br from-primary/30 to-primary/10 ring-primary/35'
                     : 'bg-gradient-to-br from-destructive/30 to-destructive/10 ring-destructive/35',
@@ -329,7 +327,7 @@ export default function SummaryBlock({
               >
                 <Receipt
                   className={cn(
-                    'h-2.5 w-2.5 sm:h-3 sm:w-3',
+                    'h-2.5 w-2.5',
                     trasPagarPlaneado >= 0
                       ? 'text-primary'
                       : 'text-destructive',
@@ -342,7 +340,7 @@ export default function SummaryBlock({
                   <button
                     type="button"
                     className={cn(
-                      'min-w-0 truncate text-left text-[11px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs',
+                      'min-w-0 truncate text-left text-[10px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[11px]',
                       trasPagarPlaneado >= 0
                         ? 'text-primary/85 decoration-primary/30 hover:text-primary'
                         : 'text-destructive/85 decoration-destructive/30 hover:text-destructive',
@@ -359,7 +357,7 @@ export default function SummaryBlock({
             </div>
             <p
               className={cn(
-                'mt-0.5 font-mono text-lg font-black tabular-nums leading-none tracking-tight sm:text-xl',
+                'mt-0.5 font-mono text-base font-black tabular-nums leading-none tracking-tight sm:text-lg',
                 trasPagarPlaneado >= 0 ? 'text-primary' : 'text-destructive',
               )}
             >
@@ -368,7 +366,7 @@ export default function SummaryBlock({
             {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
               <p
                 className={cn(
-                  'mt-0.5 text-[9px] leading-tight text-muted-foreground/90 sm:text-[10px]',
+                  'mt-0.5 text-[8px] leading-tight text-muted-foreground/90 sm:text-[9px]',
                   !isExpanded && 'hidden sm:block',
                 )}
               >
@@ -385,7 +383,7 @@ export default function SummaryBlock({
             {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
               <p
                 className={cn(
-                  'mt-0.5 text-[9px] leading-tight text-muted-foreground/90 sm:text-[10px]',
+                  'mt-0.5 text-[8px] leading-tight text-muted-foreground/90 sm:text-[9px]',
                   !isExpanded && 'hidden sm:block',
                 )}
               >
@@ -400,7 +398,7 @@ export default function SummaryBlock({
           {/* Right: saldos Efectivo + Débito menos solo lo pendiente (quincena en curso o siguiente) */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border px-2 py-2 shadow-sm sm:px-2.5 sm:py-2.5',
+              'relative overflow-hidden rounded-xl border px-1.5 py-1.5 shadow-sm sm:px-2 sm:py-2',
               billeterasVsPendienteAplica
                 ? displayFundingNet >= 0
                   ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-background to-emerald-500/3 dark:from-emerald-500/16 dark:via-card dark:to-emerald-500/5'
@@ -409,10 +407,10 @@ export default function SummaryBlock({
               'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
             )}
           >
-            <div className="flex items-center gap-1 sm:gap-1.5">
+            <div className="flex items-center gap-1">
               <span
                 className={cn(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-6 sm:w-6 sm:rounded-lg',
+                  'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-5 sm:w-5',
                   billeterasVsPendienteAplica
                     ? displayFundingNet >= 0
                       ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
@@ -422,7 +420,7 @@ export default function SummaryBlock({
               >
                 <Banknote
                   className={cn(
-                    'h-2.5 w-2.5 sm:h-3 sm:w-3',
+                    'h-2.5 w-2.5',
                     billeterasVsPendienteAplica
                       ? displayFundingNet >= 0
                         ? 'text-emerald-600 dark:text-emerald-400'
@@ -437,7 +435,7 @@ export default function SummaryBlock({
                   <button
                     type="button"
                     className={cn(
-                      'min-w-0 truncate text-left text-[11px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xs',
+                      'min-w-0 truncate text-left text-[10px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[11px]',
                       billeterasVsPendienteAplica
                         ? displayFundingNet >= 0
                           ? 'text-emerald-700/85 decoration-emerald-500/30 hover:text-emerald-700 dark:text-emerald-300/85 dark:hover:text-emerald-200'
@@ -456,7 +454,7 @@ export default function SummaryBlock({
             </div>
             <p
               className={cn(
-                'mt-0.5 font-mono text-lg font-black tabular-nums leading-none tracking-tight sm:text-xl',
+                'mt-0.5 font-mono text-base font-black tabular-nums leading-none tracking-tight sm:text-lg',
                 billeterasVsPendienteAplica
                   ? displayFundingNet >= 0
                     ? 'text-emerald-700 dark:text-emerald-300'
@@ -468,74 +466,6 @@ export default function SummaryBlock({
             </p>
           </div>
         </div>
-
-        {tenemos > 0 && (
-          <div
-            className={cn(
-              'relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/30 via-background to-muted/10 px-2.5 py-2 dark:from-muted/20 dark:via-card dark:to-transparent sm:px-3',
-              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
-              !isExpanded && 'hidden sm:block',
-            )}
-          >
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/60 sm:text-[10px]">
-                Uso del ingreso
-              </p>
-              <span
-                className={cn(
-                  'font-mono text-[10px] font-bold tabular-nums sm:text-xs',
-                  totalSpentPercent > 100
-                    ? 'text-destructive'
-                    : totalSpentPercent > 80
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-foreground/80',
-                )}
-              >
-                {Math.round(totalSpentPercent)}%
-              </span>
-            </div>
-            <div className="relative flex h-1.5 w-full overflow-hidden rounded-full bg-muted/70 shadow-inner sm:h-2">
-              <div
-                className="h-full rounded-l-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 dark:from-emerald-400 dark:to-emerald-300"
-                style={{ width: `${Math.min(paidPercent, 100)}%` }}
-              />
-              <div
-                className={cn(
-                  'h-full transition-all duration-500',
-                  paidPercent === 0 && 'rounded-l-full',
-                  paidPercent + pendingPercent >= 100 && 'rounded-r-full',
-                  totalSpentPercent > 100
-                    ? 'bg-gradient-to-r from-destructive to-destructive/70'
-                    : 'bg-gradient-to-r from-amber-500 to-amber-400/70 dark:from-amber-400 dark:to-amber-300/60',
-                )}
-                style={{
-                  width: `${Math.min(pendingPercent, 100 - Math.min(paidPercent, 100))}%`,
-                }}
-              />
-            </div>
-            <div className="mt-1 flex items-center justify-between text-[9px] sm:text-[10px]">
-              {paidPercent === 0 && pendingPercent === 0 ? (
-                <span className="italic text-muted-foreground/60">
-                  Sin gastos registrados aún
-                </span>
-              ) : (
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="flex items-center gap-1 text-muted-foreground/90">
-                    <span className="inline-block h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400 sm:h-1.5 sm:w-1.5" />
-                    Pagado
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground/90">
-                    <span className="inline-block h-1 w-1 rounded-full bg-amber-400/90 sm:h-1.5 sm:w-1.5" />
-                    Pendiente
-                  </span>
-                </div>
-              )}
-              <span className="font-medium text-muted-foreground/70">
-                comprometido
-              </span>
-            </div>
-          </div>
-        )}
 
         {!isExpanded &&
         ((cardCharges != null && cardCharges.total > 0) ||
