@@ -184,6 +184,7 @@ model Category {
   id          Int     @id @default(autoincrement())
   name        String
   description String?
+  icon        String?
 
   user_id  Int?
   house_id Int?

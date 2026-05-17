@@ -72,28 +72,28 @@ async function main() {
   // ─────────────────────────────────────────────
 
   // Carmen personal
-  const catCarmenComida      = await prisma.category.create({ data: { name: 'Comida',     user_id: carmen.id } });
-  const catCarmenTransporte  = await prisma.category.create({ data: { name: 'Transporte', user_id: carmen.id } });
-  const catCarmenVivienda    = await prisma.category.create({ data: { name: 'Vivienda',   user_id: carmen.id } });
+  const catCarmenComida      = await prisma.category.create({ data: { name: 'Comida',     icon: '🍽️', user_id: carmen.id } });
+  const catCarmenTransporte  = await prisma.category.create({ data: { name: 'Transporte', icon: '🚗', user_id: carmen.id } });
+  const catCarmenVivienda    = await prisma.category.create({ data: { name: 'Vivienda',   icon: '🏠', user_id: carmen.id } });
 
   // Jorge personal
-  const catJorgeComida       = await prisma.category.create({ data: { name: 'Comida',     user_id: jorge.id } });
-  const catJorgeTransporte   = await prisma.category.create({ data: { name: 'Transporte', user_id: jorge.id } });
-  const catJorgeVivienda     = await prisma.category.create({ data: { name: 'Vivienda',   user_id: jorge.id } });
+  const catJorgeComida       = await prisma.category.create({ data: { name: 'Comida',     icon: '🍽️', user_id: jorge.id } });
+  const catJorgeTransporte   = await prisma.category.create({ data: { name: 'Transporte', icon: '🚗', user_id: jorge.id } });
+  const catJorgeVivienda     = await prisma.category.create({ data: { name: 'Vivienda',   icon: '🏠', user_id: jorge.id } });
 
   // Leon Solorzano house
-  const catCasa              = await prisma.category.create({ data: { name: 'Casa',                  house_id: leonSolorzano.id } });
-  const catSuscripciones     = await prisma.category.create({ data: { name: 'Suscripciones',         house_id: leonSolorzano.id } });
-  const catTarjetaCredito    = await prisma.category.create({ data: { name: 'Tarjeta de credito',    house_id: leonSolorzano.id } });
-  const catTarjetaDep        = await prisma.category.create({ data: { name: 'Tarjeta departamental', house_id: leonSolorzano.id } });
-  const catComidaHouse       = await prisma.category.create({ data: { name: 'Comida',                house_id: leonSolorzano.id } });
-  const catSalidas           = await prisma.category.create({ data: { name: 'Salidas',               house_id: leonSolorzano.id } });
-  const catEntretenimiento   = await prisma.category.create({ data: { name: 'Entretenimiento',       house_id: leonSolorzano.id } });
-  const catMedicamentos      = await prisma.category.create({ data: { name: 'Medicamentos',          house_id: leonSolorzano.id } });
-  const catTransporteHouse   = await prisma.category.create({ data: { name: 'Trnasporte',            house_id: leonSolorzano.id } });
-  const catInversiones       = await prisma.category.create({ data: { name: 'Inversiones',           house_id: leonSolorzano.id } });
-  const catApoyosFamiliares  = await prisma.category.create({ data: { name: 'Apoyos familiares',     house_id: leonSolorzano.id } });
-  const catPrestamos         = await prisma.category.create({ data: { name: 'Prestamos',             house_id: leonSolorzano.id } });
+  const catCasa              = await prisma.category.create({ data: { name: 'Casa',                  icon: '🏠', house_id: leonSolorzano.id } });
+  const catSuscripciones     = await prisma.category.create({ data: { name: 'Suscripciones',         icon: '🔁', house_id: leonSolorzano.id } });
+  const catTarjetaCredito    = await prisma.category.create({ data: { name: 'Tarjeta de credito',    icon: '💳', house_id: leonSolorzano.id } });
+  const catTarjetaDep        = await prisma.category.create({ data: { name: 'Tarjeta departamental', icon: '💳', house_id: leonSolorzano.id } });
+  const catComidaHouse       = await prisma.category.create({ data: { name: 'Comida',                icon: '🍽️', house_id: leonSolorzano.id } });
+  const catSalidas           = await prisma.category.create({ data: { name: 'Salidas',               icon: '🎬', house_id: leonSolorzano.id } });
+  const catEntretenimiento   = await prisma.category.create({ data: { name: 'Entretenimiento',       icon: '🎬', house_id: leonSolorzano.id } });
+  const catMedicamentos      = await prisma.category.create({ data: { name: 'Medicamentos',          icon: '💊', house_id: leonSolorzano.id } });
+  const catTransporteHouse   = await prisma.category.create({ data: { name: 'Trnasporte',            icon: '🚗', house_id: leonSolorzano.id } });
+  const catInversiones       = await prisma.category.create({ data: { name: 'Inversiones',           icon: '📈', house_id: leonSolorzano.id } });
+  const catApoyosFamiliares  = await prisma.category.create({ data: { name: 'Apoyos familiares',     icon: '🤝', house_id: leonSolorzano.id } });
+  const catPrestamos         = await prisma.category.create({ data: { name: 'Prestamos',             icon: '🏦', house_id: leonSolorzano.id } });
 
   // ─────────────────────────────────────────────
   // WALLETS

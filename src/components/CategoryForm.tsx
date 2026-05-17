@@ -46,6 +46,7 @@ export default function CategoryForm({
     defaultValues: defaultValues || {
       name: '',
       description: '',
+      icon: '',
     },
   });
 
@@ -56,6 +57,7 @@ export default function CategoryForm({
       form.reset({
         name: '',
         description: '',
+        icon: '',
       });
     }
   }, [open, defaultValues, form]);
@@ -110,6 +112,23 @@ export default function CategoryForm({
                   <FormLabel>Nombre</FormLabel>
                   <FormControl>
                     <Input placeholder="Nombre de la categoría" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ícono</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ej. 🍽️"
+                      maxLength={16}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
