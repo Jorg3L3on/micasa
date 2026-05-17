@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { expenseSchema, ExpenseFormValues } from '@/schemas/expense.schema';
@@ -144,7 +145,7 @@ export default function ExpenseForm({
                       <option value="">Selecciona una categoría</option>
                       {categories.map((cat) => (
                         <option key={cat.id} value={cat.id}>
-                          {cat.name}
+                          {formatCategoryLabel(cat.name, cat.icon)}
                         </option>
                       ))}
                     </select>

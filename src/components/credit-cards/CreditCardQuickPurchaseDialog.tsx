@@ -25,6 +25,7 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createCreditCardPurchase } from '@/lib/api/credit-cards';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatCurrency } from '@/lib/utils';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type FortnightCatalogItem = {
   id: number;
@@ -320,7 +321,7 @@ const CreditCardQuickPurchaseDialog = ({
                   <SelectContent>
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}
+                        {formatCategoryLabel(c.name, c.icon)}
                       </SelectItem>
                     ))}
                   </SelectContent>

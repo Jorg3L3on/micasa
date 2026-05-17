@@ -210,6 +210,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
       amount: values.amount,
       date: values.date,
       category: null,
+      categoryIcon: null,
       paymentMethod: null,
       walletType: null,
       isPaid: values.isPaid,
@@ -219,7 +220,9 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
       categoryId: values.categoryId,
       walletId: values.paymentMethodId,
     };
-    setItems((prev) => [optimistic, ...prev]);
+    if (values.isPaid) {
+      setItems((prev) => [optimistic, ...prev]);
+    }
     try {
       const created = await clientFetchFromApi<ExpenseFeedItem>(
         '/api/expenses',
@@ -229,9 +232,14 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         },
         context,
       );
-      setItems((prev) =>
-        prev.map((i) => (i.id === tempId ? created : i)),
-      );
+      if (created.isPaid) {
+        setItems((prev) => {
+          const replaced = prev.map((i) => (i.id === tempId ? created : i));
+          return values.isPaid ? replaced : [created, ...replaced];
+        });
+      } else {
+        setItems((prev) => prev.filter((i) => i.id !== tempId));
+      }
       setCreateOpen(false);
     } catch (err) {
       setItems((prev) => prev.filter((i) => i.id !== tempId));
@@ -248,17 +256,19 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
     const originalId = editing.item.id;
     const previous = items;
     setItems((prev) =>
-      prev.map((i) =>
-        i.id === originalId
-          ? {
-              ...i,
-              description: values.name,
-              amount: values.amount,
-              date: values.date,
-              isRecurring: values.isRecurring,
-            }
-          : i,
-      ),
+      values.isPaid
+        ? prev.map((i) =>
+            i.id === originalId
+              ? {
+                  ...i,
+                  description: values.name,
+                  amount: values.amount,
+                  date: values.date,
+                  isRecurring: values.isRecurring,
+                }
+              : i,
+          )
+        : prev.filter((i) => i.id !== originalId),
     );
     try {
       await clientFetchFromApi(
@@ -414,7 +424,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         <div className="min-w-0">
           <h2 className="text-lg font-semibold leading-tight">Gastos</h2>
           <p className="text-xs text-muted-foreground">
-            Planeados, recurrentes y movimientos por día en tu contexto actual.
+            Gastos pagados por día en tu contexto actual.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">

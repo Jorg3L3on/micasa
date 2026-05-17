@@ -8,8 +8,14 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { buildCategoryReportApiPath } from '@/lib/dashboard/build-category-report-query';
 import { formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type Row = { name: string; value: number };
+type CategoryReportRow = {
+  category: string;
+  categoryIcon?: string | null;
+  total: number;
+};
 
 const MONTH_LABELS = [
   'Ene',
@@ -44,17 +50,23 @@ const SLICE_COLORS = [
 const MAX_SLICES = 8;
 
 function bucketCategoryRows(
-  rows: Array<{ category: string; total: number }>,
+  rows: CategoryReportRow[],
 ): Row[] {
   const sorted = [...rows].sort((a, b) => b.total - a.total);
   if (sorted.length <= MAX_SLICES) {
-    return sorted.map((r) => ({ name: r.category, value: r.total }));
+    return sorted.map((r) => ({
+      name: formatCategoryLabel(r.category, r.categoryIcon),
+      value: r.total,
+    }));
   }
   const top = sorted.slice(0, MAX_SLICES - 1);
   const rest = sorted.slice(MAX_SLICES - 1);
   const otros = rest.reduce((s, r) => s + r.total, 0);
   return [
-    ...top.map((r) => ({ name: r.category, value: r.total })),
+    ...top.map((r) => ({
+      name: formatCategoryLabel(r.category, r.categoryIcon),
+      value: r.total,
+    })),
     { name: 'Otros', value: otros },
   ];
 }
@@ -85,7 +97,7 @@ export default function DashboardPeriodCategoryPie({
   period,
 }: DashboardPeriodCategoryPieProps) {
   const { context } = useFinanceContext();
-  const [rows, setRows] = useState<Array<{ category: string; total: number }>>([]);
+  const [rows, setRows] = useState<CategoryReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,7 +119,7 @@ export default function DashboardPeriodCategoryPie({
       setLoading(true);
       setError(null);
       const path = buildCategoryReportApiPath(period);
-      const result = await clientFetchFromApi<Array<{ category: string; total: number }>>(
+      const result = await clientFetchFromApi<CategoryReportRow[]>(
         path,
         undefined,
         context,

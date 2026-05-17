@@ -63,6 +63,7 @@ import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { PantryReceiptDetailDto, PantryReceiptLineDto } from '@/types/pantry-receipt';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type EditableLine = {
   tempKey: string;
@@ -568,7 +569,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                       <SelectItem value="__NONE__">Selecciona categoría</SelectItem>
                       {expenseCategories.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name}
+                          {formatCategoryLabel(c.name, c.icon)}
                         </SelectItem>
                       ))}
                     </SelectContent>

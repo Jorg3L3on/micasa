@@ -66,6 +66,7 @@ import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 import type { PantryShoppingCartSummaryDto } from '@/types/pantry-shopping-cart';
 import { SHOPPING_STORE_OPTIONS, type ShoppingStore } from '@/types/shopping-store';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 const formatShortDate = (iso: string | null): string => {
   if (!iso) return '—';
@@ -774,7 +775,7 @@ export default function PantryReceiptsPage() {
                         <SelectItem value="__NONE__">Selecciona categoría</SelectItem>
                         {expenseCategories.map((c) => (
                           <SelectItem key={c.id} value={String(c.id)}>
-                            {c.name}
+                            {formatCategoryLabel(c.name, c.icon)}
                           </SelectItem>
                         ))}
                       </SelectContent>

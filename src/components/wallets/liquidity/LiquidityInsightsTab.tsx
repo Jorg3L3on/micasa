@@ -21,11 +21,16 @@ import type { WalletListItem } from '@/types/catalog';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 const CARD_TYPES = ['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD'] as const;
 const ROLLING_MONTHS = 12;
 
-type CategoryReportRow = { category: string; total: number };
+type CategoryReportRow = {
+  category: string;
+  categoryIcon?: string | null;
+  total: number;
+};
 
 const sortWalletsLikeDashboard = (wallets: WalletListItem[]): WalletListItem[] => {
   return [...wallets]
@@ -119,8 +124,10 @@ export function LiquidityInsightsTab() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 12)
       .map((row) => ({
-        category:
-          row.category.length > 28 ? `${row.category.slice(0, 26)}…` : row.category,
+        category: (() => {
+          const label = formatCategoryLabel(row.category, row.categoryIcon);
+          return label.length > 28 ? `${label.slice(0, 26)}…` : label;
+        })(),
         total: row.total,
       }));
   }, [categories]);

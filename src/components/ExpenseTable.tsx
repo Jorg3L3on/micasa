@@ -50,6 +50,7 @@ import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { DataTableColumnHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 import type { TransactionRow, WalletListItem } from '@/types/catalog';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
@@ -521,7 +522,10 @@ export default function ExpenseTable({
                       isCompact ? 'text-[10px]' : 'text-[11px]',
                     )}
                   >
-                    {expense.category}
+                    <CategoryLabel
+                      name={expense.category}
+                      icon={expense.categoryIcon}
+                    />
                   </span>
                   <span className={cn('text-muted-foreground/30', isCompact ? 'text-[10px]' : 'text-[11px]')}>·</span>
                   <span
@@ -946,7 +950,10 @@ export default function ExpenseTable({
                         <p className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
                           {e.category ? (
                             <>
-                              <span className="truncate">{e.category}</span>
+                              <CategoryLabel
+                                name={e.category}
+                                icon={e.categoryIcon}
+                              />
                               <span className="text-muted-foreground/30">·</span>
                             </>
                           ) : null}
