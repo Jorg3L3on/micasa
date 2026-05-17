@@ -45,6 +45,7 @@ export type DashboardData = {
     dueDate: string;
     dueDay: number;
     category: string;
+    categoryIcon: string | null;
   }>;
   recentActivity: Array<{
     id: string;
@@ -71,6 +72,7 @@ export type DashboardData = {
       description: string;
       amount: number;
       category: string;
+      categoryIcon: string | null;
     } | null;
   };
   fixedVsVariable: {

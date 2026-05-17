@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
 
     const where: Prisma.ExpenseWhereInput = {
       ...ownerFilter,
+      is_paid: true,
     };
 
     if (cursor) {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
     const expenses = await prisma.expense.findMany({
       where,
       include: {
-        category: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true, icon: true } },
         wallet: { select: { id: true, name: true, type: true } },
       },
       orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest) {
       amount: decimalToNumber(e.amount),
       date: toDateStr(e.payment_date ?? e.created_at),
       category: e.category?.name ?? null,
+      categoryIcon: e.category?.icon ?? null,
       paymentMethod: e.wallet?.name ?? null,
       walletType: e.wallet?.type ?? null,
       isPaid: e.is_paid,

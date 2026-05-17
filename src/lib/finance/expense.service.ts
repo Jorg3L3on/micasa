@@ -19,7 +19,7 @@ type ExpenseTransactionDtoSource = {
   is_paid: boolean;
   payment_date: Date | string | null;
   created_at: Date | string;
-  category?: { name: string | null } | null;
+  category?: { name: string | null; icon?: string | null } | null;
   wallet?: { name: string | null } | null;
 };
 
@@ -74,6 +74,7 @@ async function mapExpenseToTransactionDto(expense: ExpenseTransactionDtoSource) 
     description: expense.description,
     amount: expense.amount,
     category: expense.category?.name ?? '',
+    categoryIcon: expense.category?.icon ?? null,
     paymentMethod: expense.wallet?.name || 'Efectivo',
     type: 'expense' as const,
     is_paid: expense.is_paid,
@@ -116,7 +117,7 @@ export async function listExpenses(
   return prisma.expense.findMany({
     where,
     include: {
-      category: { select: { name: true } },
+      category: { select: { name: true, icon: true } },
       wallet: { select: { name: true } },
     },
     orderBy: { created_at: 'desc' },
@@ -248,7 +249,7 @@ export async function createExpenseInTransaction(
       house_id: fortnight.house_id,
     },
     include: {
-      category: { select: { name: true } },
+      category: { select: { name: true, icon: true } },
       wallet: { select: { id: true, name: true } },
     },
   });
@@ -296,7 +297,7 @@ export async function updateExpense(input: UpdateExpenseInput) {
     const existing = await tx.expense.findUnique({
       where: { id },
       include: {
-        category: { select: { name: true } },
+        category: { select: { name: true, icon: true } },
         wallet: { select: { id: true, name: true, type: true } },
         fortnight: { select: { id: true, user_id: true, house_id: true } },
       },
@@ -466,7 +467,7 @@ export async function updateExpense(input: UpdateExpenseInput) {
       where: { id },
       data: updateData,
       include: {
-        category: { select: { name: true } },
+        category: { select: { name: true, icon: true } },
         wallet: { select: { name: true, type: true } },
       },
     });
@@ -484,7 +485,7 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
     const existing = await tx.expense.findUnique({
       where: { id },
       include: {
-        category: { select: { name: true } },
+        category: { select: { name: true, icon: true } },
         wallet: { select: { id: true, name: true, type: true } },
       },
     });
@@ -549,7 +550,7 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
         payment_date: willBePaid ? new Date() : null,
       },
       include: {
-        category: { select: { name: true } },
+        category: { select: { name: true, icon: true } },
         wallet: { select: { name: true, type: true } },
       },
     });
@@ -608,4 +609,3 @@ export async function deleteExpense(input: DeleteExpenseInput) {
     });
   });
 }
-
