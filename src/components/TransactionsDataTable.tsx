@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
+import {
+  CategoryLabel,
+  formatCategoryLabel,
+} from '@/components/categories/CategoryLabel';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -54,6 +58,15 @@ export default function TransactionsDataTable({
       [...new Set(transactions.map((t) => t.category).filter(Boolean))].sort(),
     [transactions],
   );
+  const categoryIcons = useMemo(() => {
+    const icons = new Map<string, string | null>();
+    for (const transaction of transactions) {
+      if (transaction.category && !icons.has(transaction.category)) {
+        icons.set(transaction.category, transaction.categoryIcon ?? null);
+      }
+    }
+    return icons;
+  }, [transactions]);
 
   const paymentMethods = useMemo(
     () =>
@@ -186,7 +199,10 @@ export default function TransactionsDataTable({
           if (!row.original.category) return null;
           return (
             <Badge variant="outline" className="font-normal whitespace-nowrap">
-              {row.original.category}
+              <CategoryLabel
+                name={row.original.category}
+                icon={row.original.categoryIcon}
+              />
             </Badge>
           );
         },
@@ -299,7 +315,7 @@ export default function TransactionsDataTable({
             <SelectItem value={ALL_VALUE}>Todas las categorías</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
-                {cat}
+                {formatCategoryLabel(cat, categoryIcons.get(cat))}
               </SelectItem>
             ))}
           </SelectContent>

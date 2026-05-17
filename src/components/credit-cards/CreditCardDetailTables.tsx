@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import type {
   CreditCardPaymentListItem,
   CreditCardStatementPurchaseItem,
@@ -250,8 +251,13 @@ export const PurchaseTableBlock = ({
                         </span>
                       ) : null}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {purchase.category} · {formatDate(purchase.payment_date)}
+                    <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <CategoryLabel
+                        name={purchase.category}
+                        icon={purchase.categoryIcon}
+                      />
+                      <span className="text-muted-foreground/30">·</span>
+                      <span>{formatDate(purchase.payment_date)}</span>
                     </p>
                     <Link
                       href={getFortnightHref(purchase, ownerQueryString)}

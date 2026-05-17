@@ -22,6 +22,10 @@ import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { ExpenseTemplateListItem } from '@/types/catalog';
+import {
+  CategoryLabel,
+  formatCategoryLabel,
+} from '@/components/categories/CategoryLabel';
 
 export default function ExpenseTemplatesPage() {
   const { context } = useFinanceContext();
@@ -101,6 +105,15 @@ export default function ExpenseTemplatesPage() {
       [...new Set(templates.map((t) => t.category))].filter(Boolean).sort() as string[],
     [templates],
   );
+  const categoryIcons = useMemo(() => {
+    const icons = new Map<string, string | null>();
+    for (const template of templates) {
+      if (template.category && !icons.has(template.category)) {
+        icons.set(template.category, template.categoryIcon ?? null);
+      }
+    }
+    return icons;
+  }, [templates]);
 
   const filteredTemplates = useMemo(() => {
     return templates.filter((t) => {
@@ -128,7 +141,11 @@ export default function ExpenseTemplatesPage() {
         minSize: 100,
         header: 'Categoría',
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{row.original.category}</span>
+          <CategoryLabel
+            name={row.original.category}
+            icon={row.original.categoryIcon}
+            className="text-muted-foreground"
+          />
         ),
       },
       {
@@ -277,7 +294,7 @@ export default function ExpenseTemplatesPage() {
           <SelectItem value="all">Todas las categorías</SelectItem>
           {categories.map((cat) => (
             <SelectItem key={cat} value={cat}>
-              {cat}
+              {formatCategoryLabel(cat, categoryIcons.get(cat))}
             </SelectItem>
           ))}
         </SelectContent>

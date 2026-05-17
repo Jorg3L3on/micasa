@@ -35,6 +35,7 @@ import type { BudgetListItem, CategoryOption, WalletListItem } from '@/types/cat
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type Props = {
   open: boolean;
@@ -269,7 +270,7 @@ export default function BudgetAllocationsDialog({
                             <SelectContent>
                               {categories.map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)}>
-                                  {c.name}
+                                  {formatCategoryLabel(c.name, c.icon)}
                                 </SelectItem>
                               ))}
                             </SelectContent>

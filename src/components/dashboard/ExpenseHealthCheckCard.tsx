@@ -6,9 +6,10 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
-import { Percent, Receipt } from 'lucide-react';
+import { Percent } from 'lucide-react';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 type ExpenseHealthCheckCardProps = {
   data: DashboardData;
@@ -104,9 +105,13 @@ export default function ExpenseHealthCheckCard({
                       <p className="text-sm font-medium truncate">
                         {largestExpense.description}
                       </p>
-                      <p className="text-[9px] text-muted-foreground">
-                        {largestExpense.category} ·{' '}
-                        {formatCurrency(largestExpense.amount)}
+                      <p className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <CategoryLabel
+                          name={largestExpense.category}
+                          icon={largestExpense.categoryIcon}
+                        />
+                        <span className="text-muted-foreground/30">·</span>
+                        <span>{formatCurrency(largestExpense.amount)}</span>
                       </p>
                     </div>
                   </TooltipTrigger>

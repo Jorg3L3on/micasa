@@ -23,6 +23,7 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
@@ -288,7 +289,7 @@ const CreditCardPaymentDialog = ({
                 <SelectContent>
                   {categoryOptions.map((cat) => (
                     <SelectItem key={cat.id} value={String(cat.id)}>
-                      {cat.name}
+                      {formatCategoryLabel(cat.name, cat.icon)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -9,6 +9,7 @@ import {
 import { RefreshCw } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { ExpenseFeedItem } from '@/types/expenses-feed';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 const DOUBLE_CLICK_MS = 280;
 
@@ -27,9 +28,6 @@ export default function ExpenseCard({
   onSingleActivate,
   onDoubleActivate,
 }: ExpenseCardProps) {
-  const subtitleParts = [expense.category, expense.paymentMethod].filter(
-    (p): p is string => Boolean(p),
-  );
   const isInstallment =
     expense.creditInstallmentCurrent != null &&
     expense.creditInstallmentTotal != null;
@@ -105,8 +103,16 @@ export default function ExpenseCard({
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {subtitleParts.length > 0 && (
-            <span className="truncate">{subtitleParts.join(' · ')}</span>
+          {(expense.category || expense.paymentMethod) && (
+            <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
+              <CategoryLabel name={expense.category} icon={expense.categoryIcon} />
+              {expense.category && expense.paymentMethod ? (
+                <span className="text-muted-foreground/30">·</span>
+              ) : null}
+              {expense.paymentMethod ? (
+                <span className="truncate">{expense.paymentMethod}</span>
+              ) : null}
+            </span>
           )}
           {!expense.isPaid && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400">

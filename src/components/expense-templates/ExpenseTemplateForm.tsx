@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import type { ExpenseTemplateFormValues } from '@/schemas/expense-template.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type ExpenseTemplateFormProps = {
   form: UseFormReturn<ExpenseTemplateFormValues>;
@@ -156,7 +157,7 @@ export function ExpenseTemplateForm({
                         <SelectContent>
                           {categories.map((category) => (
                             <SelectItem key={category.id} value={String(category.id)}>
-                              {category.name}
+                              {formatCategoryLabel(category.name, category.icon)}
                             </SelectItem>
                           ))}
                         </SelectContent>

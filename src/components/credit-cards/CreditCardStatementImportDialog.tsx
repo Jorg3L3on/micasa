@@ -30,6 +30,7 @@ import type {
   CategoryOption,
   CreditCardStatementImportListItem,
 } from '@/types/catalog';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 const IMPORT_LIST_SCROLL_CLASS =
   'max-h-[min(16rem,40vh)] overflow-y-auto scrollbar-hide pr-0.5';
@@ -250,7 +251,7 @@ const CreditCardStatementImportDialog = ({
                   </SelectItem>
                   {categoryOptions.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
+                      {formatCategoryLabel(c.name, c.icon)}
                     </SelectItem>
                   ))}
                 </SelectContent>

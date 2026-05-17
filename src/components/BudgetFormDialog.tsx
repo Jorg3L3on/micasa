@@ -46,6 +46,7 @@ import type { CategoryOption, WalletListItem } from '@/types/catalog';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type Props = {
   open: boolean;
@@ -464,7 +465,7 @@ export default function BudgetFormDialog({
                               <SelectContent>
                                 {categories.map((c) => (
                                   <SelectItem key={c.id} value={String(c.id)}>
-                                    {c.name}
+                                    {formatCategoryLabel(c.name, c.icon)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

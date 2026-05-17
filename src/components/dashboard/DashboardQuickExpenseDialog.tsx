@@ -33,6 +33,7 @@ import {
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 type DashboardQuickExpenseDialogProps = {
   open: boolean;
@@ -271,7 +272,7 @@ export default function DashboardQuickExpenseDialog({
                       <option value="">Selecciona una categoría</option>
                       {expenseCategories.map((category) => (
                         <option key={category.id} value={category.id}>
-                          {category.name}
+                          {formatCategoryLabel(category.name, category.icon)}
                         </option>
                       ))}
                     </select>
@@ -475,4 +476,3 @@ export default function DashboardQuickExpenseDialog({
     </Dialog>
   );
 }
-

@@ -28,6 +28,7 @@ import type {
 } from '@/types/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
+import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
 export type ExpenseFormProps = {
   mode: 'create' | 'edit';
@@ -334,7 +335,7 @@ export default function ExpenseForm({
                   <option value="">Selecciona una categoría</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {formatCategoryLabel(c.name, c.icon)}
                     </option>
                   ))}
                 </select>

@@ -46,6 +46,7 @@ import type {
   WalletMovement,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
@@ -628,9 +629,17 @@ export default function WalletDetailPage() {
                               {isIn ? 'Ingreso' : 'Egreso'}
                             </Badge>
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {m.category ? `${m.category} · ` : ''}
-                            {formatDate(m.date)}
+                          <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            {m.category ? (
+                              <>
+                                <CategoryLabel
+                                  name={m.category}
+                                  icon={m.categoryIcon}
+                                />
+                                <span className="text-muted-foreground/30">·</span>
+                              </>
+                            ) : null}
+                            <span>{formatDate(m.date)}</span>
                           </p>
                           {fortnightLink && (
                             <Link
