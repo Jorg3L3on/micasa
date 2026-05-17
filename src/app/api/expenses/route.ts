@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
         amount: decimalToNumber(created.amount),
         date: toDateStr(created.payment_date),
         category: created.category ?? null,
+        categoryIcon: created.categoryIcon ?? null,
         paymentMethod: created.paymentMethod ?? null,
         walletType: null,
         isPaid: data.isPaid,

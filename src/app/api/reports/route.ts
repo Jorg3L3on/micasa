@@ -486,27 +486,32 @@ export async function GET(request: NextRequest) {
           category: {
             select: {
               name: true,
+              icon: true,
             },
           },
         },
       });
 
       const categoryTotals = expenses.reduce(
-        (acc: Record<string, number>, expense) => {
+        (acc: Record<string, { total: number; icon: string | null }>, expense) => {
           const categoryName = expense.category?.name ?? 'Sin categoría';
           if (!acc[categoryName]) {
-            acc[categoryName] = 0;
+            acc[categoryName] = {
+              total: 0,
+              icon: expense.category?.icon ?? null,
+            };
           }
-          acc[categoryName] += Number(expense.amount);
+          acc[categoryName].total += Number(expense.amount);
           return acc;
         },
         {},
       );
 
       const result = Object.entries(categoryTotals).map(
-        ([category, total]) => ({
+        ([category, data]) => ({
           category,
-          total,
+          categoryIcon: data.icon,
+          total: data.total,
         }),
       );
 

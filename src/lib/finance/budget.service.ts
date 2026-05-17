@@ -11,7 +11,7 @@ export async function listBudgetsByOwner(ownerFilter: OwnerFilter) {
       allocations: {
         include: {
           wallet: { select: { id: true, name: true } },
-          category: { select: { id: true, name: true } },
+          category: { select: { id: true, name: true, icon: true } },
         },
       },
     },
@@ -32,6 +32,7 @@ export async function listBudgetsByOwner(ownerFilter: OwnerFilter) {
       wallet_name: a.wallet.name,
       category_id: a.category_id,
       category_name: a.category.name,
+      category_icon: a.category.icon ?? null,
       amount: Number(a.amount),
     })),
   }));

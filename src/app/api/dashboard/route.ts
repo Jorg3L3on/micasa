@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
       prisma.expense.findMany({
         where: expenseWhereCurrent,
         include: {
-          category: { select: { name: true } },
+          category: { select: { name: true, icon: true } },
           expense_template: { select: { is_recurring: true } },
         },
       }),
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
               year: true,
             },
           },
-          category: { select: { name: true } },
+          category: { select: { name: true, icon: true } },
         },
         orderBy: { created_at: 'desc' },
       }),
@@ -354,6 +354,7 @@ export async function GET(request: NextRequest) {
           dueDate: dueDate.toISOString().split('T')[0],
           dueDay,
           category: e.category?.name ?? '',
+          categoryIcon: e.category?.icon ?? null,
         };
       })
       .filter(Boolean) as Array<{
@@ -364,6 +365,7 @@ export async function GET(request: NextRequest) {
       dueDate: string;
       dueDay: number;
       category: string;
+      categoryIcon: string | null;
     }>;
 
     upcomingWithDue.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -376,7 +378,7 @@ export async function GET(request: NextRequest) {
       take: 10,
       orderBy: { created_at: 'desc' },
       include: {
-        category: { select: { name: true } },
+        category: { select: { name: true, icon: true } },
         fortnight: { select: { label: true, month: true, year: true } },
       },
     });
@@ -558,6 +560,7 @@ export async function GET(request: NextRequest) {
                 description: largestExpense.description,
                 amount: Number(largestExpense.amount),
                 category: largestExpense.category?.name ?? '',
+                categoryIcon: largestExpense.category?.icon ?? null,
               }
             : null,
         },

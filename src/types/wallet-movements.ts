@@ -8,6 +8,7 @@ export type WalletMovement = {
   amount: number;
   direction: 'in' | 'out';
   category: string | null;
+  categoryIcon: string | null;
   fortnightYear: number | null;
   fortnightMonth: number | null;
   fortnightPeriod: 'FIRST' | 'SECOND' | null;

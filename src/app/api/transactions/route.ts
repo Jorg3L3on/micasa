@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     const expenses = await prisma.expense.findMany({
       where: expenseWhere,
       include: {
-        category: { select: { name: true } },
+        category: { select: { name: true, icon: true } },
         wallet: { select: { name: true, type: true } },
       },
       orderBy: { created_at: 'desc' },
@@ -129,6 +129,7 @@ export async function GET(request: NextRequest) {
         description: expense.description,
         amount: decimalToNumber(expense.amount),
         category: expense.category?.name ?? '',
+        categoryIcon: expense.category?.icon ?? null,
         paymentMethod: expense.wallet?.name || 'Efectivo',
         wallet_id: expense.wallet_id ?? null,
         wallet_type: expense.wallet?.type ?? null,
@@ -153,6 +154,7 @@ export async function GET(request: NextRequest) {
                 : `Pago tarjeta: ${p.credit_card_wallet.name}`,
               amount: decimalToNumber(p.amount),
               category: 'Pago a tarjeta',
+              categoryIcon: '💳',
               paymentMethod: p.source_wallet.name,
               wallet_type: p.source_wallet.type,
               planning_row_kind: 'card_payment' as const,
@@ -191,6 +193,7 @@ export async function GET(request: NextRequest) {
         description: income.source ?? 'Ingreso',
         amount: decimalToNumber(income.amount),
         category: '',
+        categoryIcon: null,
         paymentMethod: 'Ingreso',
         type: 'income' as const,
         is_paid: true,

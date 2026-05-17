@@ -6,6 +6,7 @@ export type ExpenseFeedItem = {
   amount: number;
   date: string;
   category: string | null;
+  categoryIcon: string | null;
   paymentMethod: string | null;
   walletType: ExpenseWalletType | null;
   isPaid: boolean;

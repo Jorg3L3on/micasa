@@ -65,6 +65,7 @@ export async function PATCH(
         description: expense.description,
         amount: expense.amount,
         category: expense.category?.name ?? '',
+        categoryIcon: expense.category?.icon ?? null,
         paymentMethod: expense.wallet?.name || 'Efectivo',
         is_paid: expense.is_paid,
       },

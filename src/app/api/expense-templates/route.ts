@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         category: {
           select: {
             name: true,
+            icon: true,
           },
         },
         wallet: {
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
         id: template.id,
         name: template.name,
         category: template.category?.name ?? null,
+        categoryIcon: template.category?.icon ?? null,
         suggestedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
           : null,
@@ -130,6 +132,7 @@ export async function POST(request: NextRequest) {
         category: {
           select: {
             name: true,
+            icon: true,
           },
         },
         wallet: {
@@ -146,6 +149,7 @@ export async function POST(request: NextRequest) {
         id: template.id,
         name: template.name,
         category: template.category?.name ?? null,
+        categoryIcon: template.category?.icon ?? null,
         defaultAmount: template.suggested_amount
           ? Number(template.suggested_amount)
           : null,
@@ -254,6 +258,7 @@ export async function PUT(request: NextRequest) {
         category: {
           select: {
             name: true,
+            icon: true,
           },
         },
         wallet: {
@@ -281,6 +286,7 @@ export async function PUT(request: NextRequest) {
         id: template.id,
         name: template.name,
         category: template.category?.name ?? null,
+        categoryIcon: template.category?.icon ?? null,
         suggestedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
           : null,

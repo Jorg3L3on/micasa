@@ -8,6 +8,7 @@ export type CategoryOption = {
   id: number;
   name: string;
   description?: string;
+  icon?: string | null;
 };
 
 export type PaymentMethodOption = {
@@ -25,6 +26,7 @@ export type ExpenseListItem = {
   id: number;
   name: string;
   category: string;
+  categoryIcon?: string | null;
   categoryId: number | null;
   defaultAmount: number | null;
   paymentMethod: string;
@@ -48,6 +50,7 @@ export type TransactionRow = {
   description: string;
   amount: number | string;
   category: string;
+  categoryIcon?: string | null;
   paymentMethod: string;
   wallet_id?: number | null;
   wallet_type?: ExpenseWalletType | null;
@@ -98,6 +101,7 @@ export type ExpenseTemplateListItem = {
   id: number;
   name: string;
   category: string;
+  categoryIcon?: string | null;
   suggestedAmount: number | null;
   paymentMethod: string | null;
   paymentMethodId: number | null;
@@ -132,6 +136,7 @@ export type BudgetAllocationItem = {
   wallet_name: string;
   category_id: number;
   category_name: string;
+  category_icon?: string | null;
   amount: number;
 };
 
@@ -374,6 +379,7 @@ export type CreditCardStatementPurchaseItem = {
   amount: number;
   payment_date: string;
   category: string;
+  categoryIcon?: string | null;
   fortnight_id: number;
   fortnight_year: number;
   fortnight_month: number;
