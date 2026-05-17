@@ -19,7 +19,6 @@ import {
   ChevronUp,
   Pencil,
   BarChart3,
-  Receipt,
   CreditCard,
   Banknote,
 } from 'lucide-react';
@@ -126,8 +125,6 @@ export default function SummaryBlock({
   /** Compromiso en efectivo/débito: alinea héroe, barra y tarjetas Pagado/Pendiente. */
   const comprometidoEfectivo = pagado + pendiente;
 
-  /** Ingreso de la quincena menos solo lo ya pagado (incluye pagos a tarjeta ya hechos). */
-  const disponibleAhora = tenemos - pagado;
   /** Ingreso menos todo lo comprometido (pagado + pendiente), mismo criterio que el resumen del API. */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
@@ -151,23 +148,6 @@ export default function SummaryBlock({
     ? pendiente
     : 0;
 
-  const tooltipIngresosHero =
-    'Total de ingresos planificados para esta quincena (suma de las fuentes que registraste).';
-
-  const tooltipTrasPagarPlaneado =
-    planningCardStatementDue != null && planningCardStatementDue.total > 0
-      ? 'Ingreso menos gastos en efectivo/débito (pagados y pendientes), pagos a tarjeta ya hechos y lo que aún debes al estado de cuenta en esta quincena (ver pestaña Pagos tarjeta). Las compras recién cargadas a la TC no suman hasta integrarse al corte.'
-      : 'Ingreso de la quincena menos todo lo comprometido en efectivo o débito: gastos planeados (pagados y pendientes) y pagos a tarjeta que ya descontaron tu efectivo. Las compras cargadas a la tarjeta no entran aquí hasta que pagues el estado de cuenta.';
-
-  const tooltipFundingVsPendingLive = `Suma de saldos en billeteras activas de efectivo y débito (${formatCurrency(fundingWalletBalanceTotal)}) menos lo pendiente de esta quincena (${formatCurrency(pendiente)}): gastos y pagos aún no marcados como pagados.`;
-
-  const tooltipFundingVsPendingInactive =
-    'Solo aplica a la quincena en curso y a la siguiente según el calendario (hoy). En el resto de quincenas se muestra $0,00.';
-
-  const tooltipFundingVsPendingEffective = billeterasVsPendienteAplica
-    ? tooltipFundingVsPendingLive
-    : tooltipFundingVsPendingInactive;
-
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
@@ -176,14 +156,14 @@ export default function SummaryBlock({
 
   return (
     <Card className="relative gap-0 overflow-hidden rounded-2xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:ring-primary/10 dark:shadow-black/50 dark:before:via-white/8">
-      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-3 pb-1.5 pt-2 dark:from-primary/15 dark:via-primary/7 sm:px-3.5 sm:pb-2 sm:pt-2.5">
+      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-2.5 py-1.5 dark:from-primary/15 dark:via-primary/7 sm:px-3 sm:py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-1.5 sm:gap-2.5">
             <span
-              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/25 to-primary/10 shadow-sm ring-1 ring-primary/30 dark:from-primary/30 dark:to-primary/12 dark:ring-primary/35 sm:h-8 sm:w-8 sm:rounded-xl"
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/25 to-primary/10 shadow-sm ring-1 ring-primary/30 dark:from-primary/30 dark:to-primary/12 dark:ring-primary/35 sm:h-7 sm:w-7"
               aria-hidden
             >
-              <BarChart3 className="h-3.5 w-3.5 text-primary sm:h-4 sm:w-4" />
+              <BarChart3 className="h-3 w-3 text-primary sm:h-3.5 sm:w-3.5" />
             </span>
             <div className="min-w-0 space-y-0">
               <CardTitle className="text-xs font-bold leading-tight tracking-tight sm:text-sm">
@@ -245,35 +225,20 @@ export default function SummaryBlock({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-2 px-3 pb-2.5 pt-2 sm:space-y-2.5 sm:px-3.5 sm:pb-3 sm:pt-2.5">
-        {/* Hero: ingresos, tras gastos planeados, billeteras vs pendiente */}
+      <CardContent className="space-y-1.5 px-2.5 pb-2 pt-1.5 sm:px-3 sm:pb-2.5 sm:pt-2">
+        {/* Hero KPI strip */}
         <div className="grid grid-cols-1 gap-1 sm:grid-cols-3 sm:gap-1.5">
-          {/* Left: Ingresos (total quincena) */}
+          {/* Left: Ingreso total de la quincena */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border border-blue-500/25 px-1.5 py-1.5 sm:px-2 sm:py-2',
+              'relative overflow-hidden rounded-lg border border-blue-500/25 px-2 py-1.5',
               'bg-gradient-to-br from-blue-500/10 via-background to-blue-500/3 dark:from-blue-500/18 dark:via-card dark:to-blue-500/5',
               'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
             )}
           >
-            <div className="flex items-center gap-1">
-              <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500/25 to-blue-600/10 shadow-sm ring-1 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10 sm:h-5 sm:w-5">
-                <Wallet className="h-2.5 w-2.5 text-blue-600 dark:text-blue-300" aria-hidden />
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="min-w-0 truncate text-left text-[10px] font-semibold text-blue-700/80 underline decoration-dotted decoration-blue-500/30 underline-offset-2 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-blue-300/80 dark:hover:text-blue-200 sm:text-[11px]"
-                  >
-                    Ingresos
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
-                  {tooltipIngresosHero}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <p className="truncate text-[10px] font-semibold leading-tight text-blue-700/80 dark:text-blue-300/80 sm:text-[11px]">
+              Ingreso
+            </p>
             <p
               className={cn(
                 'mt-0.5 font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
@@ -282,79 +247,28 @@ export default function SummaryBlock({
             >
               {formatCurrency(tenemos)}
             </p>
-            {tenemos > 0 && pagado > 0 && (
-              <div
-                className={cn(
-                  'mt-0.5 flex flex-wrap items-baseline gap-x-1 gap-y-0.5',
-                  !isExpanded && 'hidden sm:flex',
-                )}
-              >
-                <span className="text-[9px] text-muted-foreground/60">
-                  Disponible tras pagos en efectivo/débito
-                </span>
-                <span
-                  className={cn(
-                    'font-mono text-[9px] font-semibold tabular-nums',
-                    disponibleAhora >= 0
-                      ? 'text-muted-foreground/80'
-                      : 'text-destructive',
-                  )}
-                >
-                  {formatCurrency(disponibleAhora)}
-                </span>
-              </div>
-            )}
           </div>
 
-          {/* Center: Tras gastos planeados — un solo monto */}
+          {/* Center: restante tras gastos planeados */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border px-1.5 py-1.5 shadow-sm sm:px-2 sm:py-2',
+              'relative overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm',
               trasPagarPlaneado >= 0
                 ? 'border-primary/35 bg-gradient-to-br from-primary/15 via-background to-primary/4 dark:from-primary/22 dark:via-card dark:to-primary/6'
                 : 'border-destructive/35 bg-gradient-to-br from-destructive/12 via-background to-destructive/3 dark:from-destructive/20 dark:via-card dark:to-destructive/5',
               'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:before:via-white/10',
             )}
           >
-            <div className="flex items-center gap-1">
-              <span
-                className={cn(
-                  'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-5 sm:w-5',
-                  trasPagarPlaneado >= 0
-                    ? 'bg-gradient-to-br from-primary/30 to-primary/10 ring-primary/35'
-                    : 'bg-gradient-to-br from-destructive/30 to-destructive/10 ring-destructive/35',
-                )}
-              >
-                <Receipt
-                  className={cn(
-                    'h-2.5 w-2.5',
-                    trasPagarPlaneado >= 0
-                      ? 'text-primary'
-                      : 'text-destructive',
-                  )}
-                  aria-hidden
-                />
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      'min-w-0 truncate text-left text-[10px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[11px]',
-                      trasPagarPlaneado >= 0
-                        ? 'text-primary/85 decoration-primary/30 hover:text-primary'
-                        : 'text-destructive/85 decoration-destructive/30 hover:text-destructive',
-                    )}
-                  >
-                    <span className="sm:hidden">Tras gastos</span>
-                    <span className="hidden sm:inline">Tras gastos planeados</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
-                  {tooltipTrasPagarPlaneado}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <p
+              className={cn(
+                'truncate text-[10px] font-semibold leading-tight sm:text-[11px]',
+                trasPagarPlaneado >= 0
+                  ? 'text-primary/85'
+                  : 'text-destructive/85',
+              )}
+            >
+              Restante
+            </p>
             <p
               className={cn(
                 'mt-0.5 font-mono text-base font-black tabular-nums leading-none tracking-tight sm:text-lg',
@@ -363,42 +277,12 @@ export default function SummaryBlock({
             >
               {formatCurrency(trasPagarPlaneado)}
             </p>
-            {planningCardStatementDue != null && planningCardStatementDue.total > 0 ? (
-              <p
-                className={cn(
-                  'mt-0.5 text-[8px] leading-tight text-muted-foreground/90 sm:text-[9px]',
-                  !isExpanded && 'hidden sm:block',
-                )}
-              >
-                Incluye {formatCurrency(planningCardStatementDue.total)} que aún debes
-                pagar al estado de cuenta
-                {planningCardStatementDue.cardCount > 0
-                  ? ` (${planningCardStatementDue.cardCount} tarjeta${
-                      planningCardStatementDue.cardCount !== 1 ? 's' : ''
-                    })`
-                  : ''}
-                .
-              </p>
-            ) : null}
-            {planningOrphanCardPayments != null && planningOrphanCardPayments.count > 0 ? (
-              <p
-                className={cn(
-                  'mt-0.5 text-[8px] leading-tight text-muted-foreground/90 sm:text-[9px]',
-                  !isExpanded && 'hidden sm:block',
-                )}
-              >
-                Ya incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
-                {planningOrphanCardPayments.count} pago
-                {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
-                (salida de efectivo).
-              </p>
-            ) : null}
           </div>
 
           {/* Right: saldos Efectivo + Débito menos solo lo pendiente (quincena en curso o siguiente) */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border px-1.5 py-1.5 shadow-sm sm:px-2 sm:py-2',
+              'relative overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm',
               billeterasVsPendienteAplica
                 ? displayFundingNet >= 0
                   ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-background to-emerald-500/3 dark:from-emerald-500/16 dark:via-card dark:to-emerald-500/5'
@@ -407,51 +291,18 @@ export default function SummaryBlock({
               'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
             )}
           >
-            <div className="flex items-center gap-1">
-              <span
-                className={cn(
-                  'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 sm:h-5 sm:w-5',
-                  billeterasVsPendienteAplica
-                    ? displayFundingNet >= 0
-                      ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
-                      : 'bg-gradient-to-br from-destructive/30 to-destructive/10 ring-destructive/35'
-                    : 'bg-muted/50 ring-border/60',
-                )}
-              >
-                <Banknote
-                  className={cn(
-                    'h-2.5 w-2.5',
-                    billeterasVsPendienteAplica
-                      ? displayFundingNet >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-destructive'
-                      : 'text-muted-foreground',
-                  )}
-                  aria-hidden
-                />
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      'min-w-0 truncate text-left text-[10px] font-semibold underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[11px]',
-                      billeterasVsPendienteAplica
-                        ? displayFundingNet >= 0
-                          ? 'text-emerald-700/85 decoration-emerald-500/30 hover:text-emerald-700 dark:text-emerald-300/85 dark:hover:text-emerald-200'
-                          : 'text-destructive/85 decoration-destructive/30 hover:text-destructive'
-                        : 'text-muted-foreground decoration-muted-foreground/40',
-                    )}
-                  >
-                    <span className="sm:hidden">Billeteras</span>
-                    <span className="hidden sm:inline">Billeteras vs pendiente</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs text-left text-xs leading-snug">
-                  {tooltipFundingVsPendingEffective}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <p
+              className={cn(
+                'truncate text-[10px] font-semibold leading-tight sm:text-[11px]',
+                billeterasVsPendienteAplica
+                  ? displayFundingNet >= 0
+                    ? 'text-emerald-700/85 dark:text-emerald-300/85'
+                    : 'text-destructive/85'
+                  : 'text-muted-foreground',
+              )}
+            >
+              Saldo real
+            </p>
             <p
               className={cn(
                 'mt-0.5 font-mono text-base font-black tabular-nums leading-none tracking-tight sm:text-lg',
@@ -466,38 +317,6 @@ export default function SummaryBlock({
             </p>
           </div>
         </div>
-
-        {!isExpanded &&
-        ((cardCharges != null && cardCharges.total > 0) ||
-          (planningOrphanCardPayments != null &&
-            planningOrphanCardPayments.count > 0) ||
-          (planningCardStatementDue != null &&
-            planningCardStatementDue.total > 0)) ? (
-          <p className="hidden text-[10px] leading-snug text-muted-foreground sm:block">
-            {planningCardStatementDue != null &&
-            planningCardStatementDue.total > 0 ? (
-              <>
-                “Cuando pagues todo lo planeado” incluye{' '}
-                {formatCurrency(planningCardStatementDue.total)} pendiente de
-                pago a tarjeta (estado de cuenta).{' '}
-              </>
-            ) : null}
-            {planningOrphanCardPayments != null &&
-            planningOrphanCardPayments.count > 0 ? (
-              <>
-                Los pagos a tarjeta ya hechos cuentan en “Disponible tras pagos” y
-                “Cuando pagues todo lo planeado”.{' '}
-              </>
-            ) : null}
-            {cardCharges != null && cardCharges.total > 0 ? (
-              <>
-                Hay {formatCurrency(cardCharges.total)} cargados a tarjeta (no
-                son efectivo hasta pagar el estado de cuenta). Ver desglose
-                arriba.
-              </>
-            ) : null}
-          </p>
-        ) : null}
 
         {isExpanded && (
           <>
