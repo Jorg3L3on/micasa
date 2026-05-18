@@ -132,11 +132,13 @@ export function LiquidityProjectionTab() {
         label: formatMonthLabel(month.month_key),
         income: month.expected_income_total,
         msi: month.msi_debt_total,
+        loans: month.loan_payment_total,
         templates: month.expense_template_total,
         other: month.other_debt_components_total,
         remaining: month.monthly_remaining,
         totalDebt:
           month.msi_debt_total +
+          month.loan_payment_total +
           month.expense_template_total +
           month.other_debt_components_total,
       })),
@@ -145,7 +147,7 @@ export function LiquidityProjectionTab() {
   const modelNotes = useMemo(() => {
     if (!data) return [];
     const notes = [
-      'La fila "Restante" se calcula por mes como: ingreso esperado - (MSI + plantillas + otros cargos).',
+      'La fila "Restante" se calcula por mes como: ingreso esperado - (MSI + préstamos + plantillas + otros cargos).',
       'Las tarjetas se proyectan con cortes y vencimientos reales; no se inventan compras futuras fuera de lo ya registrado.',
       'Neto estático usa solo liquidez actual; neto proyectado suma ingresos esperados hasta el horizonte.',
       'La liquidez actual (efectivo + débito) es una foto de hoy y se mantiene como base para ambos netos.',
@@ -417,6 +419,7 @@ export function LiquidityProjectionTab() {
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
                       <Legend wrapperStyle={{ fontSize: '10px' }} />
                       <Bar dataKey="msi" stackId="debt" name="MSI" fill="#7c3aed" />
+                      <Bar dataKey="loans" stackId="debt" name="Préstamos" fill="#0ea5e9" />
                       <Bar dataKey="templates" stackId="debt" name="Plantillas" fill="#f59e0b" />
                       <Bar dataKey="other" stackId="debt" name="Otros" fill="#ef4444" />
                     </BarChart>
@@ -574,10 +577,11 @@ export function LiquidityProjectionTab() {
               </div>
             </div>
             <div className="overflow-hidden rounded-xl border border-border/40 shadow-sm">
-              <div className="hidden border-b border-border/40 bg-muted/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-6">
+              <div className="hidden border-b border-border/40 bg-muted/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-7">
                 <span>Mes</span>
                 <span className="text-right">Ingreso</span>
                 <span className="text-right">MSI</span>
+                <span className="text-right">Préstamos</span>
                 <span className="text-right">Plantillas</span>
                 <span className="text-right">Otros</span>
                 <span className="text-right">Restante</span>
@@ -585,6 +589,7 @@ export function LiquidityProjectionTab() {
               {data.monthly_series.map((month) => {
                 const noDebt =
                   month.msi_debt_total === 0 &&
+                  month.loan_payment_total === 0 &&
                   month.expense_template_total === 0 &&
                   month.other_debt_components_total === 0;
                 const noIncome = month.expected_income_total === 0;
@@ -596,7 +601,7 @@ export function LiquidityProjectionTab() {
                       month.monthly_remaining < 0 && 'border-l-[3px] border-l-destructive/50',
                     )}
                   >
-                    <div className="grid gap-2 md:grid-cols-6 md:items-center">
+                    <div className="grid gap-2 md:grid-cols-7 md:items-center">
                       <span className="font-semibold">{formatMonthLabel(month.month_key)}</span>
                       <div className="flex items-center justify-between gap-3 md:block md:text-right">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Ingreso</span>
@@ -605,6 +610,10 @@ export function LiquidityProjectionTab() {
                       <div className="flex items-center justify-between gap-3 md:block md:text-right">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">MSI</span>
                         <span className="font-mono tabular-nums">{formatCurrency(month.msi_debt_total)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Préstamos</span>
+                        <span className="font-mono tabular-nums">{formatCurrency(month.loan_payment_total)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3 md:block md:text-right">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Plantillas</span>

@@ -51,6 +51,7 @@ const minimalResult = (): LiquidityProjectionResult => ({
     {
       month_key: '2026-03',
       msi_debt_total: 50,
+      loan_payment_total: 0,
       expected_income_total: 100,
       expense_template_total: 0,
       other_debt_components_total: 0,
@@ -68,7 +69,7 @@ describe('liquidityProjectionToCsv', () => {
   it('writes header and obligation rows', () => {
     const csv = liquidityProjectionToCsv(minimalResult());
     expect(csv).toContain(
-      'due_date,source,wallet_id,wallet_name,amount,statement_start,statement_end,expense_id,template_id,is_estimate,stress_adjustment',
+      'due_date,source,wallet_id,wallet_name,amount,statement_start,statement_end,expense_id,template_id,loan_payment_id,loan_name,is_estimate,stress_adjustment',
     );
     expect(csv).toContain('2026-03-20');
     expect(csv).toContain('credit_card_statement');

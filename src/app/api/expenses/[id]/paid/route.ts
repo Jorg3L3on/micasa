@@ -107,6 +107,21 @@ export async function PATCH(
       error &&
       typeof error === 'object' &&
       'code' in error &&
+      error.code === 'EXPENSE_LOAN_PAYMENT_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se puede cambiar el estado de pago de un gasto generado por un préstamo',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
       (error.code === 'CREDIT_LIMIT_EXCEEDED' ||
         error.code === 'INSUFFICIENT_WALLET_BALANCE')
     ) {

@@ -18,6 +18,7 @@ export type LoanPaymentListItem = {
   paidAt: string | null;
   sourceWalletId: number | null;
   sourceWalletName: string | null;
+  linkedExpenseId: number | null;
   note: string | null;
 };
 
@@ -28,6 +29,7 @@ export type LoanListItem = {
   type: LoanTypeValue;
   status: LoanStatusValue;
   principalAmount: number;
+  totalPayable: number;
   paymentAmount: number;
   paymentCount: number;
   frequency: LoanPaymentFrequencyValue;

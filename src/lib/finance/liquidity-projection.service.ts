@@ -23,7 +23,8 @@ import {
 export type LiquidityObligationSource =
   | 'credit_card_statement'
   | 'unpaid_expense'
-  | 'expense_template';
+  | 'expense_template'
+  | 'loan_payment';
 
 export type LiquidityObligationItem = {
   source: LiquidityObligationSource;
@@ -41,6 +42,11 @@ export type LiquidityObligationItem = {
   expense_description?: string;
   expense_template_id?: number;
   template_name?: string;
+  loan_payment_id?: number;
+  loan_id?: number;
+  loan_name?: string;
+  lender?: string;
+  payment_source?: string;
   is_estimate?: boolean;
   fortnight_id?: number;
 };
@@ -104,6 +110,7 @@ export type GetLiquidityProjectionInput = {
 export type LiquidityMonthlySeriesItem = {
   month_key: string;
   msi_debt_total: number;
+  loan_payment_total: number;
   expected_income_total: number;
   expense_template_total: number;
   other_debt_components_total: number;
@@ -208,37 +215,39 @@ const collectExpectedIncomeByMonth = async (
     },
   });
 
-  if (fortnights.length === 0) {
-    return map;
-  }
-
   const fortnightIds = fortnights.map((f) => f.id);
-  const [registeredIncomes, registeredTemplateIncomes] = await Promise.all([
-    prisma.income.findMany({
-      where: {
-        ...ownerFilter,
-        received_at: {
-          gte: asOf,
-          lte: endOfUtcDay(until),
-        },
-      },
-      select: {
-        amount: true,
-        received_at: true,
-      },
-    }),
-    prisma.income.findMany({
-      where: {
-        ...ownerFilter,
-        fortnight_id: { in: fortnightIds },
-        income_template_id: { not: null },
-      },
-      select: {
-        fortnight_id: true,
-        income_template_id: true,
-      },
-    }),
-  ]);
+  const [registeredIncomes, registeredTemplateIncomes] =
+    fortnights.length > 0
+      ? await Promise.all([
+          prisma.income.findMany({
+            where: {
+              ...ownerFilter,
+              received_at: {
+                gte: asOf,
+                lte: endOfUtcDay(until),
+              },
+            },
+            select: {
+              amount: true,
+              received_at: true,
+            },
+          }),
+          prisma.income.findMany({
+            where: {
+              ...ownerFilter,
+              fortnight_id: { in: fortnightIds },
+              income_template_id: { not: null },
+            },
+            select: {
+              fortnight_id: true,
+              income_template_id: true,
+            },
+          }),
+        ])
+      : [
+          [] as Array<{ amount: unknown; received_at: Date }>,
+          [] as Array<{ fortnight_id: number; income_template_id: number | null }>,
+        ];
 
   for (const income of registeredIncomes) {
     mergeMoneyByMonthKey(
@@ -281,7 +290,87 @@ const collectExpectedIncomeByMonth = async (
     }
   }
 
+  const payrollDeductions = await prisma.loanPayment.findMany({
+    where: {
+      due_date: { gte: asOf, lte: endOfUtcDay(until) },
+      status: 'SCHEDULED',
+      loan: {
+        ...ownerFilter,
+        status: 'ACTIVE',
+        payment_source: 'PAYROLL_DEDUCTION',
+      },
+    },
+    select: {
+      amount: true,
+      due_date: true,
+    },
+  });
+
+  for (const deduction of payrollDeductions) {
+    mergeMoneyByMonthKey(
+      map,
+      toMonthKeyUtc(deduction.due_date),
+      -Number(deduction.amount),
+    );
+  }
+
   return map;
+};
+
+const collectLoanPaymentObligations = async (
+  ownerFilter: OwnerFilter,
+  asOf: Date,
+  until: Date,
+  untilStr: string,
+  omitZero: boolean,
+): Promise<Map<string, LiquidityObligationItem[]>> => {
+  const out = new Map<string, LiquidityObligationItem[]>();
+  const rows = await prisma.loanPayment.findMany({
+    where: {
+      due_date: { gte: asOf, lte: endOfUtcDay(until) },
+      status: 'SCHEDULED',
+      loan: {
+        ...ownerFilter,
+        status: 'ACTIVE',
+        payment_source: 'WALLET',
+      },
+    },
+    include: {
+      source_wallet: { select: { id: true, name: true, type: true } },
+      loan: { select: { id: true, name: true, lender: true, payment_source: true } },
+    },
+    orderBy: [{ due_date: 'asc' }, { sequence: 'asc' }],
+  });
+
+  for (const row of rows) {
+    const dueStr = toUtcDateOnlyString(row.due_date);
+    if (compareUtcDateOnly(dueStr, untilStr) > 0) continue;
+    const amount = Number(row.amount);
+    if (omitZero && amount === 0) continue;
+    const wallet = row.source_wallet;
+    if (!wallet || !isFundingWalletType(wallet.type)) continue;
+
+    const item: LiquidityObligationItem = {
+      source: 'loan_payment',
+      wallet_id: wallet.id,
+      wallet_name: wallet.name,
+      wallet_type: wallet.type,
+      statement_start: '',
+      statement_end: dueStr,
+      statement_due_date: dueStr,
+      last_statement_balance: 0,
+      payments_applied_to_statement: 0,
+      next_due_payment: amount,
+      loan_payment_id: row.id,
+      loan_id: row.loan.id,
+      loan_name: row.loan.name,
+      lender: row.loan.lender,
+      payment_source: row.loan.payment_source,
+    };
+    mergeMilestoneMap(out, dueStr, [item]);
+  }
+
+  return out;
 };
 
 const collectUnpaidFundingObligations = async (
@@ -672,6 +761,15 @@ export const getLiquidityProjection = async (
     mergeAllMilestones(byDueDate, unpaidMap);
   }
 
+  const loanMap = await collectLoanPaymentObligations(
+    input.ownerFilter,
+    asOf,
+    input.until,
+    untilStr,
+    omitZero,
+  );
+  mergeAllMilestones(byDueDate, loanMap);
+
   if (includeTemplates) {
     const tplMap = await collectTemplateObligations(
       input.ownerFilter,
@@ -745,6 +843,7 @@ export const getLiquidityProjection = async (
     string,
     {
       msi_debt_total: number;
+      loan_payment_total: number;
       expense_template_total: number;
       other_debt_components_total: number;
     }
@@ -752,6 +851,7 @@ export const getLiquidityProjection = async (
   for (const key of monthKeys) {
     debtByMonth.set(key, {
       msi_debt_total: 0,
+      loan_payment_total: 0,
       expense_template_total: 0,
       other_debt_components_total: 0,
     });
@@ -766,6 +866,10 @@ export const getLiquidityProjection = async (
         monthRow.msi_debt_total += o.next_due_payment;
         continue;
       }
+      if (o.source === 'loan_payment') {
+        monthRow.loan_payment_total += o.next_due_payment;
+        continue;
+      }
       if (o.source === 'expense_template') {
         monthRow.expense_template_total += o.next_due_payment;
         continue;
@@ -777,6 +881,7 @@ export const getLiquidityProjection = async (
   const monthly_series: LiquidityMonthlySeriesItem[] = monthKeys.map((month_key) => {
     const monthDebt = debtByMonth.get(month_key) ?? {
       msi_debt_total: 0,
+      loan_payment_total: 0,
       expense_template_total: 0,
       other_debt_components_total: 0,
     };
@@ -784,12 +889,14 @@ export const getLiquidityProjection = async (
     const monthly_remaining =
       expected_income_total -
       (monthDebt.msi_debt_total +
+        monthDebt.loan_payment_total +
         monthDebt.expense_template_total +
         monthDebt.other_debt_components_total);
 
     return {
       month_key,
       msi_debt_total: monthDebt.msi_debt_total,
+      loan_payment_total: monthDebt.loan_payment_total,
       expected_income_total,
       expense_template_total: monthDebt.expense_template_total,
       other_debt_components_total: monthDebt.other_debt_components_total,

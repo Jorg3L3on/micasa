@@ -281,6 +281,7 @@ model Expense {
   fortnight_id        Int
   category_id         Int?
   expense_template_id Int?
+  loan_payment_id     Int? @unique
   user_id             Int?
   wallet_id           Int?
 
@@ -292,6 +293,7 @@ model Expense {
   wallet           Wallet?          @relation(fields: [wallet_id], references: [id])
   category         Category?        @relation(fields: [category_id], references: [id])
   expense_template ExpenseTemplate? @relation(fields: [expense_template_id], references: [id])
+  loan_payment     LoanPayment?     @relation("LoanPaymentExpense", fields: [loan_payment_id], references: [id], onDelete: SetNull)
   house            House?           @relation(fields: [house_id], references: [id])
 
   statement_import_id Int?
@@ -308,6 +310,7 @@ model Expense {
   @@index([fortnight_id])
   @@index([wallet_id])
   @@index([expense_template_id])
+  @@index([loan_payment_id])
   @@index([statement_import_id])
 }
 
@@ -619,6 +622,7 @@ model LoanPayment {
 
   loan          Loan    @relation(fields: [loan_id], references: [id], onDelete: Cascade)
   source_wallet Wallet? @relation("LoanPaymentSourceWallet", fields: [source_wallet_id], references: [id])
+  linked_expense Expense? @relation("LoanPaymentExpense")
 
   @@unique([loan_id, sequence])
   @@index([loan_id])

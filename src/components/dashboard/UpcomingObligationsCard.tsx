@@ -13,6 +13,7 @@ import { Check, ListTodo } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { updateExpensePaidStatus } from '@/lib/api/transactions';
+import { updateLoanPaymentStatus } from '@/lib/api/loans';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
@@ -37,11 +38,26 @@ export default function UpcomingObligationsCard({
 
   const totalPendiente = obligations.reduce((sum, ob) => sum + ob.amount, 0);
 
-  const handleMarkPaid = async (e: React.MouseEvent, id: number) => {
+  const handleMarkPaid = async (
+    e: React.MouseEvent,
+    obligation: DashboardData['upcomingObligations'][number],
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      await updateExpensePaidStatus(id, true, context);
+      if (obligation.source === 'loan_payment') {
+        await updateLoanPaymentStatus(
+          obligation.id,
+          {
+            status: 'PAID',
+            paidAt: obligation.dueDate,
+            sourceWalletId: obligation.sourceWalletId,
+          },
+          context,
+        );
+      } else {
+        await updateExpensePaidStatus(obligation.id, true, context);
+      }
       router.refresh();
     } catch (err) {
       console.error('Failed to mark as paid:', err);
@@ -91,7 +107,7 @@ export default function UpcomingObligationsCard({
                     const overdue = isOverdue(ob.dueDate);
                     return (
                       <li
-                        key={ob.id}
+                        key={`${ob.source}-${ob.id}`}
                         className={cn(
                           'flex items-center justify-between rounded-md border border-transparent border-l-[3px] px-2 py-1 -mx-1 transition-colors hover:bg-muted/40',
                           overdue && 'border-l-destructive/50',
@@ -119,7 +135,7 @@ export default function UpcomingObligationsCard({
                               <Button
                                 variant="ghost"
                                 size="icon-xs"
-                                onClick={(e) => handleMarkPaid(e, ob.id)}
+                                onClick={(e) => handleMarkPaid(e, ob)}
                                 aria-label={`Marcar ${ob.description} como pagado`}
                               >
                                 <Check

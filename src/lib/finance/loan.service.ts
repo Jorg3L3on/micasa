@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { CreateLoanInput, UpdateLoanPaymentInput } from '@/schemas/loan.schema';
 import {
@@ -7,7 +8,14 @@ import {
   generateLoanPaymentSchedule,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
-import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
+import {
+  applyWalletAmountDelta,
+  getPaidExpenseWalletDelta,
+  isFundingWalletType,
+} from '@/lib/finance/wallet-accounting';
+import { createExpenseInTransaction } from '@/lib/finance/expense.service';
+import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
 import type {
   LoanDuePaymentItem,
   LoanListItem,
@@ -32,6 +40,15 @@ function ownerData(ownerType: 'user' | 'house', ownerId: number) {
   return ownerType === 'user'
     ? { user_id: ownerId, house_id: null }
     : { user_id: null, house_id: ownerId };
+}
+
+function ownerFromFilter(ownerFilter: OwnerFilter): {
+  ownerType: 'user' | 'house';
+  ownerId: number;
+} {
+  return ownerFilter.user_id != null
+    ? { ownerType: 'user', ownerId: ownerFilter.user_id }
+    : { ownerType: 'house', ownerId: ownerFilter.house_id };
 }
 
 async function assertOwnedWallet(
@@ -90,6 +107,7 @@ function mapPayment(
     paid_at: Date | null;
     source_wallet_id: number | null;
     source_wallet?: { name: string } | null;
+    linked_expense?: { id: number } | null;
     note: string | null;
   },
 ): LoanPaymentListItem {
@@ -103,6 +121,7 @@ function mapPayment(
     paidAt: payment.paid_at ? formatDateYmd(payment.paid_at) : null,
     sourceWalletId: payment.source_wallet_id,
     sourceWalletName: payment.source_wallet?.name ?? null,
+    linkedExpenseId: payment.linked_expense?.id ?? null,
     note: payment.note,
   };
 }
@@ -170,10 +189,93 @@ const loanInclude = {
   linked_wallet: { select: { name: true } },
   income_template: { select: { name: true } },
   payments: {
-    include: { source_wallet: { select: { name: true } } },
+    include: {
+      source_wallet: { select: { name: true } },
+      linked_expense: { select: { id: true } },
+    },
     orderBy: { sequence: 'asc' as const },
   },
 };
+
+async function ensureLoanPaymentCategory(
+  tx: Prisma.TransactionClient,
+  ownerFilter: OwnerFilter,
+) {
+  const existing = await tx.category.findFirst({
+    where: { ...ownerFilter, name: 'Pago de préstamos' },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await tx.category.create({
+    data: {
+      ...ownerFilter,
+      name: 'Pago de préstamos',
+      description: 'Pagos generados desde préstamos',
+      icon: '🏦',
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+async function reverseAndDeleteLoanPaymentExpense(
+  tx: Prisma.TransactionClient,
+  expense: {
+    id: number;
+    wallet_id: number | null;
+    amount: unknown;
+    is_paid: boolean;
+    wallet: { type: PaymentMethodType } | null;
+  },
+) {
+  if (expense.is_paid && expense.wallet_id != null && expense.wallet != null) {
+    await applyWalletAmountDelta(
+      tx,
+      expense.wallet_id,
+      -getPaidExpenseWalletDelta(expense.wallet.type, Number(expense.amount)),
+    );
+  }
+
+  await tx.expense.delete({ where: { id: expense.id } });
+}
+
+async function createLinkedLoanPaymentExpense(input: {
+  tx: Prisma.TransactionClient;
+  ownerFilter: OwnerFilter;
+  paymentId: number;
+  paidAt: Date;
+  amount: number;
+  sourceWalletId: number;
+  loanName: string;
+  lender: string;
+}) {
+  const { ownerType, ownerId } = ownerFromFilter(input.ownerFilter);
+  const year = input.paidAt.getUTCFullYear();
+  const month = input.paidAt.getUTCMonth() + 1;
+  const day = input.paidAt.getUTCDate();
+  const period = getFortnightPeriodForDay(day);
+  const fortnight = await resolveOrCreateFortnight({
+    ownerType,
+    ownerId,
+    year,
+    month,
+    period,
+    tx: input.tx,
+  });
+  const categoryId = await ensureLoanPaymentCategory(input.tx, input.ownerFilter);
+
+  return createExpenseInTransaction(input.tx, {
+    fortnightId: fortnight.id,
+    categoryId,
+    description: `Pago préstamo: ${input.loanName} (${input.lender})`,
+    amount: input.amount,
+    isPaid: true,
+    paymentDate: formatDateYmd(input.paidAt),
+    walletId: input.sourceWalletId,
+    loanPaymentId: input.paymentId,
+  });
+}
 
 export async function listLoansByOwner(
   ownerFilter: OwnerFilter,
@@ -252,7 +354,25 @@ export async function updateLoanPaymentForOwner(
   return prisma.$transaction(async (tx) => {
     const existing = await tx.loanPayment.findFirst({
       where: { id: paymentId, loan: ownerFilter },
-      include: { loan: { select: { id: true, payment_source: true } } },
+      include: {
+        linked_expense: {
+          select: {
+            id: true,
+            wallet_id: true,
+            amount: true,
+            is_paid: true,
+            wallet: { select: { type: true } },
+          },
+        },
+        loan: {
+          select: {
+            id: true,
+            name: true,
+            lender: true,
+            payment_source: true,
+          },
+        },
+      },
     });
     if (!existing) {
       throw new Error('Pago de prestamo no encontrado');
@@ -262,28 +382,43 @@ export async function updateLoanPaymentForOwner(
     const amount = decimalToNumber(existing.amount);
     const wasPaid = existing.status === 'PAID';
     const willBePaid = input.status === 'PAID';
+    const paidAt =
+      input.status === 'PAID'
+        ? parseYmdAsUtcDate(input.paidAt ?? formatDateYmd(new Date()))
+        : null;
+
+    if (wasPaid && existing.linked_expense) {
+      await reverseAndDeleteLoanPaymentExpense(tx, existing.linked_expense);
+    } else if (
+      wasPaid &&
+      existing.loan.payment_source === 'WALLET' &&
+      existing.source_wallet_id
+    ) {
+      await tx.wallet.update({
+        where: { id: existing.source_wallet_id },
+        data: { amount: { increment: amount } },
+      });
+    }
 
     if (existing.loan.payment_source === 'WALLET') {
       if (willBePaid && !nextSourceWalletId) {
         throw new Error('Selecciona la billetera que paga el prestamo');
       }
 
-      if (wasPaid && existing.source_wallet_id) {
-        await applyWalletAmountDelta(tx, existing.source_wallet_id, amount);
-      }
-
       if (willBePaid && nextSourceWalletId) {
         const sourceWallet = await tx.wallet.findFirst({
           where: { id: nextSourceWalletId, ...ownerFilter },
-          select: { id: true, amount: true },
+          select: { id: true, amount: true, type: true },
         });
         if (!sourceWallet) {
           throw new Error('Billetera de origen no encontrada');
         }
+        if (!isFundingWalletType(sourceWallet.type)) {
+          throw new Error('El prestamo debe pagarse desde efectivo o debito');
+        }
         if (decimalToNumber(sourceWallet.amount) < amount) {
           throw new Error('Saldo insuficiente en la billetera de origen');
         }
-        await applyWalletAmountDelta(tx, nextSourceWalletId, -amount);
       }
     }
 
@@ -291,15 +426,34 @@ export async function updateLoanPaymentForOwner(
       where: { id: paymentId },
       data: {
         status: input.status,
-        paid_at:
-          input.status === 'PAID'
-            ? parseYmdAsUtcDate(input.paidAt ?? formatDateYmd(new Date()))
-            : null,
+        paid_at: paidAt,
         source_wallet_id: nextSourceWalletId,
         note: input.note ?? null,
       },
-      include: { source_wallet: { select: { name: true } } },
+      include: {
+        source_wallet: { select: { name: true } },
+        linked_expense: { select: { id: true } },
+      },
     });
+
+    let linkedExpense: { id: number } | null = null;
+    if (
+      willBePaid &&
+      paidAt != null &&
+      existing.loan.payment_source === 'WALLET' &&
+      nextSourceWalletId
+    ) {
+      linkedExpense = await createLinkedLoanPaymentExpense({
+        tx,
+        ownerFilter,
+        paymentId,
+        paidAt,
+        amount,
+        sourceWalletId: nextSourceWalletId,
+        loanName: existing.loan.name,
+        lender: existing.loan.lender,
+      });
+    }
 
     const remainingScheduled = await tx.loanPayment.count({
       where: { loan_id: existing.loan.id, status: 'SCHEDULED' },
@@ -309,7 +463,10 @@ export async function updateLoanPaymentForOwner(
       data: { status: remainingScheduled === 0 ? 'PAID_OFF' : 'ACTIVE' },
     });
 
-    return mapPayment(payment);
+    return mapPayment({
+      ...payment,
+      linked_expense: linkedExpense ?? payment.linked_expense,
+    });
   });
 }
 
@@ -327,6 +484,7 @@ export async function listLoanPaymentsForPlannerMonth(
     },
     include: {
       source_wallet: { select: { name: true } },
+      linked_expense: { select: { id: true } },
       loan: {
         include: {
           linked_wallet: { select: { name: true } },
@@ -358,5 +516,134 @@ export async function listLoanPaymentsForPlannerMonth(
       const day = Number(payment.dueDate.slice(8, 10));
       return day >= 16;
     }),
+  };
+}
+
+type PlanningFortnightLike = {
+  id: number;
+  start_date: Date;
+  end_date: Date;
+};
+
+export type LoanPlanningPayment = {
+  id: number;
+  loanId: number;
+  loanName: string;
+  lender: string;
+  amount: number;
+  dueDate: string;
+  paidAt: string | null;
+  status: LoanPaymentListItem['status'];
+  paymentSource: LoanDuePaymentItem['paymentSource'];
+  sourceWalletId: number | null;
+  sourceWalletName: string | null;
+  linkedExpenseId: number | null;
+};
+
+export type LoanPlanningAggregate = {
+  total: number;
+  paidTotal: number;
+  pendingTotal: number;
+  count: number;
+  pendingCount: number;
+  payments: LoanPlanningPayment[];
+  upcoming: LoanPlanningPayment[];
+};
+
+function containsDate(fortnights: PlanningFortnightLike[], value: Date) {
+  const ts = value.getTime();
+  return fortnights.some(
+    (fortnight) =>
+      ts >= fortnight.start_date.getTime() && ts <= fortnight.end_date.getTime(),
+  );
+}
+
+export async function aggregateLoanPaymentsForFortnights(
+  ownerFilter: OwnerFilter,
+  fortnights: PlanningFortnightLike[],
+): Promise<LoanPlanningAggregate> {
+  if (fortnights.length === 0) {
+    return {
+      total: 0,
+      paidTotal: 0,
+      pendingTotal: 0,
+      count: 0,
+      pendingCount: 0,
+      payments: [],
+      upcoming: [],
+    };
+  }
+
+  const from = new Date(
+    Math.min(...fortnights.map((fortnight) => fortnight.start_date.getTime())),
+  );
+  const to = new Date(
+    Math.max(...fortnights.map((fortnight) => fortnight.end_date.getTime())),
+  );
+
+  const rows = await prisma.loanPayment.findMany({
+    where: {
+      due_date: { gte: from, lte: to },
+      status: { in: ['SCHEDULED', 'PAID'] },
+      loan: { ...ownerFilter, status: { in: ['ACTIVE', 'PAID_OFF'] } },
+    },
+    include: {
+      source_wallet: { select: { name: true } },
+      linked_expense: { select: { id: true } },
+      loan: {
+        select: {
+          id: true,
+          name: true,
+          lender: true,
+          payment_source: true,
+        },
+      },
+    },
+    orderBy: [{ due_date: 'asc' }, { sequence: 'asc' }],
+  });
+
+  const payments = rows
+    .filter((row) => containsDate(fortnights, row.due_date))
+    .map((row): LoanPlanningPayment => {
+      const mapped = mapPayment(row);
+      return {
+        id: mapped.id,
+        loanId: row.loan.id,
+        loanName: row.loan.name,
+        lender: row.loan.lender,
+        amount: mapped.amount,
+        dueDate: mapped.dueDate,
+        paidAt: mapped.paidAt,
+        status: mapped.status,
+        paymentSource: row.loan.payment_source as LoanDuePaymentItem['paymentSource'],
+        sourceWalletId: mapped.sourceWalletId,
+        sourceWalletName: mapped.sourceWalletName,
+        linkedExpenseId: mapped.linkedExpenseId,
+      };
+    });
+
+  const shouldAddToDashboardTotals = (payment: LoanPlanningPayment) =>
+    payment.status === 'SCHEDULED' || payment.linkedExpenseId == null;
+
+  const total = payments
+    .filter(shouldAddToDashboardTotals)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const paidTotal = payments
+    .filter(
+      (payment) =>
+        payment.status === 'PAID' && shouldAddToDashboardTotals(payment),
+    )
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const upcoming = payments.filter((payment) => payment.status === 'SCHEDULED');
+  const pendingTotal = upcoming.reduce((sum, payment) => sum + payment.amount, 0);
+
+  return {
+    total,
+    paidTotal,
+    pendingTotal,
+    count: payments.length,
+    pendingCount: upcoming.length,
+    payments,
+    upcoming,
   };
 }

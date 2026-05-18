@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Activity, Receipt, TrendingUp } from 'lucide-react';
+import { Activity, HandCoins, Receipt, TrendingUp } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS } from './constants';
@@ -12,6 +12,7 @@ type RecentActivityCardProps = {
 const typeLabel = (type: string): string => {
   if (type === 'expense_added') return 'Gasto agregado';
   if (type === 'income_added') return 'Ingreso agregado';
+  if (type === 'loan_payment_paid') return 'Pago de préstamo';
   return type;
 };
 
@@ -56,6 +57,10 @@ export default function RecentActivityCard({ data }: RecentActivityCardProps) {
                     {act.type === 'expense_added' ? (
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
                         <Receipt className="h-3 w-3 text-violet-600 dark:text-violet-400" aria-hidden />
+                      </span>
+                    ) : act.type === 'loan_payment_paid' ? (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15">
+                        <HandCoins className="h-3 w-3 text-amber-600 dark:text-amber-400" aria-hidden />
                       </span>
                     ) : (
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">

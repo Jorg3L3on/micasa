@@ -400,6 +400,7 @@ export async function PUT(request: NextRequest) {
       where: { id: Number(id), ...ownerFilter },
       include: {
         transferAsUser: { select: { id: true } },
+        loan_payment: { select: { id: true } },
       },
     });
 
@@ -415,6 +416,16 @@ export async function PUT(request: NextRequest) {
         {
           error:
             'No se pueden actualizar gastos generados automáticamente por transferencias',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (existing.loan_payment != null) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden actualizar gastos generados automáticamente por pagos de préstamos',
         },
         { status: 400 },
       );
@@ -563,6 +574,7 @@ export async function DELETE(request: NextRequest) {
         amount: true,
         is_paid: true,
         transferAsUser: { select: { id: true } },
+        loan_payment: { select: { id: true } },
       },
     });
 
@@ -578,6 +590,16 @@ export async function DELETE(request: NextRequest) {
         {
           error:
             'No se pueden eliminar gastos generados automáticamente por transferencias',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (existing.loan_payment != null) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden eliminar gastos generados automáticamente por pagos de préstamos',
         },
         { status: 400 },
       );
@@ -599,6 +621,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
+      );
+    }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'EXPENSE_LOAN_PAYMENT_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden modificar gastos generados automáticamente por pagos de préstamos',
+        },
+        { status: 400 },
       );
     }
     console.error('Error deleting transaction:', error);
