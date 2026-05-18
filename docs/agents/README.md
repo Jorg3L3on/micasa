@@ -8,6 +8,8 @@
 | [triage-labels.md](./triage-labels.md) | Labels |
 | [domain.md](./domain.md) | Micasa glossary & checks |
 
+Finance deep-dives (humans): [`../finance-architecture.md`](../finance-architecture.md), [`../finance-invariants.md`](../finance-invariants.md).
+
 ```bash
 bash scripts/create-github-labels.sh   # once, after gh auth login
 ```

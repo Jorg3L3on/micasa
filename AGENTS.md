@@ -67,13 +67,14 @@ src/
       house-users/       # Household member management
       income-templates/  # Recurring income templates
       monthly/           # Monthly summary view
+      loans/             # Loan tracking and schedules
       pantry/            # Pantry / grocery tracking
       transactions/      # Transaction log
       wallets/           # Wallet management
     api/                 # REST API route handlers
       account/ auth/ budgets/ categories/ credit-cards/
       dashboard/ expense-templates/ expenses/ fortnights/
-      house-users/ houses/ income-templates/ incomes/
+      house-users/ houses/ income-templates/ incomes/ loans/
       onboarding/ pantry/ reports/ transactions/ transfers/ users/ wallets/
   components/            # React components; ui/ contains Radix UI primitives
   context/               # finance-context.tsx — active owner context (user vs house)
@@ -111,13 +112,18 @@ src/
   types/                 # TypeScript types/DTOs
   generated/prisma/      # Auto-generated Prisma client (do not edit)
 prisma/
-  schema.prisma          # 545 lines, 18 models (see below)
+  schema.prisma          # ~31 models (see below)
   migrations/
   seed.ts
 ```
 
-### Prisma Models
-`Budget`, `BudgetAllocation`, `Category`, `CreditCardPayment`, `CreditCardStatementImport`, `Expense`, `ExpenseTemplate`, `Fortnight`, `House`, `HouseMember`, `Income`, `IncomeTemplate`, `PantryProduct`, `PantryReceipt`, `PantryReceiptLine`, `Transfer`, `User`, `Wallet`
+### Prisma Models (31)
+**Auth & household:** `User`, `House`, `HouseMember`  
+**Planning:** `Fortnight`, `Category`, `Expense`, `ExpenseTemplate`, `Income`, `IncomeTemplate`, `Budget`, `BudgetPeriod`, `BudgetAllocation`, `Transfer`  
+**Wallets & cards:** `Wallet`, `CreditCardPayment`, `CreditCardStatementImport`  
+**Loans:** `Loan`, `LoanPayment`  
+**Pantry:** `PantryReceipt`, `PantryReceiptLine`, `PantryProduct`, `PantryShoppingCart`, `PantryShoppingCartItem`, `PantryShoppingCartActivity`  
+**Tasks:** `TaskList`, `TaskItem`, `Habit`, `HabitLog`, `Routine`, `RoutineStep`, `RoutineRun`
 
 ### Prisma Client
 Generated to `src/generated/prisma` (not the default location). Always import from there or use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). After schema changes, run `npx prisma generate`.
@@ -152,11 +158,14 @@ TransferType:       USER_TO_HOUSE
 BudgetFrequency:    DAILY | WEEKLY | BIWEEKLY | CUSTOM
 ```
 
+### Loans
+`Loan` and `LoanPayment` track household debts with generated schedules (`loan-schedule.ts`, `loan.service.ts`). Wallet-paid installments can link to an `Expense` via `loan_payment_id`. Surfaces: `/loans`, fortnight planner panel, dashboard obligations, liquidity projection, transactions. API: `/api/loans`, `/api/loans/planner`, `/api/loans/payments/[id]`.
+
 ### Liquidity Projection
-`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, and wallet balances. Surfaced in the dashboard via `LiquidityTeaserCard` and the `/api/wallets/liquidity-projection` endpoint.
+`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, **scheduled loan payments**, and wallet balances. Surfaced in the dashboard via `LiquidityTeaserCard` and the `/api/wallets/liquidity-projection` endpoint.
 
 ### Credit Card Statement Import
-Supports importing CSV/PDF statements from three issuers: **Mercado Pago**, **CA Departamental**, and **CA Efectivo**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.
+Supports importing CSV/PDF statements from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, and **DiDi Card**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.
 
 ### Auth
 NextAuth is configured in `src/lib/auth.ts`. Session includes `userId`. Protected routes use middleware or layout-level session checks. The onboarding flow (`/onboarding`) runs once after registration.
