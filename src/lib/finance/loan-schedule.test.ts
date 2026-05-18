@@ -63,10 +63,25 @@ describe('loan schedule', () => {
     });
 
     expect(progress).toEqual({
+      totalPayable: 1500,
       paidAmount: 1000,
-      remainingAmount: 1000,
+      remainingAmount: 500,
       paidPayments: 2,
       remainingPayments: 1,
     });
+  });
+
+  it('uses scheduled payable amount instead of principal for interest-bearing loans', () => {
+    const progress = calculateLoanProgress({
+      principalAmount: 2000,
+      payments: [
+        { amount: 700, status: 'PAID' },
+        { amount: 700, status: 'PAID' },
+        { amount: 700, status: 'SCHEDULED' },
+      ],
+    });
+
+    expect(progress.totalPayable).toBe(2100);
+    expect(progress.remainingAmount).toBe(700);
   });
 });

@@ -262,7 +262,8 @@ export type PlannerDuePaymentsResponse = {
 export type LiquidityProjectionObligationSource =
   | 'credit_card_statement'
   | 'unpaid_expense'
-  | 'expense_template';
+  | 'expense_template'
+  | 'loan_payment';
 
 /** Respuesta de GET /api/wallets/liquidity-projection */
 export type LiquidityProjectionObligationItem = {
@@ -281,6 +282,11 @@ export type LiquidityProjectionObligationItem = {
   expense_description?: string;
   expense_template_id?: number;
   template_name?: string;
+  loan_payment_id?: number;
+  loan_id?: number;
+  loan_name?: string;
+  lender?: string;
+  payment_source?: string;
   is_estimate?: boolean;
   fortnight_id?: number;
 };
@@ -316,6 +322,7 @@ export type LiquidityProjectionOptionsEcho = {
 export type LiquidityMonthlySeriesItem = {
   month_key: string;
   msi_debt_total: number;
+  loan_payment_total: number;
   expected_income_total: number;
   expense_template_total: number;
   other_debt_components_total: number;

@@ -31,7 +31,13 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
     listLoans(context)
       .then((items) => {
         if (cancelled) return;
-        setLoans(items.filter((loan) => loan.linkedWalletId === walletId));
+        setLoans(
+          items.filter(
+            (loan) =>
+              loan.linkedWalletId === walletId ||
+              loan.sourceWalletId === walletId,
+          ),
+        );
       })
       .catch(() => {
         if (!cancelled) setLoans([]);
@@ -50,7 +56,7 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
           <HandCoins className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
         </span>
         <CardTitle className="text-sm font-semibold">
-          Prestamos vinculados
+          Prestamos relacionados
         </CardTitle>
         <Badge variant="secondary" className="ml-auto text-[10px] tabular-nums">
           {loans.length}
@@ -76,6 +82,11 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
                     {loan.nextPayment
                       ? ` · Proximo ${formatDate(loan.nextPayment.dueDate)}`
                       : ''}
+                    {loan.sourceWalletId === walletId
+                      ? ' · Se paga desde esta billetera'
+                      : loan.linkedWalletId === walletId
+                        ? ' · Cuenta vinculada'
+                        : ''}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

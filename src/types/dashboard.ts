@@ -37,8 +37,17 @@ export type DashboardData = {
     total: number;
     cardCount: number;
   } | null;
+  /** Pagos de préstamos incluidos en planificación del periodo. */
+  planningLoanPayments?: {
+    total: number;
+    paidTotal: number;
+    pendingTotal: number;
+    count: number;
+    pendingCount: number;
+  } | null;
   upcomingObligations: Array<{
     id: number;
+    source: 'expense' | 'loan_payment';
     description: string;
     amount: number;
     is_paid: boolean;
@@ -46,10 +55,14 @@ export type DashboardData = {
     dueDay: number;
     category: string;
     categoryIcon: string | null;
+    loanName?: string;
+    lender?: string;
+    paymentSource?: 'WALLET' | 'PAYROLL_DEDUCTION';
+    sourceWalletId?: number | null;
   }>;
   recentActivity: Array<{
     id: string;
-    type: 'expense_added' | 'income_added';
+    type: 'expense_added' | 'income_added' | 'loan_payment_paid';
     description: string;
     amount: number;
     timestamp: string;

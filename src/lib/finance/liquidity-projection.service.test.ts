@@ -9,6 +9,7 @@ const {
   findManyExpenseTemplate,
   findManyIncome,
   findManyIncomeTemplate,
+  findManyLoanPayment,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
@@ -17,6 +18,7 @@ const {
   findManyExpenseTemplate: vi.fn(),
   findManyIncome: vi.fn(),
   findManyIncomeTemplate: vi.fn(),
+  findManyLoanPayment: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -28,6 +30,7 @@ vi.mock('@/lib/prisma', () => ({
     expenseTemplate: { findMany: findManyExpenseTemplate },
     income: { findMany: findManyIncome },
     incomeTemplate: { findMany: findManyIncomeTemplate },
+    loanPayment: { findMany: findManyLoanPayment },
   },
 }));
 
@@ -79,9 +82,11 @@ describe('getLiquidityProjection', () => {
     findManyExpenseTemplate.mockReset();
     findManyIncome.mockReset();
     findManyIncomeTemplate.mockReset();
+    findManyLoanPayment.mockReset();
     findManyFortnight.mockResolvedValue([]);
     findManyIncome.mockResolvedValue([]);
     findManyIncomeTemplate.mockResolvedValue([]);
+    findManyLoanPayment.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -255,6 +260,77 @@ describe('getLiquidityProjection', () => {
       next_due_payment: 199,
       is_estimate: true,
       expense_template_id: 1,
+    });
+  });
+
+  it('adds scheduled wallet loan payments to obligations', async () => {
+    setupWalletMock([fundingRow], []);
+    findManyExpense.mockResolvedValue([]);
+    findManyLoanPayment
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 22,
+          amount: '150',
+          due_date: new Date(Date.UTC(2026, 3, 10, 12, 0, 0)),
+          source_wallet: {
+            id: 10,
+            name: 'Efectivo',
+            type: PaymentMethodType.CASH,
+          },
+          loan: {
+            id: 5,
+            name: 'Prestamo DiDi',
+            lender: 'DiDi',
+            payment_source: 'WALLET',
+          },
+        },
+      ]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 8, 1)),
+      includeUnpaidExpenses: false,
+    });
+
+    const loan = result.milestones
+      .flatMap((m) => m.obligations)
+      .find((o) => o.source === 'loan_payment');
+
+    expect(loan).toMatchObject({
+      loan_payment_id: 22,
+      loan_name: 'Prestamo DiDi',
+      next_due_payment: 150,
+      wallet_id: 10,
+    });
+    expect(result.summary.total_obligations_due_on_or_before_until).toBe(150);
+    expect(result.monthly_series.find((m) => m.month_key === '2026-04')).toMatchObject({
+      loan_payment_total: 150,
+    });
+  });
+
+  it('subtracts scheduled payroll loan deductions from expected income', async () => {
+    setupWalletMock([], []);
+    findManyFortnight.mockResolvedValue([]);
+    findManyIncome.mockResolvedValue([]);
+    findManyLoanPayment
+      .mockResolvedValueOnce([
+        {
+          amount: '250',
+          due_date: new Date(Date.UTC(2026, 3, 15, 12, 0, 0)),
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 3, 30)),
+      includeUnpaidExpenses: false,
+    });
+
+    expect(result.summary.expected_income_total_on_or_before_until).toBe(-250);
+    expect(result.monthly_series.find((m) => m.month_key === '2026-04')).toMatchObject({
+      expected_income_total: -250,
     });
   });
 

@@ -9,6 +9,7 @@ import {
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
 import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
+import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
 
 type PeriodView = 'month' | 'biweekly';
 type DashboardAlertTarget = {
@@ -24,6 +25,22 @@ type DashboardAlert = {
   severity: 'error' | 'warning' | 'info';
   target: DashboardAlertTarget;
   fingerprint: string;
+};
+
+type DashboardUpcomingObligation = {
+  id: number;
+  source: 'expense' | 'loan_payment';
+  description: string;
+  amount: number;
+  is_paid: boolean;
+  dueDate: string;
+  dueDay: number;
+  category: string;
+  categoryIcon: string | null;
+  loanName?: string;
+  lender?: string;
+  paymentSource?: 'WALLET' | 'PAYROLL_DEDUCTION';
+  sourceWalletId?: number | null;
 };
 
 const MIN_ALERTABLE_AMOUNT = 0.005;
@@ -153,6 +170,8 @@ export async function GET(request: NextRequest) {
       cardDueCurrent,
       cardDuePrev,
       dashboardWalletSnapshot,
+      loanPayCurrent,
+      loanPayPrev,
     ] = await Promise.all([
       prisma.expense.findMany({
         where: expenseWhereCurrent,
@@ -243,6 +262,8 @@ export async function GET(request: NextRequest) {
           type: true,
         },
       }),
+      aggregateLoanPaymentsForFortnights(ownerFilter, fortnightsCurrent),
+      aggregateLoanPaymentsForFortnights(ownerFilter, fortnightsPrev),
     ]);
 
     const overrideIncome = incomeCurrent.find(
@@ -264,11 +285,17 @@ export async function GET(request: NextRequest) {
     if (cardDueCurrent.total > 0) {
       totalExpenseCurrent += cardDueCurrent.total;
     }
+    if (loanPayCurrent.total > 0) {
+      totalExpenseCurrent += loanPayCurrent.total;
+    }
     let totalPaidCurrent = expensesCurrent
       .filter((e) => e.is_paid)
       .reduce((s, e) => s + Number(e.amount), 0);
     if (orphanPayCurrent.count > 0) {
       totalPaidCurrent += orphanPayCurrent.total;
+    }
+    if (loanPayCurrent.paidTotal > 0) {
+      totalPaidCurrent += loanPayCurrent.paidTotal;
     }
     const totalUnpaidCurrent = totalExpenseCurrent - totalPaidCurrent;
     const balanceCurrent = totalIncomeCurrent - totalExpenseCurrent;
@@ -314,6 +341,9 @@ export async function GET(request: NextRequest) {
     }
     if (cardDuePrev.total > 0) {
       totalExpensePrev += cardDuePrev.total;
+    }
+    if (loanPayPrev.total > 0) {
+      totalExpensePrev += loanPayPrev.total;
     }
 
     const userIncomeMap: Record<number, { name: string; amount: number }> = {};
@@ -369,8 +399,27 @@ export async function GET(request: NextRequest) {
     }>;
 
     upcomingWithDue.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    const upcomingObligations = upcomingWithDue
+    const expenseObligations: DashboardUpcomingObligation[] = upcomingWithDue
       .filter((o) => !o.is_paid)
+      .map((o) => ({ ...o, source: 'expense' as const }));
+    const loanObligations: DashboardUpcomingObligation[] =
+      loanPayCurrent.upcoming.map((payment) => ({
+        id: payment.id,
+        source: 'loan_payment' as const,
+        description: `Pago préstamo: ${payment.loanName}`,
+        amount: payment.amount,
+        is_paid: false,
+        dueDate: payment.dueDate,
+        dueDay: Number(payment.dueDate.slice(8, 10)),
+        category: payment.lender,
+        categoryIcon: '🏦',
+        loanName: payment.loanName,
+        lender: payment.lender,
+        paymentSource: payment.paymentSource,
+        sourceWalletId: payment.sourceWalletId,
+      }));
+    const upcomingObligations = [...expenseObligations, ...loanObligations]
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
       .slice(0, 5);
 
     const recentExpenses = await prisma.expense.findMany({
@@ -391,6 +440,18 @@ export async function GET(request: NextRequest) {
         fortnight: { select: { label: true } },
       },
     });
+    const recentLoanPayments = await prisma.loanPayment.findMany({
+      where: {
+        status: 'PAID',
+        paid_at: { not: null },
+        loan: ownerFilter,
+      },
+      take: 10,
+      orderBy: { updated_at: 'desc' },
+      include: {
+        loan: { select: { name: true, lender: true } },
+      },
+    });
     const recentActivity = [
       ...recentExpenses.map((e) => ({
         id: `exp-${e.id}`,
@@ -409,6 +470,15 @@ export async function GET(request: NextRequest) {
         timestamp: i.created_at.toISOString(),
         user: i.user?.name ?? null,
         meta: i.fortnight?.label ?? '',
+      })),
+      ...recentLoanPayments.map((payment) => ({
+        id: `loan-${payment.id}`,
+        type: 'loan_payment_paid' as const,
+        description: payment.loan.name,
+        amount: Number(payment.amount),
+        timestamp: (payment.paid_at ?? payment.updated_at).toISOString(),
+        user: null as string | null,
+        meta: payment.loan.lender,
       })),
     ]
       .sort(
@@ -436,10 +506,16 @@ export async function GET(request: NextRequest) {
       d.setHours(0, 0, 0, 0);
       return d < today;
     });
+    const overdueLoanPayments = loanPayCurrent.upcoming.filter((payment) => {
+      if (payment.amount <= MIN_ALERTABLE_AMOUNT) return false;
+      const d = new Date(`${payment.dueDate}T00:00:00`);
+      d.setHours(0, 0, 0, 0);
+      return d < today;
+    });
     const totalOverdueAmount = overdueInCurrent.reduce(
       (s, o) => s + o.amount,
       0,
-    );
+    ) + overdueLoanPayments.reduce((s, payment) => s + payment.amount, 0);
     const percentCommitted =
       totalIncomeCurrent > 0
         ? (totalExpenseCurrent / totalIncomeCurrent) * 100
@@ -453,15 +529,18 @@ export async function GET(request: NextRequest) {
 
     const alertScope = `${current.year}-${current.month}-${view === 'biweekly' ? current.period : 'MONTH'}`;
     const alerts: DashboardAlert[] = [];
-    if (overdueInCurrent.length > 0 && totalOverdueAmount > MIN_ALERTABLE_AMOUNT) {
+    if (
+      (overdueInCurrent.length > 0 || overdueLoanPayments.length > 0) &&
+      totalOverdueAmount > MIN_ALERTABLE_AMOUNT
+    ) {
       const alertId = `overdue:${alertScope}`;
       alerts.push({
         id: alertId,
         type: 'overdue',
-        title: 'Gastos vencidos',
+        title: 'Obligaciones vencidas',
         description: `${
-          overdueInCurrent.length
-        } gasto(s) vencido(s) por ${new Intl.NumberFormat('es-MX', {
+          overdueInCurrent.length + overdueLoanPayments.length
+        } obligacion(es) vencida(s) por ${new Intl.NumberFormat('es-MX', {
           style: 'currency',
           currency: 'MXN',
         }).format(totalOverdueAmount)}`,
@@ -544,6 +623,16 @@ export async function GET(request: NextRequest) {
             ? {
                 total: cardDueCurrent.total,
                 cardCount: cardDueCurrent.cardCount,
+              }
+            : null,
+        planningLoanPayments:
+          loanPayCurrent.total > 0 || loanPayCurrent.pendingCount > 0
+            ? {
+                total: loanPayCurrent.total,
+                paidTotal: loanPayCurrent.paidTotal,
+                pendingTotal: loanPayCurrent.pendingTotal,
+                count: loanPayCurrent.count,
+                pendingCount: loanPayCurrent.pendingCount,
               }
             : null,
         upcomingObligations,

@@ -65,9 +65,15 @@ export function calculateLoanProgress(input: {
 }) {
   const paidPayments = input.payments.filter((p) => p.status === 'PAID');
   const paidAmount = paidPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const scheduledPayable = input.payments.reduce(
+    (sum, p) => sum + Number(p.amount),
+    0,
+  );
+  const totalPayable = scheduledPayable > 0 ? scheduledPayable : input.principalAmount;
   return {
+    totalPayable,
     paidAmount,
-    remainingAmount: Math.max(0, input.principalAmount - paidAmount),
+    remainingAmount: Math.max(0, totalPayable - paidAmount),
     paidPayments: paidPayments.length,
     remainingPayments: input.payments.filter((p) => p.status === 'SCHEDULED')
       .length,
