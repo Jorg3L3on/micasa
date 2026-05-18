@@ -26,12 +26,15 @@ MiCasa also supports both individual and shared household contexts, so financial
 
 ## Core Features
 
-- Fortnight-first planning for expenses, incomes, and budget allocation.
-- Dashboard with monthly and period summaries, chart insights, and liquidity visibility.
-- Multi-context ownership model (user vs house) with role-based house membership.
-- Wallet and transfer management across payment method types.
-- Credit card and department-store card statement workflows.
-- Pantry receipt and product insights.
+- **Fortnight-first planning** for expenses, incomes, and budget allocation (recurrent budgets and budget periods).
+- **Dashboard** with monthly and period summaries, chart insights, liquidity projection (~180 days), and upcoming obligations (cards and loans).
+- **Multi-context ownership** (user vs house) with role-based house membership (`OWNER`, `ADMIN`, `MEMBER`).
+- **Wallets and transfers** across payment method types (cash, debit, credit, department-store cards).
+- **Credit cards** — statement cycles, payments, imports (Mercado Pago, CA Departamental, CA Efectivo, DiDi Card) with rollback.
+- **Loans (Préstamos)** — schedules, wallet or payroll payment sources, integration with expenses, liquidity, dashboard, and transactions.
+- **Pantry** — receipt upload, product catalog, shopping carts, expense ↔ receipt linking.
+- **Tasks** — lists, habits, routines (household productivity alongside finance).
+- **Categories** with optional icons across expense UI and API.
 
 ## Tech Stack
 
@@ -112,9 +115,12 @@ Important directories:
 
 - `src/app`: App Router pages and route handlers
 - `src/components`: UI and feature components
-- `src/lib`: domain services, utilities, API helpers, server modules
+- `src/lib/finance`: domain services (expenses, wallets, loans, liquidity projection, etc.)
+- `src/lib/server`: owner context, statement import parsers, pantry processing
 - `src/schemas`: Zod schemas per resource
-- `prisma`: Prisma schema, migrations, and seed script
+- `prisma`: Prisma schema (~31 models), migrations, and seed script
+
+Further reading: [`docs/finance-architecture.md`](docs/finance-architecture.md), [`docs/finance-invariants.md`](docs/finance-invariants.md), [`docs/agents/domain.md`](docs/agents/domain.md).
 
 Core domain concept:
 
@@ -144,22 +150,20 @@ npm run ci
 
 ## Roadmap
 
-Planned open-source improvements:
+Near-term focus:
 
-- Expanded docs (contributing guide, security policy, architecture diagrams)
-- Release automation and changelog generation
-- More coverage for finance domain services and API routes
-- Public demo and feature screenshots
+- Harden loan ↔ expense sync and liquidity edge cases.
+- More test coverage for finance services and API routes.
+- Security policy and architecture diagrams for contributors.
+- Public demo assets and screenshots.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, PR checks, and the **Cursor agent workflow** (`/ship-feature`, `/prd`).
 
-1. Open an issue describing the bug/feature.
-2. Create a branch with focused changes.
+1. Open an issue describing the bug or feature.
+2. Create a focused branch (`feat/<slug>` per [docs/agents/deployment.md](docs/agents/deployment.md)).
 3. Run `npm run ci` before opening a pull request.
-
-A dedicated `CONTRIBUTING.md` will be added in the next docs pass.
 
 ## License
 

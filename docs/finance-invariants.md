@@ -5,7 +5,7 @@ It is intentionally high-level so it stays in sync with the existing architectur
 
 ### 1. Ownership: exactly one owner (user or house)
 
-- **Applies to**: `Fortnight`, `Expense`, `Income`, `Wallet`, `ExpenseTemplate`, `IncomeTemplate`.
+- **Applies to**: `Fortnight`, `Expense`, `Income`, `Wallet`, `ExpenseTemplate`, `IncomeTemplate`, `Loan`, and other owner-scoped resources.
 - **Rule**: every record belongs to **either** a user **or** a house, never both and never neither.
 - **Database**:
   - Enforced via `*_single_owner_check` `CHECK` constraints:
@@ -103,7 +103,13 @@ It is intentionally high-level so it stays in sync with the existing architectur
       - Ensures a matching house fortnight exists.
       - Calls `createUserToHouseTransfer` to keep user expense + house income + wallets in sync.
 
-### 7. Where to extend safely
+### 7. Loans
+
+- **Models**: `Loan` (schedule definition) and `LoanPayment` (installments). Payments belong to a loan; at most one `Expense` may reference a payment via `loan_payment_id`.
+- **Wallet effects**: Marking a wallet-sourced payment paid goes through `loan.service.ts` / expense flows so funding wallet balances stay consistent with expenses.
+- **Planning**: Scheduled loan payments feed liquidity projection and dashboard obligations; they are distinct from credit-card statement cycles and from unpaid expense templates.
+
+### 8. Where to extend safely
 
 - When adding new endpoints or services:
   - **Derive ownership** from:

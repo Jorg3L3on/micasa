@@ -21,6 +21,8 @@
 | **Owner context** | Active `user` or `house` via finance context + API params |
 | **Wallet** | Account; `PaymentMethodType` drives cash vs credit behavior |
 | **Expense** | Spend; installment (cuota) expenses follow statement cycle, not fortnight aggregates |
+| **Loan (Préstamo)** | First-class debt with schedule; not a wallet or expense template |
+| **Loan payment** | Scheduled installment; may link to `Expense` via `loan_payment_id` when paid from a funding wallet |
 | **Fortnight view** | `/fortnight/...` — primary money planning UI |
 
 Use these terms in issue titles and acceptance criteria.

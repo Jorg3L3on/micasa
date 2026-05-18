@@ -4,7 +4,7 @@
 
 ```bash
 npm install
-cp .env.example .env   # if present; set DATABASE_URL, NEXTAUTH_*
+# Create .env in project root (see README.md Environment Variables)
 npx prisma generate
 npx prisma migrate dev
 npm run dev
@@ -23,11 +23,7 @@ Details: [docs/agents/workflow.md](docs/agents/workflow.md).
 
 **One-time:** `bash scripts/create-github-labels.sh` after `gh auth login`.
 
-**Shared Cursor skills** (install once per machine):
-
-```bash
-bash /Users/jorgeleon/Developer/Projects/zigzag/docs/agent-workflow/scripts/install-shared-agent-skills.sh
-```
+**Shared Cursor skills** (optional, install once per machine): see [docs/agents/workflow.md](docs/agents/workflow.md) for the install script path on your machine.
 
 Agents must not merge PRs unless you explicitly ask.
 
