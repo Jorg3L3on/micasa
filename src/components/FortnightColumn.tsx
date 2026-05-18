@@ -18,6 +18,7 @@ import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/C
 import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
 } from '@/components/planner/FortnightCardPaymentsPanel';
+import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +58,7 @@ import type {
 } from '@/types/catalog';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type { WalletListItem } from '@/types/catalog';
+import type { LoanDuePaymentItem } from '@/types/loans';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import { cn } from '@/lib/utils';
 
@@ -106,6 +108,7 @@ type FortnightColumnProps = {
   onShowSummaryCard?: () => void;
   tableDensity?: ExpenseTableDensity;
   cardDueItems?: DuePaymentItem[];
+  loanDueItems?: LoanDuePaymentItem[];
   wallets?: WalletListItem[];
   /** Bump from parent after external saldo changes so resumen refreshes funding vs pendiente. */
   summaryFundingRefreshNonce?: number;
@@ -124,6 +127,7 @@ export default function FortnightColumn({
   onShowSummaryCard,
   tableDensity = 'comfortable',
   cardDueItems = [],
+  loanDueItems = [],
   wallets = [],
   summaryFundingRefreshNonce,
   preferenceScope = 'default',
@@ -147,7 +151,9 @@ export default function FortnightColumn({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
-  const [columnTab, setColumnTab] = useState<'expenses' | 'cards'>('expenses');
+  const [columnTab, setColumnTab] = useState<'expenses' | 'cards' | 'loans'>(
+    'expenses',
+  );
 
   const [plannerPaymentDialogOpen, setPlannerPaymentDialogOpen] =
     useState(false);
@@ -211,7 +217,7 @@ export default function FortnightColumn({
   useEffect(() => {
     try {
       const raw = localStorage.getItem(scopedFortnightTabStorageKey(preferenceScope, period));
-      if (raw === 'cards' || raw === 'expenses') {
+      if (raw === 'cards' || raw === 'expenses' || raw === 'loans') {
         setColumnTab(raw);
       } else {
         setColumnTab('expenses');
@@ -222,7 +228,7 @@ export default function FortnightColumn({
   }, [period, preferenceScope]);
 
   const handleColumnTabChange = useCallback((value: string) => {
-    if (value !== 'expenses' && value !== 'cards') return;
+    if (value !== 'expenses' && value !== 'cards' && value !== 'loans') return;
     setColumnTab(value);
     try {
       localStorage.setItem(scopedFortnightTabStorageKey(preferenceScope, period), value);
@@ -705,6 +711,10 @@ export default function FortnightColumn({
       ).length,
     [cardDueItems, plannerTodayYmd],
   );
+  const pendingLoanPaymentsCount = useMemo(
+    () => loanDueItems.filter((item) => item.status === 'SCHEDULED').length,
+    [loanDueItems],
+  );
 
   return (
     <>
@@ -830,6 +840,28 @@ export default function FortnightColumn({
                   </Badge>
                 </span>
               </TabsTrigger>
+              <TabsTrigger
+                value="loans"
+                className="min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm"
+                aria-label={`Prestamos, ${pendingLoanPaymentsCount} pendientes`}
+              >
+                <span className="inline-flex items-center gap-1.5 sm:gap-2">
+                  Prestamos
+                  <Badge
+                    variant={
+                      pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
+                    }
+                    className={cn(
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                      columnTab === 'loans' && pendingLoanPaymentsCount > 0 &&
+                        'bg-primary-foreground/20 text-primary-foreground',
+                    )}
+                    aria-hidden
+                  >
+                    {pendingLoanPaymentsCount}
+                  </Badge>
+                </span>
+              </TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 sm:pl-1">
               <Tooltip>
@@ -951,6 +983,18 @@ export default function FortnightColumn({
                   context.id !== 0 ? handlePlannerOpenPayCard : undefined
                 }
                 payingWalletId={plannerPayCardLoadingId}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="loans" className="mt-0 outline-none">
+            <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
+              <FortnightLoanPaymentsPanel
+                items={loanDueItems}
+                ownerQueryString={ownerQueryString}
+                fortnightLabel={label}
+                isCompact={tableDensity === 'compact'}
+                onPaymentUpdated={refreshData}
               />
             </div>
           </TabsContent>

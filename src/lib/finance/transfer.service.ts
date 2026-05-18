@@ -83,11 +83,11 @@ export async function createUserToHouseTransferInTx(
     data: {
       user_expense_id: userExpense.id,
       house_income_id: houseIncome.id,
-    } as any,
+    },
     include: {
       user_expense: true,
       house_income: true,
-    } as any,
+    },
   });
 
   return updatedTransfer;
@@ -98,4 +98,3 @@ export async function createUserToHouseTransfer(
 ) {
   return prisma.$transaction((tx) => createUserToHouseTransferInTx(tx, input));
 }
-

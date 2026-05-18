@@ -53,6 +53,7 @@ export default function EditAccountDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset transient dialog error when opening.
       setApiError(null);
       form.reset({
         name: defaultName,

@@ -193,7 +193,9 @@ export default function DashboardQuickIncomeDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(handleSubmit as any)}
+            onSubmit={form.handleSubmit((values) => {
+              void handleSubmit(values);
+            })}
             className="space-y-4"
           >
             {isHouseContext && (
@@ -323,4 +325,3 @@ export default function DashboardQuickIncomeDialog({
     </Dialog>
   );
 }
-

@@ -19,9 +19,6 @@ type MonthlyHeaderProps = {
 };
 
 export default function MonthlyHeader({
-  year,
-  month,
-  monthName,
   hasPrevMonth,
   prevHref,
   prevMonthLabel,

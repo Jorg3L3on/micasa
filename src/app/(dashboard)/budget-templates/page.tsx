@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -35,7 +35,7 @@ export default function BudgetTemplatesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<BudgetListItem | null>(null);
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -45,9 +45,9 @@ export default function BudgetTemplatesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [context]);
 
-  useEffect(() => { fetchTemplates(); }, [context]);
+  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
 
   const handleCreate = async (step1: Step1Values, step2: Step2Values) => {
     try {

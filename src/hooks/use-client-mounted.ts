@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 export function useClientMounted(): boolean {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- This hook explicitly exposes client mount state.
     setMounted(true);
   }, []);
   return mounted;

@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
+import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
 import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
@@ -536,6 +537,8 @@ export default function WalletDetailPage() {
           </div>
         </div>
       </div>
+
+      <LinkedLoansCard walletId={walletId} />
 
       {/* Movements list */}
       <Card className="overflow-hidden border-border/60">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -28,7 +28,7 @@ export default function IncomeTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] =
     useState<IncomeTemplateListItem | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -45,11 +45,11 @@ export default function IncomeTemplatesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [context]);
 
   useEffect(() => {
     fetchData();
-  }, [context]);
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!selectedTemplate) return;
@@ -77,17 +77,17 @@ export default function IncomeTemplatesPage() {
     }
   };
 
-  const handleEdit = (template: IncomeTemplateListItem) => {
+  const handleEdit = useCallback((template: IncomeTemplateListItem) => {
     router.push(
       `/income-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`,
     );
-  };
+  }, [queryString, router]);
 
-  const openDeleteDialog = (template: IncomeTemplateListItem) => {
+  const openDeleteDialog = useCallback((template: IncomeTemplateListItem) => {
     setSelectedTemplate(template);
     setDeleteDialogOpen(true);
     setError(null);
-  };
+  }, []);
 
   const columns = useMemo<ColumnDef<IncomeTemplateListItem>[]>(
     () => [

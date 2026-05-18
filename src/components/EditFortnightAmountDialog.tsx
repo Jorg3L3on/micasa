@@ -63,7 +63,7 @@ export default function EditFortnightAmountDialog({
     try {
       await onSubmit(data)
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       // Error handling is done in the parent component
     }
   }

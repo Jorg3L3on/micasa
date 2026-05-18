@@ -9,6 +9,7 @@ import {
   Calendar,
   Coins,
   CheckSquare,
+  HandCoins,
   Home,
   PiggyBank,
   ShoppingBasket,
@@ -141,6 +142,12 @@ export function AppSidebar({
       url: '/budgets',
       icon: PiggyBank,
       isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
+    },
+    {
+      title: 'Prestamos',
+      url: '/loans',
+      icon: HandCoins,
+      isActive: pathname === '/loans' || pathname.startsWith('/loans/'),
     },
     {
       title: 'Billeteras',

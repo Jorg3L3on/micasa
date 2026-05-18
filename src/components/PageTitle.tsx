@@ -186,6 +186,11 @@ function getPageTitle(
     return { title: 'Presupuestos', breadcrumbs };
   }
 
+  if (segments[0] === 'loans') {
+    breadcrumbs.push({ label: 'Prestamos' });
+    return { title: 'Prestamos', breadcrumbs };
+  }
+
   if (segments[0] === 'transactions') {
     breadcrumbs.push({ label: 'Operaciones' });
     return { title: 'Operaciones', breadcrumbs };

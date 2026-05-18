@@ -40,6 +40,36 @@ enum BudgetFrequency {
   CUSTOM
 }
 
+enum LoanType {
+  PERSONAL
+  PAYROLL
+}
+
+enum LoanPaymentFrequency {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+}
+
+enum LoanPaymentSource {
+  WALLET
+  PAYROLL_DEDUCTION
+}
+
+enum LoanStatus {
+  ACTIVE
+  PAID_OFF
+  PAUSED
+  CANCELLED
+}
+
+enum LoanPaymentStatus {
+  SCHEDULED
+  PAID
+  SKIPPED
+  CANCELLED
+}
+
 enum StatementImportProvider {
   MERCADO_PAGO
   CA_DEPARTAMENTAL
@@ -120,6 +150,7 @@ model User {
   categories         Category[]
   creditCardPayments CreditCardPayment[]
   budgets            Budget[]
+  loans              Loan[]
 
   credit_card_statement_imports_created CreditCardStatementImport[] @relation("CreditCardStatementImportCreatedBy")
   credit_card_statement_imports_owned   CreditCardStatementImport[] @relation("CreditCardStatementImportUserOwner")
@@ -323,9 +354,10 @@ model IncomeTemplate {
   created_at DateTime @default(now())
 
   // Relationships
-  incomes Income[]
-  user    User?    @relation(fields: [user_id], references: [id])
-  house   House?   @relation(fields: [house_id], references: [id])
+  incomes       Income[]
+  payroll_loans Loan[] @relation("LoanIncomeTemplate")
+  user          User?  @relation(fields: [user_id], references: [id])
+  house         House? @relation(fields: [house_id], references: [id])
 
   @@index([user_id])
   @@index([house_id])
@@ -349,6 +381,7 @@ model House {
   incomes          Income[]
   incomeTemplates  IncomeTemplate[]
   categories       Category[]
+  loans            Loan[]
 
   creditCardPayments            CreditCardPayment[]
   budgets                       Budget[]
@@ -409,6 +442,9 @@ model Wallet {
   incomes                       Income[]
   credit_card_payments          CreditCardPayment[]         @relation("CreditCardWalletPayments")
   source_card_payments          CreditCardPayment[]         @relation("CreditCardSourceWalletPayments")
+  loan_payments_source          Loan[]                      @relation("LoanPaymentSourceWallet")
+  linked_loans                  Loan[]                      @relation("LoanLinkedWallet")
+  loan_payment_records          LoanPayment[]               @relation("LoanPaymentSourceWallet")
   credit_card_statement_imports CreditCardStatementImport[]
   budgetAllocations             BudgetAllocation[]
 
@@ -530,6 +566,65 @@ model CreditCardPayment {
   @@index([source_wallet_id, paid_at])
   @@index([user_id, paid_at])
   @@index([house_id, paid_at])
+}
+
+model Loan {
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  lender             String
+  type               LoanType
+  status             LoanStatus           @default(ACTIVE)
+  principal_amount   Decimal              @db.Decimal(12, 2)
+  payment_amount     Decimal              @db.Decimal(12, 2)
+  payment_count      Int
+  frequency          LoanPaymentFrequency
+  start_date         DateTime
+  payment_source     LoanPaymentSource
+  user_id            Int?
+  house_id           Int?
+  source_wallet_id   Int?
+  linked_wallet_id   Int?
+  income_template_id Int?
+  notes              String?
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+
+  user            User?           @relation(fields: [user_id], references: [id])
+  house           House?          @relation(fields: [house_id], references: [id])
+  source_wallet   Wallet?         @relation("LoanPaymentSourceWallet", fields: [source_wallet_id], references: [id])
+  linked_wallet   Wallet?         @relation("LoanLinkedWallet", fields: [linked_wallet_id], references: [id])
+  income_template IncomeTemplate? @relation("LoanIncomeTemplate", fields: [income_template_id], references: [id])
+  payments        LoanPayment[]
+
+  @@index([user_id])
+  @@index([house_id])
+  @@index([status])
+  @@index([source_wallet_id])
+  @@index([linked_wallet_id])
+  @@index([income_template_id])
+}
+
+model LoanPayment {
+  id               Int               @id @default(autoincrement())
+  loan_id          Int
+  sequence         Int
+  due_date         DateTime
+  amount           Decimal           @db.Decimal(12, 2)
+  status           LoanPaymentStatus  @default(SCHEDULED)
+  paid_at          DateTime?
+  source_wallet_id Int?
+  note             String?
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+
+  loan          Loan    @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  source_wallet Wallet? @relation("LoanPaymentSourceWallet", fields: [source_wallet_id], references: [id])
+
+  @@unique([loan_id, sequence])
+  @@index([loan_id])
+  @@index([due_date])
+  @@index([status])
+  @@index([source_wallet_id])
 }
 
 /**

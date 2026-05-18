@@ -133,6 +133,7 @@ export const CreditCardPaymentsChart = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Theme-dependent chart colors must wait for client mount.
     setMounted(true);
   }, []);
 

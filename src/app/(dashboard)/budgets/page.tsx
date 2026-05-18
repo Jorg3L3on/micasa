@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
 import { fetchActivePeriods, fetchBudgetHistory } from '@/lib/api/budgets';
@@ -99,6 +97,7 @@ function ActivePeriodsTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Refresh loading state when owner context changes.
     setLoading(true);
     fetchActivePeriods(context)
       .then(setPeriods)
@@ -212,7 +211,10 @@ function HistoryTab() {
       .finally(() => setLoading(false));
   }, [year, month, context]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() owns this tab's async loading state.
+    load();
+  }, [load]);
 
   return (
     <div className="space-y-4">
@@ -241,10 +243,6 @@ function HistoryTab() {
                 </div>
                 <div className="divide-y divide-border rounded-lg border">
                   {group.periods.map((period) => {
-                    const pct =
-                      period.allocated_amount > 0
-                        ? Math.min((period.spent_amount / period.allocated_amount) * 100, 100)
-                        : 0;
                     return (
                       <div
                         key={period.period_id}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
   flexRender,
@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -44,7 +44,7 @@ import {
   updateExpenseAmount,
   updateExpensePaidStatus,
 } from '@/lib/api/transactions';
-import { MoreVertical, Pencil, Trash2, CheckCircle2, Receipt } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -114,7 +114,6 @@ export default function ExpenseTable({
   expenses,
   onExpenseUpdate,
   fortnightLabel = '',
-  totalIncome = 0,
   year,
   month,
   period,
@@ -151,7 +150,7 @@ export default function ExpenseTable({
     setLocalExpenses(sorted);
   }, [expenses]);
 
-  const handlePaidToggle = async (expense: TransactionRow, newPaidStatus: boolean) => {
+  const handlePaidToggle = useCallback(async (expense: TransactionRow, newPaidStatus: boolean) => {
     if (isPlanningCardPaymentRow(expense)) {
       return;
     }
@@ -201,15 +200,15 @@ export default function ExpenseTable({
         return next;
       });
     }
-  };
+  }, [context, expenses, localExpenses, onExpenseUpdate]);
 
-  const handleEditAmount = (expense: TransactionRow) => {
+  const handleEditAmount = useCallback((expense: TransactionRow) => {
     if (isPlanningCardPaymentRow(expense)) return;
     if (!isExpenseTransactionRow(expense)) return;
     setEditingExpense(expense);
     setEditDialogOpen(true);
     setEditError(null);
-  };
+  }, []);
 
   const handleUpdateAmount = async (data: ExpenseAmountFormValues) => {
     if (!editingExpense || !isExpenseTransactionRow(editingExpense)) return;
@@ -313,7 +312,7 @@ export default function ExpenseTable({
     }
   };
 
-  const getDueInfo = (expense: TransactionRow) => {
+  const getDueInfo = useCallback((expense: TransactionRow) => {
     const dueDayValue = expense.due_day;
     if (!dueDayValue || Number.isNaN(dueDayValue)) {
       return {
@@ -385,7 +384,7 @@ export default function ExpenseTable({
       showCountdown,
       badgeColor,
     };
-  };
+  }, [date, month, period, year]);
 
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
@@ -414,9 +413,6 @@ export default function ExpenseTable({
     0,
   );
   const cardGrandTotal = cardTotalPaid + cardTotalPending;
-
-  const paidPct = total > 0 ? (totalPaid / total) * 100 : 0;
-  const pendingPct = total > 0 ? (totalPending / total) * 100 : 0;
 
   const columns = useMemo<ColumnDef<TransactionRow>[]>(
     () => [
@@ -711,6 +707,7 @@ export default function ExpenseTable({
       updatingIds,
       handleEditAmount,
       handlePaidToggle,
+      getDueInfo,
       setDeletingExpense,
       setDeleteDialogOpen,
       setPayingExpense,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -45,7 +45,7 @@ export default function HouseUsersPage() {
 
   const isOwner = role === 'owner';
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (context.type !== 'house') return;
     try {
       setLoading(true);
@@ -64,7 +64,7 @@ export default function HouseUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [context]);
 
   useEffect(() => {
     if (context.type === 'house') {
@@ -73,7 +73,7 @@ export default function HouseUsersPage() {
       setLoading(false);
       setUsers([]);
     }
-  }, [context]);
+  }, [context, fetchUsers]);
 
   useEffect(() => {
     if (addUserDialogOpen) {
@@ -108,7 +108,7 @@ export default function HouseUsersPage() {
     }
   };
 
-  const handleRemove = async (userId: number) => {
+  const handleRemove = useCallback(async (userId: number) => {
     try {
       setRemovingId(userId);
       setError(null);
@@ -127,7 +127,7 @@ export default function HouseUsersPage() {
     } finally {
       setRemovingId(null);
     }
-  };
+  }, [context, fetchUsers]);
 
   const columns = useMemo<ColumnDef<HouseUserItem>[]>(() => {
     const base: ColumnDef<HouseUserItem>[] = [

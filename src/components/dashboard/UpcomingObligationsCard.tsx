@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,8 +9,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip';
-import Link from 'next/link';
-import { Check, ChevronRight, ListTodo } from 'lucide-react';
+import { Check, ListTodo } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { updateExpensePaidStatus } from '@/lib/api/transactions';
@@ -33,9 +32,7 @@ export default function UpcomingObligationsCard({
   data,
 }: UpcomingObligationsCardProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { context } = useFinanceContext();
-  const queryString = searchParams.toString();
   const obligations = data.upcomingObligations;
 
   const totalPendiente = obligations.reduce((sum, ob) => sum + ob.amount, 0);

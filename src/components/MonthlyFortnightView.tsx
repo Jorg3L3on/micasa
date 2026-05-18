@@ -27,6 +27,7 @@ import type {
   TransactionRow,
   WalletListItem,
 } from '@/types/catalog';
+import type { LoanDuePaymentItem } from '@/types/loans';
 import { SlidersHorizontal } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
@@ -71,6 +72,8 @@ type FortnightBundle = {
   fortnightId: number;
   /** Card payment reminders for this quincena (current month only). */
   cardDueItems?: DuePaymentItem[];
+  /** Loan payment reminders for this quincena. */
+  loanDueItems?: LoanDuePaymentItem[];
 };
 
 export type MonthlyFortnightViewProps = {
@@ -438,6 +441,7 @@ export default function MonthlyFortnightView({
               onShowSummaryCard={handleShowSummaryFromColumn}
               tableDensity={tableDensity}
               cardDueItems={first.cardDueItems}
+              loanDueItems={first.loanDueItems}
               wallets={wallets}
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
               preferenceScope={preferenceScope}
@@ -477,6 +481,7 @@ export default function MonthlyFortnightView({
               onShowSummaryCard={handleShowSummaryFromColumn}
               tableDensity={tableDensity}
               cardDueItems={second.cardDueItems}
+              loanDueItems={second.loanDueItems}
               wallets={wallets}
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
               preferenceScope={preferenceScope}

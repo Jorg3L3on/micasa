@@ -1,7 +1,6 @@
 'use client';
 
-import * as React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ElementType } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronsUpDown, Home, Plus, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -47,10 +46,10 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 type TeamSwitcherProps = {
   /** @deprecated No longer used; context comes from session and useFinanceContext */
-  teams?: { name: string; logo: React.ElementType; plan: string }[];
+  teams?: { name: string; logo: ElementType; plan: string }[];
 };
 
-export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
+export function TeamSwitcher({}: TeamSwitcherProps = {}) {
   const [clientReady, setClientReady] = useState(false);
   const { isMobile } = useSidebar();
   const router = useRouter();
@@ -60,6 +59,7 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
   const { context, setUserContext, setHouseContext } = useFinanceContext();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Avoid rendering context-dependent controls before hydration.
     setClientReady(true);
   }, []);
 
@@ -80,6 +80,7 @@ export function TeamSwitcher(_props: TeamSwitcherProps = {}) {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Keep local house list in sync with session changes.
     setHouses(session?.user?.houses ?? []);
   }, [session?.user?.houses]);
 
