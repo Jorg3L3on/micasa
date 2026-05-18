@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import type { Prisma } from '@/generated/prisma/client';
 import { TransferType } from '@/generated/prisma/client';
 import { createUserToHouseTransfer } from '@/lib/transfers';
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
-    const where: any = {
+    const where: Prisma.TransferWhereInput = {
       type: TransferType.USER_TO_HOUSE,
     };
 
@@ -163,8 +164,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let userWalletId: number | null | undefined = data.user_wallet_id ?? undefined;
-    let houseWalletId: number | null | undefined =
+    const userWalletId: number | null | undefined = data.user_wallet_id ?? undefined;
+    const houseWalletId: number | null | undefined =
       data.house_wallet_id ?? undefined;
 
     if (userWalletId != null) {
@@ -212,8 +213,8 @@ export async function POST(request: NextRequest) {
       house_id: transfer.house_id,
       note: transfer.note ?? null,
       created_at: transfer.created_at,
-      user_expense_id: (transfer as any).userExpenseId,
-      house_income_id: (transfer as any).houseIncomeId,
+      user_expense_id: transfer.user_expense_id,
+      house_income_id: transfer.house_income_id,
     };
 
     return NextResponse.json(result, { status: 201 });
@@ -232,4 +233,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

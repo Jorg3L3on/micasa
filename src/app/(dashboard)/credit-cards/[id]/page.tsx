@@ -22,6 +22,7 @@ import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPay
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
+import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -406,6 +407,8 @@ export default function CreditCardDetailPage() {
           daysUntilDue={daysUntilDue}
         />
       </div>
+
+      <LinkedLoansCard walletId={creditCardId} />
 
       {/* ── Compras ciclo actual + cuotas vigentes ───────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">

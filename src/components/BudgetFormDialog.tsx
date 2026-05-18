@@ -144,6 +144,7 @@ export default function BudgetFormDialog({
   });
 
   const watchedAllocations = useWatch({ control: form2.control, name: 'allocations' });
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch is required for this form step.
   const watchedFrequency = form1.watch('frequency');
 
   useEffect(() => {
@@ -172,7 +173,7 @@ export default function BudgetFormDialog({
         })
         .finally(() => setLoadingOptions(false));
     }
-  }, [open, context]);
+  }, [open, context, wallets.length]);
 
   const handleClose = () => {
     form1.reset();

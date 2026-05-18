@@ -139,6 +139,7 @@ export default function WalletForm({
     if (!open) return;
     form.reset(buildWalletFormDefaults(mode, defaultValues));
     // Reset when the dialog opens only; `defaultValues` is often a new object each parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, form]);
 
   const handleSubmit = async (data: WalletFormInput) => {

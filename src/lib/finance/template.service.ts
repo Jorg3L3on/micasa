@@ -1,5 +1,4 @@
 import prisma from '@/lib/prisma';
-import type { Prisma } from '@/generated/prisma/client';
 import { TransferType } from '@/generated/prisma/client';
 import { createUserToHouseTransferInTx } from '@/lib/finance/transfer.service';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
@@ -320,4 +319,3 @@ export async function expandExpenseTemplatesForFortnight(
     return { count: created.length, names: created };
   }, { timeout: 30000, maxWait: 10000 });
 }
-

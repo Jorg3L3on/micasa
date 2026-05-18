@@ -4,6 +4,8 @@ import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updateBudgetAllocations } from '@/lib/finance/budget.service';
 import { updateBudgetAllocationsSchema } from '@/schemas/budget.schema';
 
+type ErrorWithCode = Error & { code?: string };
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -29,12 +31,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
     }
     if (error && typeof error === 'object' && 'code' in error) {
-      const code = (error as any).code;
+      const errorWithCode = error as ErrorWithCode;
+      const code = errorWithCode.code;
       if (code === 'P2025') {
         return NextResponse.json({ error: 'Presupuesto no encontrado' }, { status: 404 });
       }
       if (code === 'ALLOC_EXCEEDS_BUDGET') {
-        return NextResponse.json({ error: (error as any).message }, { status: 422 });
+        return NextResponse.json({ error: errorWithCode.message }, { status: 422 });
       }
     }
     console.error('Error updating budget allocations:', error);

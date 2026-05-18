@@ -7,6 +7,7 @@ import {
   getDuePaymentsForCurrentFortnight,
   getDuePaymentsForPlannerMonth,
 } from '@/lib/finance/credit-card-statement.service';
+import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
@@ -22,6 +23,7 @@ import type {
   PlannerCardStatementDueSummary,
   ReportsSummaryFundingFields,
 } from '@/types/catalog';
+import type { PlannerLoanPaymentsResponse } from '@/types/loans';
 
 type Transaction = {
   id: number;
@@ -83,6 +85,7 @@ type MonthlyPageData = {
   wallets: WalletListItem[];
   duePayments: DuePaymentItem[];
   plannerDue: PlannerDuePaymentsResponse;
+  plannerLoanDue: PlannerLoanPaymentsResponse;
   firstTransactions: Transaction[];
   secondTransactions: Transaction[];
   firstSummary: Summary | null;
@@ -199,6 +202,16 @@ async function loadPlannerDuePaymentsForMonthPage(
   return getDuePaymentsForPlannerMonth(ctx.ownerFilter, year, month);
 }
 
+async function loadPlannerLoanPaymentsForMonthPage(
+  year: number,
+  month: number,
+  searchParams: OwnerSearchParams,
+): Promise<PlannerLoanPaymentsResponse> {
+  const ctx = await getOwnerContextFromPageSearchParams(searchParams);
+  if ('error' in ctx) throw new Error('No se pudo resolver el propietario');
+  return listLoanPaymentsForPlannerMonth(ctx.ownerFilter, year, month);
+}
+
 async function loadMonthlyPageData({
   yearParam,
   monthParam,
@@ -222,6 +235,7 @@ async function loadMonthlyPageData({
     wallets,
     duePayments,
     plannerDue,
+    plannerLoanDue,
   ] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
     getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
@@ -234,6 +248,7 @@ async function loadMonthlyPageData({
       ? loadDuePaymentsForCurrentFortnightPage(ownerSearchParams)
       : Promise.resolve([] as DuePaymentItem[]),
     loadPlannerDuePaymentsForMonthPage(year, month, ownerSearchParams),
+    loadPlannerLoanPaymentsForMonthPage(year, month, ownerSearchParams),
   ]);
 
   if (firstFortnightInfo === null || secondFortnightInfo === null) {
@@ -247,6 +262,7 @@ async function loadMonthlyPageData({
       wallets,
       duePayments,
       plannerDue,
+      plannerLoanDue,
       firstTransactions: [],
       secondTransactions: [],
       firstSummary: null,
@@ -272,6 +288,7 @@ async function loadMonthlyPageData({
     wallets,
     duePayments,
     plannerDue,
+    plannerLoanDue,
     firstTransactions,
     secondTransactions,
     firstSummary,
@@ -369,6 +386,7 @@ export default async function MonthlyPage({
     wallets,
     duePayments,
     plannerDue,
+    plannerLoanDue,
     firstTransactions,
     secondTransactions,
     firstSummary,
@@ -488,6 +506,8 @@ export default async function MonthlyPage({
 
   const cardDueFirst = plannerDue.first;
   const cardDueSecond = plannerDue.second;
+  const loanDueFirst = plannerLoanDue.first;
+  const loanDueSecond = plannerLoanDue.second;
 
   return (
     <>
@@ -552,6 +572,7 @@ export default async function MonthlyPage({
           summary: firstSummary,
           fortnightId: firstFortnightId,
           cardDueItems: cardDueFirst,
+          loanDueItems: loanDueFirst,
         }}
         second={{
           label: secondLabel,
@@ -559,6 +580,7 @@ export default async function MonthlyPage({
           summary: secondSummary,
           fortnightId: secondFortnightId,
           cardDueItems: cardDueSecond,
+          loanDueItems: loanDueSecond,
         }}
       />
     </>

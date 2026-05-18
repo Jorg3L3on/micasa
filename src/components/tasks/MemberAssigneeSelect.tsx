@@ -41,6 +41,7 @@ export default function MemberAssigneeSelect({
 
   useEffect(() => {
     if (context.type !== 'house') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear stale house members when leaving house context.
       setMembers([]);
       return;
     }

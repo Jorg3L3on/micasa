@@ -70,6 +70,7 @@ export function DataTable<TData>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [visibility, setVisibility] = React.useState<VisibilityState>({});
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns its internal mutable table API.
   const table = useReactTable({
     data,
     columns,

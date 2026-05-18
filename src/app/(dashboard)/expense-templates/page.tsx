@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -41,7 +41,7 @@ export default function ExpenseTemplatesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'recurring' | 'subscription'>('all');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -58,11 +58,11 @@ export default function ExpenseTemplatesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [context]);
 
   useEffect(() => {
     fetchData();
-  }, [context]);
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!selectedTemplate) return;
@@ -90,15 +90,15 @@ export default function ExpenseTemplatesPage() {
     }
   };
 
-  const openEditDialog = (template: ExpenseTemplateListItem) => {
+  const openEditDialog = useCallback((template: ExpenseTemplateListItem) => {
     router.push(`/expense-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`);
-  };
+  }, [queryString, router]);
 
-  const openDeleteDialog = (template: ExpenseTemplateListItem) => {
+  const openDeleteDialog = useCallback((template: ExpenseTemplateListItem) => {
     setSelectedTemplate(template);
     setDeleteDialogOpen(true);
     setError(null);
-  };
+  }, []);
 
   const categories = useMemo(
     () =>
@@ -263,7 +263,7 @@ export default function ExpenseTemplatesPage() {
         },
       },
     ],
-    [queryString, openEditDialog, openDeleteDialog]
+    [openEditDialog, openDeleteDialog]
   );
 
   const addButton = (

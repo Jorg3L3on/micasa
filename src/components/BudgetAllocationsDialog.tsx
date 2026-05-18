@@ -131,6 +131,7 @@ export default function BudgetAllocationsDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Dialog option loading starts when the dialog opens.
       setLoadingOptions(true);
       Promise.all([
         clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
@@ -152,7 +153,7 @@ export default function BudgetAllocationsDialog({
           : [{ wallet_id: 0, category_id: 0, amount: 0 }],
       });
     }
-  }, [open, context, budget]);
+  }, [open, context, budget, form]);
 
   const handleSubmit = form.handleSubmit(async (rawData) => {
     const data: Step2Values = step2Schema.parse(rawData);

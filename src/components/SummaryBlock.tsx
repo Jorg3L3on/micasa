@@ -76,7 +76,6 @@ type SummaryBlockProps = {
 
 export default function SummaryBlock({
   tenemos,
-  libre: _libre,
   pagado,
   pendiente,
   userIncome,

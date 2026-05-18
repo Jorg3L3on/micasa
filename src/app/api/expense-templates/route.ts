@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
@@ -218,7 +219,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = updateExpenseTemplateSchema.parse(body);
 
-    const updateData: any = {};
+    const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {};
     if (validatedData.name !== undefined) {
       updateData.name = validatedData.name;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -33,7 +33,7 @@ export default function CategoriesPage() {
     useState<CategoryOption | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -50,11 +50,11 @@ export default function CategoriesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [context]);
 
   useEffect(() => {
     fetchCategories();
-  }, [context]);
+  }, [fetchCategories]);
 
   const handleCreate = async (data: CategoryFormValues) => {
     try {
@@ -112,17 +112,17 @@ export default function CategoriesPage() {
     }
   };
 
-  const openEditDialog = (category: CategoryOption) => {
+  const openEditDialog = useCallback((category: CategoryOption) => {
     setSelectedCategory(category);
     setEditDialogOpen(true);
     setFormError(null);
-  };
+  }, []);
 
-  const openDeleteDialog = (category: CategoryOption) => {
+  const openDeleteDialog = useCallback((category: CategoryOption) => {
     setSelectedCategory(category);
     setDeleteDialogOpen(true);
     setError(null);
-  };
+  }, []);
 
   const columns = useMemo<ColumnDef<CategoryOption>[]>(
     () => [

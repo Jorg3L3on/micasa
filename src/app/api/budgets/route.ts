@@ -5,6 +5,8 @@ import { createBudget } from '@/lib/finance/budget.service';
 import { listActivePeriods } from '@/lib/finance/budget-period.service';
 import { createBudgetSchema } from '@/schemas/budget.schema';
 
+type ErrorWithCode = Error & { code?: string };
+
 export async function GET(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
@@ -34,8 +36,16 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
     }
-    if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'ALLOC_EXCEEDS_BUDGET') {
-      return NextResponse.json({ error: (error as any).message }, { status: 422 });
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as ErrorWithCode).code === 'ALLOC_EXCEEDS_BUDGET'
+    ) {
+      return NextResponse.json(
+        { error: (error as ErrorWithCode).message },
+        { status: 422 },
+      );
     }
     console.error('Error creating budget:', error);
     return NextResponse.json({ error: 'Failed to create budget' }, { status: 500 });

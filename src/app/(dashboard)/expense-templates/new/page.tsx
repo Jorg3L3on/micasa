@@ -16,6 +16,15 @@ import {
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { ExpenseTemplateForm } from '@/components/expense-templates/ExpenseTemplateForm';
 
+type ApiIssue = {
+  path?: Array<string | number>;
+  message?: string;
+};
+
+type ErrorWithDetails = Error & {
+  details?: ApiIssue[];
+};
+
 export default function NewExpenseTemplatePage() {
   const { context } = useFinanceContext();
   const router = useRouter();
@@ -74,7 +83,7 @@ export default function NewExpenseTemplatePage() {
     }
 
     // Check if error has details (validation errors)
-    const errorWithDetails = err as any;
+    const errorWithDetails = err as ErrorWithDetails;
     if (
       errorWithDetails.details &&
       Array.isArray(errorWithDetails.details) &&
@@ -96,9 +105,9 @@ export default function NewExpenseTemplatePage() {
       };
 
       // Format validation errors
-      const messages = errorWithDetails.details.map((issue: any) => {
-        const fieldName =
-          fieldNames[issue.path?.[0]] || issue.path?.[0] || 'Campo';
+      const messages = errorWithDetails.details.map((issue) => {
+        const fieldKey = issue.path?.[0]?.toString();
+        const fieldName = fieldKey ? (fieldNames[fieldKey] ?? fieldKey) : 'Campo';
         let message = issue.message || '';
 
         // Translate common validation messages

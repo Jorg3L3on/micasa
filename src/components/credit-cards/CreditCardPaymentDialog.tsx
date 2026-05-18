@@ -72,6 +72,7 @@ const CreditCardPaymentDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the payment dialog opens.
     setSourceWalletId('');
     setAmount('');
     setPaidAt(getTodayDateString());

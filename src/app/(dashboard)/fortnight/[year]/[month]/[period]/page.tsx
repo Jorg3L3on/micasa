@@ -149,21 +149,6 @@ export default async function FortnightPage({
   const pagado = summary.totalPaid;
   const pendiente = summary.totalUnpaid;
 
-  // Get month name for breadcrumb
-  const months = [
-    'Enero',
-    'Febrero',
-    'Marzo',
-    'Abril',
-    'Mayo',
-    'Junio',
-    'Julio',
-    'Agosto',
-    'Septiembre',
-    'Octubre',
-    'Noviembre',
-    'Diciembre',
-  ];
   return (
     <>
       <FortnightHeader
