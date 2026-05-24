@@ -445,6 +445,7 @@ export default function MonthlyFortnightView({
               wallets={wallets}
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
               preferenceScope={preferenceScope}
+              dualColumnLayout={layout === 'both'}
             />
           </div>
         ) : null}
@@ -485,6 +486,7 @@ export default function MonthlyFortnightView({
               wallets={wallets}
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
               preferenceScope={preferenceScope}
+              dualColumnLayout={layout === 'both'}
             />
           </div>
         ) : null}

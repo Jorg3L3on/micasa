@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { queryRaw, findManyWallets, findManyStatementImports } = vi.hoisted(
-  () => ({
-    queryRaw: vi.fn(),
-    findManyWallets: vi.fn(),
-    findManyStatementImports: vi.fn(),
-  }),
-);
+const {
+  queryRaw,
+  findManyWallets,
+  findManyStatementImports,
+  findFirstFortnight,
+  findManyPaymentPlans,
+} = vi.hoisted(() => ({
+  queryRaw: vi.fn(),
+  findManyWallets: vi.fn(),
+  findManyStatementImports: vi.fn(),
+  findFirstFortnight: vi.fn(),
+  findManyPaymentPlans: vi.fn(),
+}));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
@@ -16,6 +22,12 @@ vi.mock('@/lib/prisma', () => ({
     },
     creditCardStatementImport: {
       findMany: findManyStatementImports,
+    },
+    fortnight: {
+      findFirst: findFirstFortnight,
+    },
+    creditCardPaymentPlan: {
+      findMany: findManyPaymentPlans,
     },
   },
 }));
@@ -32,6 +44,10 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockReset();
     findManyStatementImports.mockReset();
     findManyStatementImports.mockResolvedValue([]);
+    findFirstFortnight.mockReset();
+    findFirstFortnight.mockResolvedValue({ id: 42 });
+    findManyPaymentPlans.mockReset();
+    findManyPaymentPlans.mockResolvedValue([]);
   });
 
   afterEach(() => {

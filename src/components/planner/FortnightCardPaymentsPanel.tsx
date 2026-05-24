@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
-import { Banknote, CreditCard, Loader2, Store } from 'lucide-react';
+import { Banknote, CreditCard, Loader2, Pencil, Store } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -12,6 +13,14 @@ import {
 } from '@/components/ui/tooltip';
 import type { DuePaymentItem } from '@/types/catalog';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
+import {
+  clearFortnightCardPaymentPlan,
+  upsertFortnightCardPaymentPlan,
+} from '@/lib/api/card-payment-plans';
+import { useFinanceContext } from '@/context/finance-context';
+import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
+import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
 
 /** Calendar-day difference between the statement due date and today (UTC). */
 const getDaysLeft = (statementDueDateYmd: string, todayYmd: string): number => {
@@ -43,7 +52,7 @@ export const getPlannerCardPaymentStatus = (
   item: DuePaymentItem,
   todayYmd: string,
 ): PlannerCardPaymentStatus => {
-  if (item.nextDuePayment <= 0) return 'pagado';
+  if (getEffectiveCardPaymentAmount(item) <= 0) return 'pagado';
   if (item.statementDueDate < todayYmd) return 'vencido';
   return 'por_pagar';
 };
@@ -58,6 +67,7 @@ type FortnightCardPaymentsPanelProps = {
   items: DuePaymentItem[];
   ownerQueryString: string;
   fortnightLabel: string;
+  fortnightId: number;
   /** Planning month year (e.g. 2026) — used to build the display due date. */
   plannerYear: number;
   /** Planning month 1–12 (e.g. 4 for April) — used to build the display due date. */
@@ -66,19 +76,26 @@ type FortnightCardPaymentsPanelProps = {
   onPayCard?: (item: DuePaymentItem) => void;
   /** Mientras se cargan billeteras/categorías para el diálogo de pago */
   payingWalletId?: number | null;
+  onPlanUpdated?: () => void;
 };
 
 const FortnightCardPaymentsPanel = ({
   items,
   ownerQueryString,
   fortnightLabel,
+  fortnightId,
   plannerYear,
   plannerMonth,
   isCompact = false,
   onPayCard,
   payingWalletId = null,
+  onPlanUpdated,
 }: FortnightCardPaymentsPanelProps) => {
+  const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
+  const [editingItem, setEditingItem] = useState<DuePaymentItem | null>(null);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const rows = useMemo(
     () =>
@@ -88,10 +105,59 @@ const FortnightCardPaymentsPanel = ({
         const order = (s: PlannerCardPaymentStatus) =>
           s === 'vencido' ? 0 : s === 'por_pagar' ? 1 : 2;
         if (order(sa) !== order(sb)) return order(sa) - order(sb);
-        return b.nextDuePayment - a.nextDuePayment;
+        return (
+          getEffectiveCardPaymentAmount(b) - getEffectiveCardPaymentAmount(a)
+        );
       }),
     [items, todayYmd],
   );
+
+  const handleOpenPlanDialog = (item: DuePaymentItem) => {
+    setPlanError(null);
+    setEditingItem(item);
+    setPlanDialogOpen(true);
+  };
+
+  const handleSavePlan = async (data: CardPaymentPlanFormValues) => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await upsertFortnightCardPaymentPlan(
+        fortnightId,
+        {
+          walletId: editingItem.walletId,
+          plannedAmount: data.plannedAmount,
+        },
+        context,
+      );
+      toast.success('Pago planeado guardado');
+      onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo guardar el plan';
+      setPlanError(message);
+      throw error;
+    }
+  };
+
+  const handleClearPlan = async () => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await clearFortnightCardPaymentPlan(
+        fortnightId,
+        editingItem.walletId,
+        context,
+      );
+      toast.success('Se usará el monto sugerido');
+      onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo restablecer';
+      setPlanError(message);
+      throw error;
+    }
+  };
 
   if (rows.length === 0) {
     return (
@@ -110,18 +176,25 @@ const FortnightCardPaymentsPanel = ({
     );
   }
 
+  const editingEffective =
+    editingItem != null ? getEffectiveCardPaymentAmount(editingItem) : 0;
+
   return (
-    <div
-      role="region"
-      aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
-      className="px-1 pb-1"
-    >
-      <p className="mb-2 px-2 text-[10px] font-medium leading-snug text-muted-foreground/70">
-        Monto sugerido según movimientos en MiCasa. El banco puede indicar otro importe.
-      </p>
-      <ul role="list" className="flex flex-col gap-1.5">
-        {rows.map((item) => {
+    <>
+      <div
+        role="region"
+        aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
+        className="px-1 pb-1"
+      >
+        <p className="mb-2 px-2 text-[10px] font-medium leading-snug text-muted-foreground/70">
+          Toca el lápiz para fijar cuánto pagarás esta quincena. El sugerido viene
+          del estado de cuenta; la deuda total no cambia.
+        </p>
+        <ul role="list" className="flex flex-col gap-1.5">
+          {rows.map((item) => {
             const status = getPlannerCardPaymentStatus(item, todayYmd);
+            const effectiveAmount = getEffectiveCardPaymentAmount(item);
+            const hasCustomPlan = item.plannedPayment != null;
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const mm = String(plannerMonth).padStart(2, '0');
@@ -154,7 +227,6 @@ const FortnightCardPaymentsPanel = ({
                     'border-emerald-500/20 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
                 )}
               >
-                {/* Icon badge */}
                 <span
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
@@ -178,7 +250,6 @@ const FortnightCardPaymentsPanel = ({
                   />
                 </span>
 
-                {/* Name + status + date */}
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex items-center gap-1.5">
                     <Link
@@ -218,13 +289,13 @@ const FortnightCardPaymentsPanel = ({
                       {statusLabel(status)}
                     </span>
                   </div>
-                  <div className="flex items-baseline gap-1 text-[10px]">
+                  <div className="flex flex-wrap items-baseline gap-1 text-[10px]">
                     <span
                       className={cn('font-medium tabular-nums', dateColor)}
                     >
                       {displayDueDate}
                     </span>
-                    {daysLabel && (
+                    {daysLabel ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
                         <span
@@ -236,20 +307,27 @@ const FortnightCardPaymentsPanel = ({
                           {daysLabel}
                         </span>
                       </>
-                    )}
-                    {item.cutoff_day != null && (
+                    ) : null}
+                    {item.cutoff_day != null ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
                         <span className="text-muted-foreground/60">
                           Corte {item.cutoff_day}
                         </span>
                       </>
-                    )}
+                    ) : null}
+                    {hasCustomPlan && status !== 'pagado' ? (
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="text-muted-foreground/60">
+                          Sugerido {formatCurrency(item.nextDuePayment)}
+                        </span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
-                {/* Amount + pay button */}
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <div
                     className={cn(
                       'flex items-end gap-2',
@@ -271,12 +349,12 @@ const FortnightCardPaymentsPanel = ({
                           ? `${item.walletName}: pagado al corte ${formatCurrency(
                               item.paymentsAppliedToStatement,
                             )}`
-                          : `${item.walletName}: pendiente ${formatCurrency(item.nextDuePayment)}`
+                          : `${item.walletName}: planeado ${formatCurrency(effectiveAmount)}`
                       }
                     >
                       {status === 'pagado'
                         ? formatCurrency(item.paymentsAppliedToStatement)
-                        : formatCurrency(item.nextDuePayment)}
+                        : formatCurrency(effectiveAmount)}
                     </span>
                     {status === 'pagado' &&
                     item.paymentsAppliedToStatement > 0 ? (
@@ -288,7 +366,28 @@ const FortnightCardPaymentsPanel = ({
                       </span>
                     ) : null}
                   </div>
-                  {onPayCard && status !== 'pagado' && (
+
+                  {onPlanUpdated ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleOpenPlanDialog(item)}
+                          aria-label={`Editar pago planeado: ${item.walletName}`}
+                        >
+                          <Pencil className="size-3.5" aria-hidden />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={6}>
+                        Monto a pagar esta quincena
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
+
+                  {onPayCard && status !== 'pagado' ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="inline-flex">
@@ -337,13 +436,38 @@ const FortnightCardPaymentsPanel = ({
                         )}
                       </TooltipContent>
                     </Tooltip>
-                  )}
+                  ) : null}
                 </div>
               </li>
             );
           })}
-      </ul>
-    </div>
+        </ul>
+      </div>
+
+      {editingItem ? (
+        <EditCardPaymentPlanDialog
+          open={planDialogOpen}
+          onOpenChange={(open) => {
+            setPlanDialogOpen(open);
+            if (!open) {
+              setEditingItem(null);
+              setPlanError(null);
+            }
+          }}
+          onSubmit={handleSavePlan}
+          onClearPlan={
+            editingItem.plannedPayment != null ? handleClearPlan : undefined
+          }
+          walletName={editingItem.walletName}
+          fortnightLabel={fortnightLabel}
+          suggestedAmount={editingItem.nextDuePayment}
+          outstandingBalance={editingItem.outstandingBalance}
+          initialPlannedAmount={editingEffective}
+          hasCustomPlan={editingItem.plannedPayment != null}
+          error={planError}
+        />
+      ) : null}
+    </>
   );
 };
 

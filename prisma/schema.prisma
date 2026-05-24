@@ -202,8 +202,9 @@ model Fortnight {
   house House? @relation(fields: [house_id], references: [id])
   user  User?  @relation(fields: [user_id], references: [id])
 
-  expenses Expense[]
-  incomes  Income[]
+  expenses                  Expense[]
+  incomes                   Income[]
+  credit_card_payment_plans CreditCardPaymentPlan[]
 
   @@unique([user_id, month, year, period])
   @@unique([house_id, month, year, period])
@@ -449,6 +450,7 @@ model Wallet {
   linked_loans                  Loan[]                      @relation("LoanLinkedWallet")
   loan_payment_records          LoanPayment[]               @relation("LoanPaymentSourceWallet")
   credit_card_statement_imports CreditCardStatementImport[]
+  credit_card_payment_plans     CreditCardPaymentPlan[]
   budgetAllocations             BudgetAllocation[]
 
   @@index([user_id])
@@ -456,6 +458,27 @@ model Wallet {
   @@index([user_id, type, active])
   @@index([house_id, type, active])
   @@index([house_id, assignee_user_id])
+}
+
+/// Monto que planeas pagar a una TC en una quincena (independiente de la deuda total).
+model CreditCardPaymentPlan {
+  id                    Int      @id @default(autoincrement())
+  credit_card_wallet_id Int
+  fortnight_id          Int
+  planned_amount        Decimal  @db.Decimal(12, 2)
+  user_id               Int?
+  house_id              Int?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  credit_card_wallet Wallet    @relation(fields: [credit_card_wallet_id], references: [id], onDelete: Cascade)
+  fortnight          Fortnight @relation(fields: [fortnight_id], references: [id], onDelete: Cascade)
+
+  @@unique([credit_card_wallet_id, fortnight_id])
+  @@index([fortnight_id])
+  @@index([credit_card_wallet_id])
+  @@index([user_id])
+  @@index([house_id])
 }
 
 model Budget {
