@@ -39,6 +39,7 @@ import type { ExpenseTemplateFormValues } from '@/schemas/expense-template.schem
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { BoundedDayFieldInput } from '@/components/expense-templates/bounded-day-input';
 
 type ExpenseTemplateFormProps = {
   form: UseFormReturn<ExpenseTemplateFormValues>;
@@ -56,23 +57,6 @@ type ExpenseTemplateFormProps = {
 
 const FIELD_CLASSNAME =
   'h-11 rounded-lg border border-white/15 bg-black/35 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors placeholder:text-muted-foreground hover:border-white/25 hover:bg-black/45 focus-visible:border-white/35 focus-visible:bg-black/45 focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-0';
-
-const parseBoundedDay = (
-  rawValue: string,
-  min: number,
-  max: number,
-): number | null => {
-  if (rawValue === '') {
-    return null;
-  }
-
-  const parsed = Number.parseInt(rawValue, 10);
-  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
-    return null;
-  }
-
-  return parsed;
-};
 
 export function ExpenseTemplateForm({
   form,
@@ -312,18 +296,13 @@ export function ExpenseTemplateForm({
                                 Dia de vencimiento (1-15)
                               </FormLabel>
                               <FormControl>
-                                <Input
+                                <BoundedDayFieldInput
                                   className={FIELD_CLASSNAME}
-                                  type="number"
-                                  min="1"
-                                  max="15"
+                                  min={1}
+                                  max={15}
                                   aria-label="Dia de vencimiento primera quincena"
-                                  value={field.value ?? ''}
-                                  onChange={(event) =>
-                                    field.onChange(
-                                      parseBoundedDay(event.target.value, 1, 15),
-                                    )
-                                  }
+                                  value={field.value}
+                                  onChange={field.onChange}
                                   onBlur={field.onBlur}
                                 />
                               </FormControl>
@@ -367,18 +346,13 @@ export function ExpenseTemplateForm({
                                 Dia de vencimiento (16-31)
                               </FormLabel>
                               <FormControl>
-                                <Input
+                                <BoundedDayFieldInput
                                   className={FIELD_CLASSNAME}
-                                  type="number"
-                                  min="16"
-                                  max="31"
+                                  min={16}
+                                  max={31}
                                   aria-label="Dia de vencimiento segunda quincena"
-                                  value={field.value ?? ''}
-                                  onChange={(event) =>
-                                    field.onChange(
-                                      parseBoundedDay(event.target.value, 16, 31),
-                                    )
-                                  }
+                                  value={field.value}
+                                  onChange={field.onChange}
                                   onBlur={field.onBlur}
                                 />
                               </FormControl>
@@ -426,19 +400,14 @@ export function ExpenseTemplateForm({
                       <FormItem>
                         <FormLabel className="text-sm">Dia del mes</FormLabel>
                         <FormControl>
-                          <Input
+                          <BoundedDayFieldInput
                             className={FIELD_CLASSNAME}
-                            type="number"
-                            min="1"
-                            max="31"
+                            min={1}
+                            max={31}
                             placeholder="Vacio = sin corte"
                             aria-label="Dia de corte del mes"
-                            value={field.value ?? ''}
-                            onChange={(event) =>
-                              field.onChange(
-                                parseBoundedDay(event.target.value, 1, 31),
-                              )
-                            }
+                            value={field.value}
+                            onChange={field.onChange}
                             onBlur={field.onBlur}
                           />
                         </FormControl>
