@@ -35,13 +35,14 @@ import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 const IMPORT_LIST_SCROLL_CLASS =
   'max-h-[min(16rem,40vh)] overflow-y-auto scrollbar-hide pr-0.5';
 
-type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO' | 'DIDI_CARD';
+type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO' | 'DIDI_CARD' | 'LIVERPOOL';
 
 const PROVIDER_OPTIONS: { value: Provider; label: string }[] = [
   { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
   { value: 'CA_DEPARTAMENTAL', label: 'C&A Departamental' },
   { value: 'CA_EFECTIVO', label: 'C&A Efectivo' },
   { value: 'DIDI_CARD', label: 'DiDi Card' },
+  { value: 'LIVERPOOL', label: 'Liverpool' },
 ];
 
 const VALID_STATEMENT_PROVIDERS = new Set<Provider>(
@@ -68,6 +69,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   CA_DEPARTAMENTAL: 'C&A Departamental',
   CA_EFECTIVO: 'C&A Efectivo',
   DIDI_CARD: 'DiDi Card',
+  LIVERPOOL: 'Liverpool',
 };
 
 const CreditCardStatementImportDialog = ({
@@ -114,7 +116,10 @@ const CreditCardStatementImportDialog = ({
         walletProviderIconKey === 'DIDI' ||
         walletName.toLowerCase().includes('didi')
           ? 'DIDI_CARD'
-          : null;
+          : walletProviderIconKey === 'LIVERPOOL' ||
+              walletName.toLowerCase().includes('liverpool')
+            ? 'LIVERPOOL'
+            : null;
       const lastProv = statementImports[0]?.provider;
       const fromHistory: Provider | null =
         lastProv && VALID_STATEMENT_PROVIDERS.has(lastProv as Provider)

@@ -202,6 +202,9 @@ export async function POST(
       } else if (importProvider === StatementImportProvider.DIDI_CARD) {
         hint =
           'Confirma que es un PDF de DiDi Card con texto seleccionable (no solo escaneo) y que el archivo no esté dañado.';
+      } else if (importProvider === StatementImportProvider.LIVERPOOL) {
+        hint =
+          'Este periodo puede no tener compras (solo pagos). Liverpool solo importa cargos positivos del detalle de movimientos.';
       }
       return NextResponse.json(
         {

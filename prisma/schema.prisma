@@ -75,6 +75,7 @@ enum StatementImportProvider {
   CA_DEPARTAMENTAL
   CA_EFECTIVO
   DIDI_CARD
+  LIVERPOOL
 }
 
 enum ShoppingCartStatus {
