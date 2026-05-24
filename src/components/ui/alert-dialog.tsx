@@ -79,17 +79,22 @@ function AlertDialogContent({
           viewportLayout
             ? {
                 top: viewportLayout.top,
+                right: viewportLayout.right,
+                bottom: viewportLayout.bottom,
+                left: viewportLayout.left,
                 maxHeight: viewportLayout.maxHeight,
+                margin: viewportLayout.margin,
                 transform: viewportLayout.transform,
                 ...style,
               }
             : style
         }
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 group/alert-dialog-content fixed left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] gap-4 overflow-y-auto overscroll-y-contain rounded-lg border p-6 shadow-lg duration-200 outline-none [-webkit-overflow-scrolling:touch] data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg",
-          viewportLayout
-            ? "top-auto"
-            : "top-[50%] max-h-[min(90dvh,90vh)] translate-y-[-50%]",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 group/alert-dialog-content fixed z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto overscroll-y-contain rounded-lg border p-6 shadow-lg duration-200 outline-none [-webkit-overflow-scrolling:touch] data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg",
+          viewportLayout &&
+            "data-[keyboard-open]:animate-none data-[keyboard-open]:zoom-in-100",
+          !viewportLayout &&
+            "top-[50%] left-[50%] max-h-[min(90dvh,90vh)] translate-x-[-50%] translate-y-[-50%]",
           className
         )}
         {...props}

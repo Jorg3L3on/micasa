@@ -7,24 +7,41 @@ export const VIEWPORT_PADDING_PX = 12;
 
 export type DialogVisualViewportLayout = {
   top: string;
+  right: string;
+  bottom: string;
+  left: string;
   maxHeight: string;
+  margin: string;
   transform: string;
 };
 
+/**
+ * Pins the dialog to the visual viewport rectangle and centers with margin:auto
+ * (no transform — avoids fighting zoom-in animations on iOS).
+ */
 export function computeDialogVisualViewportLayout(
   layoutHeight: number,
   visibleHeight: number,
   offsetTop: number,
+  layoutWidth: number,
+  visibleWidth: number,
+  offsetLeft: number,
 ): DialogVisualViewportLayout | null {
   const keyboardLikelyOpen =
     visibleHeight < layoutHeight * KEYBOARD_OPEN_HEIGHT_RATIO;
 
   if (!keyboardLikelyOpen) return null;
 
+  const paddedHeight = Math.max(visibleHeight - VIEWPORT_PADDING_PX * 2, 120);
+
   return {
     top: `${offsetTop + VIEWPORT_PADDING_PX}px`,
-    maxHeight: `${Math.max(visibleHeight - VIEWPORT_PADDING_PX * 2, 120)}px`,
-    transform: 'translateX(-50%) translateY(0)',
+    bottom: `${layoutHeight - offsetTop - visibleHeight + VIEWPORT_PADDING_PX}px`,
+    left: `${offsetLeft + VIEWPORT_PADDING_PX}px`,
+    right: `${layoutWidth - offsetLeft - visibleWidth + VIEWPORT_PADDING_PX}px`,
+    maxHeight: `${paddedHeight}px`,
+    margin: 'auto',
+    transform: 'none',
   };
 }
 
@@ -52,6 +69,9 @@ export function useDialogVisualViewport(enabled = true) {
           window.innerHeight,
           visualViewport.height,
           visualViewport.offsetTop,
+          window.innerWidth,
+          visualViewport.width,
+          visualViewport.offsetLeft,
         ),
       );
     };
