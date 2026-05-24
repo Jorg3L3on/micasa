@@ -58,3 +58,9 @@ next-env.d.ts
 
 # Local PRD drafts from the `prd` skill (commit with git add -f if needed)
 /tasks/prd-*.md
+
+# Local Python venvs for one-off PDF/script experiments
+.tmp-pdf-venv/
+
+# Local Liverpool PDF samples for manual/parser experiments (not committed)
+src/lib/server/credit-card-statement/fixtures/

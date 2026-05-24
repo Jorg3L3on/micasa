@@ -32,6 +32,10 @@ import {
   extractDidiCardStatementText,
   parseDidiCardStatementText,
 } from '@/lib/server/credit-card-statement/parse-didi-card-statement';
+import {
+  extractLiverpoolStatementText,
+  parseLiverpoolStatementText,
+} from '@/lib/server/credit-card-statement/parse-liverpool-statement';
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -435,6 +439,7 @@ const PROVIDER_LABELS: Record<StatementImportProvider, string> = {
   CA_DEPARTAMENTAL: 'C&A Departamental',
   CA_EFECTIVO: 'C&A Efectivo',
   DIDI_CARD: 'DiDi Card',
+  LIVERPOOL: 'Liverpool',
 };
 
 export async function importStatementPdf(
@@ -527,6 +532,27 @@ export async function importStatementPdf(
         // DiDi: Saldo total del periodo es la fuente de verdad para la deuda al corte.
         currentBalance: r.totalDue,
         temporaryCreditLimit: r.temporaryCreditLimit,
+        movements: r.movements.map((m) => ({
+          description: m.description,
+          amount: m.amount,
+          paymentDate: m.paymentDate,
+        })),
+        warnings: r.warnings,
+      };
+      break;
+    }
+    case StatementImportProvider.LIVERPOOL: {
+      const text = await extractLiverpoolStatementText(input.buffer);
+      const r = parseLiverpoolStatementText(text);
+      parsed = {
+        accountNumber: r.accountNumber,
+        statementIssueDate: r.statementIssueDate,
+        paymentDueDate: r.paymentDueDate,
+        periodStart: r.periodStart,
+        periodEnd: r.periodEnd,
+        totalDue: r.totalDue,
+        minimumPayment: r.minimumPayment,
+        currentBalance: r.currentBalance,
         movements: r.movements.map((m) => ({
           description: m.description,
           amount: m.amount,
