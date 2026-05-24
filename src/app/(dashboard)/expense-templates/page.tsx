@@ -17,7 +17,7 @@ import {
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { clientFetchFromApi, type ClientApiError } from '@/lib/api/client-fetch';
 import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -36,6 +36,7 @@ export default function ExpenseTemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] =
     useState<ExpenseTemplateListItem | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -67,26 +68,25 @@ export default function ExpenseTemplatesPage() {
   const handleDelete = async () => {
     if (!selectedTemplate) return;
     try {
-      setError(null);
+      setDeleteError(null);
       await deleteExpenseTemplate(selectedTemplate.id, context);
       toast.success('Plantilla de gasto eliminada');
       await fetchData();
       setDeleteDialogOpen(false);
       setSelectedTemplate(null);
     } catch (err) {
+      const apiErr = err as ClientApiError;
       const message =
         err instanceof Error
           ? err.message
           : 'Error al eliminar la plantilla de gasto';
-      if (
-        message.includes('409') ||
-        message.includes('in use') ||
-        message.includes('Conflict')
-      ) {
-        setError('La plantilla de gasto está en uso y no puede eliminarse');
-      } else {
-        setError(message);
-      }
+      const displayMessage =
+        apiErr.status === 409 ||
+        /en uso|in use|conflict/i.test(message)
+          ? 'La plantilla de gasto está en uso y no puede eliminarse'
+          : message;
+      setDeleteError(displayMessage);
+      toast.error(displayMessage);
     }
   };
 
@@ -97,7 +97,7 @@ export default function ExpenseTemplatesPage() {
   const openDeleteDialog = useCallback((template: ExpenseTemplateListItem) => {
     setSelectedTemplate(template);
     setDeleteDialogOpen(true);
-    setError(null);
+    setDeleteError(null);
   }, []);
 
   const categories = useMemo(
@@ -333,7 +333,7 @@ export default function ExpenseTemplatesPage() {
       </div>
 
       <div className="relative z-0">
-      {error && !deleteDialogOpen && (
+      {error && (
         <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
         </div>
@@ -369,13 +369,14 @@ export default function ExpenseTemplatesPage() {
             setDeleteDialogOpen(open);
             if (!open) {
               setSelectedTemplate(null);
-              setError(null);
+              setDeleteError(null);
             }
           }}
           onConfirm={handleDelete}
           title="Eliminar plantilla de gastos"
           description="¿Estás seguro de querer eliminar esta plantilla de gastos? Esta acción no puede deshacerse."
           itemName={selectedTemplate.name}
+          error={deleteError}
         />
       )}
     </>
