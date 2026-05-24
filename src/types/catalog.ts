@@ -255,6 +255,24 @@ export type DuePaymentItem = {
   plannedPayment?: number | null;
 };
 
+export type CreditCardPaymentPlanView = {
+  fortnightId: number;
+  fortnightLabel: string;
+  year: number;
+  month: number;
+  period: 'FIRST' | 'SECOND';
+  isCurrentFortnight: boolean;
+  suggestedAmount: number;
+  plannedPayment: number | null;
+  effectiveAmount: number;
+  outstandingBalance: number;
+};
+
+/** GET /api/credit-cards/:id/payment-plan */
+export type CreditCardPaymentPlanResponse = {
+  items: CreditCardPaymentPlanView[];
+};
+
 /** GET /api/wallets/due-payments?year=&month= — planificación mensual por quincena */
 export type PlannerDuePaymentsResponse = {
   first: DuePaymentItem[];

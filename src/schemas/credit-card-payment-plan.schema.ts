@@ -6,7 +6,7 @@ export const cardPaymentPlanSchema = z.object({
 });
 
 export const cardPaymentPlanFormSchema = z.object({
-  plannedAmount: z.coerce.number().min(0),
+  plannedAmount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
 });
 
 export type CardPaymentPlanInput = z.infer<typeof cardPaymentPlanSchema>;
