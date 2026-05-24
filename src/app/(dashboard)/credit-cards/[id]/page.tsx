@@ -17,6 +17,7 @@ import {
   PaymentTableBlock,
   PurchaseTableBlock,
 } from '@/components/credit-cards/CreditCardDetailTables';
+import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
 import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
@@ -34,6 +35,7 @@ import {
 import {
   createCreditCardPayment,
   downloadCreditCardStatementImportFile,
+  getCreditCardPaymentPlan,
   getCreditCardStatement,
   listCreditCardStatementImports,
   rollbackCreditCardStatementImport,
@@ -51,10 +53,12 @@ import { formatDate } from '@/lib/utils';
 import type {
   CategoryOption,
   CreditCardListItem,
+  CreditCardPaymentPlanView,
   CreditCardStatementImportListItem,
   CreditCardStatementResponse,
   PaymentMethodOption,
 } from '@/types/catalog';
+import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
@@ -128,6 +132,9 @@ export default function CreditCardDetailPage() {
   const [rollbackImportId, setRollbackImportId] = useState<number | null>(null);
   const [editCardDialogOpen, setEditCardDialogOpen] = useState(false);
   const [editCardFormError, setEditCardFormError] = useState<string | null>(null);
+  const [paymentPlanItems, setPaymentPlanItems] = useState<
+    CreditCardPaymentPlanView[]
+  >([]);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -158,7 +165,7 @@ export default function CreditCardDetailPage() {
       setLoading(true);
       setError(null);
 
-      const [cardData, statementData, paymentMethodsData, categoriesData] =
+      const [cardData, statementData, paymentMethodsData, categoriesData, planData] =
         await Promise.all([
           clientFetchFromApi<CreditCardListItem>(
             `/api/credit-cards/${creditCardId}`,
@@ -172,6 +179,9 @@ export default function CreditCardDetailPage() {
             undefined,
             context,
           ),
+          getCreditCardPaymentPlan(creditCardId, context).catch(() => ({
+            items: [],
+          })),
         ]);
 
       let importsData: CreditCardStatementImportListItem[] = [];
@@ -189,6 +199,7 @@ export default function CreditCardDetailPage() {
       setPaymentSources(paymentMethodsData);
       setCategoryOptions(categoriesData);
       setStatementImports(importsData);
+      setPaymentPlanItems(planData.items);
     } catch (err) {
       setError(
         err instanceof Error
@@ -349,6 +360,19 @@ export default function CreditCardDetailPage() {
     );
   }, [statement]);
 
+  const paymentDialogSuggestedAmount = useMemo(() => {
+    const currentPlan =
+      paymentPlanItems.find((item) => item.isCurrentFortnight) ??
+      paymentPlanItems[0];
+    if (!currentPlan) {
+      return statement?.next_due_payment ?? 0;
+    }
+    return getEffectiveCardPaymentAmount({
+      nextDuePayment: currentPlan.suggestedAmount,
+      plannedPayment: currentPlan.plannedPayment,
+    });
+  }, [paymentPlanItems, statement?.next_due_payment]);
+
   if (context.id === 0 || (loading && !statement)) {
     return <CreditCardDetailSkeleton />;
   }
@@ -380,6 +404,12 @@ export default function CreditCardDetailPage() {
         utilizationPct={utilizationPct}
         onOpenPaymentDialog={() => setPaymentDialogOpen(true)}
         onOpenPurchaseDialog={() => setPurchaseDialogOpen(true)}
+      />
+
+      <CreditCardPlannedPaymentSection
+        walletId={creditCardId}
+        items={paymentPlanItems}
+        onPlanUpdated={loadData}
       />
 
       {/* ── Cycle nav + compact stats ──────────────────────────────── */}
@@ -521,7 +551,7 @@ export default function CreditCardDetailPage() {
         }}
         fundingWalletOptions={fundingWalletOptions}
         categoryOptions={categoryOptions}
-        nextDuePayment={statement.next_due_payment}
+        nextDuePayment={paymentDialogSuggestedAmount}
         outstandingBalance={statement.outstanding_balance}
         submitting={paymentSubmitting}
         error={paymentError}

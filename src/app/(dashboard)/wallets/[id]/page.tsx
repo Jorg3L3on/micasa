@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   ArrowDown,
@@ -25,6 +25,7 @@ import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
+import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
 import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
+import { getCreditCardPaymentPlan } from '@/lib/api/credit-cards';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type {
@@ -47,6 +49,7 @@ import type {
   WalletMovement,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
+import type { CreditCardPaymentPlanView } from '@/types/catalog';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
@@ -186,6 +189,9 @@ export default function WalletDetailPage() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expenseError, setExpenseError] = useState<string | null>(null);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [paymentPlanItems, setPaymentPlanItems] = useState<
+    CreditCardPaymentPlanView[]
+  >([]);
 
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -226,6 +232,17 @@ export default function WalletDetailPage() {
       ]);
       setWallet(detail);
       setData(movements);
+      if (
+        detail.type === 'CREDIT_CARD' ||
+        detail.type === 'DEPARTMENT_STORE_CARD'
+      ) {
+        const plan = await getCreditCardPaymentPlan(walletId, context).catch(
+          () => ({ items: [] as CreditCardPaymentPlanView[] }),
+        );
+        setPaymentPlanItems(plan.items);
+      } else {
+        setPaymentPlanItems([]);
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al cargar la billetera',
@@ -436,6 +453,16 @@ export default function WalletDetailPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
+            {isCreditWallet ? (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/credit-cards/${walletId}${ownerQueryString}`}
+                  className="cursor-pointer"
+                >
+                  Ver estado de cuenta
+                </Link>
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem
               onClick={() => setBalanceOpen(true)}
               className="cursor-pointer"
@@ -463,6 +490,14 @@ export default function WalletDetailPage() {
         </DropdownMenu>
         </div>
       </div>
+
+      {isCreditWallet ? (
+        <CreditCardPlannedPaymentSection
+          walletId={walletId}
+          items={paymentPlanItems}
+          onPlanUpdated={loadData}
+        />
+      ) : null}
 
       {/* Range nav + KPIs */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

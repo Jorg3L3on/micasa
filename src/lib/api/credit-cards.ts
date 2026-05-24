@@ -3,6 +3,7 @@
 import type { FinanceContextType } from '@/types/finance-context';
 import type {
   CreditCardPaymentListItem,
+  CreditCardPaymentPlanResponse,
   CreditCardStatementImportListItem,
   CreditCardStatementResponse,
   MercadoPagoStatementImportResponse,
@@ -47,6 +48,17 @@ export async function getCreditCardStatement(
   const query = asOf ? `?asOf=${encodeURIComponent(asOf)}` : '';
   return clientFetchFromApi<CreditCardStatementResponse>(
     `/api/credit-cards/${id}/statement${query}`,
+    undefined,
+    context,
+  );
+}
+
+export async function getCreditCardPaymentPlan(
+  id: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardPaymentPlanResponse>(
+    `/api/credit-cards/${id}/payment-plan`,
     undefined,
     context,
   );
