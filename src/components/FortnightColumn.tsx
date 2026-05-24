@@ -18,6 +18,7 @@ import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/C
 import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
 } from '@/components/planner/FortnightCardPaymentsPanel';
+import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
   DropdownMenu,
@@ -113,6 +114,8 @@ type FortnightColumnProps = {
   /** Bump from parent after external saldo changes so resumen refreshes funding vs pendiente. */
   summaryFundingRefreshNonce?: number;
   preferenceScope?: string;
+  /** Narrow column when both fortnights are shown side by side. */
+  dualColumnLayout?: boolean;
 };
 
 export default function FortnightColumn({
@@ -131,6 +134,7 @@ export default function FortnightColumn({
   wallets = [],
   summaryFundingRefreshNonce,
   preferenceScope = 'default',
+  dualColumnLayout = false,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -716,6 +720,8 @@ export default function FortnightColumn({
     [loanDueItems],
   );
 
+  const compactTabs = dualColumnLayout;
+
   return (
     <>
       <div className="flex flex-col space-y-3 sm:space-y-4">
@@ -782,6 +788,8 @@ export default function FortnightColumn({
               variant="line"
               className={cn(
                 'h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 sm:gap-1',
+                compactTabs &&
+                  'w-full overflow-x-auto scrollbar-hide [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0',
                 '[&_[data-slot=tabs-trigger]]:rounded-full',
                 '[&_[data-slot=tabs-trigger]]:transition-all',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
@@ -799,15 +807,19 @@ export default function FortnightColumn({
             >
               <TabsTrigger
                 value="expenses"
-                className="min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm"
+                className={cn(
+                  'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
+                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
+                )}
                 aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
               >
-                <span className="inline-flex items-center gap-1.5 sm:gap-2">
+                <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
                   Gastos
                   <Badge
                     variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
                     className={cn(
                       'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
                       columnTab === 'expenses' && unpaidExpenseCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -819,18 +831,22 @@ export default function FortnightColumn({
               </TabsTrigger>
               <TabsTrigger
                 value="cards"
-                className="min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm"
+                className={cn(
+                  'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
+                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
+                )}
                 aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
               >
-                <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="sm:hidden">Tarjeta</span>
-                  <span className="hidden sm:inline">Pagos tarjeta</span>
+                <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
+                  <span className={compactTabs ? 'inline' : 'sm:hidden'}>Tarjeta</span>
+                  <span className={compactTabs ? 'hidden' : 'hidden sm:inline'}>Pagos tarjeta</span>
                   <Badge
                     variant={
                       pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                     }
                     className={cn(
                       'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
                       columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -842,17 +858,21 @@ export default function FortnightColumn({
               </TabsTrigger>
               <TabsTrigger
                 value="loans"
-                className="min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm"
+                className={cn(
+                  'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
+                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
+                )}
                 aria-label={`Prestamos, ${pendingLoanPaymentsCount} pendientes`}
               >
-                <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  Prestamos
+                <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
+                  {compactTabs ? 'Prest.' : 'Prestamos'}
                   <Badge
                     variant={
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
                     }
                     className={cn(
                       'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
+                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
                       columnTab === 'loans' && pendingLoanPaymentsCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -871,7 +891,10 @@ export default function FortnightColumn({
                     size="sm"
                     onClick={() => setAddExpenseDialogOpen(true)}
                     disabled={!fortnightId || fortnightId <= 0}
-                    className="h-9 w-9 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8 sm:w-auto sm:px-3"
+                    className={cn(
+                      'h-9 w-9 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8 sm:w-auto sm:px-3',
+                      compactTabs && 'sm:w-9 sm:px-0',
+                    )}
                     aria-label="Agregar gasto a esta quincena"
                     title={
                       !fortnightId || fortnightId <= 0
@@ -880,7 +903,9 @@ export default function FortnightColumn({
                     }
                   >
                     <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                    <span className="hidden sm:inline">Agregar gasto</span>
+                    <span className={cn('hidden sm:inline', compactTabs && 'sm:hidden')}>
+                      Agregar gasto
+                    </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={4}>
@@ -976,6 +1001,7 @@ export default function FortnightColumn({
                 items={cardDueItems}
                 ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
+                fortnightId={fortnightId}
                 plannerYear={year}
                 plannerMonth={month}
                 isCompact={tableDensity === 'compact'}
@@ -983,6 +1009,7 @@ export default function FortnightColumn({
                   context.id !== 0 ? handlePlannerOpenPayCard : undefined
                 }
                 payingWalletId={plannerPayCardLoadingId}
+                onPlanUpdated={refreshData}
               />
             </div>
           </TabsContent>
@@ -1055,7 +1082,11 @@ export default function FortnightColumn({
         }}
         fundingWalletOptions={plannerFundingWalletOptions}
         categoryOptions={plannerPaymentCategories}
-        nextDuePayment={plannerPaymentCard?.nextDuePayment ?? 0}
+        nextDuePayment={
+          plannerPaymentCard != null
+            ? getEffectiveCardPaymentAmount(plannerPaymentCard)
+            : 0
+        }
         outstandingBalance={plannerPaymentCard?.outstandingBalance ?? 0}
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}

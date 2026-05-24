@@ -251,6 +251,8 @@ export type DuePaymentItem = {
   statementDueDate: string;
   /** Deuda actual en la billetera tarjeta (para tope de pago y “saldo total”). */
   outstandingBalance: number;
+  /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
+  plannedPayment?: number | null;
 };
 
 /** GET /api/wallets/due-payments?year=&month= — planificación mensual por quincena */

@@ -1,6 +1,11 @@
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import {
+  attachPlannedPaymentsToDueItems,
+  getEffectiveCardPaymentAmount,
+  resolveFortnightIdForDate,
+} from '@/lib/finance/credit-card-payment-plan.service';
 import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
@@ -334,29 +339,18 @@ export async function getCreditCardStatementByOwner(
   const temporaryCreditLimit =
     card.temporary_credit_limit == null ? null : Number(card.temporary_credit_limit);
 
-  let nextDuePayment = Math.max(
-    (importedTotalDue ?? lastStatementBalance) - paymentsAppliedToStatementTotal,
-    0,
-  );
-
-  /**
-   * Tarjetas con **pago antes del corte** en el mes (ej. pago día 8, corte día 15): el vencimiento
-   * cae antes del siguiente corte en el calendario. Mientras el estado de cuenta **cerrado** en
-   * MiCasa siga en $0 (o sin import), las compras del **ciclo abierto** ya cargadas son el mejor
-   * estimado de lo que falta para el próximo vencimiento — restando los **pagos ya registrados**
-   * en ese ciclo (misma fuente que `current_cycle_payments`).
-   */
-  if (
-    card.due_day < card.cutoff_day &&
-    nextDuePayment === 0 &&
-    currentCyclePurchasesTotal > 0 &&
-    toDateOnlyString(normalizedAsOf) <= toDateOnlyString(window.currentCycleEnd)
-  ) {
-    nextDuePayment = Math.max(
-      currentCyclePurchasesTotal - currentCyclePaymentsTotal,
-      0,
-    );
-  }
+  const nextDuePayment = computeNextDuePayment({
+    lastStatementBalance,
+    paymentsAppliedToStatement: paymentsAppliedToStatementTotal,
+    importedTotalDue,
+    outstandingBalance: currentBalance,
+    dueDay: card.due_day,
+    cutoffDay: card.cutoff_day,
+    currentCyclePurchasesTotal,
+    currentCyclePaymentsTotal,
+    asOfYmd: toDateOnlyString(normalizedAsOf),
+    currentCycleEndYmd: toDateOnlyString(window.currentCycleEnd),
+  });
 
   return {
     credit_card_id: card.id,
@@ -457,6 +451,81 @@ export type CreditCardStatementObligationWithCycle =
   CreditCardStatementObligationBreakdown & {
     current_cycle_purchases: number;
   };
+
+export type ComputeNextDuePaymentInput = {
+  lastStatementBalance: number;
+  paymentsAppliedToStatement: number;
+  importedTotalDue: number | null;
+  outstandingBalance: number;
+  dueDay: number;
+  cutoffDay: number;
+  currentCyclePurchasesTotal?: number;
+  currentCyclePaymentsTotal?: number;
+  asOfYmd?: string;
+  currentCycleEndYmd?: string;
+};
+
+/**
+ * Monto sugerido a pagar al próximo vencimiento. Usada en la ficha de tarjeta,
+ * planificación (Pagos tarjeta) y cualquier superficie que muestre `next_due_payment`.
+ */
+export const computeNextDuePayment = ({
+  lastStatementBalance,
+  paymentsAppliedToStatement,
+  importedTotalDue,
+  outstandingBalance,
+  dueDay,
+  cutoffDay,
+  currentCyclePurchasesTotal = 0,
+  currentCyclePaymentsTotal = 0,
+  asOfYmd,
+  currentCycleEndYmd,
+}: ComputeNextDuePaymentInput): number => {
+  const ledgerDue = Math.max(
+    lastStatementBalance - paymentsAppliedToStatement,
+    0,
+  );
+  const outstandingDue = Math.max(
+    outstandingBalance - paymentsAppliedToStatement,
+    0,
+  );
+
+  let nextDuePayment: number;
+  if (importedTotalDue != null) {
+    nextDuePayment = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+  } else if (ledgerDue <= 0 && outstandingDue > 0) {
+    /**
+     * Sin importación alineada al período: reconstruir desde movimientos suele ser frágil.
+     * Si la tarjeta tiene deuda registrada (sync/saldo manual), úsala como respaldo.
+     */
+    nextDuePayment = outstandingDue;
+  } else {
+    nextDuePayment = ledgerDue;
+  }
+
+  /**
+   * Tarjetas con **pago antes del corte** en el mes (ej. pago día 8, corte día 15): el vencimiento
+   * cae antes del siguiente corte en el calendario. Mientras el estado de cuenta **cerrado** en
+   * MiCasa siga en $0 (o sin import), las compras del **ciclo abierto** ya cargadas son el mejor
+   * estimado de lo que falta para el próximo vencimiento — restando los **pagos ya registrados**
+   * en ese ciclo (misma fuente que `current_cycle_payments`).
+   */
+  if (
+    dueDay < cutoffDay &&
+    nextDuePayment === 0 &&
+    currentCyclePurchasesTotal > 0 &&
+    asOfYmd != null &&
+    currentCycleEndYmd != null &&
+    asOfYmd <= currentCycleEndYmd
+  ) {
+    nextDuePayment = Math.max(
+      currentCyclePurchasesTotal - currentCyclePaymentsTotal,
+      0,
+    );
+  }
+
+  return nextDuePayment;
+};
 
 const expenseOwnerWhereSql = (ownerFilter: OwnerFilter) => {
   if (ownerFilter.user_id !== null) {
@@ -645,6 +714,63 @@ const sumStatementPurchasesByWallet = async (
   return map;
 };
 
+const sumCurrentCyclePurchasesByWallet = async (
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  ownerFilter: OwnerFilter,
+) => {
+  if (cardIds.length === 0) {
+    return new Map<number, number>();
+  }
+
+  const ownerSql = expenseOwnerWhereSql(ownerFilter);
+  const rows = await prisma.$queryRaw<Array<{ wallet_id: number; total: unknown }>>`
+    SELECT e."wallet_id", COALESCE(SUM(e."amount"), 0) AS total
+    FROM "Expense" e
+    WHERE e."is_paid" = true
+      AND e."wallet_id" IN (${Prisma.join(cardIds)})
+      AND COALESCE(e."payment_date", e."created_at") >= ${window.currentCycleStart}
+      AND COALESCE(e."payment_date", e."created_at") <= ${window.currentCycleEnd}
+      AND ${ownerSql}
+    GROUP BY e."wallet_id"
+  `;
+
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    map.set(row.wallet_id, Number(row.total));
+  }
+  return map;
+};
+
+const sumCurrentCyclePaymentsByWallet = async (
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  ownerFilter: OwnerFilter,
+) => {
+  if (cardIds.length === 0) {
+    return new Map<number, number>();
+  }
+
+  const ownerSql = creditPaymentOwnerWhereSql(ownerFilter);
+  const rows = await prisma.$queryRaw<
+    Array<{ credit_card_wallet_id: number; total: unknown }>
+  >`
+    SELECT p."credit_card_wallet_id", COALESCE(SUM(p."amount"), 0) AS total
+    FROM "CreditCardPayment" p
+    WHERE p."credit_card_wallet_id" IN (${Prisma.join(cardIds)})
+      AND p."paid_at" >= ${window.currentCycleStart}
+      AND p."paid_at" <= ${window.currentCycleEnd}
+      AND ${ownerSql}
+    GROUP BY p."credit_card_wallet_id"
+  `;
+
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    map.set(row.credit_card_wallet_id, Number(row.total));
+  }
+  return map;
+};
+
 const sumPaymentsAppliedToStatementByWallet = async (
   cardIds: number[],
   window: CreditCardStatementWindow,
@@ -739,8 +865,11 @@ async function getDuePaymentsWithAsOf(
 
   const purchaseSums = new Map<number, number>();
   const paymentSums = new Map<number, number>();
+  const currentCyclePurchaseSums = new Map<number, number>();
+  const currentCyclePaymentSums = new Map<number, number>();
   const importedTotalByWallet = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
+  const currentCycleEndByWallet = new Map<number, string>();
 
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -753,13 +882,28 @@ async function getDuePaymentsWithAsOf(
       );
       const cardIds = cardsInGroup.map((c) => c.id);
       const dueStr = toDateOnlyString(window.statementDueDate);
+      const cycleEndStr = toDateOnlyString(window.currentCycleEnd);
       for (const id of cardIds) {
         statementDueByWallet.set(id, dueStr);
+        currentCycleEndByWallet.set(id, cycleEndStr);
       }
 
       // Avoid large burst fan-out against Postgres while rendering monthly planner.
       const purchases = await sumStatementPurchasesByWallet(cardIds, window, ownerFilter);
       const payments = await sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter);
+
+      if (head.due_day! < head.cutoff_day!) {
+        const [cyclePurchases, cyclePayments] = await Promise.all([
+          sumCurrentCyclePurchasesByWallet(cardIds, window, ownerFilter),
+          sumCurrentCyclePaymentsByWallet(cardIds, window, ownerFilter),
+        ]);
+        for (const [id, value] of cyclePurchases) {
+          currentCyclePurchaseSums.set(id, value);
+        }
+        for (const [id, value] of cyclePayments) {
+          currentCyclePaymentSums.set(id, value);
+        }
+      }
 
       /**
        * Misma regla que `getCreditCardStatement`: import alineado al `period_end` del
@@ -821,21 +965,18 @@ async function getDuePaymentsWithAsOf(
     const importedTotalDue = importedTotalByWallet.get(card.id) ?? null;
     const outstandingBalance = Number(card.amount);
 
-    const ledgerDue = Math.max(lastStatementBalance - paymentsAppliedToStatement, 0);
-    const outstandingDue = Math.max(outstandingBalance - paymentsAppliedToStatement, 0);
-
-    let nextDuePayment: number;
-    if (importedTotalDue != null) {
-      nextDuePayment = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
-    } else if (ledgerDue <= 0 && outstandingDue > 0) {
-      /**
-       * Sin importación alineada al período: reconstruir desde movimientos suele ser frágil.
-       * Si la tarjeta tiene deuda registrada (sync/saldo manual), úsala como respaldo.
-       */
-      nextDuePayment = outstandingDue;
-    } else {
-      nextDuePayment = ledgerDue;
-    }
+    const nextDuePayment = computeNextDuePayment({
+      lastStatementBalance,
+      paymentsAppliedToStatement,
+      importedTotalDue,
+      outstandingBalance,
+      dueDay: card.due_day!,
+      cutoffDay: card.cutoff_day!,
+      currentCyclePurchasesTotal: currentCyclePurchaseSums.get(card.id) ?? 0,
+      currentCyclePaymentsTotal: currentCyclePaymentSums.get(card.id) ?? 0,
+      asOfYmd: toDateOnlyString(asOf),
+      currentCycleEndYmd: currentCycleEndByWallet.get(card.id),
+    });
     return {
       walletId: card.id,
       walletName: card.name,
@@ -846,6 +987,7 @@ async function getDuePaymentsWithAsOf(
       paymentsAppliedToStatement,
       statementDueDate: statementDueByWallet.get(card.id)!,
       outstandingBalance,
+      plannedPayment: null,
     };
   });
 
@@ -861,13 +1003,16 @@ export async function getDuePaymentsForCurrentFortnight(
   const now = new Date();
   const currentDay = now.getDate();
   const isFirstFortnight = currentDay <= 15;
-  return getDuePaymentsWithAsOf(
+  const items = await getDuePaymentsWithAsOf(
     ownerFilter,
     now,
     isFirstFortnight
       ? (dueDay) => dueDay >= 1 && dueDay <= 15
       : (dueDay) => dueDay >= 16,
   );
+  const fortnightId = await resolveFortnightIdForDate(ownerFilter, now);
+  await attachPlannedPaymentsToDueItems(items, fortnightId, ownerFilter);
+  return items;
 }
 
 /**
@@ -1001,6 +1146,22 @@ export async function getDuePaymentsForPlannerMonth(
     );
   }
 
+  const [fortnightFirst, fortnightSecond] = await Promise.all([
+    prisma.fortnight.findFirst({
+      where: { ...ownerFilter, year, month, period: 'FIRST' },
+      select: { id: true },
+    }),
+    prisma.fortnight.findFirst({
+      where: { ...ownerFilter, year, month, period: 'SECOND' },
+      select: { id: true },
+    }),
+  ]);
+
+  await Promise.all([
+    attachPlannedPaymentsToDueItems(first, fortnightFirst?.id, ownerFilter),
+    attachPlannedPaymentsToDueItems(second, fortnightSecond?.id, ownerFilter),
+  ]);
+
   return { first, second };
 }
 
@@ -1017,8 +1178,8 @@ export async function sumPlannerCardDueForFortnight(
     month,
   );
   const items = period === 'FIRST' ? first : second;
-  const withDue = items.filter((i) => i.nextDuePayment > 0);
-  const total = withDue.reduce((s, i) => s + i.nextDuePayment, 0);
+  const withDue = items.filter((i) => getEffectiveCardPaymentAmount(i) > 0);
+  const total = withDue.reduce((s, i) => s + getEffectiveCardPaymentAmount(i), 0);
   return { total, cardCount: withDue.length };
 }
 
@@ -1033,8 +1194,10 @@ export async function sumPlannerCardDueForMonth(
     year,
     month,
   );
-  const withDue = [...first, ...second].filter((i) => i.nextDuePayment > 0);
-  const total = withDue.reduce((s, i) => s + i.nextDuePayment, 0);
+  const withDue = [...first, ...second].filter(
+    (i) => getEffectiveCardPaymentAmount(i) > 0,
+  );
+  const total = withDue.reduce((s, i) => s + getEffectiveCardPaymentAmount(i), 0);
   return { total, cardCount: withDue.length };
 }
 
