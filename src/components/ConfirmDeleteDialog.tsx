@@ -20,6 +20,7 @@ type ConfirmDeleteDialogProps = {
   title: string
   description: string
   itemName?: string
+  error?: string | null
   /** Defaults to "Eliminar" */
   confirmLabel?: string
   /** Defaults to "Eliminando..." */
@@ -33,6 +34,7 @@ export default function ConfirmDeleteDialog({
   title,
   description,
   itemName,
+  error,
   confirmLabel = 'Eliminar',
   loadingLabel = 'Eliminando...',
 }: ConfirmDeleteDialogProps) {
@@ -59,6 +61,11 @@ export default function ConfirmDeleteDialog({
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
           <Button
