@@ -109,37 +109,10 @@ const WalletBalanceStrip = ({
   if (wallets.length === 0) return null;
 
   return (
-    <div className="grid min-w-0 flex-1 grid-cols-[auto,minmax(0,1fr)] items-start gap-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/60"
-            onClick={handleToggleStrip}
-            aria-expanded={stripVisible}
-            aria-label={
-              stripVisible
-                ? 'Ocultar tarjetas de saldos de billeteras'
-                : 'Mostrar tarjetas de saldos de billeteras'
-            }
-          >
-            {stripVisible ? (
-              <ChevronUp className="h-4 w-4" aria-hidden />
-            ) : (
-              <ChevronDown className="h-4 w-4" aria-hidden />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={4}>
-          Mostrar u ocultar saldos de billeteras
-        </TooltipContent>
-      </Tooltip>
-
+    <div className="flex min-w-0 flex-1 items-start gap-2">
       {stripVisible ? (
         <div
-          className="relative min-w-0 pt-0.5"
+          className="relative min-w-0 flex-1 pt-0.5"
           role="region"
           aria-label="Saldos de billeteras"
         >
@@ -216,7 +189,7 @@ const WalletBalanceStrip = ({
                 const providerCardStyle = getProviderCardStyle(
                   wallet.provider_icon_key,
                   wallet.type,
-                  'wow',
+                  'calm',
                 );
                 const useProviderGradient = Boolean(providerCardStyle);
                 const accent = hasBankIcon ? 'neutral' : fallbackAccent;
@@ -420,8 +393,8 @@ const WalletBalanceStrip = ({
                   >
                     {useProviderGradient ? (
                       <>
-                        <span className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/16 blur-2xl" />
-                        <span className="pointer-events-none absolute -left-8 -bottom-10 h-24 w-24 rounded-full bg-black/20 blur-2xl" />
+                        <span className="pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full bg-white/8 blur-2xl" />
+                        <span className="pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full bg-black/20 blur-2xl" />
                       </>
                     ) : null}
                     {cardContent}
@@ -432,7 +405,7 @@ const WalletBalanceStrip = ({
           </div>
         </div>
       ) : (
-        <div className="min-w-0 pt-0.5">
+        <div className="min-w-0 flex-1 pt-0.5">
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex min-w-max items-center gap-2.5 py-0.5 pr-1">
               {sortedWallets.map((wallet) => {
@@ -478,6 +451,33 @@ const WalletBalanceStrip = ({
           </div>
         </div>
       )}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/60"
+            onClick={handleToggleStrip}
+            aria-expanded={stripVisible}
+            aria-label={
+              stripVisible
+                ? 'Ocultar tarjetas de saldos de billeteras'
+                : 'Mostrar tarjetas de saldos de billeteras'
+            }
+          >
+            {stripVisible ? (
+              <ChevronUp className="h-4 w-4" aria-hidden />
+            ) : (
+              <ChevronDown className="h-4 w-4" aria-hidden />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4}>
+          Mostrar u ocultar saldos de billeteras
+        </TooltipContent>
+      </Tooltip>
 
       <WalletBalanceEditDialog
         wallet={selectedWallet}

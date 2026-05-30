@@ -60,7 +60,7 @@ const getCardColor = (providerIconKey?: string | null, fallbackType?: string) =>
   return null;
 };
 
-export type ProviderCardTone = 'subtle' | 'wow';
+export type ProviderCardTone = 'subtle' | 'wow' | 'calm';
 
 export const getProviderCardStyle = (
   providerIconKey?: string | null,
@@ -69,6 +69,24 @@ export const getProviderCardStyle = (
 ): CSSProperties | undefined => {
   const baseColor = getCardColor(providerIconKey, fallbackType);
   if (!baseColor) return undefined;
+
+  // Calm tone: a shared dark surface with only a subtle brand tint, and the
+  // brand color expressed as a left accent stripe instead of flooding the card.
+  if (tone === 'calm') {
+    return {
+      background: `
+        radial-gradient(125% 95% at 0% 0%, ${rgba(baseColor, 0.24)} 0%, transparent 52%),
+        radial-gradient(90% 80% at 100% 100%, ${rgba(baseColor, 0.1)} 0%, transparent 60%),
+        linear-gradient(155deg, #10141d 0%, #141a25 100%)
+      `,
+      borderColor: rgba(baseColor, 0.26),
+      boxShadow: `
+        inset 3px 0 0 ${rgba(baseColor, 0.8)},
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        0 10px 24px -16px rgba(0, 0, 0, 0.85)
+      `,
+    };
+  }
 
   const isWow = tone === 'wow';
   const topBloomAlpha = isWow ? 0.52 : 0.42;

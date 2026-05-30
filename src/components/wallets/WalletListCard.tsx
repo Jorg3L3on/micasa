@@ -11,12 +11,10 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  BadgeCheck,
   BookmarkIcon,
   MoreVertical,
   Pencil,
   Trash2,
-  Wallet as WalletLucide,
 } from 'lucide-react';
 import {
   type PaymentMethodType,
@@ -82,13 +80,10 @@ export const WalletListCard = ({
 
   const isCard = isCreditType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
-  const subtitle =
-    isCard && wallet.cutoff_day != null && wallet.due_day != null
-      ? `Corte ${wallet.cutoff_day} / Pago ${wallet.due_day}`
-      : null;
+  const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
 
   const providerCardStyle = useMemo(
-    () => getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'wow'),
+    () => getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'calm'),
     [wallet.provider_icon_key, wallet.type],
   );
   const useProviderGradient = Boolean(providerCardStyle);
@@ -103,14 +98,13 @@ export const WalletListCard = ({
 
   const fallbackShellClass = cn(
     'border backdrop-blur-sm ring-1 ring-inset ring-white/5 transition-all duration-300',
-    'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent dark:before:via-white/10',
-    'after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.12)_48%,transparent_72%)] after:opacity-45 after:transition-opacity after:duration-300 group-hover:after:opacity-70',
+    'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-linear-to-r before:from-transparent before:via-white/20 before:to-transparent dark:before:via-white/10',
     fallbackAccent === 'violet' &&
-      'border-violet-500/30 bg-gradient-to-br from-violet-500/12 via-background to-violet-500/4 dark:from-violet-500/20 dark:via-card dark:to-violet-500/5',
+      'border-violet-500/30 bg-linear-to-br from-violet-500/14 via-background to-violet-500/4 dark:from-violet-500/25 dark:via-card dark:to-violet-500/8',
     fallbackAccent === 'blue' &&
-      'border-blue-500/30 bg-gradient-to-br from-blue-500/12 via-background to-blue-500/4 dark:from-blue-500/20 dark:via-card dark:to-blue-500/5',
+      'border-blue-500/30 bg-linear-to-br from-blue-500/14 via-background to-blue-500/4 dark:from-blue-500/25 dark:via-card dark:to-blue-500/8',
     fallbackAccent === 'emerald' &&
-      'border-emerald-500/30 bg-gradient-to-br from-emerald-500/12 via-background to-emerald-500/4 dark:from-emerald-500/20 dark:via-card dark:to-emerald-500/5',
+      'border-emerald-500/30 bg-linear-to-br from-emerald-500/14 via-background to-emerald-500/4 dark:from-emerald-500/25 dark:via-card dark:to-emerald-500/8',
     fallbackAccent === 'neutral' && 'border-border/60 bg-card dark:bg-card/80',
     'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
     fallbackAccent === 'violet' && 'hover:border-violet-500/60 hover:shadow-violet-500/15',
@@ -158,25 +152,21 @@ export const WalletListCard = ({
       credit_limit: wallet.credit_limit,
       temporary_credit_limit: wallet.temporary_credit_limit,
     }) ?? 0;
+  const amountNumber = Number(wallet.amount);
   const usagePercent =
     isCard && effectiveLimit > 0
-      ? Math.min(
-          (Math.max(0, Number(wallet.amount)) / effectiveLimit) * 100,
-          100,
-        )
+      ? Math.min((Math.max(0, amountNumber) / effectiveLimit) * 100, 100)
       : 0;
 
-  const labelMuted = useProviderGradient ? 'text-white/70' : 'text-muted-foreground';
-  const nameClass = cn(
-    'block truncate text-sm font-semibold leading-tight',
-    useProviderGradient ? 'text-white/90' : 'text-foreground',
-    !wallet.active && !useProviderGradient && 'text-muted-foreground',
-    !wallet.active && useProviderGradient && 'text-white/60',
-  );
-  const subtitleClass = cn(
-    'block truncate text-xs',
-    useProviderGradient ? 'text-white/65' : 'text-muted-foreground',
-  );
+  const isNegativeBalance = isFunding && amountNumber < 0;
+  const isOverLimit = isCard && effectiveLimit > 0 && amountNumber > effectiveLimit;
+  const isNearLimit =
+    isCard && effectiveLimit > 0 && !isOverLimit && usagePercent >= 80;
+  const hasAlert = isNegativeBalance || isOverLimit;
+
+  const onGradient = useProviderGradient;
+  const mutedText = onGradient ? 'text-white/55' : 'text-muted-foreground';
+  const softText = onGradient ? 'text-white/80' : 'text-foreground/80';
 
   return (
     <article
@@ -189,178 +179,171 @@ export const WalletListCard = ({
             type="button"
             onClick={handleCardActivate}
             className={cn(
-              'group relative block w-full overflow-hidden rounded-xl border p-4 text-left ring-1 ring-inset ring-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01]',
-              useProviderGradient
-                ? 'text-white ring-white/5 hover:shadow-[0_16px_34px_-14px_rgba(15,23,42,0.95)]'
+              'group relative flex aspect-[1.585/1] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015]',
+              onGradient
+                ? 'text-white ring-1 ring-inset ring-white/10 hover:shadow-[0_22px_44px_-18px_rgba(8,12,22,0.95)]'
                 : fallbackShellClass,
+              hasAlert && 'ring-1 ring-inset ring-rose-400/55',
             )}
             style={providerCardStyle}
             aria-label={`Abrir ${wallet.name} (doble toque para editar saldo)`}
           >
-            {useProviderGradient ? (
+            {/* Surface depth + ornamentation */}
+            {onGradient ? (
               <>
-                <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/18 blur-2xl" />
-                <span className="pointer-events-none absolute -left-10 -bottom-12 h-28 w-28 rounded-full bg-black/30 blur-2xl" />
-                <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.14)_48%,transparent_72%)] opacity-45 transition-opacity duration-300 group-hover:opacity-70" />
+                <span className="pointer-events-none absolute -right-12 -bottom-16 h-44 w-44 rounded-full border border-white/8" />
+                <span className="pointer-events-none absolute -right-4 -bottom-8 h-44 w-44 rounded-full border border-white/5" />
+                <span className="pointer-events-none absolute -left-12 -top-12 h-32 w-32 rounded-full bg-white/8 blur-2xl" />
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent" />
+                {/* Hover light sweep */}
+                <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/14 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100" />
               </>
             ) : null}
 
-            <div className="relative z-0 pr-20 pt-0.5">
-              <div className="mb-4 flex items-start gap-2.5">
-                <WalletProviderIcon
-                  providerIconKey={wallet.provider_icon_key}
+            {/* Strong state signal: overdraft / over-limit */}
+            {hasAlert ? (
+              <span
+                className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1 bg-rose-500"
+                aria-hidden
+              />
+            ) : null}
+
+            {/* Top zone: logo + name (left), type label (left) */}
+            <div className="relative z-0 flex items-start gap-3 pr-9">
+              <WalletProviderIcon
+                providerIconKey={wallet.provider_icon_key}
+                className={cn(
+                  'h-9 w-9 shrink-0 rounded-xl shadow-sm ring-1',
+                  onGradient
+                    ? 'border border-white/25 bg-white/15 ring-white/10'
+                    : 'border border-border/60 bg-card ring-border/60',
+                )}
+                iconClassName="h-5 w-5"
+                showTooltipLabel={false}
+              />
+              <div className="min-w-0 flex-1">
+                <p
                   className={cn(
-                    'h-9 w-9 shrink-0 rounded-lg shadow-sm ring-1',
-                    useProviderGradient
-                      ? 'border border-white/35 bg-white/20 ring-white/10'
-                      : 'border border-border/60 bg-card ring-border/60',
+                    'truncate text-sm font-semibold leading-tight',
+                    onGradient ? 'text-white' : 'text-foreground',
+                    !wallet.active && !onGradient && 'text-muted-foreground',
+                    !wallet.active && onGradient && 'text-white/60',
                   )}
-                  iconClassName="h-5 w-5"
-                  showTooltipLabel={false}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className={nameClass}>{wallet.name}</span>
-                  {subtitle ? <span className={subtitleClass}>{subtitle}</span> : null}
+                >
+                  {wallet.name}
+                </p>
+                <p className={cn('mt-0.5 truncate text-[11px]', mutedText)}>
+                  {typeLabel}
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom zone: balance hero + cardholder (left), secondary (right) */}
+            <div className="relative z-0 mt-auto flex items-end justify-between gap-3 pt-3">
+              <div className="min-w-0">
+                <p className={cn('text-[10px] font-medium uppercase tracking-wider', mutedText)}>
+                  {isCard ? 'Deuda' : 'Saldo'}
+                </p>
+                <p
+                  className={cn(
+                    'mt-1 truncate font-mono text-2xl font-bold leading-none tabular-nums tracking-tight',
+                    hasAlert
+                      ? onGradient
+                        ? 'text-rose-300'
+                        : 'text-destructive'
+                      : onGradient
+                        ? 'text-white'
+                        : 'text-foreground',
+                  )}
+                >
+                  {formatCurrency(wallet.amount)}
+                </p>
+                <div className="mt-2.5 min-w-0">
                   {wallet.assignee ? (
                     <AssigneeWithName
                       name={wallet.assignee.name}
                       size="sm"
-                      nameClassName={cn(
-                        'text-[10px]',
-                        useProviderGradient ? 'text-white/80' : 'text-muted-foreground',
-                      )}
-                      className="mt-0.5"
+                      nameClassName={cn('truncate text-[11px] font-medium', softText)}
                     />
-                  ) : null}
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                <div
-                  className={cn(
-                    'grid grid-cols-2 gap-3 text-xs',
-                    useProviderGradient ? 'opacity-80' : '',
-                    labelMuted,
-                  )}
-                >
-                  <span className="truncate">{isCard ? 'Deuda' : 'Saldo'}</span>
-                  {isCard ? (
-                    <span className="truncate text-right">Límite</span>
                   ) : (
-                    <span className="truncate text-right">Tipo</span>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <span
-                    className={cn(
-                      'min-w-0 truncate text-base font-bold font-mono tabular-nums',
-                      useProviderGradient ? 'text-white' : 'text-foreground',
-                    )}
-                  >
-                    {formatCurrency(wallet.amount)}
-                  </span>
-                  {isCard ? (
-                    effectiveLimit > 0 ? (
-                      <span
-                        className={cn(
-                          'min-w-0 truncate text-right text-base font-bold font-mono tabular-nums',
-                          useProviderGradient ? 'text-white/90' : 'text-foreground',
-                        )}
-                        title={
-                          wallet.temporary_credit_limit != null &&
-                          wallet.credit_limit != null &&
-                          wallet.temporary_credit_limit > wallet.credit_limit
-                            ? `Tope efectivo: mayor entre línea ${formatCurrency(wallet.credit_limit)} y temporal ${formatCurrency(wallet.temporary_credit_limit)}`
-                            : 'Tope de crédito usado para uso y disponible'
-                        }
-                      >
-                        {formatCurrency(effectiveLimit)}
-                      </span>
-                    ) : (
-                      <span
-                        className={cn(
-                          'min-w-0 truncate text-right text-sm font-medium',
-                          useProviderGradient ? 'text-white/70' : 'text-muted-foreground',
-                        )}
-                      >
-                        Sin línea
-                      </span>
-                    )
-                  ) : (
-                    <span
-                      className={cn(
-                        'min-w-0 truncate text-right text-sm font-semibold',
-                        useProviderGradient ? 'text-white/85' : 'text-muted-foreground',
-                      )}
-                    >
-                      {PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType]}
+                    <span className={cn('text-[11px] font-medium', softText)}>
+                      Titular
                     </span>
                   )}
                 </div>
+              </div>
 
-                {isCard && effectiveLimit > 0 ? (
-                  <div className="mt-1.5 space-y-1.5">
-                    <div
-                      className={cn(
-                        'h-1.5 w-full rounded-full',
-                        useProviderGradient ? 'bg-white/20' : 'bg-muted/50',
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'h-1.5 rounded-full transition-all',
-                          useProviderGradient
-                            ? 'bg-white/80'
-                            : 'bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
-                        )}
-                        style={{ width: `${usagePercent}%` }}
-                        aria-hidden
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-1">
+              <div className="shrink-0 text-right">
+                {isCard ? (
+                  effectiveLimit > 0 ? (
+                    <>
+                      <p className={cn('text-[10px] uppercase tracking-wider', mutedText)}>
+                        Línea
+                      </p>
                       <p
                         className={cn(
-                          'text-center text-xs',
-                          useProviderGradient ? 'text-white/70' : 'text-muted-foreground',
+                          'mt-1 font-mono text-sm font-semibold tabular-nums',
+                          onGradient ? 'text-white/90' : 'text-foreground',
                         )}
                       >
-                        {usagePercent.toFixed(0)}% utilizado
+                        {formatCurrency(effectiveLimit)}
                       </p>
-                      {wallet.due_day != null ? (
-                        <span
-                          className={cn(
-                            'rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
-                            useProviderGradient
-                              ? 'bg-white/15 text-white/90'
-                              : 'bg-muted/50 text-muted-foreground',
-                          )}
-                        >
-                          Paga {wallet.due_day}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
+                      <p
+                        className={cn(
+                          'mt-0.5 text-[10px] font-medium tabular-nums',
+                          isOverLimit
+                            ? 'text-rose-300'
+                            : isNearLimit
+                              ? 'text-amber-300'
+                              : mutedText,
+                        )}
+                      >
+                        {isOverLimit ? 'Excedido' : `${usagePercent.toFixed(0)}% usado`}
+                      </p>
+                    </>
+                  ) : (
+                    <p className={cn('text-[11px] font-medium', softText)}>Sin línea</p>
+                  )
                 ) : null}
-
-                <div className="flex items-center gap-1.5 pt-1">
-                  <WalletLucide
+                {isCard && wallet.due_day != null ? (
+                  <span
                     className={cn(
-                      'h-3 w-3 shrink-0',
-                      useProviderGradient ? 'text-white/55' : 'text-muted-foreground',
-                    )}
-                    aria-hidden
-                  />
-                  <p
-                    className={cn(
-                      'text-[10px] leading-none',
-                      useProviderGradient ? 'text-white/65' : 'text-muted-foreground',
+                      'mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold tabular-nums',
+                      onGradient
+                        ? 'bg-white/12 text-white/85 ring-1 ring-inset ring-white/10'
+                        : 'bg-muted/50 text-muted-foreground',
                     )}
                   >
-                    {PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType]}
-                  </p>
-                </div>
+                    Paga {wallet.due_day}
+                  </span>
+                ) : null}
               </div>
             </div>
+
+            {/* Credit usage strip pinned to the card's bottom edge */}
+            {isCard && effectiveLimit > 0 ? (
+              <div
+                className={cn(
+                  'pointer-events-none absolute inset-x-0 bottom-0 z-0 h-1',
+                  onGradient ? 'bg-black/15' : 'bg-muted/40',
+                )}
+                aria-hidden
+              >
+                <div
+                  className={cn(
+                    'h-full transition-all duration-500',
+                    isOverLimit
+                      ? 'bg-rose-400'
+                      : isNearLimit
+                        ? 'bg-amber-400'
+                        : onGradient
+                          ? 'bg-white/80'
+                          : 'bg-linear-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
+                  )}
+                  style={{ width: `${isOverLimit ? 100 : usagePercent}%` }}
+                />
+              </div>
+            ) : null}
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={6}>
@@ -373,29 +356,19 @@ export const WalletListCard = ({
         onPointerDown={handleStopOverlayPointer}
         onClick={handleStopOverlayPointer}
       >
-        {wallet.active ? (
-          useProviderGradient ? (
-            <span className="inline-flex h-6 shrink-0 items-center gap-0.5 rounded-full border border-white/30 bg-white/15 px-2 text-[10px] font-medium text-white">
-              <BadgeCheck className="h-3 w-3" aria-hidden />
-              Activo
+        {!wallet.active ? (
+          onGradient ? (
+            <span className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full border border-white/20 bg-black/25 px-1.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
+              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+              Inactivo
             </span>
           ) : (
-            <Badge variant="secondary" className="h-6 shrink-0 gap-0.5 px-1.5 text-[10px]">
-              <BadgeCheck className="h-3 w-3" aria-hidden />
-              Activo
+            <Badge variant="outline" className="h-5 shrink-0 gap-0.5 px-1.5 text-[9px]">
+              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+              Inactivo
             </Badge>
           )
-        ) : useProviderGradient ? (
-          <span className="inline-flex h-6 shrink-0 items-center gap-0.5 rounded-full border border-white/25 bg-black/20 px-2 text-[10px] font-medium text-white/85">
-            <BookmarkIcon className="h-3 w-3" aria-hidden />
-            Inactivo
-          </span>
-        ) : (
-          <Badge variant="outline" className="h-6 shrink-0 gap-0.5 px-1.5 text-[10px]">
-            <BookmarkIcon className="h-3 w-3" aria-hidden />
-            Inactivo
-          </Badge>
-        )}
+        ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -403,14 +376,14 @@ export const WalletListCard = ({
               variant="ghost"
               size="icon"
               className={cn(
-                'h-8 w-8 shrink-0',
-                useProviderGradient
-                  ? 'text-white/80 hover:bg-white/15 hover:text-white'
+                'h-7 w-7 shrink-0 rounded-full',
+                onGradient
+                  ? 'text-white/75 hover:bg-white/15 hover:text-white'
                   : '',
               )}
               aria-label={`Más opciones para ${wallet.name}`}
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">

@@ -121,7 +121,7 @@ export default function MyCardsPanel() {
         />
         <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide [-webkit-overflow-scrolling:touch]">
         {cards.map((card) => {
-          const cardStyle = getProviderCardStyle(card.provider_icon_key, card.type, 'wow');
+          const cardStyle = getProviderCardStyle(card.provider_icon_key, card.type, 'calm');
           const limit = card.credit_limit ?? 0;
           const usagePercent =
             limit > 0
@@ -134,16 +134,16 @@ export default function MyCardsPanel() {
               type="button"
               onClick={() => handleOpenCardModal(card)}
               aria-label={`Abrir detalles de ${card.name}`}
-              className="group relative block w-[70vw] max-w-[260px] snap-start shrink-0 overflow-hidden rounded-xl border p-3 text-left text-white ring-1 ring-inset ring-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01] sm:w-[220px] sm:max-w-none"
+              className="group relative block w-[70vw] max-w-[260px] snap-start shrink-0 overflow-hidden rounded-xl border p-3 text-left text-white ring-1 ring-inset ring-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01] sm:w-[220px] sm:max-w-none"
               style={cardStyle}
             >
-              <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/18 blur-2xl" />
-              <span className="pointer-events-none absolute -left-10 -bottom-12 h-28 w-28 rounded-full bg-black/30 blur-2xl" />
-              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.14)_48%,transparent_72%)] opacity-45 transition-opacity duration-300 group-hover:opacity-70" />
+              <span className="pointer-events-none absolute -left-10 -top-10 h-24 w-24 rounded-full bg-white/8 blur-2xl" />
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent" />
+              <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/14 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100" />
               <div className="mb-3 flex items-start gap-2">
                 <WalletProviderIcon
                   providerIconKey={card.provider_icon_key}
-                  className="h-7 w-7 shrink-0 rounded-lg border border-white/35 bg-white/20 shadow-sm ring-1 ring-white/10"
+                  className="h-7 w-7 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
                   iconClassName="h-4 w-4"
                   showTooltipLabel
                 />
