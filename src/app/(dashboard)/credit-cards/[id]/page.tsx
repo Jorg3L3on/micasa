@@ -2,16 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CalendarClock, Wallet } from 'lucide-react';
+import { CalendarClock, ChevronDown, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import {
   CreditCardActivitySectionCard,
+  CreditCardActivitySheet,
+  CreditCardCycleSpendingBar,
   CreditCardCycleSummary,
   CreditCardDetailHeaderActions,
+  CreditCardDetailTabTrigger,
+  CreditCardDetailTabsList,
   CreditCardDuePaymentStrip,
+  CreditCardHeroZone,
   CreditCardQuickActions,
   CreditCardStatementSummaryCard,
   CreditCardVisualHero,
@@ -20,6 +25,11 @@ import {
   PaymentTableBlock,
   PurchaseTableBlock,
 } from '@/components/credit-cards/CreditCardDetailTables';
+import {
+  CreditCardFeedEmpty,
+  CreditCardRecentMovements,
+  GroupedPurchaseFeed,
+} from '@/components/credit-cards/CreditCardTransactionFeed';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
 import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
@@ -29,8 +39,13 @@ import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -76,20 +91,31 @@ const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
 
 const CreditCardDetailSkeleton = () => (
-  <div className="space-y-4 pb-24 lg:pb-0">
-    <div className="flex items-center justify-between">
-      <Skeleton className="h-9 w-28" />
-      <Skeleton className="h-9 w-9 rounded-lg" />
+  <div className="space-y-0 pb-24 lg:pb-0">
+    <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-9 w-28" />
+        <Skeleton className="h-9 w-9 rounded-lg" />
+      </div>
+      <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-md rounded-2xl" />
+      <Skeleton className="h-14 w-full rounded-2xl" />
+      <div className="flex justify-center gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-14 rounded-full" />
+        ))}
+      </div>
+      <Skeleton className="h-20 w-full rounded-2xl" />
     </div>
-    <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-md rounded-2xl" />
-    <Skeleton className="h-24 w-full rounded-xl" />
-    <div className="grid grid-cols-4 gap-2">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-20 rounded-xl" />
-      ))}
+    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
+      <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full" />
+      <div className="grid grid-cols-3 gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="mt-4 h-10 w-full rounded-xl" />
+      <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
     </div>
-    <Skeleton className="h-10 w-full rounded-lg" />
-    <Skeleton className="h-48 w-full rounded-xl" />
   </div>
 );
 
@@ -379,71 +405,137 @@ export default function CreditCardDetailPage() {
   }
 
   return (
-    <div className="relative space-y-4 pb-24 lg:space-y-5 lg:pb-0">
-      <CreditCardDetailHeaderActions
-        card={card}
-        backHref={backHref}
-        onOpenImportDialog={() => setMpImportDialogOpen(true)}
-        onExportCsv={handleExportCsv}
-        onExportPdf={handleExportPdf}
-        onEditCard={handleOpenEditCardDialog}
-        onAdjustBalance={() => setBalanceDialogOpen(true)}
-      />
+    <div className="relative pb-24 lg:pb-0">
+      <CreditCardHeroZone>
+        <CreditCardDetailHeaderActions
+          card={card}
+          backHref={backHref}
+          onOpenImportDialog={() => setMpImportDialogOpen(true)}
+          onExportCsv={handleExportCsv}
+          onExportPdf={handleExportPdf}
+          onEditCard={handleOpenEditCardDialog}
+          onAdjustBalance={() => setBalanceDialogOpen(true)}
+        />
 
-      <CreditCardVisualHero
-        card={card}
-        statement={statement}
-        utilizationPct={utilizationPct}
-      />
+        <CreditCardVisualHero
+          card={card}
+          statement={statement}
+          utilizationPct={utilizationPct}
+        />
 
-      <CreditCardDuePaymentStrip
-        statement={statement}
-        daysUntilDue={daysUntilDue}
-      />
+        <CreditCardDuePaymentStrip
+          statement={statement}
+          daysUntilDue={daysUntilDue}
+        />
 
-      <CreditCardQuickActions
-        onOpenPaymentDialog={() => setPaymentDialogOpen(true)}
-        onOpenPurchaseDialog={() => setPurchaseDialogOpen(true)}
-        onOpenImportDialog={() => setMpImportDialogOpen(true)}
-        onAdjustBalance={() => setBalanceDialogOpen(true)}
-      />
+        <CreditCardQuickActions
+          onOpenPaymentDialog={() => setPaymentDialogOpen(true)}
+          onOpenPurchaseDialog={() => setPurchaseDialogOpen(true)}
+          onOpenImportDialog={() => setMpImportDialogOpen(true)}
+          onAdjustBalance={() => setBalanceDialogOpen(true)}
+        />
 
-      <CreditCardCycleSummary
-        statement={statement}
-        isCurrentCycle={isCurrentCycle}
-        onPreviousCycle={handlePreviousCycle}
-        onNextCycle={handleNextCycle}
-        onResetToToday={handleResetToToday}
-        formatCycleRange={formatCycleRange}
-        onAdjustDebt={() => setBalanceDialogOpen(true)}
-      />
+        <CreditCardCycleSpendingBar
+          items={statement.current_cycle_purchase_items}
+          total={statement.current_cycle_purchases}
+        />
+      </CreditCardHeroZone>
 
-      <Tabs defaultValue="resumen" className="gap-4">
-        <TabsList
-          variant="line"
-          className="h-auto w-full justify-start gap-0 border-b border-border/60 bg-transparent p-0"
-        >
-          <TabsTrigger
-            value="resumen"
-            className="flex-1 rounded-none px-2 pb-2.5 pt-1 text-xs sm:text-sm"
-          >
-            Resumen
-          </TabsTrigger>
-          <TabsTrigger
-            value="actividad"
-            className="flex-1 rounded-none px-2 pb-2.5 pt-1 text-xs sm:text-sm"
-          >
-            Actividad
-          </TabsTrigger>
-          <TabsTrigger
-            value="cuotas"
-            className="flex-1 rounded-none px-2 pb-2.5 pt-1 text-xs sm:text-sm"
-          >
-            Cuotas
-          </TabsTrigger>
-        </TabsList>
+      <CreditCardActivitySheet>
+        <CreditCardCycleSummary
+          statement={statement}
+          isCurrentCycle={isCurrentCycle}
+          onPreviousCycle={handlePreviousCycle}
+          onNextCycle={handleNextCycle}
+          onResetToToday={handleResetToToday}
+          formatCycleRange={formatCycleRange}
+          onAdjustDebt={() => setBalanceDialogOpen(true)}
+        />
 
-        <TabsContent value="resumen" className="mt-0 space-y-4">
+        <Tabs defaultValue="actividad" className="mt-5 gap-4">
+          <CreditCardDetailTabsList>
+            <CreditCardDetailTabTrigger value="actividad">
+              Movimientos
+            </CreditCardDetailTabTrigger>
+            <CreditCardDetailTabTrigger value="resumen">
+              Resumen
+            </CreditCardDetailTabTrigger>
+            <CreditCardDetailTabTrigger value="cuotas">
+              Cuotas
+              {statement.installment_active_purchases.length > 0 ? (
+                <Badge
+                  variant="default"
+                  className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
+                  aria-hidden
+                >
+                  {statement.installment_active_purchases.length}
+                </Badge>
+              ) : null}
+            </CreditCardDetailTabTrigger>
+          </CreditCardDetailTabsList>
+
+          <TabsContent value="actividad" className="mt-0 space-y-4">
+            <CreditCardRecentMovements
+              purchases={statement.current_cycle_purchase_items}
+              payments={statement.payment_history}
+              ownerQueryString={ownerQueryString}
+              onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+              onRegisterPayment={() => setPaymentDialogOpen(true)}
+            />
+
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-10 w-full justify-between rounded-xl border border-border/50 bg-muted/15 px-3 text-sm font-medium"
+                >
+                  Más movimientos y filtros
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3 space-y-4">
+                <CreditCardActivitySectionCard
+                  title="Compras del último corte"
+                  subtitle="Estado de cuenta importado o calculado"
+                  accentClass="border-l-blue-500/50"
+                  icon={
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
+                      <CalendarClock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    </span>
+                  }
+                >
+                  {statement.statement_purchases.length === 0 ? (
+                    <CreditCardFeedEmpty message="No hubo compras en el último corte." />
+                  ) : (
+                    <PurchaseTableBlock
+                      items={statement.statement_purchases}
+                      emptyText="No hay compras que coincidan con el filtro."
+                      ownerQueryString={ownerQueryString}
+                      regionLabel="Compras del último corte"
+                    />
+                  )}
+                </CreditCardActivitySectionCard>
+
+                <CreditCardActivitySectionCard
+                  title="Historial completo de pagos"
+                  accentClass="border-l-emerald-500/50"
+                  icon={
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 dark:bg-emerald-500/15">
+                      <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    </span>
+                  }
+                >
+                  <PaymentTableBlock
+                    items={statement.payment_history}
+                    regionLabel="Historial de pagos"
+                  />
+                </CreditCardActivitySectionCard>
+              </CollapsibleContent>
+            </Collapsible>
+          </TabsContent>
+
+          <TabsContent value="resumen" className="mt-0 space-y-4">
           <CreditCardPlannedPaymentSection
             walletId={creditCardId}
             items={paymentPlanItems}
@@ -467,114 +559,23 @@ export default function CreditCardDetailPage() {
           <LinkedLoansCard walletId={creditCardId} />
         </TabsContent>
 
-        <TabsContent value="actividad" className="mt-0 space-y-4">
-          <CreditCardActivitySectionCard
-            title="Compras del ciclo actual"
-            subtitle="Gastos en el periodo en curso"
-            accentClass="border-l-violet-500/50"
-            icon={
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
-                <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              </span>
-            }
-            badge={
-              statement.current_cycle_purchase_items.length > 0 ? (
-                <Badge variant="secondary" className="text-[10px] tabular-nums">
-                  {statement.current_cycle_purchase_items.length}
-                </Badge>
-              ) : undefined
-            }
-          >
-            {statement.current_cycle_purchase_items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hay compras en el ciclo actual. Usa{' '}
-                <span className="font-medium text-foreground">Compra</span> arriba
-                o registra un gasto con esta tarjeta.
-              </p>
-            ) : (
-              <PurchaseTableBlock
-                items={statement.current_cycle_purchase_items}
-                emptyText="No hay compras que coincidan con el filtro."
-                ownerQueryString={ownerQueryString}
-                regionLabel="Compras del ciclo actual"
-              />
-            )}
-          </CreditCardActivitySectionCard>
-
-          <CreditCardActivitySectionCard
-            title="Compras del último corte"
-            subtitle="Movimientos del estado de cuenta"
-            accentClass="border-l-blue-500/50"
-            icon={
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
-                <CalendarClock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-              </span>
-            }
-          >
-            {statement.statement_purchases.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hubo compras en el último corte.
-              </p>
-            ) : (
-              <PurchaseTableBlock
-                items={statement.statement_purchases}
-                emptyText="No hay compras que coincidan con el filtro."
-                ownerQueryString={ownerQueryString}
-                regionLabel="Compras del último corte"
-              />
-            )}
-          </CreditCardActivitySectionCard>
-
-          <CreditCardActivitySectionCard
-            title="Historial de pagos"
-            subtitle="Abonos registrados a la tarjeta"
-            accentClass="border-l-emerald-500/50"
-            icon={
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 dark:bg-emerald-500/15">
-                <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              </span>
-            }
-          >
-            <PaymentTableBlock
-              items={statement.payment_history}
-              regionLabel="Historial de pagos"
-            />
-          </CreditCardActivitySectionCard>
-        </TabsContent>
-
-        <TabsContent value="cuotas" className="mt-0">
-          <CreditCardActivitySectionCard
-            title="Cuotas vigentes"
-            subtitle="Compras a meses con pagos pendientes"
-            accentClass="border-l-violet-500/50"
-            icon={
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
-                <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              </span>
-            }
-            badge={
-              statement.installment_active_purchases.length > 0 ? (
-                <Badge variant="secondary" className="text-[10px] tabular-nums">
-                  {statement.installment_active_purchases.length}
-                </Badge>
-              ) : undefined
-            }
-          >
+          <TabsContent value="cuotas" className="mt-0 space-y-4">
             {statement.installment_active_purchases.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hay compras en cuotas con pagos pendientes en esta tarjeta.
-              </p>
+              <CreditCardFeedEmpty
+                message="Sin cuotas vigentes"
+                description="Las compras a meses con pagos pendientes aparecerán aquí."
+              />
             ) : (
-              <PurchaseTableBlock
+              <GroupedPurchaseFeed
                 items={statement.installment_active_purchases}
-                emptyText="Ningún resultado con el filtro aplicado."
                 ownerQueryString={ownerQueryString}
                 regionLabel="Cuotas vigentes"
+                emptyText="Ningún resultado con el filtro aplicado."
               />
             )}
-          </CreditCardActivitySectionCard>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </CreditCardActivitySheet>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 p-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:hidden">
         <div className="mx-auto flex max-w-md gap-2">
