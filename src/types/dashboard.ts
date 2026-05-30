@@ -19,6 +19,11 @@ export type DashboardData = {
     pagado: number;
     pendiente: number;
   };
+  periodCategoryBreakdown: Array<{
+    category: string;
+    categoryIcon: string | null;
+    total: number;
+  }>;
   /** Saldos en billeteras efectivo + débito (activas). */
   fundingWalletBalanceTotal: number;
   /** Misma lógica que planificación: efectivo/débito menos pendiente del periodo en efectivo/débito. */

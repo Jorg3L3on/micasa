@@ -1,11 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
-import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { buildCategoryReportApiPath } from '@/lib/dashboard/build-category-report-query';
 import { formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
@@ -91,16 +88,13 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
 
 type DashboardPeriodCategoryPieProps = {
   period: DashboardData['period'];
+  rows: DashboardData['periodCategoryBreakdown'];
 };
 
 export default function DashboardPeriodCategoryPie({
   period,
+  rows,
 }: DashboardPeriodCategoryPieProps) {
-  const { context } = useFinanceContext();
-  const [rows, setRows] = useState<CategoryReportRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const scopeLabel = useMemo(() => {
     const m = MONTH_LABELS[period.month - 1];
     if (period.view === 'biweekly') {
@@ -109,33 +103,6 @@ export default function DashboardPeriodCategoryPie({
     }
     return `${m} ${period.year} (mes)`;
   }, [period]);
-
-  const load = useCallback(async () => {
-    if (!context || (context.type === 'user' && context.id === 0)) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const path = buildCategoryReportApiPath(period);
-      const result = await clientFetchFromApi<CategoryReportRow[]>(
-        path,
-        undefined,
-        context,
-      );
-      setRows(Array.isArray(result) ? result : []);
-    } catch {
-      setError('No se pudieron cargar las categorías.');
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [context, period]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const chartData = useMemo(() => {
     const buckets = bucketCategoryRows(rows);
@@ -151,26 +118,6 @@ export default function DashboardPeriodCategoryPie({
     () => chartData.reduce((s, r) => s + r.value, 0),
     [chartData],
   );
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[280px] flex-col rounded-xl border border-border/60 bg-card p-5 shadow-sm animate-pulse">
-        <div className="mb-4 h-5 w-48 rounded bg-muted/40" />
-        <div className="mx-auto h-52 w-52 rounded-full bg-muted/25" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div
-        className="flex min-h-[200px] flex-col justify-center rounded-xl border border-border/60 bg-card p-5 shadow-sm"
-        role="alert"
-      >
-        <p className="text-sm text-destructive">{error}</p>
-      </div>
-    );
-  }
 
   return (
     <div

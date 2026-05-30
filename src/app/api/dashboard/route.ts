@@ -526,6 +526,27 @@ export async function GET(request: NextRequest) {
             Number(e.amount) > Number(max.amount) ? e : max,
           )
         : null;
+    const categoryTotals = expensesCurrent.reduce(
+      (acc: Record<string, { total: number; icon: string | null }>, expense) => {
+        const categoryName = expense.category?.name ?? 'Sin categoría';
+        if (!acc[categoryName]) {
+          acc[categoryName] = {
+            total: 0,
+            icon: expense.category?.icon ?? null,
+          };
+        }
+        acc[categoryName].total += Number(expense.amount);
+        return acc;
+      },
+      {},
+    );
+    const periodCategoryBreakdown = Object.entries(categoryTotals).map(
+      ([category, data]) => ({
+        category,
+        categoryIcon: data.icon,
+        total: data.total,
+      }),
+    );
 
     const alertScope = `${current.year}-${current.month}-${view === 'biweekly' ? current.period : 'MONTH'}`;
     const alerts: DashboardAlert[] = [];
@@ -607,6 +628,7 @@ export async function GET(request: NextRequest) {
           pagado: totalPaidCurrent,
           pendiente: totalUnpaidCurrent,
         },
+        periodCategoryBreakdown,
         fundingWalletBalanceTotal,
         fundingNetVsPendingExpense,
         creditWalletDebtTotal,
