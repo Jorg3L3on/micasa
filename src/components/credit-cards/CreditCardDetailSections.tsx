@@ -33,11 +33,215 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { DASHBOARD_METRIC_STRIP_CLASS } from '@/components/dashboard/constants';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  creditCardDetailTabTriggerClass,
+  creditCardSegmentedTabChromeClass,
+  creditCardSegmentedTabListClass,
+} from '@/components/credit-cards/credit-card-segmented-tabs';
+import {
+  kpiMetricCardShellClass,
+  kpiMetricLabelClass,
+  kpiMetricValueClass,
+  type KpiMetricTone,
+} from '@/components/finance/kpi-metric-card-styles';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import type { CreditCardListItem, CreditCardStatementResponse } from '@/types/catalog';
+import type {
+  CreditCardListItem,
+  CreditCardStatementPurchaseItem,
+  CreditCardStatementResponse,
+} from '@/types/catalog';
+
+export const CreditCardDetailTabsList = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <div className={creditCardSegmentedTabChromeClass}>
+    <TabsList variant="line" className={creditCardSegmentedTabListClass}>
+      {children}
+    </TabsList>
+  </div>
+);
+
+export const CreditCardDetailTabTrigger = ({
+  value,
+  children,
+}: {
+  value: string;
+  children: ReactNode;
+}) => (
+  <TabsTrigger value={value} className={creditCardDetailTabTriggerClass}>
+    {children}
+  </TabsTrigger>
+);
+
+type SheetMetric = {
+  key: string;
+  label: string;
+  value: string;
+  tone: KpiMetricTone;
+  action?: ReactNode;
+};
+
+type SheetMetricsProps = {
+  metrics: SheetMetric[];
+};
+
+const CreditCardSheetMetrics = ({ metrics }: SheetMetricsProps) => (
+  <div
+    className="grid grid-cols-3 gap-1 sm:gap-1.5"
+    role="group"
+    aria-label="Métricas del ciclo"
+  >
+    {metrics.map(({ key, label, value, tone, action }) => (
+      <div key={key} className={cn('flex min-w-0 flex-col', kpiMetricCardShellClass(tone))}>
+        <div className="mb-1 flex items-center justify-between gap-1">
+          <p className={kpiMetricLabelClass(tone)}>{label}</p>
+          {action}
+        </div>
+        <p
+          className={cn(
+            'truncate font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
+            kpiMetricValueClass(tone),
+          )}
+        >
+          {value}
+        </p>
+      </div>
+    ))}
+  </div>
+);
+
+const CATEGORY_BAR_COLORS = [
+  'bg-violet-500',
+  'bg-blue-500',
+  'bg-amber-500',
+  'bg-emerald-500',
+  'bg-rose-500',
+  'bg-sky-500',
+] as const;
+
+export const CreditCardHeroZone = ({ children }: { children: ReactNode }) => (
+  <div className="relative -mx-4 overflow-hidden px-4 pb-2 sm:-mx-0 sm:rounded-b-[1.75rem]">
+    <div
+      className="pointer-events-none absolute inset-0 bg-linear-to-b from-violet-500/14 via-indigo-500/6 to-transparent dark:from-violet-950/85 dark:via-indigo-950/45 dark:to-background"
+      aria-hidden
+    />
+    <div
+      className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl dark:bg-violet-600/30"
+      aria-hidden
+    />
+    <div
+      className="pointer-events-none absolute -right-20 top-8 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl dark:bg-blue-600/25"
+      aria-hidden
+    />
+    <div className="relative space-y-4">{children}</div>
+  </div>
+);
+
+export const CreditCardActivitySheet = ({ children }: { children: ReactNode }) => (
+  <div
+    className={cn(
+      'relative z-10 -mt-3',
+      'shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.12)] dark:shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.45)]',
+    )}
+  >
+    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
+      <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/20" aria-hidden />
+      <div>{children}</div>
+    </div>
+  </div>
+);
+
+type CycleSpendingBarProps = {
+  items: CreditCardStatementPurchaseItem[];
+  total: number;
+  cycleLabel?: string;
+};
+
+export const CreditCardCycleSpendingBar = ({
+  items,
+  total,
+  cycleLabel = 'Compras del ciclo',
+}: CycleSpendingBarProps) => {
+  const segments = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      map.set(item.category, (map.get(item.category) ?? 0) + Number(item.amount));
+    }
+    return Array.from(map.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([category, amount], index) => ({
+        category,
+        amount,
+        color: CATEGORY_BAR_COLORS[index % CATEGORY_BAR_COLORS.length],
+        pct: total > 0 ? (amount / total) * 100 : 0,
+      }));
+  }, [items, total]);
+
+  if (total <= 0 && items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className="rounded-2xl border border-border/50 bg-card/60 px-4 py-3 backdrop-blur-sm dark:bg-card/40"
+      role="region"
+      aria-label={cycleLabel}
+    >
+      <div className="mb-2 flex items-end justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {cycleLabel}
+          </p>
+          <p className="font-mono text-xl font-bold tabular-nums tracking-tight">
+            {formatCurrency(total)}
+          </p>
+        </div>
+        {segments.length > 0 ? (
+          <p className="text-[10px] text-muted-foreground">
+            {segments.length} categoría{segments.length === 1 ? '' : 's'}
+          </p>
+        ) : null}
+      </div>
+
+      {segments.length > 0 ? (
+        <>
+          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+            {segments.map(({ category, pct, color }) => (
+              <div
+                key={category}
+                className={cn('h-full first:rounded-l-full last:rounded-r-full', color)}
+                style={{ width: `${Math.max(pct, 2)}%` }}
+                title={`${category}: ${pct.toFixed(0)}%`}
+              />
+            ))}
+          </div>
+          <ul className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1">
+            {segments.slice(0, 4).map(({ category, amount, color }) => (
+              <li
+                key={category}
+                className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+              >
+                <span className={cn('inline-block h-1.5 w-1.5 rounded-full', color)} />
+                <span className="max-w-[5.5rem] truncate">{category}</span>
+                <span className="font-mono tabular-nums text-foreground/80">
+                  {formatCurrency(amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">Sin compras en este ciclo.</p>
+      )}
+    </div>
+  );
+};
 
 type HeaderActionsProps = {
   card: CreditCardListItem;
@@ -250,63 +454,57 @@ export const CreditCardDuePaymentStrip = ({
 }: DuePaymentStripProps) => {
   const hasPendingDue = statement.next_due_payment > 0;
 
+  const dueLabel = !hasPendingDue
+    ? 'Sin pago pendiente'
+    : daysUntilDue < 0
+      ? `Vencido hace ${Math.abs(daysUntilDue)} d`
+      : daysUntilDue === 0
+        ? 'Vence hoy'
+        : `Vence en ${daysUntilDue} d`;
+
   return (
     <div
       className={cn(
-        'rounded-xl border px-4 py-3',
+        'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 backdrop-blur-sm',
         !hasPendingDue
-          ? 'border-border/60 bg-card'
+          ? 'border-border/50 bg-card/50 dark:bg-card/30'
           : daysUntilDue < 0
-            ? 'border-destructive/40 bg-destructive/5'
+            ? 'border-destructive/35 bg-destructive/5'
             : daysUntilDue <= 5
-              ? 'border-amber-500/40 bg-amber-500/5'
-              : 'border-border/60 bg-card',
+              ? 'border-amber-500/35 bg-amber-500/5'
+              : 'border-border/50 bg-card/50 dark:bg-card/30',
       )}
       role="status"
       aria-label="Próximo pago"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Pago próximo
-          </p>
-          <p className="text-2xl font-bold font-mono tabular-nums tracking-tight">
-            {formatCurrency(statement.next_due_payment)}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                'gap-1 text-[10px] font-medium',
-                !hasPendingDue
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                  : daysUntilDue < 0
-                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
-                    : daysUntilDue <= 5
-                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                      : 'border-border/60 text-muted-foreground',
-              )}
-            >
-              <CalendarClock className="h-3 w-3" aria-hidden />
-              {!hasPendingDue
-                ? 'Sin pago pendiente'
-                : daysUntilDue < 0
-                  ? `Vencido hace ${Math.abs(daysUntilDue)} día${Math.abs(daysUntilDue) === 1 ? '' : 's'}`
-                  : daysUntilDue === 0
-                    ? 'Vence hoy'
-                    : `Vence en ${daysUntilDue} día${daysUntilDue === 1 ? '' : 's'}`}
-            </Badge>
-            <span className="text-[10px] text-muted-foreground">
-              {formatDate(statement.statement_due_date)}
-            </span>
-            {statement.minimum_payment != null &&
-              statement.minimum_payment !== statement.next_due_payment && (
-                <span className="text-[10px] text-muted-foreground">
-                  Mínimo {formatCurrency(statement.minimum_payment)}
-                </span>
-              )}
-          </div>
-        </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Pago próximo
+        </p>
+        <p className="font-mono text-lg font-bold tabular-nums leading-tight">
+          {formatCurrency(statement.next_due_payment)}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <Badge
+          variant="outline"
+          className={cn(
+            'gap-1 text-[10px] font-medium',
+            !hasPendingDue
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+              : daysUntilDue < 0
+                ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                : daysUntilDue <= 5
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  : 'border-border/60 text-muted-foreground',
+          )}
+        >
+          <CalendarClock className="h-3 w-3" aria-hidden />
+          {dueLabel}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground">
+          {formatDate(statement.statement_due_date)}
+        </span>
       </div>
     </div>
   );
@@ -330,21 +528,18 @@ export const CreditCardQuickActions = ({
     label: string;
     ariaLabel?: string;
     icon: typeof Wallet;
-    accent: string;
     onClick: () => void;
   }[] = [
     {
       key: 'pay',
       label: 'Pagar',
       icon: Wallet,
-      accent: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
       onClick: onOpenPaymentDialog,
     },
     {
       key: 'purchase',
       label: 'Compra',
       icon: ShoppingCart,
-      accent: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
       onClick: onOpenPurchaseDialog,
     },
     {
@@ -352,7 +547,6 @@ export const CreditCardQuickActions = ({
       label: 'Estado de cuenta',
       ariaLabel: 'Importar estado de cuenta',
       icon: Upload,
-      accent: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
       onClick: onOpenImportDialog,
     },
     ...(onAdjustBalance
@@ -361,7 +555,6 @@ export const CreditCardQuickActions = ({
             key: 'adjust',
             label: 'Ajustar',
             icon: SlidersHorizontal,
-            accent: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
             onClick: onAdjustBalance,
           },
         ]
@@ -370,30 +563,24 @@ export const CreditCardQuickActions = ({
 
   return (
     <div
-      className={cn(
-        'grid gap-2',
-        actions.length === 4 ? 'grid-cols-4' : 'grid-cols-3',
-      )}
+      className="flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:justify-center sm:gap-6"
       role="group"
       aria-label="Acciones rápidas"
     >
-      {actions.map(({ key, label, ariaLabel, icon: Icon, accent, onClick }) => (
+      {actions.map(({ key, label, ariaLabel, icon: Icon, onClick }) => (
         <button
           key={key}
           type="button"
           onClick={onClick}
-          className="flex flex-col items-center gap-1.5 rounded-xl border border-border/60 bg-card px-2 py-3 transition-colors hover:bg-muted/40 active:bg-muted/60"
+          className="flex min-w-[4.25rem] shrink-0 flex-col items-center gap-2 transition-opacity hover:opacity-90 active:opacity-75"
           aria-label={ariaLabel ?? label}
         >
-          <span
-            className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full',
-              accent,
-            )}
-          >
-            <Icon className="h-4 w-4" aria-hidden />
+          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/15 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/8">
+            <Icon className="h-5 w-5 text-foreground dark:text-white" aria-hidden />
           </span>
-          <span className="text-[10px] font-medium text-foreground">{label}</span>
+          <span className="max-w-[4.5rem] text-center text-[11px] font-medium leading-tight text-muted-foreground">
+            {label}
+          </span>
         </button>
       ))}
     </div>
@@ -421,31 +608,77 @@ export const CreditCardCycleSummary = ({
   onResetToToday,
   formatCycleRange,
   onAdjustDebt,
-}: CycleSummaryProps) => (
-  <div className="space-y-3" role="region" aria-label="Ciclo y métricas">
-    <div className="flex items-center justify-center">
-      <div className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/30 px-1 py-0.5">
+}: CycleSummaryProps) => {
+  const metrics: SheetMetric[] = [
+    {
+      key: 'debt',
+      label: 'Deuda',
+      value: formatCurrency(statement.outstanding_balance),
+      tone: 'destructive',
+      action: onAdjustDebt ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0 text-destructive/70 hover:text-destructive"
+              onClick={onAdjustDebt}
+              aria-label="Ajustar deuda registrada"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Alinear deuda con el emisor</TooltipContent>
+        </Tooltip>
+      ) : undefined,
+    },
+    {
+      key: 'available',
+      label: 'Disponible',
+      value:
+        statement.available_credit == null
+          ? 'Sin línea'
+          : formatCurrency(statement.available_credit),
+      tone:
+        statement.available_credit == null
+          ? 'neutral'
+          : statement.available_credit < 0
+            ? 'destructive'
+            : 'emerald',
+    },
+    {
+      key: 'purchases',
+      label: 'Compras ciclo',
+      value: formatCurrency(statement.current_cycle_purchases),
+      tone: 'blue',
+    },
+  ];
+
+  return (
+    <div className="space-y-4" role="region" aria-label="Ciclo y métricas">
+      <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full"
           onClick={onPreviousCycle}
           aria-label="Ciclo anterior"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="min-w-0 px-2 text-center">
+        <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
           <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Ciclo actual
+            {isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
           </p>
-          <p className="text-xs font-semibold tabular-nums">
+          <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
             {formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)}
           </p>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full"
           onClick={onNextCycle}
           disabled={isCurrentCycle}
           aria-label="Ciclo siguiente"
@@ -454,102 +687,22 @@ export const CreditCardCycleSummary = ({
         </Button>
         {!isCurrentCycle ? (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-8 gap-1 rounded-full px-2 text-[10px]"
+            className="h-9 shrink-0 rounded-full px-2.5 text-[10px]"
             onClick={onResetToToday}
             aria-label="Volver al ciclo actual"
           >
-            <RotateCcw className="h-3 w-3" aria-hidden />
+            <RotateCcw className="mr-1 h-3 w-3" aria-hidden />
             Hoy
           </Button>
         ) : null}
       </div>
-    </div>
 
-    <div className="relative -mx-1">
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-background to-transparent sm:hidden"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l from-background to-transparent sm:hidden"
-        aria-hidden
-      />
-      <div className="flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:flex-wrap sm:overflow-visible">
-        <div
-          className={cn(
-            DASHBOARD_METRIC_STRIP_CLASS,
-            'min-w-[8.5rem] shrink-0 border-l-violet-500/50 sm:min-w-0 sm:flex-1',
-          )}
-        >
-          <div className="flex items-start justify-between gap-1">
-            <div className="min-w-0">
-              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Deuda
-              </p>
-              <p className="text-sm font-bold font-mono tabular-nums">
-                {formatCurrency(statement.outstanding_balance)}
-              </p>
-            </div>
-            {onAdjustDebt ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0"
-                    onClick={onAdjustDebt}
-                    aria-label="Ajustar deuda registrada"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Alinear deuda con el emisor
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
-          </div>
-        </div>
-        <div
-          className={cn(
-            DASHBOARD_METRIC_STRIP_CLASS,
-            'min-w-[8.5rem] shrink-0 border-l-emerald-500/50 sm:min-w-0 sm:flex-1',
-          )}
-        >
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Disponible
-          </p>
-          <p
-            className={cn(
-              'text-sm font-bold font-mono tabular-nums',
-              (statement.available_credit ?? 0) < 0 && 'text-destructive',
-            )}
-          >
-            {statement.available_credit == null
-              ? 'Sin línea'
-              : formatCurrency(statement.available_credit)}
-          </p>
-        </div>
-        <div
-          className={cn(
-            DASHBOARD_METRIC_STRIP_CLASS,
-            'min-w-[8.5rem] shrink-0 border-l-blue-500/50 sm:min-w-0 sm:flex-1',
-          )}
-        >
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Compras ciclo
-          </p>
-          <p className="text-sm font-bold font-mono tabular-nums">
-            {formatCurrency(statement.current_cycle_purchases)}
-          </p>
-        </div>
-      </div>
+      <CreditCardSheetMetrics metrics={metrics} />
     </div>
-  </div>
-);
+  );
+};
 
 type StatementSummaryCardProps = {
   statement: CreditCardStatementResponse;
