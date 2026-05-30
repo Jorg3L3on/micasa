@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import {
+  CreditCardActivitySectionCard,
   CreditCardCycleSummary,
   CreditCardDetailHeaderActions,
-  CreditCardNextPaymentHero,
+  CreditCardDuePaymentStrip,
+  CreditCardQuickActions,
   CreditCardStatementSummaryCard,
+  CreditCardVisualHero,
 } from '@/components/credit-cards/CreditCardDetailSections';
 import {
   PaymentTableBlock,
@@ -25,8 +28,9 @@ import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQ
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -72,36 +76,20 @@ const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
 
 const CreditCardDetailSkeleton = () => (
-  <div className="space-y-6">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-3 w-40" />
-        </div>
-      </div>
-      <div className="flex flex-wrap justify-end gap-2">
-        <Skeleton className="h-9 w-20" />
-        <Skeleton className="h-9 w-28" />
-        <Skeleton className="h-9 w-36" />
-        <Skeleton className="h-9 w-32 rounded-xl" />
-      </div>
+  <div className="space-y-4 pb-24 lg:pb-0">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-9 w-28" />
+      <Skeleton className="h-9 w-9 rounded-lg" />
     </div>
-    <Skeleton className="mx-auto h-10 w-64 max-w-full" />
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-md rounded-2xl" />
+    <Skeleton className="h-24 w-full rounded-xl" />
+    <div className="grid grid-cols-4 gap-2">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 rounded-lg" />
+        <Skeleton key={i} className="h-20 rounded-xl" />
       ))}
     </div>
-    <div className="grid gap-4 lg:grid-cols-3">
-      <Skeleton className="h-56 rounded-xl lg:col-span-1" />
-      <Skeleton className="h-56 rounded-xl lg:col-span-2" />
-    </div>
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Skeleton className="h-64 rounded-xl" />
-      <Skeleton className="h-64 rounded-xl" />
-    </div>
+    <Skeleton className="h-10 w-full rounded-lg" />
+    <Skeleton className="h-48 w-full rounded-xl" />
   </div>
 );
 
@@ -141,6 +129,11 @@ export default function CreditCardDetailPage() {
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
+
+  const backHref = useMemo(
+    () => `/wallets${ownerQueryString}`,
+    [ownerQueryString],
+  );
 
   const fundingWalletOptions = useMemo(
     () =>
@@ -386,10 +379,10 @@ export default function CreditCardDetailPage() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* ── Header ─────────────────────────────────────────────────── */}
+    <div className="relative space-y-4 pb-24 lg:space-y-5 lg:pb-0">
       <CreditCardDetailHeaderActions
         card={card}
+        backHref={backHref}
         onOpenImportDialog={() => setMpImportDialogOpen(true)}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}
@@ -397,22 +390,24 @@ export default function CreditCardDetailPage() {
         onAdjustBalance={() => setBalanceDialogOpen(true)}
       />
 
-      {/* ── Hero: pago próximo ─────────────────────────────────────── */}
-      <CreditCardNextPaymentHero
+      <CreditCardVisualHero
+        card={card}
+        statement={statement}
+        utilizationPct={utilizationPct}
+      />
+
+      <CreditCardDuePaymentStrip
         statement={statement}
         daysUntilDue={daysUntilDue}
-        utilizationPct={utilizationPct}
+      />
+
+      <CreditCardQuickActions
         onOpenPaymentDialog={() => setPaymentDialogOpen(true)}
         onOpenPurchaseDialog={() => setPurchaseDialogOpen(true)}
+        onOpenImportDialog={() => setMpImportDialogOpen(true)}
+        onAdjustBalance={() => setBalanceDialogOpen(true)}
       />
 
-      <CreditCardPlannedPaymentSection
-        walletId={creditCardId}
-        items={paymentPlanItems}
-        onPlanUpdated={loadData}
-      />
-
-      {/* ── Cycle nav + compact stats ──────────────────────────────── */}
       <CreditCardCycleSummary
         statement={statement}
         isCurrentCycle={isCurrentCycle}
@@ -423,40 +418,78 @@ export default function CreditCardDetailPage() {
         onAdjustDebt={() => setBalanceDialogOpen(true)}
       />
 
-      {/* ── Chart + Statement summary ──────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <CreditCardPaymentsChart
-            paymentHistory={statement.payment_history}
-            installmentActivePurchases={statement.installment_active_purchases}
-            statementEnd={statement.statement_end}
+      <Tabs defaultValue="resumen" className="gap-4">
+        <TabsList
+          variant="line"
+          className="h-auto w-full justify-start gap-0 border-b border-border/60 bg-transparent p-0"
+        >
+          <TabsTrigger
+            value="resumen"
+            className="flex-1 rounded-none px-2 pb-2.5 pt-1 text-xs sm:text-sm"
+          >
+            Resumen
+          </TabsTrigger>
+          <TabsTrigger
+            value="actividad"
+            className="flex-1 rounded-none px-2 pb-2.5 pt-1 text-xs sm:text-sm"
+          >
+            Actividad
+          </TabsTrigger>
+          <TabsTrigger
+            value="cuotas"
+            className="flex-1 rounded-none px-2 pb-2.5 pt-1 text-xs sm:text-sm"
+          >
+            Cuotas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="resumen" className="mt-0 space-y-4">
+          <CreditCardPlannedPaymentSection
+            walletId={creditCardId}
+            items={paymentPlanItems}
+            onPlanUpdated={loadData}
           />
-        </div>
-        <CreditCardStatementSummaryCard
-          statement={statement}
-          daysUntilDue={daysUntilDue}
-        />
-      </div>
 
-      <LinkedLoansCard walletId={creditCardId} />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CreditCardPaymentsChart
+                paymentHistory={statement.payment_history}
+                installmentActivePurchases={statement.installment_active_purchases}
+                statementEnd={statement.statement_end}
+              />
+            </div>
+            <CreditCardStatementSummaryCard
+              statement={statement}
+              daysUntilDue={daysUntilDue}
+            />
+          </div>
 
-      {/* ── Compras ciclo actual + cuotas vigentes ───────────────── */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="overflow-hidden border-border/60">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              Compras del ciclo actual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <LinkedLoansCard walletId={creditCardId} />
+        </TabsContent>
+
+        <TabsContent value="actividad" className="mt-0 space-y-4">
+          <CreditCardActivitySectionCard
+            title="Compras del ciclo actual"
+            subtitle="Gastos en el periodo en curso"
+            accentClass="border-l-violet-500/50"
+            icon={
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
+                <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              </span>
+            }
+            badge={
+              statement.current_cycle_purchase_items.length > 0 ? (
+                <Badge variant="secondary" className="text-[10px] tabular-nums">
+                  {statement.current_cycle_purchase_items.length}
+                </Badge>
+              ) : undefined
+            }
+          >
             {statement.current_cycle_purchase_items.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No hay compras en el ciclo actual. Usa{' '}
-                <span className="font-medium text-foreground">
-                  Registrar compra
-                </span>{' '}
-                arriba o registra un gasto en la planificación mensual con esta
-                tarjeta como método de pago.
+                <span className="font-medium text-foreground">Compra</span> arriba
+                o registra un gasto con esta tarjeta.
               </p>
             ) : (
               <PurchaseTableBlock
@@ -466,53 +499,18 @@ export default function CreditCardDetailPage() {
                 regionLabel="Compras del ciclo actual"
               />
             )}
-          </CardContent>
-        </Card>
+          </CreditCardActivitySectionCard>
 
-        <Card className="overflow-hidden border-border/60 border-l-[3px] border-l-violet-500/50">
-          <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
-              <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-            </span>
-            <CardTitle className="text-sm font-semibold">
-              Cuotas vigentes
-            </CardTitle>
-            {statement.installment_active_purchases.length > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-auto text-[10px] tabular-nums"
-              >
-                {statement.installment_active_purchases.length}
-              </Badge>
-            )}
-          </CardHeader>
-          <CardContent>
-            {statement.installment_active_purchases.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hay compras en cuotas con pagos pendientes en períodos futuros en
-                esta tarjeta.
-              </p>
-            ) : (
-              <PurchaseTableBlock
-                items={statement.installment_active_purchases}
-                emptyText="Ningún resultado con el filtro aplicado."
-                ownerQueryString={ownerQueryString}
-                regionLabel="Cuotas vigentes"
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Compras del último corte + Historial de pagos ─────────── */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="overflow-hidden border-border/60">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              Compras del último corte
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CreditCardActivitySectionCard
+            title="Compras del último corte"
+            subtitle="Movimientos del estado de cuenta"
+            accentClass="border-l-blue-500/50"
+            icon={
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
+                <CalendarClock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              </span>
+            }
+          >
             {statement.statement_purchases.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No hubo compras en el último corte.
@@ -525,22 +523,78 @@ export default function CreditCardDetailPage() {
                 regionLabel="Compras del último corte"
               />
             )}
-          </CardContent>
-        </Card>
+          </CreditCardActivitySectionCard>
 
-        <Card className="overflow-hidden border-border/60">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              Historial de pagos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CreditCardActivitySectionCard
+            title="Historial de pagos"
+            subtitle="Abonos registrados a la tarjeta"
+            accentClass="border-l-emerald-500/50"
+            icon={
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 dark:bg-emerald-500/15">
+                <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              </span>
+            }
+          >
             <PaymentTableBlock
               items={statement.payment_history}
               regionLabel="Historial de pagos"
             />
-          </CardContent>
-        </Card>
+          </CreditCardActivitySectionCard>
+        </TabsContent>
+
+        <TabsContent value="cuotas" className="mt-0">
+          <CreditCardActivitySectionCard
+            title="Cuotas vigentes"
+            subtitle="Compras a meses con pagos pendientes"
+            accentClass="border-l-violet-500/50"
+            icon={
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
+                <CalendarClock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              </span>
+            }
+            badge={
+              statement.installment_active_purchases.length > 0 ? (
+                <Badge variant="secondary" className="text-[10px] tabular-nums">
+                  {statement.installment_active_purchases.length}
+                </Badge>
+              ) : undefined
+            }
+          >
+            {statement.installment_active_purchases.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay compras en cuotas con pagos pendientes en esta tarjeta.
+              </p>
+            ) : (
+              <PurchaseTableBlock
+                items={statement.installment_active_purchases}
+                emptyText="Ningún resultado con el filtro aplicado."
+                ownerQueryString={ownerQueryString}
+                regionLabel="Cuotas vigentes"
+              />
+            )}
+          </CreditCardActivitySectionCard>
+        </TabsContent>
+      </Tabs>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 p-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:hidden">
+        <div className="mx-auto flex max-w-md gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 flex-1 rounded-xl"
+            onClick={() => setPurchaseDialogOpen(true)}
+          >
+            Compra
+          </Button>
+          <Button
+            type="button"
+            className="h-11 flex-1 rounded-xl shadow-sm"
+            onClick={() => setPaymentDialogOpen(true)}
+          >
+            <Wallet className="mr-2 h-4 w-4" />
+            Registrar pago
+          </Button>
+        </div>
       </div>
 
       <CreditCardPaymentDialog
