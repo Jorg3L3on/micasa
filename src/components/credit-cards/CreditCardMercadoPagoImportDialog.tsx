@@ -300,7 +300,7 @@ const CreditCardMercadoPagoImportDialog = ({
             disabled={mpImportSubmitting || !mpImportFile}
             className="rounded-xl"
           >
-            {mpImportSubmitting ? 'Importando…' : 'Importar PDF'}
+            {mpImportSubmitting ? 'Importando…' : 'Importar estado de cuenta'}
           </Button>
         </DialogFooter>
       </DialogContent>

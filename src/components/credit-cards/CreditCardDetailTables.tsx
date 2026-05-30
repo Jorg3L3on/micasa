@@ -15,7 +15,10 @@ import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 /** Listas dentro de tarjetas: altura máxima y scroll vertical. */
 const CREDIT_CARD_DETAIL_LIST_SCROLL_CLASS =
-  'max-h-[min(20rem,45vh)] overflow-y-auto scrollbar-hide pr-0.5';
+  'max-h-[min(24rem,55vh)] overflow-y-auto scrollbar-hide pr-0.5';
+
+const FEED_ITEM_CLASS =
+  'rounded-xl border border-border/60 bg-card/50 px-3 py-2.5 transition-colors hover:bg-muted/30';
 
 type SortDir = 'asc' | 'desc';
 type PurchaseSortField = 'payment_date' | 'amount' | 'description' | 'category';
@@ -190,11 +193,11 @@ export const PurchaseTableBlock = ({
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar por descripción o categoría…"
-          className="max-w-sm text-sm"
+          placeholder="Buscar…"
+          className="h-9 w-full text-sm sm:max-w-sm"
           aria-label={`Filtrar: ${regionLabel}`}
         />
-        <div className="flex flex-wrap gap-0.5" role="group" aria-label="Ordenar compras">
+        <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-hide sm:flex-wrap sm:overflow-visible" role="group" aria-label="Ordenar compras">
           <PurchaseSortButton
             sortKey="payment_date"
             label="Fecha"
@@ -232,13 +235,10 @@ export const PurchaseTableBlock = ({
         <div className={listScrollClassName}>
           <ul className="space-y-2">
             {sorted.map((purchase) => (
-              <li
-                key={purchase.id}
-                className="rounded-md border border-border/60 px-3 py-2"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium">
+              <li key={purchase.id} className={FEED_ITEM_CLASS}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium leading-snug">
                       {purchase.description}
                       {purchase.credit_installment_current != null &&
                       purchase.credit_installment_total != null ? (
@@ -246,12 +246,12 @@ export const PurchaseTableBlock = ({
                           className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
                           title="Compra en cuotas"
                         >
-                          Cuota {purchase.credit_installment_current}/
+                          {purchase.credit_installment_current}/
                           {purchase.credit_installment_total}
                         </span>
                       ) : null}
                     </p>
-                    <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] text-muted-foreground">
                       <CategoryLabel
                         name={purchase.category}
                         icon={purchase.categoryIcon}
@@ -261,9 +261,9 @@ export const PurchaseTableBlock = ({
                     </p>
                     <Link
                       href={getFortnightHref(purchase, ownerQueryString)}
-                      className="text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                      className="mt-1 inline-block text-[10px] font-medium text-primary underline-offset-2 hover:underline"
                     >
-                      Ver en quincena
+                      Ver quincena
                     </Link>
                   </div>
                   <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
@@ -315,11 +315,11 @@ export const PaymentTableBlock = ({
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar por billetera origen o nota…"
-          className="max-w-sm text-sm"
+          placeholder="Buscar…"
+          className="h-9 w-full text-sm sm:max-w-sm"
           aria-label={`Filtrar: ${regionLabel}`}
         />
-        <div className="flex flex-wrap gap-0.5" role="group" aria-label="Ordenar pagos">
+        <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-hide sm:flex-wrap sm:overflow-visible" role="group" aria-label="Ordenar pagos">
           <PaymentSortButton
             sortKey="paid_at"
             label="Fecha"
@@ -354,24 +354,21 @@ export const PaymentTableBlock = ({
         <div className={listScrollClassName}>
           <ul className="space-y-2">
             {sorted.map((payment) => (
-              <li
-                key={payment.id}
-                className="rounded-md border border-border/60 px-3 py-2"
-              >
+              <li key={payment.id} className={FEED_ITEM_CLASS}>
                 <div className="flex items-center justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <WalletIdentity
                       name={payment.source_wallet_name}
                       providerIconKey={payment.source_wallet_provider_icon_key}
-                      className="font-medium"
+                      className="truncate text-sm font-medium"
                       iconClassName="h-5 w-5 rounded-md"
                     />
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="mt-1 truncate text-[10px] text-muted-foreground">
                       {formatDate(payment.paid_at)}
                       {payment.note ? ` · ${payment.note}` : ''}
                     </p>
                   </div>
-                  <span className="font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(payment.amount)}
                   </span>
                 </div>
