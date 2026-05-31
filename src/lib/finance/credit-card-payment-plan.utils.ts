@@ -1,4 +1,8 @@
 export const getEffectiveCardPaymentAmount = (item: {
   nextDuePayment: number;
   plannedPayment?: number | null;
-}): number => (item.plannedPayment != null ? item.plannedPayment : item.nextDuePayment);
+  paymentsAppliedToStatement?: number;
+}): number =>
+  item.plannedPayment != null
+    ? Math.max(item.plannedPayment - (item.paymentsAppliedToStatement ?? 0), 0)
+    : item.nextDuePayment;

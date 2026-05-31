@@ -815,6 +815,7 @@ type DuePaymentsAsOfOptions = {
    * Always includes `cutoff_day` on each item.
    */
   includeZeroObligation?: boolean;
+  asOfForCard?: (card: { due_day: number; cutoff_day: number }) => Date;
 };
 
 /**
@@ -852,14 +853,19 @@ async function getDuePaymentsWithAsOf(
 
   if (dueCards.length === 0) return [];
 
-  const groups = new Map<string, typeof dueCards>();
+  const groups = new Map<string, { asOf: Date; cards: typeof dueCards }>();
   for (const card of dueCards) {
-    const key = `${card.cutoff_day}-${card.due_day}`;
+    const cardAsOf =
+      options?.asOfForCard?.({
+        due_day: card.due_day!,
+        cutoff_day: card.cutoff_day!,
+      }) ?? asOf;
+    const key = `${card.cutoff_day}-${card.due_day}-${cardAsOf.toISOString()}`;
     const existing = groups.get(key);
     if (existing) {
-      existing.push(card);
+      existing.cards.push(card);
     } else {
-      groups.set(key, [card]);
+      groups.set(key, { asOf: cardAsOf, cards: [card] });
     }
   }
 
@@ -870,93 +876,98 @@ async function getDuePaymentsWithAsOf(
   const importedTotalByWallet = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
   const currentCycleEndByWallet = new Map<number, string>();
+  const asOfYmdByWallet = new Map<number, string>();
 
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-  for (const cardsInGroup of groups.values()) {
-      const head = cardsInGroup[0];
-      const window = resolveCreditCardStatementWindow(
-        asOf,
-        head.cutoff_day!,
-        head.due_day!,
-      );
-      const cardIds = cardsInGroup.map((c) => c.id);
-      const dueStr = toDateOnlyString(window.statementDueDate);
-      const cycleEndStr = toDateOnlyString(window.currentCycleEnd);
-      for (const id of cardIds) {
-        statementDueByWallet.set(id, dueStr);
-        currentCycleEndByWallet.set(id, cycleEndStr);
+  for (const group of groups.values()) {
+    const { asOf: groupAsOf, cards: cardsInGroup } = group;
+    const head = cardsInGroup[0];
+    const window = resolveCreditCardStatementWindow(
+      groupAsOf,
+      head.cutoff_day!,
+      head.due_day!,
+    );
+    const cardIds = cardsInGroup.map((c) => c.id);
+    const dueStr = toDateOnlyString(window.statementDueDate);
+    const cycleEndStr = toDateOnlyString(window.currentCycleEnd);
+    for (const id of cardIds) {
+      statementDueByWallet.set(id, dueStr);
+      currentCycleEndByWallet.set(id, cycleEndStr);
+    }
+
+    // Avoid large burst fan-out against Postgres while rendering monthly planner.
+    const purchases = await sumStatementPurchasesByWallet(cardIds, window, ownerFilter);
+    const payments = await sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter);
+
+    if (head.due_day! < head.cutoff_day!) {
+      const [cyclePurchases, cyclePayments] = await Promise.all([
+        sumCurrentCyclePurchasesByWallet(cardIds, window, ownerFilter),
+        sumCurrentCyclePaymentsByWallet(cardIds, window, ownerFilter),
+      ]);
+      for (const [id, value] of cyclePurchases) {
+        currentCyclePurchaseSums.set(id, value);
       }
-
-      // Avoid large burst fan-out against Postgres while rendering monthly planner.
-      const purchases = await sumStatementPurchasesByWallet(cardIds, window, ownerFilter);
-      const payments = await sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter);
-
-      if (head.due_day! < head.cutoff_day!) {
-        const [cyclePurchases, cyclePayments] = await Promise.all([
-          sumCurrentCyclePurchasesByWallet(cardIds, window, ownerFilter),
-          sumCurrentCyclePaymentsByWallet(cardIds, window, ownerFilter),
-        ]);
-        for (const [id, value] of cyclePurchases) {
-          currentCyclePurchaseSums.set(id, value);
-        }
-        for (const [id, value] of cyclePayments) {
-          currentCyclePaymentSums.set(id, value);
-        }
+      for (const [id, value] of cyclePayments) {
+        currentCyclePaymentSums.set(id, value);
       }
+    }
 
-      /**
-       * Misma regla que `getCreditCardStatement`: import alineado al `period_end` del
-       * cierre ±7 días, o si hay uno **más reciente** (p. ej. PDF recién subido), ese
-       * gana — evita que planificación muestre un `total_due` viejo mientras la ficha
-       * de la tarjeta ya muestra el import nuevo.
-       */
-      const windowEndMin = new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS);
-      const windowEndMax = new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS);
-      const allImportsForGroup = await prisma.creditCardStatementImport.findMany({
-        where: { wallet_id: { in: cardIds } },
-        orderBy: { created_at: 'desc' },
-        select: {
-          wallet_id: true,
-          total_due: true,
-          period_end: true,
-          created_at: true,
-        },
-      });
+    /**
+     * Misma regla que `getCreditCardStatement`: import alineado al `period_end` del
+     * cierre ±7 días, o si hay uno **más reciente** (p. ej. PDF recién subido), ese
+     * gana — evita que planificación muestre un `total_due` viejo mientras la ficha
+     * de la tarjeta ya muestra el import nuevo.
+     */
+    const windowEndMin = new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS);
+    const windowEndMax = new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS);
+    const allImportsForGroup = await prisma.creditCardStatementImport.findMany({
+      where: { wallet_id: { in: cardIds } },
+      orderBy: { created_at: 'desc' },
+      select: {
+        wallet_id: true,
+        total_due: true,
+        period_end: true,
+        created_at: true,
+      },
+    });
 
-      for (const wid of cardIds) {
-        const forWallet = allImportsForGroup
-          .filter((i) => i.wallet_id === wid)
-          .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
-        if (forWallet.length === 0) continue;
+    for (const wid of cardIds) {
+      const forWallet = allImportsForGroup
+        .filter((i) => i.wallet_id === wid)
+        .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+      if (forWallet.length === 0) continue;
 
-        const latest = forWallet[0] ?? null;
-        const recentByWindow =
-          forWallet.find(
-            (i) =>
-              i.period_end != null &&
-              i.period_end.getTime() >= windowEndMin.getTime() &&
-              i.period_end.getTime() <= windowEndMax.getTime(),
-          ) ?? null;
+      const latest = forWallet[0] ?? null;
+      const recentByWindow =
+        forWallet.find(
+          (i) =>
+            i.period_end != null &&
+            i.period_end.getTime() >= windowEndMin.getTime() &&
+            i.period_end.getTime() <= windowEndMax.getTime(),
+        ) ?? null;
 
-        const chosen =
-          latest &&
-          (!recentByWindow ||
-            latest.created_at.getTime() > recentByWindow.created_at.getTime())
-            ? latest
-            : recentByWindow;
+      const chosen =
+        latest &&
+        (!recentByWindow ||
+          latest.created_at.getTime() > recentByWindow.created_at.getTime())
+          ? latest
+          : recentByWindow;
 
-        if (chosen?.total_due != null) {
-          importedTotalByWallet.set(wid, Number(chosen.total_due));
-        }
+      if (chosen?.total_due != null) {
+        importedTotalByWallet.set(wid, Number(chosen.total_due));
       }
+    }
 
-      for (const [id, value] of purchases) {
-        purchaseSums.set(id, value);
-      }
-      for (const [id, value] of payments) {
-        paymentSums.set(id, value);
-      }
+    for (const [id, value] of purchases) {
+      purchaseSums.set(id, value);
+    }
+    for (const [id, value] of payments) {
+      paymentSums.set(id, value);
+    }
+    for (const id of cardIds) {
+      asOfYmdByWallet.set(id, toDateOnlyString(groupAsOf));
+    }
   }
 
   const items = dueCards.map((card) => {
@@ -974,7 +985,7 @@ async function getDuePaymentsWithAsOf(
       cutoffDay: card.cutoff_day!,
       currentCyclePurchasesTotal: currentCyclePurchaseSums.get(card.id) ?? 0,
       currentCyclePaymentsTotal: currentCyclePaymentSums.get(card.id) ?? 0,
-      asOfYmd: toDateOnlyString(asOf),
+      asOfYmd: asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf),
       currentCycleEndYmd: currentCycleEndByWallet.get(card.id),
     });
     return {
@@ -1057,10 +1068,11 @@ export async function getDuePaymentsForPlannerMonth(
   year: number,
   month: number,
 ) {
-  // Use día 14 (no 15): si `asOf` cae exactamente en el día de corte 15, las TC con
-  // corte 15 pasan al ciclo siguiente y los pagos ya hechos hacia el estado anterior
-  // (p. ej. pago 4 may → cierre 15 abr / venc. 8 may) dejan de contar en SQL y la UI
-  // sigue mostrando “por pagar”.
+  const asOfForVisibleDueDate = (card: { due_day: number }) =>
+    createUtcDate(year, month, clampDayToMonth(year, month, card.due_day));
+
+  // Fallback only; planner rows use each card's visible due date so cards with
+  // due day before cutoff stay on the statement that is actually due this month.
   const asOfFirst = createUtcDate(year, month, 14);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const asOfSecond = createUtcDate(year, month, lastDay);
@@ -1070,13 +1082,13 @@ export async function getDuePaymentsForPlannerMonth(
       ownerFilter,
       asOfFirst,
       (dueDay) => dueDay >= 1 && dueDay <= 15,
-      { includeZeroObligation: true },
+      { includeZeroObligation: true, asOfForCard: asOfForVisibleDueDate },
     ),
     getDuePaymentsWithAsOf(
       ownerFilter,
       asOfSecond,
       (dueDay) => dueDay >= 16,
-      { includeZeroObligation: true },
+      { includeZeroObligation: true, asOfForCard: asOfForVisibleDueDate },
     ),
   ]);
 

@@ -11,6 +11,16 @@ describe('getEffectiveCardPaymentAmount', () => {
     ).toBe(500);
   });
 
+  it('subtracts actual payments from a planned payment', () => {
+    expect(
+      getEffectiveCardPaymentAmount({
+        nextDuePayment: 3884.78,
+        plannedPayment: 694.76,
+        paymentsAppliedToStatement: 694.76,
+      }),
+    ).toBe(0);
+  });
+
   it('falls back to suggested when plan is null', () => {
     expect(
       getEffectiveCardPaymentAmount({
