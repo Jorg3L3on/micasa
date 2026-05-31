@@ -131,7 +131,7 @@ export default function QuickActionsCard({
           payment_method_id: values.paymentMethodId,
           is_paid: values.isPaid,
           payment_date: values.date
-            ? `${values.date}T00:00:00.000Z`
+            ? values.date
             : null,
         },
         context,

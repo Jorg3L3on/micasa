@@ -282,7 +282,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             wallet_id: values.paymentMethodId,
             is_paid: values.isPaid,
             payment_date: values.isPaid
-              ? `${values.date}T00:00:00.000Z`
+              ? values.date
               : null,
           }),
         },

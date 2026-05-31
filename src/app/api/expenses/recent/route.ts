@@ -1,3 +1,4 @@
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
@@ -33,7 +34,7 @@ function parseCursor(raw: string | null): { date: Date; id: number } | null {
 function toDateStr(value: Date | string | null | undefined): string {
   if (!value) return '';
   const d = value instanceof Date ? value : new Date(value);
-  return d.toISOString().split('T')[0];
+  return formatCalendarDate(d);
 }
 
 export async function GET(request: NextRequest) {

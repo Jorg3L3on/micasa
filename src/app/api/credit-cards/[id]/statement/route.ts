@@ -1,3 +1,4 @@
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
@@ -32,7 +33,7 @@ export async function GET(
     const statement = await getCreditCardStatementByOwner(
       creditCardId,
       context.ownerFilter,
-      query.asOf ? new Date(`${query.asOf}T12:00:00.000Z`) : undefined,
+      query.asOf ? parseCalendarDate(query.asOf) : undefined,
     );
 
     return NextResponse.json(statement, { status: 200 });

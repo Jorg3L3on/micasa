@@ -4,6 +4,7 @@
  * For MERCADO_PAGO, delegates to the existing service unchanged.
  */
 
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType, StatementImportProvider } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
@@ -386,7 +387,7 @@ async function runImport(
           description: mov.description,
           amount: mov.amount,
           is_paid: true,
-          payment_date: new Date(`${paymentDateStr}T12:00:00.000Z`),
+          payment_date: parseCalendarDate(paymentDateStr),
           statement_import_id: createdImport.id,
           credit_installment_current: mov.installmentCurrent ?? null,
           credit_installment_total: mov.installmentTotal ?? null,

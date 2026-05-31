@@ -26,6 +26,7 @@ import type {
   ExpenseTemplateListItem,
   PaymentMethodOption,
 } from '@/types/catalog';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
@@ -45,8 +46,7 @@ export type ExpenseFormProps = {
 };
 
 function getFallbackDate(): string {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
+  return todayCalendarDate();
 }
 
 function periodForDate(iso: string): 'FIRST' | 'SECOND' | null {

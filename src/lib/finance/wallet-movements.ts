@@ -1,3 +1,9 @@
+import {
+  endOfCalendarDay,
+  formatCalendarDate,
+  parseCalendarDate,
+  startOfCalendarDay,
+} from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { WalletMovement } from '@/types/wallet-movements';
@@ -19,15 +25,13 @@ function toNumber(value: unknown): number {
 function toISODate(value: Date | string | null | undefined): string {
   if (!value) return '';
   const d = value instanceof Date ? value : new Date(value);
-  return d.toISOString().split('T')[0];
+  return formatCalendarDate(d);
 }
 
 type DateRange = { fromDate: Date; toDate: Date };
 
 function buildRange(from: string, to: string): DateRange {
-  const fromDate = new Date(`${from}T00:00:00.000Z`);
-  const toDate = new Date(`${to}T23:59:59.999Z`);
-  return { fromDate, toDate };
+  return { fromDate: startOfCalendarDay(from), toDate: endOfCalendarDay(to) };
 }
 
 export async function listWalletMovements(

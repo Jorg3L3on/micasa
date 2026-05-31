@@ -1,3 +1,4 @@
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
@@ -371,17 +372,13 @@ export async function GET(request: NextRequest) {
         const fort = e.fortnight;
         const dueDay = (e as { due_day?: number | null }).due_day ?? null;
         if (!dueDay || !fort) return null;
-        const dueDate = new Date(
-          fort.year,
-          fort.month - 1,
-          Math.min(dueDay, 28),
-        );
+        const dueYmd = `${fort.year}-${String(fort.month).padStart(2, '0')}-${String(Math.min(dueDay, 28)).padStart(2, '0')}`;
         return {
           id: e.id,
           description: e.description,
           amount: Number(e.amount),
           is_paid: e.is_paid,
-          dueDate: dueDate.toISOString().split('T')[0],
+          dueDate: dueYmd,
           dueDay,
           category: e.category?.name ?? '',
           categoryIcon: e.category?.icon ?? null,
@@ -508,7 +505,7 @@ export async function GET(request: NextRequest) {
     });
     const overdueLoanPayments = loanPayCurrent.upcoming.filter((payment) => {
       if (payment.amount <= MIN_ALERTABLE_AMOUNT) return false;
-      const d = new Date(`${payment.dueDate}T00:00:00`);
+      const d = parseCalendarDate(payment.dueDate);
       d.setHours(0, 0, 0, 0);
       return d < today;
     });
