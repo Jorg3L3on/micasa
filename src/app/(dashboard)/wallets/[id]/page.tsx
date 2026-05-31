@@ -1,25 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  ArrowDown,
-  ArrowUp,
-  Banknote,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Coins,
-  CreditCard,
-  Download,
-  Landmark,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Store,
-  Upload,
-} from 'lucide-react';
+import { Plus, Wallet as WalletIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
@@ -28,29 +11,27 @@ import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
 import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan } from '@/lib/api/credit-cards';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import type {
   WalletDetail,
-  WalletMovement,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
 import type { CreditCardPaymentPlanView } from '@/types/catalog';
-import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import {
+  WalletActivitySheet,
+  WalletDetailHeaderActions,
+  WalletHeroZone,
+  WalletPeriodSummary,
+  WalletQuickActions,
+  WalletVisualHero,
+} from '@/components/wallets/WalletDetailSections';
+import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
@@ -82,90 +63,29 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
   return { year: y, monthIdx: m - 1 };
 };
 
-type SortDir = 'asc' | 'desc';
-type SortField = 'date' | 'amount' | 'description' | 'category';
-
-const sortMovements = (
-  items: WalletMovement[],
-  field: SortField,
-  dir: SortDir,
-  query: string,
-  kindFilter: 'all' | 'income' | 'expense',
-): WalletMovement[] => {
-  const q = query.trim().toLowerCase();
-  let rows = kindFilter === 'all' ? [...items] : items.filter((i) => i.kind === kindFilter);
-  if (q) {
-    rows = rows.filter(
-      (i) =>
-        i.description.toLowerCase().includes(q) ||
-        (i.category?.toLowerCase().includes(q) ?? false),
-    );
-  }
-  const m = dir === 'desc' ? -1 : 1;
-  rows.sort((a, b) => {
-    if (field === 'amount') return m * (a.amount - b.amount);
-    if (field === 'description') {
-      return m * a.description.localeCompare(b.description, 'es');
-    }
-    if (field === 'category') {
-      return m * (a.category ?? '').localeCompare(b.category ?? '', 'es');
-    }
-    if (a.date !== b.date) return m * a.date.localeCompare(b.date);
-    return m * (a.id - b.id);
-  });
-  return rows;
-};
-
-const SortButton = ({
-  sortKey,
-  label,
-  activeKey,
-  dir,
-  onSort,
-}: {
-  sortKey: SortField;
-  label: string;
-  activeKey: SortField;
-  dir: SortDir;
-  onSort: (k: SortField) => void;
-}) => (
-  <Button
-    type="button"
-    variant="ghost"
-    size="sm"
-    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
-    onClick={() => onSort(sortKey)}
-    aria-label={`Ordenar por ${label}`}
-  >
-    {label}
-    {activeKey === sortKey &&
-      (dir === 'desc' ? (
-        <ArrowDown className="ml-0.5 h-3 w-3" />
-      ) : (
-        <ArrowUp className="ml-0.5 h-3 w-3" />
-      ))}
-  </Button>
-);
-
 const WalletDetailSkeleton = () => (
-  <div className="space-y-6">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-3 w-40" />
-        </div>
+  <div className="space-y-0 pb-24 lg:pb-0">
+    <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-9 w-28" />
+        <Skeleton className="h-9 w-9 rounded-lg" />
       </div>
-      <Skeleton className="h-9 w-24" />
+      <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-md rounded-2xl" />
+      <div className="flex justify-center gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-14 rounded-full" />
+        ))}
+      </div>
     </div>
-    <Skeleton className="mx-auto h-10 w-64 max-w-full" />
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 rounded-lg" />
-      ))}
+    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
+      <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full" />
+      <div className="grid grid-cols-3 gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
     </div>
-    <Skeleton className="h-64 rounded-xl" />
   </div>
 );
 
@@ -193,16 +113,13 @@ export default function WalletDetailPage() {
     CreditCardPaymentPlanView[]
   >([]);
 
-  const [query, setQuery] = useState('');
-  const [kindFilter, setKindFilter] = useState<'all' | 'income' | 'expense'>('all');
-  const [field, setField] = useState<SortField>('date');
-  const [dir, setDir] = useState<SortDir>('desc');
-
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
+
+  const backHref = `/wallets${ownerQueryString}`;
 
   const canImport = wallet?.type === 'CASH' || wallet?.type === 'DEBIT_CARD';
   const isCreditWallet =
@@ -319,19 +236,10 @@ export default function WalletDetailPage() {
     }
   }, [wallet, data, range]);
 
-  const sortedMovements = useMemo(() => {
-    if (!data) return [];
-    return sortMovements(data.movements, field, dir, query, kindFilter);
-  }, [data, field, dir, query, kindFilter]);
-
-  const handleSortClick = (next: SortField) => {
-    if (field === next) {
-      setDir((d) => (d === 'desc' ? 'asc' : 'desc'));
-      return;
-    }
-    setField(next);
-    setDir(next === 'date' || next === 'amount' ? 'desc' : 'asc');
-  };
+  const handleOpenExpense = useCallback(() => {
+    setExpenseError(null);
+    setExpenseOpen(true);
+  }, []);
 
   const rangeLabel = useMemo(() => {
     const { year, monthIdx } = parseYearMonth(range.from);
@@ -350,361 +258,91 @@ export default function WalletDetailPage() {
     );
   }
 
-  const Icon =
-    wallet.type === 'CREDIT_CARD'
-      ? CreditCard
-      : wallet.type === 'DEPARTMENT_STORE_CARD'
-        ? Store
-        : wallet.type === 'DEBIT_CARD'
-          ? Landmark
-          : Banknote;
-  const iconColorBg =
-    wallet.type === 'CREDIT_CARD'
-      ? 'bg-violet-500/10 dark:bg-violet-500/15'
-      : wallet.type === 'DEPARTMENT_STORE_CARD'
-        ? 'bg-amber-500/10 dark:bg-amber-500/15'
-        : wallet.type === 'DEBIT_CARD'
-          ? 'bg-blue-500/10 dark:bg-blue-500/15'
-          : 'bg-emerald-500/10 dark:bg-emerald-500/15';
-  const iconColorFg =
-    wallet.type === 'CREDIT_CARD'
-      ? 'text-violet-600 dark:text-violet-400'
-      : wallet.type === 'DEPARTMENT_STORE_CARD'
-        ? 'text-amber-600 dark:text-amber-400'
-        : wallet.type === 'DEBIT_CARD'
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-emerald-600 dark:text-emerald-400';
-
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-              iconColorBg,
-            )}
-          >
-            <Icon className={cn('h-4 w-4', iconColorFg)} />
-          </span>
-          <div>
-            <h1 className="text-xl font-semibold">{wallet.name}</h1>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>
-                {wallet.type === 'DEBIT_CARD'
-                  ? 'Tarjeta de débito'
-                  : wallet.type === 'CREDIT_CARD'
-                    ? 'Tarjeta de crédito'
-                    : wallet.type === 'DEPARTMENT_STORE_CARD'
-                      ? 'Tarjeta tienda'
-                      : 'Efectivo'}{' '}
-                · {isCreditWallet ? 'Deuda' : 'Saldo'}{' '}
-                {formatCurrency(wallet.amount)}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setBalanceOpen(true)}
-                aria-label={isCreditWallet ? 'Ajustar deuda' : 'Ajustar saldo'}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
+    <div className="relative pb-24 lg:pb-0">
+      <WalletHeroZone wallet={wallet}>
+        <WalletDetailHeaderActions
+          walletName={wallet.name}
+          backHref={backHref}
+          canImport={canImport}
+          onRegisterExpense={handleOpenExpense}
+          onRegisterIncome={() => setIncomeOpen(true)}
+          onAdjustBalance={() => setBalanceOpen(true)}
+          onImport={() => setImportOpen(true)}
+          onExportCsv={handleExportCsv}
+        />
+
+        <WalletVisualHero wallet={wallet} />
+
+        <WalletQuickActions
+          canImport={canImport}
+          onRegisterExpense={handleOpenExpense}
+          onRegisterIncome={() => setIncomeOpen(true)}
+          onImport={() => setImportOpen(true)}
+          onAdjustBalance={() => setBalanceOpen(true)}
+        />
+      </WalletHeroZone>
+
+      <WalletActivitySheet>
+        {isCreditWallet ? (
+          <CreditCardPlannedPaymentSection
+            walletId={walletId}
+            items={paymentPlanItems}
+            onPlanUpdated={loadData}
+          />
+        ) : null}
+
+        <div className={isCreditWallet ? 'mt-5' : undefined}>
+          <WalletPeriodSummary
+            rangeLabel={rangeLabel}
+            isCurrentMonth={isCurrentMonth}
+            inflow={data.totals.inflow}
+            outflow={data.totals.outflow}
+            net={data.totals.net}
+            onPrevious={handlePrevMonth}
+            onNext={handleNextMonth}
+            onResetToToday={handleResetToToday}
+          />
         </div>
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {canImport && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 gap-1.5"
-                onClick={() => {
-                  setExpenseError(null);
-                  setExpenseOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Registrar gasto
-              </Button>
-              <Button
-                type="button"
-                className="h-9 gap-1.5 rounded-xl"
-                onClick={() => setIncomeOpen(true)}
-              >
-                <Coins className="h-4 w-4" />
-                Registrar ingreso
-              </Button>
-            </>
-          )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+
+        <div className="mt-5">
+          <LinkedLoansCard walletId={walletId} />
+        </div>
+
+        <div className="mt-5">
+          <WalletMovementsFeed
+            movements={data.movements}
+            ownerQueryString={ownerQueryString}
+            canRegister={canImport}
+            onRegisterExpense={handleOpenExpense}
+            onRegisterIncome={() => setIncomeOpen(true)}
+          />
+        </div>
+      </WalletActivitySheet>
+
+      {canImport ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden">
+          <div className="mx-auto flex max-w-lg gap-2">
             <Button
               type="button"
               variant="outline"
-              className="h-9 gap-1.5 self-start sm:self-auto"
-              aria-label="Más acciones"
+              className="h-11 flex-1 gap-1.5 rounded-xl"
+              onClick={handleOpenExpense}
             >
-              <ChevronDown className="h-4 w-4 opacity-70" />
-              Más
+              <Plus className="h-4 w-4" />
+              Gasto
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            {isCreditWallet ? (
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/credit-cards/${walletId}${ownerQueryString}`}
-                  className="cursor-pointer"
-                >
-                  Ver estado de cuenta
-                </Link>
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem
-              onClick={() => setBalanceOpen(true)}
-              className="cursor-pointer"
-            >
-              <Pencil className="mr-2 h-4 w-4 shrink-0" />
-              {isCreditWallet ? 'Ajustar deuda' : 'Ajustar saldo'}
-            </DropdownMenuItem>
-            {canImport && (
-              <DropdownMenuItem
-                onClick={() => setImportOpen(true)}
-                className="cursor-pointer"
-              >
-                <Upload className="mr-2 h-4 w-4 shrink-0" />
-                Importar CSV
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={handleExportCsv}
-              className="cursor-pointer"
-            >
-              <Download className="mr-2 h-4 w-4 shrink-0" />
-              Exportar CSV
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        </div>
-      </div>
-
-      {isCreditWallet ? (
-        <CreditCardPlannedPaymentSection
-          walletId={walletId}
-          items={paymentPlanItems}
-          onPlanUpdated={loadData}
-        />
-      ) : null}
-
-      {/* Range nav + KPIs */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1 self-start rounded-lg border border-border/60 bg-muted/40 px-1 py-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handlePrevMonth}
-            aria-label="Mes anterior"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </Button>
-          <div className="min-w-0 px-2 text-center">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Periodo
-            </p>
-            <p className="text-xs font-semibold tabular-nums">{rangeLabel}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleNextMonth}
-            disabled={isCurrentMonth}
-            aria-label="Mes siguiente"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-          {!isCurrentMonth && (
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-1.5 text-[10px]"
-              onClick={handleResetToToday}
-              aria-label="Volver al mes actual"
+              type="button"
+              className="h-11 flex-1 gap-1.5 rounded-xl"
+              onClick={() => setIncomeOpen(true)}
             >
-              <RotateCcw className="h-3 w-3" />
-              Hoy
+              <WalletIcon className="h-4 w-4" />
+              Ingreso
             </Button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="rounded-lg border border-l-[3px] border-l-emerald-500/50 bg-emerald-500/5 px-3 py-2 dark:bg-emerald-500/8">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Ingresos
-            </p>
-            <p className="text-sm font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(data.totals.inflow)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-l-[3px] border-l-rose-500/50 bg-rose-500/5 px-3 py-2 dark:bg-rose-500/8">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Egresos
-            </p>
-            <p className="text-sm font-bold font-mono tabular-nums">
-              {formatCurrency(data.totals.outflow)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 px-3 py-2 dark:bg-blue-500/8">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Neto
-            </p>
-            <p
-              className={cn(
-                'text-sm font-bold font-mono tabular-nums',
-                data.totals.net < 0 && 'text-destructive',
-              )}
-            >
-              {formatCurrency(data.totals.net)}
-            </p>
           </div>
         </div>
-      </div>
-
-      <LinkedLoansCard walletId={walletId} />
-
-      {/* Movements list */}
-      <Card className="overflow-hidden border-border/60">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold">Movimientos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por descripción o categoría…"
-                className="max-w-sm text-sm"
-                aria-label="Filtrar movimientos"
-              />
-              <div className="flex flex-wrap gap-1">
-                <Button
-                  type="button"
-                  variant={kindFilter === 'all' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-7 px-2 text-[10px] font-semibold uppercase"
-                  onClick={() => setKindFilter('all')}
-                >
-                  Todos
-                </Button>
-                <Button
-                  type="button"
-                  variant={kindFilter === 'income' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-7 px-2 text-[10px] font-semibold uppercase"
-                  onClick={() => setKindFilter('income')}
-                >
-                  Ingresos
-                </Button>
-                <Button
-                  type="button"
-                  variant={kindFilter === 'expense' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-7 px-2 text-[10px] font-semibold uppercase"
-                  onClick={() => setKindFilter('expense')}
-                >
-                  Egresos
-                </Button>
-              </div>
-            </div>
-            <div
-              className="flex flex-wrap gap-0.5"
-              role="group"
-              aria-label="Ordenar movimientos"
-            >
-              <SortButton sortKey="date" label="Fecha" activeKey={field} dir={dir} onSort={handleSortClick} />
-              <SortButton sortKey="amount" label="Monto" activeKey={field} dir={dir} onSort={handleSortClick} />
-              <SortButton sortKey="description" label="Concepto" activeKey={field} dir={dir} onSort={handleSortClick} />
-              <SortButton sortKey="category" label="Categoría" activeKey={field} dir={dir} onSort={handleSortClick} />
-            </div>
-            {data.movements.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                No hay movimientos en este período.
-              </p>
-            ) : sortedMovements.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                Ningún movimiento coincide con el filtro.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {sortedMovements.map((m) => {
-                  const isIn = m.direction === 'in';
-                  const fortnightLink =
-                    m.fortnightYear != null && m.fortnightMonth != null && m.fortnightPeriod
-                      ? `/fortnight/${m.fortnightYear}/${String(m.fortnightMonth).padStart(2, '0')}/${m.fortnightPeriod}${ownerQueryString}`
-                      : null;
-                  return (
-                    <li
-                      key={`${m.kind}-${m.id}`}
-                      className="rounded-md border border-border/60 px-3 py-2"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium">
-                            {m.description}
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'ml-1.5 align-middle text-[9px] font-semibold uppercase tracking-wider',
-                                isIn
-                                  ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                                  : 'border-rose-500/40 text-rose-600 dark:text-rose-400',
-                              )}
-                            >
-                              {isIn ? 'Ingreso' : 'Egreso'}
-                            </Badge>
-                          </p>
-                          <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            {m.category ? (
-                              <>
-                                <CategoryLabel
-                                  name={m.category}
-                                  icon={m.categoryIcon}
-                                />
-                                <span className="text-muted-foreground/30">·</span>
-                              </>
-                            ) : null}
-                            <span>{formatDate(m.date)}</span>
-                          </p>
-                          {fortnightLink && (
-                            <Link
-                              href={fortnightLink}
-                              className="text-[10px] font-medium text-primary underline-offset-2 hover:underline"
-                            >
-                              Ver en quincena
-                            </Link>
-                          )}
-                        </div>
-                        <span
-                          className={cn(
-                            'shrink-0 font-mono text-sm font-bold tabular-nums',
-                            isIn && 'text-emerald-600 dark:text-emerald-400',
-                          )}
-                        >
-                          {isIn ? '+' : '−'} {formatCurrency(m.amount)}
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      ) : null}
 
       {canImport && (
         <WalletImportDialog
