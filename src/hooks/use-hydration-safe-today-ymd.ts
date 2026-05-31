@@ -1,13 +1,14 @@
 'use client';
 
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { useSyncExternalStore } from 'react';
 
 const noopSubscribe = () => () => {};
 
-const getClientSnapshot = () => new Date().toISOString().split('T')[0];
+const getClientSnapshot = () => todayCalendarDate();
 
 /**
- * UTC calendar YYYY-MM-DD. Server + hydration use a fixed sentinel so markup
+ * Mexico City calendar YYYY-MM-DD. Server + hydration use a fixed sentinel so markup
  * matches; then switches to the real date (avoids vencido/pagado drift across SSR vs client).
  */
 export function useHydrationSafeTodayYmd(): string {

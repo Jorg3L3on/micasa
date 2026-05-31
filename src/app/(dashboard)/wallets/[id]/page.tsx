@@ -17,6 +17,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan } from '@/lib/api/credit-cards';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
 import type {
   WalletDetail,
@@ -32,8 +33,6 @@ import {
   WalletVisualHero,
 } from '@/components/wallets/WalletDetailSections';
 import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
-
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
 const firstDayOfMonth = (year: number, monthIdx: number): string =>
   `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`;
@@ -197,7 +196,7 @@ export default function WalletDetailPage() {
   }, []);
 
   const isCurrentMonth = useMemo(() => {
-    const today = getTodayDateString();
+    const today = todayCalendarDate();
     return today >= range.from && today <= range.to;
   }, [range.from, range.to]);
 

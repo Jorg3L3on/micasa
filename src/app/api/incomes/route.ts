@@ -1,3 +1,4 @@
+import { coerceToCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
           validated.source && validated.source.length > 0
             ? validated.source
             : null,
-        date: new Date(validated.received_at),
+        date: coerceToCalendarDate(validated.received_at),
         userWalletId: null,
         houseWalletId: null,
       });
@@ -292,7 +293,7 @@ export async function POST(request: NextRequest) {
             validated.source && validated.source.length > 0
               ? validated.source
               : null,
-          received_at: new Date(validated.received_at),
+          received_at: coerceToCalendarDate(validated.received_at),
           income_template_id: validated.income_template_id ?? null,
           wallet_id: walletId,
           ...ownerData,

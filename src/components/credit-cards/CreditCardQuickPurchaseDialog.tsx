@@ -24,6 +24,7 @@ import type { CategoryOption, CreditCardListItem } from '@/types/catalog';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createCreditCardPurchase } from '@/lib/api/credit-cards';
 import { Skeleton } from '@/components/ui/skeleton';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 
@@ -36,15 +37,11 @@ type FortnightCatalogItem = {
   active: boolean;
 };
 
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
-
 const resolveDefaultFortnightId = (
   items: FortnightCatalogItem[],
 ): string => {
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = today.getMonth() + 1;
-  const d = today.getDate();
+  const todayYmd = todayCalendarDate();
+  const [y, m, d] = todayYmd.split('-').map(Number);
   const period: 'FIRST' | 'SECOND' = d <= 15 ? 'FIRST' : 'SECOND';
   const match = items.find(
     (f) => f.year === y && f.month === m && f.period === period && f.active,
@@ -85,7 +82,7 @@ const CreditCardQuickPurchaseDialog = ({
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [paymentDate, setPaymentDate] = useState(getTodayDateString());
+  const [paymentDate, setPaymentDate] = useState(todayCalendarDate());
   const [installmentCurrent, setInstallmentCurrent] = useState('');
   const [installmentTotal, setInstallmentTotal] = useState('');
 
@@ -136,7 +133,7 @@ const CreditCardQuickPurchaseDialog = ({
     if (open) {
       setDescription('');
       setAmount('');
-      setPaymentDate(getTodayDateString());
+      setPaymentDate(todayCalendarDate());
       setInstallmentCurrent('');
       setInstallmentTotal('');
       setCategoryId('');

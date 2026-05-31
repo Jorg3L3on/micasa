@@ -8,6 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  formatCalendarDate,
+  parseCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 
@@ -29,23 +34,24 @@ function getDefaultDateForFortnight(
   month: number,
   period: 'FIRST' | 'SECOND',
 ): string {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
+  const todayYmd = todayCalendarDate();
+  const [currentYear, currentMonth, currentDay] = todayYmd.split('-').map(Number);
 
   if (year === currentYear && month === currentMonth) {
-    const day = today.getDate();
-    if (period === 'FIRST' && day >= 1 && day <= 15) {
-      return today.toISOString().split('T')[0];
+    if (period === 'FIRST' && currentDay >= 1 && currentDay <= 15) {
+      return todayYmd;
     }
-    if (period === 'SECOND' && day >= 16) {
-      return today.toISOString().split('T')[0];
+    if (period === 'SECOND' && currentDay >= 16) {
+      return todayYmd;
     }
   }
 
   const day = period === 'FIRST' ? 1 : 16;
-  const date = new Date(year, month - 1, day);
-  return date.toISOString().split('T')[0];
+  return formatCalendarDate(
+    parseCalendarDate(
+      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    ),
+  );
 }
 
 export default function AddExpenseDialog({

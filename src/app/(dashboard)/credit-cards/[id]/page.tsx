@@ -59,6 +59,11 @@ import {
   type PaymentMethodType,
   isCreditOrStoreCardWalletType,
 } from '@/domain/payment-method';
+import {
+  addCalendarDays,
+  parseCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import { formatDate } from '@/lib/utils';
 import type {
   CategoryOption,
@@ -70,13 +75,8 @@ import type {
 } from '@/types/catalog';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
-
-const shiftDateByDays = (dateStr: string, days: number): string => {
-  const date = new Date(dateStr + 'T12:00:00Z');
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().split('T')[0];
-};
+const shiftDateByDays = (dateStr: string, days: number): string =>
+  addCalendarDays(dateStr.slice(0, 10), days);
 
 const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
@@ -121,7 +121,7 @@ const CreditCardDetailPageContent = () => {
   const params = useParams<{ id: string }>();
   const { context } = useFinanceContext();
   const creditCardId = Number(params.id);
-  const today = getTodayDateString();
+  const today = todayCalendarDate();
   const { asOf: asOfDate, tab, setAsOf: setAsOfDate, setTab } =
     useCreditCardCycleUrlState({ defaultAsOf: today });
 
@@ -400,8 +400,8 @@ const CreditCardDetailPageContent = () => {
 
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
-    const due = new Date(statement.statement_due_date + 'T12:00:00Z');
-    const todayDate = new Date(today + 'T12:00:00Z');
+    const due = parseCalendarDate(statement.statement_due_date.slice(0, 10));
+    const todayDate = parseCalendarDate(today);
     return Math.round((due.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
   }, [statement, today]);
 

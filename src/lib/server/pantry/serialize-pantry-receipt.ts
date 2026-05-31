@@ -1,3 +1,4 @@
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import type {
   PantryReceiptDetailDto,
   PantryReceiptLinkedExpenseDto,
@@ -31,9 +32,7 @@ export const serializePantryReceiptLinkedExpense = (e: {
   id: e.id,
   description: e.description,
   amount: decimalToNumber(e.amount) ?? 0,
-  payment_date: e.payment_date
-    ? (e.payment_date.toISOString().split('T')[0] ?? null)
-    : null,
+  payment_date: e.payment_date ? formatCalendarDate(e.payment_date) : null,
 });
 
 const serializeLines = (

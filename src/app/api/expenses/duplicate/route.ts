@@ -1,3 +1,4 @@
+import { formatCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
@@ -31,12 +32,11 @@ function decimalToNumber(value: unknown): number {
 function toDateStr(value: Date | string | null | undefined): string {
   if (!value) return '';
   const d = value instanceof Date ? value : new Date(value);
-  return d.toISOString().split('T')[0];
+  return formatCalendarDate(d);
 }
 
 function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return todayCalendarDate();
 }
 
 export async function POST(request: NextRequest) {

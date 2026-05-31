@@ -1,3 +1,4 @@
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
@@ -121,8 +122,8 @@ export async function GET(request: NextRequest) {
       const dateValue = expense.payment_date || expense.created_at;
       const dateStr =
         dateValue instanceof Date
-          ? dateValue.toISOString().split('T')[0]
-          : new Date(dateValue).toISOString().split('T')[0];
+          ? formatCalendarDate(dateValue)
+          : formatCalendarDate(new Date(dateValue));
       return {
         id: expense.id,
         date: dateStr,
@@ -148,7 +149,7 @@ export async function GET(request: NextRequest) {
             const note = p.note?.trim();
             return {
               id: p.id,
-              date: p.paid_at.toISOString().split('T')[0],
+              date: formatCalendarDate(p.paid_at),
               description: note
                 ? `Pago tarjeta (${p.credit_card_wallet.name}): ${note}`
                 : `Pago tarjeta: ${p.credit_card_wallet.name}`,
@@ -185,8 +186,8 @@ export async function GET(request: NextRequest) {
       const dateValue = income.received_at || income.created_at;
       const dateStr =
         dateValue instanceof Date
-          ? dateValue.toISOString().split('T')[0]
-          : new Date(dateValue).toISOString().split('T')[0];
+          ? formatCalendarDate(dateValue)
+          : formatCalendarDate(new Date(dateValue));
       return {
         id: income.id,
         date: dateStr,

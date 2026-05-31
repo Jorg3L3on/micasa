@@ -30,6 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  formatCalendarDate,
+  parseCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createIncome } from '@/lib/api/incomes';
@@ -73,23 +78,24 @@ function getDefaultIncomeDate(
   month: number,
   period: 'FIRST' | 'SECOND',
 ): string {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
+  const todayYmd = todayCalendarDate();
+  const [currentYear, currentMonth, currentDay] = todayYmd.split('-').map(Number);
 
   if (year === currentYear && month === currentMonth) {
-    const day = today.getDate();
-    if (period === 'FIRST' && day >= 1 && day <= 15) {
-      return today.toISOString().split('T')[0];
+    if (period === 'FIRST' && currentDay >= 1 && currentDay <= 15) {
+      return todayYmd;
     }
-    if (period === 'SECOND' && day >= 16) {
-      return today.toISOString().split('T')[0];
+    if (period === 'SECOND' && currentDay >= 16) {
+      return todayYmd;
     }
   }
 
   const day = period === 'FIRST' ? 1 : 16;
-  const date = new Date(year, month - 1, day);
-  return date.toISOString().split('T')[0];
+  return formatCalendarDate(
+    parseCalendarDate(
+      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    ),
+  );
 }
 
 export default function DashboardQuickIncomeDialog({
@@ -140,7 +146,7 @@ export default function DashboardQuickIncomeDialog({
           fortnight_id: fortnight.id,
           amount: values.amount,
           source: values.source,
-          received_at: `${values.date}T00:00:00.000Z`,
+          received_at: values.date,
           ...(isHouseContext && isTransferFromMember && selectedMemberId
             ? { transfer_from_user_id: Number(selectedMemberId) }
             : {}),

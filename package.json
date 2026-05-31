@@ -12,6 +12,7 @@
     "test": "vitest run",
     "backfill:pantry-products": "tsx --tsconfig tsconfig.json scripts/backfill-pantry-products-from-receipts.ts",
     "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
+    "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "ci": "npm run validate:dashboard-ui && prisma generate && npm test && npm run build"
   },
   "dependencies": {

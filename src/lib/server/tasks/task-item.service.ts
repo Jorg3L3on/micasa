@@ -1,3 +1,4 @@
+import { coerceToCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { serializeTaskItem } from '@/lib/server/tasks/serialize-tasks';
 import { tasksOwnerWhere } from '@/lib/server/tasks/tasks-owner';
@@ -72,10 +73,12 @@ export async function createTaskItem(
       title: input.title.trim(),
       notes: input.notes ?? null,
       priority: input.priority ?? 'MEDIUM',
-      due_at: input.due_at ? new Date(input.due_at) : null,
+      due_at: input.due_at ? coerceToCalendarDate(input.due_at) : null,
       recurrence_unit: input.recurrence?.unit ?? null,
       recurrence_every: input.recurrence?.every ?? null,
-      recurrence_anchor: input.recurrence?.anchor ? new Date(input.recurrence.anchor) : null,
+      recurrence_anchor: input.recurrence?.anchor
+        ? coerceToCalendarDate(input.recurrence.anchor)
+        : null,
       sort_order: (maxSort._max.sort_order ?? -1) + 1,
       created_by_user_id: userId,
       assignee_user_id,
@@ -108,14 +111,14 @@ export async function updateTaskItem(
         : {}),
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.due_at !== undefined
-        ? { due_at: input.due_at ? new Date(input.due_at) : null }
+        ? { due_at: input.due_at ? coerceToCalendarDate(input.due_at) : null }
         : {}),
       ...(input.recurrence !== undefined
         ? {
             recurrence_unit: input.recurrence?.unit ?? null,
             recurrence_every: input.recurrence?.every ?? null,
             recurrence_anchor: input.recurrence?.anchor
-              ? new Date(input.recurrence.anchor)
+              ? coerceToCalendarDate(input.recurrence.anchor)
               : null,
           }
         : {}),

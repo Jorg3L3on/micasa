@@ -36,19 +36,16 @@ import type {
   CreditCardStatementPurchaseItem,
   CreditCardPaymentListItem,
 } from '@/types/catalog';
+import {
+  todayCalendarDate,
+  yesterdayCalendarDate,
+} from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
 const getDateGroupLabel = (dateStr: string): string => {
   const day = dateStr.slice(0, 10);
-  const today = getTodayDateString();
-  if (day === today) return 'Hoy';
-
-  const yesterday = new Date(today + 'T12:00:00Z');
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  if (day === yesterday.toISOString().split('T')[0]) return 'Ayer';
-
+  if (day === todayCalendarDate()) return 'Hoy';
+  if (day === yesterdayCalendarDate()) return 'Ayer';
   return formatDate(day);
 };
 

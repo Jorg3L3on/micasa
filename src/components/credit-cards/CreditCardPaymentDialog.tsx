@@ -20,12 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
-
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
 /** Persist last category used for “registrar en quincena” (see ui-consistency / micasa.* keys). */
 const LAST_CATEGORY_STORAGE_KEY = 'micasa.creditCardPayment.lastCategoryId';
@@ -64,7 +63,7 @@ const CreditCardPaymentDialog = ({
 }: CreditCardPaymentDialogProps) => {
   const [sourceWalletId, setSourceWalletId] = useState('');
   const [amount, setAmount] = useState('');
-  const [paidAt, setPaidAt] = useState(getTodayDateString());
+  const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [note, setNote] = useState('');
   const [createFortnightExpense, setCreateFortnightExpense] = useState(true);
   const [categoryId, setCategoryId] = useState('');
@@ -75,7 +74,7 @@ const CreditCardPaymentDialog = ({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the payment dialog opens.
     setSourceWalletId('');
     setAmount('');
-    setPaidAt(getTodayDateString());
+    setPaidAt(todayCalendarDate());
     setNote('');
     setCreateFortnightExpense(true);
     setLocalError(null);
@@ -125,7 +124,7 @@ const CreditCardPaymentDialog = ({
     const payload: CreditCardPaymentSubmitPayload = {
       source_wallet_id: Number(sourceWalletId),
       amount: Number(amount),
-      paid_at: `${paidAt}T12:00:00.000Z`,
+      paid_at: paidAt,
       note: note.trim() || null,
       create_fortnight_expense: createFortnightExpense,
       ...(createFortnightExpense && categoryId
