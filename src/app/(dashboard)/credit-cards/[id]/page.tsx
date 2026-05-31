@@ -1,21 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  CalendarClock,
-  ChevronDown,
-  SlidersHorizontal,
-  Wallet,
-} from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import {
-  CreditCardActivitySectionCard,
-  CreditCardActivitySheet,
-  CreditCardCycleSpendingBar,
   CreditCardCycleSummary,
   CreditCardDetailHeaderActions,
   CreditCardDetailTabTrigger,
@@ -25,16 +17,12 @@ import {
   CreditCardQuickActions,
   CreditCardStatementSummaryCard,
   CreditCardVisualHero,
+  CreditCardCycleSpendingBar,
 } from '@/components/credit-cards/CreditCardDetailSections';
-import {
-  PaymentTableBlock,
-  PurchaseTableBlock,
-} from '@/components/credit-cards/CreditCardDetailTables';
-import {
-  CreditCardFeedEmpty,
-  CreditCardRecentMovements,
-  GroupedPurchaseFeed,
-} from '@/components/credit-cards/CreditCardTransactionFeed';
+import { CreditCardCycleLedger } from '@/components/credit-cards/CreditCardCycleLedger';
+import { CreditCardCycleWorkspaceShell } from '@/components/credit-cards/CreditCardCycleWorkspaceShell';
+import { CreditCardInstallmentPortfolio } from '@/components/credit-cards/CreditCardInstallmentPortfolio';
+import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
 import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
@@ -44,14 +32,10 @@ import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
+import { useCreditCardCycleUrlState } from '@/hooks/use-credit-card-cycle-url-state';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
@@ -69,6 +53,8 @@ import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
+import { computeCreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
+import type { CreditCardCycleTab } from '@/lib/finance/credit-card-cycle-types';
 import {
   type PaymentMethodType,
   isCreditOrStoreCardWalletType,
@@ -112,7 +98,7 @@ const CreditCardDetailSkeleton = () => (
       <Skeleton className="h-20 w-full rounded-2xl" />
     </div>
     <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-      <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full" />
+      <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" />
       <div className="grid grid-cols-3 gap-2">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
@@ -124,10 +110,20 @@ const CreditCardDetailSkeleton = () => (
   </div>
 );
 
-export default function CreditCardDetailPage() {
+const TabContentSkeleton = () => (
+  <div className="space-y-3 py-1">
+    <Skeleton className="h-32 w-full rounded-2xl" />
+    <Skeleton className="h-24 w-full rounded-2xl" />
+  </div>
+);
+
+const CreditCardDetailPageContent = () => {
   const params = useParams<{ id: string }>();
   const { context } = useFinanceContext();
   const creditCardId = Number(params.id);
+  const today = getTodayDateString();
+  const { asOf: asOfDate, tab, setAsOf: setAsOfDate, setTab } =
+    useCreditCardCycleUrlState({ defaultAsOf: today });
 
   const [card, setCard] = useState<CreditCardListItem | null>(null);
   const [statement, setStatement] =
@@ -137,12 +133,12 @@ export default function CreditCardDetailPage() {
   );
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cycleLoading, setCycleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
-  const [asOfDate, setAsOfDate] = useState(getTodayDateString());
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false);
   const [statementImports, setStatementImports] = useState<
     CreditCardStatementImportListItem[]
@@ -174,70 +170,97 @@ export default function CreditCardDetailPage() {
     [paymentSources],
   );
 
-  const loadData = useCallback(async () => {
-    if (context.id === 0) {
-      return;
-    }
-
-    if (!Number.isFinite(creditCardId)) {
-      setError('Tarjeta inválida');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [cardData, statementData, paymentMethodsData, categoriesData, planData] =
-        await Promise.all([
-          clientFetchFromApi<CreditCardListItem>(
-            `/api/credit-cards/${creditCardId}`,
-            undefined,
-            context,
-          ),
-          getCreditCardStatement(creditCardId, context, asOfDate),
-          getPaymentMethodOptions(context),
-          clientFetchFromApi<CategoryOption[]>(
-            '/api/categories',
-            undefined,
-            context,
-          ),
-          getCreditCardPaymentPlan(creditCardId, context).catch(() => ({
-            items: [],
-          })),
-        ]);
-
-      let importsData: CreditCardStatementImportListItem[] = [];
-      try {
-        importsData = await listCreditCardStatementImports(
-          creditCardId,
-          context,
-        );
-      } catch {
-        importsData = [];
+  const loadData = useCallback(
+    async (options?: { cycleOnly?: boolean }) => {
+      if (context.id === 0) {
+        return;
       }
 
-      setCard(cardData);
-      setStatement(statementData);
-      setPaymentSources(paymentMethodsData);
-      setCategoryOptions(categoriesData);
-      setStatementImports(importsData);
-      setPaymentPlanItems(planData.items);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error al cargar el estado de cuenta',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [asOfDate, context, creditCardId]);
+      if (!Number.isFinite(creditCardId)) {
+        setError('Tarjeta inválida');
+        setLoading(false);
+        return;
+      }
+
+      const cycleOnly = options?.cycleOnly ?? false;
+
+      try {
+        if (cycleOnly) {
+          setCycleLoading(true);
+        } else {
+          setLoading(true);
+        }
+        setError(null);
+
+        const statementPromise = getCreditCardStatement(
+          creditCardId,
+          context,
+          asOfDate,
+        );
+
+        if (cycleOnly && card) {
+          const statementData = await statementPromise;
+          setStatement(statementData);
+          return;
+        }
+
+        const [cardData, statementData, paymentMethodsData, categoriesData, planData] =
+          await Promise.all([
+            clientFetchFromApi<CreditCardListItem>(
+              `/api/credit-cards/${creditCardId}`,
+              undefined,
+              context,
+            ),
+            statementPromise,
+            getPaymentMethodOptions(context),
+            clientFetchFromApi<CategoryOption[]>(
+              '/api/categories',
+              undefined,
+              context,
+            ),
+            getCreditCardPaymentPlan(creditCardId, context).catch(() => ({
+              items: [],
+            })),
+          ]);
+
+        let importsData: CreditCardStatementImportListItem[] = [];
+        try {
+          importsData = await listCreditCardStatementImports(
+            creditCardId,
+            context,
+          );
+        } catch {
+          importsData = [];
+        }
+
+        setCard(cardData);
+        setStatement(statementData);
+        setPaymentSources(paymentMethodsData);
+        setCategoryOptions(categoriesData);
+        setStatementImports(importsData);
+        setPaymentPlanItems(planData.items);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Error al cargar el estado de cuenta',
+        );
+      } finally {
+        setLoading(false);
+        setCycleLoading(false);
+      }
+    },
+    [asOfDate, card, context, creditCardId],
+  );
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (card && statement) {
+      void loadData({ cycleOnly: true });
+      return;
+    }
+    void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load vs cycle refetch
+  }, [asOfDate, context.id, creditCardId]);
 
   const handlePaymentSubmit = async (data: CreditCardPaymentSubmitPayload) => {
     try {
@@ -260,26 +283,32 @@ export default function CreditCardDetailPage() {
 
   const isCurrentCycle = useMemo(() => {
     if (!statement) return true;
-    const today = getTodayDateString();
     return (
       today >= statement.current_cycle_start &&
       today <= statement.current_cycle_end
     );
-  }, [statement]);
+  }, [statement, today]);
 
   const handlePreviousCycle = useCallback(() => {
     if (!statement) return;
     setAsOfDate(shiftDateByDays(statement.statement_start, -1));
-  }, [statement]);
+  }, [setAsOfDate, statement]);
 
   const handleNextCycle = useCallback(() => {
     if (!statement) return;
     setAsOfDate(shiftDateByDays(statement.current_cycle_end, 1));
-  }, [statement]);
+  }, [setAsOfDate, statement]);
 
   const handleResetToToday = useCallback(() => {
-    setAsOfDate(getTodayDateString());
-  }, []);
+    setAsOfDate(today);
+  }, [setAsOfDate, today]);
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      setTab(value as CreditCardCycleTab);
+    },
+    [setTab],
+  );
 
   const handleExportCsv = useCallback(() => {
     if (!card || !statement) return;
@@ -371,10 +400,10 @@ export default function CreditCardDetailPage() {
 
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
-    const today = new Date(getTodayDateString() + 'T12:00:00Z');
     const due = new Date(statement.statement_due_date + 'T12:00:00Z');
-    return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  }, [statement]);
+    const todayDate = new Date(today + 'T12:00:00Z');
+    return Math.round((due.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+  }, [statement, today]);
 
   const utilizationPct = useMemo((): number | null => {
     if (!statement?.credit_limit || statement.credit_limit === 0) return null;
@@ -396,6 +425,28 @@ export default function CreditCardDetailPage() {
       plannedPayment: currentPlan.plannedPayment,
     });
   }, [paymentPlanItems, statement?.next_due_payment]);
+
+  const reconciliation = useMemo(() => {
+    if (!statement) return null;
+    return computeCreditCardCycleReconciliation({
+      lastStatementBalance: statement.last_statement_balance,
+      paymentsAppliedToStatement: statement.payments_applied_to_statement,
+      currentCyclePurchases: statement.current_cycle_purchases,
+      currentCyclePayments: statement.current_cycle_payments,
+      outstandingBalance: statement.outstanding_balance,
+      importedStatementTotal: statement.imported_statement_total,
+      importedMinimumPayment: statement.minimum_payment,
+    });
+  }, [statement]);
+
+  const latestImport = useMemo(
+    () => statementImports[0] ?? null,
+    [statementImports],
+  );
+
+  const cycleRangeLabel = statement
+    ? formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)
+    : '';
 
   if (context.id === 0 || (loading && !statement)) {
     return <CreditCardDetailSkeleton />;
@@ -440,162 +491,131 @@ export default function CreditCardDetailPage() {
           onAdjustBalance={() => setBalanceDialogOpen(true)}
         />
 
-        <CreditCardCycleSpendingBar
-          items={statement.current_cycle_purchase_items}
-          total={statement.current_cycle_purchases}
-        />
+        {isCurrentCycle ? (
+          <CreditCardCycleSpendingBar
+            items={statement.current_cycle_purchase_items}
+            total={statement.current_cycle_purchases}
+          />
+        ) : (
+          <p className="rounded-2xl border border-border/50 bg-muted/15 px-4 py-2 text-center text-xs text-muted-foreground">
+            Viendo ciclo {cycleRangeLabel} — el desglose por categoría corresponde al ciclo seleccionado abajo.
+          </p>
+        )}
       </CreditCardHeroZone>
 
-      <CreditCardActivitySheet>
-        <CreditCardCycleSummary
-          statement={statement}
-          isCurrentCycle={isCurrentCycle}
-          onPreviousCycle={handlePreviousCycle}
-          onNextCycle={handleNextCycle}
-          onResetToToday={handleResetToToday}
-          formatCycleRange={formatCycleRange}
-          onAdjustDebt={() => setBalanceDialogOpen(true)}
-        />
-
-        <Tabs defaultValue="actividad" className="mt-5 gap-4">
-          <CreditCardDetailTabsList>
-            <CreditCardDetailTabTrigger value="actividad">
-              Movimientos
-            </CreditCardDetailTabTrigger>
-            <CreditCardDetailTabTrigger value="resumen">
-              Resumen
-            </CreditCardDetailTabTrigger>
-            <CreditCardDetailTabTrigger value="cuotas">
-              Cuotas
-              {statement.installment_active_purchases.length > 0 ? (
-                <Badge
-                  variant="default"
-                  className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
-                  aria-hidden
-                >
-                  {statement.installment_active_purchases.length}
-                </Badge>
-              ) : null}
-            </CreditCardDetailTabTrigger>
-          </CreditCardDetailTabsList>
-
-          <TabsContent value="actividad" className="mt-0 space-y-4">
-            <CreditCardRecentMovements
-              purchases={statement.current_cycle_purchase_items}
-              payments={statement.payment_history}
-              ownerQueryString={ownerQueryString}
-              onRegisterPurchase={() => setPurchaseDialogOpen(true)}
-              onRegisterPayment={() => setPaymentDialogOpen(true)}
-            />
-
-            <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto w-full justify-between rounded-2xl border-border/60 bg-card px-4 py-3 text-left shadow-sm hover:bg-muted/20"
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                      <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-foreground">
-                        Historial completo y filtros avanzados
-                      </span>
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        Revisa compras del último corte y pagos anteriores.
-                      </span>
-                    </span>
-                  </span>
-                  <ChevronDown
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3 space-y-4">
-                <CreditCardActivitySectionCard
-                  title="Compras del último corte"
-                  subtitle="Estado de cuenta importado o calculado"
-                  accentClass="border-l-blue-500/50"
-                  icon={
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
-                      <CalendarClock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                    </span>
-                  }
-                >
-                  {statement.statement_purchases.length === 0 ? (
-                    <CreditCardFeedEmpty message="No hubo compras en el último corte." />
-                  ) : (
-                    <PurchaseTableBlock
-                      items={statement.statement_purchases}
-                      emptyText="No hay compras que coincidan con el filtro."
-                      ownerQueryString={ownerQueryString}
-                      regionLabel="Compras del último corte"
-                    />
-                  )}
-                </CreditCardActivitySectionCard>
-
-                <CreditCardActivitySectionCard
-                  title="Historial completo de pagos"
-                  accentClass="border-l-emerald-500/50"
-                  icon={
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 dark:bg-emerald-500/15">
-                      <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    </span>
-                  }
-                >
-                  <PaymentTableBlock
-                    items={statement.payment_history}
-                    regionLabel="Historial de pagos"
-                  />
-                </CreditCardActivitySectionCard>
-              </CollapsibleContent>
-            </Collapsible>
-          </TabsContent>
-
-          <TabsContent value="resumen" className="mt-0 space-y-4">
-          <CreditCardPlannedPaymentSection
-            walletId={creditCardId}
-            items={paymentPlanItems}
-            onPlanUpdated={loadData}
-          />
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <CreditCardPaymentsChart
-                paymentHistory={statement.payment_history}
-                installmentActivePurchases={statement.installment_active_purchases}
-                statementEnd={statement.statement_end}
+      <Tabs value={tab} onValueChange={handleTabChange} className="gap-4">
+        <CreditCardCycleWorkspaceShell
+          chrome={
+            <>
+              <CreditCardCycleSummary
+                statement={statement}
+                isCurrentCycle={isCurrentCycle}
+                onPreviousCycle={handlePreviousCycle}
+                onNextCycle={handleNextCycle}
+                onResetToToday={handleResetToToday}
+                formatCycleRange={formatCycleRange}
+                onAdjustDebt={() => setBalanceDialogOpen(true)}
               />
-            </div>
-            <CreditCardStatementSummaryCard
-              statement={statement}
-              daysUntilDue={daysUntilDue}
-            />
-          </div>
-
-          <LinkedLoansCard walletId={creditCardId} />
-        </TabsContent>
-
-          <TabsContent value="cuotas" className="mt-0 space-y-4">
-            {statement.installment_active_purchases.length === 0 ? (
-              <CreditCardFeedEmpty
-                message="Sin cuotas vigentes"
-                description="Las compras a meses con pagos pendientes aparecerán aquí."
-              />
+              <div className="mt-4">
+                <CreditCardDetailTabsList>
+                <CreditCardDetailTabTrigger value="movimientos">
+                  Movimientos
+                </CreditCardDetailTabTrigger>
+                <CreditCardDetailTabTrigger value="resumen">
+                  Resumen
+                </CreditCardDetailTabTrigger>
+                <CreditCardDetailTabTrigger value="cuotas">
+                  Cuotas
+                  {statement.installment_active_purchases.length > 0 ? (
+                    <Badge
+                      variant="default"
+                      className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
+                      aria-hidden
+                    >
+                      {statement.installment_active_purchases.length}
+                    </Badge>
+                  ) : null}
+                </CreditCardDetailTabTrigger>
+                </CreditCardDetailTabsList>
+              </div>
+            </>
+          }
+        >
+          <TabsContent value="movimientos" className="mt-0 space-y-4">
+            {cycleLoading ? (
+              <TabContentSkeleton />
             ) : (
-              <GroupedPurchaseFeed
-                items={statement.installment_active_purchases}
+              <CreditCardCycleLedger
+                cycleStart={statement.current_cycle_start}
+                cycleEnd={statement.current_cycle_end}
+                statementEnd={statement.statement_end}
+                cyclePurchases={statement.current_cycle_purchase_items}
+                payments={statement.payment_history}
+                imports={statementImports}
                 ownerQueryString={ownerQueryString}
-                regionLabel="Cuotas vigentes"
-                emptyText="Ningún resultado con el filtro aplicado."
+                reconciliation={reconciliation}
+                onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+                onRegisterPayment={() => setPaymentDialogOpen(true)}
+                onGoToCuotas={() => setTab('cuotas')}
               />
             )}
           </TabsContent>
-        </Tabs>
-      </CreditCardActivitySheet>
+
+          <TabsContent value="resumen" className="mt-0 space-y-4">
+            {cycleLoading ? (
+              <TabContentSkeleton />
+            ) : (
+              <>
+                {reconciliation ? (
+                  <CreditCardReconciliationStrip
+                    reconciliation={reconciliation}
+                    cycleDueDate={statement.statement_due_date}
+                    latestImport={latestImport}
+                    onOpenImportDialog={() => setMpImportDialogOpen(true)}
+                  />
+                ) : null}
+
+                <CreditCardPlannedPaymentSection
+                  walletId={creditCardId}
+                  items={paymentPlanItems}
+                  onPlanUpdated={loadData}
+                />
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div className="lg:col-span-2">
+                    <CreditCardPaymentsChart
+                      paymentHistory={statement.payment_history}
+                      installmentActivePurchases={
+                        statement.installment_active_purchases
+                      }
+                      statementEnd={statement.statement_end}
+                      cycleLabel={cycleRangeLabel}
+                    />
+                  </div>
+                  <CreditCardStatementSummaryCard
+                    statement={statement}
+                    daysUntilDue={daysUntilDue}
+                  />
+                </div>
+
+                <LinkedLoansCard walletId={creditCardId} />
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="cuotas" className="mt-0 space-y-4">
+            {cycleLoading ? (
+              <TabContentSkeleton />
+            ) : (
+              <CreditCardInstallmentPortfolio
+                purchases={statement.installment_active_purchases}
+                ownerQueryString={ownerQueryString}
+                onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+              />
+            )}
+          </TabsContent>
+        </CreditCardCycleWorkspaceShell>
+      </Tabs>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 p-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:hidden">
         <div className="mx-auto flex max-w-md gap-2">
@@ -716,5 +736,13 @@ export default function CreditCardDetailPage() {
         }
       />
     </div>
+  );
+};
+
+export default function CreditCardDetailPage() {
+  return (
+    <Suspense fallback={<CreditCardDetailSkeleton />}>
+      <CreditCardDetailPageContent />
+    </Suspense>
   );
 }
