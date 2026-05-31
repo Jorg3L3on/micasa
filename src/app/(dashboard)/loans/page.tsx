@@ -34,6 +34,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createLoan, listLoans } from '@/lib/api/loans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
 import type { CreateLoanInput } from '@/schemas/loan.schema';
@@ -55,7 +56,7 @@ type LoanFormState = {
   notes: string;
 };
 
-const todayYmd = () => new Date().toISOString().split('T')[0];
+const todayYmd = () => todayCalendarDate();
 
 const defaultForm = (): LoanFormState => ({
   name: '',

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { PaymentMethodType } from '@/generated/prisma/client';
 
 const {
@@ -317,14 +318,14 @@ describe('getLiquidityProjection', () => {
       .mockResolvedValueOnce([
         {
           amount: '250',
-          due_date: new Date(Date.UTC(2026, 3, 15, 12, 0, 0)),
+          due_date: parseCalendarDate('2026-04-15'),
         },
       ])
       .mockResolvedValueOnce([]);
 
     const result = await getLiquidityProjection({
       ownerFilter: userOwner,
-      until: new Date(Date.UTC(2026, 3, 30)),
+      until: parseCalendarDate('2026-04-30'),
       includeUnpaidExpenses: false,
     });
 

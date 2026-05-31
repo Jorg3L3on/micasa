@@ -1,3 +1,9 @@
+import {
+  coerceToCalendarDate,
+  formatCalendarDate,
+  parseCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import {
@@ -66,8 +72,8 @@ async function mapExpenseToTransactionDto(expense: ExpenseTransactionDtoSource) 
   const dateValue = expense.payment_date || expense.created_at;
   const dateStr =
     dateValue instanceof Date
-      ? dateValue.toISOString().split('T')[0]
-      : new Date(dateValue).toISOString().split('T')[0];
+      ? formatCalendarDate(dateValue)
+      : formatCalendarDate(new Date(dateValue));
 
   return {
     id: expense.id,
@@ -241,7 +247,7 @@ export async function createExpenseInTransaction(
       description,
       amount,
       is_paid: isPaid,
-      payment_date: paymentDate ? new Date(paymentDate) : null,
+      payment_date: paymentDate ? coerceToCalendarDate(paymentDate) : null,
       expense_template_id: expenseTemplateId || null,
       due_day: resolvedDueDay,
       statement_import_id: statementImportId ?? null,
@@ -469,7 +475,7 @@ export async function updateExpense(input: UpdateExpenseInput) {
     if (amount !== undefined) updateData.amount = amount;
     if (isPaid !== undefined) updateData.is_paid = isPaid;
     if (paymentDate !== undefined) {
-      updateData.payment_date = paymentDate ? new Date(paymentDate) : null;
+      updateData.payment_date = paymentDate ? coerceToCalendarDate(paymentDate) : null;
     }
 
     updateData.user_id = newFortnight.user_id;
@@ -568,7 +574,7 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
       where: { id },
       data: {
         is_paid: willBePaid,
-        payment_date: willBePaid ? new Date() : null,
+        payment_date: willBePaid ? parseCalendarDate(todayCalendarDate()) : null,
       },
       include: {
         category: { select: { name: true, icon: true } },

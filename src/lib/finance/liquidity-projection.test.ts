@@ -1,3 +1,4 @@
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { describe, expect, it } from 'vitest';
 import { resolveCreditCardStatementWindow } from '@/lib/finance/credit-card-statement.service';
 import {
@@ -17,7 +18,7 @@ describe('compareUtcDateOnly', () => {
 
 describe('advanceStatementCursor', () => {
   it('moves past currentCycleEnd so the siguiente periodo resolves', () => {
-    const asOf = new Date(Date.UTC(2026, 2, 10));
+    const asOf = parseCalendarDate('2026-03-10');
     const w = resolveCreditCardStatementWindow(asOf, 15, 20);
     const next = advanceStatementCursor(w);
     expect(toUtcDateOnlyString(next)).toBe('2026-03-16');
@@ -28,7 +29,7 @@ describe('advanceStatementCursor', () => {
 
 describe('addDaysUtc', () => {
   it('rolls across month boundaries in UTC', () => {
-    const d = new Date(Date.UTC(2026, 0, 31));
+    const d = parseCalendarDate('2026-01-31');
     expect(toUtcDateOnlyString(addDaysUtc(d, 1))).toBe('2026-02-01');
   });
 });

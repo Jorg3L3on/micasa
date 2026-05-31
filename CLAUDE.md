@@ -143,6 +143,16 @@ Wallets have a `PaymentMethodType` enum that determines cash-flow behavior:
 - **Funding wallets** (`CASH`, `DEBIT_CARD`): direct cash outflow when an expense is paid
 - **Credit wallets** (`CREDIT_CARD`, `DEPARTMENT_STORE_CARD`): tracked via statement cycles; paying an expense increases credit used, not cash spent
 
+### Calendar dates (Mexico City)
+
+User-facing **calendar days** (expense `payment_date`, income `received_at`, loan `due_date`, “today” in UI) use **`America/Mexico_City`** via **`src/lib/calendar-dates.ts`**:
+
+- **Parse** form/API `YYYY-MM-DD` → `parseCalendarDate()` (stored as UTC noon on that civil day)
+- **Format** stored `DateTime` → `formatCalendarDate()` for APIs/tables; `formatDisplayDate()` / `formatDate()` for es-MX UI
+- **Today** → `todayCalendarDate()` (not `toISOString().split('T')[0]`)
+
+Do **not** use ad-hoc `T00:00:00.000Z`, server-local `new Date(y, m, d)`, or UTC slicing for business dates. Run `npm run validate:calendar-dates` locally.
+
 Cash outflow from credit cards enters the fortnights as either:
 - Expenses paid with a funding wallet (e.g., "Pago tarjeta" registered in the fortnight)
 - `CreditCardPayment` records with no linked expense

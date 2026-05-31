@@ -1,5 +1,6 @@
 'use client';
 
+import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -442,8 +443,11 @@ export default function FortnightColumn({
         targetPeriod: 'FIRST' | 'SECOND',
       ): string => {
         const day = targetPeriod === 'FIRST' ? 1 : 16;
-        const date = new Date(year, month - 1, day);
-        return date.toISOString().split('T')[0];
+        return formatCalendarDate(
+          parseCalendarDate(
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+          ),
+        );
       };
 
       if (fromTemplateId) {
@@ -455,7 +459,7 @@ export default function FortnightColumn({
             amount: data.amount,
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
-            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            payment_date: data.date ?? null,
             expense_template_id: fromTemplateId,
           },
           context,
@@ -470,7 +474,7 @@ export default function FortnightColumn({
             amount: data.amount,
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
-            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            payment_date: data.date ?? null,
           },
           context,
         );
@@ -514,7 +518,7 @@ export default function FortnightColumn({
             amount: data.amount,
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
-            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            payment_date: data.date ?? null,
             expense_template_id: template.id,
           },
           context,
@@ -567,7 +571,7 @@ export default function FortnightColumn({
             amount: data.amount,
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
-            payment_date: data.date ? `${data.date}T00:00:00.000Z` : null,
+            payment_date: data.date ?? null,
             expense_template_id: template.id,
           },
           context,
@@ -583,7 +587,7 @@ export default function FortnightColumn({
             amount: data.amount,
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
-            payment_date: otherDate ? new Date(otherDate).toISOString() : null,
+            payment_date: otherDate ?? null,
             expense_template_id: template.id,
           },
           context,

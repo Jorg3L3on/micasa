@@ -1,3 +1,4 @@
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
@@ -77,7 +78,7 @@ export async function POST(
           fortnight_id: fortnight.id,
           amount: data.amount,
           source: data.source,
-          received_at: new Date(`${data.date}T12:00:00.000Z`),
+          received_at: parseCalendarDate(data.date),
           wallet_id: walletId,
           ...ownerData,
         },

@@ -1,3 +1,4 @@
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     const asOf = new Date();
     const until = untilParam
-      ? new Date(`${untilParam}T12:00:00.000Z`)
+      ? parseCalendarDate(untilParam)
       : defaultLiquidityUntilFromAsOf(asOf);
 
     if (Number.isNaN(until.getTime())) {

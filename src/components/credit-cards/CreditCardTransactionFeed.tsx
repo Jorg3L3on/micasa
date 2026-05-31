@@ -13,6 +13,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  todayCalendarDate,
+  yesterdayCalendarDate,
+} from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import type {
@@ -21,18 +25,10 @@ import type {
 } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
-
 const getDateGroupLabel = (dateStr: string): string => {
   const day = dateStr.slice(0, 10);
-  const today = getTodayDateString();
-  if (day === today) return 'Hoy';
-
-  const yesterday = new Date(today + 'T12:00:00Z');
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-  if (day === yesterdayStr) return 'Ayer';
-
+  if (day === todayCalendarDate()) return 'Hoy';
+  if (day === yesterdayCalendarDate()) return 'Ayer';
   return formatDate(day);
 };
 
