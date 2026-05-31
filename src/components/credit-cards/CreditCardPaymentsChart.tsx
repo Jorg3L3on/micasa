@@ -67,6 +67,8 @@ type Props = {
   installmentActivePurchases: CreditCardStatementPurchaseItem[];
   /** ISO date string "YYYY-MM-DD" — end of the current statement period. */
   statementEnd: string;
+  /** Optional cycle context label for chart subtitle. */
+  cycleLabel?: string;
 };
 
 const labelFromKey = (key: string): string => {
@@ -128,6 +130,7 @@ export const CreditCardPaymentsChart = ({
   paymentHistory,
   installmentActivePurchases,
   statementEnd,
+  cycleLabel,
 }: Props) => {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -161,7 +164,9 @@ export const CreditCardPaymentsChart = ({
             Pagos y cuotas futuras
           </CardTitle>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            Pagos realizados a la tarjeta · Cuotas pendientes por mes
+            {cycleLabel
+              ? `Contexto: ${cycleLabel} · pagos y cuotas proyectadas`
+              : 'Pagos realizados a la tarjeta · Cuotas pendientes por mes'}
           </p>
         </div>
       </CardHeader>
