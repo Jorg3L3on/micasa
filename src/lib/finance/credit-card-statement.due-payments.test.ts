@@ -32,7 +32,10 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { getDuePaymentsForCurrentFortnight } from '@/lib/finance/credit-card-statement.service';
+import {
+  getDuePaymentsForCurrentFortnight,
+  getDuePaymentsForPlannerMonth,
+} from '@/lib/finance/credit-card-statement.service';
 
 const userOwner = { user_id: 1, house_id: null } as const;
 
@@ -181,5 +184,46 @@ describe('getDuePaymentsForCurrentFortnight', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.nextDuePayment).toBe(4494.74);
+  });
+
+  it('uses the visible due date for planner windows and applies payments to custom plans', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 4, 31, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 31,
+        name: 'Liverpool Carmen',
+        type: 'DEPARTMENT_STORE_CARD',
+        amount: 3884.78,
+        cutoff_day: 6,
+        due_day: 5,
+      },
+    ]);
+    queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 31, total: 694.76 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    findFirstFortnight
+      .mockResolvedValueOnce({ id: 35 })
+      .mockResolvedValueOnce({ id: 36 });
+    findManyPaymentPlans
+      .mockResolvedValueOnce([
+        {
+          credit_card_wallet_id: 31,
+          planned_amount: 694.76,
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 6);
+
+    expect(result.first).toHaveLength(1);
+    expect(result.first[0]).toMatchObject({
+      walletId: 31,
+      statementDueDate: '2026-06-05',
+      paymentsAppliedToStatement: 694.76,
+      plannedPayment: 694.76,
+    });
+    expect(result.second).toEqual([]);
   });
 });

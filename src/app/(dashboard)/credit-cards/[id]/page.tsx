@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CalendarClock, ChevronDown, Wallet } from 'lucide-react';
+import {
+  CalendarClock,
+  ChevronDown,
+  SlidersHorizontal,
+  Wallet,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
@@ -487,11 +492,26 @@ export default function CreditCardDetailPage() {
               <CollapsibleTrigger asChild>
                 <Button
                   type="button"
-                  variant="ghost"
-                  className="h-10 w-full justify-between rounded-xl border border-border/50 bg-muted/15 px-3 text-sm font-medium"
+                  variant="outline"
+                  className="h-auto w-full justify-between rounded-2xl border-border/60 bg-card px-4 py-3 text-left shadow-sm hover:bg-muted/20"
                 >
-                  Más movimientos y filtros
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-foreground">
+                        Historial completo y filtros avanzados
+                      </span>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        Revisa compras del último corte y pagos anteriores.
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-4">
