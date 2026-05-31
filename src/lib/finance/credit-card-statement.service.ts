@@ -1,3 +1,8 @@
+import {
+  endOfCalendarDay,
+  formatCalendarDate,
+  parseCalendarDate,
+} from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -14,10 +19,12 @@ import {
 
 const MAX_PAYMENT_HISTORY = 25;
 
-const createUtcDate = (year: number, month: number, day: number) =>
-  new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+const createCalendarDate = (year: number, month: number, day: number) =>
+  parseCalendarDate(
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+  );
 
-const toDateOnlyString = (date: Date) => date.toISOString().split('T')[0];
+const toDateOnlyString = (date: Date) => formatCalendarDate(date);
 
 /**
  * Pago que cuenta contra el corte: día UTC posterior al del cierre, o mismo día UTC con `paid_at`
@@ -29,7 +36,7 @@ const paymentAppliesToStatementPeriod = (
   statementDueDate: Date,
 ): boolean => {
   const paidMs = paidAt.getTime();
-  if (paidMs > endOfUtcCalendarDay(statementDueDate).getTime()) {
+  if (paidMs > endOfCalendarDay(formatCalendarDate(statementDueDate)).getTime()) {
     return false;
   }
   const payDay = toDateOnlyString(paidAt);
@@ -39,19 +46,9 @@ const paymentAppliesToStatementPeriod = (
   return paidMs > statementEnd.getTime();
 };
 
-/** Inclusive upper bound so any `paid_at` on the due calendar day (UTC) counts toward the statement. */
-const endOfUtcCalendarDay = (date: Date) =>
-  new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      23,
-      59,
-      59,
-      999,
-    ),
-  );
+/** Inclusive upper bound for the due calendar day in Mexico City. */
+const endOfDueCalendarDay = (date: Date) =>
+  endOfCalendarDay(formatCalendarDate(date));
 
 const clampDayToMonth = (year: number, month: number, day: number) =>
   Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
@@ -67,14 +64,15 @@ const addMonths = (date: Date, months: number, targetDay: number) => {
   const year = date.getUTCFullYear() + Math.floor(monthIndex / 12);
   const normalizedMonth = ((monthIndex % 12) + 12) % 12;
   const month = normalizedMonth + 1;
-  return createUtcDate(year, month, clampDayToMonth(year, month, targetDay));
+  return createCalendarDate(year, month, clampDayToMonth(year, month, targetDay));
 };
 
 const resolvePreviousOrSameCutoff = (asOf: Date, cutoffDay: number) => {
-  const currentMonthCutoff = createUtcDate(
-    asOf.getUTCFullYear(),
-    asOf.getUTCMonth() + 1,
-    clampDayToMonth(asOf.getUTCFullYear(), asOf.getUTCMonth() + 1, cutoffDay),
+  const [asOfYear, asOfMonth] = formatCalendarDate(asOf).split('-').map(Number);
+  const currentMonthCutoff = createCalendarDate(
+    asOfYear,
+    asOfMonth,
+    clampDayToMonth(asOfYear, asOfMonth, cutoffDay),
   );
 
   if (asOf >= currentMonthCutoff) {
@@ -85,14 +83,11 @@ const resolvePreviousOrSameCutoff = (asOf: Date, cutoffDay: number) => {
 };
 
 const resolveDueDate = (statementEnd: Date, dueDay: number) => {
-  const candidate = createUtcDate(
-    statementEnd.getUTCFullYear(),
-    statementEnd.getUTCMonth() + 1,
-    clampDayToMonth(
-      statementEnd.getUTCFullYear(),
-      statementEnd.getUTCMonth() + 1,
-      dueDay,
-    ),
+  const [year, month] = formatCalendarDate(statementEnd).split('-').map(Number);
+  const candidate = createCalendarDate(
+    year,
+    month,
+    clampDayToMonth(year, month, dueDay),
   );
 
   if (candidate > statementEnd) {
@@ -781,7 +776,7 @@ const sumPaymentsAppliedToStatementByWallet = async (
   }
 
   const ownerSql = creditPaymentOwnerWhereSql(ownerFilter);
-  const paymentDueEnd = endOfUtcCalendarDay(window.statementDueDate);
+  const paymentDueEnd = endOfDueCalendarDay(window.statementDueDate);
   const rows = await prisma.$queryRaw<
     Array<{ credit_card_wallet_id: number; total: unknown }>
   >`
@@ -1069,13 +1064,13 @@ export async function getDuePaymentsForPlannerMonth(
   month: number,
 ) {
   const asOfForVisibleDueDate = (card: { due_day: number }) =>
-    createUtcDate(year, month, clampDayToMonth(year, month, card.due_day));
+    createCalendarDate(year, month, clampDayToMonth(year, month, card.due_day));
 
   // Fallback only; planner rows use each card's visible due date so cards with
   // due day before cutoff stay on the statement that is actually due this month.
-  const asOfFirst = createUtcDate(year, month, 14);
+  const asOfFirst = createCalendarDate(year, month, 14);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const asOfSecond = createUtcDate(year, month, lastDay);
+  const asOfSecond = createCalendarDate(year, month, lastDay);
 
   const [first, second] = await Promise.all([
     getDuePaymentsWithAsOf(

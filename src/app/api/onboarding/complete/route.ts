@@ -1,3 +1,4 @@
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
@@ -167,9 +168,7 @@ export async function POST(request: Request) {
 
     let parsedStartDate: Date | null = null;
     if (typeof payload.startDate === 'string' && payload.startDate.trim() !== '') {
-      // Parse as local midnight so timezone doesn't shift the calendar month.
-      // new Date("2025-03-01") is UTC midnight → e.g. Feb 28 18:00 in Mexico.
-      parsedStartDate = new Date(payload.startDate + 'T00:00:00');
+      parsedStartDate = parseCalendarDate(payload.startDate.trim());
       if (Number.isNaN(parsedStartDate.getTime())) {
         return NextResponse.json(
           { success: false, message: 'Fecha de inicio inválida' },

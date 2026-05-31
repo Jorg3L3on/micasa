@@ -1,3 +1,8 @@
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  parseCalendarDate,
+} from '@/lib/calendar-dates';
 import type {
   LoanPaymentFrequencyValue,
   LoanPaymentListItem,
@@ -9,27 +14,28 @@ export type GeneratedLoanPayment = {
   amount: number;
 };
 
-const MS_PER_DAY = 86_400_000;
-
 export function parseYmdAsUtcDate(value: string): Date {
-  const [year, month, day] = value.split('-').map((part) => Number(part));
-  return new Date(Date.UTC(year, month - 1, day));
+  return parseCalendarDate(value);
 }
 
 export function formatDateYmd(value: Date): string {
-  return value.toISOString().split('T')[0];
+  return formatCalendarDate(value);
 }
 
 function addMonthsClamped(date: Date, months: number): Date {
-  const year = date.getUTCFullYear();
-  const month = date.getUTCMonth();
-  const day = date.getUTCDate();
-  const target = new Date(Date.UTC(year, month + months, 1));
-  const lastDay = new Date(
-    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
-  ).getUTCDate();
-  target.setUTCDate(Math.min(day, lastDay));
-  return target;
+  const [year, month, day] = formatCalendarDate(date).split('-').map(Number);
+  const targetMonthIndex = month - 1 + months;
+  const targetYear = year + Math.floor(targetMonthIndex / 12);
+  const normalizedMonth = ((targetMonthIndex % 12) + 12) % 12 + 1;
+  const lastDay = new Date(Date.UTC(targetYear, normalizedMonth, 0)).getUTCDate();
+  const clampedDay = Math.min(day, lastDay);
+  return parseCalendarDate(
+    `${targetYear}-${String(normalizedMonth).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`,
+  );
+}
+
+function addDays(date: Date, days: number): Date {
+  return parseCalendarDate(addCalendarDays(formatCalendarDate(date), days));
 }
 
 function addFrequency(
@@ -38,10 +44,10 @@ function addFrequency(
   offset: number,
 ): Date {
   if (frequency === 'WEEKLY') {
-    return new Date(startDate.getTime() + offset * 7 * MS_PER_DAY);
+    return addDays(startDate, offset * 7);
   }
   if (frequency === 'FORTNIGHTLY') {
-    return new Date(startDate.getTime() + offset * 14 * MS_PER_DAY);
+    return addDays(startDate, offset * 14);
   }
   return addMonthsClamped(startDate, offset);
 }

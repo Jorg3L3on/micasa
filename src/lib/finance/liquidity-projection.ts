@@ -1,11 +1,8 @@
+import { addCalendarDays, formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import type { CreditCardStatementWindow } from '@/lib/finance/credit-card-statement.service';
 
-/**
- * UTC date-only strings align with {@link resolveCreditCardStatementWindow}
- * and tarjeta statement fields (`statement_due_date`, etc.).
- */
-export const toUtcDateOnlyString = (date: Date) =>
-  date.toISOString().split('T')[0];
+/** Mexico City date-only strings align with statement and obligation calendar fields. */
+export const toUtcDateOnlyString = (date: Date) => formatCalendarDate(date);
 
 /** -1 if a < b, 0 if equal, 1 if a > b (for `YYYY-MM-DD`). */
 export const compareUtcDateOnly = (a: string, b: string): number => {
@@ -13,11 +10,8 @@ export const compareUtcDateOnly = (a: string, b: string): number => {
   return a < b ? -1 : 1;
 };
 
-export const addDaysUtc = (date: Date, days: number): Date => {
-  const next = new Date(date.getTime());
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-};
+export const addDaysUtc = (date: Date, days: number): Date =>
+  parseCalendarDate(addCalendarDays(formatCalendarDate(date), days));
 
 /** Move `asOf` past the current cycle so the next iteration resolves the siguiente periodo de corte. */
 export const advanceStatementCursor = (window: CreditCardStatementWindow): Date =>

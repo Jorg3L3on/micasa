@@ -1,3 +1,8 @@
+import {
+  endOfCalendarDay,
+  formatCalendarDate,
+  parseCalendarDate,
+} from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -159,29 +164,29 @@ const clampStressPercent = (n: number | undefined) => {
   return Math.min(100, Math.round(n));
 };
 
-const endOfUtcDay = (until: Date) => {
-  const ymd = toUtcDateOnlyString(until);
-  const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
-};
+const endOfUtcDay = (until: Date) => endOfCalendarDay(formatCalendarDate(until));
 
 const toMonthKeyUtc = (date: Date | string) => {
-  const d = typeof date === 'string' ? new Date(`${date}T00:00:00.000Z`) : date;
-  const year = d.getUTCFullYear();
-  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+  const d =
+    typeof date === 'string'
+      ? parseCalendarDate(date.length === 7 ? `${date}-01` : date)
+      : date;
+  const ymd = formatCalendarDate(d);
+  return ymd.slice(0, 7);
 };
 
 const buildMonthKeyRange = (asOf: string, until: string): string[] => {
-  const [asOfYear, asOfMonth] = asOf.split('-').map(Number);
+  let [year, month] = asOf.split('-').map(Number);
   const [untilYear, untilMonth] = until.split('-').map(Number);
-  const cursor = new Date(Date.UTC(asOfYear, asOfMonth - 1, 1));
-  const end = new Date(Date.UTC(untilYear, untilMonth - 1, 1));
   const months: string[] = [];
 
-  while (cursor.getTime() <= end.getTime()) {
-    months.push(toMonthKeyUtc(cursor));
-    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  while (year < untilYear || (year === untilYear && month <= untilMonth)) {
+    months.push(`${year}-${String(month).padStart(2, '0')}`);
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
   }
 
   return months;

@@ -1,3 +1,4 @@
+import { formatDisplayDate } from '@/lib/calendar-dates';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -6,25 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(dateString: string | Date): string {
-  try {
-    let date: Date;
-    if (typeof dateString === 'string') {
-      // Date-only strings (YYYY-MM-DD) must be treated as UTC noon to avoid
-      // timezone offset pushing the date into the previous day in UTC-6.
-      date = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
-        ? new Date(`${dateString}T12:00:00Z`)
-        : new Date(dateString);
-    } else {
-      date = dateString;
-    }
-    return date.toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return String(dateString);
-  }
+  return formatDisplayDate(dateString);
 }
 
 /** Coerces API amount (number, string, or Decimal-like) to a finite number for display. */

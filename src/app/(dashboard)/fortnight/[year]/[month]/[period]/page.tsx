@@ -1,3 +1,4 @@
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import { fetchFromApi, type OwnerContext } from '@/lib/api-server';
 import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -35,7 +36,7 @@ function groupTransactionsByDate(
 ): Record<string, TransactionRow[]> {
   return transactions.reduce(
     (acc, transaction) => {
-      const date = new Date(transaction.date).toISOString().split('T')[0];
+      const date = formatCalendarDate(new Date(transaction.date));
       if (!acc[date]) {
         acc[date] = [];
       }

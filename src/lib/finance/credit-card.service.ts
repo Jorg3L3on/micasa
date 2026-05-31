@@ -1,3 +1,4 @@
+import { formatCalendarDate, coerceToCalendarDate } from '@/lib/calendar-dates';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -305,7 +306,7 @@ export async function createCreditCardPayment(
     const payment = await tx.creditCardPayment.create({
       data: {
         amount: input.amount,
-        paid_at: new Date(input.paid_at),
+        paid_at: coerceToCalendarDate(input.paid_at),
         note: input.note ?? null,
         credit_card_wallet_id: creditCardWallet.id,
         source_wallet_id: sourceWallet.id,
@@ -332,7 +333,7 @@ export async function createCreditCardPayment(
         throw error;
       }
 
-      const paidAt = new Date(input.paid_at);
+      const paidAt = coerceToCalendarDate(input.paid_at);
       const fnYear = paidAt.getUTCFullYear();
       const fnMonth = paidAt.getUTCMonth() + 1;
       const fnDay = paidAt.getUTCDate();
@@ -367,7 +368,7 @@ export async function createCreditCardPayment(
           description,
           amount: input.amount,
           is_paid: true,
-          payment_date: new Date(input.paid_at),
+          payment_date: coerceToCalendarDate(input.paid_at),
           expense_template_id: null,
           user_id: fortnight.user_id,
           house_id: fortnight.house_id,
@@ -385,7 +386,7 @@ export async function createCreditCardPayment(
     return {
       id: payment.id,
       amount: Number(payment.amount),
-      paid_at: payment.paid_at.toISOString().split('T')[0],
+      paid_at: formatCalendarDate(payment.paid_at),
       note: payment.note ?? null,
       source_wallet_id: payment.source_wallet_id,
       source_wallet_name: payment.source_wallet.name,
@@ -431,7 +432,7 @@ export async function listCreditCardPaymentsByOwner(
   return payments.map((payment) => ({
     id: payment.id,
     amount: Number(payment.amount),
-    paid_at: payment.paid_at.toISOString().split('T')[0],
+    paid_at: formatCalendarDate(payment.paid_at),
     note: payment.note ?? null,
     source_wallet_id: payment.source_wallet_id,
     source_wallet_name: payment.source_wallet.name,

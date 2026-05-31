@@ -1,3 +1,4 @@
+import { parseCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { FortnightPeriod, Prisma } from '@/generated/prisma/client';
 
@@ -44,6 +45,10 @@ export const resolveOrCreateFortnight = async (
       ? 15
       : new Date(year, month, 0).getDate(); // last day of month
 
+  const monthPadded = String(month).padStart(2, '0');
+  const startYmd = `${year}-${monthPadded}-${String(startDay).padStart(2, '0')}`;
+  const endYmd = `${year}-${monthPadded}-${String(endDay).padStart(2, '0')}`;
+
   const defaultLabel =
     period === 'FIRST'
       ? `Primera quincena - ${month}/${year}`
@@ -52,8 +57,8 @@ export const resolveOrCreateFortnight = async (
   return client.fortnight.create({
     data: {
       label: label ?? defaultLabel,
-      start_date: new Date(year, month - 1, startDay),
-      end_date: new Date(year, month - 1, endDay),
+      start_date: parseCalendarDate(startYmd),
+      end_date: parseCalendarDate(endYmd),
       month,
       year,
       period,
