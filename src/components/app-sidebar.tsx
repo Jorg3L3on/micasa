@@ -125,6 +125,16 @@ export function AppSidebar({
       isActive: pathname.startsWith('/monthly/'),
     },
     {
+      title: 'Billeteras',
+      url: '/wallets',
+      icon: Wallet,
+      isActive:
+        pathname === '/wallets' ||
+        (pathname.startsWith('/wallets/') &&
+          !pathname.startsWith('/wallets/liquidity')) ||
+        pathname.startsWith('/credit-cards'),
+    },
+    {
       title: 'Gastos',
       url: '/expenses',
       icon: Coins,
@@ -142,22 +152,6 @@ export function AppSidebar({
       url: '/budgets',
       icon: PiggyBank,
       isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
-    },
-    {
-      title: 'Prestamos',
-      url: '/loans',
-      icon: HandCoins,
-      isActive: pathname === '/loans' || pathname.startsWith('/loans/'),
-    },
-    {
-      title: 'Billeteras',
-      url: '/wallets',
-      icon: Wallet,
-      isActive:
-        pathname === '/wallets' ||
-        (pathname.startsWith('/wallets/') &&
-          !pathname.startsWith('/wallets/liquidity')) ||
-        pathname.startsWith('/credit-cards'),
     },
     {
       title: 'Lista de compras',
@@ -180,6 +174,12 @@ export function AppSidebar({
         pathname.startsWith('/wallets/liquidity') ||
         pathname.startsWith('/house-users'),
       items: catalogItems,
+    },
+    {
+      title: 'Préstamos',
+      url: '/loans',
+      icon: HandCoins,
+      isActive: pathname === '/loans' || pathname.startsWith('/loans/'),
     },
     {
       title: 'Despensa',

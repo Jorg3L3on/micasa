@@ -89,7 +89,7 @@ export const WalletListCard = ({
   const useProviderGradient = Boolean(providerCardStyle);
 
   const fallbackAccent = isCard
-    ? 'violet'
+    ? 'neutral'
     : wallet.type === 'DEBIT_CARD'
       ? 'blue'
       : wallet.type === 'CASH'
@@ -99,15 +99,12 @@ export const WalletListCard = ({
   const fallbackShellClass = cn(
     'border backdrop-blur-sm ring-1 ring-inset ring-white/5 transition-all duration-300',
     'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-linear-to-r before:from-transparent before:via-white/20 before:to-transparent dark:before:via-white/10',
-    fallbackAccent === 'violet' &&
-      'border-violet-500/30 bg-linear-to-br from-violet-500/14 via-background to-violet-500/4 dark:from-violet-500/25 dark:via-card dark:to-violet-500/8',
     fallbackAccent === 'blue' &&
       'border-blue-500/30 bg-linear-to-br from-blue-500/14 via-background to-blue-500/4 dark:from-blue-500/25 dark:via-card dark:to-blue-500/8',
     fallbackAccent === 'emerald' &&
       'border-emerald-500/30 bg-linear-to-br from-emerald-500/14 via-background to-emerald-500/4 dark:from-emerald-500/25 dark:via-card dark:to-emerald-500/8',
     fallbackAccent === 'neutral' && 'border-border/60 bg-card dark:bg-card/80',
     'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
-    fallbackAccent === 'violet' && 'hover:border-violet-500/60 hover:shadow-violet-500/15',
     fallbackAccent === 'blue' && 'hover:border-blue-500/60 hover:shadow-blue-500/15',
     fallbackAccent === 'emerald' && 'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
     fallbackAccent === 'neutral' && 'hover:border-border',
