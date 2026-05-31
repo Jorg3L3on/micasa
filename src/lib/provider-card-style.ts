@@ -16,8 +16,8 @@ const PROVIDER_ICON_BASE_COLORS: Record<string, string> = {
 };
 
 const TYPE_FALLBACK_COLORS: Record<string, string> = {
-  CREDIT_CARD: '#8b5cf6',
-  DEPARTMENT_STORE_CARD: '#ec4899',
+  CREDIT_CARD: '#475569',
+  DEPARTMENT_STORE_CARD: '#64748b',
 };
 
 const hexToRgb = (hex: string) => {

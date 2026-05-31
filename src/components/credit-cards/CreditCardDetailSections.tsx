@@ -125,20 +125,16 @@ const CATEGORY_BAR_COLORS = [
 ] as const;
 
 export const CreditCardHeroZone = ({ children }: { children: ReactNode }) => (
-  <div className="relative -mx-4 overflow-hidden px-4 pb-2 sm:-mx-0 sm:rounded-b-[1.75rem]">
+  <div className="relative -mx-4 overflow-hidden border-b border-border/60 bg-card/80 px-4 pb-3 shadow-sm sm:-mx-0 sm:rounded-b-[1.5rem] sm:border-x sm:border-border/60">
     <div
-      className="pointer-events-none absolute inset-0 bg-linear-to-b from-violet-500/14 via-indigo-500/6 to-transparent dark:from-violet-950/85 dark:via-indigo-950/45 dark:to-background"
+      className="pointer-events-none absolute inset-0 bg-linear-to-b from-muted/35 via-card/80 to-background dark:from-muted/20 dark:via-card dark:to-background"
       aria-hidden
     />
     <div
-      className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl dark:bg-violet-600/30"
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-border to-transparent"
       aria-hidden
     />
-    <div
-      className="pointer-events-none absolute -right-20 top-8 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl dark:bg-blue-600/25"
-      aria-hidden
-    />
-    <div className="relative space-y-4">{children}</div>
+    <div className="relative space-y-4 py-1">{children}</div>
   </div>
 );
 
@@ -339,7 +335,7 @@ export const CreditCardVisualHero = ({
         className={cn(
           'relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl border p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
-            'border-violet-500/40 bg-linear-to-br from-violet-600/90 via-indigo-950 to-slate-950',
+            'border-slate-500/40 bg-linear-to-br from-slate-700 via-slate-900 to-slate-950',
         )}
         style={cardStyle}
       >
@@ -575,8 +571,8 @@ export const CreditCardQuickActions = ({
           className="flex min-w-[4.25rem] shrink-0 flex-col items-center gap-2 transition-opacity hover:opacity-90 active:opacity-75"
           aria-label={ariaLabel ?? label}
         >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/15 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/8">
-            <Icon className="h-5 w-5 text-foreground dark:text-white" aria-hidden />
+          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-background/85 shadow-sm transition-colors hover:bg-muted/40 dark:bg-background/60">
+            <Icon className="h-5 w-5 text-foreground" aria-hidden />
           </span>
           <span className="max-w-[4.5rem] text-center text-[11px] font-medium leading-tight text-muted-foreground">
             {label}
