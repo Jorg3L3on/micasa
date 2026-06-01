@@ -39,7 +39,15 @@ const sortMovements = (
 ): WalletMovement[] => {
   const q = query.trim().toLowerCase();
   let rows =
-    kindFilter === 'all' ? [...items] : items.filter((i) => i.kind === kindFilter);
+    kindFilter === 'all'
+      ? [...items]
+      : kindFilter === 'expense'
+        ? items.filter(
+            (i) => i.kind === 'expense' || (i.kind === 'card_payment' && i.direction === 'out'),
+          )
+        : items.filter(
+            (i) => i.kind === 'income' || (i.kind === 'card_payment' && i.direction === 'in'),
+          );
   if (q) {
     rows = rows.filter(
       (i) =>
@@ -237,7 +245,13 @@ export const WalletMovementsFeed = ({
                               <span className="text-muted-foreground/30">·</span>
                             </>
                           ) : null}
-                          <span>{isIn ? 'Ingreso' : 'Egreso'}</span>
+                          <span>
+                            {m.kind === 'card_payment'
+                              ? 'Pago tarjeta'
+                              : isIn
+                                ? 'Ingreso'
+                                : 'Egreso'}
+                          </span>
                         </p>
                         {fortnightLink ? (
                           <Link
