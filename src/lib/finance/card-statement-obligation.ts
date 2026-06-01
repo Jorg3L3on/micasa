@@ -24,6 +24,26 @@ export type CardStatementObligationStatus =
 /** UI-facing planner status (Spanish labels in components). */
 export type PlannerCardPaymentStatusUi = 'pagado' | 'vencido' | 'por_pagar';
 
+/** Short hint when the suggested amount is not from an imported statement. */
+export const formatCardObligationAmountSourceHint = (
+  source: CardObligationAmountSource | undefined,
+  isEstimate?: boolean,
+): string | null => {
+  if (source === 'import' || source === 'none' || source == null) {
+    return null;
+  }
+  if (source === 'ledger') {
+    return isEstimate ? null : 'Según movimientos del corte';
+  }
+  if (source === 'wallet_debt') {
+    return 'Estimado · deuda en billetera';
+  }
+  if (source === 'projection') {
+    return 'Estimado · compras del ciclo abierto';
+  }
+  return null;
+};
+
 export type CardStatementCycle = {
   statementStart: string;
   statementEnd: string;

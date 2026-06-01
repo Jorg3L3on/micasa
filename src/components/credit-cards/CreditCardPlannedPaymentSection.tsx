@@ -15,6 +15,7 @@ import {
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
+import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-statement-obligation';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
 import type { CreditCardPaymentPlanView } from '@/types/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -23,6 +24,21 @@ type CreditCardPlannedPaymentSectionProps = {
   walletId: number;
   items: CreditCardPaymentPlanView[];
   onPlanUpdated?: () => void;
+};
+
+const statusAmountClass = (
+  status: CreditCardPaymentPlanView['plannerStatus'],
+  hasCustomPlan: boolean,
+) => {
+  if (status === 'pagado') {
+    return 'text-emerald-600 dark:text-emerald-400';
+  }
+  if (status === 'vencido') {
+    return 'text-destructive';
+  }
+  return hasCustomPlan
+    ? 'text-blue-600 dark:text-blue-400'
+    : 'text-foreground';
 };
 
 export const CreditCardPlannedPaymentSection = ({
@@ -112,6 +128,15 @@ export const CreditCardPlannedPaymentSection = ({
         <ul role="list" className="flex flex-col gap-2">
           {items.map((item) => {
             const hasCustomPlan = item.plannedPayment != null;
+            const sourceHint = formatCardObligationAmountSourceHint(
+              item.obligationAmountSource,
+              item.isEstimate,
+            );
+            const displayAmount =
+              item.plannerStatus === 'pagado'
+                ? item.paymentsAppliedToStatement
+                : item.effectiveAmount;
+
             return (
               <li
                 key={item.fortnightId}
@@ -131,20 +156,41 @@ export const CreditCardPlannedPaymentSection = ({
                     )}
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    Sugerido al corte: {formatCurrency(item.suggestedAmount)}
-                    {hasCustomPlan ? ' · plan personalizado' : null}
+                    {item.plannerStatus === 'pagado' ? (
+                      <>Pagado al corte</>
+                    ) : (
+                      <>
+                        Sugerido al corte: {formatCurrency(item.suggestedAmount)}
+                        {hasCustomPlan ? ' · plan personalizado' : null}
+                      </>
+                    )}
+                    {sourceHint ? (
+                      <>
+                        <span className="text-muted-foreground/30"> · </span>
+                        <span
+                          className={cn(
+                            item.isEstimate && 'text-amber-700 dark:text-amber-300',
+                          )}
+                        >
+                          {sourceHint}
+                        </span>
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span
                     className={cn(
                       'font-mono text-sm font-bold tabular-nums',
-                      hasCustomPlan
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-foreground',
+                      statusAmountClass(item.plannerStatus, hasCustomPlan),
                     )}
+                    aria-label={
+                      item.plannerStatus === 'pagado'
+                        ? `Pagado al corte: ${formatCurrency(displayAmount)}`
+                        : `Planeado: ${formatCurrency(displayAmount)}`
+                    }
                   >
-                    {formatCurrency(item.effectiveAmount)}
+                    {formatCurrency(displayAmount)}
                   </span>
                   <Tooltip>
                     <TooltipTrigger asChild>
