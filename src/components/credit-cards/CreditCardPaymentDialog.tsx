@@ -73,7 +73,13 @@ const CreditCardPaymentDialog = ({
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the payment dialog opens.
     setSourceWalletId('');
-    setAmount('');
+    const suggested =
+      nextDuePayment > 0
+        ? String(nextDuePayment)
+        : outstandingBalance > 0
+          ? String(outstandingBalance)
+          : '';
+    setAmount(suggested);
     setPaidAt(todayCalendarDate());
     setNote('');
     setCreateFortnightExpense(true);
@@ -89,7 +95,7 @@ const CreditCardPaymentDialog = ({
       /* ignore */
     }
     setCategoryId(initialCategory);
-  }, [open, categoryOptions]);
+  }, [open, categoryOptions, nextDuePayment, outstandingBalance]);
 
   const selectedSource = fundingWalletOptions.find(
     (w) => String(w.id) === sourceWalletId,
