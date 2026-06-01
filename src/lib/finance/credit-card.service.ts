@@ -398,6 +398,70 @@ export async function createCreditCardPayment(
   }, { timeout: 30000, maxWait: 10000 });
 }
 
+export async function isCardPaymentGeneratedExpense(
+  expenseId: number,
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0] = prisma,
+): Promise<boolean> {
+  const payment = await tx.creditCardPayment.findFirst({
+    where: { expense_id: expenseId },
+    select: { id: true },
+  });
+  return payment != null;
+}
+
+async function deleteCardPaymentGeneratedExpense(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  expenseId: number,
+) {
+  await tx.expense.delete({ where: { id: expenseId } });
+}
+
+export async function reverseCreditCardPayment(
+  creditCardId: number,
+  paymentId: number,
+  ownerFilter: OwnerFilter,
+) {
+  return prisma.$transaction(async (tx) => {
+    const payment = await tx.creditCardPayment.findFirst({
+      where: {
+        id: paymentId,
+        credit_card_wallet_id: creditCardId,
+        ...ownerFilter,
+      },
+      select: {
+        id: true,
+        amount: true,
+        expense_id: true,
+        source_wallet_id: true,
+        credit_card_wallet_id: true,
+      },
+    });
+
+    if (!payment) {
+      const error = new Error('Pago no encontrado');
+      (error as { code?: string }).code = 'PAYMENT_NOT_FOUND';
+      throw error;
+    }
+
+    const amount = Number(payment.amount);
+
+    await applyWalletAmountDelta(tx, payment.source_wallet_id, amount);
+    await applyWalletAmountDelta(tx, payment.credit_card_wallet_id, amount);
+
+    if (payment.expense_id != null) {
+      await deleteCardPaymentGeneratedExpense(tx, payment.expense_id);
+    }
+
+    await tx.creditCardPayment.delete({ where: { id: payment.id } });
+
+    return {
+      id: payment.id,
+      amount,
+      expense_id: payment.expense_id,
+    };
+  });
+}
+
 export async function listCreditCardPaymentsByOwner(
   creditCardId: number,
   ownerFilter: OwnerFilter,
