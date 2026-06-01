@@ -8,11 +8,11 @@ export const getAssigneeInitials = (name: string): string => {
   if (!trimmed) return '?';
   const parts = trimmed.split(/\s+/).filter(Boolean);
   if (parts.length === 1) {
-    const w = parts[0];
-    if (w.length >= 2) {
-      return (w[0] + w[1]).toLocaleUpperCase('es-MX');
+    const word = parts[0];
+    if (word.length >= 2) {
+      return (word[0] + word[1]).toLocaleUpperCase('es-MX');
     }
-    return w[0].toLocaleUpperCase('es-MX');
+    return word[0].toLocaleUpperCase('es-MX');
   }
   const first = parts[0][0];
   const last = parts[parts.length - 1][0];
@@ -23,7 +23,6 @@ type AssigneeAvatarProps = {
   name: string;
   size?: 'sm' | 'default' | 'lg';
   className?: string;
-  /** When false (default), avatar is decorative if name is shown beside it */
   hideFromAccessibility?: boolean;
 };
 
@@ -50,12 +49,10 @@ export default function AssigneeAvatar({
 type AssigneeWithNameProps = {
   name: string;
   size?: 'sm' | 'default' | 'lg';
-  /** Text size class for the name */
   nameClassName?: string;
   className?: string;
 };
 
-/** Avatar + truncated name (avatar is aria-hidden; name is visible to SR). */
 export function AssigneeWithName({
   name,
   size = 'sm',

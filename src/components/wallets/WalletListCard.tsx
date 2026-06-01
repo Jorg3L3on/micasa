@@ -38,7 +38,7 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { AssigneeWithName } from '@/components/tasks/AssigneeAvatar';
+import { AssigneeWithName } from '@/components/assignee/AssigneeAvatar';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
 
