@@ -63,18 +63,28 @@ export type GetReportSummaryParams = {
   year?: string | null;
   period?: string | null;
   excludeCreditInstallment: boolean;
+  /** When set, skips re-resolving fortnights for the scoped month/period. */
+  resolvedFortnightIds?: number[];
 };
 
 export const getReportSummary = async (
   params: GetReportSummaryParams,
 ): Promise<ReportSummaryResult> => {
-  const { ownerFilter, month, year, period, excludeCreditInstallment } = params;
+  const {
+    ownerFilter,
+    month,
+    year,
+    period,
+    excludeCreditInstallment,
+    resolvedFortnightIds,
+  } = params;
 
   const baseWhere = await buildExpenseWhereForFortnightScope(
     ownerFilter,
     month,
     year,
     period,
+    resolvedFortnightIds,
   );
   const where = excludeCreditInstallment
     ? { AND: [baseWhere, wherePlanningCashFlowExpenses()] }
@@ -102,7 +112,10 @@ export const getReportSummary = async (
   ]);
 
   const incomeWhere: Prisma.IncomeWhereInput = { ...ownerFilter };
-  if (month || year || period) {
+  let scopedFortnightIds: number[] | undefined;
+  if (resolvedFortnightIds !== undefined) {
+    scopedFortnightIds = resolvedFortnightIds;
+  } else if (month || year || period) {
     const fortnightWhere: Prisma.FortnightWhereInput = { ...ownerFilter };
     const parsedPeriod = parseFortnightPeriod(period);
     if (month) fortnightWhere.month = parseInt(month, 10);
@@ -113,13 +126,12 @@ export const getReportSummary = async (
       where: fortnightWhere,
       select: { id: true },
     });
-
-    const fortnightIds = fortnights.map((f) => f.id);
-    if (fortnightIds.length > 0) {
-      incomeWhere.fortnight_id = { in: fortnightIds };
-    } else {
-      incomeWhere.fortnight_id = { in: [] };
-    }
+    scopedFortnightIds = fortnights.map((f) => f.id);
+  }
+  if (scopedFortnightIds !== undefined) {
+    incomeWhere.fortnight_id = {
+      in: scopedFortnightIds.length > 0 ? scopedFortnightIds : [],
+    };
   }
 
   const income = await prisma.income.findMany({
@@ -232,19 +244,8 @@ export const getReportSummary = async (
   let userIncomeData: ReportSummaryResult['userIncome'] = [];
   const incomeItems: ReportSummaryResult['incomeItems'] = [];
 
-  if (month || year || period) {
-    const fortnightWhere: Prisma.FortnightWhereInput = { ...ownerFilter };
-    const parsedPeriod = parseFortnightPeriod(period);
-    if (month) fortnightWhere.month = parseInt(month, 10);
-    if (year) fortnightWhere.year = parseInt(year, 10);
-    if (parsedPeriod) fortnightWhere.period = parsedPeriod;
-
-    const fortnights = await prisma.fortnight.findMany({
-      where: fortnightWhere,
-      select: { id: true },
-    });
-
-    const fortnightIds = fortnights.map((f) => f.id);
+  if (scopedFortnightIds !== undefined) {
+    const fortnightIds = scopedFortnightIds;
 
     if (fortnightIds.length > 0) {
       const incomes = await prisma.income.findMany({
