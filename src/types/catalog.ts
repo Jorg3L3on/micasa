@@ -266,6 +266,8 @@ export type DuePaymentItem = {
   effectiveAmount?: number;
   /** Estado derivado en servidor para Pagos tarjeta. */
   plannerStatus?: PlannerCardPaymentStatusUi;
+  /** Plan guardado ya cubierto por pagos al corte; no inflar pendientes. */
+  isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
   isEstimate?: boolean;
   remainingPlannedAmount?: number | null;
@@ -282,6 +284,8 @@ export type CreditCardPaymentPlanView = {
   plannedPayment: number | null;
   effectiveAmount: number;
   outstandingBalance: number;
+  /** Plan guardado ya cubierto por pagos al corte. */
+  isStaleFullyCovered?: boolean;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */

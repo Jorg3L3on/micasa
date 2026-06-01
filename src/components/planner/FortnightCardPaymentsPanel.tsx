@@ -199,6 +199,7 @@ const FortnightCardPaymentsPanel = ({
             const effectiveAmount =
               item.effectiveAmount ?? getEffectiveCardPaymentAmount(item);
             const hasCustomPlan = item.plannedPayment != null;
+            const isStalePlan = item.isStaleFullyCoveredPlan === true;
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const mm = String(plannerMonth).padStart(2, '0');
@@ -325,6 +326,14 @@ const FortnightCardPaymentsPanel = ({
                         <span className="text-muted-foreground/30">·</span>
                         <span className="text-muted-foreground/60">
                           Sugerido {formatCurrency(item.nextDuePayment)}
+                        </span>
+                      </>
+                    ) : null}
+                    {isStalePlan ? (
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="font-medium text-amber-700 dark:text-amber-300">
+                          Plan cubierto — límpialo
                         </span>
                       </>
                     ) : null}
