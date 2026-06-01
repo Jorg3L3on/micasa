@@ -112,7 +112,7 @@ export function AppSidebar({
 
   const menuItems = [
     {
-      title: 'Panel',
+      title: 'Inicio',
       url: '/dashboard',
       icon: LayoutDashboard,
       isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),

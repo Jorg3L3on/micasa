@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { fetchFromApi } from '@/lib/api-server';
 import CreateMonthCard from '@/components/CreateMonthCard';
 import type { DashboardData } from '@/types/dashboard';
-import DashboardPanelTabs from '@/components/dashboard/DashboardPanelTabs';
+import DashboardPanel from '@/components/dashboard/DashboardPanel';
 
 export const metadata: Metadata = {
-  title: 'Panel | MiCasa',
+  title: 'Inicio | MiCasa',
   description: 'Resumen de ingresos, gastos y balance por categoría.',
 };
 
@@ -15,7 +16,6 @@ async function getDashboardData(
     month?: string;
     year?: string;
     period?: string;
-    tab?: string;
     ownerType?: string;
     ownerId?: string;
   },
@@ -43,6 +43,17 @@ async function getDashboardData(
   }
 }
 
+function buildLegacyPantryRedirectUrl(params: {
+  ownerType?: string;
+  ownerId?: string;
+}): string {
+  const query = new URLSearchParams();
+  if (params.ownerType) query.set('ownerType', params.ownerType);
+  if (params.ownerId) query.set('ownerId', params.ownerId);
+  const qs = query.toString();
+  return qs ? `/pantry?${qs}` : '/pantry';
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -57,6 +68,11 @@ export default async function DashboardPage({
   }>;
 }) {
   const params = await searchParams;
+
+  if (params.tab === 'despensa') {
+    redirect(buildLegacyPantryRedirectUrl(params));
+  }
+
   const dashboardData = await getDashboardData(params);
 
   if (!dashboardData) {
@@ -70,8 +86,5 @@ export default async function DashboardPage({
     );
   }
 
-  const initialTab: 'panel' | 'despensa' =
-    params.tab === 'despensa' ? 'despensa' : 'panel';
-
-  return <DashboardPanelTabs data={dashboardData} initialTab={initialTab} />;
+  return <DashboardPanel data={dashboardData} />;
 }
