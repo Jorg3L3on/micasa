@@ -1,5 +1,6 @@
+import { FortnightPeriod } from '@/generated/prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly.queries';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { listFortnightsForCatalog } from '@/lib/finance/fortnight.service';
 
@@ -21,21 +22,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const period = searchParams.get('period');
 
     if (year && month && period) {
-      const fortnight = await prisma.fortnight.findFirst({
-        where: {
-          ...ownerFilter,
-          year: parseInt(year, 10),
-          month: parseInt(month, 10),
-          period: period.toUpperCase() as 'FIRST' | 'SECOND',
-        },
-        select: {
-          id: true,
-          label: true,
-          year: true,
-          month: true,
-          period: true,
-        },
-      });
+      const parsedPeriod =
+        period.toUpperCase() === 'SECOND'
+          ? FortnightPeriod.SECOND
+          : FortnightPeriod.FIRST;
+      const fortnight = await findFortnightByCalendarPeriod(
+        ownerFilter,
+        parseInt(year, 10),
+        parseInt(month, 10),
+        parsedPeriod,
+      );
 
       if (!fortnight) {
         return NextResponse.json(null, { status: 200 });
@@ -45,8 +41,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         {
           id: fortnight.id,
           label: fortnight.label,
-          year: fortnight.year,
-          month: fortnight.month,
+          year: parseInt(year, 10),
+          month: parseInt(month, 10),
           period: fortnight.period,
         },
         { status: 200 },
