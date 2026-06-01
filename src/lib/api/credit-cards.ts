@@ -185,6 +185,18 @@ export async function createCreditCardPayment(
   }, context);
 }
 
+export async function reverseCreditCardPayment(
+  creditCardId: number,
+  paymentId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<{ id: number; amount: number; expense_id: number | null }>(
+    `/api/credit-cards/${creditCardId}/payments/${paymentId}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
 export async function createCreditCardPurchase(
   creditCardId: number,
   data: {
