@@ -31,8 +31,8 @@ function getPageTitle(
 
   if (segments.length === 0 || segments[0] === 'dashboard') {
     return {
-      title: 'Panel',
-      breadcrumbs: [{ label: 'Panel' }],
+      title: 'Inicio',
+      breadcrumbs: [{ label: 'Inicio' }],
     };
   }
 
