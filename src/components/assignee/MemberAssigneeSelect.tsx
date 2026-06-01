@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import AssigneeAvatar from '@/components/tasks/AssigneeAvatar';
+import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
@@ -21,7 +21,6 @@ type HouseUserItem = {
 
 type MemberAssigneeSelectProps = {
   id?: string;
-  /** Selected member user id; empty string means none chosen yet. */
   value: number | '';
   onChange: (userId: number | '') => void;
   disabled?: boolean;
@@ -29,7 +28,7 @@ type MemberAssigneeSelectProps = {
 };
 
 export default function MemberAssigneeSelect({
-  id = 'micasa-task-assignee',
+  id = 'micasa-assignee',
   value,
   onChange,
   disabled,
@@ -41,7 +40,6 @@ export default function MemberAssigneeSelect({
 
   useEffect(() => {
     if (context.type !== 'house') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear stale house members when leaving house context.
       setMembers([]);
       return;
     }
@@ -70,11 +68,11 @@ export default function MemberAssigneeSelect({
           <SelectValue placeholder={loading ? 'Cargando…' : 'Elige un miembro'} />
         </SelectTrigger>
         <SelectContent>
-          {members.map((m) => (
-            <SelectItem key={m.id} value={String(m.id)}>
+          {members.map((member) => (
+            <SelectItem key={member.id} value={String(member.id)}>
               <span className="flex min-w-0 items-center gap-2">
-                <AssigneeAvatar name={m.name} size="sm" />
-                <span className="truncate">{m.name}</span>
+                <AssigneeAvatar name={member.name} size="sm" />
+                <span className="truncate">{member.name}</span>
               </span>
             </SelectItem>
           ))}

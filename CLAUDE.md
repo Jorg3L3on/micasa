@@ -117,13 +117,12 @@ prisma/
   seed.ts
 ```
 
-### Prisma Models (31)
+### Prisma Models (24)
 **Auth & household:** `User`, `House`, `HouseMember`  
 **Planning:** `Fortnight`, `Category`, `Expense`, `ExpenseTemplate`, `Income`, `IncomeTemplate`, `Budget`, `BudgetPeriod`, `BudgetAllocation`, `Transfer`  
 **Wallets & cards:** `Wallet`, `CreditCardPayment`, `CreditCardStatementImport`  
 **Loans:** `Loan`, `LoanPayment`  
-**Pantry:** `PantryReceipt`, `PantryReceiptLine`, `PantryProduct`, `PantryShoppingCart`, `PantryShoppingCartItem`, `PantryShoppingCartActivity`  
-**Tasks:** `TaskList`, `TaskItem`, `Habit`, `HabitLog`, `Routine`, `RoutineStep`, `RoutineRun`
+**Pantry:** `PantryReceipt`, `PantryReceiptLine`, `PantryProduct`, `PantryShoppingCart`, `PantryShoppingCartItem`, `PantryShoppingCartActivity`
 
 ### Prisma Client
 Generated to `src/generated/prisma` (not the default location). Always import from there or use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). After schema changes, run `npx prisma generate`.
