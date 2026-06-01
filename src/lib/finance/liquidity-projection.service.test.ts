@@ -11,6 +11,7 @@ const {
   findManyIncome,
   findManyIncomeTemplate,
   findManyLoanPayment,
+  findManyStatementImport,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
@@ -20,6 +21,7 @@ const {
   findManyIncome: vi.fn(),
   findManyIncomeTemplate: vi.fn(),
   findManyLoanPayment: vi.fn(),
+  findManyStatementImport: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -32,6 +34,7 @@ vi.mock('@/lib/prisma', () => ({
     income: { findMany: findManyIncome },
     incomeTemplate: { findMany: findManyIncomeTemplate },
     loanPayment: { findMany: findManyLoanPayment },
+    creditCardStatementImport: { findMany: findManyStatementImport },
   },
 }));
 
@@ -84,6 +87,8 @@ describe('getLiquidityProjection', () => {
     findManyIncome.mockReset();
     findManyIncomeTemplate.mockReset();
     findManyLoanPayment.mockReset();
+    findManyStatementImport.mockReset();
+    findManyStatementImport.mockResolvedValue([]);
     findManyFortnight.mockResolvedValue([]);
     findManyIncome.mockResolvedValue([]);
     findManyIncomeTemplate.mockResolvedValue([]);
@@ -118,6 +123,7 @@ describe('getLiquidityProjection', () => {
     expect(result.summary.total_obligations_due_on_or_before_until).toBe(0);
     expect(result.summary.funding_total).toBe(500);
     expect(queryRaw).not.toHaveBeenCalled();
+    expect(findManyStatementImport).not.toHaveBeenCalled();
   });
 
   it('loads ledger once and builds CC milestone from purchases in closed statement', async () => {

@@ -9,6 +9,7 @@ import {
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
+import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
 import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
 
@@ -276,24 +277,26 @@ export async function GET(request: NextRequest) {
     const totalIncomeCurrent = overrideIncome
       ? Number(overrideIncome.amount)
       : regularIncome.reduce((s, i) => s + Number(i.amount), 0);
-    let totalExpenseCurrent = expensesCurrent.reduce(
+    const baseExpenseCurrent = expensesCurrent.reduce(
       (s, e) => s + Number(e.amount),
       0,
     );
-    if (orphanPayCurrent.count > 0) {
-      totalExpenseCurrent += orphanPayCurrent.total;
-    }
-    if (cardDueCurrent.total > 0) {
-      totalExpenseCurrent += cardDueCurrent.total;
-    }
-    if (loanPayCurrent.total > 0) {
-      totalExpenseCurrent += loanPayCurrent.total;
-    }
-    let totalPaidCurrent = expensesCurrent
+    const basePaidCurrent = expensesCurrent
       .filter((e) => e.is_paid)
       .reduce((s, e) => s + Number(e.amount), 0);
-    if (orphanPayCurrent.count > 0) {
-      totalPaidCurrent += orphanPayCurrent.total;
+    const planningCurrent = mergePlanningCardTotalsIntoExpenseSummary(
+      {
+        totalExpense: baseExpenseCurrent,
+        totalPaid: basePaidCurrent,
+        totalUnpaid: baseExpenseCurrent - basePaidCurrent,
+      },
+      orphanPayCurrent.count > 0 ? orphanPayCurrent : null,
+      cardDueCurrent.total > 0 ? cardDueCurrent : null,
+    );
+    let totalExpenseCurrent = planningCurrent.totalExpense;
+    let totalPaidCurrent = planningCurrent.totalPaid;
+    if (loanPayCurrent.total > 0) {
+      totalExpenseCurrent += loanPayCurrent.total;
     }
     if (loanPayCurrent.paidTotal > 0) {
       totalPaidCurrent += loanPayCurrent.paidTotal;
@@ -333,16 +336,20 @@ export async function GET(request: NextRequest) {
       (s, i) => s + Number(i.amount),
       0,
     );
-    let totalExpensePrev = expensesPrev.reduce(
+    const baseExpensePrev = expensesPrev.reduce(
       (s, e) => s + Number(e.amount),
       0,
     );
-    if (orphanPayPrev.count > 0) {
-      totalExpensePrev += orphanPayPrev.total;
-    }
-    if (cardDuePrev.total > 0) {
-      totalExpensePrev += cardDuePrev.total;
-    }
+    const planningPrev = mergePlanningCardTotalsIntoExpenseSummary(
+      {
+        totalExpense: baseExpensePrev,
+        totalPaid: 0,
+        totalUnpaid: baseExpensePrev,
+      },
+      orphanPayPrev.count > 0 ? orphanPayPrev : null,
+      cardDuePrev.total > 0 ? cardDuePrev : null,
+    );
+    let totalExpensePrev = planningPrev.totalExpense;
     if (loanPayPrev.total > 0) {
       totalExpensePrev += loanPayPrev.total;
     }
