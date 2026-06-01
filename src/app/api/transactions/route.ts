@@ -17,7 +17,9 @@ import type { Prisma } from '@/generated/prisma/client';
 import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
 import {
   buildFortnightWhereForReport,
-  listOrphanCreditCardPaymentsForPlanning,
+  linkedCardPaymentExpenseIds,
+  listCreditCardPaymentsForPlanning,
+  mapCreditCardPaymentToTransactionRow,
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
 
@@ -95,9 +97,10 @@ export async function GET(request: NextRequest) {
       orderBy: { created_at: 'desc' },
     });
 
-    let orphanCardPayments: Awaited<
-      ReturnType<typeof listOrphanCreditCardPaymentsForPlanning>
+    let cardPaymentsForPlanning: Awaited<
+      ReturnType<typeof listCreditCardPaymentsForPlanning>
     > = [];
+    let linkedCardPaymentExpenses = new Set<number>();
     if (excludeCreditInstallment && type !== 'income') {
       const fnWhere = buildFortnightWhereForReport(
         ownerFilter,
@@ -111,14 +114,23 @@ export async function GET(request: NextRequest) {
           select: { start_date: true, end_date: true },
         });
         const paidAtRange = unionPaidAtRangeFromFortnights(planningFortnights);
-        orphanCardPayments = await listOrphanCreditCardPaymentsForPlanning(
+        cardPaymentsForPlanning = await listCreditCardPaymentsForPlanning(
           ownerFilter,
           paidAtRange,
+        );
+        linkedCardPaymentExpenses = linkedCardPaymentExpenseIds(
+          cardPaymentsForPlanning,
         );
       }
     }
 
-    const expenseTransactions = expenses.map((expense) => {
+    const expenseTransactions = expenses
+      .filter(
+        (expense) =>
+          !excludeCreditInstallment ||
+          !linkedCardPaymentExpenses.has(expense.id),
+      )
+      .map((expense) => {
       const dateValue = expense.payment_date || expense.created_at;
       const dateStr =
         dateValue instanceof Date
@@ -145,25 +157,7 @@ export async function GET(request: NextRequest) {
     const cardPaymentTransactions =
       is_paid === false
         ? []
-        : orphanCardPayments.map((p) => {
-            const note = p.note?.trim();
-            return {
-              id: p.id,
-              date: formatCalendarDate(p.paid_at),
-              description: note
-                ? `Pago tarjeta (${p.credit_card_wallet.name}): ${note}`
-                : `Pago tarjeta: ${p.credit_card_wallet.name}`,
-              amount: decimalToNumber(p.amount),
-              category: 'Pago a tarjeta',
-              categoryIcon: '💳',
-              paymentMethod: p.source_wallet.name,
-              wallet_type: p.source_wallet.type,
-              planning_row_kind: 'card_payment' as const,
-              type: 'expense' as const,
-              is_paid: true,
-              due_day: null,
-            };
-          });
+        : cardPaymentsForPlanning.map(mapCreditCardPaymentToTransactionRow);
 
     const incomeWhere: Record<string, unknown> = {
       ...ownerFilter,
@@ -541,6 +535,20 @@ export async function PUT(request: NextRequest) {
         { status: 400 },
       );
     }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'EXPENSE_CARD_PAYMENT_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden modificar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
+        },
+        { status: 400 },
+      );
+    }
     console.error('Error updating transaction:', error);
     return NextResponse.json(
       { error: 'Failed to update transaction' },
@@ -606,6 +614,20 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const cardPaymentExpense = await prisma.creditCardPayment.findFirst({
+      where: { expense_id: expenseId },
+      select: { id: true },
+    });
+    if (cardPaymentExpense != null) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden eliminar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
+        },
+        { status: 400 },
+      );
+    }
+
     await deleteExpense({ id: expenseId });
 
     return NextResponse.json(
@@ -634,6 +656,20 @@ export async function DELETE(request: NextRequest) {
         {
           error:
             'No se pueden modificar gastos generados automáticamente por pagos de préstamos',
+        },
+        { status: 400 },
+      );
+    }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'EXPENSE_CARD_PAYMENT_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden modificar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
         },
         { status: 400 },
       );

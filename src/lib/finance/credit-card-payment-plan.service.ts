@@ -7,7 +7,14 @@ import type {
   CreditCardPaymentPlanView,
   DuePaymentItem,
 } from '@/types/catalog';
-import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
+import {
+  buildCardStatementObligation,
+  reconcileDuePaymentItemCanonicalFields,
+  resolveCreditCardStatementWindow,
+  toDuePaymentItemFields,
+} from '@/lib/finance/card-statement-obligation';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import { isStaleFullyCoveredPlan } from '@/lib/finance/credit-card-reconciliation';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -52,12 +59,19 @@ export async function getCreditCardPaymentPlanViews(
     where: { id: walletId, ...ownerFilter, active: true },
     select: {
       id: true,
+      name: true,
       type: true,
+      cutoff_day: true,
       due_day: true,
     },
   });
 
-  if (!card || !isCreditWalletType(card.type) || card.due_day == null) {
+  if (
+    !card ||
+    !isCreditWalletType(card.type) ||
+    card.due_day == null ||
+    card.cutoff_day == null
+  ) {
     return [];
   }
 
@@ -125,16 +139,35 @@ export async function getCreditCardPaymentPlanViews(
     plans.map((plan) => [plan.fortnight_id, Number(plan.planned_amount)]),
   );
 
-  const suggestedAmount = statement.next_due_payment;
-  const outstandingBalance = statement.outstanding_balance;
+  const window = resolveCreditCardStatementWindow(
+    now,
+    card.cutoff_day,
+    card.due_day,
+  );
+  const obligationBase = {
+    walletId: card.id,
+    walletName: card.name,
+    walletType: card.type,
+    cutoffDay: card.cutoff_day,
+    dueDay: card.due_day,
+    window,
+    lastStatementBalance: statement.last_statement_balance,
+    paymentsAppliedToStatement: statement.payments_applied_to_statement,
+    importedTotalDue: statement.imported_statement_total,
+    outstandingBalance: statement.outstanding_balance,
+    currentCyclePurchasesTotal: statement.current_cycle_purchases,
+    currentCyclePaymentsTotal: statement.current_cycle_payments,
+    asOfYmd: todayCalendarDate(),
+  };
 
   return fortnights
     .map((fortnight) => {
       const plannedPayment = planByFortnight.get(fortnight.id) ?? null;
-      const effectiveAmount = getEffectiveCardPaymentAmount({
-        nextDuePayment: suggestedAmount,
-        plannedPayment,
+      const obligation = buildCardStatementObligation({
+        ...obligationBase,
+        plannedGrossAmount: plannedPayment,
       });
+      const fields = toDuePaymentItemFields(obligation);
       return {
         fortnightId: fortnight.id,
         fortnightLabel: fortnight.label,
@@ -145,10 +178,21 @@ export async function getCreditCardPaymentPlanViews(
           fortnight.year === year &&
           fortnight.month === month &&
           fortnight.period === currentPeriod,
-        suggestedAmount,
-        plannedPayment,
-        effectiveAmount,
-        outstandingBalance,
+        suggestedAmount: fields.nextDuePayment,
+        plannedPayment: fields.plannedPayment,
+        effectiveAmount: fields.effectiveAmount,
+        outstandingBalance: fields.outstandingBalance,
+        plannerStatus: fields.plannerStatus,
+        obligationAmountSource: fields.obligationAmountSource,
+        isEstimate: fields.isEstimate,
+        remainingPlannedAmount: fields.remainingPlannedAmount,
+        paymentsAppliedToStatement: fields.paymentsAppliedToStatement,
+        statementDueDate: fields.statementDueDate,
+        isStaleFullyCovered: isStaleFullyCoveredPlan({
+          plannedAmount: fields.plannedPayment,
+          paymentsAppliedToStatement: fields.paymentsAppliedToStatement,
+          remainingStatementDue: fields.nextDuePayment,
+        }),
       };
     })
     .sort((a, b) => {
@@ -167,6 +211,18 @@ export async function attachPlannedPaymentsToDueItems(
   if (items.length === 0 || fortnightId == null) {
     for (const item of items) {
       item.plannedPayment = null;
+      const canonical = reconcileDuePaymentItemCanonicalFields(
+        item,
+        todayCalendarDate(),
+      );
+      item.remainingPlannedAmount = canonical.remainingPlannedAmount;
+      item.effectiveAmount = canonical.effectiveAmount;
+      item.plannerStatus = canonical.plannerStatus;
+      item.isStaleFullyCoveredPlan = isStaleFullyCoveredPlan({
+        plannedAmount: item.plannedPayment ?? null,
+        paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+        remainingStatementDue: item.nextDuePayment,
+      });
     }
     return;
   }
@@ -190,6 +246,18 @@ export async function attachPlannedPaymentsToDueItems(
 
   for (const item of items) {
     item.plannedPayment = planByWallet.get(item.walletId) ?? null;
+    const canonical = reconcileDuePaymentItemCanonicalFields(
+      item,
+      todayCalendarDate(),
+    );
+    item.remainingPlannedAmount = canonical.remainingPlannedAmount;
+    item.effectiveAmount = canonical.effectiveAmount;
+    item.plannerStatus = canonical.plannerStatus;
+    item.isStaleFullyCoveredPlan = isStaleFullyCoveredPlan({
+      plannedAmount: item.plannedPayment ?? null,
+      paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+      remainingStatementDue: item.nextDuePayment,
+    });
   }
 }
 

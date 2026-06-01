@@ -64,3 +64,5 @@ next-env.d.ts
 
 # Local Liverpool PDF samples for manual/parser experiments (not committed)
 src/lib/server/credit-card-statement/fixtures/
+playwright-cli/
+output/playwright/

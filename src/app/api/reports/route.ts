@@ -14,6 +14,7 @@ import {
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForFortnight } from '@/lib/finance/credit-card-statement.service';
+import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
 
 function parseFortnightPeriod(value: string | null | undefined): FortnightPeriod | undefined {
   if (value === FortnightPeriod.FIRST) return FortnightPeriod.FIRST;
@@ -167,8 +168,6 @@ export async function GET(request: NextRequest) {
           return sum + Number(expense.amount);
         }, 0);
 
-      let totalUnpaid = totalExpense - totalPaid;
-
       let orphanCardPaymentTotal = 0;
       let orphanCardPaymentCount = 0;
       if (excludeCreditInstallment) {
@@ -191,11 +190,6 @@ export async function GET(request: NextRequest) {
           orphanCardPaymentTotal = orphan.total;
           orphanCardPaymentCount = orphan.count;
         }
-        if (orphanCardPaymentCount > 0) {
-          totalExpense += orphanCardPaymentTotal;
-          totalPaid += orphanCardPaymentTotal;
-          totalUnpaid = totalExpense - totalPaid;
-        }
       }
 
       let planningCardStatementDueTotal = 0;
@@ -215,11 +209,23 @@ export async function GET(request: NextRequest) {
         );
         planningCardStatementDueTotal = due.total;
         planningCardStatementDueCardCount = due.cardCount;
-        if (planningCardStatementDueTotal > 0) {
-          totalExpense += planningCardStatementDueTotal;
-          totalUnpaid += planningCardStatementDueTotal;
-        }
       }
+
+      const planningTotals = mergePlanningCardTotalsIntoExpenseSummary(
+        { totalExpense, totalPaid, totalUnpaid: totalExpense - totalPaid },
+        excludeCreditInstallment && orphanCardPaymentCount > 0
+          ? { total: orphanCardPaymentTotal, count: orphanCardPaymentCount }
+          : null,
+        excludeCreditInstallment && planningCardStatementDueTotal > 0
+          ? {
+              total: planningCardStatementDueTotal,
+              cardCount: planningCardStatementDueCardCount,
+            }
+          : null,
+      );
+      totalExpense = planningTotals.totalExpense;
+      totalPaid = planningTotals.totalPaid;
+      const totalUnpaid = planningTotals.totalUnpaid;
 
       // Check for override amount (marked with source = '__OVERRIDE__')
       const overrideIncome = income.find(
