@@ -7,9 +7,12 @@ import prisma from '@/lib/prisma';
 import { PaymentMethodType, FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
-  computeObligationBreakdownFromLedger,
+  buildCardObligationsFromLedger,
   loadCreditCardActivityLedger,
   resolveCreditCardStatementWindow,
+  resolveImportedTotalDueForStatementWindow,
+  type CardObligationFromLedgerInput,
+  type StatementImportRow,
 } from '@/lib/finance/credit-card-statement.service';
 import {
   getEffectiveCreditLimit,
@@ -679,6 +682,24 @@ export const getLiquidityProjection = async (
         )
       : { expenses: [], payments: [] };
 
+  const statementImports: StatementImportRow[] =
+    allCardIds.length > 0
+      ? await prisma.creditCardStatementImport.findMany({
+          where: { wallet_id: { in: allCardIds } },
+          orderBy: { created_at: 'desc' },
+          select: {
+            wallet_id: true,
+            total_due: true,
+            period_end: true,
+            created_at: true,
+          },
+        })
+      : [];
+
+  const cardOutstandingById = new Map(
+    creditCardsForProjection.map((c) => [c.id, Number(c.amount)]),
+  );
+
   const byDueDate = new Map<string, LiquidityObligationItem[]>();
 
   for (const [, cardIds] of groups) {
@@ -699,11 +720,30 @@ export const getLiquidityProjection = async (
         break;
       }
 
-      const breakdowns = computeObligationBreakdownFromLedger(
-        cardIds,
+      const asOfYmd = toUtcDateOnlyString(cursor);
+      const ledgerCards: CardObligationFromLedgerInput[] = cardIds.map((id) => {
+        const meta = cardMeta.get(id)!;
+        return {
+          walletId: id,
+          walletName: meta.name,
+          walletType: meta.type,
+          outstandingBalance: cardOutstandingById.get(id) ?? 0,
+          cutoffDay: meta.cutoff_day,
+          dueDay: meta.due_day,
+          importedTotalDue: resolveImportedTotalDueForStatementWindow(
+            statementImports,
+            id,
+            window,
+          ),
+        };
+      });
+
+      const breakdowns = buildCardObligationsFromLedger(
+        ledgerCards,
         window,
         ledger.expenses,
         ledger.payments,
+        asOfYmd,
       );
 
       const statementStart = toUtcDateOnlyString(window.statementStart);
@@ -739,6 +779,7 @@ export const getLiquidityProjection = async (
           last_statement_balance: row.last_statement_balance,
           payments_applied_to_statement: row.payments_applied_to_statement,
           next_due_payment: nextDue,
+          ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
         });
       }
