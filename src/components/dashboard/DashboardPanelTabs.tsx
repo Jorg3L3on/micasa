@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, ListChecks, ShoppingBasket } from 'lucide-react';
+import { LayoutDashboard, ShoppingBasket } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import DashboardTasksTab from '@/components/dashboard/DashboardTasksTab';
 import { PantryHomeInsights } from '@/components/pantry/PantryHomeInsights';
 import type { DashboardData } from '@/types/dashboard';
 import StatCard from '@/components/dashboard/StatCard';
@@ -14,7 +13,7 @@ import DashboardAvailableCommittedRadial from '@/components/dashboard/DashboardA
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
 import { cn } from '@/lib/utils';
 
-export type DashboardHomeTab = 'panel' | 'despensa' | 'tareas';
+export type DashboardHomeTab = 'panel' | 'despensa';
 
 type DashboardPanelTabsProps = {
   data: DashboardData;
@@ -33,12 +32,6 @@ const TAB_CONFIG = [
     label: 'Despensa',
     ariaLabel: 'Módulo de despensa',
     icon: ShoppingBasket,
-  },
-  {
-    value: 'tareas',
-    label: 'Tareas',
-    ariaLabel: 'Resumen de tareas del día',
-    icon: ListChecks,
   },
 ] as const;
 
@@ -89,7 +82,6 @@ const STAT_CARDS = [
 
 function tabFromQueryParam(raw: string | null): DashboardHomeTab {
   if (raw === 'despensa') return 'despensa';
-  if (raw === 'tareas') return 'tareas';
   return 'panel';
 }
 
@@ -243,10 +235,6 @@ export default function DashboardPanelTabs({
 
       <TabsContent value="despensa" className="mt-0">
         <PantryHomeInsights />
-      </TabsContent>
-
-      <TabsContent value="tareas" className="mt-0">
-        {tab === 'tareas' ? <DashboardTasksTab /> : null}
       </TabsContent>
     </Tabs>
   );

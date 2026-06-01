@@ -70,12 +70,8 @@ export default async function DashboardPage({
     );
   }
 
-  const initialTab: 'panel' | 'despensa' | 'tareas' =
-    params.tab === 'despensa'
-      ? 'despensa'
-      : params.tab === 'tareas'
-        ? 'tareas'
-        : 'panel';
+  const initialTab: 'panel' | 'despensa' =
+    params.tab === 'despensa' ? 'despensa' : 'panel';
 
   return <DashboardPanelTabs data={dashboardData} initialTab={initialTab} />;
 }
