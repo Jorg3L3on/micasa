@@ -278,10 +278,17 @@ export type CreditCardPaymentPlanView = {
   month: number;
   period: 'FIRST' | 'SECOND';
   isCurrentFortnight: boolean;
+  /** Monto sugerido al corte (`nextDuePayment` en el modelo canónico). */
   suggestedAmount: number;
   plannedPayment: number | null;
   effectiveAmount: number;
   outstandingBalance: number;
+  plannerStatus: PlannerCardPaymentStatusUi;
+  obligationAmountSource: CardObligationAmountSource;
+  isEstimate: boolean;
+  remainingPlannedAmount: number | null;
+  paymentsAppliedToStatement: number;
+  statementDueDate: string;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */
