@@ -8,6 +8,8 @@ import type {
   DuePaymentItem,
 } from '@/types/catalog';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
+import { reconcileDuePaymentItemCanonicalFields } from '@/lib/finance/card-statement-obligation';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -127,6 +129,7 @@ export async function getCreditCardPaymentPlanViews(
 
   const suggestedAmount = statement.next_due_payment;
   const outstandingBalance = statement.outstanding_balance;
+  const paymentsAppliedToStatement = statement.payments_applied_to_statement;
 
   return fortnights
     .map((fortnight) => {
@@ -134,6 +137,7 @@ export async function getCreditCardPaymentPlanViews(
       const effectiveAmount = getEffectiveCardPaymentAmount({
         nextDuePayment: suggestedAmount,
         plannedPayment,
+        paymentsAppliedToStatement,
       });
       return {
         fortnightId: fortnight.id,
@@ -167,6 +171,13 @@ export async function attachPlannedPaymentsToDueItems(
   if (items.length === 0 || fortnightId == null) {
     for (const item of items) {
       item.plannedPayment = null;
+      const canonical = reconcileDuePaymentItemCanonicalFields(
+        item,
+        todayCalendarDate(),
+      );
+      item.remainingPlannedAmount = canonical.remainingPlannedAmount;
+      item.effectiveAmount = canonical.effectiveAmount;
+      item.plannerStatus = canonical.plannerStatus;
     }
     return;
   }
@@ -190,6 +201,13 @@ export async function attachPlannedPaymentsToDueItems(
 
   for (const item of items) {
     item.plannedPayment = planByWallet.get(item.walletId) ?? null;
+    const canonical = reconcileDuePaymentItemCanonicalFields(
+      item,
+      todayCalendarDate(),
+    );
+    item.remainingPlannedAmount = canonical.remainingPlannedAmount;
+    item.effectiveAmount = canonical.effectiveAmount;
+    item.plannerStatus = canonical.plannerStatus;
   }
 }
 
