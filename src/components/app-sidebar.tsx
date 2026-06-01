@@ -140,6 +140,12 @@ export function AppSidebar({
       isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
     },
     {
+      title: 'Préstamos',
+      url: '/loans',
+      icon: HandCoins,
+      isActive: pathname === '/loans' || pathname.startsWith('/loans/'),
+    },
+    {
       title: 'Operaciones',
       url: '/transactions',
       icon: Receipt,
@@ -151,12 +157,6 @@ export function AppSidebar({
       url: '/budgets',
       icon: PiggyBank,
       isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
-    },
-    {
-      title: 'Lista de compras',
-      url: '/pantry/shopping',
-      icon: ShoppingBasket,
-      isActive: pathname.startsWith('/pantry/shopping'),
     },
   ];
 
@@ -175,18 +175,13 @@ export function AppSidebar({
       items: catalogItems,
     },
     {
-      title: 'Préstamos',
-      url: '/loans',
-      icon: HandCoins,
-      isActive: pathname === '/loans' || pathname.startsWith('/loans/'),
-    },
-    {
       title: 'Despensa',
       url: '#',
       icon: ShoppingBasket,
       isActive:
         pathname.startsWith('/pantry/receipts') ||
-        pathname.startsWith('/pantry/products'),
+        pathname.startsWith('/pantry/products') ||
+        pathname.startsWith('/pantry/shopping'),
       items: [
         {
           title: 'Recibos',
@@ -197,6 +192,11 @@ export function AppSidebar({
           title: 'Productos',
           url: '/pantry/products',
           isActive: pathname.startsWith('/pantry/products'),
+        },
+        {
+          title: 'Lista de compras',
+          url: '/pantry/shopping',
+          isActive: pathname.startsWith('/pantry/shopping'),
         },
       ],
     },

@@ -134,6 +134,10 @@ function getPageTitle(
   }
 
   if (segments[0] === 'pantry') {
+    breadcrumbs.push({
+      label: 'Despensa',
+      href: `/pantry/receipts${qs}`,
+    });
     if (segments[1] === 'shopping') {
       breadcrumbs.push({
         label: 'Lista de compras',
