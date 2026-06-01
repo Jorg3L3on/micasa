@@ -107,9 +107,15 @@ export type DashboardData = {
     expenseDiff: number;
   };
   alerts: Array<{
+    id: string;
     type: string;
     title: string;
     description: string;
     severity: 'error' | 'warning' | 'info';
+    target: {
+      path: string;
+      query?: Record<string, string | number>;
+    };
+    fingerprint: string;
   }>;
 };
