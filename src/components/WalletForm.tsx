@@ -46,7 +46,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WALLET_PROVIDER_ICON_OPTIONS } from '@/lib/wallet-provider-icons';
-import MemberAssigneeSelect from '@/components/tasks/MemberAssigneeSelect';
+import MemberAssigneeSelect from '@/components/assignee/MemberAssigneeSelect';
 
 type TypeMeta = {
   label: string;

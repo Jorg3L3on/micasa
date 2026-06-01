@@ -105,32 +105,6 @@ enum ShoppingStore {
   SAMS_CLUB
 }
 
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-  CANCELED
-}
-
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum RecurrenceUnit {
-  DAY
-  WEEK
-  MONTH
-}
-
-enum RoutineTimeOfDay {
-  MORNING
-  AFTERNOON
-  NIGHT
-  CUSTOM
-}
-
 model User {
   id                   Int     @id @default(autoincrement())
   name                 String
@@ -166,17 +140,7 @@ model User {
   pantry_shopping_items_created PantryShoppingCartItem[]     @relation("PantryShoppingCartItemCreatedBy")
   pantry_shopping_items_updated PantryShoppingCartItem[]     @relation("PantryShoppingCartItemUpdatedBy")
   pantry_shopping_activities    PantryShoppingCartActivity[] @relation("PantryShoppingCartActivityUser")
-  task_lists_owned              TaskList[]                   @relation("TaskListUserOwner")
-  task_lists_assigned           TaskList[]                   @relation("TaskListAssignee")
-  tasks_created                 TaskItem[]                   @relation("TaskItemCreatedBy")
-  tasks_assigned                TaskItem[]                   @relation("TaskItemAssignee")
-  habits_owned                  Habit[]                      @relation("HabitUserOwner")
-  habits_assigned               Habit[]                      @relation("HabitAssignee")
   wallets_assigned              Wallet[]                     @relation("WalletAssignee")
-  habit_logs_completed          HabitLog[]                   @relation("HabitLogCompletedBy")
-  routines_owned                Routine[]                    @relation("RoutineUserOwner")
-  routines_assigned             Routine[]                    @relation("RoutineAssignee")
-  routine_runs_completed        RoutineRun[]                 @relation("RoutineRunCompletedBy")
 
   // Shared
   memberships HouseMember[]
@@ -394,9 +358,6 @@ model House {
   pantry_receipts               PantryReceipt[]             @relation("PantryReceiptHouseOwner")
   pantry_products               PantryProduct[]             @relation("PantryProductHouseOwner")
   pantry_shopping_carts         PantryShoppingCart[]        @relation("PantryShoppingCartHouseOwner")
-  task_lists                    TaskList[]                  @relation("TaskListHouseOwner")
-  habits                        Habit[]                     @relation("HabitHouseOwner")
-  routines                      Routine[]                   @relation("RoutineHouseOwner")
 }
 
 model HouseMember {
@@ -883,174 +844,3 @@ model PantryShoppingCartActivity {
   @@index([item_id])
 }
 
-model TaskList {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  color       String?
-  archived    Boolean @default(false)
-
-  user_id  Int?
-  house_id Int?
-
-  /// En contexto casa: miembro al que aplica la lista (predetermina nuevas tareas).
-  assignee_user_id Int?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user     User?  @relation("TaskListUserOwner", fields: [user_id], references: [id])
-  house    House? @relation("TaskListHouseOwner", fields: [house_id], references: [id])
-  assignee User?  @relation("TaskListAssignee", fields: [assignee_user_id], references: [id])
-
-  items TaskItem[]
-
-  @@index([user_id, archived])
-  @@index([house_id, archived])
-  @@index([house_id, assignee_user_id])
-  @@index([created_at])
-}
-
-model TaskItem {
-  id                Int             @id @default(autoincrement())
-  list_id           Int
-  title             String
-  notes             String?
-  status            TaskStatus      @default(TODO)
-  priority          TaskPriority    @default(MEDIUM)
-  due_at            DateTime?
-  completed_at      DateTime?
-  recurrence_unit   RecurrenceUnit?
-  recurrence_every  Int?
-  recurrence_anchor DateTime?
-  sort_order        Int             @default(0)
-
-  created_by_user_id Int
-
-  /// En contexto casa: miembro responsable de la tarea.
-  assignee_user_id Int?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  list       TaskList @relation(fields: [list_id], references: [id], onDelete: Cascade)
-  created_by User     @relation("TaskItemCreatedBy", fields: [created_by_user_id], references: [id])
-  assignee   User?    @relation("TaskItemAssignee", fields: [assignee_user_id], references: [id])
-
-  @@index([list_id, status])
-  @@index([list_id, due_at])
-  @@index([list_id, sort_order])
-  @@index([assignee_user_id])
-}
-
-model Habit {
-  id                Int            @id @default(autoincrement())
-  name              String
-  description       String?
-  active            Boolean        @default(true)
-  recurrence_unit   RecurrenceUnit
-  recurrence_every  Int            @default(1)
-  target_per_period Int            @default(1)
-  reminder_time     String?
-
-  user_id  Int?
-  house_id Int?
-
-  /// En contexto casa: miembro al que pertenece el hábito.
-  assignee_user_id Int?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user     User?  @relation("HabitUserOwner", fields: [user_id], references: [id])
-  house    House? @relation("HabitHouseOwner", fields: [house_id], references: [id])
-  assignee User?  @relation("HabitAssignee", fields: [assignee_user_id], references: [id])
-
-  logs HabitLog[]
-
-  @@index([user_id, active])
-  @@index([house_id, active])
-  @@index([house_id, assignee_user_id])
-  @@index([created_at])
-}
-
-model HabitLog {
-  id                   Int      @id @default(autoincrement())
-  habit_id             Int
-  completed_on         DateTime
-  note                 String?
-  completed_by_user_id Int?
-
-  created_at DateTime @default(now())
-
-  habit        Habit @relation(fields: [habit_id], references: [id], onDelete: Cascade)
-  completed_by User? @relation("HabitLogCompletedBy", fields: [completed_by_user_id], references: [id])
-
-  @@unique([habit_id, completed_on])
-  @@index([habit_id, completed_on])
-}
-
-model Routine {
-  id          Int              @id @default(autoincrement())
-  name        String
-  description String?
-  time_of_day RoutineTimeOfDay @default(CUSTOM)
-  active_days Int[]            @default([])
-  active      Boolean          @default(true)
-
-  user_id  Int?
-  house_id Int?
-
-  /// En contexto casa: miembro al que pertenece la rutina.
-  assignee_user_id Int?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user     User?  @relation("RoutineUserOwner", fields: [user_id], references: [id])
-  house    House? @relation("RoutineHouseOwner", fields: [house_id], references: [id])
-  assignee User?  @relation("RoutineAssignee", fields: [assignee_user_id], references: [id])
-
-  steps RoutineStep[]
-  runs  RoutineRun[]
-
-  @@index([user_id, active])
-  @@index([house_id, active])
-  @@index([house_id, assignee_user_id])
-  @@index([created_at])
-}
-
-model RoutineStep {
-  id          Int     @id @default(autoincrement())
-  routine_id  Int
-  title       String
-  description String?
-  sort_order  Int     @default(0)
-  is_optional Boolean @default(false)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  routine Routine @relation(fields: [routine_id], references: [id], onDelete: Cascade)
-
-  @@index([routine_id, sort_order])
-}
-
-model RoutineRun {
-  id                   Int      @id @default(autoincrement())
-  routine_id           Int
-  run_on               DateTime
-  completed_steps      Int      @default(0)
-  total_steps          Int      @default(0)
-  completed            Boolean  @default(false)
-  completed_by_user_id Int?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  routine      Routine @relation(fields: [routine_id], references: [id], onDelete: Cascade)
-  completed_by User?   @relation("RoutineRunCompletedBy", fields: [completed_by_user_id], references: [id])
-
-  @@unique([routine_id, run_on])
-  @@index([routine_id, run_on])
-}
