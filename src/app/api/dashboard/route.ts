@@ -416,7 +416,7 @@ export async function GET(request: NextRequest) {
         dueDate: payment.dueDate,
         dueDay: Number(payment.dueDate.slice(8, 10)),
         category: payment.lender,
-        categoryIcon: '🏦',
+        categoryIcon: 'LANDMARK',
         loanName: payment.loanName,
         lender: payment.lender,
         paymentSource: payment.paymentSource,

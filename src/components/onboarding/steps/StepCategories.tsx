@@ -5,7 +5,9 @@ import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CategoryIcon } from '@/components/categories/CategoryIcon';
 import { useOnboarding } from '@/components/onboarding/OnboardingContext';
+import { resolveOnboardingCategoryIcon } from '@/lib/category-icons';
 import { cn } from '@/lib/utils';
 
 export default function StepCategories() {
@@ -24,12 +26,6 @@ export default function StepCategories() {
     }
   }, [editingId]);
 
-  const handleNameChange = (id: string, name: string) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, name: name.trim() || c.name } : c)),
-    );
-  };
-
   const handleStartEdit = (id: string) => {
     setEditingId(id);
   };
@@ -37,7 +33,17 @@ export default function StepCategories() {
   const handleCommitEdit = (id: string, value: string) => {
     const trimmed = value.trim();
     if (trimmed) {
-      handleNameChange(id, trimmed);
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                name: trimmed,
+                icon: resolveOnboardingCategoryIcon(trimmed, c.icon),
+              }
+            : c,
+        ),
+      );
     }
     setEditingId(null);
   };
@@ -60,6 +66,7 @@ export default function StepCategories() {
     const newCategory = {
       id: crypto.randomUUID(),
       name: 'Nueva categoría',
+      icon: null as string | null,
     };
     setCategories((prev) => [...prev, newCategory]);
     setEditingId(newCategory.id);
@@ -123,9 +130,15 @@ export default function StepCategories() {
               <button
                 type="button"
                 onClick={() => handleStartEdit(category.id)}
-                className="min-h-8 min-w-0 truncate rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex min-h-8 min-w-0 items-center gap-1.5 truncate rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label={`Editar categoría: ${category.name}`}
               >
+                <CategoryIcon
+                  icon={
+                    category.icon ??
+                    resolveOnboardingCategoryIcon(category.name)
+                  }
+                />
                 {category.name}
               </button>
             )}
