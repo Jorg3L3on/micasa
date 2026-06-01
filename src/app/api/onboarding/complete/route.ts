@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
+import { resolveOnboardingCategoryIcon } from '@/lib/category-icons';
 import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
 
 type WalletPayload = {
@@ -15,6 +16,7 @@ type WalletPayload = {
 type CategoryPayload = {
   id: string;
   name: string;
+  icon?: string | null;
 };
 
 type IncomeTemplatePayload = {
@@ -213,6 +215,7 @@ export async function POST(request: Request) {
         const created = await tx.category.create({
           data: {
             name: category.name,
+            icon: resolveOnboardingCategoryIcon(category.name, category.icon),
             user_id: userId,
             house_id: null,
           },

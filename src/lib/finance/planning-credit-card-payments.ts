@@ -136,7 +136,7 @@ export const mapCreditCardPaymentToTransactionRow = (
   ),
   amount: Number(payment.amount),
   category: 'Pago a tarjeta',
-  categoryIcon: '💳' as const,
+  categoryIcon: 'CREDIT_CARD' as const,
   paymentMethod: payment.source_wallet.name,
   wallet_id: payment.source_wallet_id,
   wallet_type: payment.source_wallet.type,

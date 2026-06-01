@@ -19,6 +19,7 @@ export type WalletDraft = {
 export type CategoryDraft = {
   id: string;
   name: string;
+  icon?: string | null;
 };
 
 export type IncomeTemplateDraft = {
@@ -93,9 +94,9 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
     { id: crypto.randomUUID(), name: '', type: 'BANK', providerIconKey: null },
   ]);
   const [categories, setCategories] = useState<CategoryDraft[]>([
-    { id: crypto.randomUUID(), name: 'Comida' },
-    { id: crypto.randomUUID(), name: 'Transporte' },
-    { id: crypto.randomUUID(), name: 'Vivienda' },
+    { id: crypto.randomUUID(), name: 'Comida', icon: 'UTENSILS' },
+    { id: crypto.randomUUID(), name: 'Transporte', icon: 'CAR' },
+    { id: crypto.randomUUID(), name: 'Vivienda', icon: 'HOME' },
   ]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
     [

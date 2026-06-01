@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +22,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { categorySchema, CategoryFormValues } from '@/schemas/category.schema';
+import { CategoryIconPicker } from '@/components/categories/CategoryIconPicker';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import {
+  createCategoryFormSchema,
+  CategoryFormValues,
+} from '@/schemas/category.schema';
 
 type CategoryFormProps = {
   open: boolean;
@@ -41,8 +46,14 @@ export default function CategoryForm({
   mode,
   error,
 }: CategoryFormProps) {
+  const existingIcon = defaultValues?.icon ?? null;
+  const formSchema = useMemo(
+    () => createCategoryFormSchema(existingIcon),
+    [existingIcon],
+  );
+
   const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema),
+    resolver: zodResolver(formSchema),
     defaultValues: defaultValues || {
       name: '',
       description: '',
@@ -62,14 +73,17 @@ export default function CategoryForm({
     }
   }, [open, defaultValues, form]);
 
+  const watchedName = form.watch('name');
+  const watchedIcon = form.watch('icon');
+
   const handleSubmit = async (data: CategoryFormValues) => {
     try {
       await onSubmit(data);
       form.reset();
       onOpenChange(false);
-    } catch (error) {
-      if (!(error instanceof Error)) {
-        console.error('Error al enviar el formulario de categoría:', error);
+    } catch (submitError) {
+      if (!(submitError instanceof Error)) {
+        console.error('Error al enviar el formulario de categoría:', submitError);
       }
     }
   };
@@ -94,7 +108,7 @@ export default function CategoryForm({
               : 'Actualiza la información de la categoría.'}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form} key={`${mode}-${existingIcon ?? 'new'}-${open}`}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
@@ -124,16 +138,23 @@ export default function CategoryForm({
                 <FormItem>
                   <FormLabel>Ícono</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Ej. 🍽️"
-                      maxLength={16}
-                      {...field}
+                    <CategoryIconPicker
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {watchedName?.trim() ? (
+              <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Vista previa
+                </p>
+                <CategoryLabel name={watchedName} icon={watchedIcon || null} />
+              </div>
+            ) : null}
             <FormField
               control={form.control}
               name="description"

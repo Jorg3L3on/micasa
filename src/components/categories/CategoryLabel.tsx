@@ -1,3 +1,5 @@
+import { CategoryIcon } from '@/components/categories/CategoryIcon';
+import { isCategoryIconKey } from '@/lib/category-icons';
 import { cn } from '@/lib/utils';
 
 type CategoryLabelProps = {
@@ -14,7 +16,9 @@ export function formatCategoryLabel(
   empty = '',
 ) {
   if (!name) return empty;
-  return icon ? `${icon} ${name}` : name;
+  if (!icon) return name;
+  if (isCategoryIconKey(icon)) return name;
+  return `${icon} ${name}`;
 }
 
 export function CategoryLabel({
@@ -29,9 +33,7 @@ export function CategoryLabel({
   return (
     <span className={cn('inline-flex min-w-0 items-center gap-1.5', className)}>
       {icon ? (
-        <span className={cn('shrink-0 leading-none', iconClassName)} aria-hidden>
-          {icon}
-        </span>
+        <CategoryIcon icon={icon} iconClassName={iconClassName} />
       ) : null}
       <span className="truncate">{name}</span>
     </span>
