@@ -541,6 +541,20 @@ export async function PUT(request: NextRequest) {
         { status: 400 },
       );
     }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'EXPENSE_CARD_PAYMENT_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden modificar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
+        },
+        { status: 400 },
+      );
+    }
     console.error('Error updating transaction:', error);
     return NextResponse.json(
       { error: 'Failed to update transaction' },
@@ -606,6 +620,20 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const cardPaymentExpense = await prisma.creditCardPayment.findFirst({
+      where: { expense_id: expenseId },
+      select: { id: true },
+    });
+    if (cardPaymentExpense != null) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden eliminar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
+        },
+        { status: 400 },
+      );
+    }
+
     await deleteExpense({ id: expenseId });
 
     return NextResponse.json(
@@ -634,6 +662,20 @@ export async function DELETE(request: NextRequest) {
         {
           error:
             'No se pueden modificar gastos generados automáticamente por pagos de préstamos',
+        },
+        { status: 400 },
+      );
+    }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'EXPENSE_CARD_PAYMENT_LOCKED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pueden modificar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
         },
         { status: 400 },
       );
