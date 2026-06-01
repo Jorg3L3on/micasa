@@ -21,6 +21,9 @@ export type CardStatementObligationStatus =
   | 'overdue'
   | 'no_obligation';
 
+/** UI-facing planner status (Spanish labels in components). */
+export type PlannerCardPaymentStatusUi = 'pagado' | 'vencido' | 'por_pagar';
+
 export type CardStatementCycle = {
   statementStart: string;
   statementEnd: string;
@@ -335,6 +338,88 @@ export const deriveCardStatementObligationStatus = (input: {
   }
 
   return 'unpaid';
+};
+
+export const toPlannerCardPaymentStatusUi = (
+  obligation: Pick<
+    CardStatementObligationDto,
+    'status' | 'remainingStatementDue' | 'remainingPlannedAmount'
+  >,
+): PlannerCardPaymentStatusUi => {
+  const effectiveRemaining =
+    obligation.remainingPlannedAmount ?? obligation.remainingStatementDue;
+  if (effectiveRemaining <= 0) {
+    return 'pagado';
+  }
+  if (obligation.status === 'overdue') {
+    return 'vencido';
+  }
+  return 'por_pagar';
+};
+
+export const toDuePaymentItemFields = (
+  obligation: CardStatementObligationDto,
+): {
+  nextDuePayment: number;
+  paymentsAppliedToStatement: number;
+  statementDueDate: string;
+  outstandingBalance: number;
+  plannedPayment: number | null;
+  effectiveAmount: number;
+  plannerStatus: PlannerCardPaymentStatusUi;
+  obligationAmountSource: CardObligationAmountSource;
+  isEstimate: boolean;
+  remainingPlannedAmount: number | null;
+} => ({
+  nextDuePayment: obligation.remainingStatementDue,
+  paymentsAppliedToStatement: obligation.paymentsAppliedToStatement,
+  statementDueDate: obligation.cycle.statementDueDate,
+  outstandingBalance: obligation.outstandingBalance,
+  plannedPayment: obligation.plannedGrossAmount,
+  effectiveAmount:
+    obligation.remainingPlannedAmount ?? obligation.remainingStatementDue,
+  plannerStatus: toPlannerCardPaymentStatusUi(obligation),
+  obligationAmountSource: obligation.obligationAmountSource,
+  isEstimate: obligation.isEstimate,
+  remainingPlannedAmount: obligation.remainingPlannedAmount,
+});
+
+export const reconcileDuePaymentItemCanonicalFields = (
+  item: {
+    nextDuePayment: number;
+    paymentsAppliedToStatement: number;
+    statementDueDate: string;
+    plannedPayment?: number | null;
+    obligationAmountSource?: CardObligationAmountSource;
+    isEstimate?: boolean;
+  },
+  todayYmd?: string,
+) => {
+  const remainingPlannedAmount = getRemainingPlannedAmount({
+    plannedGrossAmount: item.plannedPayment ?? null,
+    paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+    remainingStatementDue: item.nextDuePayment,
+  });
+  const effectiveAmount = remainingPlannedAmount ?? item.nextDuePayment;
+  const status = deriveCardStatementObligationStatus({
+    remainingStatementDue: item.nextDuePayment,
+    remainingPlannedAmount,
+    paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+    statementDueDateYmd: item.statementDueDate,
+    todayYmd,
+  });
+  return {
+    plannedPayment: item.plannedPayment ?? null,
+    remainingPlannedAmount,
+    effectiveAmount,
+    plannerStatus: toPlannerCardPaymentStatusUi({
+      status,
+      remainingStatementDue: item.nextDuePayment,
+      remainingPlannedAmount,
+    }),
+    obligationAmountSource: item.obligationAmountSource,
+    isEstimate: item.isEstimate,
+  };
 };
 
 export const buildCardStatementObligation = (

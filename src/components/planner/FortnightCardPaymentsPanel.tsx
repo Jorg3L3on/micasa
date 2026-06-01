@@ -52,6 +52,9 @@ export const getPlannerCardPaymentStatus = (
   item: DuePaymentItem,
   todayYmd: string,
 ): PlannerCardPaymentStatus => {
+  if (item.plannerStatus) {
+    return item.plannerStatus;
+  }
   if (getEffectiveCardPaymentAmount(item) <= 0) return 'pagado';
   if (item.statementDueDate < todayYmd) return 'vencido';
   return 'por_pagar';
@@ -193,7 +196,8 @@ const FortnightCardPaymentsPanel = ({
         <ul role="list" className="flex flex-col gap-1.5">
           {rows.map((item) => {
             const status = getPlannerCardPaymentStatus(item, todayYmd);
-            const effectiveAmount = getEffectiveCardPaymentAmount(item);
+            const effectiveAmount =
+              item.effectiveAmount ?? getEffectiveCardPaymentAmount(item);
             const hasCustomPlan = item.plannedPayment != null;
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
