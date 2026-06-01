@@ -34,6 +34,8 @@ export type ListPlanningTransactionsParams = {
   type?: string | null;
   isPaid?: boolean;
   excludeCreditInstallment: boolean;
+  /** When set, skips re-resolving fortnights for the scoped month/period. */
+  resolvedFortnightIds?: number[];
 };
 
 export const listPlanningTransactions = async (
@@ -47,10 +49,13 @@ export const listPlanningTransactions = async (
     type,
     isPaid,
     excludeCreditInstallment,
+    resolvedFortnightIds,
   } = params;
 
   let fortnightIds: number[] | undefined;
-  if (month || year || period) {
+  if (resolvedFortnightIds !== undefined) {
+    fortnightIds = resolvedFortnightIds;
+  } else if (month || year || period) {
     const base: {
       month?: number;
       year?: number;

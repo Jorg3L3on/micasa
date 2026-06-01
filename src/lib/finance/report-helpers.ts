@@ -11,13 +11,25 @@ export const parseFortnightPeriod = (
   return undefined;
 };
 
+export const buildExpenseWhereForFortnightIds = (
+  ownerFilter: OwnerFilter,
+  fortnightIds: number[],
+): Prisma.ExpenseWhereInput => ({
+  ...ownerFilter,
+  fortnight_id: { in: fortnightIds.length > 0 ? fortnightIds : [] },
+});
+
 export const buildExpenseWhereForFortnightScope = async (
   ownerFilter: OwnerFilter,
   month?: string | null,
   year?: string | null,
   period?: string | null,
+  resolvedFortnightIds?: number[],
 ): Promise<Prisma.ExpenseWhereInput> => {
   const where: Prisma.ExpenseWhereInput = { ...ownerFilter };
+  if (resolvedFortnightIds !== undefined) {
+    return buildExpenseWhereForFortnightIds(ownerFilter, resolvedFortnightIds);
+  }
   if (month || year || period) {
     const fortnightWhere: Prisma.FortnightWhereInput = { ...ownerFilter };
     const parsedPeriod = parseFortnightPeriod(period);
