@@ -236,6 +236,15 @@ export type MercadoPagoStatementImportResponse = {
   warnings: string[];
 };
 
+export type PlannerCardPaymentStatusUi = 'pagado' | 'vencido' | 'por_pagar';
+
+export type CardObligationAmountSource =
+  | 'import'
+  | 'ledger'
+  | 'wallet_debt'
+  | 'projection'
+  | 'none';
+
 export type DuePaymentItem = {
   walletId: number;
   walletName: string;
@@ -253,6 +262,13 @@ export type DuePaymentItem = {
   outstandingBalance: number;
   /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
   plannedPayment?: number | null;
+  /** Neto a pagar tras plan y pagos aplicados (canonical read model). */
+  effectiveAmount?: number;
+  /** Estado derivado en servidor para Pagos tarjeta. */
+  plannerStatus?: PlannerCardPaymentStatusUi;
+  obligationAmountSource?: CardObligationAmountSource;
+  isEstimate?: boolean;
+  remainingPlannedAmount?: number | null;
 };
 
 export type CreditCardPaymentPlanView = {
