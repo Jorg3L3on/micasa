@@ -1,9 +1,9 @@
 import {
   endOfCalendarDay,
   formatCalendarDate,
-  parseCalendarDate,
   startOfCalendarDay,
 } from '@/lib/calendar-dates';
+import { formatCardPaymentDescription } from '@/lib/finance/planning-credit-card-payments';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { WalletMovement } from '@/types/wallet-movements';
@@ -34,6 +34,81 @@ function buildRange(from: string, to: string): DateRange {
   return { fromDate: startOfCalendarDay(from), toDate: endOfCalendarDay(to) };
 }
 
+type CardPaymentMovementSource = {
+  id: number;
+  amount: unknown;
+  paid_at: Date;
+  note: string | null;
+  expense_id: number | null;
+  source_wallet_id: number;
+  credit_card_wallet_id: number;
+  credit_card_wallet: { name: string };
+  source_wallet: { name: string };
+};
+
+export const linkedSourceWalletCardPaymentExpenseIds = (
+  payments: ReadonlyArray<CardPaymentMovementSource>,
+  walletId: number,
+): Set<number> => {
+  const ids = new Set<number>();
+  for (const payment of payments) {
+    if (
+      payment.source_wallet_id === walletId &&
+      payment.expense_id != null
+    ) {
+      ids.add(payment.expense_id);
+    }
+  }
+  return ids;
+};
+
+export const mapCardPaymentToWalletMovement = (
+  payment: CardPaymentMovementSource,
+  walletId: number,
+): WalletMovement | null => {
+  const amount = toNumber(payment.amount);
+  const date = toISODate(payment.paid_at);
+
+  if (payment.source_wallet_id === walletId) {
+    return {
+      id: payment.id,
+      kind: 'card_payment',
+      date,
+      description: formatCardPaymentDescription(
+        payment.credit_card_wallet.name,
+        payment.note,
+      ),
+      amount,
+      direction: 'out',
+      category: 'Pago a tarjeta',
+      categoryIcon: '💳',
+      fortnightYear: null,
+      fortnightMonth: null,
+      fortnightPeriod: null,
+    };
+  }
+
+  if (payment.credit_card_wallet_id === walletId) {
+    return {
+      id: payment.id,
+      kind: 'card_payment',
+      date,
+      description: payment.note?.trim()
+        ? `Abono desde ${payment.source_wallet.name}: ${payment.note.trim()}`
+        : `Abono desde ${payment.source_wallet.name}`,
+      amount,
+      direction: 'in',
+      category: 'Pago a tarjeta',
+      categoryIcon: '💳',
+      fortnightYear: null,
+      fortnightMonth: null,
+      fortnightPeriod: null,
+    };
+  }
+
+  return null;
+};
+
 export async function listWalletMovements(
   walletId: number,
   ownerFilter: OwnerFilter,
@@ -42,7 +117,7 @@ export async function listWalletMovements(
 ): Promise<WalletMovement[]> {
   const { fromDate, toDate } = buildRange(from, to);
 
-  const [expenses, incomes] = await Promise.all([
+  const [expenses, incomes, cardPayments] = await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -72,11 +147,33 @@ export async function listWalletMovements(
         fortnight: { select: { year: true, month: true, period: true } },
       },
     }),
+    prisma.creditCardPayment.findMany({
+      where: {
+        ...ownerFilter,
+        OR: [
+          { source_wallet_id: walletId },
+          { credit_card_wallet_id: walletId },
+        ],
+        paid_at: { gte: fromDate, lte: toDate },
+      },
+      include: {
+        credit_card_wallet: { select: { name: true } },
+        source_wallet: { select: { name: true } },
+      },
+    }),
   ]);
+
+  const skipLinkedExpenseIds = linkedSourceWalletCardPaymentExpenseIds(
+    cardPayments,
+    walletId,
+  );
 
   const items: WalletMovement[] = [];
 
   for (const e of expenses) {
+    if (skipLinkedExpenseIds.has(e.id)) {
+      continue;
+    }
     items.push({
       id: e.id,
       kind: 'expense',
@@ -106,6 +203,13 @@ export async function listWalletMovements(
       fortnightMonth: i.fortnight?.month ?? null,
       fortnightPeriod: (i.fortnight?.period as 'FIRST' | 'SECOND') ?? null,
     });
+  }
+
+  for (const payment of cardPayments) {
+    const movement = mapCardPaymentToWalletMovement(payment, walletId);
+    if (movement != null) {
+      items.push(movement);
+    }
   }
 
   items.sort((a, b) => {

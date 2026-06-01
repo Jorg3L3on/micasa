@@ -73,7 +73,6 @@ import type {
   CreditCardStatementResponse,
   PaymentMethodOption,
 } from '@/types/catalog';
-import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
 const shiftDateByDays = (dateStr: string, days: number): string =>
   addCalendarDays(dateStr.slice(0, 10), days);
@@ -420,10 +419,7 @@ const CreditCardDetailPageContent = () => {
     if (!currentPlan) {
       return statement?.next_due_payment ?? 0;
     }
-    return getEffectiveCardPaymentAmount({
-      nextDuePayment: currentPlan.suggestedAmount,
-      plannedPayment: currentPlan.plannedPayment,
-    });
+    return currentPlan.effectiveAmount;
   }, [paymentPlanItems, statement?.next_due_payment]);
 
   const reconciliation = useMemo(() => {

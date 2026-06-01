@@ -18,6 +18,30 @@ import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 
 type ExpenseServiceError = Error & { code?: string };
 
+type ExpenseTransactionClient = Parameters<
+  Parameters<typeof prisma.$transaction>[0]
+>[0];
+
+const CARD_PAYMENT_EXPENSE_LOCKED_MESSAGE =
+  'No se puede modificar un gasto generado por un pago de tarjeta; revierte el pago desde la tarjeta';
+
+async function assertNotCardPaymentGeneratedExpense(
+  tx: ExpenseTransactionClient,
+  expenseId: number,
+) {
+  const linkedPayment = await tx.creditCardPayment.findFirst({
+    where: { expense_id: expenseId },
+    select: { id: true },
+  });
+  if (linkedPayment != null) {
+    const error = new Error(
+      CARD_PAYMENT_EXPENSE_LOCKED_MESSAGE,
+    ) as ExpenseServiceError;
+    error.code = 'EXPENSE_CARD_PAYMENT_LOCKED';
+    throw error;
+  }
+}
+
 type ExpenseTransactionDtoSource = {
   id: number;
   description: string;
@@ -339,6 +363,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
       throw error;
     }
 
+    await assertNotCardPaymentGeneratedExpense(tx, id);
+
     const currentFortnight = existing.fortnight;
     let newFortnight = currentFortnight;
 
@@ -535,6 +561,8 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
       throw error;
     }
 
+    await assertNotCardPaymentGeneratedExpense(tx, id);
+
     const wasPaid = existing.is_paid;
     const willBePaid = paid;
 
@@ -626,6 +654,8 @@ export async function deleteExpense(input: DeleteExpenseInput) {
       error.code = 'EXPENSE_LOAN_PAYMENT_LOCKED';
       throw error;
     }
+
+    await assertNotCardPaymentGeneratedExpense(tx, id);
 
     if (
       expense.is_paid === true &&

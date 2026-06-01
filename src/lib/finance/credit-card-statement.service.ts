@@ -11,40 +11,45 @@ import {
   getEffectiveCardPaymentAmount,
   resolveFortnightIdForDate,
 } from '@/lib/finance/credit-card-payment-plan.service';
+import {
+  buildCardStatementObligation,
+  computeNextDuePayment,
+  paymentAppliesToStatementPeriod,
+  resolveCreditCardStatementWindow,
+  toDuePaymentItemFields,
+  type ComputeNextDuePaymentInput,
+  type CreditCardStatementWindow,
+} from '@/lib/finance/card-statement-obligation';
 import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
   isCreditWalletType,
 } from '@/lib/finance/wallet-accounting';
 
+export {
+  buildCardStatementObligation,
+  computeNextDuePayment,
+  paymentAppliesToStatementPeriod,
+  reconcileDuePaymentItemCanonicalFields,
+  resolveCreditCardStatementWindow,
+  toDuePaymentItemFields,
+  toPlannerCardPaymentStatusUi,
+  type CardStatementObligationDto,
+  type CardStatementObligationStatus,
+  type CardObligationAmountSource,
+  type ComputeNextDuePaymentInput,
+  type CreditCardStatementWindow,
+  type PlannerCardPaymentStatusUi,
+} from '@/lib/finance/card-statement-obligation';
+
 const MAX_PAYMENT_HISTORY = 25;
+
+const toDateOnlyString = (date: Date) => formatCalendarDate(date);
 
 const createCalendarDate = (year: number, month: number, day: number) =>
   parseCalendarDate(
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
   );
-
-const toDateOnlyString = (date: Date) => formatCalendarDate(date);
-
-/**
- * Pago que cuenta contra el corte: día UTC posterior al del cierre, o mismo día UTC con `paid_at`
- * estrictamente después del instante de cierre (evita excluir pagos el día del vencimiento del ciclo).
- */
-const paymentAppliesToStatementPeriod = (
-  paidAt: Date,
-  statementEnd: Date,
-  statementDueDate: Date,
-): boolean => {
-  const paidMs = paidAt.getTime();
-  if (paidMs > endOfCalendarDay(formatCalendarDate(statementDueDate)).getTime()) {
-    return false;
-  }
-  const payDay = toDateOnlyString(paidAt);
-  const endDay = toDateOnlyString(statementEnd);
-  if (payDay > endDay) return true;
-  if (payDay < endDay) return false;
-  return paidMs > statementEnd.getTime();
-};
 
 /** Inclusive upper bound for the due calendar day in Mexico City. */
 const endOfDueCalendarDay = (date: Date) =>
@@ -52,12 +57,6 @@ const endOfDueCalendarDay = (date: Date) =>
 
 const clampDayToMonth = (year: number, month: number, day: number) =>
   Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
-
-const addDays = (date: Date, days: number) => {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-};
 
 const addMonths = (date: Date, months: number, targetDay: number) => {
   const monthIndex = date.getUTCMonth() + months;
@@ -67,36 +66,6 @@ const addMonths = (date: Date, months: number, targetDay: number) => {
   return createCalendarDate(year, month, clampDayToMonth(year, month, targetDay));
 };
 
-const resolvePreviousOrSameCutoff = (asOf: Date, cutoffDay: number) => {
-  const [asOfYear, asOfMonth] = formatCalendarDate(asOf).split('-').map(Number);
-  const currentMonthCutoff = createCalendarDate(
-    asOfYear,
-    asOfMonth,
-    clampDayToMonth(asOfYear, asOfMonth, cutoffDay),
-  );
-
-  if (asOf >= currentMonthCutoff) {
-    return currentMonthCutoff;
-  }
-
-  return addMonths(currentMonthCutoff, -1, cutoffDay);
-};
-
-const resolveDueDate = (statementEnd: Date, dueDay: number) => {
-  const [year, month] = formatCalendarDate(statementEnd).split('-').map(Number);
-  const candidate = createCalendarDate(
-    year,
-    month,
-    clampDayToMonth(year, month, dueDay),
-  );
-
-  if (candidate > statementEnd) {
-    return candidate;
-  }
-
-  return addMonths(candidate, 1, dueDay);
-};
-
 const isWithinRange = (value: Date, start: Date, end: Date) =>
   value.getTime() >= start.getTime() && value.getTime() <= end.getTime();
 
@@ -104,27 +73,6 @@ const toEffectiveExpenseDate = (expense: {
   payment_date: Date | null;
   created_at: Date;
 }) => expense.payment_date ?? expense.created_at;
-
-export const resolveCreditCardStatementWindow = (
-  asOfDate: Date,
-  cutoffDay: number,
-  dueDay: number,
-) => {
-  const statementEnd = resolvePreviousOrSameCutoff(asOfDate, cutoffDay);
-  const previousCutoff = addMonths(statementEnd, -1, cutoffDay);
-  const statementStart = addDays(previousCutoff, 1);
-  const currentCycleStart = addDays(statementEnd, 1);
-  const currentCycleEnd = addMonths(statementEnd, 1, cutoffDay);
-  const statementDueDate = resolveDueDate(statementEnd, dueDay);
-
-  return {
-    statementStart,
-    statementEnd,
-    currentCycleStart,
-    currentCycleEnd,
-    statementDueDate,
-  };
-};
 
 export async function getCreditCardStatementByOwner(
   creditCardId: number,
@@ -419,10 +367,6 @@ export async function getCreditCardStatementByOwner(
   };
 }
 
-export type CreditCardStatementWindow = ReturnType<
-  typeof resolveCreditCardStatementWindow
->;
-
 export type CreditCardStatementObligationBreakdown = {
   last_statement_balance: number;
   payments_applied_to_statement: number;
@@ -447,79 +391,169 @@ export type CreditCardStatementObligationWithCycle =
     current_cycle_purchases: number;
   };
 
-export type ComputeNextDuePaymentInput = {
-  lastStatementBalance: number;
-  paymentsAppliedToStatement: number;
-  importedTotalDue: number | null;
+/** Card metadata for {@link buildCardObligationsFromLedger} (shared obligation kernel). */
+export type CardObligationFromLedgerInput = {
+  walletId: number;
+  walletName: string;
+  walletType: string;
   outstandingBalance: number;
-  dueDay: number;
   cutoffDay: number;
-  currentCyclePurchasesTotal?: number;
-  currentCyclePaymentsTotal?: number;
-  asOfYmd?: string;
-  currentCycleEndYmd?: string;
+  dueDay: number;
+  importedTotalDue?: number | null;
+};
+
+export type StatementImportRow = {
+  wallet_id: number;
+  total_due: unknown;
+  period_end: Date | null;
+  created_at: Date;
+};
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Same import selection as planner/card detail: window-aligned import ±7d, unless a
+ * newer import exists (recent PDF upload wins over stale window match).
+ */
+export const resolveImportedTotalDueForStatementWindow = (
+  imports: StatementImportRow[],
+  walletId: number,
+  window: CreditCardStatementWindow,
+): number | null => {
+  const forWallet = imports
+    .filter((i) => i.wallet_id === walletId)
+    .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+  if (forWallet.length === 0) return null;
+
+  const latest = forWallet[0] ?? null;
+  const windowEndMin = new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS);
+  const windowEndMax = new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS);
+  const recentByWindow =
+    forWallet.find(
+      (i) =>
+        i.period_end != null &&
+        i.period_end.getTime() >= windowEndMin.getTime() &&
+        i.period_end.getTime() <= windowEndMax.getTime(),
+    ) ?? null;
+
+  const chosen =
+    latest &&
+    (!recentByWindow ||
+      latest.created_at.getTime() > recentByWindow.created_at.getTime())
+      ? latest
+      : recentByWindow;
+
+  if (chosen?.total_due != null) {
+    return Number(chosen.total_due);
+  }
+  return null;
+};
+
+const aggregateLedgerActivityForCard = (
+  walletId: number,
+  window: CreditCardStatementWindow,
+  expenses: CardLedgerExpenseRow[],
+  payments: CardLedgerPaymentRow[],
+) => {
+  const st = window.statementStart.getTime();
+  const en = window.statementEnd.getTime();
+  const ccs = window.currentCycleStart.getTime();
+  const cce = window.currentCycleEnd.getTime();
+
+  let lastStatementBalance = 0;
+  let currentCyclePurchases = 0;
+  let currentCyclePayments = 0;
+  for (const e of expenses) {
+    if (e.wallet_id !== walletId) continue;
+    const t = e.effectiveAt.getTime();
+    if (t >= st && t <= en) {
+      lastStatementBalance += e.amount;
+    }
+    if (t >= ccs && t <= cce) {
+      currentCyclePurchases += e.amount;
+    }
+  }
+  let paymentsAppliedToStatement = 0;
+  for (const p of payments) {
+    if (p.credit_card_wallet_id !== walletId) continue;
+    const pt = p.paid_at.getTime();
+    if (
+      paymentAppliesToStatementPeriod(
+        p.paid_at,
+        window.statementEnd,
+        window.statementDueDate,
+      )
+    ) {
+      paymentsAppliedToStatement += p.amount;
+    }
+    if (pt >= ccs && pt <= cce) {
+      currentCyclePayments += p.amount;
+    }
+  }
+
+  return {
+    lastStatementBalance,
+    paymentsAppliedToStatement,
+    currentCyclePurchases,
+    currentCyclePayments,
+  };
 };
 
 /**
- * Monto sugerido a pagar al próximo vencimiento. Usada en la ficha de tarjeta,
- * planificación (Pagos tarjeta) y cualquier superficie que muestre `next_due_payment`.
+ * Builds canonical card obligations from a preloaded ledger (liquidity, batch projection).
  */
-export const computeNextDuePayment = ({
-  lastStatementBalance,
-  paymentsAppliedToStatement,
-  importedTotalDue,
-  outstandingBalance,
-  dueDay,
-  cutoffDay,
-  currentCyclePurchasesTotal = 0,
-  currentCyclePaymentsTotal = 0,
-  asOfYmd,
-  currentCycleEndYmd,
-}: ComputeNextDuePaymentInput): number => {
-  const ledgerDue = Math.max(
-    lastStatementBalance - paymentsAppliedToStatement,
-    0,
-  );
-  const outstandingDue = Math.max(
-    outstandingBalance - paymentsAppliedToStatement,
-    0,
-  );
+export const buildCardObligationsFromLedger = (
+  cards: CardObligationFromLedgerInput[],
+  window: CreditCardStatementWindow,
+  expenses: CardLedgerExpenseRow[],
+  payments: CardLedgerPaymentRow[],
+  asOfYmd: string,
+): Map<number, CreditCardStatementObligationWithCycle & { is_estimate?: boolean }> => {
+  const result = new Map<
+    number,
+    CreditCardStatementObligationWithCycle & { is_estimate?: boolean }
+  >();
 
-  let nextDuePayment: number;
-  if (importedTotalDue != null) {
-    nextDuePayment = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
-  } else if (ledgerDue <= 0 && outstandingDue > 0) {
-    /**
-     * Sin importación alineada al período: reconstruir desde movimientos suele ser frágil.
-     * Si la tarjeta tiene deuda registrada (sync/saldo manual), úsala como respaldo.
-     */
-    nextDuePayment = outstandingDue;
-  } else {
-    nextDuePayment = ledgerDue;
-  }
-
-  /**
-   * Tarjetas con **pago antes del corte** en el mes (ej. pago día 8, corte día 15): el vencimiento
-   * cae antes del siguiente corte en el calendario. Mientras el estado de cuenta **cerrado** en
-   * MiCasa siga en $0 (o sin import), las compras del **ciclo abierto** ya cargadas son el mejor
-   * estimado de lo que falta para el próximo vencimiento — restando los **pagos ya registrados**
-   * en ese ciclo (misma fuente que `current_cycle_payments`).
-   */
-  if (
-    dueDay < cutoffDay &&
-    nextDuePayment === 0 &&
-    currentCyclePurchasesTotal > 0 &&
-    asOfYmd != null &&
-    currentCycleEndYmd != null &&
-    asOfYmd <= currentCycleEndYmd
-  ) {
-    nextDuePayment = Math.max(
-      currentCyclePurchasesTotal - currentCyclePaymentsTotal,
-      0,
+  for (const card of cards) {
+    const {
+      lastStatementBalance,
+      paymentsAppliedToStatement,
+      currentCyclePurchases,
+      currentCyclePayments,
+    } = aggregateLedgerActivityForCard(
+      card.walletId,
+      window,
+      expenses,
+      payments,
     );
+
+    const obligation = buildCardStatementObligation({
+      walletId: card.walletId,
+      walletName: card.walletName,
+      walletType: card.walletType,
+      cutoffDay: card.cutoffDay,
+      dueDay: card.dueDay,
+      window,
+      lastStatementBalance,
+      paymentsAppliedToStatement,
+      importedTotalDue: card.importedTotalDue ?? null,
+      outstandingBalance: card.outstandingBalance,
+      currentCyclePurchasesTotal: currentCyclePurchases,
+      currentCyclePaymentsTotal: currentCyclePayments,
+      asOfYmd,
+      plannedGrossAmount: null,
+    });
+
+    result.set(card.walletId, {
+      last_statement_balance: obligation.lastStatementBalance,
+      payments_applied_to_statement: obligation.paymentsAppliedToStatement,
+      next_due_payment: obligation.remainingStatementDue,
+      current_cycle_purchases: currentCyclePurchases,
+      is_estimate: obligation.isEstimate,
+    });
   }
 
-  return nextDuePayment;
+  return result;
 };
 
 const expenseOwnerWhereSql = (ownerFilter: OwnerFilter) => {
@@ -600,50 +634,33 @@ export const computeObligationBreakdownFromLedger = (
   window: CreditCardStatementWindow,
   expenses: CardLedgerExpenseRow[],
   payments: CardLedgerPaymentRow[],
+  options?: {
+    cardsById?: Map<number, CardObligationFromLedgerInput>;
+    asOfYmd?: string;
+  },
 ): Map<number, CreditCardStatementObligationWithCycle> => {
-  const result = new Map<number, CreditCardStatementObligationWithCycle>();
-  const st = window.statementStart.getTime();
-  const en = window.statementEnd.getTime();
-  const ccs = window.currentCycleStart.getTime();
-  const cce = window.currentCycleEnd.getTime();
-  for (const id of cardIds) {
-    let lastStatementBalance = 0;
-    let currentCyclePurchases = 0;
-    for (const e of expenses) {
-      if (e.wallet_id !== id) continue;
-      const t = e.effectiveAt.getTime();
-      if (t >= st && t <= en) {
-        lastStatementBalance += e.amount;
-      }
-      if (t >= ccs && t <= cce) {
-        currentCyclePurchases += e.amount;
-      }
-    }
-    let paymentsAppliedToStatement = 0;
-    for (const p of payments) {
-      if (p.credit_card_wallet_id !== id) continue;
-      if (
-        paymentAppliesToStatementPeriod(
-          p.paid_at,
-          window.statementEnd,
-          window.statementDueDate,
-        )
-      ) {
-        paymentsAppliedToStatement += p.amount;
-      }
-    }
-    const nextDuePayment = Math.max(
-      lastStatementBalance - paymentsAppliedToStatement,
-      0,
-    );
-    result.set(id, {
-      last_statement_balance: lastStatementBalance,
-      payments_applied_to_statement: paymentsAppliedToStatement,
-      next_due_payment: nextDuePayment,
-      current_cycle_purchases: currentCyclePurchases,
-    });
-  }
-  return result;
+  const asOfYmd =
+    options?.asOfYmd ?? formatCalendarDate(window.statementEnd);
+  const cards: CardObligationFromLedgerInput[] = cardIds.map((id) => {
+    const meta = options?.cardsById?.get(id);
+    if (meta) return meta;
+    return {
+      walletId: id,
+      walletName: '',
+      walletType: '',
+      outstandingBalance: 0,
+      cutoffDay: 0,
+      dueDay: 0,
+      importedTotalDue: null,
+    };
+  });
+  return buildCardObligationsFromLedger(
+    cards,
+    window,
+    expenses,
+    payments,
+    asOfYmd,
+  );
 };
 
 /**
@@ -872,8 +889,7 @@ async function getDuePaymentsWithAsOf(
   const statementDueByWallet = new Map<number, string>();
   const currentCycleEndByWallet = new Map<number, string>();
   const asOfYmdByWallet = new Map<number, string>();
-
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const windowByWallet = new Map<number, CreditCardStatementWindow>();
 
   for (const group of groups.values()) {
     const { asOf: groupAsOf, cards: cardsInGroup } = group;
@@ -889,6 +905,7 @@ async function getDuePaymentsWithAsOf(
     for (const id of cardIds) {
       statementDueByWallet.set(id, dueStr);
       currentCycleEndByWallet.set(id, cycleEndStr);
+      windowByWallet.set(id, window);
     }
 
     // Avoid large burst fan-out against Postgres while rendering monthly planner.
@@ -914,8 +931,6 @@ async function getDuePaymentsWithAsOf(
      * gana — evita que planificación muestre un `total_due` viejo mientras la ficha
      * de la tarjeta ya muestra el import nuevo.
      */
-    const windowEndMin = new Date(window.statementEnd.getTime() - SEVEN_DAYS_MS);
-    const windowEndMax = new Date(window.statementEnd.getTime() + SEVEN_DAYS_MS);
     const allImportsForGroup = await prisma.creditCardStatementImport.findMany({
       where: { wallet_id: { in: cardIds } },
       orderBy: { created_at: 'desc' },
@@ -928,29 +943,13 @@ async function getDuePaymentsWithAsOf(
     });
 
     for (const wid of cardIds) {
-      const forWallet = allImportsForGroup
-        .filter((i) => i.wallet_id === wid)
-        .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
-      if (forWallet.length === 0) continue;
-
-      const latest = forWallet[0] ?? null;
-      const recentByWindow =
-        forWallet.find(
-          (i) =>
-            i.period_end != null &&
-            i.period_end.getTime() >= windowEndMin.getTime() &&
-            i.period_end.getTime() <= windowEndMax.getTime(),
-        ) ?? null;
-
-      const chosen =
-        latest &&
-        (!recentByWindow ||
-          latest.created_at.getTime() > recentByWindow.created_at.getTime())
-          ? latest
-          : recentByWindow;
-
-      if (chosen?.total_due != null) {
-        importedTotalByWallet.set(wid, Number(chosen.total_due));
+      const imported = resolveImportedTotalDueForStatementWindow(
+        allImportsForGroup,
+        wid,
+        window,
+      );
+      if (imported != null) {
+        importedTotalByWallet.set(wid, imported);
       }
     }
 
@@ -970,30 +969,35 @@ async function getDuePaymentsWithAsOf(
     const paymentsAppliedToStatement = paymentSums.get(card.id) ?? 0;
     const importedTotalDue = importedTotalByWallet.get(card.id) ?? null;
     const outstandingBalance = Number(card.amount);
+    const window = windowByWallet.get(card.id)!;
+    const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
 
-    const nextDuePayment = computeNextDuePayment({
+    const obligation = buildCardStatementObligation({
+      walletId: card.id,
+      walletName: card.name,
+      walletType: card.type,
+      cutoffDay: card.cutoff_day!,
+      dueDay: card.due_day!,
+      window,
       lastStatementBalance,
       paymentsAppliedToStatement,
       importedTotalDue,
       outstandingBalance,
-      dueDay: card.due_day!,
-      cutoffDay: card.cutoff_day!,
       currentCyclePurchasesTotal: currentCyclePurchaseSums.get(card.id) ?? 0,
       currentCyclePaymentsTotal: currentCyclePaymentSums.get(card.id) ?? 0,
-      asOfYmd: asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf),
-      currentCycleEndYmd: currentCycleEndByWallet.get(card.id),
+      asOfYmd,
+      plannedGrossAmount: null,
     });
+
+    const fields = toDuePaymentItemFields(obligation);
+
     return {
       walletId: card.id,
       walletName: card.name,
       walletType: card.type,
       dueDay: card.due_day!,
       cutoff_day: card.cutoff_day!,
-      nextDuePayment,
-      paymentsAppliedToStatement,
-      statementDueDate: statementDueByWallet.get(card.id)!,
-      outstandingBalance,
-      plannedPayment: null,
+      ...fields,
     };
   });
 

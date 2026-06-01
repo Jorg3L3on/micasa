@@ -4,6 +4,7 @@
  */
 
 import type { Prisma } from '@/generated/prisma/client';
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
@@ -72,6 +73,78 @@ export async function listOrphanCreditCardPaymentsForPlanning(
     orderBy: { paid_at: 'desc' },
   });
 }
+
+/** All card payments in range (linked + orphan) for planning display and wallet history. */
+export async function listCreditCardPaymentsForPlanning(
+  ownerFilter: OwnerFilter,
+  paidAtRange: { from: Date; to: Date } | null,
+) {
+  if (!paidAtRange) {
+    return [];
+  }
+
+  return prisma.creditCardPayment.findMany({
+    where: {
+      ...ownerFilter,
+      paid_at: {
+        gte: paidAtRange.from,
+        lte: paidAtRange.to,
+      },
+    },
+    include: {
+      credit_card_wallet: { select: { name: true } },
+      source_wallet: { select: { name: true, type: true } },
+    },
+    orderBy: { paid_at: 'desc' },
+  });
+}
+
+export const formatCardPaymentDescription = (
+  creditCardName: string,
+  note?: string | null,
+): string => {
+  const trimmed = note?.trim();
+  return trimmed
+    ? `Pago tarjeta (${creditCardName}): ${trimmed}`
+    : `Pago tarjeta: ${creditCardName}`;
+};
+
+export const linkedCardPaymentExpenseIds = (
+  payments: ReadonlyArray<{ expense_id: number | null }>,
+): Set<number> => {
+  const ids = new Set<number>();
+  for (const payment of payments) {
+    if (payment.expense_id != null) {
+      ids.add(payment.expense_id);
+    }
+  }
+  return ids;
+};
+
+export type CardPaymentPlanningRow = Awaited<
+  ReturnType<typeof listCreditCardPaymentsForPlanning>
+>[number];
+
+export const mapCreditCardPaymentToTransactionRow = (
+  payment: CardPaymentPlanningRow,
+) => ({
+  id: payment.id,
+  date: formatCalendarDate(payment.paid_at),
+  description: formatCardPaymentDescription(
+    payment.credit_card_wallet.name,
+    payment.note,
+  ),
+  amount: Number(payment.amount),
+  category: 'Pago a tarjeta',
+  categoryIcon: '💳' as const,
+  paymentMethod: payment.source_wallet.name,
+  wallet_id: payment.source_wallet_id,
+  wallet_type: payment.source_wallet.type,
+  planning_row_kind: 'card_payment' as const,
+  type: 'expense' as const,
+  is_paid: true,
+  due_day: null,
+});
 
 export function buildFortnightWhereForReport(
   ownerFilter: OwnerFilter,
