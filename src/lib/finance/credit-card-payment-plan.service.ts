@@ -14,6 +14,7 @@ import {
   toDuePaymentItemFields,
 } from '@/lib/finance/card-statement-obligation';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import { isStaleFullyCoveredPlan } from '@/lib/finance/credit-card-reconciliation';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -187,6 +188,11 @@ export async function getCreditCardPaymentPlanViews(
         remainingPlannedAmount: fields.remainingPlannedAmount,
         paymentsAppliedToStatement: fields.paymentsAppliedToStatement,
         statementDueDate: fields.statementDueDate,
+        isStaleFullyCovered: isStaleFullyCoveredPlan({
+          plannedAmount: fields.plannedPayment,
+          paymentsAppliedToStatement: fields.paymentsAppliedToStatement,
+          remainingStatementDue: fields.nextDuePayment,
+        }),
       };
     })
     .sort((a, b) => {
@@ -212,6 +218,11 @@ export async function attachPlannedPaymentsToDueItems(
       item.remainingPlannedAmount = canonical.remainingPlannedAmount;
       item.effectiveAmount = canonical.effectiveAmount;
       item.plannerStatus = canonical.plannerStatus;
+      item.isStaleFullyCoveredPlan = isStaleFullyCoveredPlan({
+        plannedAmount: item.plannedPayment ?? null,
+        paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+        remainingStatementDue: item.nextDuePayment,
+      });
     }
     return;
   }
@@ -242,6 +253,11 @@ export async function attachPlannedPaymentsToDueItems(
     item.remainingPlannedAmount = canonical.remainingPlannedAmount;
     item.effectiveAmount = canonical.effectiveAmount;
     item.plannerStatus = canonical.plannerStatus;
+    item.isStaleFullyCoveredPlan = isStaleFullyCoveredPlan({
+      plannedAmount: item.plannedPayment ?? null,
+      paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+      remainingStatementDue: item.nextDuePayment,
+    });
   }
 }
 

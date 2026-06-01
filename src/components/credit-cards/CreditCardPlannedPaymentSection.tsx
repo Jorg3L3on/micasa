@@ -128,6 +128,7 @@ export const CreditCardPlannedPaymentSection = ({
         <ul role="list" className="flex flex-col gap-2">
           {items.map((item) => {
             const hasCustomPlan = item.plannedPayment != null;
+            const isStalePlan = item.isStaleFullyCovered === true;
             const sourceHint = formatCardObligationAmountSourceHint(
               item.obligationAmountSource,
               item.isEstimate,
@@ -154,6 +155,11 @@ export const CreditCardPlannedPaymentSection = ({
                         · próxima quincena
                       </span>
                     )}
+                    {isStalePlan ? (
+                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                        Plan cubierto
+                      </span>
+                    ) : null}
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
@@ -164,6 +170,14 @@ export const CreditCardPlannedPaymentSection = ({
                         {hasCustomPlan ? ' · plan personalizado' : null}
                       </>
                     )}
+                    {isStalePlan ? (
+                      <>
+                        <span className="text-muted-foreground/30"> · </span>
+                        <span className="text-amber-700 dark:text-amber-300">
+                          Limpia el plan; ya no afecta pendientes
+                        </span>
+                      </>
+                    ) : null}
                     {sourceHint ? (
                       <>
                         <span className="text-muted-foreground/30"> · </span>
