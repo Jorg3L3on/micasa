@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { validateCategoryIconInput } from '@/lib/category-icons';
 import {
   createCategorySchema,
   updateCategorySchema,
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const body = await request.json();
     const validatedData = createCategorySchema.parse(body);
+    const iconResult = validateCategoryIconInput(validatedData.icon, null);
+    if (!iconResult.ok) {
+      return NextResponse.json({ error: iconResult.message }, { status: 400 });
+    }
 
     const existingSameName = await prisma.category.findFirst({
       where: {
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: {
         name: validatedData.name,
         description: validatedData.description || null,
-        icon: validatedData.icon || null,
+        icon: iconResult.value,
         ...(ownerType === 'user'
           ? { user_id: ownerId, house_id: null }
           : { user_id: null, house_id: ownerId }),
@@ -123,6 +128,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
     const body = await request.json();
     const validatedData = updateCategorySchema.parse(body);
+    const iconResult = validateCategoryIconInput(
+      validatedData.icon,
+      existing.icon,
+    );
+    if (!iconResult.ok) {
+      return NextResponse.json({ error: iconResult.message }, { status: 400 });
+    }
 
     if (validatedData.name && validatedData.name !== existing.name) {
       const duplicateName = await prisma.category.findFirst({
@@ -152,7 +164,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       updateData.description = validatedData.description || null;
     }
     if (validatedData.icon !== undefined) {
-      updateData.icon = validatedData.icon || null;
+      updateData.icon = iconResult.value;
     }
 
     const category = await prisma.category.update({
