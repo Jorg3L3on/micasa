@@ -11,40 +11,39 @@ import {
   getEffectiveCardPaymentAmount,
   resolveFortnightIdForDate,
 } from '@/lib/finance/credit-card-payment-plan.service';
+import {
+  computeNextDuePayment,
+  paymentAppliesToStatementPeriod,
+  resolveCreditCardStatementWindow,
+  type ComputeNextDuePaymentInput,
+  type CreditCardStatementWindow,
+} from '@/lib/finance/card-statement-obligation';
 import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
   isCreditWalletType,
 } from '@/lib/finance/wallet-accounting';
 
+export {
+  buildCardStatementObligation,
+  computeNextDuePayment,
+  paymentAppliesToStatementPeriod,
+  resolveCreditCardStatementWindow,
+  type CardStatementObligationDto,
+  type CardStatementObligationStatus,
+  type CardObligationAmountSource,
+  type ComputeNextDuePaymentInput,
+  type CreditCardStatementWindow,
+} from '@/lib/finance/card-statement-obligation';
+
 const MAX_PAYMENT_HISTORY = 25;
+
+const toDateOnlyString = (date: Date) => formatCalendarDate(date);
 
 const createCalendarDate = (year: number, month: number, day: number) =>
   parseCalendarDate(
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
   );
-
-const toDateOnlyString = (date: Date) => formatCalendarDate(date);
-
-/**
- * Pago que cuenta contra el corte: día UTC posterior al del cierre, o mismo día UTC con `paid_at`
- * estrictamente después del instante de cierre (evita excluir pagos el día del vencimiento del ciclo).
- */
-const paymentAppliesToStatementPeriod = (
-  paidAt: Date,
-  statementEnd: Date,
-  statementDueDate: Date,
-): boolean => {
-  const paidMs = paidAt.getTime();
-  if (paidMs > endOfCalendarDay(formatCalendarDate(statementDueDate)).getTime()) {
-    return false;
-  }
-  const payDay = toDateOnlyString(paidAt);
-  const endDay = toDateOnlyString(statementEnd);
-  if (payDay > endDay) return true;
-  if (payDay < endDay) return false;
-  return paidMs > statementEnd.getTime();
-};
 
 /** Inclusive upper bound for the due calendar day in Mexico City. */
 const endOfDueCalendarDay = (date: Date) =>
@@ -52,12 +51,6 @@ const endOfDueCalendarDay = (date: Date) =>
 
 const clampDayToMonth = (year: number, month: number, day: number) =>
   Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
-
-const addDays = (date: Date, days: number) => {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-};
 
 const addMonths = (date: Date, months: number, targetDay: number) => {
   const monthIndex = date.getUTCMonth() + months;
@@ -67,36 +60,6 @@ const addMonths = (date: Date, months: number, targetDay: number) => {
   return createCalendarDate(year, month, clampDayToMonth(year, month, targetDay));
 };
 
-const resolvePreviousOrSameCutoff = (asOf: Date, cutoffDay: number) => {
-  const [asOfYear, asOfMonth] = formatCalendarDate(asOf).split('-').map(Number);
-  const currentMonthCutoff = createCalendarDate(
-    asOfYear,
-    asOfMonth,
-    clampDayToMonth(asOfYear, asOfMonth, cutoffDay),
-  );
-
-  if (asOf >= currentMonthCutoff) {
-    return currentMonthCutoff;
-  }
-
-  return addMonths(currentMonthCutoff, -1, cutoffDay);
-};
-
-const resolveDueDate = (statementEnd: Date, dueDay: number) => {
-  const [year, month] = formatCalendarDate(statementEnd).split('-').map(Number);
-  const candidate = createCalendarDate(
-    year,
-    month,
-    clampDayToMonth(year, month, dueDay),
-  );
-
-  if (candidate > statementEnd) {
-    return candidate;
-  }
-
-  return addMonths(candidate, 1, dueDay);
-};
-
 const isWithinRange = (value: Date, start: Date, end: Date) =>
   value.getTime() >= start.getTime() && value.getTime() <= end.getTime();
 
@@ -104,27 +67,6 @@ const toEffectiveExpenseDate = (expense: {
   payment_date: Date | null;
   created_at: Date;
 }) => expense.payment_date ?? expense.created_at;
-
-export const resolveCreditCardStatementWindow = (
-  asOfDate: Date,
-  cutoffDay: number,
-  dueDay: number,
-) => {
-  const statementEnd = resolvePreviousOrSameCutoff(asOfDate, cutoffDay);
-  const previousCutoff = addMonths(statementEnd, -1, cutoffDay);
-  const statementStart = addDays(previousCutoff, 1);
-  const currentCycleStart = addDays(statementEnd, 1);
-  const currentCycleEnd = addMonths(statementEnd, 1, cutoffDay);
-  const statementDueDate = resolveDueDate(statementEnd, dueDay);
-
-  return {
-    statementStart,
-    statementEnd,
-    currentCycleStart,
-    currentCycleEnd,
-    statementDueDate,
-  };
-};
 
 export async function getCreditCardStatementByOwner(
   creditCardId: number,
@@ -419,10 +361,6 @@ export async function getCreditCardStatementByOwner(
   };
 }
 
-export type CreditCardStatementWindow = ReturnType<
-  typeof resolveCreditCardStatementWindow
->;
-
 export type CreditCardStatementObligationBreakdown = {
   last_statement_balance: number;
   payments_applied_to_statement: number;
@@ -446,81 +384,6 @@ export type CreditCardStatementObligationWithCycle =
   CreditCardStatementObligationBreakdown & {
     current_cycle_purchases: number;
   };
-
-export type ComputeNextDuePaymentInput = {
-  lastStatementBalance: number;
-  paymentsAppliedToStatement: number;
-  importedTotalDue: number | null;
-  outstandingBalance: number;
-  dueDay: number;
-  cutoffDay: number;
-  currentCyclePurchasesTotal?: number;
-  currentCyclePaymentsTotal?: number;
-  asOfYmd?: string;
-  currentCycleEndYmd?: string;
-};
-
-/**
- * Monto sugerido a pagar al próximo vencimiento. Usada en la ficha de tarjeta,
- * planificación (Pagos tarjeta) y cualquier superficie que muestre `next_due_payment`.
- */
-export const computeNextDuePayment = ({
-  lastStatementBalance,
-  paymentsAppliedToStatement,
-  importedTotalDue,
-  outstandingBalance,
-  dueDay,
-  cutoffDay,
-  currentCyclePurchasesTotal = 0,
-  currentCyclePaymentsTotal = 0,
-  asOfYmd,
-  currentCycleEndYmd,
-}: ComputeNextDuePaymentInput): number => {
-  const ledgerDue = Math.max(
-    lastStatementBalance - paymentsAppliedToStatement,
-    0,
-  );
-  const outstandingDue = Math.max(
-    outstandingBalance - paymentsAppliedToStatement,
-    0,
-  );
-
-  let nextDuePayment: number;
-  if (importedTotalDue != null) {
-    nextDuePayment = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
-  } else if (ledgerDue <= 0 && outstandingDue > 0) {
-    /**
-     * Sin importación alineada al período: reconstruir desde movimientos suele ser frágil.
-     * Si la tarjeta tiene deuda registrada (sync/saldo manual), úsala como respaldo.
-     */
-    nextDuePayment = outstandingDue;
-  } else {
-    nextDuePayment = ledgerDue;
-  }
-
-  /**
-   * Tarjetas con **pago antes del corte** en el mes (ej. pago día 8, corte día 15): el vencimiento
-   * cae antes del siguiente corte en el calendario. Mientras el estado de cuenta **cerrado** en
-   * MiCasa siga en $0 (o sin import), las compras del **ciclo abierto** ya cargadas son el mejor
-   * estimado de lo que falta para el próximo vencimiento — restando los **pagos ya registrados**
-   * en ese ciclo (misma fuente que `current_cycle_payments`).
-   */
-  if (
-    dueDay < cutoffDay &&
-    nextDuePayment === 0 &&
-    currentCyclePurchasesTotal > 0 &&
-    asOfYmd != null &&
-    currentCycleEndYmd != null &&
-    asOfYmd <= currentCycleEndYmd
-  ) {
-    nextDuePayment = Math.max(
-      currentCyclePurchasesTotal - currentCyclePaymentsTotal,
-      0,
-    );
-  }
-
-  return nextDuePayment;
-};
 
 const expenseOwnerWhereSql = (ownerFilter: OwnerFilter) => {
   if (ownerFilter.user_id !== null) {
