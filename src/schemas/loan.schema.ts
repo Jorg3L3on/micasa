@@ -28,6 +28,18 @@ export const loanPaymentSourceSchema = z.enum([
   'WALLET',
   'PAYROLL_DEDUCTION',
 ]);
+export const loanPaymentActionSchema = z.enum([
+  'MARK_PAID',
+  'MARK_SCHEDULED',
+  'SKIP',
+  'CANCEL',
+]);
+export const loanPaymentStatusSchema = z.enum([
+  'SCHEDULED',
+  'PAID',
+  'SKIPPED',
+  'CANCELLED',
+]);
 
 export const createLoanSchema = z
   .object({
@@ -63,12 +75,24 @@ export const createLoanSchema = z
     }
   });
 
-export const updateLoanPaymentSchema = z.object({
-  status: z.enum(['SCHEDULED', 'PAID', 'SKIPPED', 'CANCELLED']),
-  paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  sourceWalletId: nullablePositiveIntFromForm.optional(),
-  note: z.string().trim().max(500).optional().nullable(),
-});
+export const updateLoanPaymentSchema = z
+  .object({
+    action: loanPaymentActionSchema.optional(),
+    // Backward-compatible shape for existing callers; normalized in the service.
+    status: loanPaymentStatusSchema.optional(),
+    paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+    sourceWalletId: nullablePositiveIntFromForm.optional(),
+    note: z.string().trim().max(500).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.action && !data.status) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['action'],
+        message: 'Selecciona una acción para el pago del préstamo',
+      });
+    }
+  });
 
 export type CreateLoanInput = z.infer<typeof createLoanSchema>;
 export type UpdateLoanPaymentInput = z.infer<typeof updateLoanPaymentSchema>;
