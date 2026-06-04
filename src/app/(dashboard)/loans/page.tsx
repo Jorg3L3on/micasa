@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
@@ -301,6 +302,9 @@ const loanStatusFilters: Array<{ value: LoanStatusFilter; label: string }> = [
 ];
 
 export default function LoansPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
   const [loans, setLoans] = useState<LoanListItem[]>([]);
@@ -329,6 +333,24 @@ export default function LoansPage() {
   const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
+
+  const resetLoanDetailDrafts = useCallback(() => {
+    setPaymentActionDraft(null);
+    setPaymentActionErrors({});
+    setLoanEditOpen(false);
+    setLoanEditForm(null);
+    setLoanEditErrors({});
+    setLifecycleDraft(null);
+  }, []);
+
+  const clearLoanIdQueryParam = useCallback(() => {
+    if (!searchParams.has('loanId')) return;
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('loanId');
+    const qs = nextParams.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const fundingWallets = useMemo(
     () =>
@@ -374,14 +396,22 @@ export default function LoansPage() {
     if (selectedLoanId === null) return;
     if (!loans.some((loan) => loan.id === selectedLoanId)) {
       setSelectedLoanId(null);
-      setPaymentActionDraft(null);
-      setPaymentActionErrors({});
-      setLoanEditOpen(false);
-      setLoanEditForm(null);
-      setLoanEditErrors({});
-      setLifecycleDraft(null);
+      resetLoanDetailDrafts();
     }
-  }, [loans, selectedLoanId]);
+  }, [loans, resetLoanDetailDrafts, selectedLoanId]);
+
+  useEffect(() => {
+    const loanIdParam = searchParams.get('loanId');
+    if (!loanIdParam) return;
+
+    const loanId = Number(loanIdParam);
+    if (!Number.isInteger(loanId) || loanId <= 0) return;
+    if (selectedLoanId === loanId) return;
+    if (!loans.some((loan) => loan.id === loanId)) return;
+
+    resetLoanDetailDrafts();
+    setSelectedLoanId(loanId);
+  }, [loans, resetLoanDetailDrafts, searchParams, selectedLoanId]);
 
   const activeLoans = loans.filter((loan) => loan.status === 'ACTIVE');
   const totalDebt = loans.reduce((sum, loan) => sum + loan.remainingAmount, 0);
@@ -529,15 +559,6 @@ export default function LoansPage() {
     setLoanEditErrors({});
     setLifecycleDraft(null);
     setLoanEditOpen(true);
-  };
-
-  const resetLoanDetailDrafts = () => {
-    setPaymentActionDraft(null);
-    setPaymentActionErrors({});
-    setLoanEditOpen(false);
-    setLoanEditForm(null);
-    setLoanEditErrors({});
-    setLifecycleDraft(null);
   };
 
   const validateLoanEdit = () => {
@@ -1167,6 +1188,7 @@ export default function LoansPage() {
           if (!open) {
             setSelectedLoanId(null);
             resetLoanDetailDrafts();
+            clearLoanIdQueryParam();
           }
         }}
       >
