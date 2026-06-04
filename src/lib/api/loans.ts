@@ -1,7 +1,7 @@
 'use client';
 
 import type { FinanceContextType } from '@/types/finance-context';
-import type { CreateLoanInput } from '@/schemas/loan.schema';
+import type { CreateLoanInput, UpdateLoanInput } from '@/schemas/loan.schema';
 import type {
   LoanListItem,
   LoanPaymentActionValue,
@@ -22,6 +22,21 @@ export async function createLoan(
     '/api/loans',
     {
       method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function updateLoan(
+  loanId: number,
+  data: UpdateLoanInput,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<LoanListItem>(
+    `/api/loans/${loanId}`,
+    {
+      method: 'PATCH',
       body: JSON.stringify(data),
     },
     context,
