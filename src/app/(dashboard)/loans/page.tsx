@@ -56,7 +56,11 @@ import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
-import type { CreateLoanInput, UpdateLoanInput } from '@/schemas/loan.schema';
+import {
+  createLoanSchema,
+  type CreateLoanInput,
+  type UpdateLoanInput,
+} from '@/schemas/loan.schema';
 import type {
   LoanListItem,
   LoanPaymentActionValue,
@@ -107,6 +111,7 @@ type PaymentActionDraft = {
 type PaymentActionErrors = Partial<
   Record<'paidAt' | 'sourceWalletId' | 'note' | 'general', string>
 >;
+type LoanFormErrors = Partial<Record<keyof LoanFormState | 'general', string>>;
 type LoanEditErrors = Partial<
   Record<
     'name' | 'lender' | 'linkedWalletId' | 'incomeTemplateId' | 'notes' | 'general',
@@ -131,6 +136,22 @@ const defaultForm = (): LoanFormState => ({
   incomeTemplateId: '',
   notes: '',
 });
+
+const loanFormErrorFields = new Set<keyof LoanFormState>([
+  'name',
+  'lender',
+  'type',
+  'principalAmount',
+  'paymentAmount',
+  'paymentCount',
+  'frequency',
+  'startDate',
+  'paymentSource',
+  'sourceWalletId',
+  'linkedWalletId',
+  'incomeTemplateId',
+  'notes',
+]);
 
 const editFormFromLoan = (loan: LoanListItem): LoanEditFormState => ({
   name: loan.name,
@@ -220,6 +241,21 @@ const mapPaymentActionError = (message: string): PaymentActionErrors => {
     return { paidAt: message };
   }
   return { general: message };
+};
+
+const mapLoanFormIssues = (
+  issues: Array<{ path: PropertyKey[]; message: string }>,
+): LoanFormErrors => {
+  const errors: LoanFormErrors = {};
+  for (const issue of issues) {
+    const key = issue.path[0];
+    if (typeof key === 'string' && loanFormErrorFields.has(key as keyof LoanFormState)) {
+      errors[key as keyof LoanFormState] = issue.message;
+      continue;
+    }
+    errors.general = issue.message;
+  }
+  return errors;
 };
 
 const mapLoanEditError = (message: string): LoanEditErrors => {
@@ -333,6 +369,7 @@ export default function LoansPage() {
   const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
+  const [formErrors, setFormErrors] = useState<LoanFormErrors>({});
 
   const resetLoanDetailDrafts = useCallback(() => {
     setPaymentActionDraft(null);
@@ -470,6 +507,11 @@ export default function LoansPage() {
     key: K,
     value: LoanFormState[K],
   ) => {
+    setFormErrors((current) => ({
+      ...current,
+      [key]: undefined,
+      general: undefined,
+    }));
     setForm((current) => {
       const next = { ...current, [key]: value };
       if (key === 'type' && value === 'PAYROLL') {
@@ -493,34 +535,42 @@ export default function LoansPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const parsed = createLoanSchema.safeParse({
+      name: form.name,
+      lender: form.lender,
+      type: form.type,
+      principalAmount: form.principalAmount,
+      paymentAmount: form.paymentAmount,
+      paymentCount: form.paymentCount,
+      frequency: form.frequency,
+      startDate: form.startDate,
+      paymentSource: form.paymentSource,
+      sourceWalletId: form.sourceWalletId,
+      linkedWalletId: form.linkedWalletId,
+      incomeTemplateId: form.incomeTemplateId,
+      notes: form.notes || null,
+    });
+
+    if (!parsed.success) {
+      setFormErrors(mapLoanFormIssues(parsed.error.issues));
+      return;
+    }
+
     setSubmitting(true);
+    setFormErrors({});
     try {
-      const payload: CreateLoanInput = {
-        name: form.name,
-        lender: form.lender,
-        type: form.type,
-        principalAmount: Number(form.principalAmount),
-        paymentAmount: Number(form.paymentAmount),
-        paymentCount: Number(form.paymentCount),
-        frequency: form.frequency,
-        startDate: form.startDate,
-        paymentSource: form.paymentSource,
-        sourceWalletId: form.sourceWalletId ? Number(form.sourceWalletId) : null,
-        linkedWalletId: form.linkedWalletId ? Number(form.linkedWalletId) : null,
-        incomeTemplateId: form.incomeTemplateId
-          ? Number(form.incomeTemplateId)
-          : null,
-        notes: form.notes || null,
-      };
+      const payload: CreateLoanInput = parsed.data;
       await createLoan(payload, context);
       toast.success('Préstamo creado');
       setDialogOpen(false);
       setForm(defaultForm());
+      setFormErrors({});
       await loadData();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo crear el préstamo',
-      );
+      const message =
+        error instanceof Error ? error.message : 'No se pudo crear el préstamo';
+      setFormErrors({ general: message });
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -950,7 +1000,13 @@ export default function LoansPage() {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setFormErrors({});
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Nuevo préstamo</DialogTitle>
@@ -967,8 +1023,16 @@ export default function LoansPage() {
                   value={form.name}
                   onChange={(e) => setField('name', e.target.value)}
                   placeholder="Préstamo DiDi"
+                  aria-invalid={Boolean(formErrors.name)}
+                  className={cn(
+                    formErrors.name &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                   required
                 />
+                {formErrors.name ? (
+                  <p className="text-xs text-destructive">{formErrors.name}</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-lender">Entidad</Label>
@@ -977,8 +1041,16 @@ export default function LoansPage() {
                   value={form.lender}
                   onChange={(e) => setField('lender', e.target.value)}
                   placeholder="DiDi, banco, empresa"
+                  aria-invalid={Boolean(formErrors.lender)}
+                  className={cn(
+                    formErrors.lender &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                   required
                 />
+                {formErrors.lender ? (
+                  <p className="text-xs text-destructive">{formErrors.lender}</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label>Tipo</Label>
@@ -988,7 +1060,14 @@ export default function LoansPage() {
                     setField('type', value as LoanFormState['type'])
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-label="Tipo de préstamo"
+                    aria-invalid={Boolean(formErrors.type)}
+                    className={cn(
+                      formErrors.type &&
+                        'border-destructive focus:ring-destructive/30',
+                    )}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -996,6 +1075,9 @@ export default function LoansPage() {
                     <SelectItem value="PAYROLL">Préstamo de nómina</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.type ? (
+                  <p className="text-xs text-destructive">{formErrors.type}</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label>Periodicidad</Label>
@@ -1005,7 +1087,14 @@ export default function LoansPage() {
                     setField('frequency', value as LoanFormState['frequency'])
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-label="Periodicidad del préstamo"
+                    aria-invalid={Boolean(formErrors.frequency)}
+                    className={cn(
+                      formErrors.frequency &&
+                        'border-destructive focus:ring-destructive/30',
+                    )}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1014,6 +1103,11 @@ export default function LoansPage() {
                     <SelectItem value="MONTHLY">Mensual</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.frequency ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.frequency}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-principal">Total</Label>
@@ -1024,8 +1118,18 @@ export default function LoansPage() {
                   step="0.01"
                   value={form.principalAmount}
                   onChange={(e) => setField('principalAmount', e.target.value)}
+                  aria-invalid={Boolean(formErrors.principalAmount)}
+                  className={cn(
+                    formErrors.principalAmount &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                   required
                 />
+                {formErrors.principalAmount ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.principalAmount}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-payment">Cantidad del pago</Label>
@@ -1036,8 +1140,18 @@ export default function LoansPage() {
                   step="0.01"
                   value={form.paymentAmount}
                   onChange={(e) => setField('paymentAmount', e.target.value)}
+                  aria-invalid={Boolean(formErrors.paymentAmount)}
+                  className={cn(
+                    formErrors.paymentAmount &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                   required
                 />
+                {formErrors.paymentAmount ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.paymentAmount}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-count">Número de pagos</Label>
@@ -1048,8 +1162,18 @@ export default function LoansPage() {
                   step="1"
                   value={form.paymentCount}
                   onChange={(e) => setField('paymentCount', e.target.value)}
+                  aria-invalid={Boolean(formErrors.paymentCount)}
+                  className={cn(
+                    formErrors.paymentCount &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                   required
                 />
+                {formErrors.paymentCount ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.paymentCount}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-start">Primer pago</Label>
@@ -1058,8 +1182,18 @@ export default function LoansPage() {
                   type="date"
                   value={form.startDate}
                   onChange={(e) => setField('startDate', e.target.value)}
+                  aria-invalid={Boolean(formErrors.startDate)}
+                  className={cn(
+                    formErrors.startDate &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                   required
                 />
+                {formErrors.startDate ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.startDate}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label>Forma de pago</Label>
@@ -1072,7 +1206,14 @@ export default function LoansPage() {
                     )
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-label="Forma de pago del préstamo"
+                    aria-invalid={Boolean(formErrors.paymentSource)}
+                    className={cn(
+                      formErrors.paymentSource &&
+                        'border-destructive focus:ring-destructive/30',
+                    )}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1082,6 +1223,15 @@ export default function LoansPage() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Billetera proyecta salidas futuras; nómina descuenta el
+                  ingreso esperado.
+                </p>
+                {formErrors.paymentSource ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.paymentSource}
+                  </p>
+                ) : null}
               </div>
               {form.paymentSource === 'WALLET' ? (
                 <div className="space-y-1.5">
@@ -1090,7 +1240,14 @@ export default function LoansPage() {
                     value={form.sourceWalletId}
                     onValueChange={(value) => setField('sourceWalletId', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger
+                      aria-label="Billetera que pagará el préstamo"
+                      aria-invalid={Boolean(formErrors.sourceWalletId)}
+                      className={cn(
+                        formErrors.sourceWalletId &&
+                          'border-destructive focus:ring-destructive/30',
+                      )}
+                    >
                       <SelectValue placeholder="Selecciona billetera" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1101,6 +1258,11 @@ export default function LoansPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.sourceWalletId ? (
+                    <p className="text-xs text-destructive">
+                      {formErrors.sourceWalletId}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -1111,7 +1273,14 @@ export default function LoansPage() {
                       setField('incomeTemplateId', value)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger
+                      aria-label="Ingreso relacionado con la deducción"
+                      aria-invalid={Boolean(formErrors.incomeTemplateId)}
+                      className={cn(
+                        formErrors.incomeTemplateId &&
+                          'border-destructive focus:ring-destructive/30',
+                      )}
+                    >
                       <SelectValue placeholder="Opcional" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1122,6 +1291,11 @@ export default function LoansPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.incomeTemplateId ? (
+                    <p className="text-xs text-destructive">
+                      {formErrors.incomeTemplateId}
+                    </p>
+                  ) : null}
                 </div>
               )}
               <div className="space-y-1.5 sm:col-span-2">
@@ -1132,7 +1306,14 @@ export default function LoansPage() {
                     setField('linkedWalletId', value === 'none' ? '' : value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-label="Cuenta relacionada para seguimiento"
+                    aria-invalid={Boolean(formErrors.linkedWalletId)}
+                    className={cn(
+                      formErrors.linkedWalletId &&
+                        'border-destructive focus:ring-destructive/30',
+                    )}
+                  >
                     <SelectValue placeholder="Opcional" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1144,6 +1325,15 @@ export default function LoansPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Solo relaciona el préstamo con una cuenta para consulta; no
+                  mueve saldo ni paga el préstamo.
+                </p>
+                {formErrors.linkedWalletId ? (
+                  <p className="text-xs text-destructive">
+                    {formErrors.linkedWalletId}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="loan-notes">Notas</Label>
@@ -1152,9 +1342,22 @@ export default function LoansPage() {
                   value={form.notes}
                   onChange={(e) => setField('notes', e.target.value)}
                   placeholder="Condiciones, referencia, comentarios"
+                  aria-invalid={Boolean(formErrors.notes)}
+                  className={cn(
+                    formErrors.notes &&
+                      'border-destructive focus-visible:ring-destructive/30',
+                  )}
                 />
+                {formErrors.notes ? (
+                  <p className="text-xs text-destructive">{formErrors.notes}</p>
+                ) : null}
               </div>
             </div>
+            {formErrors.general ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {formErrors.general}
+              </div>
+            ) : null}
             <DialogFooter>
               <Button
                 type="button"
