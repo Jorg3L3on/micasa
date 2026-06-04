@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FortnightViewControls } from '@/components/monthly/FortnightViewControls';
-import { cn, formatCurrency } from '@/lib/utils';
-import { getMonthlyPreferenceScope } from '@/lib/planner/monthly-page';
-import type { ExpenseTableDensity } from '@/components/ExpenseTable';
+import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
+import { cn } from '@/lib/utils';
 import type {
   DuePaymentItem,
   PlannerCardChargesSummary,
@@ -19,13 +18,6 @@ import type {
 } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
 
-const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
-const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
-const SUMMARY_VISIBLE_STORAGE_KEY = 'micasa.planificacion.summaryVisible';
-/** Vista de tabla: filas más altas (cómoda) o más densas (compacta). */
-const TABLE_DENSITY_STORAGE_KEY = 'micasa.planificacion.tableDensity';
-
-type LayoutMode = 'single' | 'both';
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
 type FortnightSummary = {
@@ -59,9 +51,7 @@ type FortnightBundle = {
   transactions: TransactionRow[];
   summary: FortnightSummary;
   fortnightId: number;
-  /** Card payment reminders for this quincena (current month only). */
   cardDueItems?: DuePaymentItem[];
-  /** Loan payment reminders for this quincena. */
   loanDueItems?: LoanDuePaymentItem[];
 };
 
@@ -69,7 +59,6 @@ export type MonthlyFortnightViewProps = {
   ownerKey: string;
   year: number;
   month: number;
-  suggestedPeriod: FortnightPeriod;
   first: FortnightBundle;
   second: FortnightBundle;
   wallets?: WalletListItem[];
@@ -77,172 +66,38 @@ export type MonthlyFortnightViewProps = {
   isCurrentMonth: boolean;
 };
 
-const storageKey = (base: string, scope: string) => `${base}:${scope}`;
-
-const readStoredLayout = (scope: string): LayoutMode | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(storageKey(LAYOUT_STORAGE_KEY, scope));
-    if (raw === 'single' || raw === 'both') return raw;
-  } catch {
-    return null;
-  }
-  return null;
-};
-
-const readStoredPeriod = (scope: string): FortnightPeriod | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(storageKey(PERIOD_STORAGE_KEY, scope));
-    if (raw === 'FIRST' || raw === 'SECOND') return raw;
-  } catch {
-    return null;
-  }
-  return null;
-};
-
-const persistLayout = (scope: string, layout: LayoutMode) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(storageKey(LAYOUT_STORAGE_KEY, scope), layout);
-  } catch {
-    /* ignore */
-  }
-};
-
-const persistPeriod = (scope: string, period: FortnightPeriod) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(storageKey(PERIOD_STORAGE_KEY, scope), period);
-  } catch {
-    /* ignore */
-  }
-};
-
-const readStoredSummaryVisible = (scope: string): boolean | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(storageKey(SUMMARY_VISIBLE_STORAGE_KEY, scope));
-    if (raw === 'true') return true;
-    if (raw === 'false') return false;
-  } catch {
-    return null;
-  }
-  return null;
-};
-
-const persistSummaryVisible = (scope: string, visible: boolean) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(
-      storageKey(SUMMARY_VISIBLE_STORAGE_KEY, scope),
-      visible ? 'true' : 'false',
-    );
-  } catch {
-    /* ignore */
-  }
-};
-
-const readStoredTableDensity = (scope: string): ExpenseTableDensity | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(storageKey(TABLE_DENSITY_STORAGE_KEY, scope));
-    if (raw === 'comfortable' || raw === 'compact') return raw;
-  } catch {
-    return null;
-  }
-  return null;
-};
-
-const persistTableDensity = (scope: string, density: ExpenseTableDensity) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(storageKey(TABLE_DENSITY_STORAGE_KEY, scope), density);
-  } catch {
-    /* ignore */
-  }
-};
-
 export default function MonthlyFortnightView({
   ownerKey,
   year,
   month,
-  suggestedPeriod,
   first,
   second,
   wallets = [],
   paidWalletIds,
   isCurrentMonth,
 }: MonthlyFortnightViewProps) {
-  const [prefsReady, setPrefsReady] = useState(false);
-  const [layout, setLayout] = useState<LayoutMode>('single');
-  const [period, setPeriod] = useState<FortnightPeriod>(suggestedPeriod);
-  const [summaryVisible, setSummaryVisible] = useState(true);
-  const [tableDensity, setTableDensity] =
-    useState<ExpenseTableDensity>('comfortable');
-  const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] = useState(0);
-  const preferenceScope = getMonthlyPreferenceScope(ownerKey, year, month);
+  const {
+    prefsReady,
+    period,
+    summaryVisible,
+    tableDensity,
+    setPeriod,
+    setSummaryVisible,
+    setTableDensity,
+  } = useMonthlyPanelPreferences();
+
+  const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] =
+    useState(0);
+  const activeBundle = period === 'FIRST' ? first : second;
+  const preferenceScope = `${ownerKey}-${year}-${month}`;
 
   const handleWalletBalancesPersisted = useCallback(() => {
     setSummaryFundingRefreshNonce((n) => n + 1);
   }, []);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- Preferences come from localStorage after hydration. */
-  useEffect(() => {
-    const storedLayout = readStoredLayout(preferenceScope);
-    const storedPeriod = readStoredPeriod(preferenceScope);
-    const storedSummary = readStoredSummaryVisible(preferenceScope);
-    const storedDensity = readStoredTableDensity(preferenceScope);
-    if (storedLayout) {
-      setLayout(storedLayout);
-    }
-    if (storedPeriod) {
-      setPeriod(storedPeriod);
-    }
-    if (storedSummary !== null) {
-      setSummaryVisible(storedSummary);
-    }
-    if (storedDensity) {
-      setTableDensity(storedDensity);
-    }
-    setPrefsReady(true);
-  }, [preferenceScope]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  const handleLayoutRadio = useCallback((value: string) => {
-    if (value === 'single') {
-      setLayout('single');
-      persistLayout(preferenceScope, 'single');
-    } else if (value === 'both') {
-      setLayout('both');
-      persistLayout(preferenceScope, 'both');
-    }
-  }, [preferenceScope]);
-
-  const handlePeriodChange = useCallback((value: string) => {
-    if (value !== 'FIRST' && value !== 'SECOND') return;
-    setPeriod(value);
-    persistPeriod(preferenceScope, value);
-  }, [preferenceScope]);
-
-  const handleSummaryChecked = useCallback((checked: boolean) => {
-    setSummaryVisible(checked);
-    persistSummaryVisible(preferenceScope, checked);
-  }, [preferenceScope]);
-
-  const handleTableDensityChange = useCallback((value: string) => {
-    if (value !== 'comfortable' && value !== 'compact') return;
-    setTableDensity(value);
-    persistTableDensity(preferenceScope, value);
-  }, [preferenceScope]);
-
   const handleShowSummaryFromColumn = useCallback(() => {
     setSummaryVisible(true);
-    persistSummaryVisible(preferenceScope, true);
-  }, [preferenceScope]);
-
-  const showFirst = layout === 'both' || period === 'FIRST';
-  const showSecond = layout === 'both' || period === 'SECOND';
+  }, [setSummaryVisible]);
 
   const walletStripSection =
     wallets.length > 0 ? (
@@ -258,12 +113,7 @@ export default function MonthlyFortnightView({
 
   if (!prefsReady) {
     return (
-      <div
-        className={cn(
-          'space-y-4',
-          layout === 'single' && 'mx-auto w-full max-w-4xl xl:max-w-5xl',
-        )}
-      >
+      <div className="space-y-4">
         {walletStripSection}
         <div
           className="space-y-3"
@@ -284,117 +134,40 @@ export default function MonthlyFortnightView({
   }
 
   return (
-    <div
-      className={cn(
-        'space-y-4',
-        layout === 'single' && 'mx-auto w-full max-w-4xl xl:max-w-5xl',
-      )}
-    >
+    <div className="space-y-4">
       {walletStripSection}
       <FortnightViewControls
         year={year}
         month={month}
-        layout={layout}
         period={period}
         firstLabel={first.label}
         secondLabel={second.label}
         summaryVisible={summaryVisible}
         tableDensity={tableDensity}
-        onLayoutChange={(value) => handleLayoutRadio(value)}
-        onPeriodChange={(value) => handlePeriodChange(value)}
-        onSummaryVisibleChange={handleSummaryChecked}
-        onTableDensityChange={(value) => handleTableDensityChange(value)}
+        onPeriodChange={setPeriod}
+        onSummaryVisibleChange={setSummaryVisible}
+        onTableDensityChange={setTableDensity}
       />
 
-      <div
-        className={cn(
-          'grid gap-6',
-          layout === 'both' ? 'grid-cols-1 gap-10 lg:grid-cols-2' : 'grid-cols-1',
-        )}
-      >
-        {showFirst ? (
-          <div className={cn(
-            'flex flex-col gap-3',
-            layout === 'both' && 'rounded-2xl border border-border/30 bg-card/70 p-4 shadow-sm dark:bg-card/40',
-          )}>
-            {layout === 'both' && (
-              <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2.5 shadow-sm dark:from-primary/15 dark:to-primary/8">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-xs font-black text-primary ring-1 ring-primary/30">
-                    1ª
-                  </span>
-                  <span className="truncate text-sm font-bold text-foreground">
-                    {first.label}
-                  </span>
-                </div>
-                <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-primary">
-                  {formatCurrency(first.summary.totalIncome)}
-                </span>
-              </div>
-            )}
-            <FortnightColumn
-              key={`${ownerKey}-${year}-${month}-FIRST`}
-              label={first.label}
-              transactions={first.transactions}
-              summary={first.summary}
-              fortnightId={first.fortnightId}
-              year={year}
-              month={month}
-              period="FIRST"
-              showSummaryCard={summaryVisible}
-              onShowSummaryCard={handleShowSummaryFromColumn}
-              tableDensity={tableDensity}
-              cardDueItems={first.cardDueItems}
-              loanDueItems={first.loanDueItems}
-              wallets={wallets}
-              summaryFundingRefreshNonce={summaryFundingRefreshNonce}
-              preferenceScope={preferenceScope}
-              dualColumnLayout={layout === 'both'}
-            />
-          </div>
-        ) : null}
-        {showSecond ? (
-          <div className={cn(
-            'flex flex-col gap-3',
-            layout === 'both' && 'rounded-2xl border border-border/30 bg-card/70 p-4 shadow-sm dark:bg-card/40',
-          )}>
-            {layout === 'both' && (
-              <div className="flex items-center justify-between rounded-xl border border-border/40 bg-gradient-to-r from-muted/40 to-muted/20 px-3 py-2.5 shadow-sm">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-xs font-black text-muted-foreground ring-1 ring-border/60">
-                    2ª
-                  </span>
-                  <span className="truncate text-sm font-bold text-foreground">
-                    {second.label}
-                  </span>
-                </div>
-                <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-muted-foreground">
-                  {formatCurrency(second.summary.totalIncome)}
-                </span>
-              </div>
-            )}
-            <FortnightColumn
-              key={`${ownerKey}-${year}-${month}-SECOND`}
-              label={second.label}
-              transactions={second.transactions}
-              summary={second.summary}
-              fortnightId={second.fortnightId}
-              year={year}
-              month={month}
-              period="SECOND"
-              showSummaryCard={summaryVisible}
-              onShowSummaryCard={handleShowSummaryFromColumn}
-              tableDensity={tableDensity}
-              cardDueItems={second.cardDueItems}
-              loanDueItems={second.loanDueItems}
-              wallets={wallets}
-              summaryFundingRefreshNonce={summaryFundingRefreshNonce}
-              preferenceScope={preferenceScope}
-              dualColumnLayout={layout === 'both'}
-            />
-          </div>
-        ) : null}
-      </div>
+      <FortnightColumn
+        key={`${ownerKey}-${year}-${month}-${period}`}
+        label={activeBundle.label}
+        transactions={activeBundle.transactions}
+        summary={activeBundle.summary}
+        fortnightId={activeBundle.fortnightId}
+        year={year}
+        month={month}
+        period={period}
+        showSummaryCard={summaryVisible}
+        onShowSummaryCard={handleShowSummaryFromColumn}
+        tableDensity={tableDensity}
+        cardDueItems={activeBundle.cardDueItems}
+        loanDueItems={activeBundle.loanDueItems}
+        wallets={wallets}
+        summaryFundingRefreshNonce={summaryFundingRefreshNonce}
+        preferenceScope={preferenceScope}
+        dualColumnLayout={false}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from '@/lib/finance/credit-card-statement.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
+import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
 import { listWalletsByOwner } from '@/lib/finance/wallet.service';
 import { measure } from './monthly.performance';
@@ -96,14 +97,22 @@ export const getMonthlyPageData = async (
         secondTransactions: [],
         firstSummary: null,
         secondSummary: null,
+        budgetPanel: await measure('monthly.budget-panel', () =>
+          getMonthlyBudgetPanel(ownerFilter, year, month),
+        ),
       };
     }
 
     const firstFortnightIds = [firstFortnightInfo.id];
     const secondFortnightIds = [secondFortnightInfo.id];
 
-    const [firstTransactions, secondTransactions, firstSummary, secondSummary] =
-      await Promise.all([
+    const [
+      firstTransactions,
+      secondTransactions,
+      firstSummary,
+      secondSummary,
+      budgetPanel,
+    ] = await Promise.all([
         measure('monthly.transactions', () =>
           listPlanningTransactions({
             ownerFilter,
@@ -145,6 +154,9 @@ export const getMonthlyPageData = async (
             excludeCreditInstallment: true,
             resolvedFortnightIds: secondFortnightIds,
           }),
+        ),
+        measure('monthly.budget-panel', () =>
+          getMonthlyBudgetPanel(ownerFilter, year, month),
         ),
       ]);
 
@@ -163,5 +175,6 @@ export const getMonthlyPageData = async (
       secondTransactions,
       firstSummary,
       secondSummary,
+      budgetPanel,
     };
   });

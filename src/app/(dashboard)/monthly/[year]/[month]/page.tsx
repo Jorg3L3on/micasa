@@ -5,6 +5,7 @@ import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-cont
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
+import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { parseMonthlyRouteParams } from '@/lib/planner/monthly-page';
@@ -118,6 +119,7 @@ export default async function MonthlyPage({
     secondTransactions,
     firstSummary,
     secondSummary,
+    budgetPanel,
   } = pageData;
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
@@ -234,13 +236,9 @@ export default async function MonthlyPage({
   const loanDueFirst = plannerLoanDue.first;
   const loanDueSecond = plannerLoanDue.second;
 
-  return (
+  const monthHeader = (
     <>
-      <div
-        className="mb-5 flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:mb-5 sm:gap-3 sm:px-4"
-        role="group"
-        aria-label="Selector de mes"
-      >
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <div className="shrink-0">
           <MonthlyHeader
             year={year}
@@ -282,12 +280,28 @@ export default async function MonthlyPage({
           )}
         </div>
       </div>
+    </>
+  );
 
+  return (
+    <MonthlyPanelLayout
+      ownerKey={ownerKey}
+      year={year}
+      month={month}
+      suggestedPeriod={suggestedPeriod}
+      ownerQuery={ownerQuery}
+      budgetPanel={budgetPanel}
+      monthHeader={monthHeader}
+      prevHref={prevHref}
+      nextHref={hasNextMonth ? nextHref : null}
+      hasNextMonth={hasNextMonth}
+      prevMonthLabel={prevMonthLabel}
+      nextMonthLabel={nextMonthLabel}
+    >
       <MonthlyFortnightView
         ownerKey={ownerKey}
         year={year}
         month={month}
-        suggestedPeriod={suggestedPeriod}
         wallets={wallets}
         paidWalletIds={paidWalletIds}
         isCurrentMonth={isCurrentMonth}
@@ -308,6 +322,6 @@ export default async function MonthlyPage({
           loanDueItems: loanDueSecond,
         }}
       />
-    </>
+    </MonthlyPanelLayout>
   );
 }

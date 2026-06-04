@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validates Panel financiero UI restructure (resumen + view controls) via playwright-cli.
+# Validates Panel financiero v2 (PRD #86) via playwright-cli.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p output/playwright
@@ -43,16 +43,20 @@ ASSERT_SCRIPT='async (page) => {
     monthlyPage: page.url().includes("/monthly/"),
     resumenTitle: (await page.getByText(/Resumen de la [12]ª quincena/).count()) > 0,
     quincenaControls: (await page.getByRole("group", { name: "Quincena" }).count()) > 0,
-    periodoControls: (await page.getByRole("group", { name: "Período" }).count()) > 0,
-    viewOptionsMenu: (await page.getByRole("button", { name: "Opciones adicionales de vista" }).count()) > 0,
-    ingresosKpi: (await page.getByText("Ingresos del periodo").count()) > 0,
-    incomeRing: (await page.getByText("del ingreso").count()) > 0,
+    noAmbasPeriodo: (await page.getByRole("group", { name: "Período" }).count()) === 0,
+    noAmbasLabel: (await page.getByText("Ambas").count()) === 0,
+    delIngreso: (await page.getByText("del ingreso").count()) > 0,
+    disponibleHero: (await page.getByText("Disponible para gastar").count()) > 0,
+    presupuestoMes: (await page.getByRole("heading", { name: "Presupuesto del mes" }).count()) > 0,
+    topCategorias: (await page.getByRole("heading", { name: "Top categorías" }).count()) > 0,
+    verReporte: (await page.getByRole("link", { name: /Ver reporte completo/i }).count()) > 0,
+    cambiarPeriodo: (await page.getByRole("button", { name: "Cambiar periodo de planificación" }).count()) > 0,
+    filtros: (await page.getByRole("button", { name: "Filtros de vista del panel" }).count()) > 0,
   };
   await page.screenshot({ path: "output/playwright/panel-financiero-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(1200);
-  results.mobileViewport =
-    (await page.getByText("Ingresos del periodo").count()) > 0 &&
+  results.mobileQuincena =
     (await page.getByRole("group", { name: "Quincena" }).count()) > 0;
   await page.screenshot({ path: "output/playwright/panel-financiero-mobile.png", fullPage: true });
   const failed = Object.entries(results).filter(([, ok]) => !ok).map(([k]) => k);
@@ -67,5 +71,5 @@ if [[ ! -f output/playwright/panel-financiero-desktop.png ]]; then
   exit 1
 fi
 
-echo "Panel financiero Playwright QA passed."
+echo "Panel financiero v2 Playwright QA passed."
 echo "Screenshots: output/playwright/panel-financiero-desktop.png output/playwright/panel-financiero-mobile.png"
