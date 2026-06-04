@@ -6,6 +6,7 @@ import {
 import type {
   LoanPaymentFrequencyValue,
   LoanPaymentListItem,
+  LoanStatusValue,
 } from '@/types/loans';
 
 export type GeneratedLoanPayment = {
@@ -71,17 +72,31 @@ export function calculateLoanProgress(input: {
 }) {
   const paidPayments = input.payments.filter((p) => p.status === 'PAID');
   const paidAmount = paidPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-  const scheduledPayable = input.payments.reduce(
+  const payablePayments = input.payments.filter((p) => p.status !== 'CANCELLED');
+  const scheduledPayable = payablePayments.reduce(
     (sum, p) => sum + Number(p.amount),
     0,
   );
-  const totalPayable = scheduledPayable > 0 ? scheduledPayable : input.principalAmount;
+  const totalPayable =
+    input.payments.length > 0 ? scheduledPayable : input.principalAmount;
+  const unresolvedPayments = input.payments.filter(
+    (p) => p.status === 'SCHEDULED' || p.status === 'SKIPPED',
+  );
   return {
     totalPayable,
     paidAmount,
     remainingAmount: Math.max(0, totalPayable - paidAmount),
     paidPayments: paidPayments.length,
-    remainingPayments: input.payments.filter((p) => p.status === 'SCHEDULED')
-      .length,
+    remainingPayments: unresolvedPayments.length,
   };
+}
+
+export function deriveLoanStatusFromPayments(
+  payments: Pick<LoanPaymentListItem, 'status'>[],
+): LoanStatusValue {
+  const hasUnresolvedDebt = payments.some(
+    (payment) =>
+      payment.status === 'SCHEDULED' || payment.status === 'SKIPPED',
+  );
+  return hasUnresolvedDebt ? 'ACTIVE' : 'PAID_OFF';
 }

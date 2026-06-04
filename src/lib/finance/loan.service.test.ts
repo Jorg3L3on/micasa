@@ -4,14 +4,35 @@ const {
   findFirstWallet,
   findFirstIncomeTemplate,
   createLoan,
+  transaction,
+  txFindFirstLoanPayment,
+  txUpdateLoanPayment,
+  txFindManyLoanPayment,
+  txFindFirstWallet,
+  txUpdateWallet,
+  txUpdateLoan,
+  txDeleteExpense,
+  resolveOrCreateFortnight,
+  createExpenseInTransaction,
 } = vi.hoisted(() => ({
   findFirstWallet: vi.fn(),
   findFirstIncomeTemplate: vi.fn(),
   createLoan: vi.fn(),
+  transaction: vi.fn(),
+  txFindFirstLoanPayment: vi.fn(),
+  txUpdateLoanPayment: vi.fn(),
+  txFindManyLoanPayment: vi.fn(),
+  txFindFirstWallet: vi.fn(),
+  txUpdateWallet: vi.fn(),
+  txUpdateLoan: vi.fn(),
+  txDeleteExpense: vi.fn(),
+  resolveOrCreateFortnight: vi.fn(),
+  createExpenseInTransaction: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    $transaction: transaction,
     wallet: {
       findFirst: findFirstWallet,
     },
@@ -24,7 +45,19 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { createLoanForOwner } from '@/lib/finance/loan.service';
+vi.mock('@/lib/fortnights', () => ({
+  resolveOrCreateFortnight,
+}));
+
+vi.mock('@/lib/finance/expense.service', () => ({
+  createExpenseInTransaction,
+}));
+
+import {
+  createLoanForOwner,
+  updateLoanPaymentForOwner,
+} from '@/lib/finance/loan.service';
+import { parseCalendarDate } from '@/lib/calendar-dates';
 
 const ownerFilter = { user_id: 1, house_id: null } as const;
 
@@ -128,5 +161,212 @@ describe('createLoanForOwner', () => {
     );
     expect(loan.payments).toHaveLength(6);
     expect(loan.nextPayment?.dueDate).toBe('2026-05-18');
+  });
+});
+
+const tx = {
+  loanPayment: {
+    findFirst: txFindFirstLoanPayment,
+    update: txUpdateLoanPayment,
+    findMany: txFindManyLoanPayment,
+  },
+  wallet: {
+    findFirst: txFindFirstWallet,
+    update: txUpdateWallet,
+  },
+  loan: {
+    update: txUpdateLoan,
+  },
+  expense: {
+    delete: txDeleteExpense,
+  },
+  category: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+  },
+};
+
+const scheduledWalletPayment = {
+  id: 22,
+  loan_id: 5,
+  sequence: 1,
+  due_date: parseCalendarDate('2026-06-10'),
+  amount: '150',
+  status: 'SCHEDULED',
+  paid_at: null,
+  source_wallet_id: 10,
+  note: null,
+  linked_expense: null,
+  loan: {
+    id: 5,
+    name: 'Préstamo DiDi',
+    lender: 'DiDi',
+    payment_source: 'WALLET',
+  },
+};
+
+describe('updateLoanPaymentForOwner', () => {
+  beforeEach(() => {
+    findFirstWallet.mockReset();
+    transaction.mockReset();
+    txFindFirstLoanPayment.mockReset();
+    txUpdateLoanPayment.mockReset();
+    txFindManyLoanPayment.mockReset();
+    txFindFirstWallet.mockReset();
+    txUpdateWallet.mockReset();
+    txUpdateLoan.mockReset();
+    txDeleteExpense.mockReset();
+    resolveOrCreateFortnight.mockReset();
+    createExpenseInTransaction.mockReset();
+    tx.category.findFirst.mockReset();
+    tx.category.create.mockReset();
+
+    transaction.mockImplementation((fn) => fn(tx));
+  });
+
+  it('marks wallet-paid payments paid with an explicit action and generated expense', async () => {
+    findFirstWallet.mockResolvedValueOnce({ id: 10, type: 'DEBIT_CARD' });
+    txFindFirstLoanPayment.mockResolvedValueOnce(scheduledWalletPayment);
+    txFindFirstWallet.mockResolvedValueOnce({
+      id: 10,
+      amount: '500',
+      type: 'DEBIT_CARD',
+    });
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'PAID',
+      paid_at: parseCalendarDate('2026-06-10'),
+      source_wallet: { name: 'BBVA' },
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([{ status: 'PAID' }]);
+    resolveOrCreateFortnight.mockResolvedValueOnce({ id: 90 });
+    tx.category.findFirst.mockResolvedValueOnce({ id: 7 });
+    createExpenseInTransaction.mockResolvedValueOnce({ id: 321 });
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'MARK_PAID',
+      paidAt: '2026-06-10',
+      sourceWalletId: 10,
+    });
+
+    expect(payment).toMatchObject({
+      id: 22,
+      status: 'PAID',
+      paidAt: '2026-06-10',
+      sourceWalletId: 10,
+      linkedExpenseId: 321,
+    });
+    expect(createExpenseInTransaction).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        paymentDate: '2026-06-10',
+        walletId: 10,
+        loanPaymentId: 22,
+      }),
+    );
+    expect(txUpdateLoan).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { status: 'PAID_OFF' },
+    });
+  });
+
+  it('undoes paid wallet payments by deleting the generated expense and reversing wallet balance', async () => {
+    txFindFirstLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'PAID',
+      paid_at: parseCalendarDate('2026-06-10'),
+      linked_expense: {
+        id: 300,
+        wallet_id: 10,
+        amount: '150',
+        is_paid: true,
+        wallet: { type: 'DEBIT_CARD' },
+      },
+    });
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'SCHEDULED',
+      paid_at: null,
+      source_wallet: { name: 'BBVA' },
+      linked_expense: null,
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([
+      { status: 'SCHEDULED' },
+      { status: 'SKIPPED' },
+    ]);
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'MARK_SCHEDULED',
+    });
+
+    expect(payment.status).toBe('SCHEDULED');
+    expect(txUpdateWallet).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: { amount: { increment: 150 } },
+    });
+    expect(txDeleteExpense).toHaveBeenCalledWith({ where: { id: 300 } });
+    expect(txUpdateLoan).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { status: 'ACTIVE' },
+    });
+  });
+
+  it('marks payroll deduction payments paid without creating a funding expense', async () => {
+    txFindFirstLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      source_wallet_id: null,
+      loan: {
+        ...scheduledWalletPayment.loan,
+        payment_source: 'PAYROLL_DEDUCTION',
+      },
+    });
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'PAID',
+      paid_at: parseCalendarDate('2026-06-15'),
+      source_wallet_id: null,
+      source_wallet: null,
+      linked_expense: null,
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([{ status: 'PAID' }]);
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'MARK_PAID',
+      paidAt: '2026-06-15',
+    });
+
+    expect(payment).toMatchObject({
+      status: 'PAID',
+      paidAt: '2026-06-15',
+      sourceWalletId: null,
+      linkedExpenseId: null,
+    });
+    expect(txFindFirstWallet).not.toHaveBeenCalled();
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
+    expect(txUpdateLoan).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { status: 'PAID_OFF' },
+    });
+  });
+
+  it('rejects wallet-paid actions when the source wallet lacks funds', async () => {
+    findFirstWallet.mockResolvedValueOnce({ id: 10, type: 'DEBIT_CARD' });
+    txFindFirstLoanPayment.mockResolvedValueOnce(scheduledWalletPayment);
+    txFindFirstWallet.mockResolvedValueOnce({
+      id: 10,
+      amount: '25',
+      type: 'DEBIT_CARD',
+    });
+
+    await expect(
+      updateLoanPaymentForOwner(22, ownerFilter, {
+        action: 'MARK_PAID',
+        paidAt: '2026-06-10',
+        sourceWalletId: 10,
+      }),
+    ).rejects.toThrow('Saldo insuficiente');
+
+    expect(txUpdateLoanPayment).not.toHaveBeenCalled();
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
   });
 });

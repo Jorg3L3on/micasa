@@ -4,10 +4,12 @@ import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { CreateLoanInput, UpdateLoanPaymentInput } from '@/schemas/loan.schema';
 import {
   calculateLoanProgress,
+  deriveLoanStatusFromPayments,
   formatDateYmd,
   generateLoanPaymentSchedule,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   applyWalletAmountDelta,
   getPaidExpenseWalletDelta,
@@ -19,6 +21,7 @@ import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
 import type {
   LoanDuePaymentItem,
   LoanListItem,
+  LoanPaymentActionValue,
   LoanPaymentListItem,
   PlannerLoanPaymentsResponse,
 } from '@/types/loans';
@@ -277,6 +280,24 @@ async function createLinkedLoanPaymentExpense(input: {
   });
 }
 
+function normalizeLoanPaymentAction(
+  input: UpdateLoanPaymentInput,
+): LoanPaymentActionValue {
+  if (input.action) return input.action;
+
+  if (input.status === 'PAID') return 'MARK_PAID';
+  if (input.status === 'SKIPPED') return 'SKIP';
+  if (input.status === 'CANCELLED') return 'CANCEL';
+  return 'MARK_SCHEDULED';
+}
+
+function statusForLoanPaymentAction(action: LoanPaymentActionValue) {
+  if (action === 'MARK_PAID') return 'PAID';
+  if (action === 'SKIP') return 'SKIPPED';
+  if (action === 'CANCEL') return 'CANCELLED';
+  return 'SCHEDULED';
+}
+
 export async function listLoansByOwner(
   ownerFilter: OwnerFilter,
 ): Promise<LoanListItem[]> {
@@ -350,6 +371,8 @@ export async function updateLoanPaymentForOwner(
   input: UpdateLoanPaymentInput,
 ): Promise<LoanPaymentListItem> {
   await assertOwnedFundingWallet(input.sourceWalletId, ownerFilter);
+  const action = normalizeLoanPaymentAction(input);
+  const targetStatus = statusForLoanPaymentAction(action);
 
   return prisma.$transaction(async (tx) => {
     const existing = await tx.loanPayment.findFirst({
@@ -381,10 +404,10 @@ export async function updateLoanPaymentForOwner(
     const nextSourceWalletId = input.sourceWalletId ?? existing.source_wallet_id;
     const amount = decimalToNumber(existing.amount);
     const wasPaid = existing.status === 'PAID';
-    const willBePaid = input.status === 'PAID';
+    const willBePaid = action === 'MARK_PAID';
     const paidAt =
-      input.status === 'PAID'
-        ? parseYmdAsUtcDate(input.paidAt ?? formatDateYmd(new Date()))
+      willBePaid
+        ? parseYmdAsUtcDate(input.paidAt ?? todayCalendarDate())
         : null;
 
     if (wasPaid && existing.linked_expense) {
@@ -425,10 +448,11 @@ export async function updateLoanPaymentForOwner(
     const payment = await tx.loanPayment.update({
       where: { id: paymentId },
       data: {
-        status: input.status,
+        status: targetStatus,
         paid_at: paidAt,
-        source_wallet_id: nextSourceWalletId,
-        note: input.note ?? null,
+        source_wallet_id:
+          existing.loan.payment_source === 'WALLET' ? nextSourceWalletId : null,
+        note: input.note === undefined ? existing.note : input.note,
       },
       include: {
         source_wallet: { select: { name: true } },
@@ -455,12 +479,19 @@ export async function updateLoanPaymentForOwner(
       });
     }
 
-    const remainingScheduled = await tx.loanPayment.count({
-      where: { loan_id: existing.loan.id, status: 'SCHEDULED' },
+    const paymentStatuses = await tx.loanPayment.findMany({
+      where: { loan_id: existing.loan.id },
+      select: { status: true },
     });
     await tx.loan.update({
       where: { id: existing.loan.id },
-      data: { status: remainingScheduled === 0 ? 'PAID_OFF' : 'ACTIVE' },
+      data: {
+        status: deriveLoanStatusFromPayments(
+          paymentStatuses.map((row) => ({
+            status: row.status as LoanPaymentListItem['status'],
+          })),
+        ),
+      },
     });
 
     return mapPayment({
