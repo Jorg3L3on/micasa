@@ -291,12 +291,9 @@ export default async function MonthlyPage({
       suggestedPeriod={suggestedPeriod}
       ownerQuery={ownerQuery}
       budgetPanel={budgetPanel}
+      firstTransactions={firstTransactions}
+      secondTransactions={secondTransactions}
       monthHeader={monthHeader}
-      prevHref={prevHref}
-      nextHref={hasNextMonth ? nextHref : null}
-      hasNextMonth={hasNextMonth}
-      prevMonthLabel={prevMonthLabel}
-      nextMonthLabel={nextMonthLabel}
     >
       <MonthlyFortnightView
         ownerKey={ownerKey}

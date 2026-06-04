@@ -50,8 +50,8 @@ ASSERT_SCRIPT='async (page) => {
     presupuestoMes: (await page.getByRole("heading", { name: "Presupuesto del mes" }).count()) > 0,
     topCategorias: (await page.getByRole("heading", { name: "Top categorías" }).count()) > 0,
     verReporte: (await page.getByRole("link", { name: /Ver reporte completo/i }).count()) > 0,
-    cambiarPeriodo: (await page.getByRole("button", { name: "Cambiar periodo de planificación" }).count()) > 0,
-    filtros: (await page.getByRole("button", { name: "Filtros de vista del panel" }).count()) > 0,
+    gastoPorCategoria: (await page.getByRole("region", { name: /Gasto por categoría/i }).count()) > 0,
+    gaugeArc: (await page.locator("path[stroke-linecap=round]").count()) >= 1,
   };
   await page.screenshot({ path: "output/playwright/panel-financiero-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightIncomeGaugeProps = {
@@ -12,25 +13,26 @@ type FortnightIncomeGaugeProps = {
 
 const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
 
-const polar = (cx: number, cy: number, r: number, angleDeg: number) => {
-  const rad = ((angleDeg - 180) * Math.PI) / 180;
+const GAUGE_CX = 60;
+const GAUGE_CY = 54;
+const GAUGE_R = 46;
+
+/** Arco superior: 180° = izquierda, 0° = derecha, 90° = arriba. */
+const pointOnArc = (degrees: number) => {
+  const rad = (degrees * Math.PI) / 180;
   return {
-    x: cx + r * Math.cos(rad),
-    y: cy + r * Math.sin(rad),
+    x: GAUGE_CX + GAUGE_R * Math.cos(rad),
+    y: GAUGE_CY - GAUGE_R * Math.sin(rad),
   };
 };
 
-const describeSemiArc = (
-  cx: number,
-  cy: number,
-  r: number,
-  startDeg: number,
-  endDeg: number,
-) => {
-  const start = polar(cx, cy, r, startDeg);
-  const end = polar(cx, cy, r, endDeg);
-  const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+const describeTopArc = (startDeg: number, endDeg: number) => {
+  const start = pointOnArc(startDeg);
+  const end = pointOnArc(endDeg);
+  const delta = Math.abs(startDeg - endDeg);
+  const largeArc = delta > 180 ? 1 : 0;
+  const sweep = startDeg > endDeg ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${GAUGE_R} ${GAUGE_R} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
 };
 
 export const FortnightIncomeGauge = ({
@@ -38,19 +40,12 @@ export const FortnightIncomeGauge = ({
   periodIncome,
   className,
 }: FortnightIncomeGaugeProps) => {
+  const gradientId = useId().replace(/:/g, '');
   const safePercent = clampPercent(Math.round(percentCommitted));
-  const cx = 60;
-  const cy = 58;
-  const radius = 44;
-  const startAngle = 0;
-  const endAngle = 180;
-  const progressAngle = startAngle + (safePercent / 100) * (endAngle - startAngle);
-
-  const trackPath = describeSemiArc(cx, cy, radius, startAngle, endAngle);
+  const trackPath = describeTopArc(180, 0);
+  const progressEnd = 180 - (safePercent / 100) * 180;
   const progressPath =
-    safePercent > 0
-      ? describeSemiArc(cx, cy, radius, startAngle, progressAngle)
-      : '';
+    safePercent > 0 ? describeTopArc(180, progressEnd) : '';
 
   return (
     <div
@@ -58,34 +53,40 @@ export const FortnightIncomeGauge = ({
       role="img"
       aria-label={`${safePercent}% del ingreso de la quincena ya comprometido; ingresos ${formatCurrency(periodIncome)}`}
     >
-      <div className="relative h-[4.5rem] w-[7.5rem] sm:h-[5rem] sm:w-[8.5rem]">
-        <svg viewBox="0 0 120 64" className="h-full w-full" aria-hidden>
+      <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
+        <svg viewBox="0 0 120 60" className="h-full w-full" aria-hidden>
           <defs>
-            <linearGradient id="fortnight-gauge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(var(--primary))" />
-              <stop offset="100%" stopColor="rgb(139 92 246)" />
+            <linearGradient
+              id={gradientId}
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="0%"
+            >
+              <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#8b5cf6" />
             </linearGradient>
           </defs>
           <path
             d={trackPath}
             fill="none"
             stroke="currentColor"
-            strokeWidth="9"
+            strokeWidth="10"
             strokeLinecap="round"
-            className="text-muted/35"
+            className="text-muted-foreground/30"
           />
           {progressPath ? (
             <path
               d={progressPath}
               fill="none"
-              stroke="url(#fortnight-gauge-gradient)"
-              strokeWidth="9"
+              stroke={`url(#${gradientId})`}
+              strokeWidth="10"
               strokeLinecap="round"
               className="transition-[d] duration-500"
             />
           ) : null}
         </svg>
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center pb-0.5 text-center">
           <span className="font-mono text-xl font-bold tabular-nums leading-none text-foreground sm:text-2xl">
             {safePercent}%
           </span>
@@ -94,7 +95,7 @@ export const FortnightIncomeGauge = ({
           </span>
         </div>
       </div>
-      <p className="mt-0.5 max-w-[9rem] text-center text-[10px] text-muted-foreground">
+      <p className="mt-1 max-w-[9rem] text-center text-[10px] text-muted-foreground">
         <span className="font-mono font-semibold tabular-nums text-foreground/90">
           {formatCurrency(periodIncome)}
         </span>
