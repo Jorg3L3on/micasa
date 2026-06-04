@@ -3,18 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FortnightViewControls } from '@/components/monthly/FortnightViewControls';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getMonthlyPreferenceScope } from '@/lib/planner/monthly-page';
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
@@ -28,7 +18,6 @@ import type {
   WalletListItem,
 } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
-import { SlidersHorizontal } from 'lucide-react';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
 const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
@@ -294,14 +283,6 @@ export default function MonthlyFortnightView({
     );
   }
 
-  const segmentBtn = (active: boolean) =>
-    cn(
-      'relative rounded-full px-3 py-1 text-xs font-bold transition-all duration-150',
-      active
-        ? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground shadow-sm ring-1 ring-primary/30'
-        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-    );
-
   return (
     <div
       className={cn(
@@ -310,97 +291,20 @@ export default function MonthlyFortnightView({
       )}
     >
       {walletStripSection}
-      <div
-        className="flex items-center justify-end gap-1.5"
-        role="region"
-        aria-label="Controles de vista de planificación"
-      >
-        {/* Layout toggle: Una | Ambas */}
-        <div className="flex items-center gap-0.5 rounded-full border border-border/50 bg-muted/40 p-0.5 shadow-inner backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={() => handleLayoutRadio('single')}
-            className={segmentBtn(layout === 'single')}
-            aria-pressed={layout === 'single'}
-            aria-label="Ver una quincena"
-          >
-            Una
-          </button>
-          <button
-            type="button"
-            onClick={() => handleLayoutRadio('both')}
-            className={segmentBtn(layout === 'both')}
-            aria-pressed={layout === 'both'}
-            aria-label="Ver ambas quincenas"
-          >
-            Ambas
-          </button>
-        </div>
-
-        {/* Period selector — only visible in single mode */}
-        {layout === 'single' && (
-          <div className="flex items-center gap-0.5 rounded-full border border-border/50 bg-muted/40 p-0.5 shadow-inner backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={() => handlePeriodChange('FIRST')}
-              className={segmentBtn(period === 'FIRST')}
-              aria-pressed={period === 'FIRST'}
-              aria-label={`Primera quincena: ${first.label}`}
-              title={first.label}
-            >
-              1ª
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePeriodChange('SECOND')}
-              className={segmentBtn(period === 'SECOND')}
-              aria-pressed={period === 'SECOND'}
-              aria-label={`Segunda quincena: ${second.label}`}
-              title={second.label}
-            >
-              2ª
-            </button>
-          </div>
-        )}
-
-        {/* Secondary settings: summary visibility + table density */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full border border-border/50 bg-muted/40 text-muted-foreground shadow-inner backdrop-blur-sm hover:bg-muted/60 hover:text-foreground"
-              aria-label="Opciones adicionales de vista"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-48">
-            <DropdownMenuCheckboxItem
-              checked={summaryVisible}
-              onCheckedChange={handleSummaryChecked}
-            >
-              Mostrar resumen
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Densidad de tabla
-            </DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={tableDensity}
-              onValueChange={handleTableDensityChange}
-            >
-              <DropdownMenuRadioItem value="comfortable">
-                Cómoda
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="compact">
-                Compacta
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <FortnightViewControls
+        year={year}
+        month={month}
+        layout={layout}
+        period={period}
+        firstLabel={first.label}
+        secondLabel={second.label}
+        summaryVisible={summaryVisible}
+        tableDensity={tableDensity}
+        onLayoutChange={(value) => handleLayoutRadio(value)}
+        onPeriodChange={(value) => handlePeriodChange(value)}
+        onSummaryVisibleChange={handleSummaryChecked}
+        onTableDensityChange={(value) => handleTableDensityChange(value)}
+      />
 
       <div
         className={cn(
