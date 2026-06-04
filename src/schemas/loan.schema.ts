@@ -40,6 +40,12 @@ export const loanPaymentStatusSchema = z.enum([
   'SKIPPED',
   'CANCELLED',
 ]);
+export const loanStatusSchema = z.enum([
+  'ACTIVE',
+  'PAID_OFF',
+  'PAUSED',
+  'CANCELLED',
+]);
 
 export const createLoanSchema = z
   .object({
@@ -94,5 +100,19 @@ export const updateLoanPaymentSchema = z
     }
   });
 
+export const updateLoanSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').optional(),
+  lender: z.string().trim().min(1, 'La entidad es obligatoria').optional(),
+  linkedWalletId: nullablePositiveIntFromForm.optional(),
+  incomeTemplateId: nullablePositiveIntFromForm.optional(),
+  notes: z.string().trim().max(500).optional().nullable(),
+  status: loanStatusSchema
+    .refine((status) => status !== 'PAID_OFF', {
+      message: 'El estado pagado se deriva del calendario de pagos',
+    })
+    .optional(),
+});
+
 export type CreateLoanInput = z.infer<typeof createLoanSchema>;
+export type UpdateLoanInput = z.infer<typeof updateLoanSchema>;
 export type UpdateLoanPaymentInput = z.infer<typeof updateLoanPaymentSchema>;

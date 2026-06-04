@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   findFirstWallet,
   findFirstIncomeTemplate,
+  findFirstLoan,
   createLoan,
+  updateLoan,
+  findManyLoanPayment,
   transaction,
   txFindFirstLoanPayment,
   txUpdateLoanPayment,
@@ -17,7 +20,10 @@ const {
 } = vi.hoisted(() => ({
   findFirstWallet: vi.fn(),
   findFirstIncomeTemplate: vi.fn(),
+  findFirstLoan: vi.fn(),
   createLoan: vi.fn(),
+  updateLoan: vi.fn(),
+  findManyLoanPayment: vi.fn(),
   transaction: vi.fn(),
   txFindFirstLoanPayment: vi.fn(),
   txUpdateLoanPayment: vi.fn(),
@@ -41,6 +47,11 @@ vi.mock('@/lib/prisma', () => ({
     },
     loan: {
       create: createLoan,
+      findFirst: findFirstLoan,
+      update: updateLoan,
+    },
+    loanPayment: {
+      findMany: findManyLoanPayment,
     },
   },
 }));
@@ -55,6 +66,8 @@ vi.mock('@/lib/finance/expense.service', () => ({
 
 import {
   createLoanForOwner,
+  listLoanPaymentsForPlannerMonth,
+  updateLoanForOwner,
   updateLoanPaymentForOwner,
 } from '@/lib/finance/loan.service';
 import { parseCalendarDate } from '@/lib/calendar-dates';
@@ -77,11 +90,36 @@ const baseInput = {
   notes: null,
 };
 
+const baseLoanRecord = {
+  id: 5,
+  name: 'Préstamo DiDi',
+  lender: 'DiDi',
+  type: 'PERSONAL',
+  status: 'ACTIVE',
+  principal_amount: '3000',
+  payment_amount: '500',
+  payment_count: 6,
+  frequency: 'FORTNIGHTLY',
+  start_date: parseCalendarDate('2026-05-18'),
+  payment_source: 'WALLET',
+  source_wallet_id: 10,
+  source_wallet: { name: 'BBVA' },
+  linked_wallet_id: null,
+  linked_wallet: null,
+  income_template_id: null,
+  income_template: null,
+  notes: null,
+  payments: [],
+};
+
 describe('createLoanForOwner', () => {
   beforeEach(() => {
     findFirstWallet.mockReset();
     findFirstIncomeTemplate.mockReset();
+    findFirstLoan.mockReset();
     createLoan.mockReset();
+    updateLoan.mockReset();
+    findManyLoanPayment.mockReset();
     findFirstIncomeTemplate.mockResolvedValue(null);
   });
 
@@ -161,6 +199,128 @@ describe('createLoanForOwner', () => {
     );
     expect(loan.payments).toHaveLength(6);
     expect(loan.nextPayment?.dueDate).toBe('2026-05-18');
+  });
+});
+
+describe('updateLoanForOwner', () => {
+  beforeEach(() => {
+    findFirstWallet.mockReset();
+    findFirstIncomeTemplate.mockReset();
+    findFirstLoan.mockReset();
+    updateLoan.mockReset();
+  });
+
+  it('updates safe metadata and relationships in the owner context', async () => {
+    findFirstLoan.mockResolvedValueOnce({
+      id: 5,
+      status: 'ACTIVE',
+      payment_source: 'PAYROLL_DEDUCTION',
+    });
+    findFirstWallet.mockResolvedValueOnce({ id: 11 });
+    findFirstIncomeTemplate.mockResolvedValueOnce({ id: 12 });
+    updateLoan.mockResolvedValueOnce({
+      ...baseLoanRecord,
+      name: 'Crédito nómina',
+      lender: 'Empresa',
+      type: 'PAYROLL',
+      payment_source: 'PAYROLL_DEDUCTION',
+      source_wallet_id: null,
+      source_wallet: null,
+      linked_wallet_id: 11,
+      linked_wallet: { name: 'Cuenta nómina' },
+      income_template_id: 12,
+      income_template: { name: 'Nómina' },
+      notes: 'Ajuste administrativo',
+    });
+
+    const loan = await updateLoanForOwner(5, ownerFilter, {
+      name: 'Crédito nómina',
+      lender: 'Empresa',
+      linkedWalletId: 11,
+      incomeTemplateId: 12,
+      notes: 'Ajuste administrativo',
+    });
+
+    expect(updateLoan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 5 },
+        data: expect.objectContaining({
+          name: 'Crédito nómina',
+          lender: 'Empresa',
+          linked_wallet_id: 11,
+          income_template_id: 12,
+          notes: 'Ajuste administrativo',
+        }),
+      }),
+    );
+    expect(loan.linkedWalletName).toBe('Cuenta nómina');
+    expect(loan.incomeTemplateName).toBe('Nómina');
+  });
+
+  it('enforces owner context before updating a loan', async () => {
+    findFirstLoan.mockResolvedValueOnce(null);
+
+    await expect(
+      updateLoanForOwner(999, ownerFilter, { name: 'Otro préstamo' }),
+    ).rejects.toThrow('Préstamo no encontrado');
+    expect(updateLoan).not.toHaveBeenCalled();
+  });
+
+  it('pauses active loans without changing payment history', async () => {
+    findFirstLoan.mockResolvedValueOnce({
+      id: 5,
+      status: 'ACTIVE',
+      payment_source: 'WALLET',
+    });
+    updateLoan.mockResolvedValueOnce({
+      ...baseLoanRecord,
+      status: 'PAUSED',
+    });
+
+    const loan = await updateLoanForOwner(5, ownerFilter, { status: 'PAUSED' });
+
+    expect(updateLoan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 5 },
+        data: expect.objectContaining({ status: 'PAUSED' }),
+      }),
+    );
+    expect(loan.status).toBe('PAUSED');
+  });
+
+  it('prevents cancelled loans from being reactivated', async () => {
+    findFirstLoan.mockResolvedValueOnce({
+      id: 5,
+      status: 'CANCELLED',
+      payment_source: 'WALLET',
+    });
+
+    await expect(
+      updateLoanForOwner(5, ownerFilter, { status: 'ACTIVE' }),
+    ).rejects.toThrow('Solo los préstamos pausados se pueden reanudar');
+    expect(updateLoan).not.toHaveBeenCalled();
+  });
+});
+
+describe('listLoanPaymentsForPlannerMonth', () => {
+  beforeEach(() => {
+    findManyLoanPayment.mockReset();
+  });
+
+  it('excludes paused and cancelled loans from planning visibility', async () => {
+    findManyLoanPayment.mockResolvedValueOnce([]);
+
+    await listLoanPaymentsForPlannerMonth(ownerFilter, 2026, 6);
+
+    expect(findManyLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          loan: expect.objectContaining({
+            status: { in: ['ACTIVE', 'PAID_OFF'] },
+          }),
+        }),
+      }),
+    );
   });
 });
 
