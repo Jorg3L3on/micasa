@@ -1,4 +1,4 @@
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import { parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import { wherePlanningCashFlowExpenses } from '@/lib/finance/expense-planning-scope';
@@ -24,10 +24,7 @@ import type {
 const MIN_ALERTABLE_AMOUNT = 0.005;
 
 const getCurrentPeriod = (): ResolvedDashboardPeriod => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
+  const [year, month, day] = todayCalendarDate().split('-').map(Number);
   const period: 'FIRST' | 'SECOND' = day <= 15 ? 'FIRST' : 'SECOND';
   return { year, month, period };
 };
@@ -431,6 +428,7 @@ export const getDashboardData = async (
             dueDay: Number(payment.dueDate.slice(8, 10)),
             category: payment.lender,
             categoryIcon: 'LANDMARK',
+            loanId: payment.loanId,
             loanName: payment.loanName,
             lender: payment.lender,
             paymentSource: payment.paymentSource,
@@ -488,8 +486,7 @@ export const getDashboardData = async (
     });
 
     const alerts = await measure('dashboard.alerts', async () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = parseCalendarDate(todayCalendarDate());
 
       const upcomingWithDue = totalsPayload.allExpensesUpcoming
         .map((e) => {
@@ -512,15 +509,13 @@ export const getDashboardData = async (
       const overdueInCurrent = upcomingWithDue.filter((o) => {
         if (o.is_paid) return false;
         if (o.amount <= MIN_ALERTABLE_AMOUNT) return false;
-        const d = new Date(o.dueDate);
-        d.setHours(0, 0, 0, 0);
+        const d = parseCalendarDate(o.dueDate);
         return d < today;
       });
       const overdueLoanPayments =
         totalsPayload.loanPayCurrent.upcoming.filter((payment) => {
           if (payment.amount <= MIN_ALERTABLE_AMOUNT) return false;
           const d = parseCalendarDate(payment.dueDate);
-          d.setHours(0, 0, 0, 0);
           return d < today;
         });
       const totalOverdueAmount =

@@ -866,10 +866,10 @@ export default function FortnightColumn({
                   'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
                   compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
                 )}
-                aria-label={`Prestamos, ${pendingLoanPaymentsCount} pendientes`}
+                aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >
                 <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
-                  {compactTabs ? 'Prest.' : 'Prestamos'}
+                  {compactTabs ? 'Prest.' : 'Préstamos'}
                   <Badge
                     variant={
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
@@ -1025,7 +1025,6 @@ export default function FortnightColumn({
                 ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
                 isCompact={tableDensity === 'compact'}
-                onPaymentUpdated={refreshData}
               />
             </div>
           </TabsContent>

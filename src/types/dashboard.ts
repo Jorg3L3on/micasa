@@ -60,6 +60,7 @@ export type DashboardData = {
     dueDay: number;
     category: string;
     categoryIcon: string | null;
+    loanId?: number;
     loanName?: string;
     lender?: string;
     paymentSource?: 'WALLET' | 'PAYROLL_DEDUCTION';

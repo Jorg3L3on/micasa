@@ -65,6 +65,7 @@ vi.mock('@/lib/finance/expense.service', () => ({
 }));
 
 import {
+  aggregateLoanPaymentsForFortnights,
   createLoanForOwner,
   listLoanPaymentsForPlannerMonth,
   updateLoanForOwner,
@@ -321,6 +322,105 @@ describe('listLoanPaymentsForPlannerMonth', () => {
         }),
       }),
     );
+  });
+});
+
+describe('aggregateLoanPaymentsForFortnights', () => {
+  beforeEach(() => {
+    findManyLoanPayment.mockReset();
+  });
+
+  const currentFortnight = [
+    {
+      id: 90,
+      start_date: parseCalendarDate('2026-06-01'),
+      end_date: parseCalendarDate('2026-06-15'),
+    },
+  ];
+
+  it('surfaces scheduled loan payments as upcoming obligations with loan context', async () => {
+    findManyLoanPayment.mockResolvedValueOnce([
+      {
+        id: 22,
+        loan_id: 5,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-10'),
+        amount: '150',
+        status: 'SCHEDULED',
+        paid_at: null,
+        source_wallet_id: 10,
+        source_wallet: { name: 'BBVA' },
+        linked_expense: null,
+        note: null,
+        loan: {
+          id: 5,
+          name: 'Préstamo DiDi',
+          lender: 'DiDi',
+          payment_source: 'WALLET',
+        },
+      },
+    ]);
+
+    const aggregate = await aggregateLoanPaymentsForFortnights(
+      ownerFilter,
+      currentFortnight,
+    );
+
+    expect(aggregate).toMatchObject({
+      total: 150,
+      paidTotal: 0,
+      pendingTotal: 150,
+      count: 1,
+      pendingCount: 1,
+    });
+    expect(aggregate.upcoming[0]).toMatchObject({
+      id: 22,
+      loanId: 5,
+      loanName: 'Préstamo DiDi',
+      lender: 'DiDi',
+      dueDate: '2026-06-10',
+      amount: 150,
+      sourceWalletId: 10,
+      sourceWalletName: 'BBVA',
+    });
+  });
+
+  it('does not add paid generated-expense loan payments to dashboard totals', async () => {
+    findManyLoanPayment.mockResolvedValueOnce([
+      {
+        id: 22,
+        loan_id: 5,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-10'),
+        amount: '150',
+        status: 'PAID',
+        paid_at: parseCalendarDate('2026-06-10'),
+        source_wallet_id: 10,
+        source_wallet: { name: 'BBVA' },
+        linked_expense: { id: 321 },
+        note: null,
+        loan: {
+          id: 5,
+          name: 'Préstamo DiDi',
+          lender: 'DiDi',
+          payment_source: 'WALLET',
+        },
+      },
+    ]);
+
+    const aggregate = await aggregateLoanPaymentsForFortnights(
+      ownerFilter,
+      currentFortnight,
+    );
+
+    expect(aggregate).toMatchObject({
+      total: 0,
+      paidTotal: 0,
+      pendingTotal: 0,
+      count: 1,
+      pendingCount: 0,
+    });
+    expect(aggregate.upcoming).toEqual([]);
   });
 });
 
