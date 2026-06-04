@@ -9,11 +9,11 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip';
-import { Check, ListTodo } from 'lucide-react';
+import { ArrowRight, Check, ListTodo } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { updateExpensePaidStatus } from '@/lib/api/transactions';
-import { updateLoanPaymentStatus } from '@/lib/api/loans';
+import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import type { DashboardData } from '@/types/dashboard';
 import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
@@ -21,22 +21,29 @@ type UpcomingObligationsCardProps = {
   data: DashboardData;
 };
 
-const isOverdue = (dueDate: string): boolean => {
-  const d = new Date(dueDate);
-  d.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
-};
-
 export default function UpcomingObligationsCard({
   data,
 }: UpcomingObligationsCardProps) {
   const router = useRouter();
   const { context } = useFinanceContext();
+  const todayYmd = useHydrationSafeTodayYmd();
   const obligations = data.upcomingObligations;
 
   const totalPendiente = obligations.reduce((sum, ob) => sum + ob.amount, 0);
+  const loanWorkflowHref = (
+    obligation: DashboardData['upcomingObligations'][number],
+  ) => {
+    const params = new URLSearchParams();
+    if (!(context.type === 'user' && context.id === 0)) {
+      params.set('ownerType', context.type);
+      params.set('ownerId', String(context.id));
+    }
+    if (obligation.loanId) {
+      params.set('loanId', String(obligation.loanId));
+    }
+    const query = params.toString();
+    return query ? `/loans?${query}` : '/loans';
+  };
 
   const handleMarkPaid = async (
     e: React.MouseEvent,
@@ -46,18 +53,10 @@ export default function UpcomingObligationsCard({
     e.stopPropagation();
     try {
       if (obligation.source === 'loan_payment') {
-        await updateLoanPaymentStatus(
-          obligation.id,
-          {
-            status: 'PAID',
-            paidAt: obligation.dueDate,
-            sourceWalletId: obligation.sourceWalletId,
-          },
-          context,
-        );
-      } else {
-        await updateExpensePaidStatus(obligation.id, true, context);
+        router.push(loanWorkflowHref(obligation));
+        return;
       }
+      await updateExpensePaidStatus(obligation.id, true, context);
       router.refresh();
     } catch (err) {
       console.error('Failed to mark as paid:', err);
@@ -104,7 +103,7 @@ export default function UpcomingObligationsCard({
               <TooltipProvider>
                 <ul className="space-y-2" role="list">
                   {obligations.map((ob) => {
-                    const overdue = isOverdue(ob.dueDate);
+                    const overdue = ob.dueDate < todayYmd;
                     return (
                       <li
                         key={`${ob.source}-${ob.id}`}
@@ -136,15 +135,30 @@ export default function UpcomingObligationsCard({
                                 variant="ghost"
                                 size="icon-xs"
                                 onClick={(e) => handleMarkPaid(e, ob)}
-                                aria-label={`Marcar ${ob.description} como pagado`}
+                                aria-label={
+                                  ob.source === 'loan_payment'
+                                    ? `Gestionar ${ob.description}`
+                                    : `Marcar ${ob.description} como pagado`
+                                }
                               >
-                                <Check
-                                  className="h-4 w-4 text-green-600 dark:text-green-400"
-                                  aria-hidden
-                                />
+                                {ob.source === 'loan_payment' ? (
+                                  <ArrowRight
+                                    className="h-4 w-4 text-amber-600 dark:text-amber-400"
+                                    aria-hidden
+                                  />
+                                ) : (
+                                  <Check
+                                    className="h-4 w-4 text-green-600 dark:text-green-400"
+                                    aria-hidden
+                                  />
+                                )}
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Marcar como pagado</TooltipContent>
+                            <TooltipContent>
+                              {ob.source === 'loan_payment'
+                                ? 'Gestionar pago seguro'
+                                : 'Marcar como pagado'}
+                            </TooltipContent>
                           </Tooltip>
                         </div>
                       </li>
