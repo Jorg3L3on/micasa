@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       month > 12
     ) {
       return NextResponse.json(
-        { error: 'year y month invalidos (month 1-12)' },
+        { error: 'year y month inválidos (month 1-12)' },
         { status: 400 },
       );
     }
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching planner loan payments:', error);
     return NextResponse.json(
-      { error: 'Error al obtener pagos de prestamos' },
+      { error: 'Error al obtener pagos de préstamos' },
       { status: 500 },
     );
   }

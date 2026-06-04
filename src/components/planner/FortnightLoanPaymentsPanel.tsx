@@ -73,7 +73,7 @@ export default function FortnightLoanPaymentsPanel({
         },
         context,
       );
-      toast.success('Pago de prestamo marcado como pagado');
+      toast.success('Pago de préstamo marcado como pagado');
       onPaymentUpdated?.();
     } catch (error) {
       toast.error(
@@ -97,7 +97,7 @@ export default function FortnightLoanPaymentsPanel({
         aria-label={`Prestamos: ${fortnightLabel}`}
       >
         <p className="text-muted-foreground">
-          No hay pagos de prestamos en esta quincena.
+          No hay pagos de préstamos en esta quincena.
         </p>
       </div>
     );
