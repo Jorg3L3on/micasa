@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +21,13 @@ import {
   BarChart3,
   CreditCard,
   Banknote,
+  CircleDollarSign,
+  PiggyBank,
+  Info,
 } from 'lucide-react';
+import { FortnightIncomeRing } from '@/components/monthly/FortnightIncomeRing';
+import { getFortnightIncomeCommittedPercent } from '@/components/monthly/fortnight-income-commitment';
+import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
 import type {
   FundingWalletBreakdownItem,
   PlannerCardChargesSummary,
@@ -97,24 +103,10 @@ export default function SummaryBlock({
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const periodDayRange =
-    year && month && period
-      ? period === 'FIRST'
-        ? '1–15'
-        : `16–${new Date(year, month, 0).getDate()}`
+  const headerMeta =
+    year != null && month != null && period != null
+      ? getFortnightSummaryHeader(year, month, period)
       : null;
-
-  const quincenaOrdinal =
-    period === 'FIRST'
-      ? 'Primera quincena'
-      : period === 'SECOND'
-        ? 'Segunda quincena'
-        : null;
-
-  const headerSubtitle =
-    quincenaOrdinal && periodDayRange
-      ? `${quincenaOrdinal} · Días ${periodDayRange}`
-      : quincenaOrdinal ?? (periodDayRange ? `Días ${periodDayRange}` : null);
 
   const hasUserIncome =
     userIncome &&
@@ -147,62 +139,87 @@ export default function SummaryBlock({
     ? pendiente
     : 0;
 
+  const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
+    tenemos,
+    pagado,
+    pendiente,
+  );
+  const showIncomeRing = tenemos > 0;
+
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
     return t;
   };
 
+  const metricHint = (text: string) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
+          aria-label={text}
+        >
+          <Info className="h-3 w-3" aria-hidden />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[14rem] text-xs">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+
+  const incomeRing = showIncomeRing ? (
+    <FortnightIncomeRing
+      percentCommitted={incomeCommittedPercent}
+      periodIncome={tenemos}
+      className="mx-auto shrink-0"
+    />
+  ) : null;
+
+  const metricColumnClass = (withDivider: boolean) =>
+    cn(
+      'min-w-0 py-1 sm:py-0',
+      withDivider && 'sm:border-l sm:border-border/50 sm:pl-4',
+    );
+
   return (
-    <Card className="relative gap-0 overflow-hidden rounded-2xl border-border/50 py-0 shadow-lg ring-1 ring-primary/5 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:ring-primary/10 dark:shadow-black/50 dark:before:via-white/8">
-      <CardHeader className="space-y-0 border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-2.5 py-1.5 dark:from-primary/15 dark:via-primary/7 sm:px-3 sm:py-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start gap-1.5 sm:gap-2.5">
+    <Card
+      className={cn(
+        'relative gap-0 overflow-hidden rounded-2xl border-violet-500/20 py-0 shadow-lg',
+        'bg-gradient-to-br from-violet-500/12 via-card to-primary/5',
+        'ring-1 ring-violet-500/10 dark:from-violet-500/18 dark:via-card dark:to-primary/8 dark:ring-violet-500/15',
+      )}
+      role="region"
+      aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
+    >
+      <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
             <span
-              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/25 to-primary/10 shadow-sm ring-1 ring-primary/30 dark:from-primary/30 dark:to-primary/12 dark:ring-primary/35 sm:h-7 sm:w-7"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20 shadow-sm ring-1 ring-primary/25"
               aria-hidden
             >
-              <BarChart3 className="h-3 w-3 text-primary sm:h-3.5 sm:w-3.5" />
+              <BarChart3 className="h-4 w-4 text-primary" />
             </span>
-            <div className="min-w-0 space-y-0">
-              <CardTitle className="text-xs font-bold leading-tight tracking-tight sm:text-sm">
-                Resumen de la quincena
+            <div className="min-w-0 space-y-0.5">
+              <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
+                {headerMeta?.title ?? 'Resumen de la quincena'}
               </CardTitle>
-              {headerSubtitle ? (
-                <p
-                  className={cn(
-                    'text-[11px] leading-snug text-muted-foreground/90 sm:text-xs',
-                    !isExpanded && 'hidden sm:block',
-                  )}
-                >
-                  {headerSubtitle}
+              {headerMeta?.dateRange ? (
+                <p className="text-xs text-muted-foreground">
+                  {headerMeta.dateRange}
                 </p>
               ) : null}
             </div>
           </div>
-          {!isExpanded && tenemos > 0 && (
-            <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">
-              <span
-                className={cn(
-                  'font-mono text-xs font-bold tabular-nums leading-tight sm:text-sm',
-                  billeterasVsPendienteAplica
-                    ? displayFundingNet >= 0
-                      ? 'text-emerald-700 dark:text-emerald-300'
-                      : 'text-destructive'
-                    : 'text-muted-foreground',
-                )}
-              >
-                {formatCurrency(displayFundingNet)}
-              </span>
-            </div>
-          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="h-7 w-7 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary sm:h-8 sm:w-8"
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded
@@ -222,99 +239,111 @@ export default function SummaryBlock({
             </TooltipContent>
           </Tooltip>
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-1.5 px-2.5 pb-2 pt-1.5 sm:px-3 sm:pb-2.5 sm:pt-2">
-        {/* Hero KPI strip */}
-        <div className="grid grid-cols-1 gap-1 sm:grid-cols-3 sm:gap-1.5">
-          {/* Left: Ingreso total de la quincena */}
-          <div
-            className={cn(
-              'relative overflow-hidden rounded-lg border border-blue-500/25 px-2 py-1.5',
-              'bg-gradient-to-br from-blue-500/10 via-background to-blue-500/3 dark:from-blue-500/18 dark:via-card dark:to-blue-500/5',
-              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
-            )}
-          >
-            <p className="truncate text-[10px] font-semibold leading-tight text-blue-700/80 dark:text-blue-300/80 sm:text-[11px]">
-              Ingreso
-            </p>
-            <p
-              className={cn(
-                'mt-0.5 font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
-                tenemos >= 0 ? 'text-foreground/90' : 'text-destructive',
-              )}
-            >
-              {formatCurrency(tenemos)}
-            </p>
-          </div>
+        {incomeRing ? (
+          <div className="flex justify-center lg:hidden">{incomeRing}</div>
+        ) : null}
 
-          {/* Center: restante tras gastos planeados */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div
-            className={cn(
-              'relative overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm',
-              trasPagarPlaneado >= 0
-                ? 'border-primary/35 bg-gradient-to-br from-primary/15 via-background to-primary/4 dark:from-primary/22 dark:via-card dark:to-primary/6'
-                : 'border-destructive/35 bg-gradient-to-br from-destructive/12 via-background to-destructive/3 dark:from-destructive/20 dark:via-card dark:to-destructive/5',
-              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent dark:before:via-white/10',
-            )}
+            className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-0"
+            role="group"
+            aria-label="Indicadores de la quincena"
           >
-            <p
-              className={cn(
-                'truncate text-[10px] font-semibold leading-tight sm:text-[11px]',
-                trasPagarPlaneado >= 0
-                  ? 'text-primary/85'
-                  : 'text-destructive/85',
-              )}
-            >
-              Restante
-            </p>
-            <p
-              className={cn(
-                'mt-0.5 font-mono text-base font-black tabular-nums leading-none tracking-tight sm:text-lg',
-                trasPagarPlaneado >= 0 ? 'text-primary' : 'text-destructive',
-              )}
-            >
-              {formatCurrency(trasPagarPlaneado)}
-            </p>
-          </div>
-
-          {/* Right: saldos Efectivo + Débito menos solo lo pendiente (quincena en curso o siguiente) */}
-          <div
-            className={cn(
-              'relative overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm',
-              billeterasVsPendienteAplica
-                ? displayFundingNet >= 0
-                  ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-background to-emerald-500/3 dark:from-emerald-500/16 dark:via-card dark:to-emerald-500/5'
-                  : 'border-destructive/35 bg-gradient-to-br from-destructive/12 via-background to-destructive/3 dark:from-destructive/20 dark:via-card dark:to-destructive/5'
-                : 'border-border/50 bg-gradient-to-br from-muted/30 via-background to-muted/10 text-muted-foreground dark:from-muted/20 dark:via-card dark:to-muted/5',
-              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent dark:before:via-white/8',
-            )}
-          >
-            <p
-              className={cn(
-                'truncate text-[10px] font-semibold leading-tight sm:text-[11px]',
-                billeterasVsPendienteAplica
-                  ? displayFundingNet >= 0
-                    ? 'text-emerald-700/85 dark:text-emerald-300/85'
-                    : 'text-destructive/85'
-                  : 'text-muted-foreground',
-              )}
-            >
-              Saldo real
-            </p>
-            <p
-              className={cn(
-                'mt-0.5 font-mono text-base font-black tabular-nums leading-none tracking-tight sm:text-lg',
-                billeterasVsPendienteAplica
-                  ? displayFundingNet >= 0
+            <div className={metricColumnClass(false)}>
+              <div className="mb-1 flex items-center gap-1">
+                <CircleDollarSign
+                  className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Ingresos del periodo
+                </span>
+                {metricHint('Lo que recibes en esta quincena')}
+              </div>
+              <p
+                className={cn(
+                  'font-mono text-lg font-bold tabular-nums sm:text-xl',
+                  tenemos >= 0
                     ? 'text-emerald-700 dark:text-emerald-300'
-                    : 'text-destructive'
-                  : 'text-muted-foreground',
-              )}
-            >
-              {formatCurrency(displayFundingNet)}
-            </p>
+                    : 'text-destructive',
+                )}
+              >
+                {formatCurrency(tenemos)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground sm:hidden">
+                Lo que tienes para este periodo
+              </p>
+              <p className="mt-0.5 hidden text-[10px] text-muted-foreground sm:block">
+                Lo que recibes en esta quincena
+              </p>
+            </div>
+
+            <div className={metricColumnClass(true)}>
+              <div className="mb-1 flex items-center gap-1">
+                <PiggyBank
+                  className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400"
+                  aria-hidden
+                />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="sm:hidden">Presupuesto libre</span>
+                  <span className="hidden sm:inline">Disponible para gastar</span>
+                </span>
+                {metricHint(
+                  'Dinero disponible después de lo planeado en la quincena',
+                )}
+              </div>
+              <p
+                className={cn(
+                  'font-mono text-lg font-bold tabular-nums sm:text-xl',
+                  trasPagarPlaneado >= 0
+                    ? 'text-sky-600 dark:text-sky-300'
+                    : 'text-destructive',
+                )}
+              >
+                {formatCurrency(trasPagarPlaneado)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                Lo que queda después de gastos planeados
+              </p>
+            </div>
+
+            <div className={metricColumnClass(true)}>
+              <div className="mb-1 flex items-center gap-1">
+                <Wallet
+                  className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Efectivo neto en cuentas
+                </span>
+                {metricHint(
+                  'Saldo en billeteras de efectivo y débito, menos lo pendiente por pagar en esta quincena',
+                )}
+              </div>
+              <p
+                className={cn(
+                  'font-mono text-lg font-bold tabular-nums sm:text-xl',
+                  !billeterasVsPendienteAplica
+                    ? 'text-muted-foreground'
+                    : displayFundingNet >= 0
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : 'text-destructive',
+                )}
+              >
+                {formatCurrency(displayFundingNet)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                {billeterasVsPendienteAplica
+                  ? 'Billeteras menos lo pendiente de la quincena'
+                  : 'Solo aplica a la quincena en curso o siguiente'}
+              </p>
+            </div>
           </div>
+
+          {incomeRing ? (
+            <div className="hidden shrink-0 lg:flex lg:pl-2">{incomeRing}</div>
+          ) : null}
         </div>
 
         {isExpanded && (
