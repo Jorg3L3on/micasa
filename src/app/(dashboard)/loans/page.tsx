@@ -14,6 +14,7 @@ import {
   Loader2,
   Plus,
   ReceiptText,
+  Undo2,
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import StatCard from '@/components/dashboard/StatCard';
@@ -39,14 +40,18 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { createLoan, listLoans } from '@/lib/api/loans';
+import { applyLoanPaymentAction, createLoan, listLoans } from '@/lib/api/loans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
 import type { CreateLoanInput } from '@/schemas/loan.schema';
-import type { LoanListItem, LoanPaymentListItem } from '@/types/loans';
+import type {
+  LoanListItem,
+  LoanPaymentActionValue,
+  LoanPaymentListItem,
+} from '@/types/loans';
 
 type LoanFormState = {
   name: string;
@@ -71,6 +76,16 @@ type LoanPaymentVisualStatus =
   | 'skipped'
   | 'cancelled'
   | 'overdue';
+type PaymentActionDraft = {
+  paymentId: number;
+  action: LoanPaymentActionValue;
+  paidAt: string;
+  sourceWalletId: string;
+  note: string;
+};
+type PaymentActionErrors = Partial<
+  Record<'paidAt' | 'sourceWalletId' | 'note' | 'general', string>
+>;
 
 const defaultStartDate = () => todayCalendarDate();
 
@@ -112,6 +127,48 @@ const paymentStatusLabel = (status: LoanPaymentVisualStatus) => {
   if (status === 'cancelled') return 'Cancelado';
   if (status === 'overdue') return 'Vencido';
   return 'Por pagar';
+};
+
+const paymentActionLabel = (action: LoanPaymentActionValue) => {
+  if (action === 'MARK_PAID') return 'Confirmar pago';
+  if (action === 'MARK_SCHEDULED') return 'Deshacer pago';
+  if (action === 'SKIP') return 'Omitir pago';
+  return 'Cancelar pago';
+};
+
+const paymentActionDescription = (
+  action: LoanPaymentActionValue,
+  paymentSource: LoanListItem['paymentSource'],
+) => {
+  if (action === 'MARK_PAID') {
+    return paymentSource === 'PAYROLL_DEDUCTION'
+      ? 'Se marcará como pagado sin generar salida de billetera porque es deducción de nómina.'
+      : 'Se marcará como pagado y se generará el gasto vinculado contra la billetera seleccionada.';
+  }
+  if (action === 'MARK_SCHEDULED') {
+    return 'Se regresará el pago a por pagar y se revertirá el gasto vinculado o el movimiento de billetera asociado.';
+  }
+  if (action === 'SKIP') {
+    return 'Omitir mantiene el adeudo pendiente para seguimiento y no genera salida de dinero.';
+  }
+  return 'Cancelar excluye este pago del calendario pagadero y no genera salida de dinero.';
+};
+
+const mapPaymentActionError = (message: string): PaymentActionErrors => {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes('billetera') ||
+    normalized.includes('saldo insuficiente') ||
+    normalized.includes('débito') ||
+    normalized.includes('debito') ||
+    normalized.includes('efectivo')
+  ) {
+    return { sourceWalletId: message };
+  }
+  if (normalized.includes('fecha')) {
+    return { paidAt: message };
+  }
+  return { general: message };
 };
 
 const getPaymentVisualStatus = (
@@ -193,6 +250,11 @@ export default function LoansPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<LoanStatusFilter>('ALL');
+  const [paymentActionDraft, setPaymentActionDraft] =
+    useState<PaymentActionDraft | null>(null);
+  const [paymentActionSubmitting, setPaymentActionSubmitting] = useState(false);
+  const [paymentActionErrors, setPaymentActionErrors] =
+    useState<PaymentActionErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
 
@@ -240,6 +302,8 @@ export default function LoansPage() {
     if (selectedLoanId === null) return;
     if (!loans.some((loan) => loan.id === selectedLoanId)) {
       setSelectedLoanId(null);
+      setPaymentActionDraft(null);
+      setPaymentActionErrors({});
     }
   }, [loans, selectedLoanId]);
 
@@ -253,27 +317,48 @@ export default function LoansPage() {
     statusFilter === 'ALL'
       ? loans
       : loans.filter((loan) => loan.status === statusFilter);
-  const selectedLoan =
-    selectedLoanId === null
-      ? null
-      : loans.find((loan) => loan.id === selectedLoanId) ?? null;
-  const selectedLoanPayments = selectedLoan
-    ? [...(selectedLoan.payments ?? [])].sort((a, b) => a.sequence - b.sequence)
-    : [];
-  const selectedScheduleCounts = selectedLoanPayments.reduce(
-    (counts, payment) => {
-      const visualStatus = getPaymentVisualStatus(payment, todayYmd);
-      counts[visualStatus] += 1;
-      return counts;
-    },
-    {
-      scheduled: 0,
-      paid: 0,
-      skipped: 0,
-      cancelled: 0,
-      overdue: 0,
-    } satisfies Record<LoanPaymentVisualStatus, number>,
+  const selectedLoan = useMemo(
+    () =>
+      selectedLoanId === null
+        ? null
+        : loans.find((loan) => loan.id === selectedLoanId) ?? null,
+    [loans, selectedLoanId],
   );
+  const selectedLoanPayments = useMemo(
+    () =>
+      selectedLoan
+        ? [...(selectedLoan.payments ?? [])].sort(
+            (a, b) => a.sequence - b.sequence,
+          )
+        : [],
+    [selectedLoan],
+  );
+  const selectedScheduleCounts = useMemo(
+    () =>
+      selectedLoanPayments.reduce(
+        (counts, payment) => {
+          const visualStatus = getPaymentVisualStatus(payment, todayYmd);
+          counts[visualStatus] += 1;
+          return counts;
+        },
+        {
+          scheduled: 0,
+          paid: 0,
+          skipped: 0,
+          cancelled: 0,
+          overdue: 0,
+        } satisfies Record<LoanPaymentVisualStatus, number>,
+      ),
+    [selectedLoanPayments, todayYmd],
+  );
+
+  useEffect(() => {
+    if (!paymentActionDraft) return;
+    if (!selectedLoanPayments.some((payment) => payment.id === paymentActionDraft.paymentId)) {
+      setPaymentActionDraft(null);
+      setPaymentActionErrors({});
+    }
+  }, [paymentActionDraft, selectedLoanPayments]);
 
   const setField = <K extends keyof LoanFormState>(
     key: K,
@@ -332,6 +417,97 @@ export default function LoansPage() {
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const setPaymentActionField = <K extends keyof PaymentActionDraft>(
+    key: K,
+    value: PaymentActionDraft[K],
+  ) => {
+    setPaymentActionDraft((current) =>
+      current ? { ...current, [key]: value } : current,
+    );
+    setPaymentActionErrors((current) => ({
+      ...current,
+      [key]: undefined,
+      general: undefined,
+    }));
+  };
+
+  const startPaymentAction = (
+    payment: LoanPaymentListItem,
+    action: LoanPaymentActionValue,
+  ) => {
+    const defaultWalletId =
+      payment.sourceWalletId ?? selectedLoan?.sourceWalletId ?? null;
+    setPaymentActionDraft({
+      paymentId: payment.id,
+      action,
+      paidAt: payment.paidAt ?? payment.dueDate,
+      sourceWalletId: defaultWalletId ? String(defaultWalletId) : '',
+      note: payment.note ?? '',
+    });
+    setPaymentActionErrors({});
+  };
+
+  const validatePaymentAction = () => {
+    if (!paymentActionDraft || !selectedLoan) {
+      return { general: 'Selecciona una acción para continuar.' };
+    }
+
+    const errors: PaymentActionErrors = {};
+    if (paymentActionDraft.action === 'MARK_PAID') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentActionDraft.paidAt)) {
+        errors.paidAt = 'Selecciona una fecha de pago válida.';
+      }
+      if (
+        selectedLoan.paymentSource === 'WALLET' &&
+        !paymentActionDraft.sourceWalletId
+      ) {
+        errors.sourceWalletId =
+          'Selecciona la billetera que pagará este préstamo.';
+      }
+    }
+
+    return errors;
+  };
+
+  const handlePaymentActionSubmit = async () => {
+    if (!paymentActionDraft || !selectedLoan) return;
+    const errors = validatePaymentAction();
+    if (Object.keys(errors).length > 0) {
+      setPaymentActionErrors(errors);
+      return;
+    }
+
+    setPaymentActionSubmitting(true);
+    setPaymentActionErrors({});
+    try {
+      const payload: Parameters<typeof applyLoanPaymentAction>[1] = {
+        action: paymentActionDraft.action,
+        note: paymentActionDraft.note.trim() || null,
+      };
+
+      if (paymentActionDraft.action === 'MARK_PAID') {
+        payload.paidAt = paymentActionDraft.paidAt;
+        if (selectedLoan.paymentSource === 'WALLET') {
+          payload.sourceWalletId = Number(paymentActionDraft.sourceWalletId);
+        }
+      }
+
+      await applyLoanPaymentAction(paymentActionDraft.paymentId, payload, context);
+      toast.success(`${paymentActionLabel(paymentActionDraft.action)} aplicado`);
+      setPaymentActionDraft(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'No se pudo actualizar el pago del préstamo';
+      setPaymentActionErrors(mapPaymentActionError(message));
+      toast.error(message);
+    } finally {
+      setPaymentActionSubmitting(false);
     }
   };
 
@@ -548,7 +724,11 @@ export default function LoansPage() {
                     variant="outline"
                     size="sm"
                     className="w-fit gap-1.5 justify-self-start md:justify-self-end"
-                    onClick={() => setSelectedLoanId(loan.id)}
+                    onClick={() => {
+                      setPaymentActionDraft(null);
+                      setPaymentActionErrors({});
+                      setSelectedLoanId(loan.id);
+                    }}
                     aria-label={`Ver detalle de ${loan.name}`}
                   >
                     <Eye className="h-3.5 w-3.5" aria-hidden />
@@ -796,7 +976,11 @@ export default function LoansPage() {
       <Dialog
         open={selectedLoan !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedLoanId(null);
+          if (!open) {
+            setSelectedLoanId(null);
+            setPaymentActionDraft(null);
+            setPaymentActionErrors({});
+          }
         }}
       >
         {selectedLoan ? (
@@ -959,6 +1143,8 @@ export default function LoansPage() {
                       const visualStatus = getPaymentVisualStatus(payment, todayYmd);
                       const tone = paymentStatusTone(visualStatus);
                       const StatusIcon = tone.icon;
+                      const isActionOpen =
+                        paymentActionDraft?.paymentId === payment.id;
                       const paymentSource =
                         payment.sourceWalletName ??
                         selectedLoan.sourceWalletName ??
@@ -1017,9 +1203,220 @@ export default function LoansPage() {
                             ) : null}
                           </div>
 
-                          <p className="font-mono text-sm font-bold tabular-nums text-foreground sm:text-right">
-                            {formatCurrency(payment.amount)}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                            <p className="font-mono text-sm font-bold tabular-nums text-foreground sm:text-right">
+                              {formatCurrency(payment.amount)}
+                            </p>
+                            {payment.status === 'SCHEDULED' ? (
+                              <div className="flex flex-wrap justify-end gap-1.5">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 gap-1 px-2 text-[10px]"
+                                  onClick={() =>
+                                    startPaymentAction(payment, 'MARK_PAID')
+                                  }
+                                  disabled={paymentActionSubmitting}
+                                >
+                                  <CheckCircle2 className="h-3 w-3" aria-hidden />
+                                  Pagar
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1 px-2 text-[10px] text-muted-foreground"
+                                  onClick={() => startPaymentAction(payment, 'SKIP')}
+                                  disabled={paymentActionSubmitting}
+                                >
+                                  <CircleSlash className="h-3 w-3" aria-hidden />
+                                  Omitir
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1 px-2 text-[10px] text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    startPaymentAction(payment, 'CANCEL')
+                                  }
+                                  disabled={paymentActionSubmitting}
+                                >
+                                  <CircleSlash className="h-3 w-3" aria-hidden />
+                                  Cancelar
+                                </Button>
+                              </div>
+                            ) : null}
+                            {payment.status === 'PAID' ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 px-2 text-[10px]"
+                                onClick={() =>
+                                  startPaymentAction(payment, 'MARK_SCHEDULED')
+                                }
+                                disabled={paymentActionSubmitting}
+                              >
+                                <Undo2 className="h-3 w-3" aria-hidden />
+                                Deshacer
+                              </Button>
+                            ) : null}
+                          </div>
+
+                          {isActionOpen && paymentActionDraft ? (
+                            <div className="rounded-xl border border-border/60 bg-background p-3 shadow-sm sm:col-span-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {paymentActionLabel(paymentActionDraft.action)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {paymentActionDescription(
+                                    paymentActionDraft.action,
+                                    selectedLoan.paymentSource,
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                {paymentActionDraft.action === 'MARK_PAID' ? (
+                                  <>
+                                    <div className="space-y-1.5">
+                                      <Label htmlFor={`loan-payment-${payment.id}-paid-at`}>
+                                        Fecha de pago
+                                      </Label>
+                                      <Input
+                                        id={`loan-payment-${payment.id}-paid-at`}
+                                        type="date"
+                                        value={paymentActionDraft.paidAt}
+                                        onChange={(event) =>
+                                          setPaymentActionField(
+                                            'paidAt',
+                                            event.target.value,
+                                          )
+                                        }
+                                        aria-invalid={Boolean(paymentActionErrors.paidAt)}
+                                        className={cn(
+                                          paymentActionErrors.paidAt &&
+                                            'border-destructive focus-visible:ring-destructive/30',
+                                        )}
+                                      />
+                                      {paymentActionErrors.paidAt ? (
+                                        <p className="text-xs text-destructive">
+                                          {paymentActionErrors.paidAt}
+                                        </p>
+                                      ) : null}
+                                    </div>
+
+                                    {selectedLoan.paymentSource === 'WALLET' ? (
+                                      <div className="space-y-1.5">
+                                        <Label>Billetera de pago</Label>
+                                        <Select
+                                          value={paymentActionDraft.sourceWalletId}
+                                          onValueChange={(value) =>
+                                            setPaymentActionField(
+                                              'sourceWalletId',
+                                              value,
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger
+                                            className={cn(
+                                              paymentActionErrors.sourceWalletId &&
+                                                'border-destructive focus:ring-destructive/30',
+                                            )}
+                                            aria-invalid={Boolean(
+                                              paymentActionErrors.sourceWalletId,
+                                            )}
+                                          >
+                                            <SelectValue placeholder="Selecciona billetera" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {fundingWallets.map((wallet) => (
+                                              <SelectItem
+                                                key={wallet.id}
+                                                value={String(wallet.id)}
+                                              >
+                                                {wallet.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        {paymentActionErrors.sourceWalletId ? (
+                                          <p className="text-xs text-destructive">
+                                            {paymentActionErrors.sourceWalletId}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                  </>
+                                ) : null}
+
+                                <div className="space-y-1.5 sm:col-span-2">
+                                  <Label htmlFor={`loan-payment-${payment.id}-note`}>
+                                    Nota opcional
+                                  </Label>
+                                  <Textarea
+                                    id={`loan-payment-${payment.id}-note`}
+                                    value={paymentActionDraft.note}
+                                    onChange={(event) =>
+                                      setPaymentActionField(
+                                        'note',
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="Motivo o referencia del cambio"
+                                    className="min-h-20"
+                                  />
+                                  {paymentActionErrors.note ? (
+                                    <p className="text-xs text-destructive">
+                                      {paymentActionErrors.note}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              {paymentActionErrors.general ? (
+                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                                  {paymentActionErrors.general}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setPaymentActionDraft(null);
+                                    setPaymentActionErrors({});
+                                  }}
+                                  disabled={paymentActionSubmitting}
+                                >
+                                  Cerrar
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className={cn(
+                                    'gap-2',
+                                    paymentActionSubmitting && 'opacity-80',
+                                  )}
+                                  onClick={() => void handlePaymentActionSubmit()}
+                                  disabled={paymentActionSubmitting}
+                                >
+                                  {paymentActionSubmitting ? (
+                                    <Loader2
+                                      className="h-4 w-4 animate-spin"
+                                      aria-hidden
+                                    />
+                                  ) : null}
+                                  {paymentActionLabel(paymentActionDraft.action)}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
                         </li>
                       );
                     })}

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching loans:', error);
     return NextResponse.json(
-      { error: 'Error al obtener los prestamos' },
+      { error: 'Error al obtener los préstamos' },
       { status: 500 },
     );
   }
@@ -41,12 +41,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Error de validacion', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
     const message =
-      error instanceof Error ? error.message : 'Error al crear el prestamo';
+      error instanceof Error ? error.message : 'Error al crear el préstamo';
     console.error('Error creating loan:', error);
     return NextResponse.json({ error: message }, { status: 400 });
   }

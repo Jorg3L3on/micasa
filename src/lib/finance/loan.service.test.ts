@@ -93,7 +93,7 @@ describe('createLoanForOwner', () => {
 
     await expect(
       createLoanForOwner('user', 1, ownerFilter, baseInput),
-    ).rejects.toThrow('efectivo o debito');
+    ).rejects.toThrow('efectivo o débito');
     expect(createLoan).not.toHaveBeenCalled();
   });
 
