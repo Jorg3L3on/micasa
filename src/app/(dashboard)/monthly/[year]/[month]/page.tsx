@@ -1,96 +1,13 @@
 import { notFound } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
-import { fetchFromApi, type OwnerContext } from '@/lib/api-server';
+import { getMonthlyPageData } from '@/features/monthly/server/monthly.service';
 import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context';
-import { listWalletsByOwner } from '@/lib/finance/wallet.service';
-import {
-  getDuePaymentsForCurrentFortnight,
-  getDuePaymentsForPlannerMonth,
-} from '@/lib/finance/credit-card-statement.service';
-import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { parseMonthlyRouteParams } from '@/lib/planner/monthly-page';
-import type {
-  WalletListItem,
-  DuePaymentItem,
-  PlannerDuePaymentsResponse,
-  PlannerCardChargesSummary,
-  PlannerOrphanCardPaymentsSummary,
-  PlannerCardStatementDueSummary,
-  ReportsSummaryFundingFields,
-} from '@/types/catalog';
-import type { PlannerLoanPaymentsResponse } from '@/types/loans';
-
-type Transaction = {
-  id: number;
-  date: string;
-  description: string;
-  amount: number | string;
-  category: string;
-  paymentMethod: string;
-  is_paid: boolean;
-};
-
-type Summary = {
-  totalIncome: number;
-  totalExpense: number;
-  totalPaid: number;
-  totalUnpaid: number;
-  balance: number;
-  userIncome?: Array<{
-    fortnightId: number;
-    userIncome: Array<{ userId: number; userName: string; income: number }>;
-  }>;
-  planningExpenseCount?: number;
-  planningPaidExpenseCount?: number;
-  planningUnpaidExpenseCount?: number;
-  cardCharges?: PlannerCardChargesSummary | null;
-  planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
-  planningCardStatementDue?: PlannerCardStatementDueSummary | null;
-} & ReportsSummaryFundingFields;
-
-type FortnightInfo = {
-  label: string;
-  id: number;
-  period: 'FIRST' | 'SECOND';
-};
-
-type OwnerSearchParams = Record<string, string | string[] | undefined>;
-
-type MonthlyPageDataInput = {
-  yearParam: string;
-  monthParam: string;
-  year: number;
-  month: number;
-  prevYear: number;
-  prevMonthStr: string;
-  nextYear: number;
-  nextMonthStr: string;
-  ownerContext?: OwnerContext;
-  ownerSearchParams: OwnerSearchParams;
-  isCurrentMonth: boolean;
-};
-
-type MonthlyPageData = {
-  firstFortnightInfo: FortnightInfo | null;
-  secondFortnightInfo: FortnightInfo | null;
-  prevFirstInfo: FortnightInfo | null;
-  prevSecondInfo: FortnightInfo | null;
-  nextFirstInfo: FortnightInfo | null;
-  nextSecondInfo: FortnightInfo | null;
-  wallets: WalletListItem[];
-  duePayments: DuePaymentItem[];
-  plannerDue: PlannerDuePaymentsResponse;
-  plannerLoanDue: PlannerLoanPaymentsResponse;
-  firstTransactions: Transaction[];
-  secondTransactions: Transaction[];
-  firstSummary: Summary | null;
-  secondSummary: Summary | null;
-};
 
 function getMonthName(month: number): string {
   const months = [
@@ -110,192 +27,6 @@ function getMonthName(month: number): string {
   return months[month - 1] || '';
 }
 
-function normalizeOwnerContext(
-  searchParams: { ownerType?: string; ownerId?: string },
-): OwnerContext | undefined {
-  if (!searchParams.ownerType || !searchParams.ownerId) return undefined;
-  if (searchParams.ownerType !== 'user' && searchParams.ownerType !== 'house') {
-    return undefined;
-  }
-  const ownerId = Number(searchParams.ownerId);
-  if (!Number.isInteger(ownerId) || ownerId <= 0) return undefined;
-  return {
-    ownerType: searchParams.ownerType,
-    ownerId,
-  };
-}
-
-async function getFortnightInfo(
-  year: string,
-  month: string,
-  period: 'FIRST' | 'SECOND',
-  ownerContext?: OwnerContext,
-): Promise<FortnightInfo | null> {
-  const response = await fetchFromApi<{
-    id: number;
-    label: string;
-    year: number;
-    month: number;
-    period: string;
-  } | null>(
-    `/api/fortnights?year=${year}&month=${month}&period=${period}`,
-    ownerContext,
-  );
-
-  if (response === null) return null;
-
-  return {
-    label: response.label,
-    id: response.id,
-    period,
-  };
-}
-
-async function getTransactions(
-  year: string,
-  month: string,
-  period: 'FIRST' | 'SECOND',
-  ownerContext?: OwnerContext,
-): Promise<Transaction[]> {
-  return fetchFromApi<Transaction[]>(
-    `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense&exclude_credit_installment=true`,
-    ownerContext,
-  );
-}
-
-async function getSummary(
-  year: string,
-  month: string,
-  period: 'FIRST' | 'SECOND',
-  ownerContext?: OwnerContext,
-): Promise<Summary> {
-  return fetchFromApi<Summary>(
-    `/api/reports?type=summary&year=${year}&month=${month}&period=${period}&exclude_credit_installment=true`,
-    ownerContext,
-  );
-}
-
-async function loadActiveWalletsForMonthlyPage(
-  searchParams: OwnerSearchParams,
-): Promise<WalletListItem[]> {
-  const ctx = await getOwnerContextFromPageSearchParams(searchParams);
-  if ('error' in ctx) throw new Error('No se pudo resolver el propietario');
-  const wallets = await listWalletsByOwner(ctx.ownerFilter);
-  return wallets.filter((w) => w.active);
-}
-
-async function loadDuePaymentsForCurrentFortnightPage(
-  searchParams: OwnerSearchParams,
-): Promise<DuePaymentItem[]> {
-  const ctx = await getOwnerContextFromPageSearchParams(searchParams);
-  if ('error' in ctx) throw new Error('No se pudo resolver el propietario');
-  return getDuePaymentsForCurrentFortnight(ctx.ownerFilter);
-}
-
-async function loadPlannerDuePaymentsForMonthPage(
-  year: number,
-  month: number,
-  searchParams: OwnerSearchParams,
-): Promise<PlannerDuePaymentsResponse> {
-  const ctx = await getOwnerContextFromPageSearchParams(searchParams);
-  if ('error' in ctx) throw new Error('No se pudo resolver el propietario');
-  return getDuePaymentsForPlannerMonth(ctx.ownerFilter, year, month);
-}
-
-async function loadPlannerLoanPaymentsForMonthPage(
-  year: number,
-  month: number,
-  searchParams: OwnerSearchParams,
-): Promise<PlannerLoanPaymentsResponse> {
-  const ctx = await getOwnerContextFromPageSearchParams(searchParams);
-  if ('error' in ctx) throw new Error('No se pudo resolver el propietario');
-  return listLoanPaymentsForPlannerMonth(ctx.ownerFilter, year, month);
-}
-
-async function loadMonthlyPageData({
-  yearParam,
-  monthParam,
-  year,
-  month,
-  prevYear,
-  prevMonthStr,
-  nextYear,
-  nextMonthStr,
-  ownerContext,
-  ownerSearchParams,
-  isCurrentMonth,
-}: MonthlyPageDataInput): Promise<MonthlyPageData> {
-  const [
-    firstFortnightInfo,
-    secondFortnightInfo,
-    prevFirstInfo,
-    prevSecondInfo,
-    nextFirstInfo,
-    nextSecondInfo,
-    wallets,
-    duePayments,
-    plannerDue,
-    plannerLoanDue,
-  ] = await Promise.all([
-    getFortnightInfo(yearParam, monthParam, 'FIRST', ownerContext),
-    getFortnightInfo(yearParam, monthParam, 'SECOND', ownerContext),
-    getFortnightInfo(String(prevYear), prevMonthStr, 'FIRST', ownerContext),
-    getFortnightInfo(String(prevYear), prevMonthStr, 'SECOND', ownerContext),
-    getFortnightInfo(String(nextYear), nextMonthStr, 'FIRST', ownerContext),
-    getFortnightInfo(String(nextYear), nextMonthStr, 'SECOND', ownerContext),
-    loadActiveWalletsForMonthlyPage(ownerSearchParams),
-    isCurrentMonth
-      ? loadDuePaymentsForCurrentFortnightPage(ownerSearchParams)
-      : Promise.resolve([] as DuePaymentItem[]),
-    loadPlannerDuePaymentsForMonthPage(year, month, ownerSearchParams),
-    loadPlannerLoanPaymentsForMonthPage(year, month, ownerSearchParams),
-  ]);
-
-  if (firstFortnightInfo === null || secondFortnightInfo === null) {
-    return {
-      firstFortnightInfo,
-      secondFortnightInfo,
-      prevFirstInfo,
-      prevSecondInfo,
-      nextFirstInfo,
-      nextSecondInfo,
-      wallets,
-      duePayments,
-      plannerDue,
-      plannerLoanDue,
-      firstTransactions: [],
-      secondTransactions: [],
-      firstSummary: null,
-      secondSummary: null,
-    };
-  }
-
-  const [firstTransactions, secondTransactions, firstSummary, secondSummary] =
-    await Promise.all([
-      getTransactions(yearParam, monthParam, 'FIRST', ownerContext),
-      getTransactions(yearParam, monthParam, 'SECOND', ownerContext),
-      getSummary(yearParam, monthParam, 'FIRST', ownerContext),
-      getSummary(yearParam, monthParam, 'SECOND', ownerContext),
-    ]);
-
-  return {
-    firstFortnightInfo,
-    secondFortnightInfo,
-    prevFirstInfo,
-    prevSecondInfo,
-    nextFirstInfo,
-    nextSecondInfo,
-    wallets,
-    duePayments,
-    plannerDue,
-    plannerLoanDue,
-    firstTransactions,
-    secondTransactions,
-    firstSummary,
-    secondSummary,
-  };
-}
-
 export default async function MonthlyPage({
   params,
   searchParams,
@@ -308,7 +39,11 @@ export default async function MonthlyPage({
   const parsedParams = parseMonthlyRouteParams(yearParam, monthParam);
   if (!parsedParams.ok) notFound();
 
-  const ownerContext = normalizeOwnerContext(resolvedSearchParams);
+  const ownerContext = await getOwnerContextFromPageSearchParams(
+    resolvedSearchParams,
+  );
+  if ('error' in ownerContext) notFound();
+
   const { year, month } = parsedParams.value;
   const monthName = getMonthName(month);
 
@@ -319,15 +54,8 @@ export default async function MonthlyPage({
   const prevMonthStr = prevMonth.toString().padStart(2, '0');
   const nextMonthStr = nextMonth.toString().padStart(2, '0');
 
-  const ownerSearchParams: OwnerSearchParams = {
-    ownerType: resolvedSearchParams.ownerType,
-    ownerId: resolvedSearchParams.ownerId,
-  };
-
   const ownerQuery =
-    ownerContext &&
-    typeof ownerContext.ownerId === 'number' &&
-    ownerContext.ownerType
+    ownerContext.ownerType && ownerContext.ownerId
       ? `?ownerType=${ownerContext.ownerType}&ownerId=${ownerContext.ownerId}`
       : '';
   const prevHref = `/monthly/${prevYear}/${prevMonthStr}${ownerQuery}`;
@@ -338,19 +66,18 @@ export default async function MonthlyPage({
   const currentMonth = now.getMonth() + 1;
   const isCurrentMonth = year === currentYear && month === currentMonth;
 
-  let pageData: MonthlyPageData;
+  let pageData;
   try {
-    pageData = await loadMonthlyPageData({
-      yearParam,
-      monthParam,
+    pageData = await getMonthlyPageData({
+      ownerFilter: ownerContext.ownerFilter,
       year,
       month,
+      yearParam,
+      monthParam,
       prevYear,
       prevMonthStr,
       nextYear,
       nextMonthStr,
-      ownerContext,
-      ownerSearchParams,
       isCurrentMonth,
     });
   } catch (error) {
@@ -414,9 +141,7 @@ export default async function MonthlyPage({
   const secondFortnightId = secondFortnightInfo?.id || 0;
   const monthIsMissing = firstFortnightInfo === null || secondFortnightInfo === null;
 
-  const ownerKey = ownerContext
-    ? `${ownerContext.ownerType}-${ownerContext.ownerId}`
-    : 'user-default';
+  const ownerKey = `${ownerContext.ownerType}-${ownerContext.ownerId}`;
 
   if (monthIsMissing) {
     return (

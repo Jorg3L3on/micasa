@@ -1,8 +1,7 @@
-import { formatCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
   createTransactionSchema,
   updateTransactionSchema,
@@ -13,17 +12,9 @@ import {
   updateExpense,
 } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
-import type { Prisma } from '@/generated/prisma/client';
-import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
-import {
-  buildFortnightWhereForReport,
-  linkedCardPaymentExpenseIds,
-  listCreditCardPaymentsForPlanning,
-  mapCreditCardPaymentToTransactionRow,
-  unionPaidAtRangeFromFortnights,
-} from '@/lib/finance/planning-credit-card-payments';
+import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
 
-function decimalToNumber(value: unknown): number {
+const decimalToNumber = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (
     typeof value === 'object' &&
@@ -35,7 +26,7 @@ function decimalToNumber(value: unknown): number {
   }
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
-}
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,164 +44,22 @@ export async function GET(request: NextRequest) {
       searchParams.get('exclude_credit_installment') === 'true' ||
       searchParams.get('exclude_credit_msi') === 'true';
 
-    let fortnightIds: number[] | undefined;
-    if (month || year || period) {
-      const base: { month?: number; year?: number; period?: 'FIRST' | 'SECOND' } = {};
-      if (month) base.month = parseInt(month, 10);
-      if (year) base.year = parseInt(year, 10);
-      if (period) base.period = period as 'FIRST' | 'SECOND';
-
-      const fortnights = await prisma.fortnight.findMany({
-        where: { ...ownerFilter, ...base },
-        select: { id: true },
-      });
-      fortnightIds = fortnights.map((f) => f.id);
-      if (fortnightIds.length === 0) fortnightIds = [];
-    }
-
-    const is_paid =
+    const isPaid =
       isPaidParam === 'true'
         ? true
         : isPaidParam === 'false'
           ? false
           : undefined;
 
-    let expenseWhere: Prisma.ExpenseWhereInput = { ...ownerFilter };
-    if (fortnightIds !== undefined) {
-      expenseWhere.fortnight_id = { in: fortnightIds };
-    }
-    if (is_paid !== undefined) {
-      expenseWhere.is_paid = is_paid;
-    }
-    if (excludeCreditInstallment) {
-      expenseWhere = {
-        AND: [expenseWhere, whereExcludeCreditInstallments()],
-      };
-    }
-
-    const expenses = await prisma.expense.findMany({
-      where: expenseWhere,
-      include: {
-        category: { select: { name: true, icon: true } },
-        wallet: { select: { name: true, type: true } },
-      },
-      orderBy: { created_at: 'desc' },
+    const combined = await listPlanningTransactions({
+      ownerFilter,
+      month,
+      year,
+      period,
+      type,
+      isPaid,
+      excludeCreditInstallment,
     });
-
-    let cardPaymentsForPlanning: Awaited<
-      ReturnType<typeof listCreditCardPaymentsForPlanning>
-    > = [];
-    let linkedCardPaymentExpenses = new Set<number>();
-    if (excludeCreditInstallment && type !== 'income') {
-      const fnWhere = buildFortnightWhereForReport(
-        ownerFilter,
-        month,
-        year,
-        period,
-      );
-      if (fnWhere != null) {
-        const planningFortnights = await prisma.fortnight.findMany({
-          where: fnWhere as Prisma.FortnightWhereInput,
-          select: { start_date: true, end_date: true },
-        });
-        const paidAtRange = unionPaidAtRangeFromFortnights(planningFortnights);
-        cardPaymentsForPlanning = await listCreditCardPaymentsForPlanning(
-          ownerFilter,
-          paidAtRange,
-        );
-        linkedCardPaymentExpenses = linkedCardPaymentExpenseIds(
-          cardPaymentsForPlanning,
-        );
-      }
-    }
-
-    const expenseTransactions = expenses
-      .filter(
-        (expense) =>
-          !excludeCreditInstallment ||
-          !linkedCardPaymentExpenses.has(expense.id),
-      )
-      .map((expense) => {
-      const dateValue = expense.payment_date || expense.created_at;
-      const dateStr =
-        dateValue instanceof Date
-          ? formatCalendarDate(dateValue)
-          : formatCalendarDate(new Date(dateValue));
-      return {
-        id: expense.id,
-        date: dateStr,
-        description: expense.description,
-        amount: decimalToNumber(expense.amount),
-        category: expense.category?.name ?? '',
-        categoryIcon: expense.category?.icon ?? null,
-        paymentMethod: expense.wallet?.name || 'Efectivo',
-        wallet_id: expense.wallet_id ?? null,
-        wallet_type: expense.wallet?.type ?? null,
-        planning_row_kind: 'expense' as const,
-        type: 'expense',
-        is_paid: expense.is_paid,
-        payment_date: expense.payment_date,
-        due_day: (expense as { due_day?: number | null }).due_day ?? null,
-      };
-    });
-
-    const cardPaymentTransactions =
-      is_paid === false
-        ? []
-        : cardPaymentsForPlanning.map(mapCreditCardPaymentToTransactionRow);
-
-    const incomeWhere: Record<string, unknown> = {
-      ...ownerFilter,
-      source: { not: '__OVERRIDE__' },
-    };
-    if (fortnightIds !== undefined) {
-      incomeWhere.fortnight_id = { in: fortnightIds };
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    incomeWhere.received_at = { lte: today };
-
-    const incomes = await prisma.income.findMany({
-      where: incomeWhere,
-      orderBy: { received_at: 'desc' },
-    });
-
-    const incomeTransactions = incomes.map((income) => {
-      const dateValue = income.received_at || income.created_at;
-      const dateStr =
-        dateValue instanceof Date
-          ? formatCalendarDate(dateValue)
-          : formatCalendarDate(new Date(dateValue));
-      return {
-        id: income.id,
-        date: dateStr,
-        description: income.source ?? 'Ingreso',
-        amount: decimalToNumber(income.amount),
-        category: '',
-        categoryIcon: null,
-        paymentMethod: 'Ingreso',
-        type: 'income' as const,
-        is_paid: true,
-        due_day: null,
-      };
-    });
-
-    let combined: Array<
-      | (typeof expenseTransactions)[number]
-      | (typeof cardPaymentTransactions)[number]
-      | (typeof incomeTransactions)[number]
-    > = [
-      ...expenseTransactions,
-      ...cardPaymentTransactions,
-      ...incomeTransactions,
-    ];
-
-    if (type === 'income' || type === 'expense') {
-      combined = combined.filter((t) => t.type === type);
-    }
-
-    combined.sort((a, b) => b.date.localeCompare(a.date));
 
     return NextResponse.json(combined, { status: 200 });
   } catch (error) {
