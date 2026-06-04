@@ -16,7 +16,7 @@ export async function PATCH(
     const paymentId = Number(id);
     if (!Number.isInteger(paymentId) || paymentId <= 0) {
       return NextResponse.json(
-        { error: 'El id del pago es invalido' },
+        { error: 'El id del pago es inválido' },
         { status: 400 },
       );
     }
@@ -33,14 +33,14 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Error de validacion', details: error.issues },
+        { error: 'Error de validación', details: error.issues },
         { status: 400 },
       );
     }
     const message =
       error instanceof Error
         ? error.message
-        : 'Error al actualizar el pago del prestamo';
+        : 'Error al actualizar el pago del préstamo';
     console.error('Error updating loan payment:', error);
     return NextResponse.json({ error: message }, { status: 400 });
   }
