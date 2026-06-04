@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateLoanProgress,
+  deriveLoanStatusFromPayments,
   formatDateYmd,
   generateLoanPaymentSchedule,
   parseYmdAsUtcDate,
@@ -83,5 +84,41 @@ describe('loan schedule', () => {
 
     expect(progress.totalPayable).toBe(2100);
     expect(progress.remainingAmount).toBe(700);
+  });
+
+  it('keeps skipped payments as unresolved debt and excludes cancelled payments from payable debt', () => {
+    const progress = calculateLoanProgress({
+      principalAmount: 3000,
+      payments: [
+        { amount: 500, status: 'PAID' },
+        { amount: 500, status: 'SKIPPED' },
+        { amount: 500, status: 'CANCELLED' },
+      ],
+    });
+
+    expect(progress).toEqual({
+      totalPayable: 1000,
+      paidAmount: 500,
+      remainingAmount: 500,
+      paidPayments: 1,
+      remainingPayments: 1,
+    });
+  });
+
+  it('derives active status while scheduled or skipped debt remains', () => {
+    expect(
+      deriveLoanStatusFromPayments([
+        { status: 'PAID' },
+        { status: 'SKIPPED' },
+        { status: 'CANCELLED' },
+      ]),
+    ).toBe('ACTIVE');
+
+    expect(
+      deriveLoanStatusFromPayments([
+        { status: 'PAID' },
+        { status: 'CANCELLED' },
+      ]),
+    ).toBe('PAID_OFF');
   });
 });
