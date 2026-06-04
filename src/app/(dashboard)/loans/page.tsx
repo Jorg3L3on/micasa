@@ -161,6 +161,21 @@ const editFormFromLoan = (loan: LoanListItem): LoanEditFormState => ({
   notes: loan.notes ?? '',
 });
 
+const loanPaymentSourceLabel = (
+  loan: Pick<
+    LoanListItem,
+    'paymentSource' | 'incomeTemplateName' | 'sourceWalletName'
+  >,
+) => {
+  if (loan.paymentSource === 'PAYROLL_DEDUCTION') {
+    return loan.incomeTemplateName
+      ? `Deducción de nómina: ${loan.incomeTemplateName}`
+      : 'Deducción de nómina';
+  }
+
+  return loan.sourceWalletName ?? 'Billetera';
+};
+
 const typeLabel = (type: LoanListItem['type']) =>
   type === 'PAYROLL' ? 'Préstamo de nómina' : 'Préstamo personal';
 
@@ -766,6 +781,19 @@ export default function LoansPage() {
       setPaymentActionSubmitting(false);
     }
   };
+
+  const selectedLoanProgress = selectedLoan?.totalPayable
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          Math.round((selectedLoan.paidAmount / selectedLoan.totalPayable) * 100),
+        ),
+      )
+    : 0;
+  const selectedLoanPaymentSource = selectedLoan
+    ? loanPaymentSourceLabel(selectedLoan)
+    : '';
 
   return (
     <div className="space-y-5">
@@ -1396,783 +1424,891 @@ export default function LoansPage() {
         }}
       >
         {selectedLoan ? (
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>{selectedLoan.name}</DialogTitle>
-              <DialogDescription>
-                Calendario completo, origen de pago y estado operativo del préstamo.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => startLoanEdit(selectedLoan)}
-                  disabled={loanEditSubmitting || lifecycleSubmitting}
-                >
-                  <Pencil className="h-3.5 w-3.5" aria-hidden />
-                  Editar datos
-                </Button>
-                {selectedLoan.status === 'ACTIVE' ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setLoanEditOpen(false);
-                      setLifecycleDraft('PAUSED');
-                      setLoanEditErrors({});
-                    }}
-                    disabled={loanEditSubmitting || lifecycleSubmitting}
-                  >
-                    <Pause className="h-3.5 w-3.5" aria-hidden />
-                    Pausar
-                  </Button>
-                ) : null}
-                {selectedLoan.status === 'PAUSED' ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setLoanEditOpen(false);
-                      setLifecycleDraft('ACTIVE');
-                      setLoanEditErrors({});
-                    }}
-                    disabled={loanEditSubmitting || lifecycleSubmitting}
-                  >
-                    <Play className="h-3.5 w-3.5" aria-hidden />
-                    Reanudar
-                  </Button>
-                ) : null}
-                {selectedLoan.status === 'ACTIVE' ||
-                selectedLoan.status === 'PAUSED' ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      setLoanEditOpen(false);
-                      setLifecycleDraft('CANCELLED');
-                      setLoanEditErrors({});
-                    }}
-                    disabled={loanEditSubmitting || lifecycleSubmitting}
-                  >
-                    <CircleSlash className="h-3.5 w-3.5" aria-hidden />
-                    Cancelar préstamo
-                  </Button>
-                ) : null}
-              </div>
-
-              {lifecycleDraft ? (
-                <div className="rounded-xl border border-border/60 bg-background p-3 shadow-sm">
-                  <div className="flex gap-3">
-                    <span
-                      className={cn(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1',
-                        lifecycleDraft === 'CANCELLED'
-                          ? 'bg-destructive/10 text-destructive ring-destructive/30'
-                          : 'bg-amber-500/10 text-amber-700 ring-amber-500/30 dark:text-amber-300',
-                      )}
-                    >
-                      {lifecycleDraft === 'ACTIVE' ? (
-                        <Play className="h-4 w-4" aria-hidden />
-                      ) : lifecycleDraft === 'PAUSED' ? (
-                        <Pause className="h-4 w-4" aria-hidden />
-                      ) : (
-                        <CircleSlash className="h-4 w-4" aria-hidden />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {lifecycleLabel(lifecycleDraft)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {lifecycleDescription(lifecycleDraft)}
-                      </p>
-                    </div>
-                  </div>
-                  {loanEditErrors.general ? (
-                    <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                      {loanEditErrors.general}
-                    </div>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLifecycleDraft(null);
-                        setLoanEditErrors({});
-                      }}
-                      disabled={lifecycleSubmitting}
-                    >
-                      Cerrar
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
+          <DialogContent className="flex max-h-[92dvh] max-w-[calc(100%-0.75rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(92dvh,44rem)] sm:max-w-3xl lg:max-w-[52rem]">
+            <DialogHeader className="border-b border-border/60 px-4 py-3 pr-12 text-left sm:px-5">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                  <HandCoins className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DialogTitle className="truncate text-base font-semibold sm:text-lg">
+                      {selectedLoan.name}
+                    </DialogTitle>
+                    <Badge
                       variant={
-                        lifecycleDraft === 'CANCELLED' ? 'destructive' : 'default'
+                        selectedLoan.status === 'CANCELLED'
+                          ? 'destructive'
+                          : selectedLoan.status === 'ACTIVE'
+                            ? 'default'
+                            : 'secondary'
                       }
-                      className={cn('gap-2', lifecycleSubmitting && 'opacity-80')}
-                      onClick={() => void handleLifecycleSubmit()}
-                      disabled={lifecycleSubmitting}
+                      className="text-[10px]"
                     >
-                      {lifecycleSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : null}
-                      {lifecycleLabel(lifecycleDraft)}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-border/60 bg-card p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Total pagadero
-                  </p>
-                  <p className="mt-1 font-mono text-base font-bold tabular-nums">
-                    {formatCurrency(selectedLoan.totalPayable)}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Pagado
-                  </p>
-                  <p className="mt-1 font-mono text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
-                    {formatCurrency(selectedLoan.paidAmount)}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Pendiente
-                  </p>
-                  <p className="mt-1 font-mono text-base font-bold tabular-nums text-foreground">
-                    {formatCurrency(selectedLoan.remainingAmount)}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Próximo pago
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {selectedLoan.nextPayment
-                      ? formatDate(selectedLoan.nextPayment.dueDate)
-                      : 'Sin pagos pendientes'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Entidad
-                  </p>
-                  <p className="mt-1 font-medium text-foreground">
-                    {selectedLoan.lender}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Tipo
-                  </p>
-                  <p className="mt-1 font-medium text-foreground">
-                    {typeLabel(selectedLoan.type)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Estado
-                  </p>
-                  <Badge
-                    variant={selectedLoan.status === 'ACTIVE' ? 'default' : 'secondary'}
-                    className="mt-1"
-                  >
-                    {statusLabel(selectedLoan.status)}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Frecuencia
-                  </p>
-                  <p className="mt-1 font-medium text-foreground">
-                    {frequencyLabel(selectedLoan.frequency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Origen de pago
-                  </p>
-                  <p className="mt-1 font-medium text-foreground">
-                    {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION'
-                      ? `Deducción de nómina${
-                          selectedLoan.incomeTemplateName
-                            ? `: ${selectedLoan.incomeTemplateName}`
-                            : ''
-                        }`
-                      : selectedLoan.sourceWalletName ?? 'Billetera'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Cuenta relacionada
-                  </p>
-                  <p className="mt-1 font-medium text-foreground">
-                    {selectedLoan.linkedWalletName ?? 'Sin cuenta vinculada'}
-                  </p>
-                </div>
-                {selectedLoan.notes ? (
-                  <div className="sm:col-span-2 lg:col-span-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Notas
-                    </p>
-                    <p className="mt-1 text-sm text-foreground">
-                      {selectedLoan.notes}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              {loanEditOpen && loanEditForm ? (
-                <div className="rounded-xl border border-border/60 bg-background p-3 shadow-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        Editar datos seguros
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Estos campos no recalculan el calendario ni alteran pagos ya
-                        generados.
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">
-                      Campos de calendario solo lectura
+                      {statusLabel(selectedLoan.status)}
                     </Badge>
                   </div>
+                  <DialogDescription className="mt-1 text-xs">
+                    {selectedLoan.lender} · {typeLabel(selectedLoan.type)} ·{' '}
+                    {frequencyLabel(selectedLoan.frequency)}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
 
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`loan-${selectedLoan.id}-edit-name`}>
-                        Nombre
-                      </Label>
-                      <Input
-                        id={`loan-${selectedLoan.id}-edit-name`}
-                        value={loanEditForm.name}
-                        onChange={(event) =>
-                          setLoanEditField('name', event.target.value)
-                        }
-                        aria-invalid={Boolean(loanEditErrors.name)}
-                        className={cn(
-                          loanEditErrors.name &&
-                            'border-destructive focus-visible:ring-destructive/30',
-                        )}
-                      />
-                      {loanEditErrors.name ? (
-                        <p className="text-xs text-destructive">
-                          {loanEditErrors.name}
+            <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+              <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+                <aside className="order-2 space-y-3 lg:sticky lg:top-0 lg:order-1 lg:self-start">
+                  <section className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Saldo pendiente
                         </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`loan-${selectedLoan.id}-edit-lender`}>
-                        Entidad
-                      </Label>
-                      <Input
-                        id={`loan-${selectedLoan.id}-edit-lender`}
-                        value={loanEditForm.lender}
-                        onChange={(event) =>
-                          setLoanEditField('lender', event.target.value)
-                        }
-                        aria-invalid={Boolean(loanEditErrors.lender)}
-                        className={cn(
-                          loanEditErrors.lender &&
-                            'border-destructive focus-visible:ring-destructive/30',
-                        )}
-                      />
-                      {loanEditErrors.lender ? (
-                        <p className="text-xs text-destructive">
-                          {loanEditErrors.lender}
+                        <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
+                          {formatCurrency(selectedLoan.remainingAmount)}
                         </p>
-                      ) : null}
+                      </div>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+                        <Landmark className="h-4 w-4" aria-hidden />
+                      </span>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Cuenta relacionada</Label>
-                      <Select
-                        value={loanEditForm.linkedWalletId}
-                        onValueChange={(value) =>
-                          setLoanEditField('linkedWalletId', value)
-                        }
-                      >
-                        <SelectTrigger
-                          className={cn(
-                            loanEditErrors.linkedWalletId &&
-                              'border-destructive focus:ring-destructive/30',
-                          )}
-                          aria-invalid={Boolean(loanEditErrors.linkedWalletId)}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">
-                            Sin cuenta vinculada
-                          </SelectItem>
-                          {wallets.map((wallet) => (
-                            <SelectItem key={wallet.id} value={String(wallet.id)}>
-                              {wallet.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[11px] text-muted-foreground">
-                        Solo relaciona el préstamo con una cuenta para consulta; no
-                        mueve dinero.
+
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted-foreground">Progreso</span>
+                        <span className="font-mono font-semibold tabular-nums text-foreground">
+                          {selectedLoanProgress}%
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${selectedLoanProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedLoan.paidPayments}/{selectedLoan.paymentCount} pagos
+                        cubiertos
                       </p>
-                      {loanEditErrors.linkedWalletId ? (
-                        <p className="text-xs text-destructive">
-                          {loanEditErrors.linkedWalletId}
-                        </p>
-                      ) : null}
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Ingreso relacionado</Label>
-                      {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' ? (
-                        <Select
-                          value={loanEditForm.incomeTemplateId}
-                          onValueChange={(value) =>
-                            setLoanEditField('incomeTemplateId', value)
-                          }
-                        >
-                          <SelectTrigger
-                            className={cn(
-                              loanEditErrors.incomeTemplateId &&
-                                'border-destructive focus:ring-destructive/30',
-                            )}
-                            aria-invalid={Boolean(
-                              loanEditErrors.incomeTemplateId,
-                            )}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              Sin ingreso vinculado
-                            </SelectItem>
-                            {incomeTemplates.map((template) => (
-                              <SelectItem
-                                key={template.id}
-                                value={String(template.id)}
-                              >
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                          Solo aplica a préstamos con deducción de nómina.
+
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <div className="rounded-lg bg-muted/35 p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Pagado
+                        </p>
+                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                          {formatCurrency(selectedLoan.paidAmount)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-muted/35 p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Total
+                        </p>
+                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+                          {formatCurrency(selectedLoan.totalPayable)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-muted/35 p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Pago
+                        </p>
+                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+                          {formatCurrency(selectedLoan.paymentAmount)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-muted/35 p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Inicio
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-foreground">
+                          {formatDate(selectedLoan.startDate)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <dl className="mt-4 space-y-3 border-t border-border/60 pt-3 text-xs">
+                      <div>
+                        <dt className="font-semibold uppercase tracking-wider text-muted-foreground">
+                          Origen de pago
+                        </dt>
+                        <dd className="mt-1 font-medium text-foreground">
+                          {selectedLoanPaymentSource}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold uppercase tracking-wider text-muted-foreground">
+                          Cuenta relacionada
+                        </dt>
+                        <dd className="mt-1 font-medium text-foreground">
+                          {selectedLoan.linkedWalletName ?? 'Sin cuenta vinculada'}
+                        </dd>
+                      </div>
+                      {selectedLoan.notes ? (
+                        <div>
+                          <dt className="font-semibold uppercase tracking-wider text-muted-foreground">
+                            Notas
+                          </dt>
+                          <dd className="mt-1 text-foreground/85">
+                            {selectedLoan.notes}
+                          </dd>
                         </div>
-                      )}
-                      {loanEditErrors.incomeTemplateId ? (
-                        <p className="text-xs text-destructive">
-                          {loanEditErrors.incomeTemplateId}
-                        </p>
+                      ) : null}
+                    </dl>
+                  </section>
+
+                  <section className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Acciones
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="justify-center gap-1.5"
+                        onClick={() => startLoanEdit(selectedLoan)}
+                        disabled={loanEditSubmitting || lifecycleSubmitting}
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                        Editar
+                      </Button>
+                      {selectedLoan.status === 'ACTIVE' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="justify-center gap-1.5"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLifecycleDraft('PAUSED');
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting || lifecycleSubmitting}
+                        >
+                          <Pause className="h-3.5 w-3.5" aria-hidden />
+                          Pausar
+                        </Button>
+                      ) : null}
+                      {selectedLoan.status === 'PAUSED' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="justify-center gap-1.5"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLifecycleDraft('ACTIVE');
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting || lifecycleSubmitting}
+                        >
+                          <Play className="h-3.5 w-3.5" aria-hidden />
+                          Reanudar
+                        </Button>
+                      ) : null}
+                      {selectedLoan.status === 'ACTIVE' ||
+                      selectedLoan.status === 'PAUSED' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="col-span-2 justify-center gap-1.5 text-destructive hover:text-destructive lg:col-span-1"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLifecycleDraft('CANCELLED');
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting || lifecycleSubmitting}
+                        >
+                          <CircleSlash className="h-3.5 w-3.5" aria-hidden />
+                          Cancelar préstamo
+                        </Button>
                       ) : null}
                     </div>
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor={`loan-${selectedLoan.id}-edit-notes`}>
-                        Notas
-                      </Label>
-                      <Textarea
-                        id={`loan-${selectedLoan.id}-edit-notes`}
-                        value={loanEditForm.notes}
-                        onChange={(event) =>
-                          setLoanEditField('notes', event.target.value)
-                        }
-                        placeholder="Condiciones, referencia, comentarios"
-                        className="min-h-24"
-                      />
-                    </div>
-                  </div>
+                  </section>
 
-                  <div className="mt-3 grid gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
-                    <span>Total: {formatCurrency(selectedLoan.totalPayable)}</span>
-                    <span>Pago: {formatCurrency(selectedLoan.paymentAmount)}</span>
-                    <span>Pagos: {selectedLoan.paymentCount}</span>
-                    <span>Frecuencia: {frequencyLabel(selectedLoan.frequency)}</span>
-                    <span>Primer pago: {formatDate(selectedLoan.startDate)}</span>
-                    <span>{typeLabel(selectedLoan.type)}</span>
-                  </div>
+                  {lifecycleDraft ? (
+                    <section className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                      <div className="flex gap-3">
+                        <span
+                          className={cn(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1',
+                            lifecycleDraft === 'CANCELLED'
+                              ? 'bg-destructive/10 text-destructive ring-destructive/30'
+                              : 'bg-amber-500/10 text-amber-700 ring-amber-500/30 dark:text-amber-300',
+                          )}
+                        >
+                          {lifecycleDraft === 'ACTIVE' ? (
+                            <Play className="h-4 w-4" aria-hidden />
+                          ) : lifecycleDraft === 'PAUSED' ? (
+                            <Pause className="h-4 w-4" aria-hidden />
+                          ) : (
+                            <CircleSlash className="h-4 w-4" aria-hidden />
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            {lifecycleLabel(lifecycleDraft)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {lifecycleDescription(lifecycleDraft)}
+                          </p>
+                        </div>
+                      </div>
+                      {loanEditErrors.general ? (
+                        <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                          {loanEditErrors.general}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLifecycleDraft(null);
+                            setLoanEditErrors({});
+                          }}
+                          disabled={lifecycleSubmitting}
+                        >
+                          Cerrar
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={
+                            lifecycleDraft === 'CANCELLED'
+                              ? 'destructive'
+                              : 'default'
+                          }
+                          className={cn('gap-2', lifecycleSubmitting && 'opacity-80')}
+                          onClick={() => void handleLifecycleSubmit()}
+                          disabled={lifecycleSubmitting}
+                        >
+                          {lifecycleSubmitting ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin"
+                              aria-hidden
+                            />
+                          ) : null}
+                          Aplicar
+                        </Button>
+                      </div>
+                    </section>
+                  ) : null}
+                </aside>
 
-                  {loanEditErrors.general ? (
-                    <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                      {loanEditErrors.general}
+                <section className="order-1 min-w-0 space-y-4 lg:order-2">
+                  {loanEditOpen && loanEditForm ? (
+                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            Editar datos seguros
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Estos campos no recalculan el calendario ni alteran pagos
+                            ya generados.
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">
+                          Calendario bloqueado
+                        </Badge>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`loan-${selectedLoan.id}-edit-name`}>
+                            Nombre
+                          </Label>
+                          <Input
+                            id={`loan-${selectedLoan.id}-edit-name`}
+                            value={loanEditForm.name}
+                            onChange={(event) =>
+                              setLoanEditField('name', event.target.value)
+                            }
+                            aria-invalid={Boolean(loanEditErrors.name)}
+                            className={cn(
+                              loanEditErrors.name &&
+                                'border-destructive focus-visible:ring-destructive/30',
+                            )}
+                          />
+                          {loanEditErrors.name ? (
+                            <p className="text-xs text-destructive">
+                              {loanEditErrors.name}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`loan-${selectedLoan.id}-edit-lender`}>
+                            Entidad
+                          </Label>
+                          <Input
+                            id={`loan-${selectedLoan.id}-edit-lender`}
+                            value={loanEditForm.lender}
+                            onChange={(event) =>
+                              setLoanEditField('lender', event.target.value)
+                            }
+                            aria-invalid={Boolean(loanEditErrors.lender)}
+                            className={cn(
+                              loanEditErrors.lender &&
+                                'border-destructive focus-visible:ring-destructive/30',
+                            )}
+                          />
+                          {loanEditErrors.lender ? (
+                            <p className="text-xs text-destructive">
+                              {loanEditErrors.lender}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Cuenta relacionada</Label>
+                          <Select
+                            value={loanEditForm.linkedWalletId}
+                            onValueChange={(value) =>
+                              setLoanEditField('linkedWalletId', value)
+                            }
+                          >
+                            <SelectTrigger
+                              className={cn(
+                                loanEditErrors.linkedWalletId &&
+                                  'border-destructive focus:ring-destructive/30',
+                              )}
+                              aria-invalid={Boolean(loanEditErrors.linkedWalletId)}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                Sin cuenta vinculada
+                              </SelectItem>
+                              {wallets.map((wallet) => (
+                                <SelectItem
+                                  key={wallet.id}
+                                  value={String(wallet.id)}
+                                >
+                                  {wallet.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[11px] text-muted-foreground">
+                            Relaciona el préstamo para consulta; no mueve dinero.
+                          </p>
+                          {loanEditErrors.linkedWalletId ? (
+                            <p className="text-xs text-destructive">
+                              {loanEditErrors.linkedWalletId}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Ingreso relacionado</Label>
+                          {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' ? (
+                            <Select
+                              value={loanEditForm.incomeTemplateId}
+                              onValueChange={(value) =>
+                                setLoanEditField('incomeTemplateId', value)
+                              }
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  loanEditErrors.incomeTemplateId &&
+                                    'border-destructive focus:ring-destructive/30',
+                                )}
+                                aria-invalid={Boolean(
+                                  loanEditErrors.incomeTemplateId,
+                                )}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  Sin ingreso vinculado
+                                </SelectItem>
+                                {incomeTemplates.map((template) => (
+                                  <SelectItem
+                                    key={template.id}
+                                    value={String(template.id)}
+                                  >
+                                    {template.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                              Solo aplica a préstamos con deducción de nómina.
+                            </div>
+                          )}
+                          {loanEditErrors.incomeTemplateId ? (
+                            <p className="text-xs text-destructive">
+                              {loanEditErrors.incomeTemplateId}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <Label htmlFor={`loan-${selectedLoan.id}-edit-notes`}>
+                            Notas
+                          </Label>
+                          <Textarea
+                            id={`loan-${selectedLoan.id}-edit-notes`}
+                            value={loanEditForm.notes}
+                            onChange={(event) =>
+                              setLoanEditField('notes', event.target.value)
+                            }
+                            placeholder="Condiciones, referencia, comentarios"
+                            className="min-h-20"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+                        <span>Total: {formatCurrency(selectedLoan.totalPayable)}</span>
+                        <span>Pago: {formatCurrency(selectedLoan.paymentAmount)}</span>
+                        <span>Pagos: {selectedLoan.paymentCount}</span>
+                        <span>Frecuencia: {frequencyLabel(selectedLoan.frequency)}</span>
+                        <span>Primer pago: {formatDate(selectedLoan.startDate)}</span>
+                        <span>{typeLabel(selectedLoan.type)}</span>
+                      </div>
+
+                      {loanEditErrors.general ? (
+                        <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                          {loanEditErrors.general}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLoanEditForm(null);
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className={cn('gap-2', loanEditSubmitting && 'opacity-80')}
+                          onClick={() => void handleLoanEditSubmit()}
+                          disabled={loanEditSubmitting}
+                        >
+                          {loanEditSubmitting ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin"
+                              aria-hidden
+                            />
+                          ) : (
+                            <Save className="h-4 w-4" aria-hidden />
+                          )}
+                          Guardar
+                        </Button>
+                      </div>
                     </div>
                   ) : null}
 
-                  <div className="mt-3 flex flex-wrap justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLoanEditOpen(false);
-                        setLoanEditForm(null);
-                        setLoanEditErrors({});
-                      }}
-                      disabled={loanEditSubmitting}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className={cn('gap-2', loanEditSubmitting && 'opacity-80')}
-                      onClick={() => void handleLoanEditSubmit()}
-                      disabled={loanEditSubmitting}
-                    >
-                      {loanEditSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Save className="h-4 w-4" aria-hidden />
-                      )}
-                      Guardar cambios
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
+                  <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+                    <div className="border-b border-border/60 p-3 sm:p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">
+                            Calendario de pagos
+                          </h3>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Próximo:{' '}
+                            {selectedLoan.nextPayment
+                              ? formatDate(selectedLoan.nextPayment.dueDate)
+                              : 'Sin pagos pendientes'}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="w-fit text-[10px]">
+                          {selectedLoan.paidPayments}/{selectedLoan.paymentCount}{' '}
+                          cubiertos
+                        </Badge>
+                      </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {(
-                  [
-                    ['overdue', 'Vencidos'],
-                    ['scheduled', 'Por pagar'],
-                    ['paid', 'Pagados'],
-                    ['skipped', 'Omitidos'],
-                    ['cancelled', 'Cancelados'],
-                  ] satisfies Array<[LoanPaymentVisualStatus, string]>
-                ).map(([status, label]) => (
-                  <span
-                    key={status}
-                    className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-muted-foreground"
-                  >
-                    {label}
-                    <span className="font-mono font-semibold tabular-nums text-foreground">
-                      {selectedScheduleCounts[status]}
-                    </span>
-                  </span>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Calendario de pagos
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedLoan.paidPayments}/{selectedLoan.paymentCount} pagos
-                    cubiertos
-                  </p>
-                </div>
-
-                {selectedLoanPayments.length === 0 ? (
-                  <div className="rounded-xl border border-border/60 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-                    Este préstamo todavía no tiene pagos programados.
-                  </div>
-                ) : (
-                  <ul className="space-y-2" role="list">
-                    {selectedLoanPayments.map((payment) => {
-                      const visualStatus = getPaymentVisualStatus(payment, todayYmd);
-                      const tone = paymentStatusTone(visualStatus);
-                      const StatusIcon = tone.icon;
-                      const isActionOpen =
-                        paymentActionDraft?.paymentId === payment.id;
-                      const paymentSource =
-                        payment.sourceWalletName ??
-                        selectedLoan.sourceWalletName ??
-                        (selectedLoan.paymentSource === 'PAYROLL_DEDUCTION'
-                          ? 'Deducción de nómina'
-                          : 'Billetera');
-
-                      return (
-                        <li
-                          key={payment.id}
-                          className={cn(
-                            'grid gap-3 rounded-xl border border-l-[3px] p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center',
-                            tone.row,
-                          )}
-                        >
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(
+                          [
+                            ['overdue', 'Vencidos'],
+                            ['scheduled', 'Por pagar'],
+                            ['paid', 'Pagados'],
+                            ['skipped', 'Omitidos'],
+                            ['cancelled', 'Cancelados'],
+                          ] satisfies Array<[LoanPaymentVisualStatus, string]>
+                        ).map(([status, label]) => (
                           <span
-                            className={cn(
-                              'flex h-9 w-9 items-center justify-center rounded-xl ring-1',
-                              tone.iconBox,
-                            )}
+                            key={status}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-muted-foreground"
                           >
-                            <StatusIcon className="h-4 w-4" aria-hidden />
+                            {label}
+                            <span className="font-mono font-semibold tabular-nums text-foreground">
+                              {selectedScheduleCounts[status]}
+                            </span>
                           </span>
+                        ))}
+                      </div>
+                    </div>
 
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-foreground">
-                                Pago #{payment.sequence}
-                              </p>
-                              <span
+                    <div className="p-3 sm:p-4">
+                      {selectedLoanPayments.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+                          Este préstamo todavía no tiene pagos programados.
+                        </div>
+                      ) : (
+                        <ul className="space-y-2" role="list">
+                          {selectedLoanPayments.map((payment) => {
+                            const visualStatus = getPaymentVisualStatus(
+                              payment,
+                              todayYmd,
+                            );
+                            const tone = paymentStatusTone(visualStatus);
+                            const StatusIcon = tone.icon;
+                            const isActionOpen =
+                              paymentActionDraft?.paymentId === payment.id;
+                            const paymentSource =
+                              payment.sourceWalletName ??
+                              selectedLoanPaymentSource;
+
+                            return (
+                              <li
+                                key={payment.id}
                                 className={cn(
-                                  'inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-bold uppercase tracking-wider',
-                                  tone.badge,
+                                  'grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border border-l-[3px] p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start',
+                                  tone.row,
                                 )}
                               >
-                                {paymentStatusLabel(visualStatus)}
-                              </span>
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                              <span>Vence {formatDate(payment.dueDate)}</span>
-                              {payment.paidAt ? (
-                                <span>Pagado {formatDate(payment.paidAt)}</span>
-                              ) : null}
-                              <span>{paymentSource}</span>
-                              <span className="inline-flex items-center gap-1">
-                                <ReceiptText className="h-3 w-3" aria-hidden />
-                                {payment.linkedExpenseId
-                                  ? `Gasto #${payment.linkedExpenseId}`
-                                  : 'Sin gasto vinculado'}
-                              </span>
-                            </div>
-                            {payment.note ? (
-                              <p className="mt-1 text-xs text-foreground/80">
-                                {payment.note}
-                              </p>
-                            ) : null}
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                            <p className="font-mono text-sm font-bold tabular-nums text-foreground sm:text-right">
-                              {formatCurrency(payment.amount)}
-                            </p>
-                            {payment.status === 'SCHEDULED' ? (
-                              <div className="flex flex-wrap justify-end gap-1.5">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 gap-1 px-2 text-[10px]"
-                                  onClick={() =>
-                                    startPaymentAction(payment, 'MARK_PAID')
-                                  }
-                                  disabled={paymentActionSubmitting}
-                                >
-                                  <CheckCircle2 className="h-3 w-3" aria-hidden />
-                                  Pagar
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 gap-1 px-2 text-[10px] text-muted-foreground"
-                                  onClick={() => startPaymentAction(payment, 'SKIP')}
-                                  disabled={paymentActionSubmitting}
-                                >
-                                  <CircleSlash className="h-3 w-3" aria-hidden />
-                                  Omitir
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 gap-1 px-2 text-[10px] text-destructive hover:text-destructive"
-                                  onClick={() =>
-                                    startPaymentAction(payment, 'CANCEL')
-                                  }
-                                  disabled={paymentActionSubmitting}
-                                >
-                                  <CircleSlash className="h-3 w-3" aria-hidden />
-                                  Cancelar
-                                </Button>
-                              </div>
-                            ) : null}
-                            {payment.status === 'PAID' ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7 gap-1 px-2 text-[10px]"
-                                onClick={() =>
-                                  startPaymentAction(payment, 'MARK_SCHEDULED')
-                                }
-                                disabled={paymentActionSubmitting}
-                              >
-                                <Undo2 className="h-3 w-3" aria-hidden />
-                                Deshacer
-                              </Button>
-                            ) : null}
-                          </div>
-
-                          {isActionOpen && paymentActionDraft ? (
-                            <div className="rounded-xl border border-border/60 bg-background p-3 shadow-sm sm:col-span-3">
-                              <div className="space-y-1">
-                                <p className="text-sm font-semibold text-foreground">
-                                  {paymentActionLabel(paymentActionDraft.action)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {paymentActionDescription(
-                                    paymentActionDraft.action,
-                                    selectedLoan.paymentSource,
+                                <span
+                                  className={cn(
+                                    'flex h-9 w-9 items-center justify-center rounded-xl ring-1',
+                                    tone.iconBox,
                                   )}
-                                </p>
-                              </div>
+                                >
+                                  <StatusIcon className="h-4 w-4" aria-hidden />
+                                </span>
 
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                {paymentActionDraft.action === 'MARK_PAID' ? (
-                                  <>
-                                    <div className="space-y-1.5">
-                                      <Label htmlFor={`loan-payment-${payment.id}-paid-at`}>
-                                        Fecha de pago
-                                      </Label>
-                                      <Input
-                                        id={`loan-payment-${payment.id}-paid-at`}
-                                        type="date"
-                                        value={paymentActionDraft.paidAt}
-                                        onChange={(event) =>
-                                          setPaymentActionField(
-                                            'paidAt',
-                                            event.target.value,
-                                          )
-                                        }
-                                        aria-invalid={Boolean(paymentActionErrors.paidAt)}
-                                        className={cn(
-                                          paymentActionErrors.paidAt &&
-                                            'border-destructive focus-visible:ring-destructive/30',
-                                        )}
-                                      />
-                                      {paymentActionErrors.paidAt ? (
-                                        <p className="text-xs text-destructive">
-                                          {paymentActionErrors.paidAt}
-                                        </p>
-                                      ) : null}
-                                    </div>
-
-                                    {selectedLoan.paymentSource === 'WALLET' ? (
-                                      <div className="space-y-1.5">
-                                        <Label>Billetera de pago</Label>
-                                        <Select
-                                          value={paymentActionDraft.sourceWalletId}
-                                          onValueChange={(value) =>
-                                            setPaymentActionField(
-                                              'sourceWalletId',
-                                              value,
-                                            )
-                                          }
-                                        >
-                                          <SelectTrigger
-                                            className={cn(
-                                              paymentActionErrors.sourceWalletId &&
-                                                'border-destructive focus:ring-destructive/30',
-                                            )}
-                                            aria-invalid={Boolean(
-                                              paymentActionErrors.sourceWalletId,
-                                            )}
-                                          >
-                                            <SelectValue placeholder="Selecciona billetera" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {fundingWallets.map((wallet) => (
-                                              <SelectItem
-                                                key={wallet.id}
-                                                value={String(wallet.id)}
-                                              >
-                                                {wallet.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                        {paymentActionErrors.sourceWalletId ? (
-                                          <p className="text-xs text-destructive">
-                                            {paymentActionErrors.sourceWalletId}
-                                          </p>
-                                        ) : null}
-                                      </div>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      Pago #{payment.sequence}
+                                    </p>
+                                    <span
+                                      className={cn(
+                                        'inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-bold uppercase tracking-wider',
+                                        tone.badge,
+                                      )}
+                                    >
+                                      {paymentStatusLabel(visualStatus)}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                    <span>Vence {formatDate(payment.dueDate)}</span>
+                                    {payment.paidAt ? (
+                                      <span>
+                                        Pagado {formatDate(payment.paidAt)}
+                                      </span>
                                     ) : null}
-                                  </>
-                                ) : null}
-
-                                <div className="space-y-1.5 sm:col-span-2">
-                                  <Label htmlFor={`loan-payment-${payment.id}-note`}>
-                                    Nota opcional
-                                  </Label>
-                                  <Textarea
-                                    id={`loan-payment-${payment.id}-note`}
-                                    value={paymentActionDraft.note}
-                                    onChange={(event) =>
-                                      setPaymentActionField(
-                                        'note',
-                                        event.target.value,
-                                      )
-                                    }
-                                    placeholder="Motivo o referencia del cambio"
-                                    className="min-h-20"
-                                  />
-                                  {paymentActionErrors.note ? (
-                                    <p className="text-xs text-destructive">
-                                      {paymentActionErrors.note}
+                                    <span>{paymentSource}</span>
+                                    <span className="inline-flex items-center gap-1">
+                                      <ReceiptText
+                                        className="h-3 w-3"
+                                        aria-hidden
+                                      />
+                                      {payment.linkedExpenseId
+                                        ? `Gasto #${payment.linkedExpenseId}`
+                                        : 'Sin gasto vinculado'}
+                                    </span>
+                                  </div>
+                                  {payment.note ? (
+                                    <p className="mt-1 text-xs text-foreground/80">
+                                      {payment.note}
                                     </p>
                                   ) : null}
                                 </div>
-                              </div>
 
-                              {paymentActionErrors.general ? (
-                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                                  {paymentActionErrors.general}
-                                </div>
-                              ) : null}
-
-                              <div className="mt-3 flex flex-wrap justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setPaymentActionDraft(null);
-                                    setPaymentActionErrors({});
-                                  }}
-                                  disabled={paymentActionSubmitting}
-                                >
-                                  Cerrar
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className={cn(
-                                    'gap-2',
-                                    paymentActionSubmitting && 'opacity-80',
-                                  )}
-                                  onClick={() => void handlePaymentActionSubmit()}
-                                  disabled={paymentActionSubmitting}
-                                >
-                                  {paymentActionSubmitting ? (
-                                    <Loader2
-                                      className="h-4 w-4 animate-spin"
-                                      aria-hidden
-                                    />
+                                <div className="col-span-2 flex items-center justify-between gap-3 border-t border-border/50 pt-2 sm:col-span-1 sm:block sm:border-t-0 sm:pt-0 sm:text-right">
+                                  <p className="font-mono text-sm font-bold tabular-nums text-foreground">
+                                    {formatCurrency(payment.amount)}
+                                  </p>
+                                  {payment.status === 'SCHEDULED' ? (
+                                    <div className="grid grid-cols-3 gap-1 sm:mt-2 sm:flex sm:justify-end sm:gap-1.5">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px]"
+                                        onClick={() =>
+                                          startPaymentAction(payment, 'MARK_PAID')
+                                        }
+                                        disabled={paymentActionSubmitting}
+                                      >
+                                        <CheckCircle2
+                                          className="h-3 w-3"
+                                          aria-hidden
+                                        />
+                                        Pagar
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px] text-muted-foreground"
+                                        onClick={() =>
+                                          startPaymentAction(payment, 'SKIP')
+                                        }
+                                        disabled={paymentActionSubmitting}
+                                      >
+                                        <CircleSlash
+                                          className="h-3 w-3"
+                                          aria-hidden
+                                        />
+                                        Omitir
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px] text-destructive hover:text-destructive"
+                                        onClick={() =>
+                                          startPaymentAction(payment, 'CANCEL')
+                                        }
+                                        disabled={paymentActionSubmitting}
+                                      >
+                                        <CircleSlash
+                                          className="h-3 w-3"
+                                          aria-hidden
+                                        />
+                                        Cancelar
+                                      </Button>
+                                    </div>
                                   ) : null}
-                                  {paymentActionLabel(paymentActionDraft.action)}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                                  {payment.status === 'PAID' ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1 px-2 text-[10px] sm:mt-2"
+                                      onClick={() =>
+                                        startPaymentAction(
+                                          payment,
+                                          'MARK_SCHEDULED',
+                                        )
+                                      }
+                                      disabled={paymentActionSubmitting}
+                                    >
+                                      <Undo2 className="h-3 w-3" aria-hidden />
+                                      Deshacer
+                                    </Button>
+                                  ) : null}
+                                </div>
+
+                                {isActionOpen && paymentActionDraft ? (
+                                  <div className="col-span-2 rounded-xl border border-border/60 bg-background p-3 shadow-sm sm:col-span-3">
+                                    <div className="flex items-start gap-3">
+                                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+                                        <CheckCircle2
+                                          className="h-4 w-4"
+                                          aria-hidden
+                                        />
+                                      </span>
+                                      <div className="min-w-0 space-y-1">
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {paymentActionLabel(
+                                            paymentActionDraft.action,
+                                          )}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {paymentActionDescription(
+                                            paymentActionDraft.action,
+                                            selectedLoan.paymentSource,
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div
+                                      className={cn(
+                                        'mt-3 grid gap-3',
+                                        paymentActionDraft.action === 'MARK_PAID' &&
+                                          selectedLoan.paymentSource === 'WALLET'
+                                          ? 'min-[380px]:grid-cols-[145px_minmax(0,1fr)]'
+                                          : 'sm:grid-cols-2',
+                                      )}
+                                    >
+                                      {paymentActionDraft.action === 'MARK_PAID' ? (
+                                        <>
+                                          <div className="space-y-1.5">
+                                            <Label
+                                              htmlFor={`loan-payment-${payment.id}-paid-at`}
+                                            >
+                                              Fecha de pago
+                                            </Label>
+                                            <Input
+                                              id={`loan-payment-${payment.id}-paid-at`}
+                                              type="date"
+                                              value={paymentActionDraft.paidAt}
+                                              onChange={(event) =>
+                                                setPaymentActionField(
+                                                  'paidAt',
+                                                  event.target.value,
+                                                )
+                                              }
+                                              aria-invalid={Boolean(
+                                                paymentActionErrors.paidAt,
+                                              )}
+                                              className={cn(
+                                                paymentActionErrors.paidAt &&
+                                                  'border-destructive focus-visible:ring-destructive/30',
+                                              )}
+                                            />
+                                            {paymentActionErrors.paidAt ? (
+                                              <p className="text-xs text-destructive">
+                                                {paymentActionErrors.paidAt}
+                                              </p>
+                                            ) : null}
+                                          </div>
+
+                                          {selectedLoan.paymentSource === 'WALLET' ? (
+                                            <div className="space-y-1.5">
+                                              <Label>Billetera de pago</Label>
+                                              <Select
+                                                value={
+                                                  paymentActionDraft.sourceWalletId
+                                                }
+                                                onValueChange={(value) =>
+                                                  setPaymentActionField(
+                                                    'sourceWalletId',
+                                                    value,
+                                                  )
+                                                }
+                                              >
+                                                <SelectTrigger
+                                                  className={cn(
+                                                    paymentActionErrors.sourceWalletId &&
+                                                      'border-destructive focus:ring-destructive/30',
+                                                  )}
+                                                  aria-invalid={Boolean(
+                                                    paymentActionErrors.sourceWalletId,
+                                                  )}
+                                                >
+                                                  <SelectValue placeholder="Selecciona billetera" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {fundingWallets.map((wallet) => (
+                                                    <SelectItem
+                                                      key={wallet.id}
+                                                      value={String(wallet.id)}
+                                                    >
+                                                      {wallet.name}
+                                                    </SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                              {paymentActionErrors.sourceWalletId ? (
+                                                <p className="text-xs text-destructive">
+                                                  {
+                                                    paymentActionErrors.sourceWalletId
+                                                  }
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                          ) : null}
+                                        </>
+                                      ) : null}
+
+                                      <div
+                                        className={cn(
+                                          'space-y-1.5',
+                                          paymentActionDraft.action === 'MARK_PAID' &&
+                                            selectedLoan.paymentSource === 'WALLET'
+                                            ? 'min-[380px]:col-span-2'
+                                            : 'sm:col-span-2',
+                                        )}
+                                      >
+                                        <Label
+                                          htmlFor={`loan-payment-${payment.id}-note`}
+                                        >
+                                          Nota opcional
+                                        </Label>
+                                        <Textarea
+                                          id={`loan-payment-${payment.id}-note`}
+                                          value={paymentActionDraft.note}
+                                          onChange={(event) =>
+                                            setPaymentActionField(
+                                              'note',
+                                              event.target.value,
+                                            )
+                                          }
+                                          placeholder="Motivo o referencia del cambio"
+                                          className="min-h-16"
+                                        />
+                                        {paymentActionErrors.note ? (
+                                          <p className="text-xs text-destructive">
+                                            {paymentActionErrors.note}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    </div>
+
+                                    {paymentActionErrors.general ? (
+                                      <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                                        {paymentActionErrors.general}
+                                      </div>
+                                    ) : null}
+
+                                    <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setPaymentActionDraft(null);
+                                          setPaymentActionErrors({});
+                                        }}
+                                        disabled={paymentActionSubmitting}
+                                      >
+                                        Cerrar
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className={cn(
+                                          'gap-2',
+                                          paymentActionSubmitting && 'opacity-80',
+                                        )}
+                                        onClick={() =>
+                                          void handlePaymentActionSubmit()
+                                        }
+                                        disabled={paymentActionSubmitting}
+                                      >
+                                        {paymentActionSubmitting ? (
+                                          <Loader2
+                                            className="h-4 w-4 animate-spin"
+                                            aria-hidden
+                                          />
+                                        ) : null}
+                                        {paymentActionLabel(
+                                          paymentActionDraft.action,
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
           </DialogContent>
