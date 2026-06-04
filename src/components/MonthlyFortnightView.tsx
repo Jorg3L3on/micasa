@@ -80,10 +80,8 @@ export default function MonthlyFortnightView({
     prefsReady,
     period,
     summaryVisible,
-    tableDensity,
     setPeriod,
     setSummaryVisible,
-    setTableDensity,
   } = useMonthlyPanelPreferences();
 
   const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] =
@@ -143,10 +141,8 @@ export default function MonthlyFortnightView({
         firstLabel={first.label}
         secondLabel={second.label}
         summaryVisible={summaryVisible}
-        tableDensity={tableDensity}
         onPeriodChange={setPeriod}
         onSummaryVisibleChange={setSummaryVisible}
-        onTableDensityChange={setTableDensity}
       />
 
       <FortnightColumn
@@ -160,7 +156,6 @@ export default function MonthlyFortnightView({
         period={period}
         showSummaryCard={summaryVisible}
         onShowSummaryCard={handleShowSummaryFromColumn}
-        tableDensity={tableDensity}
         cardDueItems={activeBundle.cardDueItems}
         loanDueItems={activeBundle.loanDueItems}
         wallets={wallets}

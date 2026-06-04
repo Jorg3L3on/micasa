@@ -2,19 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import { cn } from '@/lib/utils';
-import { SlidersHorizontal } from 'lucide-react';
+import { BarChart3, EyeOff } from 'lucide-react';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
@@ -25,10 +14,8 @@ type FortnightViewControlsProps = {
   firstLabel: string;
   secondLabel: string;
   summaryVisible: boolean;
-  tableDensity: ExpenseTableDensity;
   onPeriodChange: (period: FortnightPeriod) => void;
   onSummaryVisibleChange: (visible: boolean) => void;
-  onTableDensityChange: (density: ExpenseTableDensity) => void;
 };
 
 const segmentButtonClass = (active: boolean) =>
@@ -76,14 +63,16 @@ export const FortnightViewControls = ({
   firstLabel,
   secondLabel,
   summaryVisible,
-  tableDensity,
   onPeriodChange,
   onSummaryVisibleChange,
-  onTableDensityChange,
 }: FortnightViewControlsProps) => {
   const monthLastDay = new Date(year, month, 0).getDate();
   const firstRange = '1–15';
   const secondRange = `16–${monthLastDay}`;
+
+  const handleToggleSummary = () => {
+    onSummaryVisibleChange(!summaryVisible);
+  };
 
   return (
     <div
@@ -114,46 +103,31 @@ export const FortnightViewControls = ({
         </button>
       </SegmentGroup>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 shrink-0 self-end rounded-lg border-border/70 bg-card/90 shadow-sm hover:bg-muted/50 sm:self-center"
-            aria-label="Opciones adicionales de vista"
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-48">
-          <DropdownMenuCheckboxItem
-            checked={summaryVisible}
-            onCheckedChange={onSummaryVisibleChange}
-          >
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-9 shrink-0 gap-1.5 self-end rounded-lg px-3 text-xs font-semibold sm:self-center"
+        onClick={handleToggleSummary}
+        aria-pressed={summaryVisible}
+        aria-label={
+          summaryVisible
+            ? 'Ocultar resumen de la quincena'
+            : 'Mostrar resumen de la quincena'
+        }
+      >
+        {summaryVisible ? (
+          <>
+            <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+            Ocultar resumen
+          </>
+        ) : (
+          <>
+            <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
             Mostrar resumen
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Densidad de tabla
-          </DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={tableDensity}
-            onValueChange={(value) => {
-              if (value === 'comfortable' || value === 'compact') {
-                onTableDensityChange(value);
-              }
-            }}
-          >
-            <DropdownMenuRadioItem value="comfortable">
-              Cómoda
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="compact">
-              Compacta
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </>
+        )}
+      </Button>
     </div>
   );
 };

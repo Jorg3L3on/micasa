@@ -2,12 +2,16 @@
 
 import { FortnightIncomeGauge } from '@/components/monthly/FortnightIncomeGauge';
 import { cn, formatCurrency } from '@/lib/utils';
-import { PiggyBank } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
-  availableToSpend: number;
+  /** Ingresos menos pagado y pendiente (vista planificación). */
+  incomeRemainder: number;
+  /** Saldos efectivo/débito menos pendiente de la quincena. */
   fundingNetInAccounts: number;
+  /** Si false, el neto en cuentas no aplica a esta quincena (muestra 0). */
+  fundingNetApplies?: boolean;
   percentCommitted: number;
   showGauge: boolean;
 };
@@ -17,8 +21,9 @@ const subBoxClass =
 
 export const FortnightSummaryHero = ({
   periodIncome,
-  availableToSpend,
+  incomeRemainder,
   fundingNetInAccounts,
+  fundingNetApplies = true,
   percentCommitted,
   showGauge,
 }: FortnightSummaryHeroProps) => {
@@ -42,24 +47,32 @@ export const FortnightSummaryHero = ({
         <div className="min-w-0 flex-1 space-y-3">
           <div>
             <div className="mb-1 flex items-center gap-1.5">
-              <PiggyBank
-                className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400"
+              <Wallet
+                className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
                 aria-hidden
               />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Disponible para gastar
+                Efectivo neto en cuentas
               </span>
             </div>
             <p
               className={cn(
-                'bg-gradient-to-r from-sky-600 via-primary to-violet-600 bg-clip-text font-mono text-2xl font-bold tabular-nums text-transparent sm:text-3xl',
-                availableToSpend < 0 && 'from-destructive via-destructive to-destructive',
+                'font-mono text-2xl font-bold tabular-nums sm:text-3xl',
+                fundingNetApplies
+                  ? cn(
+                      'bg-gradient-to-r from-emerald-600 via-primary to-sky-600 bg-clip-text text-transparent',
+                      fundingNetInAccounts < 0 &&
+                        'from-destructive via-destructive to-destructive',
+                    )
+                  : 'text-muted-foreground',
               )}
             >
-              {formatCurrency(availableToSpend)}
+              {formatCurrency(fundingNetInAccounts)}
             </p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
-              Después de gastos planeados en la quincena
+              {fundingNetApplies
+                ? 'Efectivo y débito en billeteras, menos lo pendiente por pagar en esta quincena'
+                : 'Solo aplica a la quincena en curso o a la siguiente'}
             </p>
           </div>
 
@@ -84,27 +97,33 @@ export const FortnightSummaryHero = ({
               >
                 {formatCurrency(periodIncome)}
               </p>
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                Total recibido en esta quincena
+              </p>
             </div>
 
             <div className={subBoxClass}>
               <div className="mb-1 flex items-center gap-1.5">
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                  className="h-2 w-2 shrink-0 rounded-full bg-sky-500"
                   aria-hidden
                 />
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Dinero en cuentas
+                  Libre del ingreso
                 </span>
               </div>
               <p
                 className={cn(
                   'font-mono text-base font-bold tabular-nums sm:text-lg',
-                  fundingNetInAccounts >= 0
-                    ? 'text-emerald-700 dark:text-emerald-300'
+                  incomeRemainder >= 0
+                    ? 'text-sky-700 dark:text-sky-300'
                     : 'text-destructive',
                 )}
               >
-                {formatCurrency(fundingNetInAccounts)}
+                {formatCurrency(incomeRemainder)}
+              </p>
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                Ingresos de la quincena menos lo pagado y lo pendiente planeado
               </p>
             </div>
           </div>

@@ -228,8 +228,9 @@ export default function SummaryBlock({
 
         <FortnightSummaryHero
           periodIncome={tenemos}
-          availableToSpend={trasPagarPlaneado}
+          incomeRemainder={trasPagarPlaneado}
           fundingNetInAccounts={displayFundingNet}
+          fundingNetApplies={billeterasVsPendienteAplica}
           percentCommitted={incomeCommittedPercent}
           showGauge={showIncomeRing}
         />
