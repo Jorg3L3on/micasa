@@ -3,9 +3,9 @@
 import type { ReactNode } from 'react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
-import { MonthlyPanelHeaderActions } from '@/components/monthly/MonthlyPanelHeaderActions';
-import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
+import { MonthlyFortnightCategoryPie } from '@/components/monthly/MonthlyFortnightCategoryPie';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
+import type { TransactionRow } from '@/types/catalog';
 import { cn } from '@/lib/utils';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
@@ -17,39 +17,10 @@ type MonthlyPanelLayoutProps = {
   suggestedPeriod: FortnightPeriod;
   ownerQuery: string;
   budgetPanel: MonthlyBudgetPanelResult;
+  firstTransactions: TransactionRow[];
+  secondTransactions: TransactionRow[];
   monthHeader: ReactNode;
   children: ReactNode;
-};
-
-const MonthlyPanelHeaderBridge = ({
-  prevHref,
-  nextHref,
-  hasNextMonth,
-  prevMonthLabel,
-  nextMonthLabel,
-}: {
-  prevHref: string;
-  nextHref: string | null;
-  hasNextMonth: boolean;
-  prevMonthLabel: string;
-  nextMonthLabel: string;
-}) => {
-  const { summaryVisible, tableDensity, setSummaryVisible, setTableDensity } =
-    useMonthlyPanelPreferences();
-
-  return (
-    <MonthlyPanelHeaderActions
-      prevHref={prevHref}
-      nextHref={nextHref}
-      hasNextMonth={hasNextMonth}
-      prevMonthLabel={prevMonthLabel}
-      nextMonthLabel={nextMonthLabel}
-      summaryVisible={summaryVisible}
-      tableDensity={tableDensity}
-      onSummaryVisibleChange={setSummaryVisible}
-      onTableDensityChange={setTableDensity}
-    />
-  );
 };
 
 export const MonthlyPanelLayout = ({
@@ -59,20 +30,11 @@ export const MonthlyPanelLayout = ({
   suggestedPeriod,
   ownerQuery,
   budgetPanel,
+  firstTransactions,
+  secondTransactions,
   monthHeader,
   children,
-  prevHref,
-  nextHref,
-  hasNextMonth,
-  prevMonthLabel,
-  nextMonthLabel,
-}: MonthlyPanelLayoutProps & {
-  prevHref: string;
-  nextHref: string | null;
-  hasNextMonth: boolean;
-  prevMonthLabel: string;
-  nextMonthLabel: string;
-}) => {
+}: MonthlyPanelLayoutProps) => {
   return (
     <MonthlyPanelPreferencesProvider
       ownerKey={ownerKey}
@@ -81,18 +43,11 @@ export const MonthlyPanelLayout = ({
       suggestedPeriod={suggestedPeriod}
     >
       <div
-        className="mb-5 flex flex-col gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4"
+        className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4"
         role="group"
         aria-label="Selector de mes"
       >
         {monthHeader}
-        <MonthlyPanelHeaderBridge
-          prevHref={prevHref}
-          nextHref={nextHref}
-          hasNextMonth={hasNextMonth}
-          prevMonthLabel={prevMonthLabel}
-          nextMonthLabel={nextMonthLabel}
-        />
       </div>
 
       <div
@@ -104,7 +59,15 @@ export const MonthlyPanelLayout = ({
         <div className="mx-auto min-w-0 w-full max-w-4xl xl:max-w-none">
           {children}
         </div>
-        <MonthlyBudgetSidebar panel={budgetPanel} ownerQuery={ownerQuery} />
+        <div className="flex min-w-0 flex-col gap-5">
+          <MonthlyBudgetSidebar panel={budgetPanel} ownerQuery={ownerQuery} />
+          <MonthlyFortnightCategoryPie
+            year={year}
+            month={month}
+            firstTransactions={firstTransactions}
+            secondTransactions={secondTransactions}
+          />
+        </div>
       </div>
     </MonthlyPanelPreferencesProvider>
   );

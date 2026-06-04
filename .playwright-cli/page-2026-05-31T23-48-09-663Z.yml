@@ -1,0 +1,244 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - list:
+              - listitem:
+                - button [expanded]:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic: Carmen Solorzano
+                    - generic: Finanzas personales
+                  - img
+          - generic:
+            - generic:
+              - generic: Menú
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /dashboard?ownerType=user&ownerId=3
+                    - img
+                    - generic: Panel
+                - listitem:
+                  - link:
+                    - /url: /monthly/2026/05?ownerType=user&ownerId=3
+                    - img
+                    - generic: Panel financiero
+                - listitem:
+                  - link:
+                    - /url: /wallets?ownerType=user&ownerId=3
+                    - img
+                    - generic: Billeteras
+                - listitem:
+                  - link:
+                    - /url: /expenses?ownerType=user&ownerId=3
+                    - img
+                    - generic: Gastos
+                - listitem:
+                  - link:
+                    - /url: /transactions?ownerType=user&ownerId=3
+                    - img
+                    - generic: Operaciones
+                - listitem:
+                  - link:
+                    - /url: /budgets?ownerType=user&ownerId=3
+                    - img
+                    - generic: Presupuestos
+                - listitem:
+                  - link:
+                    - /url: /pantry/shopping?ownerType=user&ownerId=3
+                    - img
+                    - generic: Lista de compras
+            - generic:
+              - generic: General
+              - list:
+                - listitem:
+                  - button:
+                    - img
+                    - generic: Catálogos
+                    - img
+                - listitem:
+                  - link:
+                    - /url: /loans?ownerType=user&ownerId=3
+                    - img
+                    - generic: Préstamos
+                - listitem:
+                  - button:
+                    - img
+                    - generic: Despensa
+                    - img
+                - listitem:
+                  - button:
+                    - img
+                    - generic: Tareas
+                    - img
+          - generic:
+            - list:
+              - listitem:
+                - button:
+                  - generic:
+                    - generic: CS
+                  - generic:
+                    - generic: Carmen Solorzano
+                    - generic: Consepcionsolorzano39@gmail.com
+                  - img
+          - button
+    - main:
+      - generic:
+        - generic:
+          - generic:
+            - button:
+              - img
+              - generic: Abrir o cerrar menú
+            - navigation:
+              - list:
+                - listitem:
+                  - link [disabled]: Panel
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+      - generic:
+        - generic:
+          - generic:
+            - tablist:
+              - tab [selected]:
+                - img
+                - text: Panel
+              - tab:
+                - img
+                - text: Despensa
+              - tab:
+                - img
+                - text: Tareas
+            - tabpanel:
+              - generic:
+                - group:
+                  - button: Mes
+                  - button [pressed]: Quincena
+                - generic: Mostrando quincena actual (2ª)
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: Efectivo y débito
+                    - generic:
+                      - img
+                  - generic:
+                    - generic: $0.00
+                    - generic: Suma de saldos en billeteras
+                - generic:
+                  - generic:
+                    - generic: Efectivo tras pendientes
+                    - generic:
+                      - img
+                  - generic:
+                    - generic: $0.00
+                    - generic: Billeteras menos gastos no pagados del periodo
+                - generic:
+                  - generic:
+                    - generic: Ingresos del periodo
+                    - generic:
+                      - img
+                  - generic:
+                    - generic: $0.00
+                    - generic: Total ingresado
+                - generic:
+                  - generic:
+                    - generic: Gastos del periodo
+                    - generic:
+                      - img
+                  - generic:
+                    - generic: $0.00
+                    - generic: Comprometido (pagado y pendiente)
+                - generic:
+                  - generic:
+                    - generic: Deuda en tarjetas
+                    - generic:
+                      - img
+                  - generic:
+                    - generic: $0.00
+                    - generic: Saldo utilizado en TC y tiendas
+                - generic:
+                  - generic:
+                    - generic: Crédito disponible
+                    - generic:
+                      - img
+                  - generic:
+                    - generic: $0.00
+                    - generic: Límite menos saldo (con límite definido)
+              - generic:
+                - region:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - heading [level=3]: Gasto por categoría
+                      - paragraph: 2ª quincena · May 2026
+                      - paragraph: Planificación (efectivo/débito); sin cargos solo TC ni cuotas MSI.
+                  - paragraph: No hay gastos categorizados en este periodo.
+                - region:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - heading [level=3]: Compromiso del periodo
+                      - paragraph: Proporción entre balance disponible (si es positivo), ya pagado y pendiente.
+                  - paragraph: Sin movimiento registrado para graficar (totales en cero).
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Mis tarjetas
+                    - generic: 2 tarjetas
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - generic:
+                            - generic: $
+                          - generic: Efectivo
+                        - generic:
+                          - generic:
+                            - generic: Saldo actual
+                          - generic:
+                            - generic: $0.00
+                      - button:
+                        - generic:
+                          - generic:
+                            - generic: BK
+                          - generic: Cuenta principal
+                        - generic:
+                          - generic:
+                            - generic: Saldo actual
+                          - generic:
+                            - generic: $0.00
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e291] [cursor=pointer]:
+    - generic [ref=e294]:
+      - text: Compiling
+      - generic [ref=e295]:
+        - generic [ref=e296]: .
+        - generic [ref=e297]: .
+        - generic [ref=e298]: .
+  - alert: Panel | MiCasa
+  - menu "Carmen Solorzano Finanzas personales" [active] [ref=e299]:
+    - generic [ref=e300]: Personal
+    - menuitem "Carmen Solorzano" [ref=e301]:
+      - generic [ref=e302]:
+        - img
+      - text: Carmen Solorzano
+    - separator [ref=e303]
+    - generic [ref=e304]: Casas
+    - menuitem "Leon Solorzano" [ref=e305]:
+      - generic [ref=e306]:
+        - img
+      - text: Leon Solorzano
+    - separator [ref=e307]
+    - generic [ref=e308]: Acciones
+    - menuitem "Crear casa" [ref=e309]:
+      - generic [ref=e310]:
+        - img
+      - generic [ref=e311]: Crear casa
