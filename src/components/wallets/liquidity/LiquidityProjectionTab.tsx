@@ -148,6 +148,7 @@ export function LiquidityProjectionTab() {
     if (!data) return [];
     const notes = [
       'La fila "Restante" se calcula por mes como: ingreso esperado - (MSI + préstamos + plantillas + otros cargos).',
+      'Los préstamos pagados desde billetera aparecen como obligaciones; los de nómina reducen el ingreso esperado y no duplican una salida de billetera.',
       'Las tarjetas se proyectan con cortes y vencimientos reales; no se inventan compras futuras fuera de lo ya registrado.',
       'Neto estático usa solo liquidez actual; neto proyectado suma ingresos esperados hasta el horizonte.',
       'La liquidez actual (efectivo + débito) es una foto de hoy y se mantiene como base para ambos netos.',
