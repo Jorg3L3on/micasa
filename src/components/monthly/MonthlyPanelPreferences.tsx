@@ -10,12 +10,10 @@ import {
   type ReactNode,
 } from 'react';
 import { getMonthlyPreferenceScope } from '@/lib/planner/monthly-page';
-import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
 const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
 const SUMMARY_VISIBLE_STORAGE_KEY = 'micasa.planificacion.summaryVisible';
-const TABLE_DENSITY_STORAGE_KEY = 'micasa.planificacion.tableDensity';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
@@ -23,10 +21,8 @@ type MonthlyPanelPreferencesValue = {
   prefsReady: boolean;
   period: FortnightPeriod;
   summaryVisible: boolean;
-  tableDensity: ExpenseTableDensity;
   setPeriod: (period: FortnightPeriod) => void;
   setSummaryVisible: (visible: boolean) => void;
-  setTableDensity: (density: ExpenseTableDensity) => void;
 };
 
 const MonthlyPanelPreferencesContext =
@@ -64,8 +60,6 @@ export const MonthlyPanelPreferencesProvider = ({
   const [prefsReady, setPrefsReady] = useState(false);
   const [period, setPeriodState] = useState<FortnightPeriod>(suggestedPeriod);
   const [summaryVisible, setSummaryVisibleState] = useState(true);
-  const [tableDensity, setTableDensityState] =
-    useState<ExpenseTableDensity>('comfortable');
   const preferenceScope = getMonthlyPreferenceScope(ownerKey, year, month);
 
   useEffect(() => {
@@ -82,12 +76,6 @@ export const MonthlyPanelPreferencesProvider = ({
       );
       if (storedSummary === 'true') setSummaryVisibleState(true);
       if (storedSummary === 'false') setSummaryVisibleState(false);
-      const storedDensity = localStorage.getItem(
-        storageKey(TABLE_DENSITY_STORAGE_KEY, preferenceScope),
-      );
-      if (storedDensity === 'comfortable' || storedDensity === 'compact') {
-        setTableDensityState(storedDensity);
-      }
     } catch {
       /* ignore */
     }
@@ -121,40 +109,15 @@ export const MonthlyPanelPreferencesProvider = ({
     [preferenceScope],
   );
 
-  const setTableDensity = useCallback(
-    (density: ExpenseTableDensity) => {
-      setTableDensityState(density);
-      try {
-        localStorage.setItem(
-          storageKey(TABLE_DENSITY_STORAGE_KEY, preferenceScope),
-          density,
-        );
-      } catch {
-        /* ignore */
-      }
-    },
-    [preferenceScope],
-  );
-
   const value = useMemo(
     () => ({
       prefsReady,
       period,
       summaryVisible,
-      tableDensity,
       setPeriod,
       setSummaryVisible,
-      setTableDensity,
     }),
-    [
-      prefsReady,
-      period,
-      summaryVisible,
-      tableDensity,
-      setPeriod,
-      setSummaryVisible,
-      setTableDensity,
-    ],
+    [prefsReady, period, summaryVisible, setPeriod, setSummaryVisible],
   );
 
   return (
