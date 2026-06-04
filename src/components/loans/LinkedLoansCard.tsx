@@ -9,6 +9,10 @@ import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { listLoans } from '@/lib/api/loans';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import {
+  getLoanPaymentSourceLabel,
+  getLoanWalletRelationships,
+} from '@/lib/finance/loan-wallet-relationships';
 import type { LoanListItem } from '@/types/loans';
 
 type LinkedLoansCardProps = {
@@ -24,6 +28,13 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
+
+  const loanHref = (loan: LoanListItem) =>
+    `/loans${
+      ownerQueryString
+        ? `${ownerQueryString}&loanId=${loan.id}`
+        : `?loanId=${loan.id}`
+    }`;
 
   useEffect(() => {
     if (context.id === 0) return;
@@ -56,50 +67,81 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
           <HandCoins className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
         </span>
         <CardTitle className="text-sm font-semibold">
-          Prestamos relacionados
+          Préstamos relacionados
         </CardTitle>
         <Badge variant="secondary" className="ml-auto text-[10px] tabular-nums">
           {loans.length}
         </Badge>
       </CardHeader>
       <CardContent>
+        <p className="mb-3 text-xs text-muted-foreground">
+          El origen de pago proyecta salidas; una cuenta relacionada solo sirve
+          como referencia y no mueve saldo automáticamente.
+        </p>
         <ul className="space-y-2">
-          {loans.map((loan) => (
-            <li
-              key={loan.id}
-              className="rounded-lg border border-border/60 px-3 py-2"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <Link
-                    href={`/loans${ownerQueryString}`}
-                    className="truncate text-sm font-semibold hover:underline"
-                  >
-                    {loan.name}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">
-                    {loan.lender}
-                    {loan.nextPayment
-                      ? ` · Proximo ${formatDate(loan.nextPayment.dueDate)}`
-                      : ''}
-                    {loan.sourceWalletId === walletId
-                      ? ' · Se paga desde esta billetera'
-                      : loan.linkedWalletId === walletId
-                        ? ' · Cuenta vinculada'
+          {loans.map((loan) => {
+            const relationships = getLoanWalletRelationships(loan, walletId);
+
+            return (
+              <li
+                key={loan.id}
+                className="rounded-lg border border-border/60 px-3 py-2"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link
+                      href={loanHref(loan)}
+                      className="truncate text-sm font-semibold hover:underline"
+                    >
+                      {loan.name}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {loan.lender}
+                      {loan.nextPayment
+                        ? ` · Próximo ${formatDate(loan.nextPayment.dueDate)}`
                         : ''}
-                  </p>
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Badge
+                        variant="outline"
+                        className="h-5 text-[10px] text-muted-foreground"
+                      >
+                        {getLoanPaymentSourceLabel(loan)}
+                      </Badge>
+                      {relationships.map((relationship) => (
+                        <Badge
+                          key={relationship.role}
+                          variant={
+                            relationship.role === 'payment_source'
+                              ? 'default'
+                              : 'secondary'
+                          }
+                          className="h-5 text-[10px]"
+                        >
+                          {relationship.label}
+                        </Badge>
+                      ))}
+                    </div>
+                    {relationships.length > 0 ? (
+                      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                        {relationships
+                          .map((relationship) => relationship.description)
+                          .join(' ')}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono text-sm font-bold tabular-nums">
+                      {formatCurrency(loan.remainingAmount)}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      pendiente
+                    </p>
+                  </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-mono text-sm font-bold tabular-nums">
-                    {formatCurrency(loan.remainingAmount)}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    pendiente
-                  </p>
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </CardContent>
     </Card>

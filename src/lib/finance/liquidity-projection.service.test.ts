@@ -316,6 +316,45 @@ describe('getLiquidityProjection', () => {
     });
   });
 
+  it('excludes paid/skipped/cancelled payments and inactive loans by query filters', async () => {
+    setupWalletMock([fundingRow], []);
+    findManyLoanPayment.mockResolvedValue([]);
+
+    await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: parseCalendarDate('2026-04-30'),
+      includeUnpaidExpenses: false,
+    });
+
+    expect(findManyLoanPayment).toHaveBeenCalledTimes(2);
+    expect(findManyLoanPayment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'SCHEDULED',
+          loan: expect.objectContaining({
+            ...userOwner,
+            status: 'ACTIVE',
+            payment_source: 'PAYROLL_DEDUCTION',
+          }),
+        }),
+      }),
+    );
+    expect(findManyLoanPayment).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'SCHEDULED',
+          loan: expect.objectContaining({
+            ...userOwner,
+            status: 'ACTIVE',
+            payment_source: 'WALLET',
+          }),
+        }),
+      }),
+    );
+  });
+
   it('subtracts scheduled payroll loan deductions from expected income', async () => {
     setupWalletMock([], []);
     findManyFortnight.mockResolvedValue([]);
