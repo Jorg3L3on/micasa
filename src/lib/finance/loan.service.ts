@@ -1,7 +1,11 @@
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import type { CreateLoanInput, UpdateLoanPaymentInput } from '@/schemas/loan.schema';
+import type {
+  CreateLoanInput,
+  UpdateLoanInput,
+  UpdateLoanPaymentInput,
+} from '@/schemas/loan.schema';
 import {
   calculateLoanProgress,
   deriveLoanStatusFromPayments,
@@ -23,6 +27,7 @@ import type {
   LoanListItem,
   LoanPaymentActionValue,
   LoanPaymentListItem,
+  LoanStatusValue,
   PlannerLoanPaymentsResponse,
 } from '@/types/loans';
 
@@ -298,6 +303,33 @@ function statusForLoanPaymentAction(action: LoanPaymentActionValue) {
   return 'SCHEDULED';
 }
 
+function assertLoanStatusTransition(
+  currentStatus: LoanStatusValue,
+  nextStatus: LoanStatusValue,
+) {
+  if (currentStatus === nextStatus) return;
+
+  if (nextStatus === 'PAUSED' && currentStatus !== 'ACTIVE') {
+    throw new Error('Solo los préstamos activos se pueden pausar');
+  }
+  if (nextStatus === 'ACTIVE' && currentStatus !== 'PAUSED') {
+    throw new Error('Solo los préstamos pausados se pueden reanudar');
+  }
+  if (
+    nextStatus === 'CANCELLED' &&
+    currentStatus !== 'ACTIVE' &&
+    currentStatus !== 'PAUSED'
+  ) {
+    throw new Error('Solo los préstamos activos o pausados se pueden cancelar');
+  }
+  if (currentStatus === 'CANCELLED') {
+    throw new Error('Los préstamos cancelados no se pueden reactivar');
+  }
+  if (currentStatus === 'PAID_OFF') {
+    throw new Error('Los préstamos pagados permanecen en historial');
+  }
+}
+
 export async function listLoansByOwner(
   ownerFilter: OwnerFilter,
 ): Promise<LoanListItem[]> {
@@ -359,6 +391,65 @@ export async function createLoanForOwner(
         })),
       },
     },
+    include: loanInclude,
+  });
+
+  return mapLoan(loan);
+}
+
+export async function updateLoanForOwner(
+  loanId: number,
+  ownerFilter: OwnerFilter,
+  input: UpdateLoanInput,
+): Promise<LoanListItem> {
+  const existing = await prisma.loan.findFirst({
+    where: { id: loanId, ...ownerFilter },
+    select: {
+      id: true,
+      status: true,
+      payment_source: true,
+    },
+  });
+  if (!existing) {
+    throw new Error('Préstamo no encontrado');
+  }
+
+  await Promise.all([
+    assertOwnedWallet(input.linkedWalletId, ownerFilter),
+    assertOwnedIncomeTemplate(input.incomeTemplateId, ownerFilter),
+  ]);
+
+  if (
+    existing.payment_source !== 'PAYROLL_DEDUCTION' &&
+    input.incomeTemplateId != null
+  ) {
+    throw new Error('La plantilla de ingreso solo aplica a préstamos de nómina');
+  }
+
+  const data: Prisma.LoanUncheckedUpdateInput = {};
+  if (input.name !== undefined) data.name = input.name;
+  if (input.lender !== undefined) data.lender = input.lender;
+  if (input.linkedWalletId !== undefined) {
+    data.linked_wallet_id = input.linkedWalletId;
+  }
+  if (input.incomeTemplateId !== undefined) {
+    data.income_template_id =
+      existing.payment_source === 'PAYROLL_DEDUCTION'
+        ? input.incomeTemplateId
+        : null;
+  }
+  if (input.notes !== undefined) data.notes = input.notes?.trim() || null;
+  if (input.status !== undefined) {
+    assertLoanStatusTransition(
+      existing.status as LoanStatusValue,
+      input.status as LoanStatusValue,
+    );
+    data.status = input.status;
+  }
+
+  const loan = await prisma.loan.update({
+    where: { id: loanId },
+    data,
     include: loanInclude,
   });
 

@@ -12,8 +12,12 @@ import {
   HandCoins,
   Landmark,
   Loader2,
+  Pause,
+  Pencil,
+  Play,
   Plus,
   ReceiptText,
+  Save,
   Undo2,
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
@@ -40,13 +44,18 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { applyLoanPaymentAction, createLoan, listLoans } from '@/lib/api/loans';
+import {
+  applyLoanPaymentAction,
+  createLoan,
+  listLoans,
+  updateLoan,
+} from '@/lib/api/loans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
-import type { CreateLoanInput } from '@/schemas/loan.schema';
+import type { CreateLoanInput, UpdateLoanInput } from '@/schemas/loan.schema';
 import type {
   LoanListItem,
   LoanPaymentActionValue,
@@ -68,8 +77,19 @@ type LoanFormState = {
   incomeTemplateId: string;
   notes: string;
 };
+type LoanEditFormState = {
+  name: string;
+  lender: string;
+  linkedWalletId: string;
+  incomeTemplateId: string;
+  notes: string;
+};
 
 type LoanStatusFilter = LoanListItem['status'] | 'ALL';
+type LoanLifecycleTarget = Extract<
+  LoanListItem['status'],
+  'ACTIVE' | 'PAUSED' | 'CANCELLED'
+>;
 type LoanPaymentVisualStatus =
   | 'scheduled'
   | 'paid'
@@ -85,6 +105,12 @@ type PaymentActionDraft = {
 };
 type PaymentActionErrors = Partial<
   Record<'paidAt' | 'sourceWalletId' | 'note' | 'general', string>
+>;
+type LoanEditErrors = Partial<
+  Record<
+    'name' | 'lender' | 'linkedWalletId' | 'incomeTemplateId' | 'notes' | 'general',
+    string
+  >
 >;
 
 const defaultStartDate = () => todayCalendarDate();
@@ -103,6 +129,14 @@ const defaultForm = (): LoanFormState => ({
   linkedWalletId: '',
   incomeTemplateId: '',
   notes: '',
+});
+
+const editFormFromLoan = (loan: LoanListItem): LoanEditFormState => ({
+  name: loan.name,
+  lender: loan.lender,
+  linkedWalletId: loan.linkedWalletId ? String(loan.linkedWalletId) : 'none',
+  incomeTemplateId: loan.incomeTemplateId ? String(loan.incomeTemplateId) : 'none',
+  notes: loan.notes ?? '',
 });
 
 const typeLabel = (type: LoanListItem['type']) =>
@@ -134,6 +168,22 @@ const paymentActionLabel = (action: LoanPaymentActionValue) => {
   if (action === 'MARK_SCHEDULED') return 'Deshacer pago';
   if (action === 'SKIP') return 'Omitir pago';
   return 'Cancelar pago';
+};
+
+const lifecycleLabel = (status: LoanLifecycleTarget) => {
+  if (status === 'PAUSED') return 'Pausar préstamo';
+  if (status === 'CANCELLED') return 'Cancelar préstamo';
+  return 'Reanudar préstamo';
+};
+
+const lifecycleDescription = (status: LoanLifecycleTarget) => {
+  if (status === 'PAUSED') {
+    return 'El préstamo saldrá de las obligaciones activas mientras esté pausado, sin borrar su historial.';
+  }
+  if (status === 'CANCELLED') {
+    return 'El préstamo se cancelará sin eliminar pagos históricos ni gastos generados. Sus pagos pendientes dejarán de planificarse como activos.';
+  }
+  return 'El préstamo volverá al seguimiento activo y sus pagos pendientes aparecerán de nuevo en la planeación.';
 };
 
 const paymentActionDescription = (
@@ -168,6 +218,19 @@ const mapPaymentActionError = (message: string): PaymentActionErrors => {
   if (normalized.includes('fecha')) {
     return { paidAt: message };
   }
+  return { general: message };
+};
+
+const mapLoanEditError = (message: string): LoanEditErrors => {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('billetera') || normalized.includes('cuenta')) {
+    return { linkedWalletId: message };
+  }
+  if (normalized.includes('plantilla') || normalized.includes('nómina')) {
+    return { incomeTemplateId: message };
+  }
+  if (normalized.includes('nombre')) return { name: message };
+  if (normalized.includes('entidad')) return { lender: message };
   return { general: message };
 };
 
@@ -255,6 +318,15 @@ export default function LoansPage() {
   const [paymentActionSubmitting, setPaymentActionSubmitting] = useState(false);
   const [paymentActionErrors, setPaymentActionErrors] =
     useState<PaymentActionErrors>({});
+  const [loanEditOpen, setLoanEditOpen] = useState(false);
+  const [loanEditForm, setLoanEditForm] = useState<LoanEditFormState | null>(
+    null,
+  );
+  const [loanEditErrors, setLoanEditErrors] = useState<LoanEditErrors>({});
+  const [loanEditSubmitting, setLoanEditSubmitting] = useState(false);
+  const [lifecycleDraft, setLifecycleDraft] =
+    useState<LoanLifecycleTarget | null>(null);
+  const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
 
@@ -304,6 +376,10 @@ export default function LoansPage() {
       setSelectedLoanId(null);
       setPaymentActionDraft(null);
       setPaymentActionErrors({});
+      setLoanEditOpen(false);
+      setLoanEditForm(null);
+      setLoanEditErrors({});
+      setLifecycleDraft(null);
     }
   }, [loans, selectedLoanId]);
 
@@ -432,6 +508,115 @@ export default function LoansPage() {
       [key]: undefined,
       general: undefined,
     }));
+  };
+
+  const setLoanEditField = <K extends keyof LoanEditFormState>(
+    key: K,
+    value: LoanEditFormState[K],
+  ) => {
+    setLoanEditForm((current) =>
+      current ? { ...current, [key]: value } : current,
+    );
+    setLoanEditErrors((current) => ({
+      ...current,
+      [key]: undefined,
+      general: undefined,
+    }));
+  };
+
+  const startLoanEdit = (loan: LoanListItem) => {
+    setLoanEditForm(editFormFromLoan(loan));
+    setLoanEditErrors({});
+    setLifecycleDraft(null);
+    setLoanEditOpen(true);
+  };
+
+  const resetLoanDetailDrafts = () => {
+    setPaymentActionDraft(null);
+    setPaymentActionErrors({});
+    setLoanEditOpen(false);
+    setLoanEditForm(null);
+    setLoanEditErrors({});
+    setLifecycleDraft(null);
+  };
+
+  const validateLoanEdit = () => {
+    if (!loanEditForm) return { general: 'Selecciona un préstamo para editar.' };
+
+    const errors: LoanEditErrors = {};
+    if (!loanEditForm.name.trim()) {
+      errors.name = 'El nombre es obligatorio.';
+    }
+    if (!loanEditForm.lender.trim()) {
+      errors.lender = 'La entidad es obligatoria.';
+    }
+
+    return errors;
+  };
+
+  const handleLoanEditSubmit = async () => {
+    if (!selectedLoan || !loanEditForm) return;
+    const errors = validateLoanEdit();
+    if (Object.keys(errors).length > 0) {
+      setLoanEditErrors(errors);
+      return;
+    }
+
+    setLoanEditSubmitting(true);
+    setLoanEditErrors({});
+    try {
+      const payload: UpdateLoanInput = {
+        name: loanEditForm.name,
+        lender: loanEditForm.lender,
+        linkedWalletId:
+          loanEditForm.linkedWalletId === 'none'
+            ? null
+            : Number(loanEditForm.linkedWalletId),
+        incomeTemplateId:
+          selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' &&
+          loanEditForm.incomeTemplateId !== 'none'
+            ? Number(loanEditForm.incomeTemplateId)
+            : null,
+        notes: loanEditForm.notes.trim() || null,
+      };
+
+      await updateLoan(selectedLoan.id, payload, context);
+      toast.success('Préstamo actualizado');
+      setLoanEditOpen(false);
+      setLoanEditForm(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'No se pudo actualizar el préstamo';
+      setLoanEditErrors(mapLoanEditError(message));
+      toast.error(message);
+    } finally {
+      setLoanEditSubmitting(false);
+    }
+  };
+
+  const handleLifecycleSubmit = async () => {
+    if (!selectedLoan || !lifecycleDraft) return;
+
+    setLifecycleSubmitting(true);
+    setLoanEditErrors({});
+    try {
+      await updateLoan(selectedLoan.id, { status: lifecycleDraft }, context);
+      toast.success(lifecycleLabel(lifecycleDraft));
+      setLifecycleDraft(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'No se pudo actualizar el estado del préstamo';
+      setLoanEditErrors({ general: message });
+      toast.error(message);
+    } finally {
+      setLifecycleSubmitting(false);
+    }
   };
 
   const startPaymentAction = (
@@ -647,7 +832,11 @@ export default function LoansPage() {
               return (
                 <li
                   key={loan.id}
-                  className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center"
+                  className={cn(
+                    'grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center',
+                    loan.status === 'PAUSED' && 'bg-amber-500/5',
+                    loan.status === 'CANCELLED' && 'bg-muted/40 opacity-80',
+                  )}
                 >
                   <div className="flex min-w-0 gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
@@ -725,8 +914,7 @@ export default function LoansPage() {
                     size="sm"
                     className="w-fit gap-1.5 justify-self-start md:justify-self-end"
                     onClick={() => {
-                      setPaymentActionDraft(null);
-                      setPaymentActionErrors({});
+                      resetLoanDetailDrafts();
                       setSelectedLoanId(loan.id);
                     }}
                     aria-label={`Ver detalle de ${loan.name}`}
@@ -978,8 +1166,7 @@ export default function LoansPage() {
         onOpenChange={(open) => {
           if (!open) {
             setSelectedLoanId(null);
-            setPaymentActionDraft(null);
-            setPaymentActionErrors({});
+            resetLoanDetailDrafts();
           }
         }}
       >
@@ -993,6 +1180,137 @@ export default function LoansPage() {
             </DialogHeader>
 
             <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => startLoanEdit(selectedLoan)}
+                  disabled={loanEditSubmitting || lifecycleSubmitting}
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                  Editar datos
+                </Button>
+                {selectedLoan.status === 'ACTIVE' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setLoanEditOpen(false);
+                      setLifecycleDraft('PAUSED');
+                      setLoanEditErrors({});
+                    }}
+                    disabled={loanEditSubmitting || lifecycleSubmitting}
+                  >
+                    <Pause className="h-3.5 w-3.5" aria-hidden />
+                    Pausar
+                  </Button>
+                ) : null}
+                {selectedLoan.status === 'PAUSED' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setLoanEditOpen(false);
+                      setLifecycleDraft('ACTIVE');
+                      setLoanEditErrors({});
+                    }}
+                    disabled={loanEditSubmitting || lifecycleSubmitting}
+                  >
+                    <Play className="h-3.5 w-3.5" aria-hidden />
+                    Reanudar
+                  </Button>
+                ) : null}
+                {selectedLoan.status === 'ACTIVE' ||
+                selectedLoan.status === 'PAUSED' ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setLoanEditOpen(false);
+                      setLifecycleDraft('CANCELLED');
+                      setLoanEditErrors({});
+                    }}
+                    disabled={loanEditSubmitting || lifecycleSubmitting}
+                  >
+                    <CircleSlash className="h-3.5 w-3.5" aria-hidden />
+                    Cancelar préstamo
+                  </Button>
+                ) : null}
+              </div>
+
+              {lifecycleDraft ? (
+                <div className="rounded-xl border border-border/60 bg-background p-3 shadow-sm">
+                  <div className="flex gap-3">
+                    <span
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1',
+                        lifecycleDraft === 'CANCELLED'
+                          ? 'bg-destructive/10 text-destructive ring-destructive/30'
+                          : 'bg-amber-500/10 text-amber-700 ring-amber-500/30 dark:text-amber-300',
+                      )}
+                    >
+                      {lifecycleDraft === 'ACTIVE' ? (
+                        <Play className="h-4 w-4" aria-hidden />
+                      ) : lifecycleDraft === 'PAUSED' ? (
+                        <Pause className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <CircleSlash className="h-4 w-4" aria-hidden />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {lifecycleLabel(lifecycleDraft)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {lifecycleDescription(lifecycleDraft)}
+                      </p>
+                    </div>
+                  </div>
+                  {loanEditErrors.general ? (
+                    <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      {loanEditErrors.general}
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setLifecycleDraft(null);
+                        setLoanEditErrors({});
+                      }}
+                      disabled={lifecycleSubmitting}
+                    >
+                      Cerrar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        lifecycleDraft === 'CANCELLED' ? 'destructive' : 'default'
+                      }
+                      className={cn('gap-2', lifecycleSubmitting && 'opacity-80')}
+                      onClick={() => void handleLifecycleSubmit()}
+                      disabled={lifecycleSubmitting}
+                    >
+                      {lifecycleSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : null}
+                      {lifecycleLabel(lifecycleDraft)}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-border/60 bg-card p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1099,6 +1417,214 @@ export default function LoansPage() {
                   </div>
                 ) : null}
               </div>
+
+              {loanEditOpen && loanEditForm ? (
+                <div className="rounded-xl border border-border/60 bg-background p-3 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        Editar datos seguros
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Estos campos no recalculan el calendario ni alteran pagos ya
+                        generados.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">
+                      Campos de calendario solo lectura
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`loan-${selectedLoan.id}-edit-name`}>
+                        Nombre
+                      </Label>
+                      <Input
+                        id={`loan-${selectedLoan.id}-edit-name`}
+                        value={loanEditForm.name}
+                        onChange={(event) =>
+                          setLoanEditField('name', event.target.value)
+                        }
+                        aria-invalid={Boolean(loanEditErrors.name)}
+                        className={cn(
+                          loanEditErrors.name &&
+                            'border-destructive focus-visible:ring-destructive/30',
+                        )}
+                      />
+                      {loanEditErrors.name ? (
+                        <p className="text-xs text-destructive">
+                          {loanEditErrors.name}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`loan-${selectedLoan.id}-edit-lender`}>
+                        Entidad
+                      </Label>
+                      <Input
+                        id={`loan-${selectedLoan.id}-edit-lender`}
+                        value={loanEditForm.lender}
+                        onChange={(event) =>
+                          setLoanEditField('lender', event.target.value)
+                        }
+                        aria-invalid={Boolean(loanEditErrors.lender)}
+                        className={cn(
+                          loanEditErrors.lender &&
+                            'border-destructive focus-visible:ring-destructive/30',
+                        )}
+                      />
+                      {loanEditErrors.lender ? (
+                        <p className="text-xs text-destructive">
+                          {loanEditErrors.lender}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Cuenta relacionada</Label>
+                      <Select
+                        value={loanEditForm.linkedWalletId}
+                        onValueChange={(value) =>
+                          setLoanEditField('linkedWalletId', value)
+                        }
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            loanEditErrors.linkedWalletId &&
+                              'border-destructive focus:ring-destructive/30',
+                          )}
+                          aria-invalid={Boolean(loanEditErrors.linkedWalletId)}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            Sin cuenta vinculada
+                          </SelectItem>
+                          {wallets.map((wallet) => (
+                            <SelectItem key={wallet.id} value={String(wallet.id)}>
+                              {wallet.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Solo relaciona el préstamo con una cuenta para consulta; no
+                        mueve dinero.
+                      </p>
+                      {loanEditErrors.linkedWalletId ? (
+                        <p className="text-xs text-destructive">
+                          {loanEditErrors.linkedWalletId}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Ingreso relacionado</Label>
+                      {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' ? (
+                        <Select
+                          value={loanEditForm.incomeTemplateId}
+                          onValueChange={(value) =>
+                            setLoanEditField('incomeTemplateId', value)
+                          }
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              loanEditErrors.incomeTemplateId &&
+                                'border-destructive focus:ring-destructive/30',
+                            )}
+                            aria-invalid={Boolean(
+                              loanEditErrors.incomeTemplateId,
+                            )}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              Sin ingreso vinculado
+                            </SelectItem>
+                            {incomeTemplates.map((template) => (
+                              <SelectItem
+                                key={template.id}
+                                value={String(template.id)}
+                              >
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                          Solo aplica a préstamos con deducción de nómina.
+                        </div>
+                      )}
+                      {loanEditErrors.incomeTemplateId ? (
+                        <p className="text-xs text-destructive">
+                          {loanEditErrors.incomeTemplateId}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor={`loan-${selectedLoan.id}-edit-notes`}>
+                        Notas
+                      </Label>
+                      <Textarea
+                        id={`loan-${selectedLoan.id}-edit-notes`}
+                        value={loanEditForm.notes}
+                        onChange={(event) =>
+                          setLoanEditField('notes', event.target.value)
+                        }
+                        placeholder="Condiciones, referencia, comentarios"
+                        className="min-h-24"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+                    <span>Total: {formatCurrency(selectedLoan.totalPayable)}</span>
+                    <span>Pago: {formatCurrency(selectedLoan.paymentAmount)}</span>
+                    <span>Pagos: {selectedLoan.paymentCount}</span>
+                    <span>Frecuencia: {frequencyLabel(selectedLoan.frequency)}</span>
+                    <span>Primer pago: {formatDate(selectedLoan.startDate)}</span>
+                    <span>{typeLabel(selectedLoan.type)}</span>
+                  </div>
+
+                  {loanEditErrors.general ? (
+                    <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      {loanEditErrors.general}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setLoanEditOpen(false);
+                        setLoanEditForm(null);
+                        setLoanEditErrors({});
+                      }}
+                      disabled={loanEditSubmitting}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className={cn('gap-2', loanEditSubmitting && 'opacity-80')}
+                      onClick={() => void handleLoanEditSubmit()}
+                      disabled={loanEditSubmitting}
+                    >
+                      {loanEditSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Save className="h-4 w-4" aria-hidden />
+                      )}
+                      Guardar cambios
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
                 {(
