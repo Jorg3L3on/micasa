@@ -81,7 +81,7 @@ async function assertOwnedFundingWallet(
     throw new Error('La billetera de pago no pertenece a este contexto');
   }
   if (wallet.type !== 'CASH' && wallet.type !== 'DEBIT_CARD') {
-    throw new Error('El prestamo debe pagarse desde efectivo o debito');
+    throw new Error('El préstamo debe pagarse desde efectivo o débito');
   }
 }
 
@@ -398,7 +398,7 @@ export async function updateLoanPaymentForOwner(
       },
     });
     if (!existing) {
-      throw new Error('Pago de prestamo no encontrado');
+      throw new Error('Pago de préstamo no encontrado');
     }
 
     const nextSourceWalletId = input.sourceWalletId ?? existing.source_wallet_id;
@@ -425,7 +425,7 @@ export async function updateLoanPaymentForOwner(
 
     if (existing.loan.payment_source === 'WALLET') {
       if (willBePaid && !nextSourceWalletId) {
-        throw new Error('Selecciona la billetera que paga el prestamo');
+        throw new Error('Selecciona la billetera que paga el préstamo');
       }
 
       if (willBePaid && nextSourceWalletId) {
@@ -437,7 +437,7 @@ export async function updateLoanPaymentForOwner(
           throw new Error('Billetera de origen no encontrada');
         }
         if (!isFundingWalletType(sourceWallet.type)) {
-          throw new Error('El prestamo debe pagarse desde efectivo o debito');
+          throw new Error('El préstamo debe pagarse desde efectivo o débito');
         }
         if (decimalToNumber(sourceWallet.amount) < amount) {
           throw new Error('Saldo insuficiente en la billetera de origen');
