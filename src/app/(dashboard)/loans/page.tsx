@@ -3,11 +3,17 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
+  AlertTriangle,
   CalendarDays,
+  CheckCircle2,
+  CircleSlash,
+  Clock,
+  Eye,
   HandCoins,
   Landmark,
   Loader2,
   Plus,
+  ReceiptText,
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import StatCard from '@/components/dashboard/StatCard';
@@ -16,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -36,9 +43,10 @@ import { createLoan, listLoans } from '@/lib/api/loans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
 import type { CreateLoanInput } from '@/schemas/loan.schema';
-import type { LoanListItem } from '@/types/loans';
+import type { LoanListItem, LoanPaymentListItem } from '@/types/loans';
 
 type LoanFormState = {
   name: string;
@@ -56,7 +64,15 @@ type LoanFormState = {
   notes: string;
 };
 
-const todayYmd = () => todayCalendarDate();
+type LoanStatusFilter = LoanListItem['status'] | 'ALL';
+type LoanPaymentVisualStatus =
+  | 'scheduled'
+  | 'paid'
+  | 'skipped'
+  | 'cancelled'
+  | 'overdue';
+
+const defaultStartDate = () => todayCalendarDate();
 
 const defaultForm = (): LoanFormState => ({
   name: '',
@@ -66,7 +82,7 @@ const defaultForm = (): LoanFormState => ({
   paymentAmount: '',
   paymentCount: '',
   frequency: 'FORTNIGHTLY',
-  startDate: todayYmd(),
+  startDate: defaultStartDate(),
   paymentSource: 'WALLET',
   sourceWalletId: '',
   linkedWalletId: '',
@@ -75,7 +91,7 @@ const defaultForm = (): LoanFormState => ({
 });
 
 const typeLabel = (type: LoanListItem['type']) =>
-  type === 'PAYROLL' ? 'Prestamo de nomina' : 'Prestamo personal';
+  type === 'PAYROLL' ? 'Préstamo de nómina' : 'Préstamo personal';
 
 const frequencyLabel = (frequency: LoanListItem['frequency']) => {
   if (frequency === 'WEEKLY') return 'Semanal';
@@ -90,15 +106,93 @@ const statusLabel = (status: LoanListItem['status']) => {
   return 'Activo';
 };
 
+const paymentStatusLabel = (status: LoanPaymentVisualStatus) => {
+  if (status === 'paid') return 'Pagado';
+  if (status === 'skipped') return 'Omitido';
+  if (status === 'cancelled') return 'Cancelado';
+  if (status === 'overdue') return 'Vencido';
+  return 'Por pagar';
+};
+
+const getPaymentVisualStatus = (
+  payment: LoanPaymentListItem,
+  todayYmd: string,
+): LoanPaymentVisualStatus => {
+  if (payment.status === 'PAID') return 'paid';
+  if (payment.status === 'SKIPPED') return 'skipped';
+  if (payment.status === 'CANCELLED') return 'cancelled';
+  if (payment.dueDate < todayYmd) return 'overdue';
+  return 'scheduled';
+};
+
+const paymentStatusTone = (status: LoanPaymentVisualStatus) => {
+  if (status === 'paid') {
+    return {
+      icon: CheckCircle2,
+      row: 'border-emerald-500/25 border-l-emerald-500 bg-emerald-500/5',
+      badge:
+        'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+      iconBox:
+        'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30 dark:text-emerald-300',
+    };
+  }
+  if (status === 'overdue') {
+    return {
+      icon: AlertTriangle,
+      row: 'border-destructive/30 border-l-destructive bg-destructive/5',
+      badge: 'border-destructive/40 bg-destructive/10 text-destructive',
+      iconBox: 'bg-destructive/10 text-destructive ring-destructive/30',
+    };
+  }
+  if (status === 'skipped') {
+    return {
+      icon: CircleSlash,
+      row: 'border-slate-400/25 border-l-slate-400 bg-slate-500/5',
+      badge:
+        'border-slate-400/40 bg-slate-500/10 text-slate-700 dark:text-slate-300',
+      iconBox:
+        'bg-slate-500/10 text-slate-600 ring-slate-500/30 dark:text-slate-300',
+    };
+  }
+  if (status === 'cancelled') {
+    return {
+      icon: CircleSlash,
+      row: 'border-rose-500/25 border-l-rose-500 bg-rose-500/5',
+      badge: 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+      iconBox: 'bg-rose-500/10 text-rose-600 ring-rose-500/30 dark:text-rose-300',
+    };
+  }
+  return {
+    icon: Clock,
+    row: 'border-amber-500/25 border-l-amber-500 bg-amber-500/5',
+    badge:
+      'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+    iconBox:
+      'bg-amber-500/10 text-amber-600 ring-amber-500/30 dark:text-amber-300',
+  };
+};
+
+const loanStatusFilters: Array<{ value: LoanStatusFilter; label: string }> = [
+  { value: 'ALL', label: 'Todos' },
+  { value: 'ACTIVE', label: 'Activos' },
+  { value: 'PAID_OFF', label: 'Pagados' },
+  { value: 'PAUSED', label: 'Pausados' },
+  { value: 'CANCELLED', label: 'Cancelados' },
+];
+
 export default function LoansPage() {
   const { context } = useFinanceContext();
+  const todayYmd = useHydrationSafeTodayYmd();
   const [loans, setLoans] = useState<LoanListItem[]>([]);
   const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateListItem[]>(
     [],
   );
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<LoanStatusFilter>('ALL');
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
 
@@ -109,8 +203,12 @@ export default function LoansPage() {
   );
 
   const loadData = useCallback(async () => {
-    if (context.type === 'user' && context.id === 0) return;
+    if (context.type === 'user' && context.id === 0) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setLoadError(null);
     try {
       const [loanData, walletData, templateData] = await Promise.all([
         listLoans(context),
@@ -125,9 +223,10 @@ export default function LoansPage() {
       setWallets(walletData);
       setIncomeTemplates(templateData.filter((template) => template.active));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudieron cargar prestamos',
-      );
+      const message =
+        error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -137,11 +236,43 @@ export default function LoansPage() {
     void loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (selectedLoanId === null) return;
+    if (!loans.some((loan) => loan.id === selectedLoanId)) {
+      setSelectedLoanId(null);
+    }
+  }, [loans, selectedLoanId]);
+
   const activeLoans = loans.filter((loan) => loan.status === 'ACTIVE');
   const totalDebt = loans.reduce((sum, loan) => sum + loan.remainingAmount, 0);
   const nextPaymentsTotal = activeLoans.reduce(
     (sum, loan) => sum + (loan.nextPayment?.amount ?? 0),
     0,
+  );
+  const visibleLoans =
+    statusFilter === 'ALL'
+      ? loans
+      : loans.filter((loan) => loan.status === statusFilter);
+  const selectedLoan =
+    selectedLoanId === null
+      ? null
+      : loans.find((loan) => loan.id === selectedLoanId) ?? null;
+  const selectedLoanPayments = selectedLoan
+    ? [...(selectedLoan.payments ?? [])].sort((a, b) => a.sequence - b.sequence)
+    : [];
+  const selectedScheduleCounts = selectedLoanPayments.reduce(
+    (counts, payment) => {
+      const visualStatus = getPaymentVisualStatus(payment, todayYmd);
+      counts[visualStatus] += 1;
+      return counts;
+    },
+    {
+      scheduled: 0,
+      paid: 0,
+      skipped: 0,
+      cancelled: 0,
+      overdue: 0,
+    } satisfies Record<LoanPaymentVisualStatus, number>,
   );
 
   const setField = <K extends keyof LoanFormState>(
@@ -191,13 +322,13 @@ export default function LoansPage() {
         notes: form.notes || null,
       };
       await createLoan(payload, context);
-      toast.success('Prestamo creado');
+      toast.success('Préstamo creado');
       setDialogOpen(false);
       setForm(defaultForm());
       await loadData();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'No se pudo crear el prestamo',
+        error instanceof Error ? error.message : 'No se pudo crear el préstamo',
       );
     } finally {
       setSubmitting(false);
@@ -208,14 +339,14 @@ export default function LoansPage() {
     <div className="space-y-5">
       <div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
         <div>
-          <h2 className="text-lg font-semibold leading-tight">Prestamos</h2>
+          <h2 className="text-lg font-semibold leading-tight">Préstamos</h2>
           <p className="text-xs text-muted-foreground">
-            Prestamos personales y de nomina con calendario de pagos.
+            Préstamos personales y de nómina con calendario de pagos.
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" aria-hidden />
-          Nuevo prestamo
+          Nuevo préstamo
         </Button>
       </div>
 
@@ -228,15 +359,15 @@ export default function LoansPage() {
           subtitle="Capital pendiente"
         />
         <StatCard
-          title="Proximos pagos"
+          title="Próximos pagos"
           amount={nextPaymentsTotal}
           iconKey="trending-down"
           iconGradient="linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
-          subtitle="Siguiente pago por prestamo activo"
+          subtitle="Siguiente pago por préstamo activo"
         />
         <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Prestamos activos
+            Préstamos activos
           </p>
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
             {activeLoans.length}
@@ -245,40 +376,102 @@ export default function LoansPage() {
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Nomina
+            Nómina
           </p>
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
             {loans.filter((loan) => loan.type === 'PAYROLL').length}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Con deduccion o seguimiento
+            Con deducción o seguimiento
           </p>
         </div>
+      </div>
+
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label="Filtrar préstamos por estado"
+      >
+        {loanStatusFilters.map((filter) => {
+          const count =
+            filter.value === 'ALL'
+              ? loans.length
+              : loans.filter((loan) => loan.status === filter.value).length;
+          const isSelected = statusFilter === filter.value;
+          return (
+            <Button
+              key={filter.value}
+              type="button"
+              variant={isSelected ? 'default' : 'outline'}
+              size="sm"
+              className="h-8 gap-1.5 rounded-full px-3 text-xs"
+              onClick={() => setStatusFilter(filter.value)}
+              aria-pressed={isSelected}
+            >
+              {filter.label}
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
+                  isSelected
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {count}
+              </span>
+            </Button>
+          );
+        })}
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            Cargando prestamos...
+            Cargando préstamos...
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
+              <AlertTriangle className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                No se pudieron cargar los préstamos.
+              </p>
+              <p className="text-xs text-muted-foreground">{loadError}</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void loadData()}
+            >
+              Reintentar
+            </Button>
           </div>
         ) : loans.length === 0 ? (
           <EmptyState
-            message="No tienes prestamos registrados."
-            description="Crea un prestamo para ver sus pagos en el panel financiero."
+            message="No tienes préstamos registrados."
+            description="Crea un préstamo para ver sus pagos en el panel financiero."
             action={{
-              label: 'Crear prestamo',
+              label: 'Crear préstamo',
               onClick: () => setDialogOpen(true),
             }}
           />
+        ) : visibleLoans.length === 0 ? (
+          <EmptyState
+            message="No hay préstamos en este filtro."
+            description="Cambia el estado seleccionado para revisar el resto del historial."
+          />
         ) : (
           <ul className="divide-y divide-border/60">
-            {loans.map((loan) => {
+            {visibleLoans.map((loan) => {
               const Icon = loan.type === 'PAYROLL' ? Landmark : HandCoins;
               return (
                 <li
                   key={loan.id}
-                  className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                  className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center"
                 >
                   <div className="flex min-w-0 gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
@@ -304,7 +497,7 @@ export default function LoansPage() {
                         <span>Pago {frequencyLabel(loan.frequency).toLowerCase()}</span>
                         <span>
                           {loan.paymentSource === 'PAYROLL_DEDUCTION'
-                            ? `Nomina${loan.incomeTemplateName ? `: ${loan.incomeTemplateName}` : ''}`
+                            ? `Nómina${loan.incomeTemplateName ? `: ${loan.incomeTemplateName}` : ''}`
                             : loan.sourceWalletName ?? 'Billetera'}
                         </span>
                         {loan.linkedWalletName ? (
@@ -340,7 +533,7 @@ export default function LoansPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Proximo
+                        Próximo
                       </p>
                       <p className="inline-flex items-center justify-end gap-1 text-xs font-medium">
                         <CalendarDays className="h-3 w-3" aria-hidden />
@@ -350,6 +543,17 @@ export default function LoansPage() {
                       </p>
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-fit gap-1.5 justify-self-start md:justify-self-end"
+                    onClick={() => setSelectedLoanId(loan.id)}
+                    aria-label={`Ver detalle de ${loan.name}`}
+                  >
+                    <Eye className="h-3.5 w-3.5" aria-hidden />
+                    Detalle
+                  </Button>
                 </li>
               );
             })}
@@ -360,7 +564,10 @@ export default function LoansPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Nuevo prestamo</DialogTitle>
+            <DialogTitle>Nuevo préstamo</DialogTitle>
+            <DialogDescription>
+              Captura el total, frecuencia y origen de pago para generar el calendario.
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -370,7 +577,7 @@ export default function LoansPage() {
                   id="loan-name"
                   value={form.name}
                   onChange={(e) => setField('name', e.target.value)}
-                  placeholder="Prestamo DiDi"
+                  placeholder="Préstamo DiDi"
                   required
                 />
               </div>
@@ -396,8 +603,8 @@ export default function LoansPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PERSONAL">Prestamo personal</SelectItem>
-                    <SelectItem value="PAYROLL">Prestamo de nomina</SelectItem>
+                    <SelectItem value="PERSONAL">Préstamo personal</SelectItem>
+                    <SelectItem value="PAYROLL">Préstamo de nómina</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -444,7 +651,7 @@ export default function LoansPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="loan-count">Numero de pagos</Label>
+                <Label htmlFor="loan-count">Número de pagos</Label>
                 <Input
                   id="loan-count"
                   type="number"
@@ -482,7 +689,7 @@ export default function LoansPage() {
                   <SelectContent>
                     <SelectItem value="WALLET">Desde billetera</SelectItem>
                     <SelectItem value="PAYROLL_DEDUCTION">
-                      Deduccion de nomina
+                      Deducción de nómina
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -579,11 +786,249 @@ export default function LoansPage() {
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 ) : null}
-                Crear prestamo
+                Crear préstamo
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={selectedLoan !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedLoanId(null);
+        }}
+      >
+        {selectedLoan ? (
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>{selectedLoan.name}</DialogTitle>
+              <DialogDescription>
+                Calendario completo, origen de pago y estado operativo del préstamo.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-border/60 bg-card p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Total pagadero
+                  </p>
+                  <p className="mt-1 font-mono text-base font-bold tabular-nums">
+                    {formatCurrency(selectedLoan.totalPayable)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-card p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Pagado
+                  </p>
+                  <p className="mt-1 font-mono text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                    {formatCurrency(selectedLoan.paidAmount)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-card p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Pendiente
+                  </p>
+                  <p className="mt-1 font-mono text-base font-bold tabular-nums text-foreground">
+                    {formatCurrency(selectedLoan.remainingAmount)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-card p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Próximo pago
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {selectedLoan.nextPayment
+                      ? formatDate(selectedLoan.nextPayment.dueDate)
+                      : 'Sin pagos pendientes'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Entidad
+                  </p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {selectedLoan.lender}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Tipo
+                  </p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {typeLabel(selectedLoan.type)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Estado
+                  </p>
+                  <Badge
+                    variant={selectedLoan.status === 'ACTIVE' ? 'default' : 'secondary'}
+                    className="mt-1"
+                  >
+                    {statusLabel(selectedLoan.status)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Frecuencia
+                  </p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {frequencyLabel(selectedLoan.frequency)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Origen de pago
+                  </p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION'
+                      ? `Deducción de nómina${
+                          selectedLoan.incomeTemplateName
+                            ? `: ${selectedLoan.incomeTemplateName}`
+                            : ''
+                        }`
+                      : selectedLoan.sourceWalletName ?? 'Billetera'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Cuenta relacionada
+                  </p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {selectedLoan.linkedWalletName ?? 'Sin cuenta vinculada'}
+                  </p>
+                </div>
+                {selectedLoan.notes ? (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Notas
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {selectedLoan.notes}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {(
+                  [
+                    ['overdue', 'Vencidos'],
+                    ['scheduled', 'Por pagar'],
+                    ['paid', 'Pagados'],
+                    ['skipped', 'Omitidos'],
+                    ['cancelled', 'Cancelados'],
+                  ] satisfies Array<[LoanPaymentVisualStatus, string]>
+                ).map(([status, label]) => (
+                  <span
+                    key={status}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-muted-foreground"
+                  >
+                    {label}
+                    <span className="font-mono font-semibold tabular-nums text-foreground">
+                      {selectedScheduleCounts[status]}
+                    </span>
+                  </span>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Calendario de pagos
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedLoan.paidPayments}/{selectedLoan.paymentCount} pagos
+                    cubiertos
+                  </p>
+                </div>
+
+                {selectedLoanPayments.length === 0 ? (
+                  <div className="rounded-xl border border-border/60 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                    Este préstamo todavía no tiene pagos programados.
+                  </div>
+                ) : (
+                  <ul className="space-y-2" role="list">
+                    {selectedLoanPayments.map((payment) => {
+                      const visualStatus = getPaymentVisualStatus(payment, todayYmd);
+                      const tone = paymentStatusTone(visualStatus);
+                      const StatusIcon = tone.icon;
+                      const paymentSource =
+                        payment.sourceWalletName ??
+                        selectedLoan.sourceWalletName ??
+                        (selectedLoan.paymentSource === 'PAYROLL_DEDUCTION'
+                          ? 'Deducción de nómina'
+                          : 'Billetera');
+
+                      return (
+                        <li
+                          key={payment.id}
+                          className={cn(
+                            'grid gap-3 rounded-xl border border-l-[3px] p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center',
+                            tone.row,
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'flex h-9 w-9 items-center justify-center rounded-xl ring-1',
+                              tone.iconBox,
+                            )}
+                          >
+                            <StatusIcon className="h-4 w-4" aria-hidden />
+                          </span>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground">
+                                Pago #{payment.sequence}
+                              </p>
+                              <span
+                                className={cn(
+                                  'inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-bold uppercase tracking-wider',
+                                  tone.badge,
+                                )}
+                              >
+                                {paymentStatusLabel(visualStatus)}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                              <span>Vence {formatDate(payment.dueDate)}</span>
+                              {payment.paidAt ? (
+                                <span>Pagado {formatDate(payment.paidAt)}</span>
+                              ) : null}
+                              <span>{paymentSource}</span>
+                              <span className="inline-flex items-center gap-1">
+                                <ReceiptText className="h-3 w-3" aria-hidden />
+                                {payment.linkedExpenseId
+                                  ? `Gasto #${payment.linkedExpenseId}`
+                                  : 'Sin gasto vinculado'}
+                              </span>
+                            </div>
+                            {payment.note ? (
+                              <p className="mt-1 text-xs text-foreground/80">
+                                {payment.note}
+                              </p>
+                            ) : null}
+                          </div>
+
+                          <p className="font-mono text-sm font-bold tabular-nums text-foreground sm:text-right">
+                            {formatCurrency(payment.amount)}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        ) : null}
       </Dialog>
     </div>
   );
