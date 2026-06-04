@@ -16,19 +16,16 @@ import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import { cn } from '@/lib/utils';
 import { SlidersHorizontal } from 'lucide-react';
 
-type LayoutMode = 'single' | 'both';
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
 type FortnightViewControlsProps = {
   year: number;
   month: number;
-  layout: LayoutMode;
   period: FortnightPeriod;
   firstLabel: string;
   secondLabel: string;
   summaryVisible: boolean;
   tableDensity: ExpenseTableDensity;
-  onLayoutChange: (layout: LayoutMode) => void;
   onPeriodChange: (period: FortnightPeriod) => void;
   onSummaryVisibleChange: (visible: boolean) => void;
   onTableDensityChange: (density: ExpenseTableDensity) => void;
@@ -75,13 +72,11 @@ const SegmentGroup = ({ label, groupLabel, children }: SegmentGroupProps) => (
 export const FortnightViewControls = ({
   year,
   month,
-  layout,
   period,
   firstLabel,
   secondLabel,
   summaryVisible,
   tableDensity,
-  onLayoutChange,
   onPeriodChange,
   onSummaryVisibleChange,
   onTableDensityChange,
@@ -96,53 +91,28 @@ export const FortnightViewControls = ({
       role="region"
       aria-label="Controles de vista de planificación"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-        {layout === 'single' ? (
-          <SegmentGroup label="Quincena" groupLabel="quincena">
-            <button
-              type="button"
-              onClick={() => onPeriodChange('FIRST')}
-              className={segmentButtonClass(period === 'FIRST')}
-              aria-pressed={period === 'FIRST'}
-              aria-label={`Primera quincena: ${firstLabel}`}
-              title={firstLabel}
-            >
-              1ª ({firstRange})
-            </button>
-            <button
-              type="button"
-              onClick={() => onPeriodChange('SECOND')}
-              className={segmentButtonClass(period === 'SECOND')}
-              aria-pressed={period === 'SECOND'}
-              aria-label={`Segunda quincena: ${secondLabel}`}
-              title={secondLabel}
-            >
-              2ª ({secondRange})
-            </button>
-          </SegmentGroup>
-        ) : null}
-
-        <SegmentGroup label="Período" groupLabel="periodo">
-          <button
-            type="button"
-            onClick={() => onLayoutChange('single')}
-            className={segmentButtonClass(layout === 'single')}
-            aria-pressed={layout === 'single'}
-            aria-label="Ver una quincena"
-          >
-            Una quincena
-          </button>
-          <button
-            type="button"
-            onClick={() => onLayoutChange('both')}
-            className={segmentButtonClass(layout === 'both')}
-            aria-pressed={layout === 'both'}
-            aria-label="Ver ambas quincenas"
-          >
-            Ambas
-          </button>
-        </SegmentGroup>
-      </div>
+      <SegmentGroup label="Quincena" groupLabel="quincena">
+        <button
+          type="button"
+          onClick={() => onPeriodChange('FIRST')}
+          className={segmentButtonClass(period === 'FIRST')}
+          aria-pressed={period === 'FIRST'}
+          aria-label={`Primera quincena: ${firstLabel}`}
+          title={firstLabel}
+        >
+          1ª ({firstRange})
+        </button>
+        <button
+          type="button"
+          onClick={() => onPeriodChange('SECOND')}
+          className={segmentButtonClass(period === 'SECOND')}
+          aria-pressed={period === 'SECOND'}
+          aria-label={`Segunda quincena: ${secondLabel}`}
+          title={secondLabel}
+        >
+          2ª ({secondRange})
+        </button>
+      </SegmentGroup>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
