@@ -5,9 +5,12 @@ import { BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { cn, formatCurrency } from '@/lib/utils';
+import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
+import { BUDGET_FREQUENCY_LABELS } from '@/schemas/budget.schema';
 import {
   MONTHLY_BUDGET_CATEGORY_ACCENTS,
   type MonthlyBudgetPanelResult,
+  type MonthlyBudgetScope,
 } from '@/types/monthly-budget-panel';
 
 type MonthlyBudgetSidebarProps = {
@@ -19,19 +22,25 @@ export const MonthlyBudgetSidebar = ({
   panel,
   ownerQuery,
 }: MonthlyBudgetSidebarProps) => {
-  const { totalBudget, spent, available, categories } = panel;
+  const { period } = useMonthlyPanelPreferences();
+  const scope = period === 'FIRST' ? panel.first : panel.second;
+  const { totalBudget, spent, available, categories } = scope;
+  const periodLabel =
+    period === 'FIRST' ? 'primera quincena' : 'segunda quincena';
   const usedPercent =
     totalBudget > 0 ? Math.min(100, Math.round((spent / totalBudget) * 100)) : 0;
+  const sourceLabel = getSourceLabel(scope);
 
   if (totalBudget <= 0 && categories.length === 0) {
     return (
       <aside
         className="rounded-xl border border-border/60 bg-card p-4 shadow-sm"
-        aria-label="Presupuesto del mes"
+        aria-label="Presupuesto de la quincena"
       >
-        <h2 className="text-sm font-semibold">Presupuesto del mes</h2>
+        <h2 className="text-sm font-semibold">Presupuesto de la quincena</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          No hay presupuestos activos para este mes. Crea uno en Presupuestos para ver el resumen aquí.
+          No hay presupuestos activos para la {periodLabel}. Crea uno en
+          Presupuestos para ver el resumen aquí.
         </p>
         <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
           <Link href={`/budgets${ownerQuery}`}>Ir a presupuestos</Link>
@@ -43,18 +52,21 @@ export const MonthlyBudgetSidebar = ({
   return (
     <aside
       className="space-y-5 rounded-xl border border-border/60 bg-card p-4 shadow-sm"
-      aria-label="Presupuesto del mes y categorías"
+      aria-label="Presupuesto de la quincena y categorías"
     >
       <section aria-labelledby="monthly-budget-heading">
         <h2
           id="monthly-budget-heading"
           className="text-sm font-semibold text-foreground"
         >
-          Presupuesto del mes
+          Presupuesto de la quincena
         </h2>
         <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-foreground">
           {formatCurrency(totalBudget)}
         </p>
+        {sourceLabel ? (
+          <p className="mt-1 text-xs text-muted-foreground">{sourceLabel}</p>
+        ) : null}
         <div
           className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/50"
           role="progressbar"
@@ -131,7 +143,10 @@ export const MonthlyBudgetSidebar = ({
       ) : null}
 
       <Button variant="outline" className="w-full gap-2" asChild>
-        <Link href={`/budgets${ownerQuery}`} aria-label="Ver reporte completo de presupuestos">
+        <Link
+          href={`/budgets${ownerQuery}`}
+          aria-label="Ver reporte completo de presupuestos"
+        >
           <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
           Ver reporte completo
         </Link>
@@ -139,3 +154,17 @@ export const MonthlyBudgetSidebar = ({
     </aside>
   );
 };
+
+function getSourceLabel(scope: MonthlyBudgetScope): string | null {
+  if (scope.sources.length === 0) return null;
+  if (scope.sources.length === 1) {
+    const [source] = scope.sources;
+    const label = BUDGET_FREQUENCY_LABELS[source.frequency].toLowerCase();
+    return `Basado en presupuesto ${label}`;
+  }
+
+  const labels = scope.sources
+    .map((source) => BUDGET_FREQUENCY_LABELS[source.frequency].toLowerCase())
+    .join(', ');
+  return `Incluye presupuestos ${labels}`;
+}

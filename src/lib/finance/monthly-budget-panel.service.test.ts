@@ -4,12 +4,22 @@ import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 describe('MonthlyBudgetPanelResult shape', () => {
   it('empty panel has zero totals', () => {
     const empty: MonthlyBudgetPanelResult = {
-      totalBudget: 0,
-      spent: 0,
-      available: 0,
-      categories: [],
+      first: {
+        totalBudget: 0,
+        spent: 0,
+        available: 0,
+        categories: [],
+        sources: [],
+      },
+      second: {
+        totalBudget: 0,
+        spent: 0,
+        available: 0,
+        categories: [],
+        sources: [],
+      },
     };
-    expect(empty.available).toBe(0);
-    expect(empty.categories).toHaveLength(0);
+    expect(empty.first.available).toBe(0);
+    expect(empty.second.categories).toHaveLength(0);
   });
 });

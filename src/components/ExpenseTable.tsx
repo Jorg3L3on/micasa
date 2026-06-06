@@ -50,7 +50,8 @@ import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { DataTableColumnHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
-import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryIcon } from '@/components/categories/CategoryIcon';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 import type { TransactionRow, WalletListItem } from '@/types/catalog';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
@@ -65,6 +66,45 @@ const isCardChargeExpenseRow = (row: TransactionRow): boolean => {
 
 const isPlanningCardPaymentRow = (row: TransactionRow): boolean =>
   row.planning_row_kind === 'card_payment';
+
+type ExpenseWalletLabelProps = {
+  expense: TransactionRow;
+  walletsById: Map<number, WalletListItem>;
+  isCompact: boolean;
+};
+
+const ExpenseWalletLabel = ({
+  expense,
+  walletsById,
+  isCompact,
+}: ExpenseWalletLabelProps) => {
+  const wallet =
+    expense.wallet_id != null ? walletsById.get(expense.wallet_id) : null;
+  const walletLabel =
+    wallet?.name || expense.paymentMethod?.trim() || 'Billetera no definida';
+  const providerIconKey = wallet?.provider_icon_key ?? null;
+
+  return (
+    <span
+      className="inline-flex min-w-0 items-center gap-1.5"
+      aria-label={walletLabel}
+      title={walletLabel}
+    >
+      {providerIconKey ? (
+        <WalletProviderIcon
+          providerIconKey={providerIconKey}
+          className={cn(
+            'border-0 bg-transparent p-0 text-muted-foreground/70',
+            isCompact ? 'h-3 w-3' : 'h-3.5 w-3.5',
+          )}
+          iconClassName={isCompact ? 'h-3 w-3' : 'h-3.5 w-3.5'}
+          showTooltipLabel={false}
+        />
+      ) : null}
+      <span className="truncate text-muted-foreground/65">{walletLabel}</span>
+    </span>
+  );
+};
 
 type ThrownApiError = Error & { status?: number };
 
@@ -136,6 +176,10 @@ export default function ExpenseTable({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [payingExpense, setPayingExpense] = useState<TransactionRow | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const walletsById = useMemo(
+    () => new Map(wallets.map((wallet) => [wallet.id, wallet])),
+    [wallets],
+  );
 
   // Sync local state with props when expenses change
   useEffect(() => {
@@ -502,37 +546,52 @@ export default function ExpenseTable({
             >
               <span
                 className={cn(
+                  'inline-flex min-w-0 items-center gap-1.5',
                   isCompact ? 'text-xs' : 'text-sm',
-                  expense.is_paid
-                    ? 'font-medium text-muted-foreground line-through'
-                    : 'font-semibold text-foreground',
                 )}
               >
-                {expense.description}
+                <CategoryIcon
+                  icon={expense.categoryIcon}
+                  className={cn(
+                    expense.is_paid
+                      ? 'text-muted-foreground/70'
+                      : 'text-foreground/70',
+                  )}
+                  iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
+                />
+                <span
+                  className={cn(
+                    'truncate',
+                    expense.is_paid
+                      ? 'font-medium text-muted-foreground line-through'
+                      : 'font-semibold text-foreground',
+                  )}
+                >
+                  {expense.description}
+                </span>
               </span>
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1">
-                  <span
+                <ExpenseWalletLabel
+                  expense={expense}
+                  walletsById={walletsById}
+                  isCompact={isCompact}
+                />
+                {hasDue && (
+                  <Badge
+                    variant={expense.is_paid ? 'secondary' : badgeColor}
                     className={cn(
-                      'text-muted-foreground',
-                      isCompact ? 'text-[10px]' : 'text-[11px]',
+                      'text-[10px]',
+                      isCompact ? 'h-4 px-1.5' : 'h-5',
+                      expense.is_paid && 'opacity-60',
                     )}
                   >
-                    <CategoryLabel
-                      name={expense.category}
-                      icon={expense.categoryIcon}
-                    />
-                  </span>
-                  <span className={cn('text-muted-foreground/30', isCompact ? 'text-[10px]' : 'text-[11px]')}>·</span>
-                  <span
-                    className={cn(
-                      'text-muted-foreground/70',
-                      isCompact ? 'text-[10px]' : 'text-[11px]',
-                    )}
-                  >
-                    {expense.paymentMethod}
-                  </span>
-                </div>
+                    {expense.is_paid
+                      ? `Pagado · día ${dueDay}`
+                      : showCountdown && daysRemaining !== null && daysRemaining >= 0
+                        ? `Día ${dueDay} · en ${daysRemaining} día${daysRemaining !== 1 ? 's' : ''}`
+                        : `Día ${dueDay} · vencido`}
+                  </Badge>
+                )}
                 {isPlanningCardPaymentRow(expense) ? (
                   <Badge
                     variant="outline"
@@ -557,22 +616,6 @@ export default function ExpenseTable({
                     Tarjeta
                   </Badge>
                 ) : null}
-                {hasDue && (
-                  <Badge
-                    variant={expense.is_paid ? 'secondary' : badgeColor}
-                    className={cn(
-                      'text-[10px]',
-                      isCompact ? 'h-4 px-1.5' : 'h-5',
-                      expense.is_paid && 'opacity-60',
-                    )}
-                  >
-                    {expense.is_paid
-                      ? `Pagado · día ${dueDay}`
-                      : showCountdown && daysRemaining !== null && daysRemaining >= 0
-                        ? `Día ${dueDay} · en ${daysRemaining} día${daysRemaining !== 1 ? 's' : ''}`
-                        : `Día ${dueDay} · vencido`}
-                  </Badge>
-                )}
               </div>
             </div>
           );
@@ -713,6 +756,7 @@ export default function ExpenseTable({
       setPayingExpense,
       setPayDialogOpen,
       isCompact,
+      walletsById,
     ]
   );
 
@@ -921,15 +965,26 @@ export default function ExpenseTable({
                       {/* Body */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <span
-                            className={cn(
-                              'min-w-0 truncate text-sm leading-tight',
-                              e.is_paid
-                                ? 'font-medium text-muted-foreground/80 line-through'
-                                : 'font-semibold text-foreground',
-                            )}
-                          >
-                            {e.description}
+                          <span className="inline-flex min-w-0 items-center gap-1.5 text-sm leading-tight">
+                            <CategoryIcon
+                              icon={e.categoryIcon}
+                              className={cn(
+                                e.is_paid
+                                  ? 'text-muted-foreground/70'
+                                  : 'text-foreground/70',
+                              )}
+                              iconClassName="h-4 w-4"
+                            />
+                            <span
+                              className={cn(
+                                'min-w-0 truncate',
+                                e.is_paid
+                                  ? 'font-medium text-muted-foreground/80 line-through'
+                                  : 'font-semibold text-foreground',
+                              )}
+                            >
+                              {e.description}
+                            </span>
                           </span>
                           <span
                             className={cn(
@@ -944,21 +999,31 @@ export default function ExpenseTable({
                             {formatCurrency(toDisplayAmount(e.amount))}
                           </span>
                         </div>
-                        <p className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
-                          {e.category ? (
-                            <>
-                              <CategoryLabel
-                                name={e.category}
-                                icon={e.categoryIcon}
-                              />
-                              <span className="text-muted-foreground/30">·</span>
-                            </>
-                          ) : null}
-                          <span className="truncate text-muted-foreground/70">
-                            {e.paymentMethod}
-                          </span>
+                        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <ExpenseWalletLabel
+                            expense={e}
+                            walletsById={walletsById}
+                            isCompact={isCompact}
+                          />
+                          {hasDue && (
+                            <Badge
+                              variant={e.is_paid ? 'secondary' : badgeColor}
+                              className={cn(
+                                'h-4 rounded-full px-1.5 text-[10px] font-medium',
+                                e.is_paid && 'opacity-60',
+                              )}
+                            >
+                              {e.is_paid
+                                ? `Pagado · día ${dueDay}`
+                                : showCountdown &&
+                                    daysRemaining !== null &&
+                                    daysRemaining >= 0
+                                  ? `Día ${dueDay} · en ${daysRemaining}d`
+                                  : `Día ${dueDay} · vencido`}
+                            </Badge>
+                          )}
                         </p>
-                        {(isCardPay || isCardCharge || hasDue) && (
+                        {(isCardPay || isCardCharge) && (
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {isCardPay && (
                               <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
@@ -971,25 +1036,6 @@ export default function ExpenseTable({
                                 <span className="h-1 w-1 rounded-full bg-violet-500 dark:bg-violet-400" aria-hidden />
                                 Tarjeta
                               </span>
-                            )}
-                            {hasDue && (
-                              <Badge
-                                variant={
-                                  e.is_paid ? 'secondary' : badgeColor
-                                }
-                                className={cn(
-                                  'h-4 rounded-full px-1.5 text-[10px] font-medium',
-                                  e.is_paid && 'opacity-60',
-                                )}
-                              >
-                                {e.is_paid
-                                  ? `Pagado · día ${dueDay}`
-                                  : showCountdown &&
-                                      daysRemaining !== null &&
-                                      daysRemaining >= 0
-                                    ? `Día ${dueDay} · en ${daysRemaining}d`
-                                    : `Día ${dueDay} · vencido`}
-                              </Badge>
                             )}
                           </div>
                         )}

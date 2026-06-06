@@ -4,9 +4,11 @@ import { useId, useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import {
   buildCategoryPieChartData,
   CATEGORY_PIE_SLICE_COLORS,
+  type CategoryPieSlice,
   type CategoryPieRow,
 } from '@/components/charts/period-category-pie';
 
@@ -15,7 +17,7 @@ type PieTooltipProps = {
   payload?: Array<{
     name: string;
     value: number;
-    payload: { name: string; value: number; pct: number };
+    payload: CategoryPieSlice;
   }>;
 };
 
@@ -24,7 +26,12 @@ const PieTooltip = ({ active, payload }: PieTooltipProps) => {
   const row = payload[0].payload;
   return (
     <div className="rounded-lg border border-border/60 bg-card px-3 py-2 text-xs shadow-lg">
-      <p className="font-medium text-foreground">{row.name}</p>
+      <CategoryLabel
+        name={row.category}
+        icon={row.categoryIcon}
+        className="font-medium text-foreground"
+        iconClassName="h-3.5 w-3.5"
+      />
       <p className="font-mono tabular-nums text-foreground">
         {formatCurrency(row.value)}
       </p>
@@ -139,9 +146,12 @@ export const PeriodCategoryPieCard = ({
                       ],
                   }}
                 />
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                  {row.name}
-                </span>
+                <CategoryLabel
+                  name={row.category}
+                  icon={row.categoryIcon}
+                  className="min-w-0 flex-1 text-muted-foreground"
+                  iconClassName="h-3.5 w-3.5"
+                />
                 <span className="shrink-0 font-mono tabular-nums text-foreground">
                   {formatCurrency(row.value)}
                 </span>
