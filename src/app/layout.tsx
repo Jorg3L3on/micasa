@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/lib/polyfills';
 import { Geist, Geist_Mono } from 'next/font/google';
+import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SessionProvider } from '@/components/session-provider';
@@ -56,6 +57,12 @@ export default function RootLayout({
                 enableSystem
                 disableTransitionOnChange
               >
+                <NextTopLoader
+                  color="#10b981"
+                  height={3}
+                  showSpinner={false}
+                  zIndex={1600}
+                />
                 {children}
                 <Toaster richColors position="top-center" />
               </ThemeProvider>

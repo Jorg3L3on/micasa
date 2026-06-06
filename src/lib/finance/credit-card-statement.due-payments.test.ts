@@ -4,12 +4,14 @@ const {
   queryRaw,
   findManyWallets,
   findManyStatementImports,
+  findManyExpenses,
   findFirstFortnight,
   findManyPaymentPlans,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallets: vi.fn(),
   findManyStatementImports: vi.fn(),
+  findManyExpenses: vi.fn(),
   findFirstFortnight: vi.fn(),
   findManyPaymentPlans: vi.fn(),
 }));
@@ -22,6 +24,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     creditCardStatementImport: {
       findMany: findManyStatementImports,
+    },
+    expense: {
+      findMany: findManyExpenses,
     },
     fortnight: {
       findFirst: findFirstFortnight,
@@ -47,6 +52,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockReset();
     findManyStatementImports.mockReset();
     findManyStatementImports.mockResolvedValue([]);
+    findManyExpenses.mockReset();
+    findManyExpenses.mockResolvedValue([]);
     findFirstFortnight.mockReset();
     findFirstFortnight.mockResolvedValue({ id: 42 });
     findManyPaymentPlans.mockReset();
@@ -225,5 +232,95 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       plannedPayment: 694.76,
     });
     expect(result.second).toEqual([]);
+  });
+
+  it('does not carry a stale latest import into a later planner month', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 5, 6, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 29,
+        name: 'Mercado Pago',
+        type: 'CREDIT_CARD',
+        amount: 4494.74,
+        cutoff_day: 7,
+        due_day: 17,
+      },
+    ]);
+    queryRaw.mockResolvedValue([]);
+    findManyStatementImports.mockResolvedValue([
+      {
+        wallet_id: 29,
+        total_due: 4494.74,
+        period_end: new Date(Date.UTC(2026, 4, 7, 12, 0, 0)),
+        payment_due_date: null,
+        created_at: new Date(Date.UTC(2026, 5, 6, 3, 0, 0)),
+      },
+    ]);
+    findFirstFortnight.mockResolvedValue({ id: 36 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 6);
+
+    expect(result.second).toHaveLength(1);
+    expect(result.second[0]).toMatchObject({
+      walletId: 29,
+      statementDueDate: '2026-06-17',
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      plannerStatus: 'pagado',
+      obligationAmountSource: 'none',
+    });
+  });
+
+  it('projects active installment rows into future planner months without repeating wallet debt', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 5, 6, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 29,
+        name: 'Mercado Pago',
+        type: 'CREDIT_CARD',
+        amount: 5000,
+        cutoff_day: 7,
+        due_day: 17,
+      },
+    ]);
+    queryRaw.mockResolvedValue([]);
+    findManyStatementImports.mockResolvedValue([]);
+    findManyExpenses.mockResolvedValue([
+      {
+        wallet_id: 29,
+        description: 'Compra MSI',
+        amount: 300,
+        payment_date: new Date(Date.UTC(2026, 4, 10, 12, 0, 0)),
+        created_at: new Date(Date.UTC(2026, 4, 10, 12, 0, 0)),
+        credit_installment_current: 1,
+        credit_installment_total: 5,
+      },
+    ]);
+    findFirstFortnight.mockResolvedValue({ id: 40 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const july = await getDuePaymentsForPlannerMonth(userOwner, 2026, 7);
+    const august = await getDuePaymentsForPlannerMonth(userOwner, 2026, 8);
+    const september = await getDuePaymentsForPlannerMonth(userOwner, 2026, 9);
+    const october = await getDuePaymentsForPlannerMonth(userOwner, 2026, 10);
+
+    for (const month of [july, august, september]) {
+      expect(month.second[0]).toMatchObject({
+        walletId: 29,
+        nextDuePayment: 300,
+        effectiveAmount: 300,
+        plannerStatus: 'por_pagar',
+        obligationAmountSource: 'projection',
+        isEstimate: true,
+      });
+    }
+    expect(october.second[0]).toMatchObject({
+      walletId: 29,
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      plannerStatus: 'pagado',
+      obligationAmountSource: 'none',
+    });
   });
 });

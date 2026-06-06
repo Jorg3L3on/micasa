@@ -13,6 +13,10 @@ import {
 } from '@/components/ui/tooltip';
 import type { DuePaymentItem } from '@/types/catalog';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import {
+  isCalendarFortnightCurrent,
+  isCalendarFortnightNext,
+} from '@/lib/fortnight-calendar';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import {
   clearFortnightCardPaymentPlan,
@@ -75,6 +79,7 @@ type FortnightCardPaymentsPanelProps = {
   plannerYear: number;
   /** Planning month 1–12 (e.g. 4 for April) — used to build the display due date. */
   plannerMonth: number;
+  plannerPeriod: 'FIRST' | 'SECOND';
   isCompact?: boolean;
   onPayCard?: (item: DuePaymentItem) => void;
   /** Mientras se cargan billeteras/categorías para el diálogo de pago */
@@ -89,6 +94,7 @@ const FortnightCardPaymentsPanel = ({
   fortnightId,
   plannerYear,
   plannerMonth,
+  plannerPeriod,
   isCompact = false,
   onPayCard,
   payingWalletId = null,
@@ -96,6 +102,9 @@ const FortnightCardPaymentsPanel = ({
 }: FortnightCardPaymentsPanelProps) => {
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
+  const showRelativeDueTiming =
+    isCalendarFortnightCurrent(plannerYear, plannerMonth, plannerPeriod) ||
+    isCalendarFortnightNext(plannerYear, plannerMonth, plannerPeriod);
   const [editingItem, setEditingItem] = useState<DuePaymentItem | null>(null);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -207,9 +216,12 @@ const FortnightCardPaymentsPanel = ({
             const displayDueDateStr = `${plannerYear}-${mm}-${dd}`;
             const displayDueDate = formatDate(displayDueDateStr);
             const daysLeft = getDaysLeft(displayDueDateStr, todayYmd);
-            const dateColor = daysLeftColor(daysLeft, status);
+            const dateColor = showRelativeDueTiming
+              ? daysLeftColor(daysLeft, status)
+              : 'text-muted-foreground';
 
             const daysLabel = (() => {
+              if (!showRelativeDueTiming) return null;
               if (status === 'pagado') return null;
               if (daysLeft < 0) return 'vencido';
               if (daysLeft === 0) return 'vence hoy';

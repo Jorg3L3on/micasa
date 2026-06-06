@@ -97,10 +97,12 @@ export type ComputeNextDuePaymentInput = {
   outstandingBalance: number;
   dueDay: number;
   cutoffDay: number;
+  projectedStatementInstallmentsTotal?: number;
   currentCyclePurchasesTotal?: number;
   currentCyclePaymentsTotal?: number;
   asOfYmd?: string;
   currentCycleEndYmd?: string;
+  allowOutstandingBalanceFallback?: boolean;
 };
 
 export type BuildCardStatementObligationInput = {
@@ -114,10 +116,12 @@ export type BuildCardStatementObligationInput = {
   paymentsAppliedToStatement: number;
   importedTotalDue: number | null;
   outstandingBalance: number;
+  projectedStatementInstallmentsTotal?: number;
   currentCyclePurchasesTotal?: number;
   currentCyclePaymentsTotal?: number;
   asOfYmd?: string;
   plannedGrossAmount?: number | null;
+  allowOutstandingBalanceFallback?: boolean;
   /** Calendar YYYY-MM-DD for overdue check; defaults to today in Mexico City. */
   todayYmd?: string;
 };
@@ -241,44 +245,45 @@ export const computeNextDuePayment = ({
   outstandingBalance,
   dueDay,
   cutoffDay,
+  projectedStatementInstallmentsTotal = 0,
   currentCyclePurchasesTotal = 0,
   currentCyclePaymentsTotal = 0,
   asOfYmd,
   currentCycleEndYmd,
+  allowOutstandingBalanceFallback = true,
 }: ComputeNextDuePaymentInput): number => {
+  const statementBalance =
+    lastStatementBalance + Math.max(projectedStatementInstallmentsTotal, 0);
   const ledgerDue = Math.max(
-    lastStatementBalance - paymentsAppliedToStatement,
+    statementBalance - paymentsAppliedToStatement,
     0,
   );
   const outstandingDue = Math.max(
     outstandingBalance - paymentsAppliedToStatement,
     0,
   );
-
-  let nextDuePayment: number;
-  if (importedTotalDue != null) {
-    nextDuePayment = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
-  } else if (ledgerDue <= 0 && outstandingDue > 0) {
-    nextDuePayment = outstandingDue;
-  } else {
-    nextDuePayment = ledgerDue;
-  }
-
-  if (
+  const projectedOpenCycleDue =
     dueDay < cutoffDay &&
-    nextDuePayment === 0 &&
     currentCyclePurchasesTotal > 0 &&
     asOfYmd != null &&
     currentCycleEndYmd != null &&
     asOfYmd <= currentCycleEndYmd
-  ) {
-    nextDuePayment = Math.max(
-      currentCyclePurchasesTotal - currentCyclePaymentsTotal,
-      0,
-    );
-  }
+      ? Math.max(currentCyclePurchasesTotal - currentCyclePaymentsTotal, 0)
+      : 0;
 
-  return nextDuePayment;
+  if (importedTotalDue != null) {
+    return Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+  }
+  if (ledgerDue > 0) {
+    return ledgerDue;
+  }
+  if (projectedOpenCycleDue > 0) {
+    return projectedOpenCycleDue;
+  }
+  if (allowOutstandingBalanceFallback && outstandingDue > 0) {
+    return outstandingDue;
+  }
+  return 0;
 };
 
 export const deriveObligationAmountSource = (input: {
@@ -287,10 +292,12 @@ export const deriveObligationAmountSource = (input: {
   outstandingBalance: number;
   dueDay: number;
   cutoffDay: number;
+  projectedStatementInstallmentsTotal?: number;
   currentCyclePurchasesTotal?: number;
   asOfYmd?: string;
   currentCycleEndYmd?: string;
   remainingStatementDue: number;
+  allowOutstandingBalanceFallback?: boolean;
 }): CardObligationAmountSource => {
   if (input.remainingStatementDue <= 0) {
     return 'none';
@@ -302,8 +309,8 @@ export const deriveObligationAmountSource = (input: {
   if (ledgerDue > 0) {
     return 'ledger';
   }
-  if (input.outstandingBalance > 0) {
-    return 'wallet_debt';
+  if ((input.projectedStatementInstallmentsTotal ?? 0) > 0) {
+    return 'projection';
   }
   if (
     input.dueDay < input.cutoffDay &&
@@ -313,6 +320,12 @@ export const deriveObligationAmountSource = (input: {
     input.asOfYmd <= input.currentCycleEndYmd
   ) {
     return 'projection';
+  }
+  if (input.allowOutstandingBalanceFallback === false) {
+    return 'none';
+  }
+  if (input.outstandingBalance > 0) {
+    return 'wallet_debt';
   }
   return 'none';
 };
@@ -455,10 +468,14 @@ export const buildCardStatementObligation = (
     outstandingBalance: input.outstandingBalance,
     dueDay: input.dueDay,
     cutoffDay: input.cutoffDay,
+    projectedStatementInstallmentsTotal:
+      input.projectedStatementInstallmentsTotal ?? 0,
     currentCyclePurchasesTotal: input.currentCyclePurchasesTotal ?? 0,
     currentCyclePaymentsTotal: input.currentCyclePaymentsTotal ?? 0,
     asOfYmd: input.asOfYmd ?? todayCalendarDate(),
     currentCycleEndYmd,
+    allowOutstandingBalanceFallback:
+      input.allowOutstandingBalanceFallback ?? true,
   });
 
   const obligationAmountSource = deriveObligationAmountSource({
@@ -467,10 +484,14 @@ export const buildCardStatementObligation = (
     outstandingBalance: input.outstandingBalance,
     dueDay: input.dueDay,
     cutoffDay: input.cutoffDay,
+    projectedStatementInstallmentsTotal:
+      input.projectedStatementInstallmentsTotal ?? 0,
     currentCyclePurchasesTotal: input.currentCyclePurchasesTotal,
     asOfYmd: input.asOfYmd,
     currentCycleEndYmd,
     remainingStatementDue,
+    allowOutstandingBalanceFallback:
+      input.allowOutstandingBalanceFallback ?? true,
   });
 
   const plannedGrossAmount = input.plannedGrossAmount ?? null;
@@ -492,10 +513,12 @@ export const buildCardStatementObligation = (
     obligationAmountSource === 'wallet_debt' ||
     obligationAmountSource === 'projection';
 
+  const statementBalanceBeforePayments =
+    input.lastStatementBalance + (input.projectedStatementInstallmentsTotal ?? 0);
   const suggestedBeforePayments =
     input.importedTotalDue ??
-    (input.lastStatementBalance > 0
-      ? input.lastStatementBalance
+    (statementBalanceBeforePayments > 0
+      ? statementBalanceBeforePayments
       : obligationAmountSource === 'projection'
         ? (input.currentCyclePurchasesTotal ?? 0)
         : input.outstandingBalance);

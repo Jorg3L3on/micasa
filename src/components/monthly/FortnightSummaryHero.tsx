@@ -58,13 +58,11 @@ export const FortnightSummaryHero = ({
             <p
               className={cn(
                 'font-mono text-2xl font-bold tabular-nums sm:text-3xl',
-                fundingNetApplies
-                  ? cn(
-                      'bg-gradient-to-r from-emerald-600 via-primary to-sky-600 bg-clip-text text-transparent',
-                      fundingNetInAccounts < 0 &&
-                        'from-destructive via-destructive to-destructive',
-                    )
-                  : 'text-muted-foreground',
+                !fundingNetApplies && 'text-muted-foreground',
+                fundingNetApplies &&
+                  (fundingNetInAccounts < 0
+                    ? 'text-destructive'
+                    : 'text-emerald-700 dark:text-emerald-300'),
               )}
             >
               {formatCurrency(fundingNetInAccounts)}
