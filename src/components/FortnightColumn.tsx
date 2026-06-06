@@ -1020,6 +1020,7 @@ export default function FortnightColumn({
                 fortnightId={fortnightId}
                 plannerYear={year}
                 plannerMonth={month}
+                plannerPeriod={period}
                 isCompact={tableDensity === 'compact'}
                 onPayCard={
                   context.id !== 0 ? handlePlannerOpenPayCard : undefined

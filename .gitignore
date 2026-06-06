@@ -50,6 +50,7 @@ next-env.d.ts
 
 # Playwright MCP artifacts
 .playwright-mcp/
+.playwright-cli/
 /*.png
 /*.jpg
 
