@@ -52,7 +52,10 @@ import {
   updateLoan,
 } from '@/lib/api/loans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  isValidCalendarDateString,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
@@ -728,7 +731,7 @@ export default function LoansPage() {
 
     const errors: PaymentActionErrors = {};
     if (paymentActionDraft.action === 'MARK_PAID') {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentActionDraft.paidAt)) {
+      if (!isValidCalendarDateString(paymentActionDraft.paidAt)) {
         errors.paidAt = 'Selecciona una fecha de pago válida.';
       }
       if (

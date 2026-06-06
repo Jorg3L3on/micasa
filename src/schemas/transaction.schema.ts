@@ -67,7 +67,7 @@ export const addExpenseSchema = z
       .number()
       .int()
       .positive('El método de pago es requerido'),
-    date: z.string().min(1, 'La fecha es requerida'),
+    date: dateStringSchema,
     isPaid: z.boolean(),
     isRecurring: z.boolean(),
     applyToBothFortnights: z.boolean(),

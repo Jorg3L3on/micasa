@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { dateStringSchema } from './common.schema';
 
 export const registerPantryReceiptExpenseBodySchema = z.object({
   categoryId: z.number().int().positive(),
   walletId: z.number().int().positive(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateStringSchema,
 });
 
 export type RegisterPantryReceiptExpenseBody = z.infer<

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateStringSchema } from './common.schema';
 
 const nullablePositiveIntFromForm = z.preprocess(
   (value) => {
@@ -56,7 +57,7 @@ export const createLoanSchema = z
     paymentAmount: positiveAmountFromForm,
     paymentCount: positiveIntFromForm,
     frequency: loanPaymentFrequencySchema,
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    startDate: dateStringSchema,
     paymentSource: loanPaymentSourceSchema,
     sourceWalletId: nullablePositiveIntFromForm.optional(),
     linkedWalletId: nullablePositiveIntFromForm.optional(),
@@ -86,7 +87,7 @@ export const updateLoanPaymentSchema = z
     action: loanPaymentActionSchema.optional(),
     // Backward-compatible shape for existing callers; normalized in the service.
     status: loanPaymentStatusSchema.optional(),
-    paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+    paidAt: dateStringSchema.optional().nullable(),
     sourceWalletId: nullablePositiveIntFromForm.optional(),
     note: z.string().trim().max(500).optional().nullable(),
   })
