@@ -1,5 +1,9 @@
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import type { PeriodView } from '@/types/dashboard';
+import type {
+  DashboardBudgetSummary,
+  DashboardFundingWalletBreakdownItem,
+  PeriodView,
+} from '@/types/dashboard';
 
 export type { PeriodView };
 
@@ -28,6 +32,7 @@ export type DashboardUpcomingObligation = {
   dueDay: number;
   category: string;
   categoryIcon: string | null;
+  loanId?: number;
   loanName?: string;
   lender?: string;
   paymentSource?: 'WALLET' | 'PAYROLL_DEDUCTION';
@@ -69,6 +74,7 @@ export type DashboardResponseDto = {
     total: number;
   }>;
   fundingWalletBalanceTotal: number;
+  fundingWalletBreakdown: DashboardFundingWalletBreakdownItem[];
   fundingNetVsPendingExpense: number;
   creditWalletDebtTotal: number;
   creditWalletAvailableTotal: number;
@@ -81,6 +87,7 @@ export type DashboardResponseDto = {
     count: number;
     pendingCount: number;
   } | null;
+  budgetSummary: DashboardBudgetSummary;
   upcomingObligations: DashboardUpcomingObligation[];
   recentActivity: DashboardRecentActivityItem[];
   incomeBreakdown: {

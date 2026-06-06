@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import Link from 'next/link';
 import { Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -7,7 +8,8 @@ type EmptyStateProps = {
   description?: string;
   action?: {
     label: string;
-    onClick: () => void;
+    onClick?: () => void;
+    href?: string;
     variant?: ComponentProps<typeof Button>['variant'];
   };
 };
@@ -24,7 +26,17 @@ const EmptyState = ({ message, description, action }: EmptyStateProps) => {
           {description}
         </p>
       ) : null}
-      {action ? (
+      {action?.href ? (
+        <Button
+          type="button"
+          variant={action.variant ?? 'default'}
+          size="sm"
+          className="mt-1"
+          asChild
+        >
+          <Link href={action.href}>{action.label}</Link>
+        </Button>
+      ) : action ? (
         <Button
           type="button"
           variant={action.variant ?? 'default'}

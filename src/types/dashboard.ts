@@ -1,5 +1,30 @@
 export type PeriodView = 'month' | 'biweekly';
 
+export type DashboardBudgetSummary = {
+  totalBudget: number;
+  spent: number;
+  available: number;
+  usedPercent: number;
+  categories: Array<{
+    id: number;
+    name: string;
+    icon: string | null;
+    spent: number;
+    percentOfBudget: number;
+  }>;
+  sources: Array<{
+    frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'CUSTOM';
+    totalBudget: number;
+  }>;
+};
+
+export type DashboardFundingWalletBreakdownItem = {
+  id: number;
+  name: string;
+  type: 'CASH' | 'DEBIT_CARD';
+  amount: number;
+};
+
 export type DashboardData = {
   period: {
     view: PeriodView;
@@ -26,6 +51,7 @@ export type DashboardData = {
   }>;
   /** Saldos en billeteras efectivo + débito (activas). */
   fundingWalletBalanceTotal: number;
+  fundingWalletBreakdown: DashboardFundingWalletBreakdownItem[];
   /** Misma lógica que planificación: efectivo/débito menos pendiente del periodo en efectivo/débito. */
   fundingNetVsPendingExpense: number;
   /** Saldo utilizado (campo amount) en TC + tiendas departamentales. */
@@ -50,6 +76,7 @@ export type DashboardData = {
     count: number;
     pendingCount: number;
   } | null;
+  budgetSummary: DashboardBudgetSummary;
   upcomingObligations: Array<{
     id: number;
     source: 'expense' | 'loan_payment';

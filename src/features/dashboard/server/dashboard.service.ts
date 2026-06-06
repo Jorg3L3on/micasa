@@ -10,7 +10,9 @@ import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-st
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
 import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
+import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
 import { measure } from './dashboard.performance';
+import { buildDashboardBudgetSummary } from './dashboard-budget-summary';
 import * as dashboardQueries from './dashboard.queries';
 import type {
   DashboardAlert,
@@ -156,6 +158,7 @@ export const getDashboardData = async (
         dashboardWalletSnapshot,
         loanPayCurrent,
         loanPayPrev,
+        budgetPanel,
       ] = await Promise.all([
         dashboardQueries.fetchExpensesCurrent(expenseWhereCurrent),
         dashboardQueries.fetchIncomeCurrent(ownerFilter, currentFortnightIds),
@@ -188,6 +191,7 @@ export const getDashboardData = async (
         dashboardQueries.fetchDashboardWalletSnapshot(ownerFilter),
         aggregateLoanPaymentsForFortnights(ownerFilter, fortnightsCurrent),
         aggregateLoanPaymentsForFortnights(ownerFilter, fortnightsPrev),
+        getMonthlyBudgetPanel(ownerFilter, current.year, current.month),
       ]);
 
       const overrideIncome = incomeCurrent.find(
@@ -229,6 +233,12 @@ export const getDashboardData = async (
       let fundingWalletBalanceTotal = 0;
       let creditWalletDebtTotal = 0;
       let creditWalletAvailableTotal = 0;
+      const fundingWalletBreakdown: Array<{
+        id: number;
+        name: string;
+        type: 'CASH' | 'DEBIT_CARD';
+        amount: number;
+      }> = [];
       for (const w of dashboardWalletSnapshot) {
         const amt = Number(w.amount);
         if (
@@ -236,6 +246,12 @@ export const getDashboardData = async (
           w.type === PaymentMethodType.DEBIT_CARD
         ) {
           fundingWalletBalanceTotal += amt;
+          fundingWalletBreakdown.push({
+            id: w.id,
+            name: w.name,
+            type: w.type,
+            amount: amt,
+          });
         }
         if (
           w.type === PaymentMethodType.CREDIT_CARD ||
@@ -365,6 +381,12 @@ export const getDashboardData = async (
         totalUnpaidCurrent,
         balanceCurrent,
         fundingWalletBalanceTotal,
+        fundingWalletBreakdown: fundingWalletBreakdown.sort((a, b) => {
+          const rank = (type: 'CASH' | 'DEBIT_CARD') =>
+            type === 'CASH' ? 0 : 1;
+          const rankDiff = rank(a.type) - rank(b.type);
+          return rankDiff !== 0 ? rankDiff : a.name.localeCompare(b.name);
+        }),
         fundingNetVsPendingExpense,
         creditWalletDebtTotal,
         creditWalletAvailableTotal,
@@ -378,6 +400,11 @@ export const getDashboardData = async (
         percentCommitted,
         largestExpense,
         periodCategoryBreakdown,
+        budgetSummary: buildDashboardBudgetSummary({
+          view,
+          period: current.period,
+          panel: budgetPanel,
+        }),
       };
     });
 
@@ -615,6 +642,7 @@ export const getDashboardData = async (
       },
       periodCategoryBreakdown: totalsPayload.periodCategoryBreakdown,
       fundingWalletBalanceTotal: totalsPayload.fundingWalletBalanceTotal,
+      fundingWalletBreakdown: totalsPayload.fundingWalletBreakdown,
       fundingNetVsPendingExpense: totalsPayload.fundingNetVsPendingExpense,
       creditWalletDebtTotal: totalsPayload.creditWalletDebtTotal,
       creditWalletAvailableTotal: totalsPayload.creditWalletAvailableTotal,
@@ -643,6 +671,7 @@ export const getDashboardData = async (
               pendingCount: totalsPayload.loanPayCurrent.pendingCount,
             }
           : null,
+      budgetSummary: totalsPayload.budgetSummary,
       upcomingObligations,
       recentActivity,
       incomeBreakdown: {
