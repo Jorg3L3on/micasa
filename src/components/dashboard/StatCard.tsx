@@ -4,9 +4,11 @@ import {
   Banknote,
   CreditCard,
   CircleDollarSign,
+  HandCoins,
   Scale,
   TrendingDown,
   TrendingUp,
+  Wallet,
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 
@@ -17,6 +19,8 @@ const ICON_MAP = {
   banknote: Banknote,
   scale: Scale,
   'credit-card': CreditCard,
+  wallet: Wallet,
+  'hand-coins': HandCoins,
 } as const;
 
 type IconKey = keyof typeof ICON_MAP;

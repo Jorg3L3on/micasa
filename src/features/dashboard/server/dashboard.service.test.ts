@@ -19,6 +19,7 @@ const mockQueries = vi.hoisted(() => ({
 const mockOrphanPay = vi.hoisted(() => vi.fn());
 const mockCardDue = vi.hoisted(() => vi.fn());
 const mockLoanAgg = vi.hoisted(() => vi.fn());
+const mockBudgetPanel = vi.hoisted(() => vi.fn());
 
 vi.mock('./dashboard.queries', () => mockQueries);
 vi.mock('./dashboard.performance', () => ({
@@ -36,6 +37,9 @@ vi.mock('@/lib/finance/credit-card-statement.service', () => ({
 }));
 vi.mock('@/lib/finance/loan.service', () => ({
   aggregateLoanPaymentsForFortnights: mockLoanAgg,
+}));
+vi.mock('@/lib/finance/monthly-budget-panel.service', () => ({
+  getMonthlyBudgetPanel: mockBudgetPanel,
 }));
 
 import { getDashboardData } from './dashboard.service';
@@ -67,6 +71,19 @@ const emptyLoanAggregate = {
   upcoming: [],
 };
 
+const emptyBudgetScope = {
+  totalBudget: 0,
+  spent: 0,
+  available: 0,
+  categories: [],
+  sources: [],
+};
+
+const emptyBudgetPanel = {
+  first: emptyBudgetScope,
+  second: emptyBudgetScope,
+};
+
 const setupEmptyPeriod = () => {
   mockQueries.fetchFortnightsCurrent.mockResolvedValue([]);
   mockQueries.fetchFortnightsPrev.mockResolvedValue([]);
@@ -83,6 +100,7 @@ const setupEmptyPeriod = () => {
   mockOrphanPay.mockResolvedValue({ total: 0, count: 0 });
   mockCardDue.mockResolvedValue({ total: 0, cardCount: 0 });
   mockLoanAgg.mockResolvedValue(emptyLoanAggregate);
+  mockBudgetPanel.mockResolvedValue(emptyBudgetPanel);
 };
 
 const setupWithCurrentFortnight = () => {
@@ -106,9 +124,142 @@ describe('getDashboardData', () => {
       totalPaid: 0,
       totalUnpaid: 0,
     });
+    expect(data.fundingWalletBreakdown).toEqual([]);
     expect(data.incomeBreakdown.byPerson).toEqual([]);
     expect(data.upcomingObligations).toEqual([]);
     expect(data.alerts).toEqual([]);
+    expect(data.budgetSummary).toEqual({
+      totalBudget: 0,
+      spent: 0,
+      available: 0,
+      usedPercent: 0,
+      categories: [],
+      sources: [],
+    });
+  });
+
+  it('returns selected fortnight budget summary for biweekly view', async () => {
+    setupWithCurrentFortnight();
+    mockBudgetPanel.mockResolvedValue({
+      first: {
+        totalBudget: 1000,
+        spent: 200,
+        available: 800,
+        categories: [],
+        sources: [{ frequency: 'WEEKLY', totalBudget: 1000 }],
+      },
+      second: {
+        totalBudget: 2000,
+        spent: 500,
+        available: 1500,
+        categories: [
+          {
+            id: 1,
+            name: 'Comida',
+            icon: null,
+            spent: 500,
+            percentOfBudget: 25,
+          },
+        ],
+        sources: [{ frequency: 'BIWEEKLY', totalBudget: 2000 }],
+      },
+    });
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'SECOND',
+    });
+
+    expect(data.budgetSummary).toEqual({
+      totalBudget: 2000,
+      spent: 500,
+      available: 1500,
+      usedPercent: 25,
+      categories: [
+        {
+          id: 1,
+          name: 'Comida',
+          icon: null,
+          spent: 500,
+          percentOfBudget: 25,
+        },
+      ],
+      sources: [{ frequency: 'BIWEEKLY', totalBudget: 2000 }],
+    });
+  });
+
+  it('combines both budget fortnights for month view', async () => {
+    setupWithCurrentFortnight();
+    mockBudgetPanel.mockResolvedValue({
+      first: {
+        totalBudget: 1000,
+        spent: 250,
+        available: 750,
+        categories: [
+          {
+            id: 1,
+            name: 'Comida',
+            icon: null,
+            spent: 250,
+            percentOfBudget: 25,
+          },
+        ],
+        sources: [{ frequency: 'WEEKLY', totalBudget: 1000 }],
+      },
+      second: {
+        totalBudget: 2000,
+        spent: 750,
+        available: 1250,
+        categories: [
+          {
+            id: 1,
+            name: 'Comida',
+            icon: null,
+            spent: 500,
+            percentOfBudget: 25,
+          },
+          {
+            id: 2,
+            name: 'Casa',
+            icon: 'HOME',
+            spent: 250,
+            percentOfBudget: 13,
+          },
+        ],
+        sources: [{ frequency: 'WEEKLY', totalBudget: 2000 }],
+      },
+    });
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'month',
+      month: '6',
+      year: '2026',
+    });
+
+    expect(data.budgetSummary.totalBudget).toBe(3000);
+    expect(data.budgetSummary.spent).toBe(1000);
+    expect(data.budgetSummary.available).toBe(2000);
+    expect(data.budgetSummary.usedPercent).toBe(33);
+    expect(data.budgetSummary.categories).toEqual([
+      {
+        id: 1,
+        name: 'Comida',
+        icon: null,
+        spent: 750,
+        percentOfBudget: 25,
+      },
+      {
+        id: 2,
+        name: 'Casa',
+        icon: 'HOME',
+        spent: 250,
+        percentOfBudget: 8,
+      },
+    ]);
   });
 
   it('uses income override amount when __OVERRIDE__ row exists', async () => {
@@ -150,6 +301,97 @@ describe('getDashboardData', () => {
 
     expect(data.summary.totalExpense).toBe(150);
     expect(data.planningCardPayments).toEqual({ total: 150, count: 1 });
+  });
+
+  it('returns efectivo/debit wallet breakdown minus pending expenses', async () => {
+    setupWithCurrentFortnight();
+    mockQueries.fetchExpensesCurrent.mockResolvedValue([
+      {
+        amount: 300,
+        is_paid: false,
+        description: 'Rent',
+        category: { name: 'Casa', icon: null },
+        expense_template: null,
+      },
+    ]);
+    mockQueries.fetchDashboardWalletSnapshot.mockResolvedValue([
+      {
+        id: 2,
+        name: 'Banamex',
+        type: 'DEBIT_CARD',
+        amount: 100,
+        credit_limit: null,
+        temporary_credit_limit: null,
+      },
+      {
+        id: 1,
+        name: 'Efectivo',
+        type: 'CASH',
+        amount: 500,
+        credit_limit: null,
+        temporary_credit_limit: null,
+      },
+      {
+        id: 3,
+        name: 'Tarjeta',
+        type: 'CREDIT_CARD',
+        amount: 200,
+        credit_limit: 1000,
+        temporary_credit_limit: null,
+      },
+    ]);
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    expect(data.fundingWalletBalanceTotal).toBe(600);
+    expect(data.summary.totalUnpaid).toBe(300);
+    expect(data.fundingNetVsPendingExpense).toBe(300);
+    expect(data.fundingWalletBreakdown).toEqual([
+      { id: 1, name: 'Efectivo', type: 'CASH', amount: 500 },
+      { id: 2, name: 'Banamex', type: 'DEBIT_CARD', amount: 100 },
+    ]);
+  });
+
+  it('includes loan payment totals in period expenses and loan summary data', async () => {
+    setupWithCurrentFortnight();
+    mockQueries.fetchIncomeCurrent.mockResolvedValue([
+      { amount: 2000, source: 'job', user: null },
+    ]);
+    mockLoanAgg
+      .mockResolvedValueOnce({
+        ...emptyLoanAggregate,
+        total: 300,
+        paidTotal: 100,
+        pendingTotal: 200,
+        count: 2,
+        pendingCount: 1,
+      })
+      .mockResolvedValueOnce(emptyLoanAggregate);
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    expect(data.summary.totalExpense).toBe(300);
+    expect(data.summary.totalPaid).toBe(100);
+    expect(data.summary.totalUnpaid).toBe(200);
+    expect(data.planningLoanPayments).toEqual({
+      total: 300,
+      paidTotal: 100,
+      pendingTotal: 200,
+      count: 2,
+      pendingCount: 1,
+    });
   });
 
   it('limits upcoming obligations to five sorted by due date', async () => {

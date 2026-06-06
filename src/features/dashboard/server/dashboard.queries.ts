@@ -109,6 +109,8 @@ export const fetchDashboardWalletSnapshot = async (ownerFilter: OwnerFilter) =>
       },
     },
     select: {
+      id: true,
+      name: true,
       amount: true,
       credit_limit: true,
       temporary_credit_limit: true,

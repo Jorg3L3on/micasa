@@ -1,83 +1,45 @@
 'use client';
 
+import { useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { DashboardData } from '@/types/dashboard';
 import StatCard from '@/components/dashboard/StatCard';
+import DashboardFundingNetCard from '@/components/dashboard/DashboardFundingNetCard';
 import DashboardPeriodCategoryPie from '@/components/dashboard/DashboardPeriodCategoryPie';
-import DashboardAvailableCommittedRadial from '@/components/dashboard/DashboardAvailableCommittedRadial';
+import DashboardBudgetSummaryCard from '@/components/dashboard/DashboardBudgetSummaryCard';
+import DashboardLoanSummaryCard from '@/components/dashboard/DashboardLoanSummaryCard';
+import AlertsWarningsCard from '@/components/dashboard/AlertsWarningsCard';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFinanceContext } from '@/context/finance-context';
+import { buildOwnerQuery } from '@/lib/api/client-fetch';
+import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
+import { getPeriodLabel } from '@/components/dashboard/constants';
 
 type DashboardPanelProps = {
   data: DashboardData;
 };
 
-const STAT_CARDS = [
-  {
-    key: 'fundingBalance' as const,
-    title: 'Efectivo y débito',
-    iconKey: 'banknote' as const,
-    iconGradient: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
-    subtitle: 'Suma de saldos en billeteras',
-  },
-  {
-    key: 'fundingNet' as const,
-    title: 'Efectivo tras pendientes',
-    iconKey: 'scale' as const,
-    iconGradient: 'linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%)',
-    subtitle: 'Billeteras menos gastos no pagados del periodo',
-  },
-  {
-    key: 'income' as const,
-    title: 'Ingresos del periodo',
-    iconKey: 'trending-up' as const,
-    iconGradient: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
-    subtitle: 'Total ingresado',
-  },
-  {
-    key: 'expense' as const,
-    title: 'Gastos del periodo',
-    iconKey: 'trending-down' as const,
-    iconGradient: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
-    subtitle: 'Comprometido (pagado y pendiente)',
-  },
-  {
-    key: 'creditDebt' as const,
-    title: 'Deuda en tarjetas',
-    iconKey: 'credit-card' as const,
-    iconGradient: 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)',
-    subtitle: 'Saldo utilizado en TC y tiendas',
-  },
-  {
-    key: 'creditAvailable' as const,
-    title: 'Crédito disponible',
-    iconKey: 'circle-dollar' as const,
-    iconGradient: 'linear-gradient(135deg, #eab308 0%, #facc15 100%)',
-    subtitle: 'Límite menos saldo (con límite definido)',
-  },
-] as const;
-
 export default function DashboardPanel({ data }: DashboardPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const todayYmd = useHydrationSafeTodayYmd();
+  const { context } = useFinanceContext();
   const { summary } = data;
-
-  const statValues = {
-    income: summary.totalIncome,
-    expense: summary.totalExpense,
-    fundingBalance: data.fundingWalletBalanceTotal,
-    fundingNet: data.fundingNetVsPendingExpense,
-    creditDebt: data.creditWalletDebtTotal,
-    creditAvailable: data.creditWalletAvailableTotal,
-  };
 
   const viewFromUrl = searchParams.get('view');
   const selectedView: 'month' | 'biweekly' =
     viewFromUrl === 'month' ? 'month' : 'biweekly';
   const currentFortnightPeriod: 'FIRST' | 'SECOND' =
-    new Date().getDate() <= 15 ? 'FIRST' : 'SECOND';
+    Number(todayYmd.slice(8, 10)) <= 15 ? 'FIRST' : 'SECOND';
+  const ownerQueryString = useMemo(() => {
+    const query = buildOwnerQuery(context).toString();
+    return query ? `?${query}` : '';
+  }, [context]);
+  const periodLabel = getPeriodLabel(data.period);
+  const loanPendingTotal = data.planningLoanPayments?.pendingTotal ?? 0;
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -99,7 +61,11 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
 
   return (
     <div className="w-full space-y-5">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">Plan de quincena</h2>
+          <p className="text-xs text-muted-foreground">{periodLabel}</p>
+        </div>
         <div
           className="inline-flex items-center rounded-lg border border-border/60 bg-muted/30 p-1"
           role="group"
@@ -134,32 +100,66 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
         </div>
 
         {selectedView === 'biweekly' ? (
-          <span className="text-xs text-muted-foreground">
+          <span className="basis-full text-xs text-muted-foreground sm:basis-auto">
             Mostrando quincena actual ({currentFortnightPeriod === 'FIRST' ? '1ª' : '2ª'})
           </span>
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        {STAT_CARDS.map((card) => (
-          <StatCard
-            key={card.key}
-            title={card.title}
-            amount={statValues[card.key]}
-            iconKey={card.iconKey}
-            iconGradient={card.iconGradient}
-            subtitle={card.subtitle}
-          />
-        ))}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
+        <DashboardFundingNetCard
+          amount={data.fundingNetVsPendingExpense}
+          fundingWalletBalanceTotal={data.fundingWalletBalanceTotal}
+          pendingAmount={summary.totalUnpaid}
+          wallets={data.fundingWalletBreakdown}
+          className="col-span-2"
+        />
+        <StatCard
+          title="Ingresos"
+          amount={summary.totalIncome}
+          iconKey="trending-up"
+          iconGradient="linear-gradient(135deg, #10b981 0%, #34d399 100%)"
+          subtitle="Del periodo"
+        />
+        <StatCard
+          title="Pendiente"
+          amount={summary.totalUnpaid}
+          iconKey="trending-down"
+          iconGradient="linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
+          subtitle="Por pagar"
+        />
+        <StatCard
+          title="Presupuesto libre"
+          amount={data.budgetSummary.available}
+          iconKey="wallet"
+          iconGradient="linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%)"
+          subtitle={`${data.budgetSummary.usedPercent}% usado`}
+        />
+        <StatCard
+          title="Préstamos"
+          amount={loanPendingTotal}
+          iconKey="hand-coins"
+          iconGradient="linear-gradient(135deg, #eab308 0%, #facc15 100%)"
+          subtitle={`${data.planningLoanPayments?.pendingCount ?? 0} pendiente(s)`}
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-stretch">
+        <DashboardBudgetSummaryCard
+          budgetSummary={data.budgetSummary}
+          ownerQueryString={ownerQueryString}
+        />
+        <DashboardLoanSummaryCard
+          data={data}
+          ownerQueryString={ownerQueryString}
+        />
         <DashboardPeriodCategoryPie
           period={data.period}
           rows={data.periodCategoryBreakdown}
         />
-        <DashboardAvailableCommittedRadial availableVsCommitted={data.availableVsCommitted} />
       </div>
+
+      {data.alerts.length > 0 ? <AlertsWarningsCard data={data} /> : null}
 
       <div className="w-full">
         <MyCardsPanel />
