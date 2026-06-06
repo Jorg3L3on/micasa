@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateStringSchema } from './common.schema';
 
 const nullablePositiveIntFromForm = z.preprocess(
   (value) => {
@@ -28,6 +29,24 @@ export const loanPaymentSourceSchema = z.enum([
   'WALLET',
   'PAYROLL_DEDUCTION',
 ]);
+export const loanPaymentActionSchema = z.enum([
+  'MARK_PAID',
+  'MARK_SCHEDULED',
+  'SKIP',
+  'CANCEL',
+]);
+export const loanPaymentStatusSchema = z.enum([
+  'SCHEDULED',
+  'PAID',
+  'SKIPPED',
+  'CANCELLED',
+]);
+export const loanStatusSchema = z.enum([
+  'ACTIVE',
+  'PAID_OFF',
+  'PAUSED',
+  'CANCELLED',
+]);
 
 export const createLoanSchema = z
   .object({
@@ -38,7 +57,7 @@ export const createLoanSchema = z
     paymentAmount: positiveAmountFromForm,
     paymentCount: positiveIntFromForm,
     frequency: loanPaymentFrequencySchema,
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    startDate: dateStringSchema,
     paymentSource: loanPaymentSourceSchema,
     sourceWalletId: nullablePositiveIntFromForm.optional(),
     linkedWalletId: nullablePositiveIntFromForm.optional(),
@@ -63,12 +82,38 @@ export const createLoanSchema = z
     }
   });
 
-export const updateLoanPaymentSchema = z.object({
-  status: z.enum(['SCHEDULED', 'PAID', 'SKIPPED', 'CANCELLED']),
-  paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  sourceWalletId: nullablePositiveIntFromForm.optional(),
-  note: z.string().trim().max(500).optional().nullable(),
+export const updateLoanPaymentSchema = z
+  .object({
+    action: loanPaymentActionSchema.optional(),
+    // Backward-compatible shape for existing callers; normalized in the service.
+    status: loanPaymentStatusSchema.optional(),
+    paidAt: dateStringSchema.optional().nullable(),
+    sourceWalletId: nullablePositiveIntFromForm.optional(),
+    note: z.string().trim().max(500).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.action && !data.status) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['action'],
+        message: 'Selecciona una acción para el pago del préstamo',
+      });
+    }
+  });
+
+export const updateLoanSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').optional(),
+  lender: z.string().trim().min(1, 'La entidad es obligatoria').optional(),
+  linkedWalletId: nullablePositiveIntFromForm.optional(),
+  incomeTemplateId: nullablePositiveIntFromForm.optional(),
+  notes: z.string().trim().max(500).optional().nullable(),
+  status: loanStatusSchema
+    .refine((status) => status !== 'PAID_OFF', {
+      message: 'El estado pagado se deriva del calendario de pagos',
+    })
+    .optional(),
 });
 
 export type CreateLoanInput = z.infer<typeof createLoanSchema>;
+export type UpdateLoanInput = z.infer<typeof updateLoanSchema>;
 export type UpdateLoanPaymentInput = z.infer<typeof updateLoanPaymentSchema>;

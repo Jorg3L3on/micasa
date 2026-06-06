@@ -64,6 +64,12 @@ import type { LoanDuePaymentItem } from '@/types/loans';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import { cn } from '@/lib/utils';
 
+/** Altura del panel con scroll (gastos / tarjeta / préstamos). Móvil usa dvh por la barra del navegador. */
+const FORTNIGHT_TAB_PANEL_HEIGHT_CLASS =
+  'h-[min(72dvh,40rem)] min-h-[12rem] sm:h-[min(58vh,36rem)] lg:h-[min(72vh,56rem)]';
+const FORTNIGHT_TAB_PANEL_MAX_HEIGHT_CLASS =
+  'max-h-[min(72dvh,40rem)] sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]';
+
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
 
@@ -731,55 +737,51 @@ export default function FortnightColumn({
       <div className="flex flex-col space-y-3 sm:space-y-4">
         {/* Summary card (toggle desde la barra de planificación) */}
         {showSummaryCard ? (
-          <div className="sticky top-16 z-10 -mx-0.5 px-0.5 pb-0.5 backdrop-blur-sm sm:pb-1">
-            <SummaryBlock
-              tenemos={tenemos}
-              libre={libre}
-              pagado={pagado}
-              pendiente={pendiente}
-              userIncome={currentFortnightUserIncome}
-              incomeItems={
-                summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
-                []
-              }
-              year={year}
-              month={month}
-              period={period}
-              expenseCount={summaryExpenseCount}
-              paidExpenseCount={summaryPaidExpenseCount}
-              unpaidExpenseCount={summaryUnpaidExpenseCount}
-              cardCharges={summary.cardCharges ?? null}
-              planningOrphanCardPayments={
-                summary.planningOrphanCardPayments ?? null
-              }
-              planningCardStatementDue={
-                summary.planningCardStatementDue ?? null
-              }
-              fundingWalletBalanceTotal={
-                summary.fundingWalletBalanceTotal ?? 0
-              }
-              fundingNetVsPendingExpense={
-                summary.fundingNetVsPendingExpense ?? 0
-              }
-              fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
-              onEditIncome={handleOpenOverrideDialog}
-              onEditIncomeSource={handleOpenEditIncomeSource}
-            />
-          </div>
+          <SummaryBlock
+            tenemos={tenemos}
+            libre={libre}
+            pagado={pagado}
+            pendiente={pendiente}
+            userIncome={currentFortnightUserIncome}
+            incomeItems={
+              summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
+              []
+            }
+            year={year}
+            month={month}
+            period={period}
+            expenseCount={summaryExpenseCount}
+            paidExpenseCount={summaryPaidExpenseCount}
+            unpaidExpenseCount={summaryUnpaidExpenseCount}
+            cardCharges={summary.cardCharges ?? null}
+            planningOrphanCardPayments={
+              summary.planningOrphanCardPayments ?? null
+            }
+            planningCardStatementDue={
+              summary.planningCardStatementDue ?? null
+            }
+            fundingWalletBalanceTotal={
+              summary.fundingWalletBalanceTotal ?? 0
+            }
+            fundingNetVsPendingExpense={
+              summary.fundingNetVsPendingExpense ?? 0
+            }
+            fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
+            onEditIncome={handleOpenOverrideDialog}
+            onEditIncomeSource={handleOpenEditIncomeSource}
+          />
         ) : (
-          <div className="sticky top-16 z-10">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5 border-dashed border-primary/30 text-primary/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
-              onClick={onShowSummaryCard}
-              aria-label={`Mostrar resumen de la quincena: ${label}`}
-            >
-              <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-              Mostrar resumen
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-dashed border-primary/30 text-primary/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+            onClick={onShowSummaryCard}
+            aria-label={`Mostrar resumen de la quincena: ${label}`}
+          >
+            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+            Mostrar resumen
+          </Button>
         )}
 
         <Tabs
@@ -866,10 +868,10 @@ export default function FortnightColumn({
                   'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
                   compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
                 )}
-                aria-label={`Prestamos, ${pendingLoanPaymentsCount} pendientes`}
+                aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >
                 <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
-                  {compactTabs ? 'Prest.' : 'Prestamos'}
+                  {compactTabs ? 'Prest.' : 'Préstamos'}
                   <Badge
                     variant={
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
@@ -971,7 +973,12 @@ export default function FortnightColumn({
           </div>
 
           <TabsContent value="expenses" className="mt-0 outline-none">
-            <div className="flex h-[min(52vh,28rem)] min-h-[11rem] flex-col overflow-hidden sm:h-[min(58vh,36rem)] lg:h-[min(72vh,56rem)]">
+            <div
+              className={cn(
+                'flex flex-col overflow-hidden',
+                FORTNIGHT_TAB_PANEL_HEIGHT_CLASS,
+              )}
+            >
               {sortedTransactions.length === 0 ? (
                 <EmptyState
                   message="Sin gastos en esta quincena"
@@ -1000,7 +1007,12 @@ export default function FortnightColumn({
           </TabsContent>
 
           <TabsContent value="cards" className="mt-0 outline-none">
-            <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
+            <div
+              className={cn(
+                'overflow-y-auto scrollbar-hide',
+                FORTNIGHT_TAB_PANEL_MAX_HEIGHT_CLASS,
+              )}
+            >
               <FortnightCardPaymentsPanel
                 items={cardDueItems}
                 ownerQueryString={ownerQueryString}
@@ -1019,13 +1031,17 @@ export default function FortnightColumn({
           </TabsContent>
 
           <TabsContent value="loans" className="mt-0 outline-none">
-            <div className="max-h-[min(52vh,28rem)] overflow-y-auto scrollbar-hide sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]">
+            <div
+              className={cn(
+                'overflow-y-auto scrollbar-hide',
+                FORTNIGHT_TAB_PANEL_MAX_HEIGHT_CLASS,
+              )}
+            >
               <FortnightLoanPaymentsPanel
                 items={loanDueItems}
                 ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
                 isCompact={tableDensity === 'compact'}
-                onPaymentUpdated={refreshData}
               />
             </div>
           </TabsContent>

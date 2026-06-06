@@ -35,6 +35,7 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import { dateStringSchema } from '@/schemas/common.schema';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createIncome } from '@/lib/api/incomes';
@@ -55,7 +56,7 @@ const quickIncomeSchema = z.object({
           : 'El monto es requerido',
     })
     .positive('El monto debe ser mayor a 0'),
-  date: z.string().min(1, 'La fecha es requerida'),
+  date: dateStringSchema,
 });
 
 type QuickIncomeFormValues = z.infer<typeof quickIncomeSchema>;

@@ -5,8 +5,11 @@ import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-cont
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
+import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import { getSuggestedFortnightPeriodForMonth } from '@/lib/fortnight-calendar';
 import { parseMonthlyRouteParams } from '@/lib/planner/monthly-page';
 
 function getMonthName(month: number): string {
@@ -61,9 +64,10 @@ export default async function MonthlyPage({
   const prevHref = `/monthly/${prevYear}/${prevMonthStr}${ownerQuery}`;
   const nextHref = `/monthly/${nextYear}/${nextMonthStr}${ownerQuery}`;
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  const [currentYear, currentMonth] = todayCalendarDate()
+    .split('-')
+    .map(Number)
+    .slice(0, 2) as [number, number];
   const isCurrentMonth = year === currentYear && month === currentMonth;
 
   let pageData;
@@ -118,6 +122,7 @@ export default async function MonthlyPage({
     secondTransactions,
     firstSummary,
     secondSummary,
+    budgetPanel,
   } = pageData;
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
@@ -206,14 +211,9 @@ export default async function MonthlyPage({
   }
 
   const dueWalletIds = duePayments.map((dp) => dp.walletId);
-  const currentDay = now.getDate();
+  const [, , currentDay] = todayCalendarDate().split('-').map(Number);
   const isFirstFortnight = currentDay <= 15;
-  const suggestedPeriod: 'FIRST' | 'SECOND' =
-    isCurrentMonth && currentDay <= 15
-      ? 'FIRST'
-      : isCurrentMonth
-        ? 'SECOND'
-        : 'FIRST';
+  const suggestedPeriod = getSuggestedFortnightPeriodForMonth(year, month);
   const paidWalletIds = isCurrentMonth
     ? wallets
         .filter((w) => {
@@ -234,13 +234,9 @@ export default async function MonthlyPage({
   const loanDueFirst = plannerLoanDue.first;
   const loanDueSecond = plannerLoanDue.second;
 
-  return (
+  const monthHeader = (
     <>
-      <div
-        className="mb-5 flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:mb-5 sm:gap-3 sm:px-4"
-        role="group"
-        aria-label="Selector de mes"
-      >
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <div className="shrink-0">
           <MonthlyHeader
             year={year}
@@ -282,12 +278,25 @@ export default async function MonthlyPage({
           )}
         </div>
       </div>
+    </>
+  );
 
+  return (
+    <MonthlyPanelLayout
+      ownerKey={ownerKey}
+      year={year}
+      month={month}
+      suggestedPeriod={suggestedPeriod}
+      ownerQuery={ownerQuery}
+      budgetPanel={budgetPanel}
+      firstTransactions={firstTransactions}
+      secondTransactions={secondTransactions}
+      monthHeader={monthHeader}
+    >
       <MonthlyFortnightView
         ownerKey={ownerKey}
         year={year}
         month={month}
-        suggestedPeriod={suggestedPeriod}
         wallets={wallets}
         paidWalletIds={paidWalletIds}
         isCurrentMonth={isCurrentMonth}
@@ -308,6 +317,6 @@ export default async function MonthlyPage({
           loanDueItems: loanDueSecond,
         }}
       />
-    </>
+    </MonthlyPanelLayout>
   );
 }
