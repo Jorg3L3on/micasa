@@ -7,13 +7,14 @@ import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createExpense } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
+import { dateStringSchema } from '@/schemas/common.schema';
 
 const bodySchema = z.object({
   name: z.string().min(1),
   categoryId: z.number().int().positive(),
   amount: z.number().positive(),
   paymentMethodId: z.number().int().positive(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateStringSchema,
   isPaid: z.boolean(),
   isRecurring: z.boolean(),
   applyToBothFortnights: z.boolean(),

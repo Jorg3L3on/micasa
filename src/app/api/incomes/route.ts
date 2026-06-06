@@ -6,12 +6,13 @@ import prisma from '@/lib/prisma';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createUserToHouseTransfer } from '@/lib/finance/transfer.service';
 import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
+import { dateStringSchema } from '@/schemas/common.schema';
 
 const createIncomeSchema = z.object({
   fortnight_id: z.number().int().positive(),
   amount: z.number().positive('Amount must be greater than 0'),
   source: z.string().optional().nullable(),
-  received_at: z.string().min(1),
+  received_at: dateStringSchema,
   transfer_from_user_id: z.number().int().positive().optional(),
   income_template_id: z.number().int().positive().optional().nullable(),
   wallet_id: z.number().int().positive().optional().nullable(),

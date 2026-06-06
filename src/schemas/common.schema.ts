@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidCalendarDateString } from '@/lib/calendar-dates';
 
 // Common ID validators
 export const positiveIntSchema = z.number().int().positive();
@@ -11,7 +12,9 @@ export const nullablePositiveInt = z.preprocess(
 );
 
 // Common date validators
-export const dateStringSchema = z.string().datetime();
+export const dateStringSchema = z
+  .string()
+  .refine(isValidCalendarDateString, 'Selecciona una fecha válida');
 
 // Common money/amount validators
 //export const positiveAmountSchema = z.number().positive('Amount must be greater than 0');
