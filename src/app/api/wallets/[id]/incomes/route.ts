@@ -6,9 +6,10 @@ import prisma from '@/lib/prisma';
 import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
+import { dateStringSchema } from '@/schemas/common.schema';
 
 const bodySchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateStringSchema,
   amount: z.number().positive(),
   source: z.string().min(1),
 });

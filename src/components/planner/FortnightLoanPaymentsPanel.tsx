@@ -1,14 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { HandCoins, Landmark, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useMemo } from 'react';
+import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import { updateLoanPaymentStatus } from '@/lib/api/loans';
-import { useFinanceContext } from '@/context/finance-context';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 
 type FortnightLoanPaymentsPanelProps = {
@@ -16,7 +13,6 @@ type FortnightLoanPaymentsPanelProps = {
   ownerQueryString: string;
   fortnightLabel: string;
   isCompact?: boolean;
-  onPaymentUpdated?: () => void;
 };
 
 const getStatusLabel = (status: LoanDuePaymentItem['status']) => {
@@ -38,11 +34,8 @@ export default function FortnightLoanPaymentsPanel({
   ownerQueryString,
   fortnightLabel,
   isCompact = false,
-  onPaymentUpdated,
 }: FortnightLoanPaymentsPanelProps) {
-  const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const rows = useMemo(
     () =>
@@ -61,30 +54,12 @@ export default function FortnightLoanPaymentsPanel({
     [items, todayYmd],
   );
 
-  const handleMarkPaid = async (item: LoanDuePaymentItem) => {
-    setUpdatingId(item.id);
-    try {
-      await updateLoanPaymentStatus(
-        item.id,
-        {
-          status: 'PAID',
-          paidAt: item.dueDate,
-          sourceWalletId: item.sourceWalletId,
-        },
-        context,
-      );
-      toast.success('Pago de prestamo marcado como pagado');
-      onPaymentUpdated?.();
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo actualizar el pago',
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+  const loanHref = (item: LoanDuePaymentItem) =>
+    `/loans${
+      ownerQueryString
+        ? `${ownerQueryString}&loanId=${item.loanId}`
+        : `?loanId=${item.loanId}`
+    }`;
 
   if (rows.length === 0) {
     return (
@@ -94,10 +69,10 @@ export default function FortnightLoanPaymentsPanel({
           isCompact ? 'text-xs' : 'text-sm',
         )}
         role="region"
-        aria-label={`Prestamos: ${fortnightLabel}`}
+        aria-label={`Préstamos: ${fortnightLabel}`}
       >
         <p className="text-muted-foreground">
-          No hay pagos de prestamos en esta quincena.
+          No hay pagos de préstamos en esta quincena.
         </p>
       </div>
     );
@@ -106,7 +81,7 @@ export default function FortnightLoanPaymentsPanel({
   return (
     <div
       role="region"
-      aria-label={`Prestamos: ${fortnightLabel}`}
+      aria-label={`Préstamos: ${fortnightLabel}`}
       className="px-1 pb-1"
     >
       <ul role="list" className="flex flex-col gap-1.5">
@@ -146,7 +121,7 @@ export default function FortnightLoanPaymentsPanel({
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <Link
-                    href={`/loans${ownerQueryString}`}
+                    href={loanHref(item)}
                     className={cn(
                       'truncate font-semibold hover:underline',
                       isCompact ? 'text-xs' : 'text-sm',
@@ -179,7 +154,7 @@ export default function FortnightLoanPaymentsPanel({
                   <span className="text-muted-foreground/30">·</span>
                   <span>
                     {item.paymentSource === 'PAYROLL_DEDUCTION'
-                      ? `Nomina${item.incomeTemplateName ? `: ${item.incomeTemplateName}` : ''}`
+                      ? `Nómina${item.incomeTemplateName ? `: ${item.incomeTemplateName}` : ''}`
                       : item.sourceWalletName ?? 'Billetera'}
                   </span>
                 </div>
@@ -192,17 +167,15 @@ export default function FortnightLoanPaymentsPanel({
                 {item.status === 'SCHEDULED' ? (
                   <Button
                     type="button"
+                    asChild
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2 text-[10px]"
-                    disabled={updatingId === item.id}
-                    onClick={() => void handleMarkPaid(item)}
+                    className="h-7 gap-1 px-2 text-[10px]"
                   >
-                    {updatingId === item.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                    ) : (
-                      'Pagar'
-                    )}
+                    <Link href={loanHref(item)}>
+                      <ArrowRight className="h-3 w-3" aria-hidden />
+                      Gestionar
+                    </Link>
                   </Button>
                 ) : null}
               </div>

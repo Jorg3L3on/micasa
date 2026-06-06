@@ -1,3 +1,4 @@
+import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import type { ReportSummaryResult } from '@/lib/finance/report-summary.service';
 import type { TransactionRow } from '@/types/catalog';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -26,6 +27,7 @@ export type MonthlyPageData = {
   secondTransactions: TransactionRow[];
   firstSummary: MonthlyFortnightSummary | null;
   secondSummary: MonthlyFortnightSummary | null;
+  budgetPanel: MonthlyBudgetPanelResult;
 };
 
 export type GetMonthlyPageDataParams = {

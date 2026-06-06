@@ -7,6 +7,11 @@ export type LoanPaymentStatusValue =
   | 'PAID'
   | 'SKIPPED'
   | 'CANCELLED';
+export type LoanPaymentActionValue =
+  | 'MARK_PAID'
+  | 'MARK_SCHEDULED'
+  | 'SKIP'
+  | 'CANCEL';
 
 export type LoanPaymentListItem = {
   id: number;

@@ -1,9 +1,10 @@
 'use client';
 
 import type { FinanceContextType } from '@/types/finance-context';
-import type { CreateLoanInput } from '@/schemas/loan.schema';
+import type { CreateLoanInput, UpdateLoanInput } from '@/schemas/loan.schema';
 import type {
   LoanListItem,
+  LoanPaymentActionValue,
   LoanPaymentListItem,
   PlannerLoanPaymentsResponse,
 } from '@/types/loans';
@@ -27,6 +28,21 @@ export async function createLoan(
   );
 }
 
+export async function updateLoan(
+  loanId: number,
+  data: UpdateLoanInput,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<LoanListItem>(
+    `/api/loans/${loanId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
 export async function getPlannerLoanPayments(
   year: number,
   month: number,
@@ -42,7 +58,28 @@ export async function getPlannerLoanPayments(
 export async function updateLoanPaymentStatus(
   paymentId: number,
   data: {
+    action?: LoanPaymentActionValue;
     status: LoanPaymentListItem['status'];
+    paidAt?: string | null;
+    sourceWalletId?: number | null;
+    note?: string | null;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<LoanPaymentListItem>(
+    `/api/loans/payments/${paymentId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function applyLoanPaymentAction(
+  paymentId: number,
+  data: {
+    action: LoanPaymentActionValue;
     paidAt?: string | null;
     sourceWalletId?: number | null;
     note?: string | null;
