@@ -6,11 +6,22 @@ export type MonthlyBudgetCategoryRow = {
   percentOfBudget: number;
 };
 
-export type MonthlyBudgetPanelResult = {
+export type MonthlyBudgetSourceSummary = {
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'CUSTOM';
+  totalBudget: number;
+};
+
+export type MonthlyBudgetScope = {
   totalBudget: number;
   spent: number;
   available: number;
   categories: MonthlyBudgetCategoryRow[];
+  sources: MonthlyBudgetSourceSummary[];
+};
+
+export type MonthlyBudgetPanelResult = {
+  first: MonthlyBudgetScope;
+  second: MonthlyBudgetScope;
 };
 
 export const MONTHLY_BUDGET_CATEGORY_ACCENTS = [

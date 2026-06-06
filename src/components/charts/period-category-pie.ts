@@ -6,7 +6,13 @@ export type CategoryPieRow = {
   total: number;
 };
 
-export type CategoryPieSlice = { name: string; value: number; pct: number };
+export type CategoryPieSlice = {
+  name: string;
+  category: string;
+  categoryIcon?: string | null;
+  value: number;
+  pct: number;
+};
 
 export const CATEGORY_PIE_SLICE_COLORS = [
   '#6366f1',
@@ -27,11 +33,18 @@ const MAX_SLICES = 8;
 
 export const bucketCategoryPieRows = (
   rows: CategoryPieRow[],
-): Array<{ name: string; value: number }> => {
+): Array<{
+  name: string;
+  category: string;
+  categoryIcon?: string | null;
+  value: number;
+}> => {
   const sorted = [...rows].sort((a, b) => b.total - a.total);
   if (sorted.length <= MAX_SLICES) {
     return sorted.map((r) => ({
       name: formatCategoryLabel(r.category, r.categoryIcon),
+      category: r.category,
+      categoryIcon: r.categoryIcon,
       value: r.total,
     }));
   }
@@ -41,9 +54,11 @@ export const bucketCategoryPieRows = (
   return [
     ...top.map((r) => ({
       name: formatCategoryLabel(r.category, r.categoryIcon),
+      category: r.category,
+      categoryIcon: r.categoryIcon,
       value: r.total,
     })),
-    { name: 'Otros', value: otros },
+    { name: 'Otros', category: 'Otros', categoryIcon: null, value: otros },
   ];
 };
 
