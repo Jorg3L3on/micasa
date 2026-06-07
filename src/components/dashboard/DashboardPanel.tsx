@@ -9,6 +9,7 @@ import DashboardPeriodCategoryPie from '@/components/dashboard/DashboardPeriodCa
 import DashboardBudgetSummaryCard from '@/components/dashboard/DashboardBudgetSummaryCard';
 import DashboardLoanSummaryCard from '@/components/dashboard/DashboardLoanSummaryCard';
 import AlertsWarningsCard from '@/components/dashboard/AlertsWarningsCard';
+import UpcomingObligationsCard from '@/components/dashboard/UpcomingObligationsCard';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -160,6 +161,8 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           rows={data.periodCategoryBreakdown}
         />
       </div>
+
+      <UpcomingObligationsCard data={data} />
 
       {data.alerts.length > 0 ? <AlertsWarningsCard data={data} /> : null}
 
