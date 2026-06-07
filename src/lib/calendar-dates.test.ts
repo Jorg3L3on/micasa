@@ -62,13 +62,52 @@ describe('calendar-dates', () => {
   });
 
   it('formatWallClockDateRange shows budget fortnight without MX shift', () => {
+    const now = new Date('2026-06-07T18:00:00.000Z');
     const range = formatWallClockDateRange(
       '2026-06-01T00:00:00.000Z',
       '2026-06-15T00:00:00.000Z',
+      now,
     );
     expect(range).toMatch(/1.*jun/i);
     expect(range).toMatch(/15.*jun/i);
     expect(range).not.toMatch(/31.*may/i);
     expect(range).not.toMatch(/14.*jun/i);
+    expect(range).not.toMatch(/2026/);
+  });
+
+  it('formatWallClockDateRange collapses same-day periods', () => {
+    const now = new Date('2026-06-07T18:00:00.000Z');
+    expect(
+      formatWallClockDateRange(
+        '2026-06-07T00:00:00.000Z',
+        '2026-06-07T23:59:59.999Z',
+        now,
+      ),
+    ).toMatch(/^7.*jun(?!.*–).*$/i);
+  });
+
+  it('formatWallClockDateRange appends year for non-current civil years', () => {
+    const now = new Date('2026-06-07T18:00:00.000Z');
+    expect(
+      formatWallClockDateRange(
+        '2025-06-01T00:00:00.000Z',
+        '2025-06-15T00:00:00.000Z',
+        now,
+      ),
+    ).toMatch(/1.*jun.*–.*15.*jun.*2025/i);
+    expect(
+      formatWallClockDateRange('2025-06-07T00:00:00.000Z', '2025-06-07T23:59:59.999Z', now),
+    ).toMatch(/7.*jun.*2025/i);
+  });
+
+  it('formatWallClockDateRange shows both years when range crosses years', () => {
+    const now = new Date('2026-06-07T18:00:00.000Z');
+    const range = formatWallClockDateRange(
+      '2025-12-28T00:00:00.000Z',
+      '2026-01-03T00:00:00.000Z',
+      now,
+    );
+    expect(range).toMatch(/28.*dic.*2025/i);
+    expect(range).toMatch(/3.*ene.*2026/i);
   });
 });
