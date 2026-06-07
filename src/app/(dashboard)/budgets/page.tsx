@@ -7,20 +7,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
+import { formatWallClockDateRange } from '@/lib/calendar-dates';
 import { fetchActivePeriods, fetchBudgetHistory } from '@/lib/api/budgets';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetPeriodItem, BudgetHistoryGroup } from '@/types/catalog';
 import { BUDGET_FREQUENCY_LABELS, type BudgetFrequency } from '@/schemas/budget.schema';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-function formatDateRange(start: string, end: string) {
-  const s = new Date(start);
-  const e = new Date(end);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-  return `${fmt(s)} – ${fmt(e)}`;
-}
 
 function ProgressBar({ spent, total }: { spent: number; total: number }) {
   const pct = total > 0 ? Math.min((spent / total) * 100, 100) : 0;
@@ -123,7 +116,7 @@ function ActivePeriodsTab() {
         header: 'Período',
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">
-            {formatDateRange(row.original.start_date, row.original.end_date)}
+            {formatWallClockDateRange(row.original.start_date, row.original.end_date)}
           </span>
         ),
       },
@@ -249,7 +242,7 @@ function HistoryTab() {
                         className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-4 py-3 text-sm"
                       >
                         <span className="text-muted-foreground">
-                          {formatDateRange(period.start_date, period.end_date)}
+                          {formatWallClockDateRange(period.start_date, period.end_date)}
                         </span>
                         <span>{formatCurrency(period.allocated_amount)}</span>
                         <span className="text-muted-foreground">{formatCurrency(period.spent_amount)}</span>

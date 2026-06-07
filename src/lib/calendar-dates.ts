@@ -180,3 +180,24 @@ export function formatDisplayDate(dateString: string | Date): string {
     return String(dateString);
   }
 }
+
+const wallClockShortFormatter = new Intl.DateTimeFormat('es-MX', {
+  timeZone: 'UTC',
+  day: 'numeric',
+  month: 'short',
+});
+
+/**
+ * Compact es-MX label for `@db.Timestamp` wall-clock values. Stored date parts
+ * map to UTC components — do not use `formatDisplayDate` (MX instant shift).
+ */
+export function formatWallClockDateShort(date: string | Date): string {
+  const value = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(value.getTime())) return String(date);
+  return wallClockShortFormatter.format(value);
+}
+
+/** Wall-clock date range for budget periods and similar timestamp columns. */
+export function formatWallClockDateRange(start: string | Date, end: string | Date): string {
+  return `${formatWallClockDateShort(start)} – ${formatWallClockDateShort(end)}`;
+}
