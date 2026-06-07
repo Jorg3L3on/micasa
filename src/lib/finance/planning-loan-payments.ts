@@ -56,6 +56,7 @@ export const mapLoanDuePaymentToTransactionRow = (
     wallet_id: payment.sourceWalletId ?? payment.linkedWalletId,
     wallet_type: null,
     planning_row_kind: 'loan_payment',
+    loan_payment_source: payment.paymentSource,
     type: 'expense',
     is_paid: false,
     due_day: Number.isFinite(dueDay) ? dueDay : null,
