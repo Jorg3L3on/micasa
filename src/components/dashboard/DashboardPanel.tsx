@@ -39,7 +39,8 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
     return query ? `?${query}` : '';
   }, [context]);
   const periodLabel = getPeriodLabel(data.period);
-  const loanPendingTotal = data.planningLoanPayments?.pendingTotal ?? 0;
+  const loanPendingTotal = data.planningWalletLoanDue?.total ?? 0;
+  const loanPendingCount = data.planningWalletLoanDue?.count ?? 0;
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -141,7 +142,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           amount={loanPendingTotal}
           iconKey="hand-coins"
           iconGradient="linear-gradient(135deg, #eab308 0%, #facc15 100%)"
-          subtitle={`${data.planningLoanPayments?.pendingCount ?? 0} pendiente(s)`}
+          subtitle={`${loanPendingCount} pendiente(s) billetera`}
         />
       </div>
 

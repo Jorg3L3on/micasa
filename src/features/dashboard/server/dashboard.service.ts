@@ -8,6 +8,7 @@ import {
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
+import { formatLoanPaymentLabel } from '@/lib/finance/planning-loan-payments';
 import { partitionLoanPaymentsForPlanningTotals } from '@/lib/finance/planning-period-loan-totals';
 import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
@@ -231,6 +232,7 @@ export const getDashboardData = async (
       if (loanPlanningTotals.walletPaidWithoutExpense > 0) {
         totalPaidCurrent += loanPlanningTotals.walletPaidWithoutExpense;
       }
+      const walletLoanDueCurrent = loanPlanningTotals.walletDue;
       const payrollLoanDeductionCurrent =
         loanPlanningTotals.payrollDeduction.total;
       const totalUnpaidCurrent = totalExpenseCurrent - totalPaidCurrent;
@@ -391,6 +393,7 @@ export const getDashboardData = async (
         allExpensesUpcoming,
         loanPayCurrent,
         payrollLoanDeductionCurrent,
+        walletLoanDueCurrent,
         expensesCurrent,
         totalIncomeCurrent,
         totalExpenseCurrent,
@@ -465,7 +468,11 @@ export const getDashboardData = async (
           totalsPayload.loanPayCurrent.upcoming.map((payment) => ({
             id: payment.id,
             source: 'loan_payment' as const,
-            description: `Pago préstamo: ${payment.loanName}`,
+            description: formatLoanPaymentLabel({
+              loanName: payment.loanName,
+              lender: payment.lender,
+              paymentSource: payment.paymentSource,
+            }),
             amount: payment.amount,
             is_paid: false,
             dueDate: payment.dueDate,
@@ -562,6 +569,12 @@ export const getDashboardData = async (
           const d = parseCalendarDate(payment.dueDate);
           return d < today;
         });
+      const overdueWalletLoanPayments = overdueLoanPayments.filter(
+        (payment) => payment.paymentSource === 'WALLET',
+      );
+      const overduePayrollLoanPayments = overdueLoanPayments.filter(
+        (payment) => payment.paymentSource === 'PAYROLL_DEDUCTION',
+      );
       const totalOverdueAmount =
         overdueInCurrent.reduce((s, o) => s + o.amount, 0) +
         overdueLoanPayments.reduce((s, payment) => s + payment.amount, 0);
@@ -573,6 +586,24 @@ export const getDashboardData = async (
         totalOverdueAmount > MIN_ALERTABLE_AMOUNT
       ) {
         const alertId = `overdue:${alertScope}`;
+        const overdueParts: string[] = [];
+        if (overdueInCurrent.length > 0) {
+          overdueParts.push(
+            `${overdueInCurrent.length} gasto${overdueInCurrent.length === 1 ? '' : 's'}`,
+          );
+        }
+        if (overdueWalletLoanPayments.length > 0) {
+          overdueParts.push(
+            `${overdueWalletLoanPayments.length} pago${overdueWalletLoanPayments.length === 1 ? '' : 's'} préstamo billetera`,
+          );
+        }
+        if (overduePayrollLoanPayments.length > 0) {
+          overdueParts.push(
+            `${overduePayrollLoanPayments.length} deducción${overduePayrollLoanPayments.length === 1 ? '' : 'es'} nómina`,
+          );
+        }
+        const overdueBreakdown =
+          overdueParts.length > 0 ? ` (${overdueParts.join(', ')})` : '';
         result.push({
           id: alertId,
           type: 'overdue',
@@ -582,7 +613,7 @@ export const getDashboardData = async (
           } obligacion(es) vencida(s) por ${new Intl.NumberFormat('es-MX', {
             style: 'currency',
             currency: 'MXN',
-          }).format(totalOverdueAmount)}`,
+          }).format(totalOverdueAmount)}${overdueBreakdown}`,
           severity: 'error',
           target: {
             path: `/monthly/${totalsPayload.current.year}/${totalsPayload.current.month}`,
@@ -686,6 +717,13 @@ export const getDashboardData = async (
               pendingTotal: totalsPayload.loanPayCurrent.pendingTotal,
               count: totalsPayload.loanPayCurrent.count,
               pendingCount: totalsPayload.loanPayCurrent.pendingCount,
+            }
+          : null,
+      planningWalletLoanDue:
+        totalsPayload.walletLoanDueCurrent.total > 0
+          ? {
+              total: totalsPayload.walletLoanDueCurrent.total,
+              count: totalsPayload.walletLoanDueCurrent.count,
             }
           : null,
       planningPayrollLoanDeduction:
