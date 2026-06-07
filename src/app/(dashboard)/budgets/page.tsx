@@ -33,7 +33,7 @@ function ProgressBar({ spent, total }: { spent: number; total: number }) {
           ? 'bg-yellow-400'
           : 'bg-green-500';
   return (
-    <div className="flex min-w-[110px] items-center gap-2">
+    <div className="flex min-w-27.5 items-center gap-2">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
       </div>
@@ -74,7 +74,7 @@ function MonthPicker({
       <Button variant="outline" size="icon" className="h-8 w-8" onClick={prev}>
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="min-w-[130px] text-center text-sm font-medium">
+      <span className="min-w-32.5 text-center text-sm font-medium">
         {MONTH_NAMES[month - 1]} {year}
       </span>
       <Button

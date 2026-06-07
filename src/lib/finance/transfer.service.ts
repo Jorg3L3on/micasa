@@ -1,6 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { TransferType } from '@/generated/prisma/client';
+import { coerceToCalendarDayStart } from '@/lib/calendar-dates';
 
 export type CreateUserToHouseTransferInput = {
   userId: number;
@@ -45,7 +46,7 @@ export async function createUserToHouseTransferInTx(
       description: note ?? 'Transferencia a casa',
       amount: amount.toString(),
       is_paid: true,
-      payment_date: date,
+      payment_date: coerceToCalendarDayStart(date),
       user_id: userId,
       house_id: null,
       fortnight_id: userFortnightId,

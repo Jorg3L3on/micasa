@@ -113,7 +113,7 @@ model User {
   active               Boolean @default(true)
   onboarding_completed Boolean @default(false)
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Personal finance
   fortnights         Fortnight[]
@@ -161,7 +161,7 @@ model Fortnight {
   user_id  Int?
   house_id Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   house House? @relation(fields: [house_id], references: [id])
@@ -186,7 +186,7 @@ model Category {
   user_id  Int?
   house_id Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   user               User?              @relation(fields: [user_id], references: [id])
@@ -218,7 +218,7 @@ model ExpenseTemplate {
   user_id     Int?
   wallet_id   Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   expenses Expense[]
@@ -251,7 +251,7 @@ model Expense {
   user_id             Int?
   wallet_id           Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   fortnight        Fortnight        @relation(fields: [fortnight_id], references: [id])
@@ -291,7 +291,7 @@ model Income {
   fortnight_id       Int
   income_template_id Int?
   wallet_id          Int?
-  created_at         DateTime @default(now())
+  created_at         DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   fortnight       Fortnight       @relation(fields: [fortnight_id], references: [id])
@@ -320,13 +320,13 @@ model IncomeTemplate {
   user_id  Int?
   house_id Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   incomes       Income[]
-  payroll_loans Loan[] @relation("LoanIncomeTemplate")
-  user          User?  @relation(fields: [user_id], references: [id])
-  house         House? @relation(fields: [house_id], references: [id])
+  payroll_loans Loan[]   @relation("LoanIncomeTemplate")
+  user          User?    @relation(fields: [user_id], references: [id])
+  house         House?   @relation(fields: [house_id], references: [id])
 
   @@index([user_id])
   @@index([house_id])
@@ -337,7 +337,7 @@ model House {
   name     String
   owner_id Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   owner            User?             @relation(fields: [owner_id], references: [id])
@@ -366,7 +366,7 @@ model HouseMember {
   user_id  Int
   role     HouseRole @default(MEMBER)
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   house House @relation(fields: [house_id], references: [id])
@@ -374,21 +374,21 @@ model HouseMember {
 }
 
 model Wallet {
-  id                Int               @id @default(autoincrement())
-  name              String
-  description       String?
-  provider_icon_key String?
-  amount            Decimal           @default(0) @db.Decimal(10, 2)
-  credit_limit      Decimal?          @db.Decimal(10, 2)
+  id                           Int               @id @default(autoincrement())
+  name                         String
+  description                  String?
+  provider_icon_key            String?
+  amount                       Decimal           @default(0) @db.Decimal(10, 2)
+  credit_limit                 Decimal?          @db.Decimal(10, 2)
   /// DiDi Card y similares: límite promocional/temporal mayor que la línea contractual (último valor conocido).
-  temporary_credit_limit       Decimal?   @db.Decimal(10, 2)
+  temporary_credit_limit       Decimal?          @db.Decimal(10, 2)
   /// Fecha de corte del estado de cuenta donde se detectó `temporary_credit_limit` (opcional).
   temporary_credit_limit_as_of DateTime?
-  type              PaymentMethodType
-  cutoff_day        Int?
-  due_day           Int?
-  active            Boolean           @default(true)
-  last_paid_period  String?
+  type                         PaymentMethodType
+  cutoff_day                   Int?
+  due_day                      Int?
+  active                       Boolean           @default(true)
+  last_paid_period             String?
 
   user_id  Int?
   house_id Int?
@@ -396,7 +396,7 @@ model Wallet {
   /// En contexto casa: miembro al que se atribuye la billetera (opcional; null = compartida).
   assignee_user_id Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   user     User?  @relation(fields: [user_id], references: [id])
@@ -430,8 +430,8 @@ model CreditCardPaymentPlan {
   planned_amount        Decimal  @db.Decimal(12, 2)
   user_id               Int?
   house_id              Int?
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   credit_card_wallet Wallet    @relation(fields: [credit_card_wallet_id], references: [id], onDelete: Cascade)
   fortnight          Fortnight @relation(fields: [fortnight_id], references: [id], onDelete: Cascade)
@@ -456,7 +456,7 @@ model Budget {
   user_id  Int?
   house_id Int?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   user        User?              @relation(fields: [user_id], references: [id])
@@ -474,7 +474,7 @@ model BudgetPeriod {
   start_date DateTime
   end_date   DateTime
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   budget Budget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
 
@@ -489,7 +489,7 @@ model BudgetAllocation {
   category_id Int
   amount      Decimal @db.Decimal(10, 2)
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
   budget   Budget   @relation(fields: [budget_id], references: [id], onDelete: Cascade)
@@ -515,7 +515,7 @@ model Transfer {
   house_id Int
   note     String?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Optional links to accounting entries created from this transfer
   user_expense_id Int? @unique
@@ -542,7 +542,7 @@ model CreditCardPayment {
   user_id               Int?
   house_id              Int?
   expense_id            Int?     @unique
-  created_at            DateTime @default(now())
+  created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   credit_card_wallet Wallet   @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
   source_wallet      Wallet   @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
@@ -574,8 +574,8 @@ model Loan {
   linked_wallet_id   Int?
   income_template_id Int?
   notes              String?
-  created_at         DateTime             @default(now())
-  updated_at         DateTime             @updatedAt
+  created_at         DateTime             @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at         DateTime             @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   user            User?           @relation(fields: [user_id], references: [id])
   house           House?          @relation(fields: [house_id], references: [id])
@@ -598,15 +598,15 @@ model LoanPayment {
   sequence         Int
   due_date         DateTime
   amount           Decimal           @db.Decimal(12, 2)
-  status           LoanPaymentStatus  @default(SCHEDULED)
+  status           LoanPaymentStatus @default(SCHEDULED)
   paid_at          DateTime?
   source_wallet_id Int?
   note             String?
-  created_at       DateTime          @default(now())
-  updated_at       DateTime          @updatedAt
+  created_at       DateTime          @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at       DateTime          @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
-  loan          Loan    @relation(fields: [loan_id], references: [id], onDelete: Cascade)
-  source_wallet Wallet? @relation("LoanPaymentSourceWallet", fields: [source_wallet_id], references: [id])
+  loan           Loan     @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  source_wallet  Wallet?  @relation("LoanPaymentSourceWallet", fields: [source_wallet_id], references: [id])
   linked_expense Expense? @relation("LoanPaymentExpense")
 
   @@unique([loan_id, sequence])
@@ -645,7 +645,7 @@ model CreditCardStatementImport {
 
   parse_warnings String[] @default([])
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   wallet     Wallet    @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
   user       User?     @relation("CreditCardStatementImportUserOwner", fields: [user_id], references: [id])
@@ -663,22 +663,22 @@ model CreditCardStatementImport {
 }
 
 model PantryReceipt {
-  id             Int            @id @default(autoincrement())
-  title          String?
+  id                Int            @id @default(autoincrement())
+  title             String?
   /**
    * Optional totals parsed from receipt footer (e.g. Subtotal, Total).
    */
-  subtotal       Decimal?       @db.Decimal(12, 2)
-  discount_total Decimal?       @db.Decimal(12, 2)
-  delivery_fee   Decimal?       @db.Decimal(12, 2)
-  grand_total    Decimal?       @db.Decimal(12, 2)
-  merchant_ref   String?
-  currency       String         @default("MXN")
-  purchased_at   DateTime?
-  store          ShoppingStore?
-  source_type    String?
-  linked_cart_id Int?
-  linked_expense_id Int? @unique
+  subtotal          Decimal?       @db.Decimal(12, 2)
+  discount_total    Decimal?       @db.Decimal(12, 2)
+  delivery_fee      Decimal?       @db.Decimal(12, 2)
+  grand_total       Decimal?       @db.Decimal(12, 2)
+  merchant_ref      String?
+  currency          String         @default("MXN")
+  purchased_at      DateTime?
+  store             ShoppingStore?
+  source_type       String?
+  linked_cart_id    Int?
+  linked_expense_id Int?           @unique
 
   user_id  Int?
   house_id Int?
@@ -691,15 +691,15 @@ model PantryReceipt {
 
   parse_warnings String[] @default([])
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
-  user       User?               @relation("PantryReceiptUserOwner", fields: [user_id], references: [id])
-  house      House?              @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
-  created_by User                @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
-  lines      PantryReceiptLine[]
-  linked_cart PantryShoppingCart? @relation("PantryReceiptLinkedCart", fields: [linked_cart_id], references: [id], onDelete: SetNull)
-  linked_expense Expense? @relation("ExpensePantryReceipt", fields: [linked_expense_id], references: [id], onDelete: SetNull)
+  user           User?               @relation("PantryReceiptUserOwner", fields: [user_id], references: [id])
+  house          House?              @relation("PantryReceiptHouseOwner", fields: [house_id], references: [id])
+  created_by     User                @relation("PantryReceiptCreatedBy", fields: [created_by_user_id], references: [id])
+  lines          PantryReceiptLine[]
+  linked_cart    PantryShoppingCart? @relation("PantryReceiptLinkedCart", fields: [linked_cart_id], references: [id], onDelete: SetNull)
+  linked_expense Expense?            @relation("ExpensePantryReceipt", fields: [linked_expense_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([house_id])
@@ -709,17 +709,17 @@ model PantryReceipt {
 }
 
 model PantryReceiptLine {
-  id          Int      @id @default(autoincrement())
-  receipt_id  Int
-  sort_order  Int      @default(0)
-  description String
+  id              Int      @id @default(autoincrement())
+  receipt_id      Int
+  sort_order      Int      @default(0)
+  description     String
   normalized_name String?
-  quantity    Decimal  @default(1) @db.Decimal(14, 4)
+  quantity        Decimal  @default(1) @db.Decimal(14, 4)
   /// Unit shown on receipt (pz, kg, etc.)
-  unit_label  String?
+  unit_label      String?
   normalized_unit String?
-  unit_price  Decimal? @db.Decimal(12, 2)
-  line_total  Decimal  @db.Decimal(12, 2)
+  unit_price      Decimal? @db.Decimal(12, 2)
+  line_total      Decimal  @db.Decimal(12, 2)
 
   receipt PantryReceipt @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
 
@@ -745,8 +745,8 @@ model PantryProduct {
   user_id  Int?
   house_id Int?
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   user  User?  @relation("PantryProductUserOwner", fields: [user_id], references: [id])
   house House? @relation("PantryProductHouseOwner", fields: [house_id], references: [id])
@@ -776,17 +776,17 @@ model PantryShoppingCart {
   created_by_user_id Int
   updated_by_user_id Int?
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   user       User?  @relation("PantryShoppingCartUserOwner", fields: [user_id], references: [id])
   house      House? @relation("PantryShoppingCartHouseOwner", fields: [house_id], references: [id])
   created_by User   @relation("PantryShoppingCartCreatedBy", fields: [created_by_user_id], references: [id])
   updated_by User?  @relation("PantryShoppingCartUpdatedBy", fields: [updated_by_user_id], references: [id])
 
-  items      PantryShoppingCartItem[]
-  activities PantryShoppingCartActivity[]
-  receipts_linked_from PantryReceipt[] @relation("PantryReceiptLinkedCart")
+  items                PantryShoppingCartItem[]
+  activities           PantryShoppingCartActivity[]
+  receipts_linked_from PantryReceipt[]              @relation("PantryReceiptLinkedCart")
 
   @@index([user_id])
   @@index([house_id])
@@ -811,8 +811,8 @@ model PantryShoppingCartItem {
   created_by_user_id Int
   updated_by_user_id Int?
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   cart       PantryShoppingCart @relation(fields: [cart_id], references: [id], onDelete: Cascade)
   product    PantryProduct?     @relation(fields: [product_id], references: [id], onDelete: SetNull)
@@ -835,7 +835,7 @@ model PantryShoppingCartActivity {
   action   ShoppingCartActivityAction
   metadata Json?
 
-  created_at DateTime @default(now())
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   cart PantryShoppingCart @relation(fields: [cart_id], references: [id], onDelete: Cascade)
   user User               @relation("PantryShoppingCartActivityUser", fields: [user_id], references: [id])
@@ -843,4 +843,3 @@ model PantryShoppingCartActivity {
   @@index([cart_id, created_at])
   @@index([item_id])
 }
-

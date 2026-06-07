@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
       error &&
       typeof error === 'object' &&
       'code' in error &&
-      (error as ErrorWithCode).code === 'ALLOC_EXCEEDS_BUDGET'
+      ['ALLOC_EXCEEDS_BUDGET', 'CURRENT_FORTNIGHT_NOT_FOUND'].includes(
+        (error as ErrorWithCode).code ?? '',
+      )
     ) {
       return NextResponse.json(
         { error: (error as ErrorWithCode).message },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   compareCalendarFortnight,
+  getCurrentCalendarFortnightRef,
   getNextCalendarFortnight,
   getFortnightPeriodForDay,
   getSuggestedFortnightPeriodForMonth,
@@ -87,5 +88,25 @@ describe('getSuggestedFortnightPeriodForMonth', () => {
 
   it('defaults current month to active period', () => {
     expect(getSuggestedFortnightPeriodForMonth(2026, 6, asOf)).toBe('FIRST');
+  });
+});
+
+describe('getCurrentCalendarFortnightRef', () => {
+  const mxNoon = (ymd: string) => new Date(`${ymd}T18:00:00.000Z`);
+
+  it('maps Mexico City days 1 through 15 to FIRST', () => {
+    expect(getCurrentCalendarFortnightRef(mxNoon('2026-06-15'))).toEqual({
+      year: 2026,
+      month: 6,
+      period: 'FIRST',
+    });
+  });
+
+  it('maps Mexico City days 16 through month end to SECOND', () => {
+    expect(getCurrentCalendarFortnightRef(mxNoon('2026-06-16'))).toEqual({
+      year: 2026,
+      month: 6,
+      period: 'SECOND',
+    });
   });
 });

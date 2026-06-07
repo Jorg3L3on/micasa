@@ -1,7 +1,9 @@
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import type { BudgetFrequency, CreateBudgetInput, AllocationInput } from '@/schemas/budget.schema';
+import type { CreateBudgetInput, AllocationInput } from '@/schemas/budget.schema';
 import { generatePeriodsOnCreate } from '@/lib/finance/budget-period.service';
+import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
+import { computeBudgetTemplateDateRange } from '@/lib/finance/budget-template-date-range';
 
 export async function listBudgetsByOwner(ownerFilter: OwnerFilter) {
   const budgets = await prisma.budget.findMany({
@@ -53,15 +55,37 @@ export async function createBudget(
       ? { user_id: ownerId, house_id: null }
       : { user_id: null, house_id: ownerId };
 
+  const currentFortnight =
+    data.frequency === 'BIWEEKLY'
+      ? await prisma.fortnight.findFirst({
+          where: { ...ownerFilter, ...getCurrentCalendarFortnightRef() },
+          select: { start_date: true, end_date: true },
+        })
+      : null;
+
+  if (data.frequency === 'BIWEEKLY' && !currentFortnight) {
+    throw Object.assign(
+      new Error('No se encontró la quincena actual para este contexto'),
+      { code: 'CURRENT_FORTNIGHT_NOT_FOUND' },
+    );
+  }
+
+  const budgetDateRange = computeBudgetTemplateDateRange({
+    frequency: data.frequency,
+    currentFortnight,
+    customStartDate: data.start_date,
+    customEndDate: data.end_date,
+  });
+
   const budget = await prisma.$transaction(async (tx) => {
     const created = await tx.budget.create({
       data: {
         name: data.name,
         total_amount: data.allocated_amount,
-        frequency: data.frequency as BudgetFrequency,
+        frequency: data.frequency,
         recurrent: data.frequency === 'CUSTOM' ? false : (data.recurrent ?? true),
-        start_date: data.start_date ? new Date(data.start_date) : null,
-        end_date: data.end_date ? new Date(data.end_date) : null,
+        start_date: budgetDateRange.start_date,
+        end_date: budgetDateRange.end_date,
         active: true,
         user_id: ownerType === 'user' ? ownerId : null,
         house_id: ownerType === 'house' ? ownerId : null,
@@ -82,7 +106,7 @@ export async function createBudget(
 
   await generatePeriodsOnCreate(
     budget.id,
-    data.frequency as BudgetFrequency,
+    data.frequency,
     data.start_date,
     data.end_date,
     ownerFilter,

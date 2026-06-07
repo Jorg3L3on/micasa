@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  coerceToCalendarDayStart,
   coerceToCalendarDate,
   formatCalendarDate,
   formatDisplayDate,
@@ -34,6 +35,12 @@ describe('calendar-dates', () => {
   it('coerces legacy ISO midnight strings to the selected civil day', () => {
     const coerced = coerceToCalendarDate('2026-05-31T00:00:00.000Z');
     expect(coerced.toISOString()).toBe('2026-05-31T12:00:00.000Z');
+  });
+
+  it('normalizes payment calendar dates to Mexico City midnight', () => {
+    expect(coerceToCalendarDayStart('2026-06-04').toISOString()).toBe(
+      '2026-06-04T06:00:00.000Z',
+    );
   });
 
   it('startOfCalendarDay aligns to MX midnight', () => {
