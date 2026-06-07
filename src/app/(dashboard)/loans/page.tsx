@@ -962,7 +962,7 @@ export default function LoansPage() {
                 <li
                   key={loan.id}
                   className={cn(
-                    'grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center',
+                    'grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-center',
                     loan.status === 'PAUSED' && 'bg-amber-500/5',
                     loan.status === 'CANCELLED' && 'bg-muted/40 opacity-80',
                   )}
@@ -971,20 +971,24 @@ export default function LoansPage() {
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
                       <Icon className="h-4 w-4" aria-hidden />
                     </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-sm font-semibold text-foreground">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                        <h3 className="min-w-0 max-w-full truncate text-sm font-semibold text-foreground">
                           {loan.name}
                         </h3>
-                        <Badge
-                          variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'}
-                          className="h-5 text-[10px]"
-                        >
-                          {statusLabel(loan.status)}
-                        </Badge>
-                        <Badge variant="outline" className="h-5 text-[10px]">
-                          {typeLabel(loan.type)}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge
+                            variant={
+                              loan.status === 'ACTIVE' ? 'default' : 'secondary'
+                            }
+                            className="h-5 text-[10px]"
+                          >
+                            {statusLabel(loan.status)}
+                          </Badge>
+                          <Badge variant="outline" className="h-5 text-[10px]">
+                            {typeLabel(loan.type)}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span>{loan.lender}</span>
@@ -1002,36 +1006,36 @@ export default function LoansPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-right sm:grid-cols-4 md:min-w-[30rem]">
-                    <div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-left sm:grid-cols-4 sm:text-right xl:min-w-[30rem]">
+                    <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Pendiente
                       </p>
-                      <p className="font-mono text-sm font-bold tabular-nums">
+                      <p className="whitespace-nowrap font-mono text-sm font-bold tabular-nums">
                         {formatCurrency(loan.remainingAmount)}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Pago
                       </p>
-                      <p className="font-mono text-sm font-bold tabular-nums">
+                      <p className="whitespace-nowrap font-mono text-sm font-bold tabular-nums">
                         {formatCurrency(loan.paymentAmount)}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Pagos
                       </p>
-                      <p className="font-mono text-sm font-bold tabular-nums">
+                      <p className="whitespace-nowrap font-mono text-sm font-bold tabular-nums">
                         {loan.paidPayments}/{loan.paymentCount}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Próximo
                       </p>
-                      <p className="inline-flex items-center justify-end gap-1 text-xs font-medium">
+                      <p className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium sm:justify-end">
                         <CalendarDays className="h-3 w-3" aria-hidden />
                         {loan.nextPayment
                           ? formatDate(loan.nextPayment.dueDate)
@@ -1043,7 +1047,7 @@ export default function LoansPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="w-fit gap-1.5 justify-self-start md:justify-self-end"
+                    className="w-full justify-center gap-1.5 sm:w-fit xl:justify-self-end"
                     onClick={() => {
                       resetLoanDetailDrafts();
                       setSelectedLoanId(loan.id);
