@@ -12,6 +12,8 @@ type FortnightSummaryHeroProps = {
   fundingNetInAccounts: number;
   /** Si false, el neto en cuentas no aplica a esta quincena (muestra 0). */
   fundingNetApplies?: boolean;
+  /** Deducciones de nómina pendientes incluidas en incomeRemainder. */
+  payrollDeductionAmount?: number;
   percentCommitted: number;
   showGauge: boolean;
 };
@@ -24,6 +26,7 @@ export const FortnightSummaryHero = ({
   incomeRemainder,
   fundingNetInAccounts,
   fundingNetApplies = true,
+  payrollDeductionAmount = 0,
   percentCommitted,
   showGauge,
 }: FortnightSummaryHeroProps) => {
@@ -121,7 +124,9 @@ export const FortnightSummaryHero = ({
                 {formatCurrency(incomeRemainder)}
               </p>
               <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                Ingresos de la quincena menos lo pagado y lo pendiente planeado
+                {payrollDeductionAmount > 0
+                  ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
+                  : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado'}
               </p>
             </div>
           </div>
