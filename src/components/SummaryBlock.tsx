@@ -241,6 +241,7 @@ export default function SummaryBlock({
           incomeRemainder={trasPagarPlaneado}
           fundingNetInAccounts={displayFundingNet}
           fundingNetApplies={billeterasVsPendienteAplica}
+          payrollDeductionAmount={payrollLoanDeduction}
           percentCommitted={incomeCommittedPercent}
           showGauge={showIncomeRing}
         />
