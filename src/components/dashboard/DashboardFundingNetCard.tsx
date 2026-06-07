@@ -17,6 +17,7 @@ type DashboardFundingNetCardProps = {
   amount: number;
   fundingWalletBalanceTotal: number;
   pendingAmount: number;
+  payrollDeductionAmount?: number;
   wallets: DashboardData['fundingWalletBreakdown'];
   className?: string;
 };
@@ -30,6 +31,7 @@ export default function DashboardFundingNetCard({
   amount,
   fundingWalletBalanceTotal,
   pendingAmount,
+  payrollDeductionAmount = 0,
   wallets,
   className,
 }: DashboardFundingNetCardProps) {
@@ -70,8 +72,8 @@ export default function DashboardFundingNetCard({
                   </DialogTitle>
                 </div>
                 <DialogDescription>
-                  Efectivo y débito disponibles menos lo pendiente por pagar en
-                  el periodo actual.
+                  Efectivo y débito disponibles menos lo pendiente por pagar y las
+                  deducciones de nómina del periodo actual.
                 </DialogDescription>
               </DialogHeader>
 
@@ -113,6 +115,13 @@ export default function DashboardFundingNetCard({
                     amount={pendingAmount > 0 ? -pendingAmount : 0}
                     tone="pending"
                   />
+                  {payrollDeductionAmount > 0 ? (
+                    <BreakdownRow
+                      label="Menos deducciones de nómina (préstamos)"
+                      amount={-payrollDeductionAmount}
+                      tone="pending"
+                    />
+                  ) : null}
                 </div>
 
                 <div className="mt-3 flex items-center justify-between gap-3 border-t border-emerald-500/30 pt-3">
@@ -150,7 +159,7 @@ export default function DashboardFundingNetCard({
           {formatCurrency(amount)}
         </span>
         <span className="text-xs text-muted-foreground">
-          Billeteras menos pagos pendientes
+          Billeteras menos pendiente y deducciones de nómina
         </span>
       </div>
     </div>

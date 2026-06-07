@@ -12,7 +12,9 @@ import {
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForFortnight } from '@/lib/finance/credit-card-statement.service';
+import { sumPlannerLoanDueForFortnight } from '@/lib/finance/loan.service';
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
+import { applyWalletLoanDueToExpenseTotals } from '@/lib/finance/planning-period-loan-totals';
 import {
   buildExpenseWhereForFortnightScope,
   parseFortnightPeriod,
@@ -55,6 +57,10 @@ export type ReportSummaryResult = {
   } | null;
   planningOrphanCardPayments?: { total: number; count: number } | null;
   planningCardStatementDue?: { total: number; cardCount: number } | null;
+  /** Cuotas pendientes pagadas desde billetera (pestaña Préstamos). */
+  planningWalletLoanDue?: { total: number; count: number } | null;
+  /** Deducciones de nómina pendientes (pestaña Préstamos); reducen el ingreso disponible. */
+  planningPayrollLoanDeduction?: { total: number; count: number } | null;
 };
 
 export type GetReportSummaryParams = {
@@ -174,6 +180,10 @@ export const getReportSummary = async (
 
   let planningCardStatementDueTotal = 0;
   let planningCardStatementDueCardCount = 0;
+  let planningWalletLoanDueTotal = 0;
+  let planningWalletLoanDueCount = 0;
+  let planningPayrollLoanDeductionTotal = 0;
+  let planningPayrollLoanDeductionCount = 0;
   if (
     excludeCreditInstallment &&
     year &&
@@ -181,14 +191,28 @@ export const getReportSummary = async (
     period &&
     (period === 'FIRST' || period === 'SECOND')
   ) {
-    const due = await sumPlannerCardDueForFortnight(
-      ownerFilter,
-      parseInt(year, 10),
-      parseInt(month, 10),
-      period,
-    );
-    planningCardStatementDueTotal = due.total;
-    planningCardStatementDueCardCount = due.cardCount;
+    const parsedYear = parseInt(year, 10);
+    const parsedMonth = parseInt(month, 10);
+    const [cardDue, loanDue] = await Promise.all([
+      sumPlannerCardDueForFortnight(
+        ownerFilter,
+        parsedYear,
+        parsedMonth,
+        period,
+      ),
+      sumPlannerLoanDueForFortnight(
+        ownerFilter,
+        parsedYear,
+        parsedMonth,
+        period,
+      ),
+    ]);
+    planningCardStatementDueTotal = cardDue.total;
+    planningCardStatementDueCardCount = cardDue.cardCount;
+    planningWalletLoanDueTotal = loanDue.wallet.total;
+    planningWalletLoanDueCount = loanDue.wallet.count;
+    planningPayrollLoanDeductionTotal = loanDue.payroll.total;
+    planningPayrollLoanDeductionCount = loanDue.payroll.count;
   }
 
   const planningTotals = mergePlanningCardTotalsIntoExpenseSummary(
@@ -203,9 +227,18 @@ export const getReportSummary = async (
         }
       : null,
   );
-  totalExpense = planningTotals.totalExpense;
-  totalPaid = planningTotals.totalPaid;
-  const totalUnpaid = planningTotals.totalUnpaid;
+  const withLoanTotals = applyWalletLoanDueToExpenseTotals(
+    planningTotals,
+    excludeCreditInstallment && planningWalletLoanDueTotal > 0
+      ? {
+          total: planningWalletLoanDueTotal,
+          count: planningWalletLoanDueCount,
+        }
+      : null,
+  );
+  totalExpense = withLoanTotals.totalExpense;
+  totalPaid = withLoanTotals.totalPaid;
+  const totalUnpaid = withLoanTotals.totalUnpaid;
 
   const overrideIncome = income.find((inc) => inc.source === '__OVERRIDE__');
   const regularIncome = income.filter((inc) => inc.source !== '__OVERRIDE__');
@@ -214,7 +247,8 @@ export const getReportSummary = async (
     ? Number(overrideIncome.amount)
     : regularIncome.reduce((sum, inc) => sum + Number(inc.amount), 0);
 
-  const balance = totalIncome - totalExpense;
+  const balance =
+    totalIncome - planningPayrollLoanDeductionTotal - totalExpense;
 
   const cardTotal = excludeCreditInstallment
     ? cardExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
@@ -239,6 +273,12 @@ export const getReportSummary = async (
     planningExpenseCount = (planningExpenseCount ?? 0) + orphanCardPaymentCount;
     planningPaidExpenseCount =
       (planningPaidExpenseCount ?? 0) + orphanCardPaymentCount;
+  }
+  if (excludeCreditInstallment && planningWalletLoanDueCount > 0) {
+    planningExpenseCount =
+      (planningExpenseCount ?? 0) + planningWalletLoanDueCount;
+    planningUnpaidExpenseCount =
+      (planningUnpaidExpenseCount ?? 0) + planningWalletLoanDueCount;
   }
 
   let userIncomeData: ReportSummaryResult['userIncome'] = [];
@@ -354,7 +394,10 @@ export const getReportSummary = async (
     (s, w) => s + w.amount,
     0,
   );
-  const fundingNetVsPendingExpense = fundingWalletBalanceTotal - totalUnpaid;
+  const fundingNetVsPendingExpense =
+    fundingWalletBalanceTotal -
+    totalUnpaid -
+    planningPayrollLoanDeductionTotal;
 
   return {
     totalIncome,
@@ -393,6 +436,20 @@ export const getReportSummary = async (
               ? {
                   total: planningCardStatementDueTotal,
                   cardCount: planningCardStatementDueCardCount,
+                }
+              : null,
+          planningWalletLoanDue:
+            planningWalletLoanDueTotal > 0
+              ? {
+                  total: planningWalletLoanDueTotal,
+                  count: planningWalletLoanDueCount,
+                }
+              : null,
+          planningPayrollLoanDeduction:
+            planningPayrollLoanDeductionTotal > 0
+              ? {
+                  total: planningPayrollLoanDeductionTotal,
+                  count: planningPayrollLoanDeductionCount,
                 }
               : null,
         }

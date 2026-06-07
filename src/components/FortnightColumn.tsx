@@ -760,6 +760,10 @@ export default function FortnightColumn({
             planningCardStatementDue={
               summary.planningCardStatementDue ?? null
             }
+            planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
+            planningPayrollLoanDeduction={
+              summary.planningPayrollLoanDeduction ?? null
+            }
             fundingWalletBalanceTotal={
               summary.fundingWalletBalanceTotal ?? 0
             }

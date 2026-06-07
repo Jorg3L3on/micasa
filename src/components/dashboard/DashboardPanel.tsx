@@ -111,6 +111,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           amount={data.fundingNetVsPendingExpense}
           fundingWalletBalanceTotal={data.fundingWalletBalanceTotal}
           pendingAmount={summary.totalUnpaid}
+          payrollDeductionAmount={data.planningPayrollLoanDeduction?.total ?? 0}
           wallets={data.fundingWalletBreakdown}
           className="col-span-2"
         />

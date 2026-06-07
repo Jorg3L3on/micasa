@@ -13,11 +13,10 @@ type AvailableVsCommittedCardProps = {
 export default function AvailableVsCommittedCard({
   data,
 }: AvailableVsCommittedCardProps) {
-  const { pagado, pendiente } = data.availableVsCommitted;
-  const { totalIncome, totalPaid, totalUnpaid } = data.summary;
-  const libreCoherente = totalIncome - totalPaid - totalUnpaid;
+  const { pagado, pendiente, libre } = data.availableVsCommitted;
   const orphan = data.planningCardPayments;
   const statementDue = data.planningCardStatementDue;
+  const payrollDeduction = data.planningPayrollLoanDeduction;
 
   return (
     <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Disponible vs comprometido">
@@ -39,8 +38,15 @@ export default function AvailableVsCommittedCard({
             Libre
           </span>
           <p className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-            {formatCurrency(libreCoherente)}
+            {formatCurrency(libre)}
           </p>
+          {payrollDeduction != null && payrollDeduction.total > 0 ? (
+            <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
+              Incluye {formatCurrency(payrollDeduction.total)} en deducciones de
+              nómina ({payrollDeduction.count} préstamo
+              {payrollDeduction.count !== 1 ? 's' : ''}).
+            </p>
+          ) : null}
           {statementDue != null && statementDue.total > 0 ? (
             <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
               Incluye {formatCurrency(statementDue.total)} pendiente de pago al

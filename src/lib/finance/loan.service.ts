@@ -236,16 +236,20 @@ async function reverseAndDeleteLoanPaymentExpense(
     is_paid: boolean;
     wallet: { type: PaymentMethodType } | null;
   },
-) {
+): Promise<boolean> {
+  let reversedWalletMovement = false;
+
   if (expense.is_paid && expense.wallet_id != null && expense.wallet != null) {
     await applyWalletAmountDelta(
       tx,
       expense.wallet_id,
       -getPaidExpenseWalletDelta(expense.wallet.type, Number(expense.amount)),
     );
+    reversedWalletMovement = true;
   }
 
   await tx.expense.delete({ where: { id: expense.id } });
+  return reversedWalletMovement;
 }
 
 async function createLinkedLoanPaymentExpense(input: {
@@ -456,6 +460,85 @@ export async function updateLoanForOwner(
   return mapLoan(loan);
 }
 
+export type DeleteLoanResult = {
+  loanId: number;
+  deletedPayments: number;
+  deletedGeneratedExpenses: number;
+  reversedWalletMovements: number;
+};
+
+export async function deleteLoanForOwner(
+  loanId: number,
+  ownerFilter: OwnerFilter,
+): Promise<DeleteLoanResult> {
+  return prisma.$transaction(async (tx) => {
+    const loan = await tx.loan.findFirst({
+      where: { id: loanId, ...ownerFilter },
+      select: {
+        id: true,
+        payment_source: true,
+        payments: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            source_wallet_id: true,
+            linked_expense: {
+              select: {
+                id: true,
+                wallet_id: true,
+                amount: true,
+                is_paid: true,
+                wallet: { select: { type: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!loan) {
+      throw new Error('Préstamo no encontrado');
+    }
+
+    let deletedGeneratedExpenses = 0;
+    let reversedWalletMovements = 0;
+
+    for (const payment of loan.payments) {
+      if (payment.linked_expense) {
+        const reversed = await reverseAndDeleteLoanPaymentExpense(
+          tx,
+          payment.linked_expense,
+        );
+        deletedGeneratedExpenses += 1;
+        if (reversed) reversedWalletMovements += 1;
+        continue;
+      }
+
+      if (
+        payment.status === 'PAID' &&
+        loan.payment_source === 'WALLET' &&
+        payment.source_wallet_id != null
+      ) {
+        await tx.wallet.update({
+          where: { id: payment.source_wallet_id },
+          data: { amount: { increment: decimalToNumber(payment.amount) } },
+        });
+        reversedWalletMovements += 1;
+      }
+    }
+
+    await tx.loan.delete({ where: { id: loan.id } });
+
+    return {
+      loanId: loan.id,
+      deletedPayments: loan.payments.length,
+      deletedGeneratedExpenses,
+      reversedWalletMovements,
+    };
+  });
+}
+
 export async function updateLoanPaymentForOwner(
   paymentId: number,
   ownerFilter: OwnerFilter,
@@ -638,6 +721,42 @@ export async function listLoanPaymentsForPlannerMonth(
       const day = Number(payment.dueDate.slice(8, 10));
       return day >= 16;
     }),
+  };
+}
+
+/** Scheduled loan installments for planner totals (wallet → gasto; nómina → deducción). */
+export async function sumPlannerLoanDueForFortnight(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): Promise<{
+  wallet: { total: number; count: number };
+  payroll: { total: number; count: number };
+}> {
+  const { first, second } = await listLoanPaymentsForPlannerMonth(
+    ownerFilter,
+    year,
+    month,
+  );
+  const items = (period === 'FIRST' ? first : second).filter(
+    (payment) => payment.status === 'SCHEDULED',
+  );
+
+  const wallet = items.filter((payment) => payment.paymentSource === 'WALLET');
+  const payroll = items.filter(
+    (payment) => payment.paymentSource === 'PAYROLL_DEDUCTION',
+  );
+
+  return {
+    wallet: {
+      total: wallet.reduce((sum, payment) => sum + payment.amount, 0),
+      count: wallet.length,
+    },
+    payroll: {
+      total: payroll.reduce((sum, payment) => sum + payment.amount, 0),
+      count: payroll.length,
+    },
   };
 }
 

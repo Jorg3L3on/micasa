@@ -69,7 +69,7 @@ export const FortnightSummaryHero = ({
             </p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
               {fundingNetApplies
-                ? 'Efectivo y débito en billeteras, menos lo pendiente por pagar en esta quincena'
+                ? 'Efectivo y débito en billeteras, menos lo pendiente por pagar y las deducciones de nómina de esta quincena'
                 : 'Solo aplica a la quincena en curso o a la siguiente'}
             </p>
           </div>

@@ -193,6 +193,10 @@ export default async function FortnightPage({
             summary.planningOrphanCardPayments ?? null
           }
           planningCardStatementDue={summary.planningCardStatementDue ?? null}
+          planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
+          planningPayrollLoanDeduction={
+            summary.planningPayrollLoanDeduction ?? null
+          }
           fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
           fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
           fundingWalletBreakdown={summary.fundingWalletBreakdown}

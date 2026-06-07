@@ -11,6 +11,11 @@ import {
   mapCreditCardPaymentToTransactionRow,
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
+import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
+import {
+  linkedLoanPaymentExpenseIds,
+  mapLoanDuePaymentToTransactionRow,
+} from '@/lib/finance/planning-loan-payments';
 
 const decimalToNumber = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -99,6 +104,10 @@ export const listPlanningTransactions = async (
     ReturnType<typeof listCreditCardPaymentsForPlanning>
   > = [];
   let linkedCardPaymentExpenses = new Set<number>();
+  let loanPaymentsForPlanning: Awaited<
+    ReturnType<typeof listLoanPaymentsForPlannerMonth>
+  >['first'] = [];
+  let linkedLoanPaymentExpenses = new Set<number>();
   if (excludeCreditInstallment && type !== 'income') {
     const fnWhere = buildFortnightWhereForReport(
       ownerFilter,
@@ -120,13 +129,36 @@ export const listPlanningTransactions = async (
         cardPaymentsForPlanning,
       );
     }
+
+    if (month && year) {
+      const plannerYear = parseInt(year, 10);
+      const plannerMonth = parseInt(month, 10);
+      const resolvedPeriod =
+        period === 'FIRST' || period === 'SECOND' ? period : null;
+      const { first, second } = await listLoanPaymentsForPlannerMonth(
+        ownerFilter,
+        plannerYear,
+        plannerMonth,
+      );
+      const periodPayments =
+        resolvedPeriod === 'FIRST'
+          ? first
+          : resolvedPeriod === 'SECOND'
+            ? second
+            : [...first, ...second];
+      linkedLoanPaymentExpenses = linkedLoanPaymentExpenseIds(periodPayments);
+      loanPaymentsForPlanning = periodPayments.filter(
+        (payment) => payment.status === 'SCHEDULED',
+      );
+    }
   }
 
   const expenseTransactions = expenses
     .filter(
       (expense) =>
         !excludeCreditInstallment ||
-        !linkedCardPaymentExpenses.has(expense.id),
+        (!linkedCardPaymentExpenses.has(expense.id) &&
+          !linkedLoanPaymentExpenses.has(expense.id)),
     )
     .map((expense) => {
       const dateValue = expense.payment_date || expense.created_at;
@@ -156,6 +188,11 @@ export const listPlanningTransactions = async (
     isPaid === false
       ? []
       : cardPaymentsForPlanning.map(mapCreditCardPaymentToTransactionRow);
+
+  const loanPaymentTransactions =
+    isPaid === false
+      ? []
+      : loanPaymentsForPlanning.map(mapLoanDuePaymentToTransactionRow);
 
   const incomeWhere: Record<string, unknown> = {
     ...ownerFilter,
@@ -197,6 +234,7 @@ export const listPlanningTransactions = async (
   let combined: TransactionRow[] = [
     ...expenseTransactions,
     ...cardPaymentTransactions,
+    ...loanPaymentTransactions,
     ...incomeTransactions,
   ];
 

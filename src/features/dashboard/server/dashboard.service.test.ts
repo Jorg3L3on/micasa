@@ -371,6 +371,36 @@ describe('getDashboardData', () => {
         pendingTotal: 200,
         count: 2,
         pendingCount: 1,
+        payments: [
+          {
+            id: 1,
+            loanId: 5,
+            loanName: 'Auto',
+            lender: 'Banco',
+            amount: 100,
+            dueDate: '2026-06-05',
+            paidAt: '2026-06-05',
+            status: 'PAID',
+            paymentSource: 'WALLET',
+            sourceWalletId: 2,
+            sourceWalletName: 'BBVA',
+            linkedExpenseId: null,
+          },
+          {
+            id: 2,
+            loanId: 5,
+            loanName: 'Auto',
+            lender: 'Banco',
+            amount: 200,
+            dueDate: '2026-06-12',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'WALLET',
+            sourceWalletId: 2,
+            sourceWalletName: 'BBVA',
+            linkedExpenseId: null,
+          },
+        ],
       })
       .mockResolvedValueOnce(emptyLoanAggregate);
 
@@ -392,6 +422,112 @@ describe('getDashboardData', () => {
       count: 2,
       pendingCount: 1,
     });
+  });
+
+  it('treats payroll loan installments as income deductions instead of wallet expenses', async () => {
+    setupWithCurrentFortnight();
+    mockQueries.fetchIncomeCurrent.mockResolvedValue([
+      { amount: 5000, source: 'job', user: null },
+    ]);
+    mockQueries.fetchExpensesCurrent.mockResolvedValue([]);
+    mockLoanAgg
+      .mockResolvedValueOnce({
+        ...emptyLoanAggregate,
+        total: 2792.73,
+        pendingTotal: 2792.73,
+        count: 1,
+        pendingCount: 1,
+        payments: [
+          {
+            id: 9,
+            loanId: 8,
+            loanName: 'FONACOT',
+            lender: 'Banco',
+            amount: 2792.73,
+            dueDate: '2026-06-15',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'PAYROLL_DEDUCTION',
+            sourceWalletId: null,
+            sourceWalletName: null,
+            linkedExpenseId: null,
+          },
+        ],
+        upcoming: [
+          {
+            id: 9,
+            loanId: 8,
+            loanName: 'FONACOT',
+            lender: 'Banco',
+            amount: 2792.73,
+            dueDate: '2026-06-15',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'PAYROLL_DEDUCTION',
+            sourceWalletId: null,
+            sourceWalletName: null,
+            linkedExpenseId: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce(emptyLoanAggregate);
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    expect(data.summary.totalExpense).toBe(0);
+    expect(data.summary.balance).toBe(2207.27);
+    expect(data.planningPayrollLoanDeduction).toEqual({
+      total: 2792.73,
+      count: 1,
+    });
+  });
+
+  it('subtracts payroll loan deductions from funding net vs pending', async () => {
+    setupWithCurrentFortnight();
+    mockQueries.fetchIncomeCurrent.mockResolvedValue([
+      { amount: 5000, source: 'job', user: null },
+    ]);
+    mockQueries.fetchExpensesCurrent.mockResolvedValue([]);
+    mockQueries.fetchDashboardWalletSnapshot.mockResolvedValue([
+      { id: 1, name: 'BBVA', type: 'DEBIT_CARD', amount: 8000 },
+    ]);
+    mockLoanAgg
+      .mockResolvedValueOnce({
+        ...emptyLoanAggregate,
+        payments: [
+          {
+            id: 9,
+            loanId: 8,
+            loanName: 'FONACOT',
+            lender: 'Banco',
+            amount: 2792.73,
+            dueDate: '2026-06-15',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'PAYROLL_DEDUCTION',
+            sourceWalletId: null,
+            sourceWalletName: null,
+            linkedExpenseId: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce(emptyLoanAggregate);
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    expect(data.fundingNetVsPendingExpense).toBe(5207.27);
   });
 
   it('limits upcoming obligations to five sorted by due date', async () => {

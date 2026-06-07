@@ -67,6 +67,12 @@ const isCardChargeExpenseRow = (row: TransactionRow): boolean => {
 const isPlanningCardPaymentRow = (row: TransactionRow): boolean =>
   row.planning_row_kind === 'card_payment';
 
+const isPlanningLoanPaymentRow = (row: TransactionRow): boolean =>
+  row.planning_row_kind === 'loan_payment';
+
+const isPlanningDerivedExpenseRow = (row: TransactionRow): boolean =>
+  isPlanningCardPaymentRow(row) || isPlanningLoanPaymentRow(row);
+
 type ExpenseWalletLabelProps = {
   expense: TransactionRow;
   walletsById: Map<number, WalletListItem>;
@@ -195,7 +201,7 @@ export default function ExpenseTable({
   }, [expenses]);
 
   const handlePaidToggle = useCallback(async (expense: TransactionRow, newPaidStatus: boolean) => {
-    if (isPlanningCardPaymentRow(expense)) {
+    if (isPlanningDerivedExpenseRow(expense)) {
       return;
     }
     if (!isExpenseTransactionRow(expense)) {
@@ -247,7 +253,7 @@ export default function ExpenseTable({
   }, [context, expenses, localExpenses, onExpenseUpdate]);
 
   const handleEditAmount = useCallback((expense: TransactionRow) => {
-    if (isPlanningCardPaymentRow(expense)) return;
+    if (isPlanningDerivedExpenseRow(expense)) return;
     if (!isExpenseTransactionRow(expense)) return;
     setEditingExpense(expense);
     setEditDialogOpen(true);
@@ -313,7 +319,7 @@ export default function ExpenseTable({
   const handleDeleteExpense = async () => {
     if (
       !deletingExpense ||
-      isPlanningCardPaymentRow(deletingExpense) ||
+      isPlanningDerivedExpenseRow(deletingExpense) ||
       !isExpenseTransactionRow(deletingExpense)
     ) {
       return;
@@ -499,6 +505,18 @@ export default function ExpenseTable({
               </div>
             );
           }
+          if (isPlanningLoanPaymentRow(expense)) {
+            return (
+              <div className="flex justify-center text-muted-foreground">
+                <span
+                  className={isCompact ? 'text-[10px]' : 'text-xs'}
+                  title="Gestionar en Préstamos"
+                >
+                  —
+                </span>
+              </div>
+            );
+          }
           return (
             <div className="flex justify-center">
               <Button
@@ -604,6 +622,18 @@ export default function ExpenseTable({
                     Pago TC
                   </Badge>
                 ) : null}
+                {isPlanningLoanPaymentRow(expense) ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'border-amber-500/40 text-amber-800 dark:text-amber-300',
+                      'text-[10px]',
+                      isCompact ? 'h-4 px-1.5' : 'h-5',
+                    )}
+                  >
+                    Préstamo
+                  </Badge>
+                ) : null}
                 {isCardChargeExpenseRow(expense) ? (
                   <Badge
                     variant="outline"
@@ -664,12 +694,16 @@ export default function ExpenseTable({
               </div>
             );
           }
-          if (isPlanningCardPaymentRow(expense)) {
+          if (isPlanningDerivedExpenseRow(expense)) {
             return (
               <div className="flex justify-center text-muted-foreground">
                 <span
                   className={isCompact ? 'text-[10px]' : 'text-xs'}
-                  title="Registrado desde pagos de tarjeta"
+                  title={
+                    isPlanningCardPaymentRow(expense)
+                      ? 'Registrado desde pagos de tarjeta'
+                      : 'Gestionar en Préstamos'
+                  }
                 >
                   —
                 </span>
@@ -896,6 +930,7 @@ export default function ExpenseTable({
                   const e = row.original;
                   const isUpdating = updatingIds.has(e.id);
                   const isCardPay = isPlanningCardPaymentRow(e);
+                  const isLoanPay = isPlanningLoanPaymentRow(e);
                   const isCardCharge = isCardChargeExpenseRow(e);
                   const isIncomeRow = !isExpenseTransactionRow(e);
                   const {
@@ -935,7 +970,7 @@ export default function ExpenseTable({
                           >
                             <CheckCircle2 className="h-5 w-5" />
                           </span>
-                        ) : isIncomeRow || isCardPay ? (
+                        ) : isIncomeRow || isCardPay || isLoanPay ? (
                           <span
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-[11px] text-muted-foreground/50 ring-1 ring-border/40"
                             aria-hidden
@@ -1023,12 +1058,18 @@ export default function ExpenseTable({
                             </Badge>
                           )}
                         </p>
-                        {(isCardPay || isCardCharge) && (
+                        {(isCardPay || isLoanPay || isCardCharge) && (
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {isCardPay && (
                               <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
                                 <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
                                 Pago TC
+                              </span>
+                            )}
+                            {isLoanPay && (
+                              <span className="inline-flex h-4 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300">
+                                <span className="h-1 w-1 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden />
+                                Préstamo
                               </span>
                             )}
                             {isCardCharge && (
@@ -1043,7 +1084,7 @@ export default function ExpenseTable({
 
                       {/* Actions menu */}
                       <div className="-mr-1 shrink-0">
-                        {isIncomeRow || isCardPay ? (
+                        {isIncomeRow || isCardPay || isLoanPay ? (
                           <span
                             className="inline-flex h-8 w-8 items-center justify-center text-xs text-muted-foreground/30"
                             aria-hidden

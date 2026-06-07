@@ -19,9 +19,11 @@ import {
   Plus,
   ReceiptText,
   Save,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import StatCard from '@/components/dashboard/StatCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
   applyLoanPaymentAction,
   createLoan,
+  deleteLoan,
   listLoans,
   updateLoan,
 } from '@/lib/api/loans';
@@ -385,6 +388,8 @@ export default function LoansPage() {
   const [lifecycleDraft, setLifecycleDraft] =
     useState<LoanLifecycleTarget | null>(null);
   const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
   const [formErrors, setFormErrors] = useState<LoanFormErrors>({});
@@ -396,6 +401,8 @@ export default function LoansPage() {
     setLoanEditForm(null);
     setLoanEditErrors({});
     setLifecycleDraft(null);
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
   }, []);
 
   const clearLoanIdQueryParam = useCallback(() => {
@@ -705,6 +712,26 @@ export default function LoansPage() {
       toast.error(message);
     } finally {
       setLifecycleSubmitting(false);
+    }
+  };
+
+  const handleDeleteLoan = async () => {
+    if (!selectedLoan) return;
+
+    setDeleteError(null);
+    try {
+      await deleteLoan(selectedLoan.id, context);
+      toast.success('Préstamo eliminado');
+      setDeleteDialogOpen(false);
+      setSelectedLoanId(null);
+      resetLoanDetailDrafts();
+      clearLoanIdQueryParam();
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo eliminar el préstamo';
+      setDeleteError(message);
+      toast.error(message);
     }
   };
 
@@ -1461,7 +1488,101 @@ export default function LoansPage() {
 
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
               <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
-                <aside className="order-2 space-y-3 lg:sticky lg:top-0 lg:order-1 lg:self-start">
+                <aside className="order-2 space-y-3 lg:sticky lg:top-0 lg:order-1 lg:max-h-[calc(min(92dvh,44rem)-5.5rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+                  <section className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Acciones
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-w-0 justify-center gap-1.5 px-2"
+                        onClick={() => startLoanEdit(selectedLoan)}
+                        disabled={loanEditSubmitting || lifecycleSubmitting}
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                        Editar
+                      </Button>
+                      {selectedLoan.status === 'ACTIVE' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-w-0 justify-center gap-1.5 px-2"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLifecycleDraft('PAUSED');
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting || lifecycleSubmitting}
+                        >
+                          <Pause className="h-3.5 w-3.5" aria-hidden />
+                          Pausar
+                        </Button>
+                      ) : null}
+                      {selectedLoan.status === 'PAUSED' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-w-0 justify-center gap-1.5 px-2"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLifecycleDraft('ACTIVE');
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting || lifecycleSubmitting}
+                        >
+                          <Play className="h-3.5 w-3.5" aria-hidden />
+                          Reanudar
+                        </Button>
+                      ) : null}
+                      {selectedLoan.status === 'ACTIVE' ||
+                      selectedLoan.status === 'PAUSED' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="min-w-0 justify-center gap-1.5 px-2 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setLoanEditOpen(false);
+                            setLifecycleDraft('CANCELLED');
+                            setLoanEditErrors({});
+                          }}
+                          disabled={loanEditSubmitting || lifecycleSubmitting}
+                          aria-label="Cancelar préstamo"
+                        >
+                          <CircleSlash className="h-3.5 w-3.5" aria-hidden />
+                          Cancelar
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="min-w-0 justify-center gap-1.5 px-2 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setLoanEditOpen(false);
+                          setLifecycleDraft(null);
+                          setLoanEditErrors({});
+                          setDeleteError(null);
+                          setDeleteDialogOpen(true);
+                        }}
+                        disabled={
+                          loanEditSubmitting ||
+                          lifecycleSubmitting ||
+                          paymentActionSubmitting
+                        }
+                        aria-label="Eliminar préstamo"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </section>
+
                   <section className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1559,77 +1680,6 @@ export default function LoansPage() {
                         </div>
                       ) : null}
                     </dl>
-                  </section>
-
-                  <section className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Acciones
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="justify-center gap-1.5"
-                        onClick={() => startLoanEdit(selectedLoan)}
-                        disabled={loanEditSubmitting || lifecycleSubmitting}
-                      >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden />
-                        Editar
-                      </Button>
-                      {selectedLoan.status === 'ACTIVE' ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="justify-center gap-1.5"
-                          onClick={() => {
-                            setLoanEditOpen(false);
-                            setLifecycleDraft('PAUSED');
-                            setLoanEditErrors({});
-                          }}
-                          disabled={loanEditSubmitting || lifecycleSubmitting}
-                        >
-                          <Pause className="h-3.5 w-3.5" aria-hidden />
-                          Pausar
-                        </Button>
-                      ) : null}
-                      {selectedLoan.status === 'PAUSED' ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="justify-center gap-1.5"
-                          onClick={() => {
-                            setLoanEditOpen(false);
-                            setLifecycleDraft('ACTIVE');
-                            setLoanEditErrors({});
-                          }}
-                          disabled={loanEditSubmitting || lifecycleSubmitting}
-                        >
-                          <Play className="h-3.5 w-3.5" aria-hidden />
-                          Reanudar
-                        </Button>
-                      ) : null}
-                      {selectedLoan.status === 'ACTIVE' ||
-                      selectedLoan.status === 'PAUSED' ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="col-span-2 justify-center gap-1.5 text-destructive hover:text-destructive lg:col-span-1"
-                          onClick={() => {
-                            setLoanEditOpen(false);
-                            setLifecycleDraft('CANCELLED');
-                            setLoanEditErrors({});
-                          }}
-                          disabled={loanEditSubmitting || lifecycleSubmitting}
-                        >
-                          <CircleSlash className="h-3.5 w-3.5" aria-hidden />
-                          Cancelar préstamo
-                        </Button>
-                      ) : null}
-                    </div>
                   </section>
 
                   {lifecycleDraft ? (
@@ -2317,6 +2367,25 @@ export default function LoansPage() {
           </DialogContent>
         ) : null}
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen && selectedLoan !== null}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        onConfirm={handleDeleteLoan}
+        title="Eliminar préstamo"
+        description="Esto eliminará el préstamo, su calendario de pagos y los gastos generados por pagos de este préstamo. Los saldos afectados se revertirán."
+        itemName={
+          selectedLoan
+            ? `${selectedLoan.name} · ${formatCurrency(selectedLoan.remainingAmount)} pendiente`
+            : undefined
+        }
+        error={deleteError}
+        confirmLabel="Eliminar préstamo"
+        loadingLabel="Eliminando préstamo..."
+      />
     </div>
   );
 }
