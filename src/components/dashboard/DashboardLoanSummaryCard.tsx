@@ -77,7 +77,7 @@ export default function DashboardLoanSummaryCard({
       ) : (
         <div className="flex flex-1 flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-border/60 border-l-[3px] border-l-amber-500/50 px-3 py-3">
+            <div className="rounded-lg border border-border/60 px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Pendiente billetera
               </p>
@@ -97,7 +97,7 @@ export default function DashboardLoanSummaryCard({
               </p>
             </div>
 
-            <div className="rounded-lg border border-border/60 border-l-[3px] border-l-violet-500/50 px-3 py-3">
+            <div className="rounded-lg border border-border/60 px-3 py-3">
               <div className="flex items-center gap-1.5">
                 <Landmark
                   className="h-3 w-3 text-violet-600 dark:text-violet-400"
@@ -126,16 +126,10 @@ export default function DashboardLoanSummaryCard({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <MetricBlock
-              label="Pagado"
-              amount={paidTotal}
-              accent="border-l-emerald-500/50"
-              positive
-            />
+            <MetricBlock label="Pagado" amount={paidTotal} positive />
             <MetricBlock
               label="Total periodo"
               amount={loanSummary?.total ?? paidTotal + walletPendingTotal + payrollTotal}
-              accent="border-l-sky-500/50"
             />
           </div>
 
@@ -198,16 +192,14 @@ export default function DashboardLoanSummaryCard({
 function MetricBlock({
   label,
   amount,
-  accent,
   positive = false,
 }: {
   label: string;
   amount: number;
-  accent: string;
   positive?: boolean;
 }) {
   return (
-    <div className={cn('rounded-lg border border-border/60 border-l-[3px] px-3 py-2', accent)}>
+    <div className="rounded-lg border border-border/60 px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
