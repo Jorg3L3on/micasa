@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatLoanPaymentDescription,
+  formatLoanPaymentLabel,
   linkedLoanPaymentExpenseIds,
   mapLoanDuePaymentToTransactionRow,
 } from '@/lib/finance/planning-loan-payments';
@@ -42,6 +43,25 @@ describe('formatLoanPaymentDescription', () => {
       formatLoanPaymentDescription(
         basePayment({ paymentSource: 'PAYROLL_DEDUCTION' }),
       ),
+    ).toBe('Deducción nómina: FONACOT (FONACOT)');
+  });
+});
+
+describe('formatLoanPaymentLabel', () => {
+  it('matches description helper for wallet and payroll', () => {
+    expect(
+      formatLoanPaymentLabel({
+        loanName: 'Auto',
+        lender: 'Banco',
+        paymentSource: 'WALLET',
+      }),
+    ).toBe('Pago préstamo: Auto (Banco)');
+    expect(
+      formatLoanPaymentLabel({
+        loanName: 'FONACOT',
+        lender: 'FONACOT',
+        paymentSource: 'PAYROLL_DEDUCTION',
+      }),
     ).toBe('Deducción nómina: FONACOT (FONACOT)');
   });
 });

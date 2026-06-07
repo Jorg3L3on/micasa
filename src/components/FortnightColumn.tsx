@@ -55,6 +55,8 @@ import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
+  PlannerPayrollLoanDeductionSummary,
+  PlannerWalletLoanDueSummary,
   ReportsSummaryFundingFields,
   TransactionRow,
 } from '@/types/catalog';
@@ -102,6 +104,8 @@ type Summary = {
   cardCharges?: PlannerCardChargesSummary | null;
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
+  planningWalletLoanDue?: PlannerWalletLoanDueSummary | null;
+  planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
 } & ReportsSummaryFundingFields;
 
 type FortnightColumnProps = {

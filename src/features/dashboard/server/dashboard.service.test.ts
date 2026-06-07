@@ -486,6 +486,162 @@ describe('getDashboardData', () => {
       total: 2792.73,
       count: 1,
     });
+    expect(data.planningWalletLoanDue).toBeNull();
+  });
+
+  it('splits wallet due and payroll deduction when both are scheduled', async () => {
+    setupWithCurrentFortnight();
+    mockQueries.fetchIncomeCurrent.mockResolvedValue([
+      { amount: 10000, source: 'job', user: null },
+    ]);
+    mockQueries.fetchExpensesCurrent.mockResolvedValue([]);
+    mockLoanAgg
+      .mockResolvedValueOnce({
+        ...emptyLoanAggregate,
+        total: 2992.73,
+        pendingTotal: 2992.73,
+        count: 2,
+        pendingCount: 2,
+        payments: [
+          {
+            id: 1,
+            loanId: 10,
+            loanName: 'DiDi',
+            lender: 'DiDi',
+            amount: 200,
+            dueDate: '2026-06-10',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'WALLET',
+            sourceWalletId: 3,
+            sourceWalletName: 'BBVA',
+            linkedExpenseId: null,
+          },
+          {
+            id: 2,
+            loanId: 11,
+            loanName: 'FONACOT',
+            lender: 'Banco',
+            amount: 2792.73,
+            dueDate: '2026-06-15',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'PAYROLL_DEDUCTION',
+            sourceWalletId: null,
+            sourceWalletName: null,
+            linkedExpenseId: null,
+          },
+        ],
+        upcoming: [
+          {
+            id: 1,
+            loanId: 10,
+            loanName: 'DiDi',
+            lender: 'DiDi',
+            amount: 200,
+            dueDate: '2026-06-10',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'WALLET',
+            sourceWalletId: 3,
+            sourceWalletName: 'BBVA',
+            linkedExpenseId: null,
+          },
+          {
+            id: 2,
+            loanId: 11,
+            loanName: 'FONACOT',
+            lender: 'Banco',
+            amount: 2792.73,
+            dueDate: '2026-06-15',
+            paidAt: null,
+            status: 'SCHEDULED',
+            paymentSource: 'PAYROLL_DEDUCTION',
+            sourceWalletId: null,
+            sourceWalletName: null,
+            linkedExpenseId: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce(emptyLoanAggregate);
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    expect(data.planningWalletLoanDue).toEqual({ total: 200, count: 1 });
+    expect(data.planningPayrollLoanDeduction).toEqual({
+      total: 2792.73,
+      count: 1,
+    });
+    expect(data.planningLoanPayments?.pendingTotal).toBe(2992.73);
+    expect(data.summary.totalExpense).toBe(200);
+    expect(data.summary.balance).toBe(7007.27);
+    expect(data.upcomingObligations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'loan_payment',
+          description: 'Pago préstamo: DiDi (DiDi)',
+          paymentSource: 'WALLET',
+        }),
+        expect.objectContaining({
+          source: 'loan_payment',
+          description: 'Deducción nómina: FONACOT (Banco)',
+          paymentSource: 'PAYROLL_DEDUCTION',
+        }),
+      ]),
+    );
+  });
+
+  it('overdue alert describes wallet and payroll loan obligations separately', async () => {
+    setupWithCurrentFortnight();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-20T12:00:00.000Z'));
+    mockQueries.fetchUpcomingExpenses.mockResolvedValue([]);
+    mockLoanAgg.mockResolvedValue({
+      ...emptyLoanAggregate,
+      upcoming: [
+        {
+          id: 1,
+          loanId: 10,
+          loanName: 'DiDi',
+          lender: 'DiDi',
+          amount: 200,
+          dueDate: '2026-06-10',
+          paymentSource: 'WALLET',
+          sourceWalletId: 3,
+          sourceWalletName: 'BBVA',
+        },
+        {
+          id: 2,
+          loanId: 11,
+          loanName: 'FONACOT',
+          lender: 'Banco',
+          amount: 500,
+          dueDate: '2026-06-12',
+          paymentSource: 'PAYROLL_DEDUCTION',
+          sourceWalletId: null,
+          sourceWalletName: null,
+        },
+      ],
+    });
+
+    const data = await getDashboardData({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    const overdue = data.alerts.find((a) => a.type === 'overdue');
+    expect(overdue?.description).toContain('pago préstamo billetera');
+    expect(overdue?.description).toContain('deducción nómina');
+    vi.useRealTimers();
   });
 
   it('subtracts payroll loan deductions from funding net vs pending', async () => {

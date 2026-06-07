@@ -81,6 +81,11 @@ export type DashboardData = {
     total: number;
     count: number;
   } | null;
+  /** Cuotas de préstamo pendientes pagadas desde billetera. */
+  planningWalletLoanDue?: {
+    total: number;
+    count: number;
+  } | null;
   budgetSummary: DashboardBudgetSummary;
   upcomingObligations: Array<{
     id: number;
