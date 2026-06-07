@@ -85,12 +85,7 @@ export default function UpcomingObligationsCard({
           </p>
         ) : (
           <>
-            <div
-              className={cn(
-                DASHBOARD_METRIC_STRIP_CLASS,
-                'border-l-amber-500/50',
-              )}
-            >
+            <div className={DASHBOARD_METRIC_STRIP_CLASS}>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {obligations.length} {obligations.length === 1 ? 'obligación' : 'obligaciones'}
               </span>
@@ -108,8 +103,8 @@ export default function UpcomingObligationsCard({
                       <li
                         key={`${ob.source}-${ob.id}`}
                         className={cn(
-                          'flex items-center justify-between rounded-md border border-transparent border-l-[3px] px-2 py-1 -mx-1 transition-colors hover:bg-muted/40',
-                          overdue && 'border-l-destructive/50',
+                          'flex items-center justify-between rounded-md border border-border/60 px-2 py-1 -mx-1 transition-colors hover:bg-muted/40',
+                          overdue && 'border-destructive/40',
                         )}
                       >
                         <div className="min-w-0 flex-1">

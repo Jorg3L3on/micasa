@@ -78,21 +78,15 @@ export default function DashboardBudgetSummaryCard({
       ) : (
         <div className="flex flex-1 flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <MetricBlock
-              label="Presupuesto"
-              amount={totalBudget}
-              accent="border-l-sky-500/50"
-            />
+            <MetricBlock label="Presupuesto" amount={totalBudget} />
             <MetricBlock
               label="Usado"
               amount={spent}
-              accent={overspent ? 'border-l-destructive/50' : 'border-l-violet-500/50'}
               destructive={overspent}
             />
             <MetricBlock
               label={overspent ? 'Excedido' : 'Disponible'}
               amount={overspent ? spent - totalBudget : available}
-              accent={overspent ? 'border-l-destructive/50' : 'border-l-emerald-500/50'}
               destructive={overspent}
               positive={!overspent}
             />
@@ -176,18 +170,16 @@ export default function DashboardBudgetSummaryCard({
 function MetricBlock({
   label,
   amount,
-  accent,
   destructive = false,
   positive = false,
 }: {
   label: string;
   amount: number;
-  accent: string;
   destructive?: boolean;
   positive?: boolean;
 }) {
   return (
-    <div className={cn('rounded-lg border border-border/60 border-l-[3px] px-3 py-2', accent)}>
+    <div className="rounded-lg border border-border/60 px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>

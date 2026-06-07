@@ -176,7 +176,7 @@ const loanPaymentSourceLabel = (
   if (loan.paymentSource === 'PAYROLL_DEDUCTION') {
     return loan.incomeTemplateName
       ? `Deducción de nómina: ${loan.incomeTemplateName}`
-      : 'Deducción de nómina';
+      : 'Deducción de nómina (sin plantilla vinculada)';
   }
 
   return loan.sourceWalletName ?? 'Billetera';
@@ -991,7 +991,9 @@ export default function LoansPage() {
                         <span>Pago {frequencyLabel(loan.frequency).toLowerCase()}</span>
                         <span>
                           {loan.paymentSource === 'PAYROLL_DEDUCTION'
-                            ? `Nómina${loan.incomeTemplateName ? `: ${loan.incomeTemplateName}` : ''}`
+                            ? loan.incomeTemplateName
+                              ? `Nómina: ${loan.incomeTemplateName}`
+                              : 'Nómina (sin plantilla vinculada)'
                             : loan.sourceWalletName ?? 'Billetera'}
                         </span>
                         {loan.linkedWalletName ? (
@@ -1349,6 +1351,11 @@ export default function LoansPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Opcional. Vincular una plantilla de ingreso mejora las
+                    etiquetas en Panel financiero y obligaciones próximas
+                    («Nómina: …»).
+                  </p>
                   {formErrors.incomeTemplateId ? (
                     <p className="text-xs text-destructive">
                       {formErrors.incomeTemplateId}
@@ -1895,6 +1902,13 @@ export default function LoansPage() {
                               Solo aplica a préstamos con deducción de nómina.
                             </div>
                           )}
+                          {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' ? (
+                            <p className="text-[11px] text-muted-foreground">
+                              Opcional. Vincular una plantilla de ingreso mejora
+                              las etiquetas en Panel financiero y obligaciones
+                              próximas («Nómina: …»).
+                            </p>
+                          ) : null}
                           {loanEditErrors.incomeTemplateId ? (
                             <p className="text-xs text-destructive">
                               {loanEditErrors.incomeTemplateId}

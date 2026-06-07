@@ -59,6 +59,8 @@ export type TransactionRow = {
   wallet_type?: ExpenseWalletType | null;
   /** Solo planificación: filas derivadas no editables como gasto. */
   planning_row_kind?: PlanningExpenseRowKind;
+  /** Solo loan_payment: origen WALLET vs deducción nómina. */
+  loan_payment_source?: 'WALLET' | 'PAYROLL_DEDUCTION';
   type?: 'income' | 'expense';
   is_paid: boolean;
   due_day?: number | null;

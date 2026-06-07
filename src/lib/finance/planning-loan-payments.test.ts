@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatLoanPaymentDescription,
+  formatLoanPaymentLabel,
   linkedLoanPaymentExpenseIds,
   mapLoanDuePaymentToTransactionRow,
 } from '@/lib/finance/planning-loan-payments';
@@ -46,6 +47,25 @@ describe('formatLoanPaymentDescription', () => {
   });
 });
 
+describe('formatLoanPaymentLabel', () => {
+  it('matches description helper for wallet and payroll', () => {
+    expect(
+      formatLoanPaymentLabel({
+        loanName: 'Auto',
+        lender: 'Banco',
+        paymentSource: 'WALLET',
+      }),
+    ).toBe('Pago préstamo: Auto (Banco)');
+    expect(
+      formatLoanPaymentLabel({
+        loanName: 'FONACOT',
+        lender: 'FONACOT',
+        paymentSource: 'PAYROLL_DEDUCTION',
+      }),
+    ).toBe('Deducción nómina: FONACOT (FONACOT)');
+  });
+});
+
 describe('linkedLoanPaymentExpenseIds', () => {
   it('returns only non-null linked expense ids', () => {
     expect(
@@ -72,6 +92,7 @@ describe('mapLoanDuePaymentToTransactionRow', () => {
       paymentMethod: 'Débito BBVA',
       wallet_id: 2,
       planning_row_kind: 'loan_payment',
+      loan_payment_source: 'WALLET',
       type: 'expense',
       is_paid: false,
       due_day: 15,
@@ -93,6 +114,7 @@ describe('mapLoanDuePaymentToTransactionRow', () => {
       paymentMethod: 'Nómina: Nómina Carmen',
       wallet_id: null,
       planning_row_kind: 'loan_payment',
+      loan_payment_source: 'PAYROLL_DEDUCTION',
       is_paid: false,
     });
   });

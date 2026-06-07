@@ -9,6 +9,7 @@ import DashboardPeriodCategoryPie from '@/components/dashboard/DashboardPeriodCa
 import DashboardBudgetSummaryCard from '@/components/dashboard/DashboardBudgetSummaryCard';
 import DashboardLoanSummaryCard from '@/components/dashboard/DashboardLoanSummaryCard';
 import AlertsWarningsCard from '@/components/dashboard/AlertsWarningsCard';
+import UpcomingObligationsCard from '@/components/dashboard/UpcomingObligationsCard';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import { getPeriodLabel } from '@/components/dashboard/constants';
+import { getDashboardLoanStatDisplay } from '@/components/dashboard/dashboard-loan-stat-display';
 
 type DashboardPanelProps = {
   data: DashboardData;
@@ -39,7 +41,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
     return query ? `?${query}` : '';
   }, [context]);
   const periodLabel = getPeriodLabel(data.period);
-  const loanPendingTotal = data.planningLoanPayments?.pendingTotal ?? 0;
+  const loanStat = getDashboardLoanStatDisplay(data);
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -138,10 +140,10 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
         />
         <StatCard
           title="Préstamos"
-          amount={loanPendingTotal}
+          amount={loanStat.amount}
           iconKey="hand-coins"
           iconGradient="linear-gradient(135deg, #eab308 0%, #facc15 100%)"
-          subtitle={`${data.planningLoanPayments?.pendingCount ?? 0} pendiente(s)`}
+          subtitle={loanStat.subtitle}
         />
       </div>
 
@@ -159,6 +161,8 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           rows={data.periodCategoryBreakdown}
         />
       </div>
+
+      <UpcomingObligationsCard data={data} />
 
       {data.alerts.length > 0 ? <AlertsWarningsCard data={data} /> : null}
 

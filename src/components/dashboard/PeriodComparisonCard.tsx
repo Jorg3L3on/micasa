@@ -36,12 +36,7 @@ export default function PeriodComparisonCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div
-          className={cn(
-            DASHBOARD_METRIC_STRIP_CLASS,
-            incomeUp ? 'border-l-blue-500/50' : 'border-l-destructive/50',
-          )}
-        >
+        <div className={DASHBOARD_METRIC_STRIP_CLASS}>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Ingresos vs anterior
           </span>
@@ -57,9 +52,7 @@ export default function PeriodComparisonCard({
         </div>
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
-          <div
-            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-blue-500/50')}
-          >
+          <div className={DASHBOARD_METRIC_STRIP_CLASS}>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Ingresos actual
             </span>
@@ -67,9 +60,7 @@ export default function PeriodComparisonCard({
               {formatCurrency(currentIncome)}
             </p>
           </div>
-          <div
-            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
-          >
+          <div className={DASHBOARD_METRIC_STRIP_CLASS}>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos actual
             </span>
@@ -79,12 +70,7 @@ export default function PeriodComparisonCard({
           </div>
         </div>
 
-        <div
-          className={cn(
-            DASHBOARD_METRIC_STRIP_CLASS,
-            expenseDown ? 'border-l-green-500/50' : 'border-l-destructive/50',
-          )}
-        >
+        <div className={DASHBOARD_METRIC_STRIP_CLASS}>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Gastos vs anterior
           </span>

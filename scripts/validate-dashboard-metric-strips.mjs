@@ -66,7 +66,7 @@ const main = () => {
 
   if (failed) {
     console.error(
-      '\nUse DASHBOARD_METRIC_STRIP_CLASS + border-l-* accents; keep icon pills with bg-*/10 only.',
+      '\nUse DASHBOARD_METRIC_STRIP_CLASS for calm metric shells; keep icon pills with bg-*/10 only.',
     );
     process.exit(1);
   }

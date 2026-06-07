@@ -11,14 +11,26 @@ import type { LoanDuePaymentItem } from '@/types/loans';
 export const LOAN_PAYMENT_PLANNING_CATEGORY = 'Pago de préstamos';
 export const LOAN_PAYMENT_PLANNING_CATEGORY_ICON = '🏦';
 
+export const formatLoanPaymentLabel = (input: {
+  loanName: string;
+  lender: string;
+  paymentSource: LoanDuePaymentItem['paymentSource'];
+}): string => {
+  const isPayroll = input.paymentSource === 'PAYROLL_DEDUCTION';
+  if (isPayroll) {
+    return `Deducción nómina: ${input.loanName} (${input.lender})`;
+  }
+  return `Pago préstamo: ${input.loanName} (${input.lender})`;
+};
+
 export const formatLoanPaymentDescription = (
   payment: LoanDuePaymentItem,
 ): string => {
-  const isPayroll = payment.paymentSource === 'PAYROLL_DEDUCTION';
-  if (isPayroll) {
-    return `Deducción nómina: ${payment.loanName} (${payment.lender})`;
-  }
-  return `Pago préstamo: ${payment.loanName} (${payment.lender})`;
+  return formatLoanPaymentLabel({
+    loanName: payment.loanName,
+    lender: payment.lender,
+    paymentSource: payment.paymentSource,
+  });
 };
 
 export const mapLoanDuePaymentToTransactionRow = (
@@ -44,6 +56,7 @@ export const mapLoanDuePaymentToTransactionRow = (
     wallet_id: payment.sourceWalletId ?? payment.linkedWalletId,
     wallet_type: null,
     planning_row_kind: 'loan_payment',
+    loan_payment_source: payment.paymentSource,
     type: 'expense',
     is_paid: false,
     due_day: Number.isFinite(dueDay) ? dueDay : null,
