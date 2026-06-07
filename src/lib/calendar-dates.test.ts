@@ -4,6 +4,8 @@ import {
   coerceToCalendarDate,
   formatCalendarDate,
   formatDisplayDate,
+  formatWallClockDateRange,
+  formatWallClockDateShort,
   parseCalendarDate,
   startOfCalendarDay,
   todayCalendarDate,
@@ -52,5 +54,21 @@ describe('calendar-dates', () => {
   it('formatDisplayDate renders es-MX civil day', () => {
     expect(formatDisplayDate('2026-05-31')).toMatch(/31/);
     expect(formatDisplayDate(parseCalendarDate('2026-05-31'))).toMatch(/31/);
+  });
+
+  it('formatWallClockDateShort keeps stored timestamp date parts', () => {
+    expect(formatWallClockDateShort('2026-06-01T00:00:00.000Z')).toMatch(/1.*jun/i);
+    expect(formatWallClockDateShort('2026-06-15T00:00:00.000Z')).toMatch(/15.*jun/i);
+  });
+
+  it('formatWallClockDateRange shows budget fortnight without MX shift', () => {
+    const range = formatWallClockDateRange(
+      '2026-06-01T00:00:00.000Z',
+      '2026-06-15T00:00:00.000Z',
+    );
+    expect(range).toMatch(/1.*jun/i);
+    expect(range).toMatch(/15.*jun/i);
+    expect(range).not.toMatch(/31.*may/i);
+    expect(range).not.toMatch(/14.*jun/i);
   });
 });
