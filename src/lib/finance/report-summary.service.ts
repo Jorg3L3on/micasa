@@ -280,6 +280,12 @@ export const getReportSummary = async (
     planningUnpaidExpenseCount =
       (planningUnpaidExpenseCount ?? 0) + planningWalletLoanDueCount;
   }
+  if (excludeCreditInstallment && planningPayrollLoanDeductionCount > 0) {
+    planningExpenseCount =
+      (planningExpenseCount ?? 0) + planningPayrollLoanDeductionCount;
+    planningUnpaidExpenseCount =
+      (planningUnpaidExpenseCount ?? 0) + planningPayrollLoanDeductionCount;
+  }
 
   let userIncomeData: ReportSummaryResult['userIncome'] = [];
   const incomeItems: ReportSummaryResult['incomeItems'] = [];
