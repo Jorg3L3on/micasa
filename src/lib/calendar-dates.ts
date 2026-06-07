@@ -187,17 +187,73 @@ const wallClockShortFormatter = new Intl.DateTimeFormat('es-MX', {
   month: 'short',
 });
 
+const wallClockShortWithYearFormatter = new Intl.DateTimeFormat('es-MX', {
+  timeZone: 'UTC',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+type WallClockYmd = { year: number; month: number; day: number };
+
+const toDate = (value: string | Date): Date =>
+  typeof value === 'string' ? new Date(value) : value;
+
+const readWallClockYmd = (date: Date): WallClockYmd => ({
+  year: date.getUTCFullYear(),
+  month: date.getUTCMonth() + 1,
+  day: date.getUTCDate(),
+});
+
+const isSameWallClockDay = (a: WallClockYmd, b: WallClockYmd): boolean =>
+  a.year === b.year && a.month === b.month && a.day === b.day;
+
+function formatWallClockDateLabel(
+  date: Date,
+  includeYear: boolean,
+): string {
+  if (Number.isNaN(date.getTime())) return String(date);
+  return includeYear
+    ? wallClockShortWithYearFormatter.format(date)
+    : wallClockShortFormatter.format(date);
+}
+
 /**
  * Compact es-MX label for `@db.Timestamp` wall-clock values. Stored date parts
  * map to UTC components — do not use `formatDisplayDate` (MX instant shift).
  */
 export function formatWallClockDateShort(date: string | Date): string {
-  const value = typeof date === 'string' ? new Date(date) : date;
+  const value = toDate(date);
   if (Number.isNaN(value.getTime())) return String(date);
   return wallClockShortFormatter.format(value);
 }
 
-/** Wall-clock date range for budget periods and similar timestamp columns. */
-export function formatWallClockDateRange(start: string | Date, end: string | Date): string {
-  return `${formatWallClockDateShort(start)} – ${formatWallClockDateShort(end)}`;
+/**
+ * Wall-clock date range for budget periods. Collapses same-day ranges, hides
+ * the year when dates fall in the current Mexico City civil year (rule B).
+ */
+export function formatWallClockDateRange(
+  start: string | Date,
+  end: string | Date,
+  now: Date = new Date(),
+): string {
+  const startDate = toDate(start);
+  const endDate = toDate(end);
+  if (Number.isNaN(startDate.getTime())) return String(start);
+  if (Number.isNaN(endDate.getTime())) return String(end);
+
+  const startYmd = readWallClockYmd(startDate);
+  const endYmd = readWallClockYmd(endDate);
+  const currentYear = Number(todayCalendarDate(now).slice(0, 4));
+
+  if (isSameWallClockDay(startYmd, endYmd)) {
+    return formatWallClockDateLabel(startDate, startYmd.year !== currentYear);
+  }
+
+  if (startYmd.year !== endYmd.year) {
+    return `${formatWallClockDateLabel(startDate, true)} – ${formatWallClockDateLabel(endDate, true)}`;
+  }
+
+  const showYear = startYmd.year !== currentYear;
+  return `${formatWallClockDateLabel(startDate, false)} – ${formatWallClockDateLabel(endDate, showYear)}`;
 }
