@@ -265,7 +265,7 @@ export const getReportSummary = async (
   let planningPaidExpenseCount = excludeCreditInstallment
     ? expenses.filter((e) => e.is_paid).length
     : undefined;
-  const planningUnpaidExpenseCount = excludeCreditInstallment
+  let planningUnpaidExpenseCount = excludeCreditInstallment
     ? expenses.filter((e) => !e.is_paid).length
     : undefined;
 
