@@ -364,25 +364,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const relatedExpenses = await prisma.expense.findFirst({
-      where: { expense_template_id: templateId },
-    });
+    const result = await prisma.$transaction(async (tx) => {
+      const detachedExpenses = await tx.expense.updateMany({
+        where: { expense_template_id: templateId },
+        data: { expense_template_id: null },
+      });
 
-    if (relatedExpenses) {
-      return NextResponse.json(
-        {
-          error: 'La plantilla de gastos está en uso y no puede eliminarse',
-        },
-        { status: 409 },
-      );
-    }
+      await tx.expenseTemplate.delete({
+        where: { id: templateId },
+      });
 
-    await prisma.expenseTemplate.delete({
-      where: { id: templateId },
+      return detachedExpenses;
     });
 
     return NextResponse.json(
-      { message: 'Expense template deleted successfully' },
+      {
+        message: 'Expense template deleted successfully',
+        detachedExpenseCount: result.count,
+      },
       { status: 200 },
     );
   } catch (error) {

@@ -374,7 +374,7 @@ export default function ExpenseTemplatesPage() {
           }}
           onConfirm={handleDelete}
           title="Eliminar plantilla de gastos"
-          description="¿Estás seguro de querer eliminar esta plantilla de gastos? Esta acción no puede deshacerse."
+          description="¿Estás seguro de querer eliminar esta plantilla de gastos? Los gastos ya creados se conservarán como gastos independientes."
           itemName={selectedTemplate.name}
           error={deleteError}
         />
