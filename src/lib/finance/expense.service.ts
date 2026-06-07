@@ -1,7 +1,7 @@
 import {
-  coerceToCalendarDate,
+  coerceToCalendarDayStart,
   formatCalendarDate,
-  parseCalendarDate,
+  startOfCalendarDay,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
@@ -271,7 +271,7 @@ export async function createExpenseInTransaction(
       description,
       amount,
       is_paid: isPaid,
-      payment_date: paymentDate ? coerceToCalendarDate(paymentDate) : null,
+      payment_date: paymentDate ? coerceToCalendarDayStart(paymentDate) : null,
       expense_template_id: expenseTemplateId || null,
       due_day: resolvedDueDay,
       statement_import_id: statementImportId ?? null,
@@ -501,7 +501,7 @@ export async function updateExpense(input: UpdateExpenseInput) {
     if (amount !== undefined) updateData.amount = amount;
     if (isPaid !== undefined) updateData.is_paid = isPaid;
     if (paymentDate !== undefined) {
-      updateData.payment_date = paymentDate ? coerceToCalendarDate(paymentDate) : null;
+      updateData.payment_date = paymentDate ? coerceToCalendarDayStart(paymentDate) : null;
     }
 
     updateData.user_id = newFortnight.user_id;
@@ -602,7 +602,9 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
       where: { id },
       data: {
         is_paid: willBePaid,
-        payment_date: willBePaid ? parseCalendarDate(todayCalendarDate()) : null,
+        payment_date: willBePaid
+          ? startOfCalendarDay(todayCalendarDate())
+          : null,
       },
       include: {
         category: { select: { name: true, icon: true } },

@@ -1,4 +1,4 @@
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import { coerceToCalendarDayStart } from '@/lib/calendar-dates';
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
@@ -193,6 +193,16 @@ export async function importMercadoPagoStatementPdf(input: {
       },
     });
 
+    const paymentDayStartByYmd = new Map<string, Date>();
+    const paymentDayStart = (ymd: string) => {
+      let cached = paymentDayStartByYmd.get(ymd);
+      if (!cached) {
+        cached = coerceToCalendarDayStart(ymd);
+        paymentDayStartByYmd.set(ymd, cached);
+      }
+      return cached;
+    };
+
     for (const mov of parsed.movements) {
       const period = getFortnightPeriodForDay(mov.paymentDate.getUTCDate());
       const fortnight = await resolveOrCreateFortnight({
@@ -246,7 +256,7 @@ export async function importMercadoPagoStatementPdf(input: {
           description: mov.description,
           amount: mov.amount,
           is_paid: true,
-          payment_date: parseCalendarDate(paymentDateStr),
+          payment_date: paymentDayStart(paymentDateStr),
           statement_import_id: createdImport.id,
           credit_installment_current: mov.installmentCurrent ?? null,
           credit_installment_total: mov.installmentTotal ?? null,

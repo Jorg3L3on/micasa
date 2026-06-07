@@ -28,6 +28,31 @@ const zonedPartsFormatter = new Intl.DateTimeFormat('en-US', {
   hourCycle: 'h23',
 });
 
+export type ZonedDateTimeParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const readZonedPart = (parts: Intl.DateTimeFormatPart[], type: string): number =>
+  Number(parts.find((part) => part.type === type)?.value ?? 0);
+
+/** Mexico City wall-clock parts for a UTC instant. */
+export function formatZonedParts(date: Date): ZonedDateTimeParts {
+  const parts = zonedPartsFormatter.formatToParts(date);
+  return {
+    year: readZonedPart(parts, 'year'),
+    month: readZonedPart(parts, 'month'),
+    day: readZonedPart(parts, 'day'),
+    hour: readZonedPart(parts, 'hour'),
+    minute: readZonedPart(parts, 'minute'),
+    second: readZonedPart(parts, 'second'),
+  };
+}
+
 export function isValidCalendarDateString(value: string): boolean {
   if (!CALENDAR_DATE_RE.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
@@ -95,6 +120,14 @@ export function coerceToCalendarDate(value: string | Date): Date {
   return parseCalendarDate(formatCalendarDate(parsed));
 }
 
+/** Normalize calendar input to midnight in Mexico City (06:00 UTC). */
+export function coerceToCalendarDayStart(value: string | Date): Date {
+  if (typeof value === 'string' && CALENDAR_DATE_RE.test(value)) {
+    return startOfCalendarDay(value);
+  }
+  return startOfCalendarDay(formatCalendarDate(coerceToCalendarDate(value)));
+}
+
 function zonedLocalTimeToUtc(
   ymd: string,
   hour: number,
@@ -105,16 +138,14 @@ function zonedLocalTimeToUtc(
   const [year, month, day] = ymd.split('-').map(Number);
   let utcMs = Date.UTC(year, month - 1, day, hour, minute, second, ms);
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const parts = zonedPartsFormatter.formatToParts(new Date(utcMs));
-    const read = (type: string) =>
-      Number(parts.find((part) => part.type === type)?.value ?? 0);
+    const zoned = formatZonedParts(new Date(utcMs));
     const asUtc = Date.UTC(
-      read('year'),
-      read('month') - 1,
-      read('day'),
-      read('hour'),
-      read('minute'),
-      read('second'),
+      zoned.year,
+      zoned.month - 1,
+      zoned.day,
+      zoned.hour,
+      zoned.minute,
+      zoned.second,
     );
     const desired = Date.UTC(year, month - 1, day, hour, minute, second);
     utcMs += desired - asUtc;

@@ -1,4 +1,8 @@
-import { formatCalendarDate, coerceToCalendarDate } from '@/lib/calendar-dates';
+import {
+  coerceToCalendarDate,
+  coerceToCalendarDayStart,
+  formatCalendarDate,
+} from '@/lib/calendar-dates';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -368,7 +372,7 @@ export async function createCreditCardPayment(
           description,
           amount: input.amount,
           is_paid: true,
-          payment_date: coerceToCalendarDate(input.paid_at),
+          payment_date: coerceToCalendarDayStart(input.paid_at),
           expense_template_id: null,
           user_id: fortnight.user_id,
           house_id: fortnight.house_id,

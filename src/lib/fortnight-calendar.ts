@@ -30,6 +30,14 @@ export const getCalendarPartsFromDate = (
   return { year, month, day };
 };
 
+/** Calendar fortnight (year, month, period) for `asOf` in Mexico City. */
+export function getCurrentCalendarFortnightRef(
+  asOf: Date = new Date(),
+): CalendarFortnightRef {
+  const { year, month, day } = getCalendarPartsFromDate(asOf);
+  return { year, month, period: getFortnightPeriodForDay(day) };
+}
+
 /** Chronological order of calendar fortnights (for comparisons). */
 export const compareCalendarFortnight = (
   a: CalendarFortnightRef,
