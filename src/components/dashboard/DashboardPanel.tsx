@@ -17,6 +17,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import { getPeriodLabel } from '@/components/dashboard/constants';
+import { getDashboardLoanStatDisplay } from '@/components/dashboard/dashboard-loan-stat-display';
 
 type DashboardPanelProps = {
   data: DashboardData;
@@ -40,8 +41,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
     return query ? `?${query}` : '';
   }, [context]);
   const periodLabel = getPeriodLabel(data.period);
-  const loanPendingTotal = data.planningWalletLoanDue?.total ?? 0;
-  const loanPendingCount = data.planningWalletLoanDue?.count ?? 0;
+  const loanStat = getDashboardLoanStatDisplay(data);
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -140,10 +140,10 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
         />
         <StatCard
           title="Préstamos"
-          amount={loanPendingTotal}
+          amount={loanStat.amount}
           iconKey="hand-coins"
           iconGradient="linear-gradient(135deg, #eab308 0%, #facc15 100%)"
-          subtitle={`${loanPendingCount} pendiente(s) billetera`}
+          subtitle={loanStat.subtitle}
         />
       </div>
 

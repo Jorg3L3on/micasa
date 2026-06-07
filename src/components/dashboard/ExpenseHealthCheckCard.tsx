@@ -37,14 +37,7 @@ export default function ExpenseHealthCheckCard({
       </CardHeader>
       <CardContent className="space-y-6">
         <TooltipProvider>
-          <div
-            className={cn(
-              DASHBOARD_METRIC_STRIP_CLASS,
-              isHighCommitment
-                ? 'border-l-destructive/50'
-                : 'border-l-violet-500/50',
-            )}
-          >
+          <div className={DASHBOARD_METRIC_STRIP_CLASS}>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Ingresos comprometidos
             </span>
@@ -68,12 +61,7 @@ export default function ExpenseHealthCheckCard({
           </div>
 
           <div className="space-y-3 border-t border-border/60 pt-4">
-            <div
-              className={cn(
-                DASHBOARD_METRIC_STRIP_CLASS,
-                'border-l-destructive/50',
-              )}
-            >
+            <div className={DASHBOARD_METRIC_STRIP_CLASS}>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Total vencido
               </span>
@@ -90,12 +78,7 @@ export default function ExpenseHealthCheckCard({
             </div>
 
             {largestExpense && (
-              <div
-                className={cn(
-                  DASHBOARD_METRIC_STRIP_CLASS,
-                  'border-l-violet-500/50',
-                )}
-              >
+              <div className={DASHBOARD_METRIC_STRIP_CLASS}>
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Mayor gasto
                 </span>

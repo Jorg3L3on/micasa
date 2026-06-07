@@ -2,12 +2,9 @@
 export const DASHBOARD_CARD_CLASS =
   'rounded-xl overflow-hidden border border-border/60 min-h-[200px] bg-transparent shadow-sm';
 
-/**
- * Inner metric / summary strip: colored left border only; no tinted background (ui-consistency + fintech rules).
- * Add a `border-l-*-500/50` (or `border-l-destructive/50`) class for the semantic accent.
- */
+/** Inner metric / summary strip: calm border only; semantic color on text/icon pills. */
 export const DASHBOARD_METRIC_STRIP_CLASS =
-  'rounded-lg border border-border/60 border-l-[3px] px-2.5 py-2 bg-transparent';
+  'rounded-lg border border-border/60 px-2.5 py-2 bg-transparent';
 
 /** Short month names (es) for period labels. */
 const MONTH_NAMES_SHORT = [

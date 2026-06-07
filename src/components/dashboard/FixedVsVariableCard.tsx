@@ -45,7 +45,7 @@ export default function FixedVsVariableCard({
 
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
           <div
-            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
+            className={DASHBOARD_METRIC_STRIP_CLASS}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos fijos
@@ -55,7 +55,7 @@ export default function FixedVsVariableCard({
             </p>
           </div>
           <div
-            className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
+            className={DASHBOARD_METRIC_STRIP_CLASS}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gastos variables
