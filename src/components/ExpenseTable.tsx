@@ -70,6 +70,16 @@ const isPlanningCardPaymentRow = (row: TransactionRow): boolean =>
 const isPlanningLoanPaymentRow = (row: TransactionRow): boolean =>
   row.planning_row_kind === 'loan_payment';
 
+const planningLoanPaymentBadgeLabel = (row: TransactionRow): string =>
+  row.loan_payment_source === 'PAYROLL_DEDUCTION'
+    ? 'Deducción nómina'
+    : 'Préstamo billetera';
+
+const planningLoanPaymentBadgeClass = (row: TransactionRow): string =>
+  row.loan_payment_source === 'PAYROLL_DEDUCTION'
+    ? 'border-violet-500/40 text-violet-800 dark:text-violet-300'
+    : 'border-amber-500/40 text-amber-800 dark:text-amber-300';
+
 const isPlanningDerivedExpenseRow = (row: TransactionRow): boolean =>
   isPlanningCardPaymentRow(row) || isPlanningLoanPaymentRow(row);
 
@@ -626,12 +636,12 @@ export default function ExpenseTable({
                   <Badge
                     variant="outline"
                     className={cn(
-                      'border-amber-500/40 text-amber-800 dark:text-amber-300',
+                      planningLoanPaymentBadgeClass(expense),
                       'text-[10px]',
                       isCompact ? 'h-4 px-1.5' : 'h-5',
                     )}
                   >
-                    Préstamo
+                    {planningLoanPaymentBadgeLabel(expense)}
                   </Badge>
                 ) : null}
                 {isCardChargeExpenseRow(expense) ? (
@@ -1067,9 +1077,24 @@ export default function ExpenseTable({
                               </span>
                             )}
                             {isLoanPay && (
-                              <span className="inline-flex h-4 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300">
-                                <span className="h-1 w-1 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden />
-                                Préstamo
+                              <span
+                                className={cn(
+                                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
+                                  e.loan_payment_source === 'PAYROLL_DEDUCTION'
+                                    ? 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300'
+                                    : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    'h-1 w-1 rounded-full',
+                                    e.loan_payment_source === 'PAYROLL_DEDUCTION'
+                                      ? 'bg-violet-500 dark:bg-violet-400'
+                                      : 'bg-amber-500 dark:bg-amber-400',
+                                  )}
+                                  aria-hidden
+                                />
+                                {planningLoanPaymentBadgeLabel(e)}
                               </span>
                             )}
                             {isCardCharge && (

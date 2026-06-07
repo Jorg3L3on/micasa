@@ -92,6 +92,7 @@ describe('mapLoanDuePaymentToTransactionRow', () => {
       paymentMethod: 'Débito BBVA',
       wallet_id: 2,
       planning_row_kind: 'loan_payment',
+      loan_payment_source: 'WALLET',
       type: 'expense',
       is_paid: false,
       due_day: 15,
@@ -113,6 +114,7 @@ describe('mapLoanDuePaymentToTransactionRow', () => {
       paymentMethod: 'Nómina: Nómina Carmen',
       wallet_id: null,
       planning_row_kind: 'loan_payment',
+      loan_payment_source: 'PAYROLL_DEDUCTION',
       is_paid: false,
     });
   });
