@@ -76,6 +76,11 @@ export type DashboardData = {
     count: number;
     pendingCount: number;
   } | null;
+  /** Deducciones de nómina pendientes (préstamos de nómina). */
+  planningPayrollLoanDeduction?: {
+    total: number;
+    count: number;
+  } | null;
   budgetSummary: DashboardBudgetSummary;
   upcomingObligations: Array<{
     id: number;

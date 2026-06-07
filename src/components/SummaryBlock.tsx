@@ -33,6 +33,8 @@ import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
+  PlannerPayrollLoanDeductionSummary,
+  PlannerWalletLoanDueSummary,
 } from '@/types/catalog';
 import {
   isCalendarFortnightCurrent,
@@ -70,6 +72,10 @@ type SummaryBlockProps = {
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   /** Adeudo al estado de cuenta (próximo pago) dentro del período; suma al pendiente planificado. */
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
+  /** Cuotas de préstamo desde billetera pendientes en el período. */
+  planningWalletLoanDue?: PlannerWalletLoanDueSummary | null;
+  /** Deducciones de nómina pendientes; reducen el ingreso disponible de la quincena. */
+  planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
   /** Saldos activos Efectivo + Débito (API resumen). */
   fundingWalletBalanceTotal?: number;
   /** Saldos efectivo/débito menos solo lo pendiente (no pagado) del período (API resumen). */
@@ -95,6 +101,8 @@ export default function SummaryBlock({
   cardCharges = null,
   planningOrphanCardPayments = null,
   planningCardStatementDue = null,
+  planningWalletLoanDue = null,
+  planningPayrollLoanDeduction = null,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -113,10 +121,12 @@ export default function SummaryBlock({
     userIncome.length > 0 &&
     userIncome.some((fi) => fi.userIncome && fi.userIncome.length > 0);
 
-  /** Compromiso en efectivo/débito: alinea héroe, barra y tarjetas Pagado/Pendiente. */
-  const comprometidoEfectivo = pagado + pendiente;
+  const payrollLoanDeduction = planningPayrollLoanDeduction?.total ?? 0;
 
-  /** Ingreso menos todo lo comprometido (pagado + pendiente), mismo criterio que el resumen del API. */
+  /** Compromiso: efectivo/débito + deducciones de nómina pendientes. */
+  const comprometidoEfectivo = pagado + pendiente + payrollLoanDeduction;
+
+  /** Ingreso menos pagado, pendiente y deducciones de nómina (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
   /**
@@ -142,7 +152,7 @@ export default function SummaryBlock({
   const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
     tenemos,
     pagado,
-    pendiente,
+    pendiente + payrollLoanDeduction,
   );
   const showIncomeRing = tenemos > 0;
 
@@ -321,8 +331,25 @@ export default function SummaryBlock({
                     pagos al estado de cuenta (tarjeta).
                   </p>
                 ) : null}
+                {planningWalletLoanDue != null &&
+                planningWalletLoanDue.total > 0 ? (
+                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-[10px] leading-snug text-muted-foreground">
+                    De eso, {formatCurrency(planningWalletLoanDue.total)} son
+                    cuotas de préstamo desde billetera.
+                  </p>
+                ) : null}
               </div>
             </div>
+
+            {planningPayrollLoanDeduction != null &&
+            planningPayrollLoanDeduction.total > 0 ? (
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                Incluye {formatCurrency(planningPayrollLoanDeduction.total)} en{' '}
+                {planningPayrollLoanDeduction.count} deducción
+                {planningPayrollLoanDeduction.count !== 1 ? 'es' : ''} de nómina
+                (préstamos); reduce el ingreso disponible sin salida de billetera.
+              </p>
+            ) : null}
 
             {planningOrphanCardPayments != null &&
             planningOrphanCardPayments.count > 0 ? (
@@ -478,6 +505,23 @@ export default function SummaryBlock({
                     −{formatCurrency(displayPendienteFundingRow)}
                   </span>
                 </div>
+                {payrollLoanDeduction > 0 ? (
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Menos deducciones de nómina (préstamos)
+                    </span>
+                    <span
+                      className={cn(
+                        'font-mono font-semibold tabular-nums',
+                        billeterasVsPendienteAplica
+                          ? 'text-amber-700 dark:text-amber-400'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      −{formatCurrency(payrollLoanDeduction)}
+                    </span>
+                  </div>
+                ) : null}
                 <div
                   className={cn(
                     'flex items-center justify-between gap-2 border-t pt-2 text-xs font-semibold',

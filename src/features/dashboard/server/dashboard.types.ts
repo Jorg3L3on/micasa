@@ -87,6 +87,7 @@ export type DashboardResponseDto = {
     count: number;
     pendingCount: number;
   } | null;
+  planningPayrollLoanDeduction?: { total: number; count: number } | null;
   budgetSummary: DashboardBudgetSummary;
   upcomingObligations: DashboardUpcomingObligation[];
   recentActivity: DashboardRecentActivityItem[];

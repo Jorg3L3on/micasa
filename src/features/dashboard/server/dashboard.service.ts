@@ -8,6 +8,7 @@ import {
 } from '@/lib/finance/planning-credit-card-payments';
 import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
+import { partitionLoanPaymentsForPlanningTotals } from '@/lib/finance/planning-period-loan-totals';
 import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
 import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
@@ -219,16 +220,24 @@ export const getDashboardData = async (
         orphanPayCurrent.count > 0 ? orphanPayCurrent : null,
         cardDueCurrent.total > 0 ? cardDueCurrent : null,
       );
+      const loanPlanningTotals = partitionLoanPaymentsForPlanningTotals(
+        loanPayCurrent.payments,
+      );
       let totalExpenseCurrent = planningCurrent.totalExpense;
       let totalPaidCurrent = planningCurrent.totalPaid;
-      if (loanPayCurrent.total > 0) {
-        totalExpenseCurrent += loanPayCurrent.total;
+      if (loanPlanningTotals.walletDue.total > 0) {
+        totalExpenseCurrent += loanPlanningTotals.walletDue.total;
       }
-      if (loanPayCurrent.paidTotal > 0) {
-        totalPaidCurrent += loanPayCurrent.paidTotal;
+      if (loanPlanningTotals.walletPaidWithoutExpense > 0) {
+        totalPaidCurrent += loanPlanningTotals.walletPaidWithoutExpense;
       }
+      const payrollLoanDeductionCurrent =
+        loanPlanningTotals.payrollDeduction.total;
       const totalUnpaidCurrent = totalExpenseCurrent - totalPaidCurrent;
-      const balanceCurrent = totalIncomeCurrent - totalExpenseCurrent;
+      const balanceCurrent =
+        totalIncomeCurrent -
+        payrollLoanDeductionCurrent -
+        totalExpenseCurrent;
 
       let fundingWalletBalanceTotal = 0;
       let creditWalletDebtTotal = 0;
@@ -268,7 +277,9 @@ export const getDashboardData = async (
         }
       }
       const fundingNetVsPendingExpense =
-        fundingWalletBalanceTotal - totalUnpaidCurrent;
+        fundingWalletBalanceTotal -
+        totalUnpaidCurrent -
+        payrollLoanDeductionCurrent;
 
       const totalIncomePrev = incomePrev.reduce(
         (s, i) => s + Number(i.amount),
@@ -287,9 +298,12 @@ export const getDashboardData = async (
         orphanPayPrev.count > 0 ? orphanPayPrev : null,
         cardDuePrev.total > 0 ? cardDuePrev : null,
       );
+      const loanPlanningTotalsPrev = partitionLoanPaymentsForPlanningTotals(
+        loanPayPrev.payments,
+      );
       let totalExpensePrev = planningPrev.totalExpense;
-      if (loanPayPrev.total > 0) {
-        totalExpensePrev += loanPayPrev.total;
+      if (loanPlanningTotalsPrev.walletDue.total > 0) {
+        totalExpensePrev += loanPlanningTotalsPrev.walletDue.total;
       }
 
       const userIncomeMap: Record<number, { name: string; amount: number }> =
@@ -335,7 +349,9 @@ export const getDashboardData = async (
 
       const percentCommitted =
         totalIncomeCurrent > 0
-          ? (totalExpenseCurrent / totalIncomeCurrent) * 100
+          ? ((totalExpenseCurrent + payrollLoanDeductionCurrent) /
+              totalIncomeCurrent) *
+            100
           : 0;
       const largestExpense =
         expensesCurrent.length > 0
@@ -374,6 +390,7 @@ export const getDashboardData = async (
         currentFortnightIds,
         allExpensesUpcoming,
         loanPayCurrent,
+        payrollLoanDeductionCurrent,
         expensesCurrent,
         totalIncomeCurrent,
         totalExpenseCurrent,
@@ -669,6 +686,17 @@ export const getDashboardData = async (
               pendingTotal: totalsPayload.loanPayCurrent.pendingTotal,
               count: totalsPayload.loanPayCurrent.count,
               pendingCount: totalsPayload.loanPayCurrent.pendingCount,
+            }
+          : null,
+      planningPayrollLoanDeduction:
+        totalsPayload.payrollLoanDeductionCurrent > 0
+          ? {
+              total: totalsPayload.payrollLoanDeductionCurrent,
+              count: totalsPayload.loanPayCurrent.payments.filter(
+                (payment) =>
+                  payment.paymentSource === 'PAYROLL_DEDUCTION' &&
+                  payment.status === 'SCHEDULED',
+              ).length,
             }
           : null,
       budgetSummary: totalsPayload.budgetSummary,

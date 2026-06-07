@@ -43,6 +43,25 @@ export async function updateLoan(
   );
 }
 
+export async function deleteLoan(
+  loanId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<{
+    message: string;
+    loanId: number;
+    deletedPayments: number;
+    deletedGeneratedExpenses: number;
+    reversedWalletMovements: number;
+  }>(
+    `/api/loans/${loanId}`,
+    {
+      method: 'DELETE',
+    },
+    context,
+  );
+}
+
 export async function getPlannerLoanPayments(
   year: number,
   month: number,

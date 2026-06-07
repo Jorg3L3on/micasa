@@ -41,8 +41,11 @@ export type ExpenseWalletType =
   | 'CREDIT_CARD'
   | 'DEPARTMENT_STORE_CARD';
 
-/** Gasto normal vs pago a TC registrado solo como movimiento de tarjeta (sin Expense). */
-export type PlanningExpenseRowKind = 'expense' | 'card_payment';
+/** Gasto normal vs filas derivadas de planificación (no editables como gasto). */
+export type PlanningExpenseRowKind =
+  | 'expense'
+  | 'card_payment'
+  | 'loan_payment';
 
 export type TransactionRow = {
   id: number;
@@ -54,7 +57,7 @@ export type TransactionRow = {
   paymentMethod: string;
   wallet_id?: number | null;
   wallet_type?: ExpenseWalletType | null;
-  /** Solo planificación: filas de pago a tarjeta no editables como gasto. */
+  /** Solo planificación: filas derivadas no editables como gasto. */
   planning_row_kind?: PlanningExpenseRowKind;
   type?: 'income' | 'expense';
   is_paid: boolean;
@@ -79,6 +82,18 @@ export type PlannerOrphanCardPaymentsSummary = {
 export type PlannerCardStatementDueSummary = {
   total: number;
   cardCount: number;
+};
+
+/** Cuotas de préstamo pendientes pagadas desde billetera. */
+export type PlannerWalletLoanDueSummary = {
+  total: number;
+  count: number;
+};
+
+/** Deducciones de nómina pendientes (préstamos de nómina). */
+export type PlannerPayrollLoanDeductionSummary = {
+  total: number;
+  count: number;
 };
 
 /** Una billetera efectivo/débito incluida en el desglose del resumen. */

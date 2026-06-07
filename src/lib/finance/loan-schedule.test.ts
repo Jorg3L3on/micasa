@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateLoanProgress,
   deriveLoanStatusFromPayments,
+  dueDateForFortnightlyPayment,
   formatDateYmd,
   generateLoanPaymentSchedule,
+  getFortnightlyFirstAnchor,
+  getFortnightlySecondAnchor,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
 
@@ -23,7 +26,57 @@ describe('loan schedule', () => {
     ]);
   });
 
-  it('generates fortnightly payments', () => {
+  it('generates fortnightly payments aligned to calendar quincenas from day 1', () => {
+    const schedule = generateLoanPaymentSchedule({
+      startDate: parseYmdAsUtcDate('2026-06-01'),
+      paymentAmount: 500,
+      paymentCount: 6,
+      frequency: 'FORTNIGHTLY',
+    });
+
+    expect(schedule.map((p) => formatDateYmd(p.dueDate))).toEqual([
+      '2026-06-01',
+      '2026-06-16',
+      '2026-07-01',
+      '2026-07-16',
+      '2026-08-01',
+      '2026-08-16',
+    ]);
+  });
+
+  it('generates fortnightly payments with 15th and month-end anchors', () => {
+    const schedule = generateLoanPaymentSchedule({
+      startDate: parseYmdAsUtcDate('2026-06-15'),
+      paymentAmount: 500,
+      paymentCount: 4,
+      frequency: 'FORTNIGHTLY',
+    });
+
+    expect(schedule.map((p) => formatDateYmd(p.dueDate))).toEqual([
+      '2026-06-15',
+      '2026-06-30',
+      '2026-07-15',
+      '2026-07-31',
+    ]);
+  });
+
+  it('generates fortnightly payments when the start date is in the second quincena', () => {
+    const schedule = generateLoanPaymentSchedule({
+      startDate: parseYmdAsUtcDate('2026-06-16'),
+      paymentAmount: 500,
+      paymentCount: 4,
+      frequency: 'FORTNIGHTLY',
+    });
+
+    expect(schedule.map((p) => formatDateYmd(p.dueDate))).toEqual([
+      '2026-06-16',
+      '2026-07-01',
+      '2026-07-16',
+      '2026-08-01',
+    ]);
+  });
+
+  it('keeps legacy start-date offset for non-round fortnightly anchors', () => {
     const schedule = generateLoanPaymentSchedule({
       startDate: parseYmdAsUtcDate('2026-05-18'),
       paymentAmount: 500,
@@ -33,9 +86,28 @@ describe('loan schedule', () => {
 
     expect(schedule.map((p) => formatDateYmd(p.dueDate))).toEqual([
       '2026-05-18',
-      '2026-06-01',
-      '2026-06-15',
+      '2026-06-03',
+      '2026-06-18',
     ]);
+  });
+
+  it('places at most one payment per calendar quincena for a day-1 start', () => {
+    const schedule = generateLoanPaymentSchedule({
+      startDate: parseYmdAsUtcDate('2026-06-01'),
+      paymentAmount: 500,
+      paymentCount: 2,
+      frequency: 'FORTNIGHTLY',
+    });
+
+    const firstFortnight = schedule.filter(
+      (payment) => Number(formatDateYmd(payment.dueDate).slice(8, 10)) <= 15,
+    );
+    const secondFortnight = schedule.filter(
+      (payment) => Number(formatDateYmd(payment.dueDate).slice(8, 10)) >= 16,
+    );
+
+    expect(firstFortnight).toHaveLength(1);
+    expect(secondFortnight).toHaveLength(1);
   });
 
   it('clamps monthly payments to the last day of shorter months', () => {
@@ -120,5 +192,27 @@ describe('loan schedule', () => {
         { status: 'CANCELLED' },
       ]),
     ).toBe('PAID_OFF');
+  });
+});
+
+describe('fortnightly anchors', () => {
+  it('derives first-anchor day from start date', () => {
+    expect(getFortnightlyFirstAnchor(parseYmdAsUtcDate('2026-06-01'))).toBe(1);
+    expect(getFortnightlyFirstAnchor(parseYmdAsUtcDate('2026-06-16'))).toBe(1);
+  });
+
+  it('uses month end for the second anchor when the first anchor is the 15th', () => {
+    expect(
+      getFortnightlySecondAnchor(15, 2026, 6),
+    ).toBe(30);
+    expect(
+      getFortnightlySecondAnchor(15, 2026, 7),
+    ).toBe(31);
+  });
+
+  it('maps August second-quincena payment to the 16th for a June 1 start', () => {
+    expect(
+      formatDateYmd(dueDateForFortnightlyPayment(parseYmdAsUtcDate('2026-06-01'), 5)),
+    ).toBe('2026-08-16');
   });
 });

@@ -13,7 +13,9 @@ const {
   txFindManyLoanPayment,
   txFindFirstWallet,
   txUpdateWallet,
+  txFindFirstLoan,
   txUpdateLoan,
+  txDeleteLoan,
   txDeleteExpense,
   resolveOrCreateFortnight,
   createExpenseInTransaction,
@@ -30,7 +32,9 @@ const {
   txFindManyLoanPayment: vi.fn(),
   txFindFirstWallet: vi.fn(),
   txUpdateWallet: vi.fn(),
+  txFindFirstLoan: vi.fn(),
   txUpdateLoan: vi.fn(),
+  txDeleteLoan: vi.fn(),
   txDeleteExpense: vi.fn(),
   resolveOrCreateFortnight: vi.fn(),
   createExpenseInTransaction: vi.fn(),
@@ -67,7 +71,9 @@ vi.mock('@/lib/finance/expense.service', () => ({
 import {
   aggregateLoanPaymentsForFortnights,
   createLoanForOwner,
+  deleteLoanForOwner,
   listLoanPaymentsForPlannerMonth,
+  sumPlannerLoanDueForFortnight,
   updateLoanForOwner,
   updateLoanPaymentForOwner,
 } from '@/lib/finance/loan.service';
@@ -303,6 +309,70 @@ describe('updateLoanForOwner', () => {
   });
 });
 
+describe('sumPlannerLoanDueForFortnight', () => {
+  beforeEach(() => {
+    findManyLoanPayment.mockReset();
+  });
+
+  it('splits scheduled wallet and payroll installments for the fortnight', async () => {
+    findManyLoanPayment.mockResolvedValueOnce([
+      {
+        id: 1,
+        loan_id: 5,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-10'),
+        amount: '200',
+        status: 'SCHEDULED',
+        paid_at: null,
+        source_wallet_id: 10,
+        source_wallet: { name: 'BBVA' },
+        linked_expense: null,
+        note: null,
+        loan: {
+          id: 5,
+          name: 'DiDi',
+          lender: 'DiDi',
+          type: 'PERSONAL',
+          payment_source: 'WALLET',
+          linked_wallet_id: null,
+          linked_wallet: null,
+          income_template: null,
+        },
+      },
+      {
+        id: 2,
+        loan_id: 6,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-15'),
+        amount: '2792.73',
+        status: 'SCHEDULED',
+        paid_at: null,
+        source_wallet_id: null,
+        source_wallet: null,
+        linked_expense: null,
+        note: null,
+        loan: {
+          id: 6,
+          name: 'FONACOT',
+          lender: 'Banco',
+          type: 'PAYROLL',
+          payment_source: 'PAYROLL_DEDUCTION',
+          linked_wallet_id: null,
+          linked_wallet: null,
+          income_template: { name: 'Salario Jorge' },
+        },
+      },
+    ]);
+
+    const result = await sumPlannerLoanDueForFortnight(ownerFilter, 2026, 6, 'FIRST');
+
+    expect(result).toEqual({
+      wallet: { total: 200, count: 1 },
+      payroll: { total: 2792.73, count: 1 },
+    });
+  });
+});
+
 describe('listLoanPaymentsForPlannerMonth', () => {
   beforeEach(() => {
     findManyLoanPayment.mockReset();
@@ -435,7 +505,9 @@ const tx = {
     update: txUpdateWallet,
   },
   loan: {
+    findFirst: txFindFirstLoan,
     update: txUpdateLoan,
+    delete: txDeleteLoan,
   },
   expense: {
     delete: txDeleteExpense,
@@ -445,6 +517,80 @@ const tx = {
     create: vi.fn(),
   },
 };
+
+describe('deleteLoanForOwner', () => {
+  beforeEach(() => {
+    transaction.mockReset();
+    txFindFirstLoan.mockReset();
+    txUpdateWallet.mockReset();
+    txDeleteExpense.mockReset();
+    txDeleteLoan.mockReset();
+
+    transaction.mockImplementation((fn) => fn(tx));
+  });
+
+  it('deletes the loan schedule and generated expenses while reversing wallet movements', async () => {
+    txFindFirstLoan.mockResolvedValueOnce({
+      id: 5,
+      payment_source: 'WALLET',
+      payments: [
+        {
+          id: 22,
+          status: 'PAID',
+          amount: '150',
+          source_wallet_id: 10,
+          linked_expense: {
+            id: 300,
+            wallet_id: 10,
+            amount: '150',
+            is_paid: true,
+            wallet: { type: 'DEBIT_CARD' },
+          },
+        },
+        {
+          id: 23,
+          status: 'SCHEDULED',
+          amount: '150',
+          source_wallet_id: 10,
+          linked_expense: null,
+        },
+      ],
+    });
+    txDeleteExpense.mockResolvedValueOnce({ id: 300 });
+    txDeleteLoan.mockResolvedValueOnce({ id: 5 });
+
+    const result = await deleteLoanForOwner(5, ownerFilter);
+
+    expect(txFindFirstLoan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 5, ...ownerFilter },
+      }),
+    );
+    expect(txUpdateWallet).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: { amount: { increment: 150 } },
+    });
+    expect(txDeleteExpense).toHaveBeenCalledWith({ where: { id: 300 } });
+    expect(txDeleteLoan).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect(result).toEqual({
+      loanId: 5,
+      deletedPayments: 2,
+      deletedGeneratedExpenses: 1,
+      reversedWalletMovements: 1,
+    });
+  });
+
+  it('enforces owner context before deleting a loan', async () => {
+    txFindFirstLoan.mockResolvedValueOnce(null);
+
+    await expect(deleteLoanForOwner(999, ownerFilter)).rejects.toThrow(
+      'Préstamo no encontrado',
+    );
+
+    expect(txDeleteExpense).not.toHaveBeenCalled();
+    expect(txDeleteLoan).not.toHaveBeenCalled();
+  });
+});
 
 const scheduledWalletPayment = {
   id: 22,
