@@ -35,7 +35,7 @@ export default function IncomeBreakdownCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-blue-500/50')}>
+        <div className={DASHBOARD_METRIC_STRIP_CLASS}>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Total ingresos
           </span>

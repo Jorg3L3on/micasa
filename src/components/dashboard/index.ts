@@ -1,4 +1,3 @@
-export { default as AvailableVsCommittedCard } from './AvailableVsCommittedCard';
 export { default as UpcomingObligationsCard } from './UpcomingObligationsCard';
 export { default as RecentActivityCard } from './RecentActivityCard';
 export { default as IncomeBreakdownCard } from './IncomeBreakdownCard';

@@ -265,7 +265,7 @@ export const getReportSummary = async (
   let planningPaidExpenseCount = excludeCreditInstallment
     ? expenses.filter((e) => e.is_paid).length
     : undefined;
-  const planningUnpaidExpenseCount = excludeCreditInstallment
+  let planningUnpaidExpenseCount = excludeCreditInstallment
     ? expenses.filter((e) => !e.is_paid).length
     : undefined;
 
@@ -279,6 +279,12 @@ export const getReportSummary = async (
       (planningExpenseCount ?? 0) + planningWalletLoanDueCount;
     planningUnpaidExpenseCount =
       (planningUnpaidExpenseCount ?? 0) + planningWalletLoanDueCount;
+  }
+  if (excludeCreditInstallment && planningPayrollLoanDeductionCount > 0) {
+    planningExpenseCount =
+      (planningExpenseCount ?? 0) + planningPayrollLoanDeductionCount;
+    planningUnpaidExpenseCount =
+      (planningUnpaidExpenseCount ?? 0) + planningPayrollLoanDeductionCount;
   }
 
   let userIncomeData: ReportSummaryResult['userIncome'] = [];
