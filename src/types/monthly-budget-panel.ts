@@ -2,7 +2,10 @@ export type MonthlyBudgetCategoryRow = {
   id: number;
   name: string;
   icon: string | null;
+  budgeted: number;
   spent: number;
+  remaining: number;
+  percentUsed: number;
   percentOfBudget: number;
 };
 

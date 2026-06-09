@@ -30,7 +30,7 @@ function combineBudgetScopes(scopes: MonthlyBudgetScope[]): MonthlyBudgetScope {
   const spent = scopes.reduce((sum, scope) => sum + scope.spent, 0);
   const categoryMap = new Map<
     number,
-    { name: string; icon: string | null; spent: number }
+    { name: string; icon: string | null; budgeted: number; spent: number }
   >();
   const sourceMap = new Map<
     MonthlyBudgetScope['sources'][number]['frequency'],
@@ -41,11 +41,13 @@ function combineBudgetScopes(scopes: MonthlyBudgetScope[]): MonthlyBudgetScope {
     for (const category of scope.categories) {
       const current = categoryMap.get(category.id);
       if (current) {
+        current.budgeted += category.budgeted;
         current.spent += category.spent;
       } else {
         categoryMap.set(category.id, {
           name: category.name,
           icon: category.icon,
+          budgeted: category.budgeted,
           spent: category.spent,
         });
       }
@@ -64,17 +66,26 @@ function combineBudgetScopes(scopes: MonthlyBudgetScope[]): MonthlyBudgetScope {
     spent,
     available: Math.max(0, totalBudget - spent),
     categories: Array.from(categoryMap.entries())
-      .map(([id, category]) => ({
-        id,
-        name: category.name,
-        icon: category.icon,
-        spent: category.spent,
-        percentOfBudget:
-          totalBudget > 0
-            ? Math.round((category.spent / totalBudget) * 100)
-            : 0,
-      }))
-      .sort((a, b) => b.spent - a.spent)
+      .map(([id, category]) => {
+        const remaining = category.budgeted - category.spent;
+        return {
+          id,
+          name: category.name,
+          icon: category.icon,
+          budgeted: category.budgeted,
+          spent: category.spent,
+          remaining,
+          percentUsed:
+            category.budgeted > 0
+              ? Math.round((category.spent / category.budgeted) * 100)
+              : 0,
+          percentOfBudget:
+            totalBudget > 0
+              ? Math.round((category.spent / totalBudget) * 100)
+              : 0,
+        };
+      })
+      .sort((a, b) => b.percentUsed - a.percentUsed || b.spent - a.spent)
       .slice(0, 6),
     sources: Array.from(sourceMap.entries())
       .map(([frequency, sourceTotal]) => ({
@@ -100,7 +111,9 @@ function toDashboardBudgetSummary(
       totalBudget > 0 ? Math.round((spent / totalBudget) * 100) : 0,
     categories: scope.categories.map((category) => ({
       ...category,
+      budgeted: roundMoney(category.budgeted),
       spent: roundMoney(category.spent),
+      remaining: roundMoney(category.remaining),
     })),
     sources: scope.sources.map((source) => ({
       ...source,
