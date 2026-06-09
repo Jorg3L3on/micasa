@@ -93,9 +93,9 @@ async function buildBudgetScope(
     MonthlyBudgetScope['sources'][number]['frequency'],
     number
   >();
-  const categorySpent = new Map<
+  const categoryTotals = new Map<
     number,
-    { name: string; icon: string | null; spent: number }
+    { name: string; icon: string | null; budgeted: number; spent: number }
   >();
 
   for (const period of periods) {
@@ -122,6 +122,27 @@ async function buildBudgetScope(
       amount: Number(a.amount),
     }));
 
+    for (const allocation of budget.allocations) {
+      const budgeted = computeEffectiveAllocated(
+        Number(allocation.amount),
+        period,
+        overlap,
+      );
+      const catId = allocation.category_id;
+      const meta = allocation.category;
+      const prev = categoryTotals.get(catId);
+      if (prev) {
+        prev.budgeted += budgeted;
+      } else {
+        categoryTotals.set(catId, {
+          name: meta.name,
+          icon: meta.icon ?? null,
+          budgeted,
+          spent: 0,
+        });
+      }
+    }
+
     if (allocationInputs.length === 0) continue;
 
     const spend = await computePeriodSpendByAllocations(
@@ -137,13 +158,14 @@ async function buildBudgetScope(
       if (amount <= 0) continue;
       const catId = allocation.category_id;
       const meta = allocation.category;
-      const prev = categorySpent.get(catId);
+      const prev = categoryTotals.get(catId);
       if (prev) {
         prev.spent += amount;
       } else {
-        categorySpent.set(catId, {
+        categoryTotals.set(catId, {
           name: meta.name,
           icon: meta.icon ?? null,
+          budgeted: 0,
           spent: amount,
         });
       }
@@ -152,16 +174,24 @@ async function buildBudgetScope(
 
   const available = Math.max(0, totalBudget - totalSpent);
 
-  const categories = Array.from(categorySpent.entries())
-    .map(([id, row]) => ({
-      id,
-      name: row.name,
-      icon: row.icon,
-      spent: row.spent,
-      percentOfBudget:
-        totalBudget > 0 ? Math.round((row.spent / totalBudget) * 100) : 0,
-    }))
-    .sort((a, b) => b.spent - a.spent)
+  const categories = Array.from(categoryTotals.entries())
+    .filter(([, row]) => row.spent > 0)
+    .map(([id, row]) => {
+      const remaining = row.budgeted - row.spent;
+      return {
+        id,
+        name: row.name,
+        icon: row.icon,
+        budgeted: row.budgeted,
+        spent: row.spent,
+        remaining,
+        percentUsed:
+          row.budgeted > 0 ? Math.round((row.spent / row.budgeted) * 100) : 0,
+        percentOfBudget:
+          totalBudget > 0 ? Math.round((row.spent / totalBudget) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.percentUsed - a.percentUsed || b.spent - a.spent)
     .slice(0, 6);
 
   return {

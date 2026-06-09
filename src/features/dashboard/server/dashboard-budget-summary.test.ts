@@ -1,9 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { buildDashboardBudgetSummary } from './dashboard-budget-summary';
 import type {
+  MonthlyBudgetCategoryRow,
   MonthlyBudgetPanelResult,
   MonthlyBudgetScope,
 } from '@/types/monthly-budget-panel';
+
+const category = (
+  partial: Partial<MonthlyBudgetCategoryRow> & Pick<MonthlyBudgetCategoryRow, 'id' | 'name'>,
+): MonthlyBudgetCategoryRow => ({
+  icon: null,
+  budgeted: 0,
+  spent: 0,
+  remaining: 0,
+  percentUsed: 0,
+  percentOfBudget: 0,
+  ...partial,
+});
 
 const scope = (
   partial: Partial<MonthlyBudgetScope> = {},
@@ -42,13 +55,15 @@ describe('buildDashboardBudgetSummary', () => {
         spent: 250,
         available: 750,
         categories: [
-          {
+          category({
             id: 1,
             name: 'Comida',
-            icon: null,
+            budgeted: 500,
             spent: 250,
+            remaining: 250,
+            percentUsed: 50,
             percentOfBudget: 25,
-          },
+          }),
         ],
         sources: [{ frequency: 'WEEKLY', totalBudget: 1000 }],
       }),
@@ -57,20 +72,25 @@ describe('buildDashboardBudgetSummary', () => {
         spent: 750,
         available: 1250,
         categories: [
-          {
+          category({
             id: 1,
             name: 'Comida',
-            icon: null,
+            budgeted: 1000,
             spent: 500,
+            remaining: 500,
+            percentUsed: 50,
             percentOfBudget: 25,
-          },
-          {
+          }),
+          category({
             id: 2,
             name: 'Casa',
             icon: 'HOME',
+            budgeted: 500,
             spent: 250,
+            remaining: 250,
+            percentUsed: 50,
             percentOfBudget: 13,
-          },
+          }),
         ],
         sources: [{ frequency: 'WEEKLY', totalBudget: 2000 }],
       }),
@@ -91,14 +111,20 @@ describe('buildDashboardBudgetSummary', () => {
         id: 1,
         name: 'Comida',
         icon: null,
+        budgeted: 1500,
         spent: 750,
+        remaining: 750,
+        percentUsed: 50,
         percentOfBudget: 25,
       },
       {
         id: 2,
         name: 'Casa',
         icon: 'HOME',
+        budgeted: 500,
         spent: 250,
+        remaining: 250,
+        percentUsed: 50,
         percentOfBudget: 8,
       },
     ]);

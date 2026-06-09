@@ -14,6 +14,7 @@ type MonthlyPanelLayoutProps = {
   ownerKey: string;
   year: number;
   month: number;
+  todayYmd: string;
   suggestedPeriod: FortnightPeriod;
   ownerQuery: string;
   budgetPanel: MonthlyBudgetPanelResult;
@@ -27,6 +28,7 @@ export const MonthlyPanelLayout = ({
   ownerKey,
   year,
   month,
+  todayYmd,
   suggestedPeriod,
   ownerQuery,
   budgetPanel,
@@ -60,7 +62,13 @@ export const MonthlyPanelLayout = ({
           {children}
         </div>
         <div className="flex min-w-0 flex-col gap-5">
-          <MonthlyBudgetSidebar panel={budgetPanel} ownerQuery={ownerQuery} />
+          <MonthlyBudgetSidebar
+            panel={budgetPanel}
+            ownerQuery={ownerQuery}
+            year={year}
+            month={month}
+            todayYmd={todayYmd}
+          />
           <MonthlyFortnightCategoryPie
             year={year}
             month={month}

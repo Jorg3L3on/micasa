@@ -64,7 +64,8 @@ export default async function MonthlyPage({
   const prevHref = `/monthly/${prevYear}/${prevMonthStr}${ownerQuery}`;
   const nextHref = `/monthly/${nextYear}/${nextMonthStr}${ownerQuery}`;
 
-  const [currentYear, currentMonth] = todayCalendarDate()
+  const todayYmd = todayCalendarDate();
+  const [currentYear, currentMonth] = todayYmd
     .split('-')
     .map(Number)
     .slice(0, 2) as [number, number];
@@ -286,6 +287,7 @@ export default async function MonthlyPage({
       ownerKey={ownerKey}
       year={year}
       month={month}
+      todayYmd={todayYmd}
       suggestedPeriod={suggestedPeriod}
       ownerQuery={ownerQuery}
       budgetPanel={budgetPanel}
