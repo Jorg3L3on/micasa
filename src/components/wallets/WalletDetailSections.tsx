@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Banknote,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Coins,
@@ -18,6 +19,7 @@ import {
   SlidersHorizontal,
   Upload,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,6 +33,12 @@ import {
   kpiMetricValueClass,
   type KpiMetricTone,
 } from '@/components/finance/kpi-metric-card-styles';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  creditCardDetailTabTriggerClass,
+  creditCardSegmentedTabChromeClass,
+  creditCardSegmentedTabListClass,
+} from '@/components/credit-cards/credit-card-segmented-tabs';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
@@ -103,18 +111,111 @@ export const WalletHeroZone = ({
   );
 };
 
-export const WalletActivitySheet = ({ children }: { children: ReactNode }) => (
-  <div
-    className={cn(
-      'relative z-10 -mt-3',
-      'shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.12)] dark:shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.45)]',
-    )}
-  >
-    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-      <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/20" aria-hidden />
-      <div>{children}</div>
-    </div>
+type WalletWorkspaceSnap = 'peek' | 'half' | 'full';
+
+const WALLET_SNAP_MAX_HEIGHT: Record<WalletWorkspaceSnap, string> = {
+  peek: 'max-h-0',
+  half: 'max-h-[54vh]',
+  full: 'max-h-[calc(100vh-12rem)]',
+};
+
+type WalletPeriodWorkspaceShellProps = {
+  chrome: ReactNode;
+  children: ReactNode;
+};
+
+export const WalletPeriodWorkspaceShell = ({
+  chrome,
+  children,
+}: WalletPeriodWorkspaceShellProps) => {
+  const [snap, setSnap] = useState<WalletWorkspaceSnap>('peek');
+
+  const handleCycleSnap = useCallback(() => {
+    setSnap((current) => {
+      if (current === 'peek') return 'half';
+      if (current === 'half') return 'full';
+      return 'peek';
+    });
+  }, []);
+
+  return (
+    <>
+      <div className="lg:hidden">
+        <div className="relative z-10 -mt-3 shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.12)] dark:shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.45)]">
+          <div className="flex flex-col overflow-hidden rounded-t-[1.75rem] border border-border/60 bg-card">
+            <button
+              type="button"
+              className="flex w-full shrink-0 flex-col items-center px-4 pt-3 pb-2"
+              onClick={handleCycleSnap}
+              aria-expanded={snap !== 'peek'}
+              aria-label={
+                snap === 'full'
+                  ? 'Contraer workspace de billetera'
+                  : 'Expandir workspace de billetera'
+              }
+            >
+              <span
+                className="mb-2 h-1 w-10 rounded-full bg-muted-foreground/25"
+                aria-hidden
+              />
+              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                <ChevronUp
+                  className={cn(
+                    'h-3 w-3 transition-transform',
+                    snap === 'peek' && 'rotate-180',
+                  )}
+                  aria-hidden
+                />
+                {snap === 'peek' ? 'Vista compacta' : snap === 'half' ? 'Medio' : 'Completo'}
+              </span>
+            </button>
+
+            <div className="sticky top-0 z-10 shrink-0 border-b border-border/50 bg-card px-4 pb-3">
+              {chrome}
+            </div>
+
+            <div
+              className={cn(
+                'overflow-y-auto px-4 pb-4 transition-[max-height] duration-300 ease-out',
+                WALLET_SNAP_MAX_HEIGHT[snap],
+              )}
+            >
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative z-10 -mt-3 hidden lg:block">
+        <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-4 pb-4 shadow-sm">
+          <div className="sticky top-16 z-10 -mx-4 border-b border-border/50 bg-card px-4 pb-3 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
+            {chrome}
+          </div>
+          <div className="pt-4">{children}</div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export const WalletDetailTabsList = ({ children }: { children: ReactNode }) => (
+  <div className={creditCardSegmentedTabChromeClass}>
+    <TabsList variant="line" className={creditCardSegmentedTabListClass}>
+      {children}
+    </TabsList>
   </div>
+);
+
+export const WalletDetailTabTrigger = ({
+  value,
+  children,
+}: {
+  value: string;
+  children: ReactNode;
+}) => (
+  <TabsTrigger value={value} className={creditCardDetailTabTriggerClass}>
+    {children}
+  </TabsTrigger>
 );
 
 type HeaderActionsProps = {
@@ -376,7 +477,7 @@ type PeriodMetric = {
 
 const WalletPeriodMetrics = ({ metrics }: { metrics: PeriodMetric[] }) => (
   <div
-    className="grid grid-cols-3 gap-1 sm:gap-1.5"
+    className="grid grid-cols-2 gap-1 sm:gap-1.5 lg:grid-cols-4"
     role="group"
     aria-label="Totales del periodo"
   >
@@ -399,9 +500,13 @@ const WalletPeriodMetrics = ({ metrics }: { metrics: PeriodMetric[] }) => (
 type PeriodSummaryProps = {
   rangeLabel: string;
   isCurrentMonth: boolean;
+  currentBalance: number;
   inflow: number;
   outflow: number;
   net: number;
+  movementCount: number;
+  averageDailyOutflow: number;
+  runwayDays: number | null;
   onPrevious: () => void;
   onNext: () => void;
   onResetToToday: () => void;
@@ -410,14 +515,24 @@ type PeriodSummaryProps = {
 export const WalletPeriodSummary = ({
   rangeLabel,
   isCurrentMonth,
+  currentBalance,
   inflow,
   outflow,
   net,
+  movementCount,
+  averageDailyOutflow,
+  runwayDays,
   onPrevious,
   onNext,
   onResetToToday,
 }: PeriodSummaryProps) => {
   const metrics: PeriodMetric[] = [
+    {
+      key: 'balance',
+      label: 'Saldo actual',
+      value: formatCurrency(currentBalance),
+      tone: currentBalance < 0 ? 'destructive' : 'blue',
+    },
     {
       key: 'inflow',
       label: 'Ingresos',
@@ -480,6 +595,27 @@ export const WalletPeriodSummary = ({
         ) : null}
       </div>
       <WalletPeriodMetrics metrics={metrics} />
+      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+        <Badge variant="secondary" className="h-6 rounded-full px-2 font-mono tabular-nums">
+          {movementCount} mov.
+        </Badge>
+        <Badge variant="outline" className="h-6 rounded-full px-2">
+          Ritmo diario {formatCurrency(averageDailyOutflow)}
+        </Badge>
+        <Badge
+          variant="outline"
+          className={cn(
+            'h-6 rounded-full px-2',
+            runwayDays === 0 && 'border-destructive/40 text-destructive',
+          )}
+        >
+          {runwayDays == null
+            ? 'Cobertura estable'
+            : runwayDays === 1
+              ? '1 día de cobertura'
+              : `${runwayDays} días de cobertura`}
+        </Badge>
+      </div>
     </div>
   );
 };

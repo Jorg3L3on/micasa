@@ -9,7 +9,7 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils';
 type CreditCardReconciliationStripProps = {
   reconciliation: CreditCardCycleReconciliation;
   cycleDueDate: string;
-  latestImport: CreditCardStatementImportListItem | null;
+  cycleImport: CreditCardStatementImportListItem | null;
   onOpenImportDialog: () => void;
 };
 
@@ -37,7 +37,7 @@ const statusConfig = {
 export const CreditCardReconciliationStrip = ({
   reconciliation,
   cycleDueDate,
-  latestImport,
+  cycleImport,
   onOpenImportDialog,
 }: CreditCardReconciliationStripProps) => {
   const config = statusConfig[reconciliation.status];
@@ -103,15 +103,15 @@ export const CreditCardReconciliationStrip = ({
         </div>
       </div>
 
-      {latestImport ? (
+      {cycleImport ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
           <div className="flex min-w-0 items-center gap-2 text-xs">
             <FileText className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
             <span className="truncate">
-              Último import:{' '}
-              {latestImport.period_start && latestImport.period_end
-                ? `${formatDate(latestImport.period_start.slice(0, 10))} – ${formatDate(latestImport.period_end.slice(0, 10))}`
-                : (latestImport.file_name ?? `#${latestImport.id}`)}
+              Import del ciclo:{' '}
+              {cycleImport.period_start && cycleImport.period_end
+                ? `${formatDate(cycleImport.period_start.slice(0, 10))} – ${formatDate(cycleImport.period_end.slice(0, 10))}`
+                : (cycleImport.file_name ?? `#${cycleImport.id}`)}
             </span>
           </div>
           <Button

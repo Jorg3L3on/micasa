@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { SheetSnap } from '@/lib/finance/credit-card-cycle-types';
 
 const SNAP_MAX_HEIGHT: Record<SheetSnap, string> = {
-  peek: 'max-h-[11.5rem]',
+  peek: 'max-h-0',
   half: 'max-h-[50vh]',
   full: 'max-h-[calc(100vh-12rem)]',
 };
@@ -20,7 +20,7 @@ export const CreditCardCycleWorkspaceShell = ({
   chrome,
   children,
 }: CreditCardCycleWorkspaceShellProps) => {
-  const [snap, setSnap] = useState<SheetSnap>('half');
+  const [snap, setSnap] = useState<SheetSnap>('peek');
 
   const handleCycleSnap = useCallback(() => {
     setSnap((current) => {
@@ -45,6 +45,7 @@ export const CreditCardCycleWorkspaceShell = ({
               type="button"
               className="flex w-full shrink-0 flex-col items-center px-4 pt-3 pb-2"
               onClick={handleCycleSnap}
+              aria-expanded={snap !== 'peek'}
               aria-label={
                 snap === 'full'
                   ? 'Contraer panel del ciclo'
@@ -63,7 +64,7 @@ export const CreditCardCycleWorkspaceShell = ({
                   )}
                   aria-hidden
                 />
-                {snap === 'peek' ? 'Desliza arriba' : snap === 'half' ? 'Medio' : 'Completo'}
+                {snap === 'peek' ? 'Vista compacta' : snap === 'half' ? 'Medio' : 'Completo'}
               </span>
             </button>
 
@@ -86,7 +87,7 @@ export const CreditCardCycleWorkspaceShell = ({
       {/* Desktop inline panel */}
       <div className="relative z-10 -mt-3 hidden lg:block">
         <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-4 pb-4 shadow-sm">
-          <div className="sticky top-16 z-10 -mx-4 border-b border-border/50 bg-card px-4 pb-3">
+          <div className="sticky top-16 z-10 -mx-4 border-b border-border/50 bg-card px-4 pb-3 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
             {chrome}
           </div>
           <div className="pt-4">{children}</div>

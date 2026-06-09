@@ -138,20 +138,6 @@ export const CreditCardHeroZone = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-export const CreditCardActivitySheet = ({ children }: { children: ReactNode }) => (
-  <div
-    className={cn(
-      'relative z-10 -mt-3',
-      'shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.12)] dark:shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.45)]',
-    )}
-  >
-    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-      <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/20" aria-hidden />
-      <div>{children}</div>
-    </div>
-  </div>
-);
-
 type CycleSpendingBarProps = {
   items: CreditCardStatementPurchaseItem[];
   total: number;

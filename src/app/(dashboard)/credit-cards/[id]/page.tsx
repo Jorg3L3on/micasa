@@ -435,10 +435,15 @@ const CreditCardDetailPageContent = () => {
     });
   }, [statement]);
 
-  const latestImport = useMemo(
-    () => statementImports[0] ?? null,
-    [statementImports],
-  );
+  const cycleImport = useMemo(() => {
+    if (!statement) return null;
+    return (
+      statementImports.find(
+        (importRecord) =>
+          importRecord.period_end?.slice(0, 10) === statement.statement_end,
+      ) ?? null
+    );
+  }, [statement, statementImports]);
 
   const cycleRangeLabel = statement
     ? formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)
@@ -566,7 +571,7 @@ const CreditCardDetailPageContent = () => {
                   <CreditCardReconciliationStrip
                     reconciliation={reconciliation}
                     cycleDueDate={statement.statement_due_date}
-                    latestImport={latestImport}
+                    cycleImport={cycleImport}
                     onOpenImportDialog={() => setMpImportDialogOpen(true)}
                   />
                 ) : null}
