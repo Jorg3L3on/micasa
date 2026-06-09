@@ -13,26 +13,33 @@ import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
 import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan } from '@/lib/api/credit-cards';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
+import {
+  buildWalletPeriodAnalytics,
+  estimateWalletRunwayDays,
+} from '@/lib/finance/wallet-period-analytics';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { formatCurrency } from '@/lib/utils';
 import type {
   WalletDetail,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
 import type { CreditCardPaymentPlanView } from '@/types/catalog';
 import {
-  WalletActivitySheet,
   WalletDetailHeaderActions,
+  WalletDetailTabsList,
+  WalletDetailTabTrigger,
   WalletHeroZone,
+  WalletPeriodWorkspaceShell,
   WalletPeriodSummary,
   WalletQuickActions,
   WalletVisualHero,
 } from '@/components/wallets/WalletDetailSections';
 import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
+import { WalletPeriodAnalyticsPanels } from '@/components/wallets/WalletPeriodAnalyticsPanels';
 
 const firstDayOfMonth = (year: number, monthIdx: number): string =>
   `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`;
@@ -61,6 +68,8 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
   const [y, m] = fromDate.split('-').map(Number);
   return { year: y, monthIdx: m - 1 };
 };
+
+type WalletDetailTab = 'resumen' | 'movimientos' | 'compromisos';
 
 const WalletDetailSkeleton = () => (
   <div className="space-y-0 pb-24 lg:pb-0">
@@ -108,6 +117,7 @@ export default function WalletDetailPage() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expenseError, setExpenseError] = useState<string | null>(null);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<WalletDetailTab>('resumen');
   const [paymentPlanItems, setPaymentPlanItems] = useState<
     CreditCardPaymentPlanView[]
   >([]);
@@ -245,6 +255,23 @@ export default function WalletDetailPage() {
     return `${MONTH_LABEL[monthIdx]} ${year}`;
   }, [range.from]);
 
+  const analytics = useMemo(
+    () =>
+      buildWalletPeriodAnalytics(data?.movements ?? [], {
+        from: range.from,
+        to: range.to,
+      }),
+    [data?.movements, range.from, range.to],
+  );
+
+  const runwayDays = useMemo(
+    () =>
+      wallet
+        ? estimateWalletRunwayDays(wallet.amount, analytics.averageDailyOutflow)
+        : null,
+    [analytics.averageDailyOutflow, wallet],
+  );
+
   if (context.id === 0 || (loading && !data)) {
     return <WalletDetailSkeleton />;
   }
@@ -282,42 +309,74 @@ export default function WalletDetailPage() {
         />
       </WalletHeroZone>
 
-      <WalletActivitySheet>
-        {isCreditWallet ? (
-          <CreditCardPlannedPaymentSection
-            walletId={walletId}
-            items={paymentPlanItems}
-            onPlanUpdated={loadData}
-          />
-        ) : null}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as WalletDetailTab)}
+      >
+        <WalletPeriodWorkspaceShell
+          chrome={
+            <>
+              <WalletPeriodSummary
+                rangeLabel={rangeLabel}
+                isCurrentMonth={isCurrentMonth}
+                currentBalance={wallet.amount}
+                inflow={data.totals.inflow}
+                outflow={data.totals.outflow}
+                net={data.totals.net}
+                movementCount={data.movements.length}
+                averageDailyOutflow={analytics.averageDailyOutflow}
+                runwayDays={runwayDays}
+                onPrevious={handlePrevMonth}
+                onNext={handleNextMonth}
+                onResetToToday={handleResetToToday}
+              />
+              <div className="mt-4">
+                <WalletDetailTabsList>
+                  <WalletDetailTabTrigger value="resumen">
+                    Resumen
+                  </WalletDetailTabTrigger>
+                  <WalletDetailTabTrigger value="movimientos">
+                    Movimientos
+                  </WalletDetailTabTrigger>
+                  <WalletDetailTabTrigger value="compromisos">
+                    Compromisos
+                  </WalletDetailTabTrigger>
+                </WalletDetailTabsList>
+              </div>
+            </>
+          }
+        >
+          <TabsContent value="resumen" className="mt-0">
+            <WalletPeriodAnalyticsPanels
+              analytics={analytics}
+              balance={wallet.amount}
+              rangeLabel={rangeLabel}
+              runwayDays={runwayDays}
+            />
+          </TabsContent>
 
-        <div className={isCreditWallet ? 'mt-5' : undefined}>
-          <WalletPeriodSummary
-            rangeLabel={rangeLabel}
-            isCurrentMonth={isCurrentMonth}
-            inflow={data.totals.inflow}
-            outflow={data.totals.outflow}
-            net={data.totals.net}
-            onPrevious={handlePrevMonth}
-            onNext={handleNextMonth}
-            onResetToToday={handleResetToToday}
-          />
-        </div>
+          <TabsContent value="movimientos" className="mt-0">
+            <WalletMovementsFeed
+              movements={data.movements}
+              ownerQueryString={ownerQueryString}
+              canRegister={canImport}
+              onRegisterExpense={handleOpenExpense}
+              onRegisterIncome={() => setIncomeOpen(true)}
+            />
+          </TabsContent>
 
-        <div className="mt-5">
-          <LinkedLoansCard walletId={walletId} />
-        </div>
-
-        <div className="mt-5">
-          <WalletMovementsFeed
-            movements={data.movements}
-            ownerQueryString={ownerQueryString}
-            canRegister={canImport}
-            onRegisterExpense={handleOpenExpense}
-            onRegisterIncome={() => setIncomeOpen(true)}
-          />
-        </div>
-      </WalletActivitySheet>
+          <TabsContent value="compromisos" className="mt-0 space-y-4">
+            {isCreditWallet ? (
+              <CreditCardPlannedPaymentSection
+                walletId={walletId}
+                items={paymentPlanItems}
+                onPlanUpdated={loadData}
+              />
+            ) : null}
+            <LinkedLoansCard walletId={walletId} />
+          </TabsContent>
+        </WalletPeriodWorkspaceShell>
+      </Tabs>
 
       {canImport ? (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden">
