@@ -155,6 +155,7 @@ export type BudgetAllocationItem = {
   category_name: string;
   category_icon?: string | null;
   amount: number;
+  spent_amount?: number;
 };
 
 // Template definition returned by GET /api/budget-templates

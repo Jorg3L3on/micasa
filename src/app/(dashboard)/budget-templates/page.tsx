@@ -10,15 +10,18 @@ import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import BudgetFormDialog from '@/components/BudgetFormDialog';
 import BudgetAllocationsDialog from '@/components/BudgetAllocationsDialog';
+import BudgetTemplateFieldsDialog from '@/components/BudgetTemplateFieldsDialog';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   fetchBudgetTemplates,
   createBudget,
   deleteBudget,
+  setBudgetActive,
   updateBudgetAllocations,
+  updateBudgetTemplate,
 } from '@/lib/api/budgets';
-import { PiggyBank, LayoutList, Trash2, Repeat2 } from 'lucide-react';
+import { PiggyBank, LayoutList, Trash2, Repeat2, Pencil, RotateCcw } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem } from '@/types/catalog';
 import type { Step1Values, Step2Values } from '@/schemas/budget.schema';
@@ -31,6 +34,7 @@ export default function BudgetTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [allocDialogOpen, setAllocDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<BudgetListItem | null>(null);
@@ -74,6 +78,22 @@ export default function BudgetTemplatesPage() {
     }
   };
 
+  const handleUpdateTemplate = async (values: Step1Values) => {
+    if (!selected) return;
+    try {
+      setFormError(null);
+      await updateBudgetTemplate(selected.id, values, context);
+      toast.success('Plantilla actualizada');
+      await fetchTemplates();
+      setEditDialogOpen(false);
+      setSelected(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al actualizar plantilla';
+      setFormError(message);
+      throw err;
+    }
+  };
+
   const handleUpdateAllocations = async (allocations: Step2Values['allocations']) => {
     if (!selected) return;
     try {
@@ -90,17 +110,28 @@ export default function BudgetTemplatesPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeactivate = async () => {
     if (!selected) return;
     try {
       setError(null);
       await deleteBudget(selected.id, context);
-      toast.success('Plantilla eliminada');
+      toast.success('Plantilla desactivada');
       await fetchTemplates();
       setDeleteDialogOpen(false);
       setSelected(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar plantilla');
+      setError(err instanceof Error ? err.message : 'Error al desactivar plantilla');
+    }
+  };
+
+  const handleReactivate = async (tpl: BudgetListItem) => {
+    try {
+      setError(null);
+      await setBudgetActive(tpl.id, true, context);
+      toast.success('Plantilla reactivada');
+      await fetchTemplates();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reactivar plantilla');
     }
   };
 
@@ -148,24 +179,47 @@ export default function BudgetTemplatesPage() {
           const tpl = row.original;
           return (
             <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => { setSelected(tpl); setFormError(null); setAllocDialogOpen(true); }}
-                aria-label={`Ver asignaciones de ${tpl.name}`}
-              >
-                <LayoutList className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => { setSelected(tpl); setError(null); setDeleteDialogOpen(true); }}
-                aria-label={`Eliminar ${tpl.name}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              {!tpl.active ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => handleReactivate(tpl)}
+                  aria-label={`Reactivar ${tpl.name}`}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => { setSelected(tpl); setFormError(null); setEditDialogOpen(true); }}
+                    aria-label={`Editar ${tpl.name}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => { setSelected(tpl); setFormError(null); setAllocDialogOpen(true); }}
+                    aria-label={`Ver asignaciones de ${tpl.name}`}
+                  >
+                    <LayoutList className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => { setSelected(tpl); setError(null); setDeleteDialogOpen(true); }}
+                    aria-label={`Desactivar ${tpl.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </>
+              )}
             </div>
           );
         },
@@ -218,6 +272,17 @@ export default function BudgetTemplatesPage() {
 
       {selected && (
         <>
+          <BudgetTemplateFieldsDialog
+            open={editDialogOpen}
+            onOpenChange={(open) => {
+              setEditDialogOpen(open);
+              if (!open) { setSelected(null); setFormError(null); }
+            }}
+            budget={selected}
+            onSubmit={handleUpdateTemplate}
+            error={formError && editDialogOpen ? formError : null}
+          />
+
           <BudgetAllocationsDialog
             open={allocDialogOpen}
             onOpenChange={(open) => {
@@ -235,9 +300,9 @@ export default function BudgetTemplatesPage() {
               setDeleteDialogOpen(open);
               if (!open) { setSelected(null); setError(null); }
             }}
-            onConfirm={handleDelete}
-            title="Eliminar plantilla"
-            description="¿Estás seguro de querer eliminar esta plantilla? Se eliminarán también todos sus períodos e historial."
+            onConfirm={handleDeactivate}
+            title="Desactivar plantilla"
+            description="¿Desactivar esta plantilla? Se conservará el historial de períodos y podrás reactivarla después."
             itemName={selected.name}
           />
         </>

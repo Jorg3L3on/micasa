@@ -5,10 +5,16 @@ import type {
   MonthlyBudgetPanelResult,
   MonthlyBudgetScope,
 } from '@/types/monthly-budget-panel';
+import {
+  computeEffectiveAllocated,
+  computePeriodSpendByAllocations,
+  getPeriodOverlap,
+  type DateRange,
+} from '@/lib/finance/budget-period-spend';
+import { getCalendarFortnightBoundsForMonth } from '@/lib/finance/budget-period-windows';
 
 export type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
-type DateRange = { start_date: Date; end_date: Date };
 type BudgetPanelPeriod = Prisma.BudgetPeriodGetPayload<{
   include: {
     budget: {
@@ -32,16 +38,10 @@ export async function getMonthlyBudgetPanel(
   year: number,
   month: number,
 ): Promise<MonthlyBudgetPanelResult> {
-  const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
-  const firstFortnight = {
-    start_date: monthStart,
-    end_date: new Date(year, month - 1, 15, 23, 59, 59, 999),
-  };
-  const secondFortnight = {
-    start_date: new Date(year, month - 1, 16, 0, 0, 0, 0),
-    end_date: monthEnd,
-  };
+  const { first: firstFortnight, second: secondFortnight } =
+    getCalendarFortnightBoundsForMonth(year, month);
+  const monthStart = firstFortnight.start_date;
+  const monthEnd = secondFortnight.end_date;
 
   const periods = await prisma.budgetPeriod.findMany({
     where: {
@@ -99,12 +99,15 @@ async function buildBudgetScope(
   >();
 
   for (const period of periods) {
-    const overlap = getOverlap(period, scope);
+    const overlap = getPeriodOverlap(period, scope);
     if (!overlap) continue;
 
     const { budget } = period;
-    const allocatedAmount =
-      Number(budget.total_amount) * getOverlapRatio(period, overlap);
+    const allocatedAmount = computeEffectiveAllocated(
+      Number(budget.total_amount),
+      period,
+      overlap,
+    );
     totalBudget += allocatedAmount;
     const frequency =
       budget.frequency as MonthlyBudgetScope['sources'][number]['frequency'];
@@ -113,30 +116,27 @@ async function buildBudgetScope(
       (sourceTotals.get(frequency) ?? 0) + allocatedAmount,
     );
 
-    const walletIds = [
-      ...new Set(budget.allocations.map((a) => a.wallet_id)),
-    ];
-    const categoryIds = budget.allocations.map((a) => a.category_id);
+    const allocationInputs = budget.allocations.map((a) => ({
+      wallet_id: a.wallet_id,
+      category_id: a.category_id,
+      amount: Number(a.amount),
+    }));
 
-    if (walletIds.length === 0 || categoryIds.length === 0) continue;
+    if (allocationInputs.length === 0) continue;
 
-    const expenses = await prisma.expense.findMany({
-      where: {
-        wallet_id: { in: walletIds },
-        category_id: { in: categoryIds },
-        payment_date: { gte: overlap.start_date, lte: overlap.end_date },
-      },
-      select: { amount: true, category_id: true },
-    });
+    const spend = await computePeriodSpendByAllocations(
+      prisma,
+      allocationInputs,
+      overlap,
+    );
 
-    for (const expense of expenses) {
-      const amount = Number(expense.amount);
-      totalSpent += amount;
-      const catId = expense.category_id;
-      if (catId == null) continue;
-      const alloc = budget.allocations.find((a) => a.category_id === catId);
-      const meta = alloc?.category;
-      if (!meta) continue;
+    totalSpent += spend.total_spent;
+
+    for (const [index, allocation] of budget.allocations.entries()) {
+      const amount = spend.by_allocation[index]?.spent_amount ?? 0;
+      if (amount <= 0) continue;
+      const catId = allocation.category_id;
+      const meta = allocation.category;
       const prev = categorySpent.get(catId);
       if (prev) {
         prev.spent += amount;
@@ -176,30 +176,4 @@ async function buildBudgetScope(
       }))
       .sort((a, b) => b.totalBudget - a.totalBudget),
   };
-}
-
-function getOverlap(period: DateRange, scope: DateRange): DateRange | null {
-  const start =
-    period.start_date > scope.start_date ? period.start_date : scope.start_date;
-  const end =
-    period.end_date < scope.end_date ? period.end_date : scope.end_date;
-  if (start > end) return null;
-  return { start_date: start, end_date: end };
-}
-
-function getOverlapRatio(period: DateRange, overlap: DateRange): number {
-  const periodDays = daysInclusive(period.start_date, period.end_date);
-  const overlapDays = daysInclusive(overlap.start_date, overlap.end_date);
-  if (periodDays <= 0) return 0;
-  return overlapDays / periodDays;
-}
-
-function daysInclusive(start: Date, end: Date): number {
-  const startDay = Date.UTC(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-  );
-  const endDay = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-  return Math.floor((endDay - startDay) / 86_400_000) + 1;
 }
