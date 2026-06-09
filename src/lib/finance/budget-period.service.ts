@@ -1,91 +1,22 @@
 import prisma from '@/lib/prisma';
+import {
+  endOfCalendarDay,
+  formatCalendarDate,
+  startOfCalendarDay,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
+import { getNextCalendarFortnight } from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
+import {
+  computePeriodSpendByAllocations,
+  type DateRange,
+} from '@/lib/finance/budget-period-spend';
+import {
+  computeBudgetPeriodWindowsForFortnight,
+} from '@/lib/finance/budget-period-windows';
 
-type DateRange = { start_date: Date; end_date: Date };
-
-// Pure function — exported for unit testing
-export function computeBudgetWindows(
-  frequency: BudgetFrequency,
-  fortnight: DateRange,
-  fromToday?: Date,
-): DateRange[] {
-  const { start_date: fnStart, end_date: fnEnd } = fortnight;
-
-  switch (frequency) {
-    case 'DAILY': {
-      const rawStart =
-        fromToday && fromToday > fnStart
-          ? new Date(fromToday.getFullYear(), fromToday.getMonth(), fromToday.getDate())
-          : new Date(fnStart.getFullYear(), fnStart.getMonth(), fnStart.getDate());
-
-      const windows: DateRange[] = [];
-      const cursor = new Date(rawStart);
-      const fnEndDay = new Date(fnEnd.getFullYear(), fnEnd.getMonth(), fnEnd.getDate());
-
-      while (cursor <= fnEndDay) {
-        windows.push({
-          start_date: new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 0, 0, 0, 0),
-          end_date: new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59, 999),
-        });
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return windows;
-    }
-
-    case 'WEEKLY': {
-      const year = fnStart.getFullYear();
-      const month = fnStart.getMonth();
-      const startDay = fnStart.getDate();
-
-      let weeks: DateRange[];
-      if (startDay === 1) {
-        // FIRST fortnight: days 1–7, 8–15
-        weeks = [
-          {
-            start_date: new Date(year, month, 1, 0, 0, 0, 0),
-            end_date: new Date(year, month, 7, 23, 59, 59, 999),
-          },
-          {
-            start_date: new Date(year, month, 8, 0, 0, 0, 0),
-            end_date: new Date(year, month, 15, 23, 59, 59, 999),
-          },
-        ];
-      } else {
-        // SECOND fortnight: days 16–22, 23–end
-        const lastDay = new Date(year, month + 1, 0).getDate();
-        weeks = [
-          {
-            start_date: new Date(year, month, 16, 0, 0, 0, 0),
-            end_date: new Date(year, month, 22, 23, 59, 59, 999),
-          },
-          {
-            start_date: new Date(year, month, 23, 0, 0, 0, 0),
-            end_date: new Date(year, month, lastDay, 23, 59, 59, 999),
-          },
-        ];
-      }
-
-      if (fromToday) {
-        const todayStart = new Date(
-          fromToday.getFullYear(),
-          fromToday.getMonth(),
-          fromToday.getDate(),
-        );
-        return weeks.filter((w) => w.end_date >= todayStart);
-      }
-      return weeks;
-    }
-
-    case 'BIWEEKLY': {
-      return [{ start_date: fnStart, end_date: fnEnd }];
-    }
-
-    case 'CUSTOM': {
-      return [];
-    }
-  }
-}
+export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
 
 async function insertPeriods(budgetId: number, windows: DateRange[]): Promise<number> {
   let created = 0;
@@ -103,51 +34,41 @@ async function insertPeriods(budgetId: number, windows: DateRange[]): Promise<nu
   return created;
 }
 
+function activeDayBounds(asOf: Date): DateRange {
+  const today = todayCalendarDate(asOf);
+  return {
+    start_date: startOfCalendarDay(today),
+    end_date: endOfCalendarDay(today),
+  };
+}
+
 export async function generatePeriodsOnCreate(
   budgetId: number,
   frequency: BudgetFrequency,
-  startDate: string | null | undefined,
-  endDate: string | null | undefined,
+  budgetDateRange: DateRange | null,
   ownerFilter: OwnerFilter,
+  options?: { recurrent?: boolean; now?: Date },
 ): Promise<number> {
-  if (frequency === 'CUSTOM') {
-    if (!startDate || !endDate) return 0;
-    await prisma.budgetPeriod.create({
-      data: {
-        budget_id: budgetId,
-        start_date: new Date(startDate),
-        end_date: new Date(endDate),
-      },
-    });
-    return 1;
+  if (!budgetDateRange) return 0;
+
+  let total = await insertPeriods(budgetId, [budgetDateRange]);
+
+  if (frequency === 'CUSTOM' || !options?.recurrent) {
+    return total;
   }
 
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
-  const currentPeriod = today.getDate() <= 15 ? 'FIRST' : 'SECOND';
-  const nextPeriod = currentPeriod === 'FIRST' ? 'SECOND' : null;
-
-  let total = 0;
-
-  const currentFortnight = await prisma.fortnight.findFirst({
-    where: { ...ownerFilter, year, month, period: currentPeriod },
+  const now = options.now ?? new Date();
+  const nextRef = getNextCalendarFortnight(now);
+  const nextFortnight = await prisma.fortnight.findFirst({
+    where: { ...ownerFilter, ...nextRef },
   });
-  if (currentFortnight) {
-    const windows = computeBudgetWindows(frequency, currentFortnight, today);
-    total += await insertPeriods(budgetId, windows);
+
+  if (!nextFortnight || frequency === 'DAILY') {
+    return total;
   }
 
-  if (nextPeriod) {
-    const nextFortnight = await prisma.fortnight.findFirst({
-      where: { ...ownerFilter, year, month, period: nextPeriod },
-    });
-    if (nextFortnight) {
-      const windows = computeBudgetWindows(frequency, nextFortnight);
-      total += await insertPeriods(budgetId, windows);
-    }
-  }
-
+  const windows = computeBudgetPeriodWindowsForFortnight(frequency, nextFortnight);
+  total += await insertPeriods(budgetId, windows);
   return total;
 }
 
@@ -171,7 +92,10 @@ export async function generatePeriodsForMonth(
   for (const budget of budgets) {
     if (budget.frequency === 'CUSTOM') continue;
     for (const fortnight of fortnights) {
-      const windows = computeBudgetWindows(budget.frequency as BudgetFrequency, fortnight);
+      const windows = computeBudgetPeriodWindowsForFortnight(
+        budget.frequency as BudgetFrequency,
+        fortnight,
+      );
       total += await insertPeriods(budget.id, windows);
     }
   }
@@ -180,10 +104,12 @@ export async function generatePeriodsForMonth(
 }
 
 export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
+  const { start_date: todayStart, end_date: todayEnd } = activeDayBounds(asOf);
+
   const periods = await prisma.budgetPeriod.findMany({
     where: {
-      start_date: { lte: asOf },
-      end_date: { gte: asOf },
+      start_date: { lte: todayEnd },
+      end_date: { gte: todayStart },
       budget: { ...ownerFilter, active: true },
     },
     include: {
@@ -204,21 +130,19 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
   return Promise.all(
     periods.map(async (period) => {
       const { budget } = period;
-      const walletIds = budget.allocations.map((a) => a.wallet_id);
-      const categoryIds = budget.allocations.map((a) => a.category_id);
+      const allocationInputs = budget.allocations.map((a) => ({
+        wallet_id: a.wallet_id,
+        category_id: a.category_id,
+        amount: Number(a.amount),
+      }));
 
-      let spentAmount = 0;
-      if (walletIds.length > 0) {
-        const agg = await prisma.expense.aggregate({
-          where: {
-            wallet_id: { in: walletIds },
-            category_id: { in: categoryIds },
-            payment_date: { gte: period.start_date, lte: period.end_date },
-          },
-          _sum: { amount: true },
-        });
-        spentAmount = Number(agg._sum.amount ?? 0);
-      }
+      const spend =
+        allocationInputs.length > 0
+          ? await computePeriodSpendByAllocations(prisma, allocationInputs, {
+              start_date: period.start_date,
+              end_date: period.end_date,
+            })
+          : { total_spent: 0, by_allocation: [] };
 
       const allocatedAmount = Number(budget.total_amount);
       return {
@@ -229,11 +153,11 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
         start_date: period.start_date.toISOString(),
         end_date: period.end_date.toISOString(),
         allocated_amount: allocatedAmount,
-        spent_amount: spentAmount,
-        remaining_amount: allocatedAmount - spentAmount,
+        spent_amount: spend.total_spent,
+        remaining_amount: allocatedAmount - spend.total_spent,
         active: budget.active,
         recurrent: budget.recurrent,
-        allocations: budget.allocations.map((a) => ({
+        allocations: budget.allocations.map((a, index) => ({
           id: a.id,
           wallet_id: a.wallet_id,
           wallet_name: a.wallet.name,
@@ -241,6 +165,7 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
           category_name: a.category.name,
           category_icon: a.category.icon ?? null,
           amount: Number(a.amount),
+          spent_amount: spend.by_allocation[index]?.spent_amount ?? 0,
         })),
       };
     }),
@@ -252,8 +177,10 @@ export async function listHistoryPeriods(
   year: number,
   month: number,
 ) {
-  const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+  const monthStr = String(month).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const monthStart = startOfCalendarDay(`${year}-${monthStr}-01`);
+  const monthEnd = endOfCalendarDay(`${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`);
   const now = new Date();
 
   const periods = await prisma.budgetPeriod.findMany({
@@ -306,21 +233,19 @@ export async function listHistoryPeriods(
       });
     }
 
-    const walletIds = budget.allocations.map((a) => a.wallet_id);
-    const categoryIds = budget.allocations.map((a) => a.category_id);
+    const allocationInputs = budget.allocations.map((a) => ({
+      wallet_id: a.wallet_id,
+      category_id: a.category_id,
+      amount: Number(a.amount),
+    }));
 
-    let spentAmount = 0;
-    if (walletIds.length > 0) {
-      const agg = await prisma.expense.aggregate({
-        where: {
-          wallet_id: { in: walletIds },
-          category_id: { in: categoryIds },
-          payment_date: { gte: period.start_date, lte: period.end_date },
-        },
-        _sum: { amount: true },
-      });
-      spentAmount = Number(agg._sum.amount ?? 0);
-    }
+    const spend =
+      allocationInputs.length > 0
+        ? await computePeriodSpendByAllocations(prisma, allocationInputs, {
+            start_date: period.start_date,
+            end_date: period.end_date,
+          })
+        : { total_spent: 0, by_allocation: [] };
 
     const allocatedAmount = Number(budget.total_amount);
     grouped.get(budget.id)!.periods.push({
@@ -328,10 +253,128 @@ export async function listHistoryPeriods(
       start_date: period.start_date.toISOString(),
       end_date: period.end_date.toISOString(),
       allocated_amount: allocatedAmount,
-      spent_amount: spentAmount,
-      remaining_amount: allocatedAmount - spentAmount,
+      spent_amount: spend.total_spent,
+      remaining_amount: allocatedAmount - spend.total_spent,
     });
   }
 
   return Array.from(grouped.values());
+}
+
+function decimalToNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (
+    typeof value === 'object' &&
+    value != null &&
+    'toNumber' in value &&
+    typeof (value as { toNumber: () => number }).toNumber === 'function'
+  ) {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mapExpenseRow(expense: {
+  id: number;
+  description: string;
+  amount: unknown;
+  payment_date: Date | null;
+  created_at: Date;
+  is_paid: boolean;
+  expense_template_id: number | null;
+  credit_installment_current: number | null;
+  credit_installment_total: number | null;
+  category: { id: number; name: string; icon: string | null } | null;
+  wallet: { id: number; name: string; type: string } | null;
+}) {
+  return {
+    id: expense.id,
+    description: expense.description,
+    amount: decimalToNumber(expense.amount),
+    date: formatCalendarDate(expense.payment_date ?? expense.created_at),
+    category: expense.category?.name ?? null,
+    categoryIcon: expense.category?.icon ?? null,
+    paymentMethod: expense.wallet?.name ?? null,
+    walletType: expense.wallet?.type ?? null,
+    isPaid: expense.is_paid,
+    isRecurring: expense.expense_template_id != null,
+    creditInstallmentCurrent: expense.credit_installment_current ?? null,
+    creditInstallmentTotal: expense.credit_installment_total ?? null,
+    categoryId: expense.category?.id ?? null,
+    walletId: expense.wallet?.id ?? null,
+  };
+}
+
+export type BudgetAllocationExpenseGroup = {
+  allocation_id: number;
+  expenses: ReturnType<typeof mapExpenseRow>[];
+};
+
+export async function listBudgetPeriodExpensesByAllocation(
+  periodId: number,
+  ownerFilter: OwnerFilter,
+): Promise<BudgetAllocationExpenseGroup[]> {
+  const period = await prisma.budgetPeriod.findFirst({
+    where: {
+      id: periodId,
+      budget: ownerFilter,
+    },
+    include: {
+      budget: {
+        include: {
+          allocations: true,
+        },
+      },
+    },
+  });
+
+  if (!period) {
+    throw Object.assign(new Error('Período de presupuesto no encontrado'), { code: 'P2025' });
+  }
+
+  const allocations = period.budget.allocations;
+  if (allocations.length === 0) {
+    return [];
+  }
+
+  const expenses = await prisma.expense.findMany({
+    where: {
+      ...ownerFilter,
+      is_paid: true,
+      payment_date: {
+        gte: period.start_date,
+        lte: period.end_date,
+      },
+      OR: allocations.map((allocation) => ({
+        wallet_id: allocation.wallet_id,
+        category_id: allocation.category_id,
+      })),
+    },
+    include: {
+      category: { select: { id: true, name: true, icon: true } },
+      wallet: { select: { id: true, name: true, type: true } },
+    },
+    orderBy: [{ payment_date: 'desc' }, { id: 'desc' }],
+  });
+
+  const mapped = expenses.map(mapExpenseRow);
+
+  return allocations.map((allocation) => ({
+    allocation_id: allocation.id,
+    expenses: mapped.filter(
+      (expense) =>
+        expense.walletId === allocation.wallet_id &&
+        expense.categoryId === allocation.category_id,
+    ),
+  }));
+}
+
+/** @deprecated Use listBudgetPeriodExpensesByAllocation */
+export async function listBudgetPeriodExpenses(
+  periodId: number,
+  ownerFilter: OwnerFilter,
+) {
+  const groups = await listBudgetPeriodExpensesByAllocation(periodId, ownerFilter);
+  return groups.flatMap((group) => group.expenses);
 }

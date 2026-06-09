@@ -75,6 +75,12 @@ export const updateBudgetAllocationsSchema = z.object({
   allocations: z.array(allocationSchema).min(1, 'Debes agregar al menos una asignación'),
 });
 
+export const updateBudgetSchema = step1Schema;
+
+export const setBudgetActiveSchema = z.object({
+  active: z.boolean(),
+});
+
 export type AllocationInput = z.infer<typeof allocationSchema>;
 export type AllocationInputRaw = z.input<typeof allocationSchema>;
 export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;
@@ -83,3 +89,5 @@ export type Step1Input = z.input<typeof step1Schema>;
 export type Step2Values = z.infer<typeof step2Schema>;
 export type Step2Input = z.input<typeof step2Schema>;
 export type UpdateBudgetAllocationsInput = z.infer<typeof updateBudgetAllocationsSchema>;
+export type UpdateBudgetInput = z.infer<typeof updateBudgetSchema>;
+export type SetBudgetActiveInput = z.infer<typeof setBudgetActiveSchema>;

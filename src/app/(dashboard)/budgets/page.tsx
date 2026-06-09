@@ -6,13 +6,14 @@ import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import EmptyState from '@/components/EmptyState';
+import BudgetPeriodDetailDialog from '@/components/BudgetPeriodDetailDialog';
 import { useFinanceContext } from '@/context/finance-context';
 import { formatWallClockDateRange } from '@/lib/calendar-dates';
 import { fetchActivePeriods, fetchBudgetHistory } from '@/lib/api/budgets';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetPeriodItem, BudgetHistoryGroup } from '@/types/catalog';
 import { BUDGET_FREQUENCY_LABELS, type BudgetFrequency } from '@/schemas/budget.schema';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function ProgressBar({ spent, total }: { spent: number; total: number }) {
@@ -88,6 +89,8 @@ function ActivePeriodsTab() {
   const [periods, setPeriods] = useState<BudgetPeriodItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [detailPeriod, setDetailPeriod] = useState<BudgetPeriodItem | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Refresh loading state when owner context changes.
@@ -156,6 +159,26 @@ function ActivePeriodsTab() {
           <ProgressBar spent={row.original.spent_amount} total={row.original.allocated_amount} />
         ),
       },
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Acciones</span>,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1"
+            onClick={() => {
+              setDetailPeriod(row.original);
+              setDetailOpen(true);
+            }}
+            aria-label={`Ver detalle de ${row.original.name}`}
+          >
+            Detalle
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+        ),
+      },
     ],
     [],
   );
@@ -167,23 +190,32 @@ function ActivePeriodsTab() {
   }
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        {loading ? (
-          <div className="py-8 text-center text-muted-foreground">Cargando…</div>
-        ) : periods.length === 0 ? (
-          <EmptyState message="No hay presupuestos activos hoy. Crea plantillas en Catálogos → Plantillas de presupuestos." />
-        ) : (
-          <DataTable
-            data={periods}
-            columns={columns}
-            filterColumn="name"
-            filterPlaceholder="Filtrar por nombre…"
-            emptyMessage="No se encontraron presupuestos activos."
-          />
-        )}
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardContent className="pt-6">
+          {loading ? (
+            <div className="py-8 text-center text-muted-foreground">Cargando…</div>
+          ) : periods.length === 0 ? (
+            <EmptyState message="No hay presupuestos activos hoy. Crea plantillas en Catálogos → Plantillas de presupuestos." />
+          ) : (
+            <DataTable
+              data={periods}
+              columns={columns}
+              filterColumn="name"
+              filterPlaceholder="Filtrar por nombre…"
+              emptyMessage="No se encontraron presupuestos activos."
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <BudgetPeriodDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        period={detailPeriod}
+        context={context}
+      />
+    </>
   );
 }
 

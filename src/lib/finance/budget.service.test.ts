@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { endOfCalendarDay, startOfCalendarDay } from '@/lib/calendar-dates';
 import { createBudget, deleteBudget } from './budget.service';
 
 const mocks = vi.hoisted(() => ({
   budget: {
     findFirst: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     delete: vi.fn(),
   },
   budgetAllocation: {
@@ -48,13 +50,17 @@ describe('deleteBudget', () => {
     vi.clearAllMocks();
   });
 
-  it('hard-deletes the budget when it exists', async () => {
+  it('soft-deactivates the budget when it exists', async () => {
     mocks.budget.findFirst.mockResolvedValue(budgetFixture);
-    mocks.budget.delete.mockResolvedValue(budgetFixture);
+    mocks.budget.update.mockResolvedValue({ ...budgetFixture, active: false });
 
     await deleteBudget(10, ownerFilter);
 
-    expect(mocks.budget.delete).toHaveBeenCalledWith({ where: { id: 10 } });
+    expect(mocks.budget.update).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: { active: false },
+    });
+    expect(mocks.budget.delete).not.toHaveBeenCalled();
   });
 
   it('throws when the budget is not found', async () => {
@@ -63,7 +69,7 @@ describe('deleteBudget', () => {
     await expect(deleteBudget(10, ownerFilter)).rejects.toMatchObject({
       code: 'P2025',
     });
-    expect(mocks.budget.delete).not.toHaveBeenCalled();
+    expect(mocks.budget.update).not.toHaveBeenCalled();
   });
 });
 
@@ -76,7 +82,7 @@ describe('createBudget', () => {
         budgetAllocation: mocks.budgetAllocation,
       }),
     );
-    mocks.generatePeriodsOnCreate.mockResolvedValue(undefined);
+    mocks.generatePeriodsOnCreate.mockResolvedValue(1);
   });
 
   it('uses the current fortnight dates for BIWEEKLY budgets', async () => {
@@ -85,7 +91,7 @@ describe('createBudget', () => {
       end_date: new Date('2026-06-15T12:00:00.000Z'),
     };
     mocks.fortnight.findFirst.mockResolvedValue(currentFortnight);
-    mocks.budget.create.mockResolvedValue({ id: 11, ...budgetFixture });
+    mocks.budget.create.mockResolvedValue({ ...budgetFixture, id: 11 });
 
     await createBudget('user', 1, {
       name: 'Despensa',
@@ -101,6 +107,45 @@ describe('createBudget', () => {
         end_date: currentFortnight.end_date,
       }),
     });
+
+    expect(mocks.generatePeriodsOnCreate).toHaveBeenCalledWith(
+      11,
+      'BIWEEKLY',
+      {
+        start_date: currentFortnight.start_date,
+        end_date: currentFortnight.end_date,
+      },
+      ownerFilter,
+      { recurrent: true },
+    );
+  });
+
+  it('passes a single-day range for DAILY budgets', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-04T18:00:00.000Z'));
+
+    mocks.budget.create.mockResolvedValue({ ...budgetFixture, id: 12, frequency: 'DAILY' });
+
+    await createBudget('user', 1, {
+      name: 'Café',
+      allocated_amount: 100,
+      frequency: 'DAILY',
+      recurrent: true,
+      allocations: [{ wallet_id: 1, category_id: 2, amount: 100 }],
+    });
+
+    expect(mocks.generatePeriodsOnCreate).toHaveBeenCalledWith(
+      12,
+      'DAILY',
+      {
+        start_date: startOfCalendarDay('2026-06-04'),
+        end_date: endOfCalendarDay('2026-06-04'),
+      },
+      ownerFilter,
+      { recurrent: true },
+    );
+
+    vi.useRealTimers();
   });
 
   it('throws when the current fortnight is missing for BIWEEKLY budgets', async () => {
