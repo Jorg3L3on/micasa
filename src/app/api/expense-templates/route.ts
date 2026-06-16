@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
+            provider_icon_key: true,
           },
         },
         expenses: {
@@ -55,9 +56,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [{ active: 'desc' }, { name: 'asc' }],
     });
 
     const formatted = templates.map((template) => {
@@ -76,6 +75,7 @@ export async function GET(request: NextRequest) {
           : null,
         paymentMethod: template.wallet?.name || null,
         paymentMethodId: template.wallet?.id || null,
+        paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
         active: template.active,
         totalEstimatedAmount: totalAmount,
         expenseIds: [], // Will be populated from form selections in UI
@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
+            provider_icon_key: true,
           },
         },
       },
@@ -156,6 +157,7 @@ export async function POST(request: NextRequest) {
           : null,
         paymentMethod: template.wallet?.name || null,
         paymentMethodId: template.wallet?.id || null,
+        paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
         active: template.active,
         totalEstimatedAmount: template.suggested_amount
           ? Number(template.suggested_amount)
@@ -266,6 +268,7 @@ export async function PUT(request: NextRequest) {
           select: {
             id: true,
             name: true,
+            provider_icon_key: true,
           },
         },
         expenses: {
@@ -293,6 +296,7 @@ export async function PUT(request: NextRequest) {
           : null,
         paymentMethod: template.wallet?.name || null,
         paymentMethodId: template.wallet?.id || null,
+        paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
         active: template.active,
         totalEstimatedAmount:
           totalAmount ||

@@ -26,6 +26,7 @@ import {
   CategoryLabel,
   formatCategoryLabel,
 } from '@/components/categories/CategoryLabel';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 export default function ExpenseTemplatesPage() {
   const { context } = useFinanceContext();
@@ -190,30 +191,28 @@ export default function ExpenseTemplatesPage() {
         },
       },
       {
-        accessorKey: 'isRecurring',
-        minSize: 72,
-        header: 'Recurr.',
-        cell: ({ row }) => (row.original.isRecurring ? 'Sí' : 'No'),
-      },
-      {
-        accessorKey: 'appliesFirstFortnight',
-        minSize: 72,
-        header: '1ª Q',
-        cell: ({ row }) =>
-          row.original.appliesFirstFortnight ? 'Sí' : 'No',
-      },
-      {
-        accessorKey: 'appliesSecondFortnight',
-        minSize: 72,
-        header: '2ª Q',
-        cell: ({ row }) =>
-          row.original.appliesSecondFortnight ? 'Sí' : 'No',
-      },
-      {
-        accessorKey: 'isSubscription',
-        minSize: 72,
-        header: 'Suscrip.',
-        cell: ({ row }) => (row.original.isSubscription ? 'Sí' : 'No'),
+        accessorKey: 'paymentMethod',
+        minSize: 180,
+        header: 'Método de pago',
+        cell: ({ row }) => {
+          const template = row.original;
+          if (!template.paymentMethod) {
+            return (
+              <span className="text-sm text-muted-foreground">
+                Sin método
+              </span>
+            );
+          }
+          return (
+            <WalletIdentity
+              name={template.paymentMethod}
+              providerIconKey={template.paymentMethodProviderIconKey}
+              className="max-w-[220px]"
+              nameClassName="text-sm"
+              iconClassName="h-6 w-6"
+            />
+          );
+        },
       },
       {
         accessorKey: 'active',
