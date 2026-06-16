@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     const where: Prisma.ExpenseWhereInput = {
       ...ownerFilter,
       is_paid: true,
+      loan_payment_id: null,
     };
 
     if (cursor) {
