@@ -128,6 +128,42 @@ export default function ExpenseTemplatesPage() {
   const columns = useMemo<ColumnDef<ExpenseTemplateListItem>[]>(
     () => [
       {
+        accessorKey: 'paymentMethod',
+        minSize: 160,
+        header: 'Mét. pago',
+        cell: ({ row }) => {
+          const template = row.original;
+          if (!template.paymentMethod) {
+            return (
+              <span className="text-sm text-muted-foreground">
+                Sin método
+              </span>
+            );
+          }
+          return (
+            <WalletIdentity
+              name={template.paymentMethod}
+              providerIconKey={template.paymentMethodProviderIconKey}
+              className="max-w-[220px]"
+              nameClassName="text-sm"
+              iconClassName="h-6 w-6"
+            />
+          );
+        },
+      },
+      {
+        accessorKey: 'category',
+        minSize: 88,
+        header: 'Cat.',
+        cell: ({ row }) => (
+          <CategoryLabel
+            name={row.original.category}
+            icon={row.original.categoryIcon}
+            className="text-muted-foreground"
+          />
+        ),
+      },
+      {
         accessorKey: 'name',
         minSize: 140,
         header: ({ column }) => (
@@ -135,18 +171,6 @@ export default function ExpenseTemplatesPage() {
         ),
         cell: ({ row }) => (
           <span className="font-medium">{row.original.name}</span>
-        ),
-      },
-      {
-        accessorKey: 'category',
-        minSize: 100,
-        header: 'Categoría',
-        cell: ({ row }) => (
-          <CategoryLabel
-            name={row.original.category}
-            icon={row.original.categoryIcon}
-            className="text-muted-foreground"
-          />
         ),
       },
       {
@@ -188,30 +212,6 @@ export default function ExpenseTemplatesPage() {
             return parts.join(' · ');
           }
           return t.dueDay != null ? String(t.dueDay) : '—';
-        },
-      },
-      {
-        accessorKey: 'paymentMethod',
-        minSize: 180,
-        header: 'Método de pago',
-        cell: ({ row }) => {
-          const template = row.original;
-          if (!template.paymentMethod) {
-            return (
-              <span className="text-sm text-muted-foreground">
-                Sin método
-              </span>
-            );
-          }
-          return (
-            <WalletIdentity
-              name={template.paymentMethod}
-              providerIconKey={template.paymentMethodProviderIconKey}
-              className="max-w-[220px]"
-              nameClassName="text-sm"
-              iconClassName="h-6 w-6"
-            />
-          );
         },
       },
       {
