@@ -59,4 +59,37 @@ describe('parseLiverpoolStatementText', () => {
     const d = parseLiverpoolObfuscatedDate('p4', 'MAY', '1p15');
     expect(d?.toISOString().slice(0, 10)).toBe('2026-05-05');
   });
+
+  it('parses every supported Liverpool month token', () => {
+    const cases: Array<[string, string]> = [
+      ['ENE', '2026-01-01'],
+      ['FEB', '2026-02-01'],
+      ['MAR', '2026-03-01'],
+      ['ABR', '2026-04-01'],
+      ['MAY', '2026-05-01'],
+      ['JUN', '2026-06-01'],
+      ['QUN', '2026-06-01'],
+      ['JUL', '2026-07-01'],
+      ['QUL', '2026-07-01'],
+      ['AGO', '2026-08-01'],
+      ['SEP', '2026-09-01'],
+      ['OCT', '2026-10-01'],
+      ['NOV', '2026-11-01'],
+      ['DIC', '2026-12-01'],
+    ];
+
+    for (const [token, expected] of cases) {
+      const d = parseLiverpoolObfuscatedDate('p0', token, '1p15');
+      expect(d?.toISOString().slice(0, 10)).toBe(expected);
+    }
+  });
+
+  it('extracts a July payment due date from Liverpool QUL token', () => {
+    const r = parseLiverpoolStatementText(
+      'FECHA LuMITE DE PAGO02`QUL`1p15FECHA DE CORTE02`QUN`1p15',
+    );
+
+    expect(r.paymentDueDate?.toISOString().slice(0, 10)).toBe('2026-07-13');
+    expect(r.statementIssueDate?.toISOString().slice(0, 10)).toBe('2026-06-13');
+  });
 });
