@@ -20,6 +20,7 @@ const MONTHS_LIVERPOOL: Record<string, number> = {
   JUN: 5,
   QUN: 5,
   JUL: 6,
+  QUL: 6,
   AGO: 7,
   SEP: 8,
   OCT: 9,
