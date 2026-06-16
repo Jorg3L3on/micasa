@@ -755,6 +755,61 @@ describe('updateLoanPaymentForOwner', () => {
     });
   });
 
+  it('marks payroll deduction payments paid from an optional selected wallet', async () => {
+    findFirstWallet.mockResolvedValueOnce({ id: 10, type: 'DEBIT_CARD' });
+    txFindFirstLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      source_wallet_id: null,
+      loan: {
+        ...scheduledWalletPayment.loan,
+        payment_source: 'PAYROLL_DEDUCTION',
+      },
+    });
+    txFindFirstWallet.mockResolvedValueOnce({
+      id: 10,
+      amount: '500',
+      type: 'DEBIT_CARD',
+    });
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'PAID',
+      paid_at: parseCalendarDate('2026-06-15'),
+      source_wallet_id: 10,
+      source_wallet: { name: 'BBVA' },
+      linked_expense: null,
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([{ status: 'PAID' }]);
+    resolveOrCreateFortnight.mockResolvedValueOnce({ id: 90 });
+    tx.category.findFirst.mockResolvedValueOnce({ id: 7 });
+    createExpenseInTransaction.mockResolvedValueOnce({ id: 322 });
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'MARK_PAID',
+      paidAt: '2026-06-15',
+      sourceWalletId: 10,
+    });
+
+    expect(payment).toMatchObject({
+      status: 'PAID',
+      paidAt: '2026-06-15',
+      sourceWalletId: 10,
+      linkedExpenseId: 322,
+    });
+    expect(createExpenseInTransaction).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        paymentDate: '2026-06-15',
+        walletId: 10,
+        loanPaymentId: 22,
+      }),
+    );
+    expect(txUpdateLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ source_wallet_id: 10 }),
+      }),
+    );
+  });
+
   it('rejects wallet-paid actions when the source wallet lacks funds', async () => {
     findFirstWallet.mockResolvedValueOnce({ id: 10, type: 'DEBIT_CARD' });
     txFindFirstLoanPayment.mockResolvedValueOnce(scheduledWalletPayment);
