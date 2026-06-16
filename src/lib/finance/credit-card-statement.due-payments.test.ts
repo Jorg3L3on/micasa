@@ -234,6 +234,77 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toEqual([]);
   });
 
+  it('keeps a fully paid planner statement visible when the card balance is zero', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 5, 16, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 26,
+        name: 'DIDI Card',
+        type: 'CREDIT_CARD',
+        amount: 0,
+        cutoff_day: 3,
+        due_day: 18,
+      },
+    ]);
+    queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 26, total: 2519.99 }]);
+    findManyStatementImports.mockResolvedValue([
+      {
+        wallet_id: 26,
+        total_due: 2519.99,
+        period_end: null,
+        payment_due_date: new Date(Date.UTC(2026, 5, 18, 12, 0, 0)),
+        created_at: new Date(Date.UTC(2026, 5, 6, 12, 0, 0)),
+      },
+    ]);
+    findManyExpenses.mockResolvedValue([]);
+    findFirstFortnight
+      .mockResolvedValueOnce({ id: 35 })
+      .mockResolvedValueOnce({ id: 36 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 6);
+
+    expect(result.first).toEqual([]);
+    expect(result.second).toHaveLength(1);
+    expect(result.second[0]).toMatchObject({
+      walletId: 26,
+      walletName: 'DIDI Card',
+      statementDueDate: '2026-06-18',
+      nextDuePayment: 0,
+      paymentsAppliedToStatement: 2519.99,
+      effectiveAmount: 0,
+      plannerStatus: 'pagado',
+    });
+  });
+
+  it('hides zero-balance planner cards with no statement activity', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 5, 16, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 36,
+        name: 'DIDI Carmen',
+        type: 'CREDIT_CARD',
+        amount: 0,
+        cutoff_day: 12,
+        due_day: 27,
+      },
+    ]);
+    queryRaw.mockResolvedValue([]);
+    findManyStatementImports.mockResolvedValue([]);
+    findManyExpenses.mockResolvedValue([]);
+    findFirstFortnight
+      .mockResolvedValueOnce({ id: 35 })
+      .mockResolvedValueOnce({ id: 36 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 6);
+
+    expect(result.first).toEqual([]);
+    expect(result.second).toEqual([]);
+  });
+
   it('does not carry a stale latest import into a later planner month', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 6, 15, 0, 0)));
     findManyWallets.mockResolvedValue([

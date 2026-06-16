@@ -975,8 +975,17 @@ async function sumProjectedStatementInstallmentsByWallet(
   return sums;
 }
 
+const hasPlannerRelevantCardActivity = (item: {
+  outstandingBalance: number;
+  nextDuePayment: number;
+  paymentsAppliedToStatement: number;
+}) =>
+  item.outstandingBalance > 0 ||
+  item.nextDuePayment > 0 ||
+  item.paymentsAppliedToStatement > 0;
+
 /**
- * Cards with positive balance and due-day matching `dueDayPredicate`, as of `asOf`.
+ * Cards with statement activity and due-day matching `dueDayPredicate`, as of `asOf`.
  */
 async function getDuePaymentsWithAsOf(
   ownerFilter: OwnerFilter,
@@ -1003,9 +1012,11 @@ async function getDuePaymentsWithAsOf(
   });
 
   const dueCards = cards.filter((card) => {
-    if (Number(card.amount) <= 0) return false;
     const dueDay = card.due_day!;
-    return dueDayPredicate(dueDay);
+    if (!dueDayPredicate(dueDay)) return false;
+    if (options?.includeZeroObligation) return true;
+    if (Number(card.amount) <= 0) return false;
+    return true;
   });
 
   if (dueCards.length === 0) return [];
@@ -1175,7 +1186,7 @@ async function getDuePaymentsWithAsOf(
   });
 
   if (options?.includeZeroObligation) {
-    return items;
+    return items.filter(hasPlannerRelevantCardActivity);
   }
   return items.filter((item) => item.nextDuePayment > 0);
 }
