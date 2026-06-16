@@ -125,6 +125,8 @@ type LoanEditErrors = Partial<
   >
 >;
 
+const NO_PAYMENT_WALLET_VALUE = 'none';
+
 const defaultStartDate = () => todayCalendarDate();
 
 const defaultForm = (): LoanFormState => ({
@@ -235,7 +237,7 @@ const paymentActionDescription = (
 ) => {
   if (action === 'MARK_PAID') {
     return paymentSource === 'PAYROLL_DEDUCTION'
-      ? 'Se marcará como pagado sin generar salida de billetera porque es deducción de nómina.'
+      ? 'Se marcará como pagado. Si eliges billetera, se generará un gasto vinculado contra esa billetera.'
       : 'Se marcará como pagado y se generará el gasto vinculado contra la billetera seleccionada.';
   }
   if (action === 'MARK_SCHEDULED') {
@@ -791,7 +793,7 @@ export default function LoansPage() {
 
       if (paymentActionDraft.action === 'MARK_PAID') {
         payload.paidAt = paymentActionDraft.paidAt;
-        if (selectedLoan.paymentSource === 'WALLET') {
+        if (paymentActionDraft.sourceWalletId) {
           payload.sourceWalletId = Number(paymentActionDraft.sourceWalletId);
         }
       }
@@ -2047,6 +2049,8 @@ export default function LoansPage() {
                             const paymentSource =
                               payment.sourceWalletName ??
                               selectedLoanPaymentSource;
+                            const isPayrollDeductionLoan =
+                              selectedLoan.paymentSource === 'PAYROLL_DEDUCTION';
 
                             return (
                               <li
@@ -2207,8 +2211,7 @@ export default function LoansPage() {
                                     <div
                                       className={cn(
                                         'mt-3 grid gap-3',
-                                        paymentActionDraft.action === 'MARK_PAID' &&
-                                          selectedLoan.paymentSource === 'WALLET'
+                                        paymentActionDraft.action === 'MARK_PAID'
                                           ? 'min-[380px]:grid-cols-[145px_minmax(0,1fr)]'
                                           : 'sm:grid-cols-2',
                                       )}
@@ -2246,59 +2249,82 @@ export default function LoansPage() {
                                             ) : null}
                                           </div>
 
-                                          {selectedLoan.paymentSource === 'WALLET' ? (
-                                            <div className="space-y-1.5">
-                                              <Label>Billetera de pago</Label>
-                                              <Select
-                                                value={
-                                                  paymentActionDraft.sourceWalletId
-                                                }
-                                                onValueChange={(value) =>
-                                                  setPaymentActionField(
-                                                    'sourceWalletId',
-                                                    value,
-                                                  )
-                                                }
+                                          <div className="space-y-1.5">
+                                            <Label>
+                                              Billetera de pago
+                                              {isPayrollDeductionLoan
+                                                ? ' (opcional)'
+                                                : ''}
+                                            </Label>
+                                            <Select
+                                              value={
+                                                paymentActionDraft.sourceWalletId ||
+                                                (isPayrollDeductionLoan
+                                                  ? NO_PAYMENT_WALLET_VALUE
+                                                  : '')
+                                              }
+                                              onValueChange={(value) =>
+                                                setPaymentActionField(
+                                                  'sourceWalletId',
+                                                  value === NO_PAYMENT_WALLET_VALUE
+                                                    ? ''
+                                                    : value,
+                                                )
+                                              }
+                                            >
+                                              <SelectTrigger
+                                                aria-label="Billetera que pagará el préstamo"
+                                                className={cn(
+                                                  paymentActionErrors.sourceWalletId &&
+                                                    'border-destructive focus:ring-destructive/30',
+                                                )}
+                                                aria-invalid={Boolean(
+                                                  paymentActionErrors.sourceWalletId,
+                                                )}
                                               >
-                                                <SelectTrigger
-                                                  className={cn(
-                                                    paymentActionErrors.sourceWalletId &&
-                                                      'border-destructive focus:ring-destructive/30',
-                                                  )}
-                                                  aria-invalid={Boolean(
-                                                    paymentActionErrors.sourceWalletId,
-                                                  )}
-                                                >
-                                                  <SelectValue placeholder="Selecciona billetera" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  {fundingWallets.map((wallet) => (
-                                                    <SelectItem
-                                                      key={wallet.id}
-                                                      value={String(wallet.id)}
-                                                    >
-                                                      {wallet.name}
-                                                    </SelectItem>
-                                                  ))}
-                                                </SelectContent>
-                                              </Select>
-                                              {paymentActionErrors.sourceWalletId ? (
-                                                <p className="text-xs text-destructive">
-                                                  {
-                                                    paymentActionErrors.sourceWalletId
-                                                  }
-                                                </p>
-                                              ) : null}
-                                            </div>
-                                          ) : null}
+                                                <SelectValue placeholder="Selecciona billetera" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {isPayrollDeductionLoan ? (
+                                                  <SelectItem
+                                                    value={NO_PAYMENT_WALLET_VALUE}
+                                                  >
+                                                    Sin billetera
+                                                  </SelectItem>
+                                                ) : null}
+                                                {fundingWallets.map((wallet) => (
+                                                  <SelectItem
+                                                    key={wallet.id}
+                                                    value={String(wallet.id)}
+                                                  >
+                                                    {wallet.name}
+                                                    {wallet.amount != null
+                                                      ? ` · ${formatCurrency(wallet.amount)}`
+                                                      : ''}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                            {isPayrollDeductionLoan ? (
+                                              <p className="text-[11px] text-muted-foreground">
+                                                Déjalo sin billetera para
+                                                registrar solo la deducción de
+                                                nómina.
+                                              </p>
+                                            ) : null}
+                                            {paymentActionErrors.sourceWalletId ? (
+                                              <p className="text-xs text-destructive">
+                                                {paymentActionErrors.sourceWalletId}
+                                              </p>
+                                            ) : null}
+                                          </div>
                                         </>
                                       ) : null}
 
                                       <div
                                         className={cn(
                                           'space-y-1.5',
-                                          paymentActionDraft.action === 'MARK_PAID' &&
-                                            selectedLoan.paymentSource === 'WALLET'
+                                          paymentActionDraft.action === 'MARK_PAID'
                                             ? 'min-[380px]:col-span-2'
                                             : 'sm:col-span-2',
                                         )}

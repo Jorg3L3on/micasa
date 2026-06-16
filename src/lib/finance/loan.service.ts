@@ -575,7 +575,11 @@ export async function updateLoanPaymentForOwner(
       throw new Error('Pago de préstamo no encontrado');
     }
 
-    const nextSourceWalletId = input.sourceWalletId ?? existing.source_wallet_id;
+    const defaultSourceWalletId =
+      existing.loan.payment_source === 'WALLET'
+        ? existing.source_wallet_id
+        : null;
+    const nextSourceWalletId = input.sourceWalletId ?? defaultSourceWalletId;
     const amount = decimalToNumber(existing.amount);
     const wasPaid = existing.status === 'PAID';
     const willBePaid = action === 'MARK_PAID';
@@ -586,46 +590,47 @@ export async function updateLoanPaymentForOwner(
 
     if (wasPaid && existing.linked_expense) {
       await reverseAndDeleteLoanPaymentExpense(tx, existing.linked_expense);
-    } else if (
-      wasPaid &&
-      existing.loan.payment_source === 'WALLET' &&
-      existing.source_wallet_id
-    ) {
+    } else if (wasPaid && existing.source_wallet_id) {
       await tx.wallet.update({
         where: { id: existing.source_wallet_id },
         data: { amount: { increment: amount } },
       });
     }
 
-    if (existing.loan.payment_source === 'WALLET') {
-      if (willBePaid && !nextSourceWalletId) {
-        throw new Error('Selecciona la billetera que paga el préstamo');
-      }
+    if (
+      willBePaid &&
+      existing.loan.payment_source === 'WALLET' &&
+      !nextSourceWalletId
+    ) {
+      throw new Error('Selecciona la billetera que paga el préstamo');
+    }
 
-      if (willBePaid && nextSourceWalletId) {
-        const sourceWallet = await tx.wallet.findFirst({
-          where: { id: nextSourceWalletId, ...ownerFilter },
-          select: { id: true, amount: true, type: true },
-        });
-        if (!sourceWallet) {
-          throw new Error('Billetera de origen no encontrada');
-        }
-        if (!isFundingWalletType(sourceWallet.type)) {
-          throw new Error('El préstamo debe pagarse desde efectivo o débito');
-        }
-        if (decimalToNumber(sourceWallet.amount) < amount) {
-          throw new Error('Saldo insuficiente en la billetera de origen');
-        }
+    if (willBePaid && nextSourceWalletId) {
+      const sourceWallet = await tx.wallet.findFirst({
+        where: { id: nextSourceWalletId, ...ownerFilter },
+        select: { id: true, amount: true, type: true },
+      });
+      if (!sourceWallet) {
+        throw new Error('Billetera de origen no encontrada');
+      }
+      if (!isFundingWalletType(sourceWallet.type)) {
+        throw new Error('El préstamo debe pagarse desde efectivo o débito');
+      }
+      if (decimalToNumber(sourceWallet.amount) < amount) {
+        throw new Error('Saldo insuficiente en la billetera de origen');
       }
     }
+
+    const shouldPersistSourceWallet =
+      existing.loan.payment_source === 'WALLET' ||
+      (willBePaid && nextSourceWalletId != null);
 
     const payment = await tx.loanPayment.update({
       where: { id: paymentId },
       data: {
         status: targetStatus,
         paid_at: paidAt,
-        source_wallet_id:
-          existing.loan.payment_source === 'WALLET' ? nextSourceWalletId : null,
+        source_wallet_id: shouldPersistSourceWallet ? nextSourceWalletId : null,
         note: input.note === undefined ? existing.note : input.note,
       },
       include: {
@@ -635,12 +640,7 @@ export async function updateLoanPaymentForOwner(
     });
 
     let linkedExpense: { id: number } | null = null;
-    if (
-      willBePaid &&
-      paidAt != null &&
-      existing.loan.payment_source === 'WALLET' &&
-      nextSourceWalletId
-    ) {
+    if (willBePaid && paidAt != null && nextSourceWalletId) {
       linkedExpense = await createLinkedLoanPaymentExpense({
         tx,
         ownerFilter,
