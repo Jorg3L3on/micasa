@@ -122,6 +122,7 @@ export type ExpenseTemplateListItem = {
   suggestedAmount: number | null;
   paymentMethod: string | null;
   paymentMethodId: number | null;
+  paymentMethodProviderIconKey?: string | null;
   active: boolean;
   totalEstimatedAmount?: number;
   dueDayFirst: number | null;
