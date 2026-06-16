@@ -205,7 +205,7 @@ describe('createLoanForOwner', () => {
       }),
     );
     expect(loan.payments).toHaveLength(6);
-    expect(loan.nextPayment?.dueDate).toBe('2026-05-18');
+    expect(loan.nextPayment?.dueDate).toBe('2026-06-01');
   });
 });
 
