@@ -85,6 +85,9 @@ export const listPlanningTransactions = async (
   if (isPaid !== undefined) {
     expenseWhere.is_paid = isPaid;
   }
+  if (excludeCreditInstallment && type === 'expense') {
+    expenseWhere.loan_payment_id = null;
+  }
   if (excludeCreditInstallment) {
     expenseWhere = {
       AND: [expenseWhere, whereExcludeCreditInstallments()],
@@ -190,7 +193,7 @@ export const listPlanningTransactions = async (
       : cardPaymentsForPlanning.map(mapCreditCardPaymentToTransactionRow);
 
   const loanPaymentTransactions =
-    isPaid === false
+    isPaid === false || type === 'expense'
       ? []
       : loanPaymentsForPlanning.map(mapLoanDuePaymentToTransactionRow);
 
