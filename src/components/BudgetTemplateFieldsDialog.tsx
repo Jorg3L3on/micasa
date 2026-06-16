@@ -90,7 +90,7 @@ export default function BudgetTemplateFieldsDialog({
   }, [watchedFrequency, form]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    await onSubmit(values);
+    await onSubmit(step1Schema.parse(values));
     onOpenChange(false);
   });
 
