@@ -120,7 +120,7 @@ export const fetchDashboardWalletSnapshot = async (ownerFilter: OwnerFilter) =>
 
 export const fetchRecentExpenses = async (ownerFilter: OwnerFilter) =>
   prisma.expense.findMany({
-    where: ownerFilter,
+    where: { ...ownerFilter, loan_payment_id: null },
     take: 10,
     orderBy: { created_at: 'desc' },
     include: {
