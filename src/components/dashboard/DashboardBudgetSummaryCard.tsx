@@ -51,15 +51,20 @@ export default function DashboardBudgetSummaryCard({
           </span>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">
-              Presupuesto de la quincena
+              Presupuesto del periodo
             </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground sm:text-xs">
               {sourceLabel ?? 'Gasto planeado contra categorías asignadas'}
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs" asChild>
-          <Link href={budgetsHref}>Ver</Link>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-11 shrink-0 text-xs sm:h-8"
+          asChild
+        >
+          <Link href={budgetsHref}>Ver presupuestos</Link>
         </Button>
       </div>
 
@@ -103,10 +108,12 @@ export default function DashboardBudgetSummaryCard({
             >
               <div
                 className={cn(
-                  'h-full rounded-full transition-[width] duration-500',
+                  'h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none',
                   overspent
                     ? 'bg-destructive'
-                    : 'bg-gradient-to-r from-sky-500 via-violet-500 to-emerald-500',
+                    : usedPercent >= 75
+                      ? 'bg-amber-500 dark:bg-amber-400'
+                      : 'bg-sky-500 dark:bg-sky-400',
                 )}
                 style={{ width: `${clampedPercent}%` }}
               />
@@ -121,8 +128,8 @@ export default function DashboardBudgetSummaryCard({
 
           {categories.length > 0 ? (
             <div className="border-t border-border/60 pt-4">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Top categorías
+              <h4 className="text-sm font-medium text-foreground">
+                Categorías con mayor gasto
               </h4>
               <ul className="mt-3 space-y-3">
                 {categories.slice(0, 5).map((category, index) => (
@@ -138,7 +145,7 @@ export default function DashboardBudgetSummaryCard({
                         <p className="font-mono text-xs font-bold tabular-nums">
                           {formatCurrency(category.spent)}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {category.percentOfBudget}%
                         </p>
                       </div>
@@ -180,7 +187,7 @@ function MetricBlock({
 }) {
   return (
     <div className="rounded-lg border border-border/60 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-sm font-medium text-muted-foreground sm:text-xs">
         {label}
       </p>
       <p

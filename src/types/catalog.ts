@@ -196,11 +196,14 @@ export type BudgetHistoryGroup = {
   allocated_amount: number;
   periods: Array<{
     period_id: number;
+    name: string;
+    frequency: string;
     start_date: string;
     end_date: string;
     allocated_amount: number;
     spent_amount: number;
     remaining_amount: number;
+    allocations: BudgetAllocationItem[];
   }>;
 };
 

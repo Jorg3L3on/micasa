@@ -7,6 +7,8 @@ import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import EmptyState from '@/components/EmptyState';
 import BudgetFormDialog from '@/components/BudgetFormDialog';
 import BudgetAllocationsDialog from '@/components/BudgetAllocationsDialog';
@@ -21,7 +23,15 @@ import {
   updateBudgetAllocations,
   updateBudgetTemplate,
 } from '@/lib/api/budgets';
-import { PiggyBank, LayoutList, Trash2, Repeat2, Pencil, RotateCcw } from 'lucide-react';
+import {
+  AlertCircle,
+  LayoutList,
+  Pencil,
+  PiggyBank,
+  Repeat2,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem } from '@/types/catalog';
 import type { Step1Values, Step2Values } from '@/schemas/budget.schema';
@@ -124,7 +134,7 @@ export default function BudgetTemplatesPage() {
     }
   };
 
-  const handleReactivate = async (tpl: BudgetListItem) => {
+  const handleReactivate = useCallback(async (tpl: BudgetListItem) => {
     try {
       setError(null);
       await setBudgetActive(tpl.id, true, context);
@@ -133,7 +143,7 @@ export default function BudgetTemplatesPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al reactivar plantilla');
     }
-  };
+  }, [context, fetchTemplates]);
 
   const columns = useMemo<ColumnDef<BudgetListItem>[]>(
     () => [
@@ -146,7 +156,13 @@ export default function BudgetTemplatesPage() {
               {row.original.name}
             </span>
             {row.original.recurrent && (
-              <Repeat2 className="h-3.5 w-3.5 shrink-0 text-violet-500" aria-label="Recurrente" />
+              <>
+                <Repeat2
+                  className="h-3.5 w-3.5 shrink-0 text-violet-500"
+                  aria-hidden
+                />
+                <span className="sr-only">Recurrente</span>
+              </>
             )}
           </div>
         ),
@@ -160,7 +176,11 @@ export default function BudgetTemplatesPage() {
       {
         accessorKey: 'allocated_amount',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Total" />,
-        cell: ({ row }) => formatCurrency(row.original.allocated_amount),
+        cell: ({ row }) => (
+          <span className="font-mono tabular-nums">
+            {formatCurrency(row.original.allocated_amount)}
+          </span>
+        ),
       },
       {
         id: 'status',
@@ -183,7 +203,7 @@ export default function BudgetTemplatesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8"
+                  className="size-11 sm:size-8"
                   onClick={() => handleReactivate(tpl)}
                   aria-label={`Reactivar ${tpl.name}`}
                 >
@@ -194,7 +214,7 @@ export default function BudgetTemplatesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8"
+                    className="size-11 sm:size-8"
                     onClick={() => { setSelected(tpl); setFormError(null); setEditDialogOpen(true); }}
                     aria-label={`Editar ${tpl.name}`}
                   >
@@ -203,7 +223,7 @@ export default function BudgetTemplatesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8"
+                    className="size-11 sm:size-8"
                     onClick={() => { setSelected(tpl); setFormError(null); setAllocDialogOpen(true); }}
                     aria-label={`Ver asignaciones de ${tpl.name}`}
                   >
@@ -212,7 +232,7 @@ export default function BudgetTemplatesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8"
+                    className="size-11 sm:size-8"
                     onClick={() => { setSelected(tpl); setError(null); setDeleteDialogOpen(true); }}
                     aria-label={`Desactivar ${tpl.name}`}
                   >
@@ -225,31 +245,70 @@ export default function BudgetTemplatesPage() {
         },
       },
     ],
-    [],
+    [handleReactivate],
   );
 
   return (
     <>
       <div
-        className="sticky top-16 z-20 mb-4 flex justify-end border-b border-border/60 bg-background py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        className="sticky top-16 z-20 mb-4 flex flex-col gap-3 border-b border-border/60 bg-background py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
         aria-label="Acciones de plantillas de presupuestos"
       >
-        <Button onClick={() => { setFormError(null); setCreateDialogOpen(true); }}>
-          <PiggyBank className="mr-2 h-4 w-4" />
+        <div>
+          <h2 className="text-lg font-semibold leading-tight">
+            Plantillas de presupuestos
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Define montos y asignaciones para generar nuevos periodos.
+          </p>
+        </div>
+        <Button
+          className="h-11 w-full sm:h-9 sm:w-auto"
+          onClick={() => {
+            setFormError(null);
+            setCreateDialogOpen(true);
+          }}
+        >
+          <PiggyBank className="mr-2 h-4 w-4" aria-hidden />
           Nueva plantilla
         </Button>
       </div>
 
-      {error && !deleteDialogOpen && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">{error}</div>
-      )}
+      {error && !deleteDialogOpen ? (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" aria-hidden />
+          <div>
+            <AlertTitle>No se pudo completar la acción</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </div>
+        </Alert>
+      ) : null}
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="gap-0 py-0">
+        <CardContent className="p-4 sm:p-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Cargando…</div>
+            <div className="space-y-4" aria-busy="true" aria-label="Cargando plantillas">
+              <Skeleton className="h-9 w-full max-w-xs" />
+              <div className="space-y-3 rounded-lg border p-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-4">
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : templates.length === 0 ? (
-            <EmptyState message="No se encontraron plantillas de presupuesto." />
+            <EmptyState
+              message="No hay plantillas de presupuesto."
+              description="Crea una plantilla para definir montos, frecuencia y categorías."
+              action={{
+                label: 'Crear plantilla',
+                onClick: () => setCreateDialogOpen(true),
+              }}
+            />
           ) : (
             <DataTable
               data={templates}
@@ -265,7 +324,6 @@ export default function BudgetTemplatesPage() {
       <BudgetFormDialog
         open={createDialogOpen}
         onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) setFormError(null); }}
-        onSuccess={fetchTemplates}
         onSubmit={handleCreate}
         error={formError && createDialogOpen ? formError : null}
       />

@@ -4,12 +4,15 @@ import * as React from 'react';
 import {
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type ExpandedState,
+  type Row,
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table';
@@ -51,6 +54,12 @@ export type DataTableProps<TData> = {
   onRowClick?: (row: TData) => void;
   /** When set with onRowClick, highlights the row whose id matches (row must have numeric `id`). */
   selectedRowId?: number | null;
+  /** Renders an inline detail panel below an expanded row. Enables opt-in row expansion. */
+  renderExpandedRow?: (row: TData) => React.ReactNode;
+  /** Whether a given row can expand. Defaults to true for every row when renderExpandedRow is set. */
+  getRowCanExpand?: (row: Row<TData>) => boolean;
+  /** Allow more than one row expanded at a time. Defaults to false (accordion). */
+  enableMultiRowExpansion?: boolean;
 };
 
 export function DataTable<TData>({
@@ -65,10 +74,16 @@ export function DataTable<TData>({
   filterSlot,
   onRowClick,
   selectedRowId,
+  renderExpandedRow,
+  getRowCanExpand,
+  enableMultiRowExpansion = false,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [visibility, setVisibility] = React.useState<VisibilityState>({});
+  const [expanded, setExpanded] = React.useState<ExpandedState>({});
+
+  const expansionEnabled = renderExpandedRow != null;
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns its internal mutable table API.
   const table = useReactTable({
@@ -84,7 +99,14 @@ export function DataTable<TData>({
       sorting,
       columnFilters,
       columnVisibility: visibility,
+      ...(expansionEnabled && { expanded }),
     },
+    ...(expansionEnabled && {
+      onExpandedChange: setExpanded,
+      getExpandedRowModel: getExpandedRowModel(),
+      getRowCanExpand: getRowCanExpand ?? (() => true),
+      enableMultiRowExpansion,
+    }),
     ...(pagination && {
       getPaginationRowModel: getPaginationRowModel(),
       initialState: { pagination: { pageSize: 10 } },
@@ -175,9 +197,10 @@ export function DataTable<TData>({
                 const original = row.original as { id?: number };
                 const isSelected =
                   selectedRowId != null && original?.id === selectedRowId;
+                const isExpanded = expansionEnabled && row.getIsExpanded();
                 return (
+                <React.Fragment key={row.id}>
                 <TableRow
-                  key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
                   data-selected={isSelected ? 'true' : undefined}
                   className={cn(
@@ -214,6 +237,20 @@ export function DataTable<TData>({
                   );
                 })}
                 </TableRow>
+                {isExpanded && renderExpandedRow ? (
+                  <TableRow
+                    data-expanded-detail="true"
+                    className="hover:bg-transparent"
+                  >
+                    <TableCell
+                      colSpan={row.getVisibleCells().length}
+                      className="bg-muted/20 p-0"
+                    >
+                      {renderExpandedRow(row.original)}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                </React.Fragment>
               );
               })
             ) : (

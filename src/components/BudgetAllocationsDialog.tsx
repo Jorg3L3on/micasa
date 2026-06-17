@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -63,7 +65,7 @@ function AllocationSummary({
   return (
     <div
       className={cn(
-        'flex items-center justify-between rounded-lg border px-4 py-3 text-sm',
+        'grid grid-cols-3 gap-3 rounded-lg border px-4 py-3 text-sm',
         isOver
           ? 'border-destructive/50 bg-destructive/5'
           : 'border-border bg-muted/40',
@@ -71,20 +73,24 @@ function AllocationSummary({
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-muted-foreground">Total presupuesto</span>
-        <span className="font-semibold">{formatCurrency(totalAmount)}</span>
+        <span className="font-mono font-semibold tabular-nums">
+          {formatCurrency(totalAmount)}
+        </span>
       </div>
       <div className="flex flex-col gap-0.5 text-center">
         <span className="text-xs text-muted-foreground">Asignado</span>
-        <span className="font-semibold">{formatCurrency(allocated)}</span>
+        <span className="font-mono font-semibold tabular-nums">
+          {formatCurrency(allocated)}
+        </span>
       </div>
       <div className="flex flex-col gap-0.5 text-right">
         <span className="text-xs text-muted-foreground">Restante</span>
         <span
           className={cn(
-            'font-semibold',
+            'font-mono font-semibold tabular-nums',
             isOver && 'text-destructive',
             !isOver && !isExact && 'text-amber-600 dark:text-amber-400',
-            isExact && 'text-green-700 dark:text-green-400',
+            isExact && 'text-emerald-600 dark:text-emerald-400',
           )}
         >
           {formatCurrency(remaining)}
@@ -105,6 +111,7 @@ export default function BudgetAllocationsDialog({
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<Step2Input>({
@@ -129,20 +136,29 @@ export default function BudgetAllocationsDialog({
   );
   const isFullyAllocated = Math.abs(allocated - budget.allocated_amount) < 0.01;
 
+  const loadOptions = useCallback(() => {
+    setLoadingOptions(true);
+    setOptionsError(null);
+    Promise.all([
+      clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
+      clientFetchFromApi<CategoryOption[]>('/api/categories', undefined, context),
+    ])
+      .then(([w, c]) => {
+        setWallets(w.filter((wallet) => wallet.active));
+        setCategories(c);
+      })
+      .catch((err) => {
+        setOptionsError(
+          err instanceof Error ? err.message : 'No se pudieron cargar las opciones',
+        );
+      })
+      .finally(() => setLoadingOptions(false));
+  }, [context]);
+
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Dialog option loading starts when the dialog opens.
-      setLoadingOptions(true);
-      Promise.all([
-        clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
-        clientFetchFromApi<CategoryOption[]>('/api/categories', undefined, context),
-      ])
-        .then(([w, c]) => {
-          setWallets(w.filter((wallet) => wallet.active));
-          setCategories(c);
-        })
-        .finally(() => setLoadingOptions(false));
-
+      loadOptions();
       form.reset({
         allocations: budget.allocations.length
           ? budget.allocations.map((a) => ({
@@ -153,7 +169,7 @@ export default function BudgetAllocationsDialog({
           : [{ wallet_id: 0, category_id: 0, amount: 0 }],
       });
     }
-  }, [open, context, budget, form]);
+  }, [open, budget, form, loadOptions]);
 
   const handleSubmit = form.handleSubmit(async (rawData) => {
     const data: Step2Values = step2Schema.parse(rawData);
@@ -182,19 +198,20 @@ export default function BudgetAllocationsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Editar asignaciones — {budget.name}</DialogTitle>
+          <DialogTitle>Editar asignaciones: {budget.name}</DialogTitle>
           <DialogDescription>
             Modifica la distribución del presupuesto entre carteras y categorías.
           </DialogDescription>
         </DialogHeader>
 
-        {error && (
-          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <Form {...form}>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -203,35 +220,59 @@ export default function BudgetAllocationsDialog({
               allocations={watchedAllocations ?? []}
             />
 
-            {form.formState.errors.root && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {form.formState.errors.root.message}
-              </div>
-            )}
+            {form.formState.errors.root ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" aria-hidden />
+                <AlertDescription>
+                  {form.formState.errors.root.message}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <div ref={scrollRef} className="max-h-60 space-y-3 overflow-y-auto pr-1">
               {loadingOptions ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  Cargando opciones…
+                <div className="space-y-3" aria-busy="true" aria-label="Cargando opciones">
+                  {Array.from({ length: 2 }).map((_, index) => (
+                    <Skeleton key={index} className="h-40 w-full rounded-lg" />
+                  ))}
                 </div>
+              ) : optionsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <AlertDescription>{optionsError}</AlertDescription>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={loadOptions}
+                    >
+                      Reintentar
+                    </Button>
+                  </div>
+                </Alert>
               ) : (
                 fields.map((field, index) => (
                   <div
                     key={field.id}
-                    className="grid grid-cols-[1fr_1fr_5.5rem_2rem] items-start gap-2 rounded-lg border p-3"
+                    className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_2.5rem]"
                   >
                     <FormField
                       control={form.control}
                       name={`allocations.${index}.wallet_id`}
                       render={({ field: f }) => (
-                        <FormItem>
+                        <FormItem className="col-span-2 min-w-0 sm:col-span-1">
                           <FormLabel className="text-xs">Cartera</FormLabel>
                           <Select
                             onValueChange={(v) => f.onChange(Number(v))}
                             value={f.value ? String(f.value) : ''}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-8 w-full text-xs">
+                              <SelectTrigger
+                                className="h-11 w-full text-sm sm:h-8 sm:text-xs"
+                                aria-label={`Cartera de la asignación ${index + 1}`}
+                              >
                                 <SelectValue placeholder="Cartera" />
                               </SelectTrigger>
                             </FormControl>
@@ -257,14 +298,17 @@ export default function BudgetAllocationsDialog({
                       control={form.control}
                       name={`allocations.${index}.category_id`}
                       render={({ field: f }) => (
-                        <FormItem>
+                        <FormItem className="col-span-2 min-w-0 sm:col-span-1">
                           <FormLabel className="text-xs">Categoría</FormLabel>
                           <Select
                             onValueChange={(v) => f.onChange(Number(v))}
                             value={f.value ? String(f.value) : ''}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-8 w-full text-xs">
+                              <SelectTrigger
+                                className="h-11 w-full text-sm sm:h-8 sm:text-xs"
+                                aria-label={`Categoría de la asignación ${index + 1}`}
+                              >
                                 <SelectValue placeholder="Categoría" />
                               </SelectTrigger>
                             </FormControl>
@@ -285,14 +329,15 @@ export default function BudgetAllocationsDialog({
                       control={form.control}
                       name={`allocations.${index}.amount`}
                       render={({ field: f }) => (
-                        <FormItem>
+                        <FormItem className="min-w-0">
                           <FormLabel className="text-xs">Monto</FormLabel>
                           <FormControl>
                             <CurrencyInput
                               value={f.value}
                               onChange={f.onChange}
-                              className="h-8 text-xs"
+                              className="h-11 text-sm sm:h-8 sm:text-xs"
                               placeholder="0"
+                              aria-label={`Monto de la asignación ${index + 1}`}
                             />
                           </FormControl>
                           <FormMessage className="text-[10px]" />
@@ -300,12 +345,12 @@ export default function BudgetAllocationsDialog({
                       )}
                     />
 
-                    <div className="flex items-end pb-1 pt-6">
+                    <div className="flex items-end pt-6">
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        className="size-11 text-destructive hover:text-destructive sm:size-8"
                         onClick={() => remove(index)}
                         disabled={fields.length === 1}
                         aria-label="Eliminar asignación"
@@ -322,24 +367,36 @@ export default function BudgetAllocationsDialog({
               type="button"
               variant="outline"
               size="sm"
-              className="w-full"
+              className="h-11 w-full sm:h-8"
               onClick={handleAppend}
+              disabled={loadingOptions || Boolean(optionsError)}
             >
-              <Plus className="mr-1 h-4 w-4" />
+              <Plus className="mr-1 h-4 w-4" aria-hidden />
               Agregar asignación
             </Button>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 sm:h-9"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                disabled={!isFullyAllocated || form.formState.isSubmitting}
+                className="h-11 sm:h-9"
+                disabled={
+                  !isFullyAllocated ||
+                  form.formState.isSubmitting ||
+                  loadingOptions ||
+                  Boolean(optionsError)
+                }
               >
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
                     Guardando…
                   </>
                 ) : (

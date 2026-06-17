@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { DashboardData } from '@/types/dashboard';
 import StatCard from '@/components/dashboard/StatCard';
@@ -27,6 +27,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isViewPending, startViewTransition] = useTransition();
   const todayYmd = useHydrationSafeTodayYmd();
   const { context } = useFinanceContext();
   const { summary } = data;
@@ -41,16 +42,22 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
     return query ? `?${query}` : '';
   }, [context]);
   const periodLabel = getPeriodLabel(data.period);
+  const panelTitle =
+    selectedView === 'month' ? 'Resumen mensual' : 'Plan de quincena';
   const loanStat = getDashboardLoanStatDisplay(data);
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
     mutator(nextParams);
     const qs = nextParams.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    startViewTransition(() => {
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    });
   };
 
   const handleViewChange = (nextView: 'month' | 'biweekly') => {
+    if (nextView === selectedView) return;
+
     replaceSearchParams((nextParams) => {
       nextParams.set('view', nextView);
       if (nextView === 'month') {
@@ -63,25 +70,44 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
 
   return (
     <div className="w-full space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">Plan de quincena</h2>
-          <p className="text-xs text-muted-foreground">{periodLabel}</p>
+      <section
+        className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        aria-labelledby="dashboard-period-title"
+        aria-describedby="dashboard-period-label"
+      >
+        <div className="min-w-0 flex-1">
+          <h2
+            id="dashboard-period-title"
+            className="text-balance text-lg font-semibold leading-tight"
+          >
+            {panelTitle}
+          </h2>
+          <p
+            id="dashboard-period-label"
+            className="mt-1 text-sm text-muted-foreground sm:text-xs"
+          >
+            {periodLabel}
+          </p>
         </div>
         <div
-          className="inline-flex items-center rounded-lg border border-border/60 bg-muted/30 p-1"
+          className="grid w-full grid-cols-2 rounded-lg bg-muted/60 p-1 sm:w-auto"
           role="group"
           aria-label="Cambiar vista del panel: mes o quincena"
+          aria-busy={isViewPending}
         >
           <Button
             type="button"
             size="sm"
-            variant={selectedView === 'month' ? 'default' : 'ghost'}
+            variant="ghost"
             onClick={() => handleViewChange('month')}
             aria-pressed={selectedView === 'month'}
+            aria-label="Mostrar resumen mensual"
+            disabled={isViewPending}
             className={cn(
-              'h-8 rounded-md px-3 text-xs',
-              selectedView !== 'month' && 'text-muted-foreground',
+              'h-11 rounded-md px-4 text-sm transition-colors duration-200 motion-reduce:transition-none sm:h-8 sm:text-xs',
+              selectedView === 'month'
+                ? 'bg-background text-foreground shadow-xs hover:bg-background dark:bg-input/60 dark:hover:bg-input/60'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Mes
@@ -89,33 +115,31 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           <Button
             type="button"
             size="sm"
-            variant={selectedView === 'biweekly' ? 'default' : 'ghost'}
+            variant="ghost"
             onClick={() => handleViewChange('biweekly')}
             aria-pressed={selectedView === 'biweekly'}
+            aria-label="Mostrar plan de quincena"
+            disabled={isViewPending}
             className={cn(
-              'h-8 rounded-md px-3 text-xs',
-              selectedView !== 'biweekly' && 'text-muted-foreground',
+              'h-11 rounded-md px-4 text-sm transition-colors duration-200 motion-reduce:transition-none sm:h-8 sm:text-xs',
+              selectedView === 'biweekly'
+                ? 'bg-background text-foreground shadow-xs hover:bg-background dark:bg-input/60 dark:hover:bg-input/60'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Quincena
           </Button>
         </div>
+      </section>
 
-        {selectedView === 'biweekly' ? (
-          <span className="basis-full text-xs text-muted-foreground sm:basis-auto">
-            Mostrando quincena actual ({currentFortnightPeriod === 'FIRST' ? '1ª' : '2ª'})
-          </span>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
         <DashboardFundingNetCard
           amount={data.fundingNetVsPendingExpense}
           fundingWalletBalanceTotal={data.fundingWalletBalanceTotal}
           pendingAmount={summary.totalUnpaid}
           payrollDeductionAmount={data.planningPayrollLoanDeduction?.total ?? 0}
           wallets={data.fundingWalletBreakdown}
-          className="col-span-2"
+          className="sm:col-span-2"
         />
         <StatCard
           title="Ingresos"
@@ -147,7 +171,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-stretch">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 [&>*]:min-w-0">
         <DashboardBudgetSummaryCard
           budgetSummary={data.budgetSummary}
           ownerQueryString={ownerQueryString}
@@ -166,9 +190,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
 
       {data.alerts.length > 0 ? <AlertsWarningsCard data={data} /> : null}
 
-      <div className="w-full">
-        <MyCardsPanel />
-      </div>
+      <MyCardsPanel />
     </div>
   );
 }
