@@ -212,11 +212,23 @@ export async function listHistoryPeriods(
       allocated_amount: number;
       periods: Array<{
         period_id: number;
+        name: string;
+        frequency: string;
         start_date: string;
         end_date: string;
         allocated_amount: number;
         spent_amount: number;
         remaining_amount: number;
+        allocations: Array<{
+          id: number;
+          wallet_id: number;
+          wallet_name: string;
+          category_id: number;
+          category_name: string;
+          category_icon: string | null;
+          amount: number;
+          spent_amount: number;
+        }>;
       }>;
     }
   >();
@@ -250,11 +262,23 @@ export async function listHistoryPeriods(
     const allocatedAmount = Number(budget.total_amount);
     grouped.get(budget.id)!.periods.push({
       period_id: period.id,
+      name: budget.name,
+      frequency: budget.frequency,
       start_date: period.start_date.toISOString(),
       end_date: period.end_date.toISOString(),
       allocated_amount: allocatedAmount,
       spent_amount: spend.total_spent,
       remaining_amount: allocatedAmount - spend.total_spent,
+      allocations: budget.allocations.map((a, index) => ({
+        id: a.id,
+        wallet_id: a.wallet_id,
+        wallet_name: a.wallet.name,
+        category_id: a.category_id,
+        category_name: a.category.name,
+        category_icon: a.category.icon ?? null,
+        amount: Number(a.amount),
+        spent_amount: spend.by_allocation[index]?.spent_amount ?? 0,
+      })),
     });
   }
 

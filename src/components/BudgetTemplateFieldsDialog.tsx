@@ -3,8 +3,9 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -104,11 +105,12 @@ export default function BudgetTemplateFieldsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {error && (
-          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <Form {...form}>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -183,7 +185,7 @@ export default function BudgetTemplateFieldsDialog({
             )}
 
             {watchedFrequency === 'CUSTOM' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="start_date"
@@ -222,14 +224,23 @@ export default function BudgetTemplateFieldsDialog({
             )}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 sm:h-9"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
+              <Button
+                type="submit"
+                className="h-11 sm:h-9"
+                disabled={form.formState.isSubmitting}
+              >
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Guardando...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                    Guardando…
                   </>
                 ) : (
                   'Guardar cambios'
