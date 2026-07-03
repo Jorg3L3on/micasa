@@ -8,6 +8,7 @@ import {
 import { getNextCalendarFortnight } from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
+import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
 import {
   computePeriodSpendByAllocations,
   type DateRange,
@@ -138,10 +139,15 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
 
       const spend =
         allocationInputs.length > 0
-          ? await computePeriodSpendByAllocations(prisma, allocationInputs, {
-              start_date: period.start_date,
-              end_date: period.end_date,
-            })
+          ? await computePeriodSpendByAllocations(
+              prisma,
+              allocationInputs,
+              {
+                start_date: period.start_date,
+                end_date: period.end_date,
+              },
+              ownerFilter,
+            )
           : { total_spent: 0, by_allocation: [] };
 
       const allocatedAmount = Number(budget.total_amount);
@@ -253,10 +259,15 @@ export async function listHistoryPeriods(
 
     const spend =
       allocationInputs.length > 0
-        ? await computePeriodSpendByAllocations(prisma, allocationInputs, {
-            start_date: period.start_date,
-            end_date: period.end_date,
-          })
+        ? await computePeriodSpendByAllocations(
+            prisma,
+            allocationInputs,
+            {
+              start_date: period.start_date,
+              end_date: period.end_date,
+            },
+            ownerFilter,
+          )
         : { total_spent: 0, by_allocation: [] };
 
     const allocatedAmount = Number(budget.total_amount);
@@ -366,6 +377,7 @@ export async function listBudgetPeriodExpensesByAllocation(
     where: {
       ...ownerFilter,
       is_paid: true,
+      ...whereExcludeCreditInstallments(),
       payment_date: {
         gte: period.start_date,
         lte: period.end_date,
