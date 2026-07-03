@@ -12,6 +12,7 @@ import {
   type DateRange,
 } from '@/lib/finance/budget-period-spend';
 import { getCalendarFortnightBoundsForMonth } from '@/lib/finance/budget-period-windows';
+import { ensureBudgetPeriodsForMonth } from '@/lib/finance/budget-period.service';
 
 export type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
@@ -38,6 +39,8 @@ export async function getMonthlyBudgetPanel(
   year: number,
   month: number,
 ): Promise<MonthlyBudgetPanelResult> {
+  await ensureBudgetPeriodsForMonth(ownerFilter, year, month);
+
   const { first: firstFortnight, second: secondFortnight } =
     getCalendarFortnightBoundsForMonth(year, month);
   const monthStart = firstFortnight.start_date;

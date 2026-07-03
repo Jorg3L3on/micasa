@@ -8,22 +8,27 @@ import {
 
 const mocks = vi.hoisted(() => ({
   budgetFindMany: vi.fn(),
+  budgetCount: vi.fn(),
   budgetPeriodFindMany: vi.fn(),
   budgetPeriodFindFirst: vi.fn(),
   budgetPeriodCreate: vi.fn(),
+  budgetPeriodCount: vi.fn(),
   fortnightFindMany: vi.fn(),
+  fortnightCount: vi.fn(),
   computePeriodSpendByAllocations: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
-    budget: { findMany: mocks.budgetFindMany },
+    budget: { findMany: mocks.budgetFindMany, count: mocks.budgetCount },
     budgetPeriod: {
       findMany: mocks.budgetPeriodFindMany,
       findFirst: mocks.budgetPeriodFindFirst,
       create: mocks.budgetPeriodCreate,
+      count: mocks.budgetPeriodCount,
+      deleteMany: vi.fn(),
     },
-    fortnight: { findMany: mocks.fortnightFindMany },
+    fortnight: { findMany: mocks.fortnightFindMany, count: mocks.fortnightCount },
   },
 }));
 
@@ -49,11 +54,15 @@ const allocationRow = {
 describe('listActivePeriods', () => {
   beforeEach(() => {
     mocks.budgetFindMany.mockReset();
+    mocks.budgetCount.mockReset();
     mocks.budgetPeriodFindMany.mockReset();
     mocks.budgetPeriodFindFirst.mockReset();
     mocks.budgetPeriodCreate.mockReset();
+    mocks.budgetPeriodCount.mockReset();
     mocks.fortnightFindMany.mockReset();
+    mocks.fortnightCount.mockReset();
     mocks.computePeriodSpendByAllocations.mockReset();
+    mocks.fortnightCount.mockResolvedValue(0);
     mocks.computePeriodSpendByAllocations.mockResolvedValue({
       total_spent: 120,
       by_allocation: [{ spent_amount: 120 }],
@@ -89,6 +98,7 @@ describe('listActivePeriods', () => {
       spent_amount: 120,
       remaining_amount: 380,
     });
+    expect(mocks.fortnightCount).toHaveBeenCalled();
     expect(mocks.computePeriodSpendByAllocations).toHaveBeenCalledWith(
       expect.anything(),
       [{ wallet_id: 2, category_id: 3, amount: 500 }],

@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   },
   transaction: vi.fn(),
   generatePeriodsOnCreate: vi.fn(),
+  syncBudgetPeriodsAfterTemplateUpdate: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -30,6 +31,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/finance/budget-period.service', () => ({
   generatePeriodsOnCreate: mocks.generatePeriodsOnCreate,
+  syncBudgetPeriodsAfterTemplateUpdate: mocks.syncBudgetPeriodsAfterTemplateUpdate,
 }));
 
 const ownerFilter = { user_id: 1, house_id: null };

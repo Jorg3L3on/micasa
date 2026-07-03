@@ -23,6 +23,7 @@ async function main() {
   await prisma.pantryProduct.deleteMany();
   await prisma.creditCardStatementImport.deleteMany();
   await prisma.creditCardPayment.deleteMany();
+  await prisma.budgetPeriod.deleteMany();
   await prisma.budgetAllocation.deleteMany();
   await prisma.budget.deleteMany();
   await prisma.transfer.deleteMany();
@@ -456,6 +457,52 @@ async function main() {
   const f_house_may26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.SECOND, start_date: new Date('2026-05-16T06:00:00'), end_date: new Date('2026-05-31T06:00:00'), label: 'Segunda quincena - Mayo 2026',  house_id: leonSolorzano.id } });
   const f_house_jun26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.FIRST,  start_date: new Date('2026-06-01T06:00:00'), end_date: new Date('2026-06-15T06:00:00'), label: 'Primera quincena - Junio 2026', house_id: leonSolorzano.id } });
   const f_house_jun26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.SECOND, start_date: new Date('2026-06-16T06:00:00'), end_date: new Date('2026-06-30T06:00:00'), label: 'Segunda quincena - Junio 2026', house_id: leonSolorzano.id } });
+
+  // ─────────────────────────────────────────────
+  // BUDGETS (house demo)
+  // ─────────────────────────────────────────────
+  const budgetDespensa = await prisma.budget.create({
+    data: {
+      name: 'Despensa',
+      total_amount: 3500,
+      frequency: 'BIWEEKLY',
+      recurrent: true,
+      active: true,
+      start_date: f_house_jun26_first.start_date,
+      end_date: f_house_jun26_second.end_date,
+      house_id: leonSolorzano.id,
+    },
+  });
+  await prisma.budgetAllocation.createMany({
+    data: [
+      {
+        budget_id: budgetDespensa.id,
+        wallet_id: walletBanamex.id,
+        category_id: catComidaHouse.id,
+        amount: 2000,
+      },
+      {
+        budget_id: budgetDespensa.id,
+        wallet_id: walletSantander.id,
+        category_id: catComidaHouse.id,
+        amount: 1500,
+      },
+    ],
+  });
+  await prisma.budgetPeriod.createMany({
+    data: [
+      {
+        budget_id: budgetDespensa.id,
+        start_date: f_house_jun26_first.start_date,
+        end_date: f_house_jun26_first.end_date,
+      },
+      {
+        budget_id: budgetDespensa.id,
+        start_date: f_house_jun26_second.start_date,
+        end_date: f_house_jun26_second.end_date,
+      },
+    ],
+  });
 
   // ─────────────────────────────────────────────
   // INCOMES
