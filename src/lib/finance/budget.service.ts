@@ -1,8 +1,9 @@
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { CreateBudgetInput, AllocationInput, Step1Values } from '@/schemas/budget.schema';
-import { generatePeriodsOnCreate } from '@/lib/finance/budget-period.service';
+import { generatePeriodsOnCreate, syncBudgetPeriodsAfterTemplateUpdate } from '@/lib/finance/budget-period.service';
 import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import { computeBudgetTemplateDateRange } from '@/lib/finance/budget-template-date-range';
 
 async function resolveCurrentFortnight(ownerFilter: OwnerFilter) {
@@ -23,7 +24,9 @@ async function resolveBudgetDateRange(
 
   if (frequency === 'BIWEEKLY' && !currentFortnight) {
     throw Object.assign(
-      new Error('No se encontró la quincena actual para este contexto'),
+      new Error(
+        'No hay una quincena creada para este contexto. Crea el mes en Planificación antes de configurar un presupuesto quincenal.',
+      ),
       { code: 'CURRENT_FORTNIGHT_NOT_FOUND' },
     );
   }
@@ -162,7 +165,7 @@ export async function updateBudgetTemplate(
 
   const recurrent = data.frequency === 'CUSTOM' ? false : (data.recurrent ?? true);
 
-  return prisma.budget.update({
+  const updated = await prisma.budget.update({
     where: { id: budgetId },
     data: {
       name: data.name,
@@ -173,6 +176,35 @@ export async function updateBudgetTemplate(
       end_date: budgetDateRange.end_date,
     },
   });
+
+  const calendarDateKey = (value: Date | null) =>
+    value ? formatCalendarDate(value) : '';
+
+  const scheduleChanged =
+    budget.frequency !== data.frequency ||
+    budget.recurrent !== recurrent ||
+    Number(budget.total_amount) !== Number(data.allocated_amount) ||
+    calendarDateKey(budget.start_date) !== calendarDateKey(budgetDateRange.start_date) ||
+    calendarDateKey(budget.end_date) !== calendarDateKey(budgetDateRange.end_date);
+  if (
+    scheduleChanged &&
+    budget.active &&
+    budgetDateRange.start_date &&
+    budgetDateRange.end_date
+  ) {
+    await syncBudgetPeriodsAfterTemplateUpdate(
+      budgetId,
+      data.frequency,
+      {
+        start_date: budgetDateRange.start_date,
+        end_date: budgetDateRange.end_date,
+      },
+      ownerFilter,
+      { recurrent },
+    );
+  }
+
+  return updated;
 }
 
 export async function setBudgetActive(

@@ -4,6 +4,7 @@ import { getMonthlyBudgetPanel } from './monthly-budget-panel.service';
 
 const mocks = vi.hoisted(() => ({
   budgetPeriodFindMany: vi.fn(),
+  fortnightCount: vi.fn(),
   computePeriodSpendByAllocations: vi.fn(),
 }));
 
@@ -11,6 +12,12 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     budgetPeriod: {
       findMany: mocks.budgetPeriodFindMany,
+    },
+    fortnight: {
+      count: mocks.fortnightCount,
+    },
+    budget: {
+      count: vi.fn().mockResolvedValue(0),
     },
   },
 }));
@@ -73,7 +80,9 @@ function periodFixture(overrides: {
 describe('getMonthlyBudgetPanel', () => {
   beforeEach(() => {
     mocks.budgetPeriodFindMany.mockReset();
+    mocks.fortnightCount.mockReset();
     mocks.computePeriodSpendByAllocations.mockReset();
+    mocks.fortnightCount.mockResolvedValue(0);
     mocks.computePeriodSpendByAllocations.mockResolvedValue({
       total_spent: 0,
       by_allocation: [{ spent_amount: 0 }],

@@ -48,7 +48,7 @@ ASSERT_SCRIPT='async (page) => {
     delIngreso: (await page.getByText("del ingreso").count()) > 0,
     efectivoNetoHero: (await page.getByText("Efectivo neto en cuentas").count()) > 0,
     ocultarResumenBtn: (await page.getByRole("button", { name: "Ocultar resumen de la quincena" }).count()) > 0,
-    presupuestoMes: (await page.getByRole("heading", { name: "Presupuesto del mes" }).count()) > 0,
+    presupuestoMes: (await page.getByRole("heading", { name: "Presupuesto de la quincena" }).count()) > 0,
     topCategorias: (await page.getByRole("heading", { name: "Top categorías" }).count()) > 0,
     verReporte: (await page.getByRole("link", { name: /Ver reporte completo/i }).count()) > 0,
     gastoPorCategoria: (await page.getByRole("region", { name: /Gasto por categoría/i }).count()) > 0,
