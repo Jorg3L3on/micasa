@@ -67,8 +67,8 @@ export async function getMonthlyBudgetPanel(
     return { first: emptyScope(), second: emptyScope() };
   }
 
-  const first = await buildBudgetScope(periods, firstFortnight);
-  const second = await buildBudgetScope(periods, secondFortnight);
+  const first = await buildBudgetScope(periods, firstFortnight, ownerFilter);
+  const second = await buildBudgetScope(periods, secondFortnight, ownerFilter);
 
   return { first, second };
 }
@@ -86,6 +86,7 @@ function emptyScope(): MonthlyBudgetScope {
 async function buildBudgetScope(
   periods: BudgetPanelPeriod[],
   scope: DateRange,
+  ownerFilter: OwnerFilter,
 ): Promise<MonthlyBudgetScope> {
   let totalBudget = 0;
   let totalSpent = 0;
@@ -149,6 +150,7 @@ async function buildBudgetScope(
       prisma,
       allocationInputs,
       overlap,
+      ownerFilter,
     );
 
     totalSpent += spend.total_spent;

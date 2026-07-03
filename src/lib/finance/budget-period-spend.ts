@@ -1,5 +1,8 @@
+import type { Prisma } from '@/generated/prisma/client';
 import type { PrismaClient } from '@/generated/prisma/client';
 import { formatCalendarDate } from '@/lib/calendar-dates';
+import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
+import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
 export type DateRange = { start_date: Date; end_date: Date };
 
@@ -56,22 +59,35 @@ export function computeEffectiveAllocated(
 
 type ExpenseClient = Pick<PrismaClient, 'expense'>;
 
+/** Filters for budget spend: paid only, owner-scoped, no TC installment cuotas. */
+export function buildBudgetSpendExpenseWhere(
+  ownerFilter: OwnerFilter,
+  allocation: Pick<BudgetAllocationSpendInput, 'wallet_id' | 'category_id'>,
+  window: DateRange,
+): Prisma.ExpenseWhereInput {
+  return {
+    ...ownerFilter,
+    is_paid: true,
+    wallet_id: allocation.wallet_id,
+    category_id: allocation.category_id,
+    payment_date: { gte: window.start_date, lte: window.end_date },
+    ...whereExcludeCreditInstallments(),
+  };
+}
+
 /** Sum paid expenses per wallet+category pair (no cross-product double counting). */
 export async function computePeriodSpendByAllocations(
   db: ExpenseClient,
   allocations: BudgetAllocationSpendInput[],
   window: DateRange,
+  ownerFilter: OwnerFilter,
 ): Promise<PeriodSpendResult> {
   const by_allocation: AllocationSpendResult[] = [];
   let total_spent = 0;
 
   for (const allocation of allocations) {
     const agg = await db.expense.aggregate({
-      where: {
-        wallet_id: allocation.wallet_id,
-        category_id: allocation.category_id,
-        payment_date: { gte: window.start_date, lte: window.end_date },
-      },
+      where: buildBudgetSpendExpenseWhere(ownerFilter, allocation, window),
       _sum: { amount: true },
     });
     const spent_amount = Number(agg._sum.amount ?? 0);
