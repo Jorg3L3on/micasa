@@ -8,13 +8,15 @@ import type {
   DuePaymentItem,
 } from '@/types/catalog';
 import {
-  buildCardStatementObligation,
-  reconcileDuePaymentItemCanonicalFields,
   resolveCreditCardStatementWindow,
-  toDuePaymentItemFields,
 } from '@/lib/finance/card-statement-obligation';
-import { todayCalendarDate } from '@/lib/calendar-dates';
-import { isStaleFullyCoveredPlan } from '@/lib/finance/credit-card-reconciliation';
+import { parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  applyPlannerLayerToDueItems,
+  buildPlannerFieldsFromStatement,
+  sumPaymentsAppliedToFortnightByWallet,
+  toCreditCardPaymentPlanView,
+} from '@/lib/finance/card-planner-obligation.service';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -50,6 +52,14 @@ const nextCalendarFortnight = (
 
 const fortnightKey = (key: PlannerFortnightKey) =>
   `${key.year}-${key.month}-${key.period}`;
+
+const clampDayToMonth = (year: number, month: number, day: number) =>
+  Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
+
+const createCalendarDate = (year: number, month: number, day: number) =>
+  parseCalendarDate(
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+  );
 
 export async function getCreditCardPaymentPlanViews(
   ownerFilter: OwnerFilter,
@@ -120,8 +130,7 @@ export async function getCreditCardPaymentPlanViews(
   }
 
   const fortnightIds = fortnights.map((f) => f.id);
-  const [statement, plans] = await Promise.all([
-    getCreditCardStatementByOwner(walletId, ownerFilter),
+  const [plans, fortnightPayments] = await Promise.all([
     prisma.creditCardPaymentPlan.findMany({
       where: {
         credit_card_wallet_id: walletId,
@@ -133,132 +142,99 @@ export async function getCreditCardPaymentPlanViews(
         planned_amount: true,
       },
     }),
+    Promise.all(
+      fortnights.map(async (fortnight) => ({
+        fortnightId: fortnight.id,
+        total:
+          (
+            await sumPaymentsAppliedToFortnightByWallet(
+              fortnight.id,
+              [walletId],
+              ownerFilter,
+            )
+          ).get(walletId) ?? 0,
+      })),
+    ),
   ]);
 
   const planByFortnight = new Map(
     plans.map((plan) => [plan.fortnight_id, Number(plan.planned_amount)]),
   );
-
-  const window = resolveCreditCardStatementWindow(
-    now,
-    card.cutoff_day,
-    card.due_day,
+  const paymentsByFortnight = new Map(
+    fortnightPayments.map((row) => [row.fortnightId, row.total]),
   );
-  const obligationBase = {
-    walletId: card.id,
-    walletName: card.name,
-    walletType: card.type,
-    cutoffDay: card.cutoff_day,
-    dueDay: card.due_day,
-    window,
-    lastStatementBalance: statement.last_statement_balance,
-    paymentsAppliedToStatement: statement.payments_applied_to_statement,
-    importedTotalDue: statement.imported_statement_total,
-    outstandingBalance: statement.outstanding_balance,
-    currentCyclePurchasesTotal: statement.current_cycle_purchases,
-    currentCyclePaymentsTotal: statement.current_cycle_payments,
-    asOfYmd: todayCalendarDate(),
-  };
 
-  return fortnights
-    .map((fortnight) => {
-      const plannedPayment = planByFortnight.get(fortnight.id) ?? null;
-      const obligation = buildCardStatementObligation({
-        ...obligationBase,
-        plannedGrossAmount: plannedPayment,
-      });
-      const fields = toDuePaymentItemFields(obligation);
-      return {
+  const todayYmd = todayCalendarDate();
+
+  const views = await Promise.all(
+    fortnights.map(async (fortnight) => {
+      const asOf = createCalendarDate(
+        fortnight.year,
+        fortnight.month,
+        clampDayToMonth(fortnight.year, fortnight.month, dueDay),
+      );
+      const statement = await getCreditCardStatementByOwner(
+        walletId,
+        ownerFilter,
+        asOf,
+      );
+      const window = resolveCreditCardStatementWindow(
+        asOf,
+        card.cutoff_day!,
+        card.due_day!,
+      );
+      const plannedGross = planByFortnight.get(fortnight.id) ?? null;
+      const paymentsAppliedToFortnight =
+        paymentsByFortnight.get(fortnight.id) ?? 0;
+
+      const fields = buildPlannerFieldsFromStatement({
         fortnightId: fortnight.id,
-        fortnightLabel: fortnight.label,
-        year: fortnight.year,
-        month: fortnight.month,
-        period: fortnight.period,
+        statement: {
+          walletId: card.id,
+          walletName: card.name,
+          walletType: card.type,
+          cutoffDay: card.cutoff_day!,
+          dueDay: card.due_day!,
+          window,
+          lastStatementBalance: statement.last_statement_balance,
+          paymentsAppliedToStatement: statement.payments_applied_to_statement,
+          importedTotalDue: statement.imported_statement_total,
+          outstandingBalance: statement.outstanding_balance,
+          currentCyclePurchasesTotal: statement.current_cycle_purchases,
+          currentCyclePaymentsTotal: statement.current_cycle_payments,
+          asOfYmd: todayYmd,
+        },
+        plannedGrossAmount: plannedGross,
+        paymentsAppliedToFortnight,
+        todayYmd,
+      });
+
+      return toCreditCardPaymentPlanView({
+        fortnight,
         isCurrentFortnight:
           fortnight.year === year &&
           fortnight.month === month &&
           fortnight.period === currentPeriod,
-        suggestedAmount: fields.nextDuePayment,
-        plannedPayment: fields.plannedPayment,
-        effectiveAmount: fields.effectiveAmount,
-        outstandingBalance: fields.outstandingBalance,
-        plannerStatus: fields.plannerStatus,
-        obligationAmountSource: fields.obligationAmountSource,
-        isEstimate: fields.isEstimate,
-        remainingPlannedAmount: fields.remainingPlannedAmount,
-        paymentsAppliedToStatement: fields.paymentsAppliedToStatement,
-        statementDueDate: fields.statementDueDate,
-        isStaleFullyCovered: isStaleFullyCoveredPlan({
-          plannedAmount: fields.plannedPayment,
-          paymentsAppliedToStatement: fields.paymentsAppliedToStatement,
-          remainingStatementDue: fields.nextDuePayment,
-        }),
-      };
-    })
-    .sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      if (a.month !== b.month) return a.month - b.month;
-      if (a.period === b.period) return 0;
-      return a.period === 'FIRST' ? -1 : 1;
-    });
+        fields,
+      });
+    }),
+  );
+
+  return views.sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    if (a.month !== b.month) return a.month - b.month;
+    if (a.period === b.period) return 0;
+    return a.period === 'FIRST' ? -1 : 1;
+  });
 }
 
+/** @deprecated Use applyPlannerLayerToDueItems from card-planner-obligation.service */
 export async function attachPlannedPaymentsToDueItems(
   items: DuePaymentItem[],
   fortnightId: number | null | undefined,
   ownerFilter: OwnerFilter,
 ): Promise<void> {
-  if (items.length === 0 || fortnightId == null) {
-    for (const item of items) {
-      item.plannedPayment = null;
-      const canonical = reconcileDuePaymentItemCanonicalFields(
-        item,
-        todayCalendarDate(),
-      );
-      item.remainingPlannedAmount = canonical.remainingPlannedAmount;
-      item.effectiveAmount = canonical.effectiveAmount;
-      item.plannerStatus = canonical.plannerStatus;
-      item.isStaleFullyCoveredPlan = isStaleFullyCoveredPlan({
-        plannedAmount: item.plannedPayment ?? null,
-        paymentsAppliedToStatement: item.paymentsAppliedToStatement,
-        remainingStatementDue: item.nextDuePayment,
-      });
-    }
-    return;
-  }
-
-  const walletIds = items.map((item) => item.walletId);
-  const plans = await prisma.creditCardPaymentPlan.findMany({
-    where: {
-      fortnight_id: fortnightId,
-      credit_card_wallet_id: { in: walletIds },
-      ...ownerFilter,
-    },
-    select: {
-      credit_card_wallet_id: true,
-      planned_amount: true,
-    },
-  });
-
-  const planByWallet = new Map(
-    plans.map((plan) => [plan.credit_card_wallet_id, Number(plan.planned_amount)]),
-  );
-
-  for (const item of items) {
-    item.plannedPayment = planByWallet.get(item.walletId) ?? null;
-    const canonical = reconcileDuePaymentItemCanonicalFields(
-      item,
-      todayCalendarDate(),
-    );
-    item.remainingPlannedAmount = canonical.remainingPlannedAmount;
-    item.effectiveAmount = canonical.effectiveAmount;
-    item.plannerStatus = canonical.plannerStatus;
-    item.isStaleFullyCoveredPlan = isStaleFullyCoveredPlan({
-      plannedAmount: item.plannedPayment ?? null,
-      paymentsAppliedToStatement: item.paymentsAppliedToStatement,
-      remainingStatementDue: item.nextDuePayment,
-    });
-  }
+  await applyPlannerLayerToDueItems(items, fortnightId, ownerFilter);
 }
 
 export async function resolveFortnightIdForDate(

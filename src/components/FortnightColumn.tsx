@@ -40,6 +40,10 @@ import {
   type ClientApiError,
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
+import {
+  clearFortnightCardPaymentPlan,
+  getPlannerDuePayments,
+} from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
 import { updateIncomeAmount } from '@/lib/api/incomes';
 import {
@@ -63,7 +67,6 @@ import type {
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type { WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
-import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import { cn } from '@/lib/utils';
 
 /** Altura del panel con scroll (gastos / tarjeta / préstamos). Móvil usa dvh por la barra del navegador. */
@@ -140,7 +143,7 @@ export default function FortnightColumn({
   showSummaryCard = true,
   onShowSummaryCard,
   tableDensity = 'comfortable',
-  cardDueItems = [],
+  cardDueItems: initialCardDueItems = [],
   loanDueItems = [],
   wallets = [],
   summaryFundingRefreshNonce,
@@ -158,6 +161,8 @@ export default function FortnightColumn({
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
   const [summary, setSummary] = useState<Summary>(initialSummary);
+  const [cardDueItems, setCardDueItems] =
+    useState<DuePaymentItem[]>(initialCardDueItems);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
@@ -229,6 +234,21 @@ export default function FortnightColumn({
     [context],
   );
 
+  const refreshCardDueItems = useCallback(async () => {
+    try {
+      const partitioned = await getPlannerDuePayments(year, month, context);
+      setCardDueItems(
+        period === 'FIRST' ? partitioned.first : partitioned.second,
+      );
+    } catch (error) {
+      console.error('Error refreshing card due items:', error);
+    }
+  }, [year, month, period, context]);
+
+  useEffect(() => {
+    setCardDueItems(initialCardDueItems);
+  }, [initialCardDueItems]);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(scopedFortnightTabStorageKey(preferenceScope, period));
@@ -298,14 +318,14 @@ export default function FortnightColumn({
       ]);
       setTransactions(transactionsData);
       setSummary(summaryData);
-      // Also refresh the page to update server-rendered data like wallet balances
+      await refreshCardDueItems();
       router.refresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [year, month, period, context, router]);
+  }, [year, month, period, context, router, refreshCardDueItems]);
 
   useEffect(() => {
     if (summaryFundingRefreshNonce == null) return;
@@ -318,14 +338,30 @@ export default function FortnightColumn({
   const handlePlannerCardPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {
       if (!plannerPaymentCard) return;
+      const targetBeforePay = getEffectiveCardPaymentAmount(plannerPaymentCard);
+      const hadPlan = plannerPaymentCard.plannedPayment != null;
       try {
         setPlannerPaymentSubmitting(true);
         setPlannerPaymentError(null);
         await createCreditCardPayment(
           plannerPaymentCard.walletId,
-          data,
+          {
+            ...data,
+            create_fortnight_expense: true,
+            fortnight_id: fortnightId,
+          },
           context,
         );
+        if (
+          hadPlan &&
+          data.amount >= targetBeforePay - 0.009
+        ) {
+          await clearFortnightCardPaymentPlan(
+            fortnightId,
+            plannerPaymentCard.walletId,
+            context,
+          );
+        }
         toast.success('Pago registrado');
         setPlannerPaymentDialogOpen(false);
         setPlannerPaymentCard(null);
@@ -338,7 +374,7 @@ export default function FortnightColumn({
         setPlannerPaymentSubmitting(false);
       }
     },
-    [plannerPaymentCard, context, refreshData],
+    [plannerPaymentCard, context, refreshData, fortnightId],
   );
 
   const handleExpenseUpdate = useCallback(
@@ -719,15 +755,12 @@ export default function FortnightColumn({
   const summaryUnpaidExpenseCount =
     summary.planningUnpaidExpenseCount ?? unpaidExpenseCount;
 
-  const plannerTodayYmd = useHydrationSafeTodayYmd();
-
   const pendingCardPaymentsCount = useMemo(
     () =>
       cardDueItems.filter(
-        (item) =>
-          getPlannerCardPaymentStatus(item, plannerTodayYmd) !== 'pagado',
+        (item) => getPlannerCardPaymentStatus(item) !== 'pagado',
       ).length,
-    [cardDueItems, plannerTodayYmd],
+    [cardDueItems],
   );
   const pendingLoanPaymentsCount = useMemo(
     () => loanDueItems.filter((item) => item.status === 'SCHEDULED').length,
@@ -1119,6 +1152,7 @@ export default function FortnightColumn({
         outstandingBalance={plannerPaymentCard?.outstandingBalance ?? 0}
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
+        fortnightId={fortnightId}
         onSubmit={handlePlannerCardPaymentSubmit}
       />
     </>

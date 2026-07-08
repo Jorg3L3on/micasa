@@ -51,18 +51,10 @@ const WALLET_TYPE_ICON: Record<string, typeof CreditCard> = {
 
 export type PlannerCardPaymentStatus = 'pagado' | 'vencido' | 'por_pagar';
 
-/** Compares calendar dates as YYYY-MM-DD (UTC date string from API). */
+/** Server-derived planner status; no client re-derivation. */
 export const getPlannerCardPaymentStatus = (
   item: DuePaymentItem,
-  todayYmd: string,
-): PlannerCardPaymentStatus => {
-  if (item.plannerStatus) {
-    return item.plannerStatus;
-  }
-  if (getEffectiveCardPaymentAmount(item) <= 0) return 'pagado';
-  if (item.statementDueDate < todayYmd) return 'vencido';
-  return 'por_pagar';
-};
+): PlannerCardPaymentStatus => item.plannerStatus ?? 'por_pagar';
 
 const statusLabel = (s: PlannerCardPaymentStatus) => {
   if (s === 'pagado') return 'Pagado';
@@ -112,8 +104,8 @@ const FortnightCardPaymentsPanel = ({
   const rows = useMemo(
     () =>
       [...items].sort((a, b) => {
-        const sa = getPlannerCardPaymentStatus(a, todayYmd);
-        const sb = getPlannerCardPaymentStatus(b, todayYmd);
+        const sa = getPlannerCardPaymentStatus(a);
+        const sb = getPlannerCardPaymentStatus(b);
         const order = (s: PlannerCardPaymentStatus) =>
           s === 'vencido' ? 0 : s === 'por_pagar' ? 1 : 2;
         if (order(sa) !== order(sb)) return order(sa) - order(sb);
@@ -121,7 +113,7 @@ const FortnightCardPaymentsPanel = ({
           getEffectiveCardPaymentAmount(b) - getEffectiveCardPaymentAmount(a)
         );
       }),
-    [items, todayYmd],
+    [items],
   );
 
   const handleOpenPlanDialog = (item: DuePaymentItem) => {
@@ -204,18 +196,23 @@ const FortnightCardPaymentsPanel = ({
         </p>
         <ul role="list" className="flex flex-col gap-1.5">
           {rows.map((item) => {
-            const status = getPlannerCardPaymentStatus(item, todayYmd);
+            const status = getPlannerCardPaymentStatus(item);
             const effectiveAmount =
               item.effectiveAmount ?? getEffectiveCardPaymentAmount(item);
+            const fortnightPaid =
+              item.paymentsAppliedToFortnight ?? 0;
             const hasCustomPlan = item.plannedPayment != null;
             const isStalePlan = item.isStaleFullyCoveredPlan === true;
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
-            const mm = String(plannerMonth).padStart(2, '0');
-            const dd = String(item.dueDay).padStart(2, '0');
-            const displayDueDateStr = `${plannerYear}-${mm}-${dd}`;
+            const displayDueDateStr =
+              item.visibleDueDate ?? item.statementDueDate;
             const displayDueDate = formatDate(displayDueDateStr);
             const daysLeft = getDaysLeft(displayDueDateStr, todayYmd);
+            const statementMismatch =
+              status === 'pagado' &&
+              fortnightPaid > 0 &&
+              item.paymentsAppliedToStatement === 0;
             const dateColor = showRelativeDueTiming
               ? daysLeftColor(daysLeft, status)
               : 'text-muted-foreground';
@@ -349,6 +346,14 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
+                    {statementMismatch ? (
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="text-muted-foreground/60">
+                          Pago en quincena; el banco aplica al corte
+                        </span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
@@ -371,23 +376,22 @@ const FortnightCardPaymentsPanel = ({
                       )}
                       aria-label={
                         status === 'pagado'
-                          ? `${item.walletName}: pagado al corte ${formatCurrency(
-                              item.paymentsAppliedToStatement,
+                          ? `${item.walletName}: pagado esta quincena ${formatCurrency(
+                              fortnightPaid,
                             )}`
                           : `${item.walletName}: planeado ${formatCurrency(effectiveAmount)}`
                       }
                     >
                       {status === 'pagado'
-                        ? formatCurrency(item.paymentsAppliedToStatement)
+                        ? formatCurrency(fortnightPaid)
                         : formatCurrency(effectiveAmount)}
                     </span>
-                    {status === 'pagado' &&
-                    item.paymentsAppliedToStatement > 0 ? (
+                    {status === 'pagado' && fortnightPaid > 0 ? (
                       <span
                         className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/80"
                         aria-hidden
                       >
-                        Pagado al corte
+                        Pagado esta quincena
                       </span>
                     ) : null}
                   </div>

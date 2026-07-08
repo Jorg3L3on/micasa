@@ -279,19 +279,28 @@ export type DuePaymentItem = {
    * de esta ventana; en fila “pagada” es el monto liquidado hacia ese corte.
    */
   paymentsAppliedToStatement: number;
+  /** Pagos registrados en esta quincena (via gasto vinculado). */
+  paymentsAppliedToFortnight?: number;
   statementDueDate: string;
+  /** Fecha de vencimiento del corte (desde servidor). */
+  visibleDueDate?: string;
+  /** Monto objetivo de la quincena (plan o sugerido). */
+  targetAmount?: number;
   /** Deuda actual en la billetera tarjeta (para tope de pago y “saldo total”). */
   outstandingBalance: number;
   /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
   plannedPayment?: number | null;
-  /** Neto a pagar tras plan y pagos aplicados (canonical read model). */
+  /** Neto pendiente en la quincena (remainingPlannerAmount). */
   effectiveAmount?: number;
+  /** Pendiente en la quincena tras pagos registrados en ella. */
+  remainingPlannerAmount?: number;
   /** Estado derivado en servidor para Pagos tarjeta. */
   plannerStatus?: PlannerCardPaymentStatusUi;
   /** Plan guardado ya cubierto por pagos al corte; no inflar pendientes. */
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
   isEstimate?: boolean;
+  /** @deprecated Use remainingPlannerAmount */
   remainingPlannedAmount?: number | null;
 };
 
@@ -310,11 +319,14 @@ export type CreditCardPaymentPlanView = {
   plannerStatus: PlannerCardPaymentStatusUi;
   obligationAmountSource: CardObligationAmountSource;
   isEstimate: boolean;
-  remainingPlannedAmount: number | null;
+  remainingPlannerAmount: number;
   paymentsAppliedToStatement: number;
+  paymentsAppliedToFortnight: number;
   statementDueDate: string;
-  /** Plan guardado ya cubierto por pagos al corte. */
-  isStaleFullyCovered?: boolean;
+  visibleDueDate: string;
+  targetAmount: number;
+  /** Plan guardado ya cubierto por pagos en la quincena. */
+  isStaleFullyCoveredPlan: boolean;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */

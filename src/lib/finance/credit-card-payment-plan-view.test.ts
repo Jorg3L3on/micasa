@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCardStatementObligation,
-  reconcileDuePaymentItemCanonicalFields,
   resolveCreditCardStatementWindow,
   toDuePaymentItemFields,
 } from '@/lib/finance/card-statement-obligation';
+import { buildCardPlannerObligation } from '@/lib/finance/card-planner-obligation';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 
 const window = resolveCreditCardStatementWindow(
@@ -31,55 +31,70 @@ const baseObligationInput = {
 
 describe('credit card payment plan view parity with planner due items', () => {
   it('matches planner fields when no custom plan', () => {
-    const obligation = buildCardStatementObligation({
+    const statement = buildCardStatementObligation({
       ...baseObligationInput,
       plannedGrossAmount: null,
     });
-    const fromObligation = toDuePaymentItemFields(obligation);
+    const planner = buildCardPlannerObligation({
+      fortnightId: 10,
+      statement,
+      plannedGrossAmount: null,
+      paymentsAppliedToFortnight: 0,
+      todayYmd: '2026-03-10',
+    });
 
-    const fromReconcile = reconcileDuePaymentItemCanonicalFields(
-      {
-        nextDuePayment: fromObligation.nextDuePayment,
-        paymentsAppliedToStatement: fromObligation.paymentsAppliedToStatement,
-        statementDueDate: fromObligation.statementDueDate,
-        plannedPayment: null,
-        obligationAmountSource: fromObligation.obligationAmountSource,
-        isEstimate: fromObligation.isEstimate,
-      },
-      '2026-04-10',
-    );
-
-    expect(fromReconcile.effectiveAmount).toBe(fromObligation.effectiveAmount);
-    expect(fromReconcile.plannerStatus).toBe(fromObligation.plannerStatus);
-    expect(fromReconcile.obligationAmountSource).toBe(
-      fromObligation.obligationAmountSource,
-    );
+    expect(planner.remainingPlannerAmount).toBe(statement.remainingStatementDue);
+    expect(planner.visibleDueDate).toBe('2026-03-17');
+    expect(planner.plannerStatus).toBe('por_pagar');
   });
 
-  it('matches planner fields with custom plan and payments applied', () => {
+  it('marks pagado when fortnight payments cover custom plan', () => {
     const plannedGross = 694.76;
-    const obligation = buildCardStatementObligation({
+    const statement = buildCardStatementObligation({
+      ...baseObligationInput,
+      paymentsAppliedToStatement: 0,
+      plannedGrossAmount: plannedGross,
+    });
+    const planner = buildCardPlannerObligation({
+      fortnightId: 10,
+      statement,
+      plannedGrossAmount: plannedGross,
+      paymentsAppliedToFortnight: 694.76,
+      todayYmd: '2026-04-10',
+    });
+
+    expect(planner.remainingPlannerAmount).toBe(0);
+    expect(planner.plannerStatus).toBe('pagado');
+    expect(planner.paymentsAppliedToStatement).toBe(0);
+    expect(planner.paymentsAppliedToFortnight).toBe(694.76);
+  });
+});
+
+describe('statement vs planner divergence (documented)', () => {
+  it('statement path can show pagado via paymentsAppliedToStatement while planner uses fortnight', () => {
+    const plannedGross = 694.76;
+    const statementObligation = buildCardStatementObligation({
       ...baseObligationInput,
       paymentsAppliedToStatement: 694.76,
       plannedGrossAmount: plannedGross,
     });
-    const fromObligation = toDuePaymentItemFields(obligation);
+    const fromStatement = toDuePaymentItemFields(statementObligation);
 
-    const fromReconcile = reconcileDuePaymentItemCanonicalFields(
-      {
-        nextDuePayment: fromObligation.nextDuePayment,
-        paymentsAppliedToStatement: 694.76,
-        statementDueDate: fromObligation.statementDueDate,
-        plannedPayment: plannedGross,
-        obligationAmountSource: fromObligation.obligationAmountSource,
-        isEstimate: fromObligation.isEstimate,
-      },
-      '2026-04-10',
-    );
+    const fromPlanner = buildCardPlannerObligation({
+      fortnightId: 10,
+      statement: buildCardStatementObligation({
+        ...baseObligationInput,
+        paymentsAppliedToStatement: 0,
+        plannedGrossAmount: plannedGross,
+      }),
+      plannedGrossAmount: plannedGross,
+      paymentsAppliedToFortnight: 694.76,
+      todayYmd: '2026-04-10',
+    });
 
-    expect(fromObligation.effectiveAmount).toBe(0);
-    expect(fromObligation.plannerStatus).toBe('pagado');
-    expect(fromReconcile.effectiveAmount).toBe(fromObligation.effectiveAmount);
-    expect(fromReconcile.plannerStatus).toBe('pagado');
+    expect(fromStatement.plannerStatus).toBe('pagado');
+    expect(fromPlanner.plannerStatus).toBe('pagado');
+    expect(fromStatement.paymentsAppliedToStatement).toBe(694.76);
+    expect(fromPlanner.paymentsAppliedToStatement).toBe(0);
   });
 });
