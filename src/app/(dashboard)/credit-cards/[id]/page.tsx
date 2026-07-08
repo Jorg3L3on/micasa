@@ -49,6 +49,7 @@ import {
   rollbackCreditCardStatementImport,
   updateCreditCard,
 } from '@/lib/api/credit-cards';
+import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
@@ -149,6 +150,12 @@ const CreditCardDetailPageContent = () => {
   const [paymentPlanItems, setPaymentPlanItems] = useState<
     CreditCardPaymentPlanView[]
   >([]);
+  const [paymentFortnightId, setPaymentFortnightId] = useState<
+    number | undefined
+  >(undefined);
+  const [paymentSuggestedOverride, setPaymentSuggestedOverride] = useState<
+    number | undefined
+  >(undefined);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -262,14 +269,41 @@ const CreditCardDetailPageContent = () => {
   }, [asOfDate, context.id, creditCardId]);
 
   const handlePaymentSubmit = async (data: CreditCardPaymentSubmitPayload) => {
+    const targetBeforePay =
+      paymentSuggestedOverride ?? paymentDialogSuggestedAmount;
+    const activeFortnightId = paymentFortnightId ?? data.fortnight_id;
+    const matchingPlan = activeFortnightId
+      ? paymentPlanItems.find((item) => item.fortnightId === activeFortnightId)
+      : undefined;
     try {
       setPaymentSubmitting(true);
       setPaymentError(null);
 
-      await createCreditCardPayment(creditCardId, data, context);
+      await createCreditCardPayment(
+        creditCardId,
+        {
+          ...data,
+          create_fortnight_expense: true,
+          fortnight_id: activeFortnightId,
+        },
+        context,
+      );
+
+      if (
+        matchingPlan?.plannedPayment != null &&
+        data.amount >= targetBeforePay - 0.009
+      ) {
+        await clearFortnightCardPaymentPlan(
+          matchingPlan.fortnightId,
+          creditCardId,
+          context,
+        );
+      }
 
       toast.success('Pago registrado');
       setPaymentDialogOpen(false);
+      setPaymentFortnightId(undefined);
+      setPaymentSuggestedOverride(undefined);
       await loadData();
     } catch (err) {
       setPaymentError(
@@ -279,6 +313,15 @@ const CreditCardDetailPageContent = () => {
       setPaymentSubmitting(false);
     }
   };
+
+  const handleOpenPlanPayment = useCallback(
+    (item: CreditCardPaymentPlanView) => {
+      setPaymentFortnightId(item.fortnightId);
+      setPaymentSuggestedOverride(item.effectiveAmount);
+      setPaymentDialogOpen(true);
+    },
+    [],
+  );
 
   const isCurrentCycle = useMemo(() => {
     if (!statement) return true;
@@ -580,6 +623,7 @@ const CreditCardDetailPageContent = () => {
                   walletId={creditCardId}
                   items={paymentPlanItems}
                   onPlanUpdated={loadData}
+                  onPayCard={handleOpenPlanPayment}
                 />
 
                 <div className="grid gap-4 lg:grid-cols-3">
@@ -631,7 +675,11 @@ const CreditCardDetailPageContent = () => {
           <Button
             type="button"
             className="h-11 flex-1 rounded-xl shadow-sm"
-            onClick={() => setPaymentDialogOpen(true)}
+            onClick={() => {
+              setPaymentFortnightId(undefined);
+              setPaymentSuggestedOverride(undefined);
+              setPaymentDialogOpen(true);
+            }}
           >
             <Wallet className="mr-2 h-4 w-4" />
             Registrar pago
@@ -643,14 +691,21 @@ const CreditCardDetailPageContent = () => {
         open={paymentDialogOpen}
         onOpenChange={(open) => {
           setPaymentDialogOpen(open);
-          if (!open) setPaymentError(null);
+          if (!open) {
+            setPaymentError(null);
+            setPaymentFortnightId(undefined);
+            setPaymentSuggestedOverride(undefined);
+          }
         }}
         fundingWalletOptions={fundingWalletOptions}
         categoryOptions={categoryOptions}
-        nextDuePayment={paymentDialogSuggestedAmount}
+        nextDuePayment={
+          paymentSuggestedOverride ?? paymentDialogSuggestedAmount
+        }
         outstandingBalance={statement.outstanding_balance}
         submitting={paymentSubmitting}
         error={paymentError}
+        fortnightId={paymentFortnightId}
         onSubmit={handlePaymentSubmit}
       />
 

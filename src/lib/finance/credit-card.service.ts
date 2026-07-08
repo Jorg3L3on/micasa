@@ -338,27 +338,41 @@ export async function createCreditCardPayment(
       }
 
       const paidAt = coerceToCalendarDate(input.paid_at);
-      const fnYear = paidAt.getUTCFullYear();
-      const fnMonth = paidAt.getUTCMonth() + 1;
-      const fnDay = paidAt.getUTCDate();
-      const fnPeriod = getFortnightPeriodForDay(fnDay);
 
-      const ownerUserId = creditCardWallet.user_id;
-      const ownerHouseId = creditCardWallet.house_id;
-      if (ownerUserId == null && ownerHouseId == null) {
-        const error = new Error('Titular de tarjeta inválido');
-        (error as { code?: string }).code = 'INVALID_CARD_OWNER';
-        throw error;
+      let fortnight: Awaited<ReturnType<typeof resolveOrCreateFortnight>>;
+      if (input.fortnight_id != null) {
+        const existing = await tx.fortnight.findFirst({
+          where: { id: input.fortnight_id, ...ownerFilter },
+        });
+        if (!existing) {
+          const error = new Error('Quincena no encontrada');
+          (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
+          throw error;
+        }
+        fortnight = existing;
+      } else {
+        const fnYear = paidAt.getUTCFullYear();
+        const fnMonth = paidAt.getUTCMonth() + 1;
+        const fnDay = paidAt.getUTCDate();
+        const fnPeriod = getFortnightPeriodForDay(fnDay);
+
+        const ownerUserId = creditCardWallet.user_id;
+        const ownerHouseId = creditCardWallet.house_id;
+        if (ownerUserId == null && ownerHouseId == null) {
+          const error = new Error('Titular de tarjeta inválido');
+          (error as { code?: string }).code = 'INVALID_CARD_OWNER';
+          throw error;
+        }
+
+        fortnight = await resolveOrCreateFortnight({
+          ownerType: ownerUserId != null ? 'user' : 'house',
+          ownerId: ownerUserId != null ? ownerUserId : ownerHouseId!,
+          year: fnYear,
+          month: fnMonth,
+          period: fnPeriod,
+          tx,
+        });
       }
-
-      const fortnight = await resolveOrCreateFortnight({
-        ownerType: ownerUserId != null ? 'user' : 'house',
-        ownerId: ownerUserId != null ? ownerUserId : ownerHouseId!,
-        year: fnYear,
-        month: fnMonth,
-        period: fnPeriod,
-        tx,
-      });
 
       const description =
         input.expense_description?.trim() ||

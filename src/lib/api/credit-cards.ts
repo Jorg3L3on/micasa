@@ -176,6 +176,7 @@ export async function createCreditCardPayment(
     create_fortnight_expense?: boolean;
     category_id?: number;
     expense_description?: string | null;
+    fortnight_id?: number;
   },
   context?: FinanceContextType,
 ) {

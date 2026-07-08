@@ -73,18 +73,26 @@ export const computeLedgerExpectedDebt = (
 
 export const isStaleFullyCoveredPlan = (input: {
   plannedAmount: number | null;
-  paymentsAppliedToStatement: number;
+  paymentsAppliedToStatement?: number;
+  paymentsAppliedToFortnight?: number;
   remainingStatementDue: number;
+  remainingPlannerAmount?: number;
 }): boolean => {
   if (input.plannedAmount == null || input.plannedAmount <= 0) {
     return false;
   }
+  if (input.remainingPlannerAmount != null) {
+    return (
+      input.remainingPlannerAmount <= 0 &&
+      (input.paymentsAppliedToFortnight ?? 0) > 0
+    );
+  }
   const remaining = getRemainingPlannedAmount({
     plannedGrossAmount: input.plannedAmount,
-    paymentsAppliedToStatement: input.paymentsAppliedToStatement,
+    paymentsAppliedToStatement: input.paymentsAppliedToStatement ?? 0,
     remainingStatementDue: input.remainingStatementDue,
   });
-  return remaining != null && remaining <= 0 && input.paymentsAppliedToStatement > 0;
+  return remaining != null && remaining <= 0 && (input.paymentsAppliedToStatement ?? 0) > 0;
 };
 
 export const detectWalletDebtDrift = (

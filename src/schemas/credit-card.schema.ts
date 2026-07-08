@@ -37,6 +37,8 @@ export const createCreditCardPaymentSchema = z
     note: z.string().trim().max(200).optional().nullable(),
     /** When true, creates a paid Expense in the fortnight of paid_at (category_id required). */
     create_fortnight_expense: z.boolean().optional(),
+    /** When set, expense is created in this fortnight instead of deriving from paid_at. */
+    fortnight_id: positiveIntSchema.optional(),
     category_id: positiveIntSchema.optional(),
     expense_description: z.string().trim().max(200).optional().nullable(),
   })

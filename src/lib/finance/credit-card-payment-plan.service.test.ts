@@ -11,7 +11,18 @@ describe('getEffectiveCardPaymentAmount', () => {
     ).toBe(500);
   });
 
-  it('subtracts actual payments from a planned payment', () => {
+  it('uses remainingPlannerAmount when provided', () => {
+    expect(
+      getEffectiveCardPaymentAmount({
+        nextDuePayment: 3884.78,
+        remainingPlannerAmount: 0,
+        plannedPayment: 694.76,
+        paymentsAppliedToStatement: 0,
+      }),
+    ).toBe(0);
+  });
+
+  it('subtracts actual payments from a planned payment (legacy fallback)', () => {
     expect(
       getEffectiveCardPaymentAmount({
         nextDuePayment: 3884.78,

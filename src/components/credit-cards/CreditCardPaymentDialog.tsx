@@ -36,6 +36,7 @@ export type CreditCardPaymentSubmitPayload = {
   note: string | null;
   create_fortnight_expense: boolean;
   category_id?: number;
+  fortnight_id?: number;
 };
 
 export type CreditCardPaymentDialogProps = {
@@ -47,6 +48,8 @@ export type CreditCardPaymentDialogProps = {
   outstandingBalance: number;
   submitting: boolean;
   error: string | null;
+  /** When paying from planner / Compromisos, pin expense to this fortnight. */
+  fortnightId?: number;
   onSubmit: (data: CreditCardPaymentSubmitPayload) => Promise<void>;
 };
 
@@ -59,6 +62,7 @@ const CreditCardPaymentDialog = ({
   outstandingBalance,
   submitting,
   error,
+  fortnightId,
   onSubmit,
 }: CreditCardPaymentDialogProps) => {
   const [sourceWalletId, setSourceWalletId] = useState('');
@@ -136,6 +140,7 @@ const CreditCardPaymentDialog = ({
       ...(createFortnightExpense && categoryId
         ? { category_id: Number(categoryId) }
         : {}),
+      ...(fortnightId != null ? { fortnight_id: fortnightId } : {}),
     };
 
     if (createFortnightExpense && categoryId) {

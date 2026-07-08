@@ -7,10 +7,10 @@ import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
-  attachPlannedPaymentsToDueItems,
   getEffectiveCardPaymentAmount,
   resolveFortnightIdForDate,
 } from '@/lib/finance/credit-card-payment-plan.service';
+import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligation.service';
 import {
   buildCardStatementObligation,
   computeNextDuePayment,
@@ -1205,7 +1205,7 @@ export async function getDuePaymentsForCurrentFortnight(
       : (dueDay) => dueDay >= 16,
   );
   const fortnightId = await resolveFortnightIdForDate(ownerFilter, now);
-  await attachPlannedPaymentsToDueItems(items, fortnightId, ownerFilter);
+  await applyPlannerLayerToDueItems(items, fortnightId, ownerFilter);
   return items;
 }
 
@@ -1267,8 +1267,8 @@ export async function getDuePaymentsForPlannerMonth(
   ]);
 
   await Promise.all([
-    attachPlannedPaymentsToDueItems(first, fortnightFirst?.id, ownerFilter),
-    attachPlannedPaymentsToDueItems(second, fortnightSecond?.id, ownerFilter),
+    applyPlannerLayerToDueItems(first, fortnightFirst?.id, ownerFilter),
+    applyPlannerLayerToDueItems(second, fortnightSecond?.id, ownerFilter),
   ]);
 
   return { first, second };

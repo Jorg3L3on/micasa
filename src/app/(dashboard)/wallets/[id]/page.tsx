@@ -16,7 +16,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
-import { getCreditCardPaymentPlan } from '@/lib/api/credit-cards';
+import { getCreditCardPaymentPlan, createCreditCardPayment } from '@/lib/api/credit-cards';
+import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
 import {
   buildWalletPeriodAnalytics,
@@ -27,7 +31,7 @@ import type {
   WalletDetail,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
-import type { CreditCardPaymentPlanView } from '@/types/catalog';
+import type { CreditCardPaymentPlanView, CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import {
   WalletDetailHeaderActions,
   WalletDetailTabsList,
@@ -121,6 +125,19 @@ export default function WalletDetailPage() {
   const [paymentPlanItems, setPaymentPlanItems] = useState<
     CreditCardPaymentPlanView[]
   >([]);
+  const [paymentSources, setPaymentSources] = useState<PaymentMethodOption[]>(
+    [],
+  );
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentFortnightId, setPaymentFortnightId] = useState<
+    number | undefined
+  >(undefined);
+  const [paymentSuggestedOverride, setPaymentSuggestedOverride] = useState<
+    number | undefined
+  >(undefined);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -162,12 +179,24 @@ export default function WalletDetailPage() {
         detail.type === 'CREDIT_CARD' ||
         detail.type === 'DEPARTMENT_STORE_CARD'
       ) {
-        const plan = await getCreditCardPaymentPlan(walletId, context).catch(
-          () => ({ items: [] as CreditCardPaymentPlanView[] }),
-        );
+        const [plan, methods, categories] = await Promise.all([
+          getCreditCardPaymentPlan(walletId, context).catch(() => ({
+            items: [] as CreditCardPaymentPlanView[],
+          })),
+          getPaymentMethodOptions(context),
+          clientFetchFromApi<CategoryOption[]>(
+            '/api/categories',
+            undefined,
+            context,
+          ),
+        ]);
         setPaymentPlanItems(plan.items);
+        setPaymentSources(methods);
+        setCategoryOptions(categories);
       } else {
         setPaymentPlanItems([]);
+        setPaymentSources([]);
+        setCategoryOptions([]);
       }
     } catch (err) {
       setError(
@@ -209,6 +238,78 @@ export default function WalletDetailPage() {
     const today = todayCalendarDate();
     return today >= range.from && today <= range.to;
   }, [range.from, range.to]);
+
+  const fundingWalletOptions = useMemo(
+    () =>
+      paymentSources.filter(
+        (w) => w.type === 'CASH' || w.type === 'DEBIT_CARD',
+      ),
+    [paymentSources],
+  );
+
+  const handleCreditPaymentSubmit = useCallback(
+    async (data: CreditCardPaymentSubmitPayload) => {
+      const targetBeforePay =
+        paymentSuggestedOverride ??
+        paymentPlanItems.find((item) => item.fortnightId === paymentFortnightId)
+          ?.effectiveAmount ??
+        0;
+      const matchingPlan = paymentFortnightId
+        ? paymentPlanItems.find((item) => item.fortnightId === paymentFortnightId)
+        : undefined;
+      try {
+        setPaymentSubmitting(true);
+        setPaymentError(null);
+        await createCreditCardPayment(
+          walletId,
+          {
+            ...data,
+            create_fortnight_expense: true,
+            fortnight_id: paymentFortnightId,
+          },
+          context,
+        );
+        if (
+          matchingPlan?.plannedPayment != null &&
+          data.amount >= targetBeforePay - 0.009
+        ) {
+          await clearFortnightCardPaymentPlan(
+            matchingPlan.fortnightId,
+            walletId,
+            context,
+          );
+        }
+        toast.success('Pago registrado');
+        setPaymentDialogOpen(false);
+        setPaymentFortnightId(undefined);
+        setPaymentSuggestedOverride(undefined);
+        await loadData();
+      } catch (err) {
+        setPaymentError(
+          err instanceof Error ? err.message : 'Error al registrar el pago',
+        );
+      } finally {
+        setPaymentSubmitting(false);
+      }
+    },
+    [
+      context,
+      loadData,
+      paymentFortnightId,
+      paymentPlanItems,
+      paymentSuggestedOverride,
+      walletId,
+    ],
+  );
+
+  const handleOpenPlanPayment = useCallback(
+    (item: CreditCardPaymentPlanView) => {
+      setPaymentFortnightId(item.fortnightId);
+      setPaymentSuggestedOverride(item.effectiveAmount);
+      setPaymentDialogOpen(true);
+    },
+    [],
+  );
 
   const handleCreateExpense = useCallback(
     async (values: AddExpenseFormValues) => {
@@ -371,6 +472,7 @@ export default function WalletDetailPage() {
                 walletId={walletId}
                 items={paymentPlanItems}
                 onPlanUpdated={loadData}
+                onPayCard={handleOpenPlanPayment}
               />
             ) : null}
             <LinkedLoansCard walletId={walletId} />
@@ -450,6 +552,28 @@ export default function WalletDetailPage() {
         variant={isCreditWallet ? 'credit' : 'funding'}
         creditLimit={wallet.credit_limit}
       />
+
+      {isCreditWallet ? (
+        <CreditCardPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={(open) => {
+            setPaymentDialogOpen(open);
+            if (!open) {
+              setPaymentError(null);
+              setPaymentFortnightId(undefined);
+              setPaymentSuggestedOverride(undefined);
+            }
+          }}
+          fundingWalletOptions={fundingWalletOptions}
+          categoryOptions={categoryOptions}
+          nextDuePayment={paymentSuggestedOverride ?? 0}
+          outstandingBalance={wallet.amount}
+          submitting={paymentSubmitting}
+          error={paymentError}
+          fortnightId={paymentFortnightId}
+          onSubmit={handleCreditPaymentSubmit}
+        />
+      ) : null}
     </div>
   );
 }
