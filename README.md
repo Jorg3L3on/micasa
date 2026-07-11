@@ -89,6 +89,8 @@ Open [http://localhost:3000](http://localhost:3000).
 - `DATABASE_URL`: PostgreSQL connection string
 - `NEXTAUTH_SECRET`: NextAuth signing secret
 - `NEXTAUTH_URL`: Base URL for auth callbacks and session behavior
+- `UPSTASH_REDIS_REST_URL` (optional): Upstash Redis REST URL for distributed rate limiting in production
+- `UPSTASH_REDIS_REST_TOKEN` (optional): Upstash Redis REST token; omit both Upstash vars for in-memory limiting in local dev
 
 ## Available Scripts
 
