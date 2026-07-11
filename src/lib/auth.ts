@@ -42,6 +42,10 @@ export const {
           return null;
         }
 
+        if (!user.active) {
+          return null;
+        }
+
         const isPasswordValid = await compare(
           credentials.password as string,
           user.password,

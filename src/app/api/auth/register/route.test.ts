@@ -17,6 +17,7 @@ vi.mock('bcryptjs', () => ({
 }));
 
 import { resetRateLimitStoreForTests } from '@/lib/server/rate-limit';
+import { GENERIC_REGISTER_ERROR_MESSAGE } from '@/schemas/auth.schema';
 import { POST } from './route';
 
 describe('POST /api/auth/register', () => {
@@ -34,6 +35,7 @@ describe('POST /api/auth/register', () => {
           name: 'Test User',
           email: 'not-an-email',
           password: 'secret12',
+          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -42,7 +44,25 @@ describe('POST /api/auth/register', () => {
     expect(findUniqueUser).not.toHaveBeenCalled();
   });
 
-  it('returns 409 when email is already registered', async () => {
+  it('returns 400 when confirmPassword does not match', async () => {
+    const response = await POST(
+      new Request('http://localhost/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Test User',
+          email: 'new@example.com',
+          password: 'secret12',
+          confirmPassword: 'different',
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(400);
+    expect(findUniqueUser).not.toHaveBeenCalled();
+  });
+
+  it('returns generic 400 when email is already registered', async () => {
     findUniqueUser.mockResolvedValue({ id: 1, email: 'exists@example.com' });
 
     const response = await POST(
@@ -53,12 +73,61 @@ describe('POST /api/auth/register', () => {
           name: 'Test User',
           email: 'exists@example.com',
           password: 'secret12',
+          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: GENERIC_REGISTER_ERROR_MESSAGE,
+    });
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('normalizes email before uniqueness check and persistence', async () => {
+    findUniqueUser.mockResolvedValue(null);
+    transaction.mockImplementation(async (callback) =>
+      callback({
+        user: {
+          create: vi.fn(async ({ data }: { data: { email: string } }) => ({
+            id: 42,
+            email: data.email,
+            name: 'New User',
+          })),
+        },
+        house: {
+          create: vi.fn(async () => ({ id: 7, name: 'Casa de New User' })),
+        },
+        houseMember: {
+          create: vi.fn(async () => ({})),
+        },
+      }),
+    );
+
+    const response = await POST(
+      new Request('http://localhost/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'New User',
+          email: '  New@Example.COM  ',
+          password: 'secret12',
+          confirmPassword: 'secret12',
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(201);
+    expect(findUniqueUser).toHaveBeenCalledWith({
+      where: { email: 'new@example.com' },
+    });
+    await expect(response.json()).resolves.toEqual({
+      id: 42,
+      email: 'new@example.com',
+      name: 'New User',
+      house: { id: 7, name: 'Casa de New User' },
+    });
   });
 
   it('creates user, house, and membership on success', async () => {
@@ -89,6 +158,7 @@ describe('POST /api/auth/register', () => {
           name: 'New User',
           email: 'new@example.com',
           password: 'secret12',
+          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -116,6 +186,7 @@ describe('POST /api/auth/register', () => {
           name: 'Test User',
           email: 'exists@example.com',
           password: 'secret12',
+          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0];
 
