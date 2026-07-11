@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiCasa — Execution Plan (v2)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.12);
+    --text: #eeede8;
+    --text-muted: #5a5955;
+    --text-secondary: #96948e;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.07);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.07);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.07);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96,165,250,0.07);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.07);
+    --cyan: #22d3ee;
+    --cyan-dim: rgba(34,211,238,0.07);
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 52px 24px 96px; }
+
+  .header { margin-bottom: 40px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--purple); margin-bottom: 10px;
+  }
+  .title {
+    font-size: 38px; font-weight: 700; letter-spacing: -.025em;
+    line-height: 1.1; margin-bottom: 10px;
+  }
+  .title span { color: var(--text-muted); }
+  .header-meta { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--amber);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 40px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+  .callout strong { color: var(--text); }
+
+  .status-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 40px;
+  }
+  @media (max-width: 900px) { .status-grid { grid-template-columns: 1fr; } }
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .status-card h3 {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .status-card.done h3 { color: var(--green); }
+  .status-card.gap h3 { color: var(--red); }
+  .status-list { list-style: none; display: grid; gap: 5px; }
+  .status-list li { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+  .summary {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 1px; background: var(--border-strong);
+    border: 1px solid var(--border-strong); border-radius: 12px;
+    overflow: hidden; margin-bottom: 36px;
+  }
+  @media (max-width: 720px) { .summary { grid-template-columns: repeat(2, 1fr); } }
+  .summary-cell {
+    background: var(--surface); padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .summary-num { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+  .summary-label { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  .phase { margin-bottom: 48px; }
+  .phase-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 16px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .phase-num {
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+    letter-spacing: .1em; padding: 4px 10px; border-radius: 6px; flex-shrink: 0;
+  }
+  .phase-title { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .phase-timeline {
+    margin-left: auto; font-size: 12px; font-family: var(--mono);
+    color: var(--text-muted); flex-shrink: 0;
+  }
+  .phase-intro {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.75; margin-bottom: 18px;
+  }
+
+  .tasks { display: grid; gap: 10px; }
+  .task {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .task-main {
+    padding: 16px 20px;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 12px; align-items: start;
+  }
+  .task-title { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+  .task-why { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .task-why code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.06); padding: 1px 5px;
+    border-radius: 3px; color: #c4b5fd;
+  }
+  .task-meta {
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: flex-end; flex-shrink: 0;
+  }
+  .effort-badge {
+    font-size: 11px; font-weight: 600; font-family: var(--mono);
+    padding: 3px 9px; border-radius: 5px; white-space: nowrap;
+  }
+  .status-badge {
+    font-size: 10px; font-weight: 600; font-family: var(--mono);
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .score-change {
+    font-size: 11px; font-family: var(--mono); color: var(--green);
+  }
+
+  .task-criteria {
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.02);
+  }
+  .criteria-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .criteria-list { list-style: none; display: grid; gap: 4px; }
+  .criteria-list li {
+    font-size: 12px; color: var(--text-secondary);
+    display: flex; gap: 8px; line-height: 1.5;
+  }
+  .criteria-list li::before {
+    content: '□'; color: var(--text-muted); flex-shrink: 0; font-size: 11px; margin-top: 1px;
+  }
+  .criteria-list li.met { color: var(--text-muted); }
+  .criteria-list li.met::before {
+    content: '✓'; color: var(--green);
+  }
+  .criteria-list li code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 3px; color: #c4b5fd;
+  }
+
+  .ef-s  { background: var(--green-dim);  color: var(--green);  }
+  .ef-m  { background: var(--amber-dim);  color: var(--amber);  }
+  .ef-l  { background: var(--red-dim);    color: var(--red);    }
+  .ph-1  { background: var(--red-dim);    color: var(--red);    }
+  .ph-2  { background: var(--amber-dim);  color: var(--amber);  }
+  .ph-3  { background: var(--blue-dim);   color: var(--blue);   }
+  .ph-4  { background: var(--purple-dim); color: var(--purple); }
+  .ph-5  { background: var(--cyan-dim);   color: var(--cyan);   }
+  .st-new { background: var(--red-dim); color: var(--red); }
+  .st-partial { background: var(--amber-dim); color: var(--amber); }
+  .st-prd { background: var(--blue-dim); color: var(--blue); }
+  .st-done { background: var(--green-dim); color: var(--green); }
+
+  .task-links {
+    border-top: 1px solid var(--border);
+    padding: 10px 20px 14px;
+    display: flex; flex-wrap: wrap; gap: 8px 16px;
+    font-size: 11px; font-family: var(--mono);
+  }
+  .task-links a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .task-links a:hover { text-decoration: underline; }
+  .task-links span { color: var(--text-muted); }
+
+  .progress-strip {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--border-strong);
+    border: 1px solid var(--border-strong); border-radius: 12px;
+    overflow: hidden; margin-bottom: 36px;
+  }
+  @media (max-width: 640px) { .progress-strip { grid-template-columns: 1fr; } }
+  .progress-cell {
+    background: var(--surface); padding: 14px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .progress-num { font-size: 20px; font-weight: 700; }
+  .progress-label { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  .status-card.ready h3 { color: var(--blue); }
+
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 32px; font-size: 12px; color: var(--text-muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-pip { width: 8px; height: 8px; border-radius: 2px; }
+
+  .changes {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 40px;
+  }
+  .changes h2 {
+    font-size: 14px; font-weight: 600; margin-bottom: 12px;
+    color: var(--text);
+  }
+  .changes ul {
+    list-style: none; display: grid; gap: 8px;
+  }
+  .changes li {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+    padding-left: 14px; position: relative;
+  }
+  .changes li::before {
+    content: '→'; position: absolute; left: 0; color: var(--purple);
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  .footer {
+    font-size: 12px; color: var(--text-muted);
+    padding-top: 24px; border-top: 1px solid var(--border); line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="eyebrow">MiCasa · Execution Roadmap · v2 · updated Jul 10, 2026 (live repo scan)</div>
+    <h1 class="title">What to build next, <span>grounded in what already exists.</span></h1>
+    <p class="header-meta">
+      Scope: critical gaps before public SaaS · Current readiness ~5.5/10 · Target: production-ready at 8/10 ·
+      12 active tasks · <strong style="color:var(--green);font-weight:600">2 done</strong> · <strong style="color:var(--amber);font-weight:600">3 partial</strong> · Audited against repo <code style="font-family:var(--mono);font-size:12px;color:#c4b5fd">main</code>
+    </p>
+  </div>
+
+  <div class="callout">
+    <strong>Current status (Jul 10, 2026):</strong>
+    <strong style="color:var(--green)">1.1</strong> and <strong style="color:var(--green)">1.2</strong> are shipped (GitHub #106, #107 closed).
+    <strong style="color:var(--amber)">1.4</strong> is partially done — several audit routes fixed, but <code>/api/transfers</code> and house-mode tests remain.
+    <strong style="color:var(--red)">1.3</strong> and Phases 2–5 are not implemented yet.
+    <br><br>
+    <strong>Constraints:</strong> No transactional email · No Google OAuth · No Stripe (Phase 3 deferred).
+  </div>
+
+  <div class="changes">
+    <h2>What changed vs. the original plan</h2>
+    <ul>
+      <li>Task “build registration from scratch” → reframed as <strong>polish the existing funnel</strong> (<code>/register</code> already live).</li>
+      <li>Task “delete db.ts” → <strong>consolidate Prisma clients</strong> (migrate auth off <code>db.ts</code> first).</li>
+      <li>Monetization moved <strong>after</strong> acquisition polish — you can beta before Stripe.</li>
+      <li>Added <strong>house / owner-context correctness</strong> (documented gaps in <code>docs/multi-owner-audit-and-migration-plan.md</code>).</li>
+      <li>Added <strong>error monitoring</strong>, <strong>public landing page</strong>, and <strong>legal pages</strong>.</li>
+      <li>De-duplicated cross-user isolation tests (one workstream, not split across phases).</li>
+      <li><strong>Removed all email tasks</strong> — no password-reset flow, verification, billing emails, or lifecycle emails.</li>
+      <li><strong>Removed Google OAuth</strong> — credentials-only auth stays; OAuth deferred if needed later.</li>
+      <li><strong>Removed Stripe / monetization</strong> — Phase 3 deferred until billing is in scope.</li>
+      <li><strong>Phase 1 PRDs published</strong> — GitHub #106–#109 + Notion tasks + local <code>tasks/prd-*.md</code>.</li>
+      <li><strong>1.1 + 1.2 implemented</strong> — Prisma consolidation and rate limiting merged to <code>main</code>.</li>
+      <li><strong>2.1 implemented</strong> — Registration/login funnel polish merged to <code>main</code> (GitHub <a href="https://github.com/Jorg3L3on/micasa/issues/120">#120</a>, PR <a href="https://github.com/Jorg3L3on/micasa/pull/129">#129</a>).</li>
+    </ul>
+  </div>
+
+  <div class="progress-strip">
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--green)">2 / 4</span>
+      <span class="progress-label">Phase 1 · done (#106, #107)</span>
+    </div>
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--green)">3 / 12</span>
+      <span class="progress-label">Fully done · 2 partial (1.4, 4.4)</span>
+    </div>
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--blue)">1</span>
+      <span class="progress-label">Phase 1 · partial (1.4 owner-context)</span>
+    </div>
+  </div>
+
+  <div class="status-grid">
+    <div class="status-card done">
+      <h3>Already shipped</h3>
+      <ul class="status-list">
+        <li>NextAuth v5 credentials login (<code>/login</code>)</li>
+        <li>Self-serve registration (<code>/register</code> + <code>/api/auth/register</code>)</li>
+        <li>Onboarding wizard + <code>onboarding_completed</code> guard</li>
+        <li>Multi-owner model via <code>getOwnerContext()</code> on most routes</li>
+        <li>Full finance domain: fortnights, wallets, loans, pantry, budgets, statement import (5 providers)</li>
+        <li>CI: dashboard UI, Prisma generate, <code>validate:prisma-imports</code>, Vitest, build</li>
+        <li>Rate limiting on auth, registration, statement import, receipt upload</li>
+        <li>Single canonical Prisma client (<code>db.ts</code> removed)</li>
+        <li>Registration funnel hardening: generic duplicate-email error, shared Zod schema, redirect to onboarding</li>
+        <li>In-app password change with current-password verification (<code>/account</code>)</li>
+        <li>Playwright E2E: <code>scripts/playwright-auth-funnel.sh</code> (register → onboarding → dashboard)</li>
+      </ul>
+    </div>
+    <div class="status-card ready">
+      <h3>Phase 1 — tracker</h3>
+      <ul class="status-list">
+        <li><strong style="color:var(--green)">Done</strong> 1.1 Prisma · <a href="https://github.com/Jorg3L3on/micasa/issues/106" style="color:var(--blue)">#106</a></li>
+        <li><strong style="color:var(--green)">Done</strong> 1.2 Rate limit · <a href="https://github.com/Jorg3L3on/micasa/issues/107" style="color:var(--blue)">#107</a></li>
+        <li><strong style="color:var(--red)">Backlog</strong> 1.3 Isolation · <a href="https://github.com/Jorg3L3on/micasa/issues/108" style="color:var(--blue)">#108</a></li>
+        <li><strong style="color:var(--amber)">Partial</strong> 1.4 Owner context · <a href="https://github.com/Jorg3L3on/micasa/issues/109" style="color:var(--blue)">#109</a></li>
+      </ul>
+    </div>
+    <div class="status-card gap">
+      <h3>Still missing (blockers)</h3>
+      <ul class="status-list">
+        <li>Cross-tenant isolation test suite + CI gate (1.3)</li>
+        <li><code>/api/transfers</code> owner-context + house-mode regression tests (1.4)</li>
+        <li>Public marketing landing (root redirects to login today)</li>
+        <li>Production error monitoring (Sentry or equivalent)</li>
+        <li>Product analytics (PostHog or equivalent)</li>
+        <li>Admin / support tooling</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--green)">3</span>
+      <span class="summary-label">Done · 1.1, 1.2, 2.1</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--amber)">2</span>
+      <span class="summary-label">Partial · 1.4, 4.4</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--red)">7</span>
+      <span class="summary-label">Not started</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--text-muted)">0</span>
+      <span class="summary-label">Phase 3 · deferred</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--blue)">19</span>
+      <span class="summary-label">Criteria met (of 52 total)</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-pip" style="background:var(--green)"></span> Small (1–3 days)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--amber)"></span> Medium (3–7 days)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--red)"></span> Large (1–2 weeks)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--blue)"></span> PRD ready (not started)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--green)"></span> Done · ✓ = criterion met</div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-1">PHASE 1</span>
+      <span class="phase-title">Security &amp; data integrity — before any external users</span>
+      <span class="phase-timeline">2 done · 1 partial · 1 backlog</span>
+    </div>
+    <p class="phase-intro">
+      <strong>1.1</strong> and <strong>1.2</strong> are merged. Next up: <strong>1.3</strong> (isolation tests) and finish <strong>1.4</strong>
+      (<code>/api/transfers</code> + house-mode regression tests). Implement order: 1.3 → finish 1.4.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">1.1 — Consolidate Prisma clients (<code>db.ts</code> → <code>prisma.ts</code>)</div>
+            <div class="task-why">
+              Shipped: auth uses dynamic <code>import('./prisma')</code>; duplicate <code>db.ts</code> removed;
+              CI validates single import path via <code>validate:prisma-imports</code>.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-done">Done</span>
+            <span class="score-change">↑ Data consistency</span>
+          </div>
+        </div>
+        <div class="task-links">
+          <span>PRD:</span> <a href="../tasks/prd-consolidate-prisma-clients.md">tasks/prd-consolidate-prisma-clients.md</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/106">#106 closed</a>
+          <span>Notion:</span> <a href="https://app.notion.com/p/39a542e742e9815fbd53fd98875f9dca">1.1</a>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 4 / 4</div>
+          <ul class="criteria-list">
+            <li class="met"><code>auth.ts</code> uses canonical client via <code>import('./prisma')</code></li>
+            <li class="met"><code>src/lib/db.ts</code> deleted; CI blocks any <code>db</code> import</li>
+            <li class="met">Login and registration flows pass smoke test</li>
+            <li class="met"><code>CLAUDE.md</code> / <code>AGENTS.md</code> document single canonical Prisma import</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">1.2 — Rate limiting on auth and mutation routes</div>
+            <div class="task-why">
+              Shipped: <code>src/lib/server/rate-limit.ts</code> with Upstash Redis (in-memory in dev).
+              Enforced on login, registration, statement import, and receipt upload.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-done">Done</span>
+            <span class="score-change">↑ Attack surface</span>
+          </div>
+        </div>
+        <div class="task-links">
+          <span>PRD:</span> <a href="../tasks/prd-rate-limiting-auth-mutations.md">tasks/prd-rate-limiting-auth-mutations.md</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/107">#107 closed</a>
+          <span>Notion:</span> <a href="https://app.notion.com/p/39a542e742e981d38109e5af6e38b713">1.2</a>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 4 / 4</div>
+          <ul class="criteria-list">
+            <li class="met">Login: 5 attempts / IP / 15 min → <code>429</code> + <code>Retry-After</code></li>
+            <li class="met">Registration: 10 / IP / hour</li>
+            <li class="met">Statement import + receipt upload: 20 / user / hour</li>
+            <li class="met">Shared <code>enforceRateLimit</code> helper + tests in <code>rate-limit.test.ts</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">1.3 — Cross-tenant isolation audit + API tests</div>
+            <div class="task-why">
+              Isolation is application-layer only: <code>getOwnerContext()</code> + <code>ownerFilter</code> on
+              ~76 API routes, with no Postgres RLS backstop. One missing guard leaks a household’s full financial
+              picture. Build a systematic cross-user test matrix before considering RLS (RLS is defense-in-depth,
+              not a substitute for route tests).
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-l">Large</span>
+            <span class="status-badge st-new">Not started</span>
+            <span class="score-change">↑ Data isolation</span>
+          </div>
+        </div>
+        <div class="task-links">
+          <span>PRD:</span> <a href="../tasks/prd-cross-tenant-isolation.md">tasks/prd-cross-tenant-isolation.md</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/108">#108 open</a>
+          <span>Notion:</span> <a href="https://app.notion.com/p/39a542e742e98156aa88eb8d7442afe4">1.3</a>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 4 core (+ 2 stretch)</div>
+          <ul class="criteria-list">
+            <li>Integration tests: User B’s session cannot read/write User A’s resources → <code>403</code> or <code>404</code></li>
+            <li>Priority routes first: expenses, wallets, fortnights, loans, budgets, pantry, credit cards</li>
+            <li>CI job runs isolation suite; failure blocks merge to <code>main</code></li>
+            <li>Audit report listing any route still missing <code>getOwnerContext</code></li>
+            <li><em>Stretch:</em> Postgres RLS on financial tables as defense-in-depth (separate migration)</li>
+            <li><em>Stretch:</em> move active owner from query params / localStorage to server-validated JWT claim — plan as its own slice; high blast radius</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">1.4 — House / owner-context correctness (multi-owner audit)</div>
+            <div class="task-why">
+              Partially shipped since the March audit: wallets, reports, income-templates, expense-templates,
+              and create-month now use <code>getOwnerContext</code>. Still open: <code>/api/transfers</code>,
+              manual QA script, and house-mode regression tests.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-l">Large</span>
+            <span class="status-badge st-partial">Partial · 3/6</span>
+            <span class="score-change">↑ Product correctness</span>
+          </div>
+        </div>
+        <div class="task-links">
+          <span>PRD:</span> <a href="../tasks/prd-house-owner-context.md">tasks/prd-house-owner-context.md</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/109">#109 open</a>
+          <span>Notion:</span> <a href="https://app.notion.com/p/39a542e742e9812b8bcdc5889e3c4756">1.4</a>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 3 / 6</div>
+          <ul class="criteria-list">
+            <li class="met">Most finance routes respect owner context; wallets, reports, income/expense templates, create-month fixed</li>
+            <li class="met"><code>/api/reports</code> and <code>/api/income-templates</code> use <code>getOwnerContext</code></li>
+            <li><code>/api/transfers</code> uses <code>getOwnerContext</code> — still pending</li>
+            <li class="met">Fortnight create-month uses request owner via <code>ownerFilter</code> (not <code>defaultUser</code>)</li>
+            <li>Manual QA script: personal vs house mode — not documented yet</li>
+            <li>Regression tests for wallets, expenses, fortnights in house mode — not added yet</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-2">PHASE 2</span>
+      <span class="phase-title">Acquisition funnel — get strangers to a working dashboard</span>
+      <span class="phase-timeline">~1–2 weeks</span>
+    </div>
+    <p class="phase-intro">
+      Registration already works end-to-end (register → auto sign-in → onboarding → dashboard). This phase
+      polishes the credentials funnel and adds a public front door — not rebuilding signup.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.1 — Polish registration &amp; login funnel</div>
+            <div class="task-why">
+              Shipped: shared register Zod schema, generic duplicate-email response (no enumeration), in-app password
+              change with current-password verification, onboarding guard for completed users, inactive-user login block,
+              and <code>scripts/playwright-auth-funnel.sh</code>.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-done">Done</span>
+            <span class="score-change">↑ Conversion</span>
+          </div>
+        </div>
+        <div class="task-links">
+          <span>PRD:</span> <a href="../tasks/prd-polish-registration-login-funnel.md">tasks/prd-polish-registration-login-funnel.md</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/120">#120 closed</a>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 4 / 4</div>
+          <ul class="criteria-list">
+            <li class="met">Login links to <code>/register</code>; register links to <code>/login</code></li>
+            <li class="met">Duplicate email returns generic error (no account enumeration)</li>
+            <li class="met">Logged-in credential users can change password from account/settings (current password required)</li>
+            <li class="met">Playwright E2E: register → onboarding step 1 → dashboard (<code>scripts/playwright-auth-funnel.sh</code>)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.2 — Public landing page + legal minimum</div>
+            <div class="task-why">
+              <code>/</code> today redirects unauthenticated users straight to <code>/login</code>. There is no
+              marketing surface explaining the product, no pricing teaser, and no privacy/terms pages — all
+              expected before a public SaaS launch in Mexico.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Not started · 0/5</span>
+            <span class="score-change">↑ Discoverability</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 5</div>
+          <ul class="criteria-list">
+            <li>Public <code>/</code> landing: value prop, screenshots, CTA to <code>/register</code></li>
+            <li>Logged-in users still route to dashboard/onboarding (preserve current behavior)</li>
+            <li><code>/privacy</code> and <code>/terms</code> static pages (Spanish)</li>
+            <li>SEO basics: title, description, OG image</li>
+            <li>Update <code>proxy.ts</code> matcher so landing and legal pages are public</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHASE 3 (deferred) -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-3">PHASE 3</span>
+      <span class="phase-title">Monetization — deferred</span>
+      <span class="phase-timeline">Out of scope</span>
+    </div>
+    <p class="phase-intro">
+      Stripe subscriptions, plan tiers, and feature gating are deferred. No monetization work in this revision.
+      Revisit when billing is explicitly in scope.
+    </p>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-4">PHASE 4</span>
+      <span class="phase-title">Ops &amp; quality — know when things break</span>
+      <span class="phase-timeline">~2 weeks</span>
+    </div>
+    <p class="phase-intro">
+      Once real users are in play, you need visibility without opening Prisma Studio on a laptop.
+      <code>finance-log.ts</code> helps but is not a substitute for error tracking or product analytics.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.1 — Error monitoring (Sentry or equivalent)</div>
+            <div class="task-why">
+              No production error tracking today. Server exceptions, failed webhooks, and client crashes in
+              the dashboard currently rely on users reporting bugs. Ship before or alongside Phase 2 public launch.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-new">Not started · 0/3</span>
+            <span class="score-change">↑ Incident response</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 3</div>
+          <ul class="criteria-list">
+            <li>Sentry (or similar) in Next.js server, edge/proxy, and client bundles</li>
+            <li>Statement import and API route errors tagged with user/owner context (no PII in titles)</li>
+            <li>Alert on error rate spike; source maps uploaded on deploy</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.2 — Admin panel for support investigations</div>
+            <div class="task-why">
+              “My loan balance is wrong” currently means Prisma Studio or raw SQL. A minimal
+              <code>/admin</code> with user lookup, plan status, and recent finance events cuts investigation
+              from hours to minutes. Also the fallback for credential password recovery until email exists.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Not started · 0/5</span>
+            <span class="score-change">↑ Support</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 5</div>
+          <ul class="criteria-list">
+            <li><code>/admin</code> gated by <code>User.is_admin</code> or env-based allowlist</li>
+            <li>User list + detail: wallets, fortnights, loans, onboarding status</li>
+            <li>Last 50 <code>finance-log</code> events per user</li>
+            <li>Admin can trigger password reset for credential users (sets temporary password — communicate out-of-band)</li>
+            <li>Routes noindexed; excluded from sitemap</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.3 — Product analytics (PostHog)</div>
+            <div class="task-why">
+              No way today to answer onboarding drop-off, feature usage, or D30 retention. PostHog integrates
+              cleanly with App Router and has a generous free tier.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-new">Not started · 0/4</span>
+            <span class="score-change">↑ Product visibility</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 4</div>
+          <ul class="criteria-list">
+            <li>SDK in root layout + server instrumentation; <code>posthog.identify(userId)</code> on login</li>
+            <li>Events: <code>onboarding_completed</code>, <code>expense_added</code>, <code>statement_imported</code></li>
+            <li>Onboarding funnel dashboard in PostHog</li>
+            <li>No PII in event properties — user ID only</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.4 — Expand tests on money-critical paths + CI gates</div>
+            <div class="task-why">
+              66 test files exist with strong coverage on parsers and many finance services — but API
+              isolation, cross-owner behavior, and some aggregation edge cases need hardening before
+              aggressive refactors. CI today runs tests but has no coverage threshold.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-l">Large</span>
+            <span class="status-badge st-partial">Partial · 4/6</span>
+            <span class="score-change">↑ Deploy confidence</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 4 / 6</div>
+          <ul class="criteria-list">
+            <li class="met">Fortnight aggregation + installment exclusions — service tests exist</li>
+            <li class="met">Liquidity projection — 180-day horizon tests in <code>liquidity-projection*.test.ts</code></li>
+            <li class="met">Wallet balances — transfer/card payment tests in <code>wallet-accounting.test.ts</code></li>
+            <li class="met">Loan schedules — weekly/fortnightly/monthly in <code>loan-schedule.test.ts</code></li>
+            <li>Add <code>validate:calendar-dates</code> to CI (script exists locally, not in workflow)</li>
+            <li>Coverage gate ~70% on <code>src/lib/finance/**</code></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-5">PHASE 5</span>
+      <span class="phase-title">Growth — market expansion</span>
+      <span class="phase-timeline">~1–2 weeks</span>
+    </div>
+    <p class="phase-intro">
+      These expand addressable market and release control after the SaaS foundation is trustworthy.
+      Retention nudges via email are deferred until transactional email infra exists.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">5.1 — Lightweight feature flags (DB-backed)</div>
+            <div class="task-why">
+              Gradual rollouts for new statement parsers or beta UI without env-var deploys. A
+              <code>feature_flags</code> table with a 60-second cache is enough at this scale.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Not started · 0/3</span>
+            <span class="score-change">↑ Release control</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 3</div>
+          <ul class="criteria-list">
+            <li><code>feature_flags</code> table + <code>isFeatureEnabled(key, userId)</code> helper</li>
+            <li>Usable in Server Components, Server Actions, and API routes</li>
+            <li>Admin UI to toggle globally or per user; cache invalidated on update</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">5.2 — Expand statement import (Nu, BBVA)</div>
+            <div class="task-why">
+              Today: Mercado Pago, CA Departamental, CA Efectivo, DiDi Card, Liverpool. Mass-market Mexico
+              runs on Nu and BBVA — parser infrastructure is mature; ~2–3 days per institution following
+              existing patterns in <code>src/lib/server/credit-card-statement/</code>.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Not started · 0/4</span>
+            <span class="score-change">↑ TAM</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 4</div>
+          <ul class="criteria-list">
+            <li><code>parse-nu-statement.ts</code> (CSV) and <code>parse-bbva-statement.ts</code> (PDF via unpdf)</li>
+            <li>Both in <code>StatementImportProvider</code> enum + import UI</li>
+            <li>Rollback via existing <code>rollback-statement-import.service.ts</code></li>
+            <li>≥3 anonymized fixtures per provider; Spanish error messages</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="footer">
+    <strong style="color:var(--text-secondary)">Explicitly out of scope (this revision):</strong>
+    transactional email of any kind (password reset, verification, billing receipts, welcome/digest),
+    Google OAuth / social sign-in, Stripe / subscriptions / plan tiers, native mobile app, public API,
+    bank Open Finance integrations, full i18n beyond Mexico City calendar conventions, advanced BI
+    dashboards, and multi-region deployment.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Deferred until email infra exists:</strong>
+    forgot-password flow, email verification on signup, lifecycle nudges.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Repo snapshot:</strong>
+    Next.js 16 · React 19 · Prisma 7 · 25 models · 76 API routes · 66 test files ·
+    statement providers: Mercado Pago, CA Departamental, CA Efectivo, DiDi Card, Liverpool.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Last updated:</strong> Jul 10, 2026 (live repo scan) ·
+    Phase 1: <strong style="color:var(--green)">1.1 + 1.2 done</strong>, 1.4 partial, 1.3 backlog ·
+    GitHub #106–#109 · implement via <code style="font-family:var(--mono);font-size:11px;color:#c4b5fd">/ship-feature tasks/prd-*.md</code>
+  </div>
+
+</div>
+</body>
+</html>
