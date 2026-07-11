@@ -28,6 +28,9 @@ jobs:
       - name: Dashboard metric strip rules
         run: npm run validate:dashboard-ui
 
+      - name: Prisma import rules
+        run: npm run validate:prisma-imports
+
       - name: Unit tests
         run: npm test
 

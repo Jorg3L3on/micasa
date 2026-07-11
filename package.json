@@ -15,7 +15,8 @@
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
     "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
-    "ci": "npm run validate:dashboard-ui && prisma generate && npm test && npm run build"
+    "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
+    "ci": "npm run validate:dashboard-ui && npm run validate:prisma-imports && prisma generate && npm test && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
