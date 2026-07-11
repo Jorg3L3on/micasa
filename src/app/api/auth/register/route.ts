@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { HouseRole } from '@/generated/prisma/client';
-import { z } from 'zod';
+import {
+  GENERIC_REGISTER_ERROR_MESSAGE,
+  registerSchema,
+} from '@/schemas/auth.schema';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
-
-const registerSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido').max(255),
-  email: z.string().email('Correo electrónico inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-});
 
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, 'auth:register');
@@ -35,8 +32,8 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       return NextResponse.json(
-        { error: 'Ya existe una cuenta con este correo electrónico' },
-        { status: 409 }
+        { error: GENERIC_REGISTER_ERROR_MESSAGE },
+        { status: 400 }
       );
     }
 
