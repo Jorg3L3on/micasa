@@ -84,4 +84,19 @@ describe('rate-limit', () => {
     const result = await checkRateLimit(request, 'auth:login');
     expect(result.limited).toBe(false);
   });
+
+  it('limits user-scoped mutation policies per user id', async () => {
+    const request = requestWithIp('10.0.0.9');
+
+    for (let i = 0; i < 20; i += 1) {
+      const result = await checkRateLimit(request, 'mutation:receipt-upload', 99);
+      expect(result.limited).toBe(false);
+    }
+
+    const blocked = await checkRateLimit(request, 'mutation:receipt-upload', 99);
+    expect(blocked.limited).toBe(true);
+
+    const otherUser = await checkRateLimit(request, 'mutation:receipt-upload', 100);
+    expect(otherUser.limited).toBe(false);
+  });
 });
