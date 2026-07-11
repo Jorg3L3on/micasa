@@ -3,6 +3,7 @@ import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { HouseRole } from '@/generated/prisma/client';
 import { z } from 'zod';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 
 const registerSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(255),
@@ -11,6 +12,9 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, 'auth:register');
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);

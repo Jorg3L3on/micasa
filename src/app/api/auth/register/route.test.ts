@@ -16,11 +16,13 @@ vi.mock('bcryptjs', () => ({
   hash: vi.fn(async () => 'hashed-password'),
 }));
 
+import { resetRateLimitStoreForTests } from '@/lib/server/rate-limit';
 import { POST } from './route';
 
 describe('POST /api/auth/register', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRateLimitStoreForTests();
   });
 
   it('returns 400 when email is invalid', async () => {
@@ -98,5 +100,31 @@ describe('POST /api/auth/register', () => {
       name: 'New User',
       house: { id: 7, name: 'Casa de New User' },
     });
+  });
+
+  it('returns 429 when registration rate limit is exceeded', async () => {
+    findUniqueUser.mockResolvedValue({ id: 1, email: 'exists@example.com' });
+
+    const makeRequest = () =>
+      new Request('http://localhost/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-for': '192.168.50.10',
+        },
+        body: JSON.stringify({
+          name: 'Test User',
+          email: 'exists@example.com',
+          password: 'secret12',
+        }),
+      }) as Parameters<typeof POST>[0];
+
+    for (let i = 0; i < 10; i += 1) {
+      await POST(makeRequest());
+    }
+
+    const response = await POST(makeRequest());
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBeTruthy();
   });
 });
