@@ -26,10 +26,10 @@ export const {
           return null;
         }
 
-        // Dynamic import: db/Prisma only run in Node (auth API route), never in proxy
-        const { db } = await import('./db');
+        // Dynamic import: Prisma only runs in Node (auth API route), never in proxy
+        const prisma = (await import('./prisma')).default;
 
-        const user = await db.user.findUnique({
+        const user = await prisma.user.findUnique({
           where: {
             email: credentials.email as string,
           },
