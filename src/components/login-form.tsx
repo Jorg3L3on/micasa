@@ -88,7 +88,11 @@ export function LoginForm({
               <Label htmlFor="password">Contraseña</Label>
               <PasswordInput id="password" name="password" required />
             </div>
-            {error && <div className="text-sm text-red-500">{error}</div>}
+            {error && (
+              <div className="text-sm text-red-500" role="alert">
+                {error}
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </Button>
