@@ -79,8 +79,7 @@ src/
   components/            # React components; ui/ contains Radix UI primitives
   context/               # finance-context.tsx — active owner context (user vs house)
   lib/
-    prisma.ts            # Prisma singleton — `export default prisma` (used everywhere, 51 imports)
-    db.ts                # Duplicate singleton with `export const db` — currently unused, candidate for removal
+    prisma.ts            # Prisma singleton — `export default prisma` (canonical; use everywhere)
     auth.ts              # NextAuth config
     api/                 # Client-side fetch helpers (`client-fetch.ts`, domain modules)
     api-server.ts        # Server-side fetch helpers
@@ -125,7 +124,7 @@ prisma/
 **Pantry:** `PantryReceipt`, `PantryReceiptLine`, `PantryProduct`, `PantryShoppingCart`, `PantryShoppingCartItem`, `PantryShoppingCartActivity`
 
 ### Prisma Client
-Generated to `src/generated/prisma` (not the default location). Always import from there or use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). After schema changes, run `npx prisma generate`.
+Generated to `src/generated/prisma` (not the default location). Always use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). The former duplicate `db.ts` was removed — auth and all services share this one extended client. After schema changes, run `npx prisma generate`.
 
 The `prisma.ts` singleton switches adapters by environment:
 - **Production**: `PrismaNeon` (serverless-safe, uses Neon's HTTP protocol)
@@ -229,5 +228,5 @@ To re-seed: `npx prisma db seed` (destructive — clears all data first).
 - **Lint exits with code 1** due to pre-existing warnings/errors in the codebase (React hooks violations, unused vars). This is expected; do not treat lint failure as a blocker for CI unless you introduced new errors.
 - **Prisma client output** is `src/generated/prisma` (non-default). Always import from there or via `src/lib/prisma.ts`.
 - After schema changes, run `npx prisma generate` before starting the dev server.
-- The `npm run ci` script runs: `validate:dashboard-ui` → `prisma generate` → `vitest run` → `next build`.
+- The `npm run ci` script runs: `validate:dashboard-ui` → `validate:prisma-imports` → `prisma generate` → `vitest run` → `next build`.
 - The dev server uses `--webpack` mode by default (`npm run dev`). Turbopack mode is available via `npm run dev:turbo`.
