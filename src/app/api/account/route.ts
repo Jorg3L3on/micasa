@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { updateAccountSchema } from '@/schemas/account.schema';
@@ -24,10 +24,19 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const { name, newPassword, confirmPassword } = parsed.data;
+    const { name, currentPassword, newPassword, confirmPassword } = parsed.data;
     const userId = Number(session.user.id);
     if (isNaN(userId)) {
       return NextResponse.json({ error: 'Usuario inválido' }, { status: 400 });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { password: true },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
     const updateData: { name?: string; password?: string } = {};
@@ -45,6 +54,23 @@ export async function PATCH(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      const currentPasswordValue = String(currentPassword ?? '').trim();
+      const isCurrentPasswordValid = await compare(
+        currentPasswordValue,
+        existingUser.password
+      );
+
+      if (!isCurrentPasswordValid) {
+        return NextResponse.json(
+          {
+            error: 'La contraseña actual no es correcta',
+            field: 'currentPassword',
+          },
+          { status: 400 }
+        );
+      }
+
       updateData.password = await hash(String(newPassword).trim(), 10);
     }
 
