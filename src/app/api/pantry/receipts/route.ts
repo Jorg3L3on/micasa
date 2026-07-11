@@ -23,6 +23,7 @@ import { SHOPPING_STORE_LABELS } from '@/types/shopping-store';
 import { stripReceiptSystemWarnings } from '@/lib/server/pantry/pantry-receipt-links';
 import { syncPantryProductsFromReceiptLines } from '@/lib/server/pantry/sync-pantry-products-from-lines';
 import { shoppingStoreSchema } from '@/schemas/pantry-shopping-cart.schema';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 import type { PantryReceiptListItemDto } from '@/types/pantry-receipt';
 
 const normalizeTextKey = (value: string): string =>
@@ -110,6 +111,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (Number.isNaN(createdBy)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
+
+    const limited = await enforceRateLimit(
+      request,
+      'mutation:receipt-upload',
+      createdBy,
+    );
+    if (limited) return limited;
 
     const contentType = request.headers.get('content-type') ?? '';
     if (!contentType.includes('multipart/form-data')) {

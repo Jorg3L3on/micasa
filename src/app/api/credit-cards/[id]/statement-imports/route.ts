@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 import prisma from '@/lib/prisma';
 import { StatementImportProvider } from '@/generated/prisma/client';
 import { importStatementPdf } from '@/lib/server/credit-card-statement/statement-import.service';
@@ -104,6 +105,13 @@ export async function POST(
     if (Number.isNaN(createdBy)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
+
+    const limited = await enforceRateLimit(
+      request,
+      'mutation:statement-import',
+      createdBy,
+    );
+    if (limited) return limited;
 
     const { id } = await params;
     const walletId = Number(id);
