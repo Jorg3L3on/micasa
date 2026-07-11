@@ -79,8 +79,7 @@ src/
   components/            # React components; ui/ contains Radix UI primitives
   context/               # finance-context.tsx — active owner context (user vs house)
   lib/
-    prisma.ts            # Prisma singleton — `export default prisma` (used everywhere, 51 imports)
-    db.ts                # Duplicate singleton with `export const db` — currently unused, candidate for removal
+    prisma.ts            # Prisma singleton — `export default prisma` (canonical; use everywhere)
     auth.ts              # NextAuth config
     api/                 # Client-side fetch helpers (`client-fetch.ts`, domain modules)
     api-server.ts        # Server-side fetch helpers
@@ -125,7 +124,7 @@ prisma/
 **Pantry:** `PantryReceipt`, `PantryReceiptLine`, `PantryProduct`, `PantryShoppingCart`, `PantryShoppingCartItem`, `PantryShoppingCartActivity`
 
 ### Prisma Client
-Generated to `src/generated/prisma` (not the default location). Always import from there or use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). After schema changes, run `npx prisma generate`.
+Generated to `src/generated/prisma` (not the default location). Always use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). The former duplicate `db.ts` was removed — auth and all services share this one extended client. After schema changes, run `npx prisma generate`.
 
 The `prisma.ts` singleton switches adapters by environment:
 - **Production**: `PrismaNeon` (serverless-safe, uses Neon's HTTP protocol)
