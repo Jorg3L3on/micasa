@@ -46,6 +46,7 @@ export default function EditAccountDialog({
     resolver: zodResolver(updateAccountSchema),
     defaultValues: {
       name: defaultName,
+      currentPassword: '',
       newPassword: '',
       confirmPassword: '',
     },
@@ -57,6 +58,7 @@ export default function EditAccountDialog({
       setApiError(null);
       form.reset({
         name: defaultName,
+        currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
@@ -67,6 +69,7 @@ export default function EditAccountDialog({
     setApiError(null);
     const body: {
       name?: string;
+      currentPassword?: string;
       newPassword?: string;
       confirmPassword?: string;
     } = {};
@@ -76,6 +79,7 @@ export default function EditAccountDialog({
     const hasNewPassword =
       data.newPassword != null && String(data.newPassword).trim().length > 0;
     if (hasNewPassword) {
+      body.currentPassword = String(data.currentPassword ?? '').trim();
       body.newPassword = String(data.newPassword).trim();
       body.confirmPassword = String(data.confirmPassword ?? '').trim();
     }
@@ -88,6 +92,7 @@ export default function EditAccountDialog({
 
       form.reset({
         name: res.name ?? data.name,
+        currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
@@ -100,11 +105,16 @@ export default function EditAccountDialog({
     }
   };
 
+  const newPasswordValue = form.watch('newPassword');
+  const isChangingPassword =
+    newPasswordValue != null && String(newPasswordValue).trim().length > 0;
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setApiError(null);
       form.reset({
         name: defaultName,
+        currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
@@ -145,6 +155,25 @@ export default function EditAccountDialog({
                 </FormItem>
               )}
             />
+            {isChangingPassword ? (
+              <FormField
+                control={form.control}
+                name="currentPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contraseña actual</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        placeholder="Tu contraseña actual"
+                        autoComplete="current-password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
             <FormField
               control={form.control}
               name="newPassword"
