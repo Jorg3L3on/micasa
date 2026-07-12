@@ -175,10 +175,10 @@ export const MonthlyBudgetSidebar = ({
       <Button variant="outline" className="w-full gap-2" asChild>
         <Link
           href={`/budgets${ownerQuery}`}
-          aria-label="Ajustar presupuesto de la quincena"
+          aria-label="Ver reporte completo de presupuesto de la quincena"
         >
           <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
-          Ajustar presupuesto
+          Ver reporte completo
         </Link>
       </Button>
     </aside>
