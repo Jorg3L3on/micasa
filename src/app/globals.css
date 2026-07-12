@@ -11,7 +11,7 @@
 :root {
   --radius: 0.75rem;
   /* Light mode – soft canvas like reference dashboards */
-  --background: #f9fafb;
+  --background: oklch(0.9875 0.0026 106.45);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -35,7 +35,7 @@
   --chart-3: oklch(0.68 0.16 145);
   --chart-4: oklch(0.7 0.15 290);
   --chart-5: oklch(0.72 0.12 55);
-  --sidebar: oklch(0.99 0.003 265);
+  --sidebar: oklch(0.9875 0.0026 106.45);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.585 0.233 264);
   --sidebar-primary-foreground: oklch(1 0 0);
