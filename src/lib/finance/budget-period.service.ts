@@ -8,12 +8,14 @@ import {
 import { getNextCalendarFortnight } from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
+import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
 import {
   computePeriodSpendByAllocations,
   type DateRange,
 } from '@/lib/finance/budget-period-spend';
 import {
   computeBudgetPeriodWindowsForFortnight,
+  getCalendarFortnightBoundsForMonth,
 } from '@/lib/finance/budget-period-windows';
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
@@ -103,7 +105,77 @@ export async function generatePeriodsForMonth(
   return { total };
 }
 
+/** Creates missing periods for a month when fortnights exist but no periods overlap yet. */
+export async function ensureBudgetPeriodsForMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<void> {
+  const fortnightCount = await prisma.fortnight.count({
+    where: { ...ownerFilter, year, month },
+  });
+  if (fortnightCount === 0) return;
+
+  const activeRecurrentCount = await prisma.budget.count({
+    where: {
+      ...ownerFilter,
+      active: true,
+      recurrent: true,
+      frequency: { not: 'CUSTOM' },
+    },
+  });
+  if (activeRecurrentCount === 0) return;
+
+  const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
+  const monthStart = first.start_date;
+  const monthEnd = second.end_date;
+
+  const overlappingPeriodCount = await prisma.budgetPeriod.count({
+    where: {
+      start_date: { lte: monthEnd },
+      end_date: { gte: monthStart },
+      budget: { ...ownerFilter, active: true },
+    },
+  });
+  if (overlappingPeriodCount > 0) return;
+
+  await generatePeriodsForMonth(year, month, ownerFilter);
+}
+
+/** Drops future periods and regenerates from the updated template window. */
+export async function syncBudgetPeriodsAfterTemplateUpdate(
+  budgetId: number,
+  frequency: BudgetFrequency,
+  budgetDateRange: DateRange | null,
+  ownerFilter: OwnerFilter,
+  options: { recurrent: boolean },
+): Promise<void> {
+  const todayEnd = endOfCalendarDay(todayCalendarDate());
+
+  await prisma.budgetPeriod.deleteMany({
+    where: {
+      budget_id: budgetId,
+      start_date: { gt: todayEnd },
+    },
+  });
+
+  if (!budgetDateRange?.start_date || !budgetDateRange.end_date) return;
+
+  await generatePeriodsOnCreate(
+    budgetId,
+    frequency,
+    budgetDateRange,
+    ownerFilter,
+    { recurrent: options.recurrent },
+  );
+}
+
 export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
+  const todayYmd = formatCalendarDate(asOf);
+  const year = Number(todayYmd.slice(0, 4));
+  const month = Number(todayYmd.slice(5, 7));
+  await ensureBudgetPeriodsForMonth(ownerFilter, year, month);
+
   const { start_date: todayStart, end_date: todayEnd } = activeDayBounds(asOf);
 
   const periods = await prisma.budgetPeriod.findMany({
@@ -138,10 +210,15 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
 
       const spend =
         allocationInputs.length > 0
-          ? await computePeriodSpendByAllocations(prisma, allocationInputs, {
-              start_date: period.start_date,
-              end_date: period.end_date,
-            })
+          ? await computePeriodSpendByAllocations(
+              prisma,
+              allocationInputs,
+              {
+                start_date: period.start_date,
+                end_date: period.end_date,
+              },
+              ownerFilter,
+            )
           : { total_spent: 0, by_allocation: [] };
 
       const allocatedAmount = Number(budget.total_amount);
@@ -253,10 +330,15 @@ export async function listHistoryPeriods(
 
     const spend =
       allocationInputs.length > 0
-        ? await computePeriodSpendByAllocations(prisma, allocationInputs, {
-            start_date: period.start_date,
-            end_date: period.end_date,
-          })
+        ? await computePeriodSpendByAllocations(
+            prisma,
+            allocationInputs,
+            {
+              start_date: period.start_date,
+              end_date: period.end_date,
+            },
+            ownerFilter,
+          )
         : { total_spent: 0, by_allocation: [] };
 
     const allocatedAmount = Number(budget.total_amount);
@@ -366,6 +448,7 @@ export async function listBudgetPeriodExpensesByAllocation(
     where: {
       ...ownerFilter,
       is_paid: true,
+      ...whereExcludeCreditInstallments(),
       payment_date: {
         gte: period.start_date,
         lte: period.end_date,

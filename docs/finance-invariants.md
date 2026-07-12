@@ -109,7 +109,14 @@ It is intentionally high-level so it stays in sync with the existing architectur
 - **Wallet effects**: Marking a wallet-sourced payment paid goes through `loan.service.ts` / expense flows so funding wallet balances stay consistent with expenses.
 - **Planning**: Scheduled loan payments feed liquidity projection and dashboard obligations; they are distinct from credit-card statement cycles and from unpaid expense templates.
 
-### 8. Where to extend safely
+### 8. Budget spend
+
+- **Scope**: `BudgetPeriod` spend is computed from **paid** expenses (`is_paid: true`) matching each allocation’s `wallet_id` + `category_id` within the period window (`payment_date`).
+- **Owner**: Spend queries always include the active `ownerFilter` (`user_id` or `house_id`), same as drill-down lists.
+- **Installments**: Credit-card **cuota** expenses (both `credit_installment_current` and `credit_installment_total` set) are **excluded** from budget spend, consistent with fortnight planning aggregates.
+- **Credit charges**: Unlike fortnight cash-flow totals, budget spend **does** count charges on credit/department-store wallets when those wallets are part of an allocation (budgets track category caps per wallet, not cash outflow).
+
+### 9. Where to extend safely
 
 - When adding new endpoints or services:
   - **Derive ownership** from:

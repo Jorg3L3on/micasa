@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import EmptyState from '@/components/EmptyState';
+import { BudgetTemplateMobileCard } from '@/components/budgets/BudgetTemplateMobileCard';
 import BudgetFormDialog from '@/components/BudgetFormDialog';
 import BudgetAllocationsDialog from '@/components/BudgetAllocationsDialog';
 import BudgetTemplateFieldsDialog from '@/components/BudgetTemplateFieldsDialog';
@@ -48,6 +50,13 @@ export default function BudgetTemplatesPage() {
   const [allocDialogOpen, setAllocDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<BudgetListItem | null>(null);
+  const [nameFilter, setNameFilter] = useState('');
+
+  const filteredTemplates = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase();
+    if (!query) return templates;
+    return templates.filter((template) => template.name.toLowerCase().includes(query));
+  }, [templates, nameFilter]);
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -270,7 +279,8 @@ export default function BudgetTemplatesPage() {
           }}
         >
           <PiggyBank className="mr-2 h-4 w-4" aria-hidden />
-          Nueva plantilla
+          <span className="sm:hidden">Nueva</span>
+          <span className="hidden sm:inline">Nueva plantilla</span>
         </Button>
       </div>
 
@@ -310,13 +320,54 @@ export default function BudgetTemplatesPage() {
               }}
             />
           ) : (
-            <DataTable
-              data={templates}
-              columns={columns}
-              filterColumn="name"
-              filterPlaceholder="Filtrar por nombre…"
-              emptyMessage="No se encontraron plantillas."
-            />
+            <>
+              <div className="space-y-3 md:hidden">
+                <Input
+                  value={nameFilter}
+                  onChange={(event) => setNameFilter(event.target.value)}
+                  placeholder="Filtrar por nombre…"
+                  aria-label="Filtrar plantillas por nombre"
+                  className="h-10"
+                />
+                {filteredTemplates.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    No se encontraron plantillas.
+                  </p>
+                ) : (
+                  filteredTemplates.map((template) => (
+                    <BudgetTemplateMobileCard
+                      key={template.id}
+                      template={template}
+                      onEdit={(tpl) => {
+                        setSelected(tpl);
+                        setFormError(null);
+                        setEditDialogOpen(true);
+                      }}
+                      onAllocations={(tpl) => {
+                        setSelected(tpl);
+                        setFormError(null);
+                        setAllocDialogOpen(true);
+                      }}
+                      onDeactivate={(tpl) => {
+                        setSelected(tpl);
+                        setError(null);
+                        setDeleteDialogOpen(true);
+                      }}
+                      onReactivate={handleReactivate}
+                    />
+                  ))
+                )}
+              </div>
+              <div className="hidden md:block">
+                <DataTable
+                  data={templates}
+                  columns={columns}
+                  filterColumn="name"
+                  filterPlaceholder="Filtrar por nombre…"
+                  emptyMessage="No se encontraron plantillas."
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
