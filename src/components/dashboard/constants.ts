@@ -1,10 +1,10 @@
 /** Dashboard panel shell: calm border, no glass/tinted fill (accent lives in icon pills + metric strips). */
 export const DASHBOARD_CARD_CLASS =
-  'rounded-xl overflow-hidden border border-border/60 min-h-[200px] bg-transparent shadow-sm';
+  'rounded-xl overflow-hidden border border-border/60 min-h-[200px] bg-card shadow-sm';
 
 /** Inner metric / summary strip: calm border only; semantic color on text/icon pills. */
 export const DASHBOARD_METRIC_STRIP_CLASS =
-  'rounded-lg border border-border/60 px-2.5 py-2 bg-transparent';
+  'rounded-lg border border-border/60 px-2.5 py-2 bg-card';
 
 /** Short month names (es) for period labels. */
 const MONTH_NAMES_SHORT = [
