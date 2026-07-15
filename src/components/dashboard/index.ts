@@ -7,3 +7,5 @@ export { default as QuickActionsCard } from './QuickActionsCard';
 export { default as AlertsWarningsCard } from './AlertsWarningsCard';
 export { default as PeriodComparisonCard } from './PeriodComparisonCard';
 export { default as LiquidityTeaserCard } from './LiquidityTeaserCard';
+export { default as DashboardCommittedCashBar } from './DashboardCommittedCashBar';
+export { default as DashboardCreditSummaryStrip } from './DashboardCreditSummaryStrip';
