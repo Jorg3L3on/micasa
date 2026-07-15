@@ -5,19 +5,29 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { DashboardData } from '@/types/dashboard';
 import StatCard from '@/components/dashboard/StatCard';
 import DashboardFundingNetCard from '@/components/dashboard/DashboardFundingNetCard';
+import DashboardCreditSummaryStrip from '@/components/dashboard/DashboardCreditSummaryStrip';
+import DashboardCommittedCashBar from '@/components/dashboard/DashboardCommittedCashBar';
 import DashboardPeriodCategoryPie from '@/components/dashboard/DashboardPeriodCategoryPie';
 import DashboardBudgetSummaryCard from '@/components/dashboard/DashboardBudgetSummaryCard';
 import DashboardLoanSummaryCard from '@/components/dashboard/DashboardLoanSummaryCard';
 import AlertsWarningsCard from '@/components/dashboard/AlertsWarningsCard';
 import UpcomingObligationsCard from '@/components/dashboard/UpcomingObligationsCard';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
+import IncomeBreakdownCard from '@/components/dashboard/IncomeBreakdownCard';
+import ExpenseHealthCheckCard from '@/components/dashboard/ExpenseHealthCheckCard';
+import FixedVsVariableCard from '@/components/dashboard/FixedVsVariableCard';
+import PeriodComparisonCard from '@/components/dashboard/PeriodComparisonCard';
+import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
-import { getPeriodLabel } from '@/components/dashboard/constants';
-import { getDashboardLoanStatDisplay } from '@/components/dashboard/dashboard-loan-stat-display';
+import {
+  DASHBOARD_HERO_GRID_CLASS,
+  DASHBOARD_KPI_GRID_CLASS,
+  getPeriodLabel,
+} from '@/components/dashboard/constants';
 
 type DashboardPanelProps = {
   data: DashboardData;
@@ -30,7 +40,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   const [isViewPending, startViewTransition] = useTransition();
   const todayYmd = useHydrationSafeTodayYmd();
   const { context } = useFinanceContext();
-  const { summary } = data;
+  const { summary, availableVsCommitted } = data;
 
   const viewFromUrl = searchParams.get('view');
   const selectedView: 'month' | 'biweekly' =
@@ -44,7 +54,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   const periodLabel = getPeriodLabel(data.period);
   const panelTitle =
     selectedView === 'month' ? 'Resumen mensual' : 'Plan de quincena';
-  const loanStat = getDashboardLoanStatDisplay(data);
+  const disponibleSubtitle = `Pagado ${formatCurrency(availableVsCommitted.pagado)} · Pendiente ${formatCurrency(availableVsCommitted.pendiente)}`;
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -70,6 +80,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
 
   return (
     <div className="w-full space-y-5">
+      {/* 1. Period chrome */}
       <section
         className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
         aria-labelledby="dashboard-period-title"
@@ -132,15 +143,27 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
+      {/* 2. Wallets hero */}
+      <div className={DASHBOARD_HERO_GRID_CLASS}>
         <DashboardFundingNetCard
           amount={data.fundingNetVsPendingExpense}
           fundingWalletBalanceTotal={data.fundingWalletBalanceTotal}
           pendingAmount={summary.totalUnpaid}
           payrollDeductionAmount={data.planningPayrollLoanDeduction?.total ?? 0}
           wallets={data.fundingWalletBreakdown}
-          className="sm:col-span-2"
+          className="lg:col-span-2"
         />
+        <DashboardCreditSummaryStrip
+          creditWalletDebtTotal={data.creditWalletDebtTotal}
+          creditWalletAvailableTotal={data.creditWalletAvailableTotal}
+          className="lg:col-span-3"
+        />
+      </div>
+
+      <MyCardsPanel />
+
+      {/* 3. Period KPIs */}
+      <div className={DASHBOARD_KPI_GRID_CLASS}>
         <StatCard
           title="Ingresos"
           amount={summary.totalIncome}
@@ -149,11 +172,11 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           subtitle="Del periodo"
         />
         <StatCard
-          title="Pendiente"
-          amount={summary.totalUnpaid}
+          title="Gastos"
+          amount={summary.totalExpense}
           iconKey="trending-down"
-          iconGradient="linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
-          subtitle="Por pagar"
+          iconGradient="linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)"
+          subtitle="Del periodo"
         />
         <StatCard
           title="Presupuesto libre"
@@ -163,34 +186,55 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           subtitle={`${data.budgetSummary.usedPercent}% usado`}
         />
         <StatCard
-          title="Préstamos"
-          amount={loanStat.amount}
-          iconKey="hand-coins"
-          iconGradient="linear-gradient(135deg, #eab308 0%, #facc15 100%)"
-          subtitle={loanStat.subtitle}
+          title="Disponible"
+          amount={availableVsCommitted.libre}
+          iconKey="circle-dollar"
+          iconGradient="linear-gradient(135deg, #10b981 0%, #34d399 100%)"
+          subtitle={disponibleSubtitle}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 [&>*]:min-w-0">
+      {/* 4. Committed cash + budget */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+        <DashboardCommittedCashBar
+          availableVsCommitted={availableVsCommitted}
+        />
         <DashboardBudgetSummaryCard
           budgetSummary={data.budgetSummary}
           ownerQueryString={ownerQueryString}
         />
-        <DashboardLoanSummaryCard
-          data={data}
-          ownerQueryString={ownerQueryString}
-        />
+      </div>
+
+      {/* 5. Income & expense insights */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+        <IncomeBreakdownCard data={data} />
+        <div className="flex flex-col gap-4 [&>*]:min-w-0">
+          <ExpenseHealthCheckCard data={data} />
+          <FixedVsVariableCard data={data} />
+        </div>
+      </div>
+
+      {/* 6. Analysis */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
         <DashboardPeriodCategoryPie
           period={data.period}
           rows={data.periodCategoryBreakdown}
         />
+        <PeriodComparisonCard data={data} />
       </div>
 
-      <UpcomingObligationsCard data={data} />
+      {/* 7. Obligations, loans, alerts, activity */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+        <UpcomingObligationsCard data={data} />
+        <DashboardLoanSummaryCard
+          data={data}
+          ownerQueryString={ownerQueryString}
+        />
+      </div>
 
       {data.alerts.length > 0 ? <AlertsWarningsCard data={data} /> : null}
 
-      <MyCardsPanel />
+      <RecentActivityCard data={data} />
     </div>
   );
 }

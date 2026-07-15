@@ -47,3 +47,11 @@ export function getPeriodLabel({
 /** Grid class for dashboard tab content (responsive 1/2/3 columns). */
 export const DASHBOARD_GRID_CLASS =
   'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';
+
+/** Wallet hero: funding net + credit summary (lg 5-col). */
+export const DASHBOARD_HERO_GRID_CLASS =
+  'grid grid-cols-1 gap-4 lg:grid-cols-5 [&>*]:min-w-0';
+
+/** Period KPI strip: 2-col mobile, 4-col desktop. */
+export const DASHBOARD_KPI_GRID_CLASS =
+  'grid grid-cols-2 gap-4 lg:grid-cols-4 [&>*]:min-w-0';
