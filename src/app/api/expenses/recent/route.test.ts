@@ -18,6 +18,7 @@ vi.mock('@/lib/server/get-owner-context', () => ({
 import { GET } from './route';
 
 const ownerContext = {
+  userId: 1,
   ownerType: 'user' as const,
   ownerId: 1,
   ownerFilter: { user_id: 1, house_id: null },
