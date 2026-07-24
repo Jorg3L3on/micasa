@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiCasa — Execution Plan (v3)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.12);
+    --text: #eeede8;
+    --text-muted: #5a5955;
+    --text-secondary: #96948e;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.07);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.07);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.07);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96,165,250,0.07);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.07);
+    --cyan: #22d3ee;
+    --cyan-dim: rgba(34,211,238,0.07);
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 52px 24px 96px; }
+
+  .header { margin-bottom: 40px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--purple); margin-bottom: 10px;
+  }
+  .title {
+    font-size: 38px; font-weight: 700; letter-spacing: -.025em;
+    line-height: 1.1; margin-bottom: 10px;
+  }
+  .title span { color: var(--text-muted); }
+  .header-meta { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+  .header-meta code {
+    font-family: var(--mono); font-size: 12px; color: #c4b5fd;
+  }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--amber);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 40px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+  .callout strong { color: var(--text); }
+
+  .score-hero {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 28px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .score-num-wrap { display: flex; align-items: baseline; gap: 4px; }
+  .score-big { font-size: 64px; font-weight: 700; letter-spacing: -.04em; color: var(--amber); line-height: 1; }
+  .score-denom { font-size: 24px; color: var(--text-muted); font-weight: 300; }
+  .score-label { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .score-sub { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .score-delta {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-family: var(--mono); font-weight: 600;
+    color: var(--green); background: var(--green-dim);
+    border-radius: 6px; padding: 3px 10px; margin-top: 10px;
+  }
+
+  .dim-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 40px;
+  }
+  @media (max-width: 640px) { .dim-grid { grid-template-columns: 1fr; } }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .dim-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .dim-name { font-size: 12px; font-weight: 600; }
+  .dim-score { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+  .dim-bar-bg { height: 3px; background: var(--border-strong); border-radius: 2px; overflow: hidden; }
+  .dim-bar-fill { height: 3px; border-radius: 2px; }
+
+  .status-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 40px;
+  }
+  @media (max-width: 900px) { .status-grid { grid-template-columns: 1fr; } }
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .status-card h3 {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .status-card.done h3 { color: var(--green); }
+  .status-card.gap h3 { color: var(--red); }
+  .status-card.ready h3 { color: var(--blue); }
+  .status-list { list-style: none; display: grid; gap: 5px; }
+  .status-list li { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .status-list li code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 3px; color: #c4b5fd;
+  }
+
+  .summary {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 1px; background: var(--border-strong);
+    border: 1px solid var(--border-strong); border-radius: 12px;
+    overflow: hidden; margin-bottom: 36px;
+  }
+  @media (max-width: 720px) { .summary { grid-template-columns: repeat(2, 1fr); } }
+  .summary-cell {
+    background: var(--surface); padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .summary-num { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+  .summary-label { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  .order {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 40px;
+  }
+  .order h2 {
+    font-size: 13px; font-weight: 600; margin-bottom: 12px;
+    letter-spacing: .02em;
+  }
+  .order-steps {
+    list-style: none; display: grid; gap: 8px;
+  }
+  .order-steps li {
+    display: grid; grid-template-columns: 28px 1fr auto;
+    gap: 12px; align-items: start;
+    font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+  }
+  .order-n {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--text-muted); padding-top: 2px;
+  }
+  .order-steps li strong { color: var(--text); font-weight: 600; }
+  .order-tag {
+    font-size: 10px; font-weight: 600; font-family: var(--mono);
+    padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  .tag-blocker { background: var(--red-dim); color: var(--red); }
+  .tag-growth { background: var(--amber-dim); color: var(--amber); }
+  .tag-later { background: var(--blue-dim); color: var(--blue); }
+  .tag-done { background: var(--green-dim); color: var(--green); }
+
+  .phase { margin-bottom: 48px; }
+  .phase-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 16px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .phase-num {
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+    letter-spacing: .1em; padding: 4px 10px; border-radius: 6px; flex-shrink: 0;
+  }
+  .phase-title { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .phase-timeline {
+    margin-left: auto; font-size: 12px; font-family: var(--mono);
+    color: var(--text-muted); flex-shrink: 0;
+  }
+  .phase-intro {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.75; margin-bottom: 18px;
+  }
+  .phase-intro code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.06); padding: 1px 5px;
+    border-radius: 3px; color: #c4b5fd;
+  }
+
+  .tasks { display: grid; gap: 10px; }
+  .task {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .task.blocker-border { border-color: rgba(239,68,68,0.22); }
+  .task-main {
+    padding: 16px 20px;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 12px; align-items: start;
+  }
+  .task-title { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+  .task-title code {
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: #c4b5fd;
+  }
+  .task-why { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .task-why code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.06); padding: 1px 5px;
+    border-radius: 3px; color: #c4b5fd;
+  }
+  .task-meta {
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: flex-end; flex-shrink: 0;
+  }
+  .effort-badge {
+    font-size: 11px; font-weight: 600; font-family: var(--mono);
+    padding: 3px 9px; border-radius: 5px; white-space: nowrap;
+  }
+  .status-badge {
+    font-size: 10px; font-weight: 600; font-family: var(--mono);
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .score-change {
+    font-size: 11px; font-family: var(--mono); color: var(--green);
+  }
+
+  .task-criteria {
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.02);
+  }
+  .criteria-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .criteria-list { list-style: none; display: grid; gap: 4px; }
+  .criteria-list li {
+    font-size: 12px; color: var(--text-secondary);
+    display: flex; gap: 8px; line-height: 1.5;
+  }
+  .criteria-list li::before {
+    content: '□'; color: var(--text-muted); flex-shrink: 0; font-size: 11px; margin-top: 1px;
+  }
+  .criteria-list li.met { color: var(--text-muted); }
+  .criteria-list li.met::before {
+    content: '✓'; color: var(--green);
+  }
+  .criteria-list li code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 3px; color: #c4b5fd;
+  }
+
+  .ef-s  { background: var(--green-dim);  color: var(--green);  }
+  .ef-m  { background: var(--amber-dim);  color: var(--amber);  }
+  .ef-l  { background: var(--red-dim);    color: var(--red);    }
+  .ph-1  { background: var(--green-dim);  color: var(--green);  }
+  .ph-2  { background: var(--red-dim);    color: var(--red);    }
+  .ph-3  { background: var(--amber-dim);  color: var(--amber);  }
+  .ph-4  { background: var(--blue-dim);   color: var(--blue);   }
+  .ph-5  { background: var(--purple-dim); color: var(--purple); }
+  .ph-d  { background: var(--cyan-dim);   color: var(--cyan);   }
+  .st-new { background: var(--red-dim); color: var(--red); }
+  .st-partial { background: var(--amber-dim); color: var(--amber); }
+  .st-done { background: var(--green-dim); color: var(--green); }
+
+  .task-links {
+    border-top: 1px solid var(--border);
+    padding: 10px 20px 14px;
+    display: flex; flex-wrap: wrap; gap: 8px 16px;
+    font-size: 11px; font-family: var(--mono);
+  }
+  .task-links a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .task-links a:hover { text-decoration: underline; }
+  .task-links span { color: var(--text-muted); }
+
+  .progress-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border-strong);
+    border: 1px solid var(--border-strong); border-radius: 12px;
+    overflow: hidden; margin-bottom: 36px;
+  }
+  @media (max-width: 720px) { .progress-strip { grid-template-columns: 1fr 1fr; } }
+  .progress-cell {
+    background: var(--surface); padding: 14px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .progress-num { font-size: 20px; font-weight: 700; }
+  .progress-label { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 32px; font-size: 12px; color: var(--text-muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-pip { width: 8px; height: 8px; border-radius: 2px; }
+
+  .changes {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 40px;
+  }
+  .changes h2 {
+    font-size: 14px; font-weight: 600; margin-bottom: 12px;
+    color: var(--text);
+  }
+  .changes ul {
+    list-style: none; display: grid; gap: 8px;
+  }
+  .changes li {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+    padding-left: 14px; position: relative;
+  }
+  .changes li::before {
+    content: '→'; position: absolute; left: 0; color: var(--purple);
+  }
+  .changes li code {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,255,255,0.06); padding: 1px 5px;
+    border-radius: 3px; color: #c4b5fd;
+  }
+  .changes li strong { color: var(--text); }
+
+  .done-compact {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .done-compact-title {
+    font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text);
+  }
+  .done-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .done-chip {
+    font-size: 11px; font-family: var(--mono);
+    background: var(--green-dim); color: var(--green);
+    padding: 3px 8px; border-radius: 5px;
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  .footer {
+    font-size: 12px; color: var(--text-muted);
+    padding-top: 24px; border-top: 1px solid var(--border); line-height: 1.8;
+  }
+  .footer code {
+    font-family: var(--mono); font-size: 11px; color: #c4b5fd;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="eyebrow">MiCasa · Execution Roadmap · v3 · Jul 24, 2026</div>
+    <h1 class="title">Launch blockers first. <span>Growth second.</span></h1>
+    <p class="header-meta">
+      Source: <code>micasa-assessment-v2.html</code> (SaaS readiness 6/10) ·
+      Supersedes <code>docs/micasa-execution-plan-v2.html</code> ·
+      Target: public-ready at ~8/10 · Phase 1 security is closed
+    </p>
+  </div>
+
+  <div class="score-hero">
+    <div>
+      <div class="score-num-wrap">
+        <span class="score-big">6</span>
+        <span class="score-denom">/10</span>
+      </div>
+    </div>
+    <div>
+      <div class="score-label">SaaS readiness — assessment v2</div>
+      <div class="score-sub">
+        Phase 1 (security &amp; data integrity) is fully shipped. Foundational risks are closed.
+        What remains is the public-facing layer and ops tooling — not the infrastructure underneath.
+        This plan reorders remaining work around the assessment’s four launch blockers.
+      </div>
+      <div class="score-delta">↑ +2 from original 4/10 · Phase 1 complete</div>
+    </div>
+  </div>
+
+  <div class="dim-grid">
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Auth &amp; session</span>
+        <span class="dim-score" style="color:var(--amber)">6</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:60%;background:var(--amber)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Data isolation</span>
+        <span class="dim-score" style="color:var(--green)">8</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:80%;background:var(--green)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Infrastructure</span>
+        <span class="dim-score" style="color:var(--green)">8</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:80%;background:var(--green)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Test coverage</span>
+        <span class="dim-score" style="color:var(--amber)">6</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:60%;background:var(--amber)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Acquisition</span>
+        <span class="dim-score" style="color:var(--amber)">5</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:50%;background:var(--amber)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Observability</span>
+        <span class="dim-score" style="color:var(--red)">2</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:20%;background:var(--red)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Domain / product</span>
+        <span class="dim-score" style="color:var(--green)">9</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:90%;background:var(--green)"></div></div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-header">
+        <span class="dim-name">Legal / public</span>
+        <span class="dim-score" style="color:var(--red)">1</span>
+      </div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:10%;background:var(--red)"></div></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Current status (Jul 24, 2026):</strong>
+    <strong style="color:var(--green)">Phase 1 complete</strong> — Prisma consolidation, rate limiting,
+    cross-tenant isolation suite (9 domains in CI), and house/owner-context correctness are shipped
+    (#106–#109). Funnel polish <strong style="color:var(--green)">2.1</strong> is also shipped (#120).
+    <br><br>
+    <strong>v3 focus:</strong> ship the four assessment blockers before any real user —
+    error monitoring, legal pages, public landing, and admin recovery —
+    then pre-growth quality gates, then market expansion.
+    <br><br>
+    <strong>Constraints (unchanged):</strong> No transactional email · No Google OAuth · No Stripe.
+  </div>
+
+  <div class="changes">
+    <h2>What changed vs. execution plan v2</h2>
+    <ul>
+      <li>Rebased on <strong>assessment v2</strong> (6/10) — score, gaps, and priority language come from that audit.</li>
+      <li><strong>Phase 2 is now “Launch readiness”</strong> — the four 🔴 blockers live here, not split across acquisition and ops.</li>
+      <li>Split old <strong>2.2</strong> into <strong>2.2 landing</strong> and <strong>2.3 privacy/terms</strong> (LFPDPPP called out as its own blocker).</li>
+      <li>Promoted <strong>Sentry (was 4.1)</strong> → <strong>2.4</strong> and <strong>Admin (was 4.2)</strong> → <strong>2.5</strong> — both are launch blockers, not post-launch nice-to-haves.</li>
+      <li><strong>PostHog</strong> and remaining CI gates move to <strong>Phase 3 (pre-growth)</strong> — needed before acquisition spend, not before first beta user.</li>
+      <li>Added explicit task <strong>3.2</strong> for <code>validate:calendar-dates</code> + finance coverage thresholds (assessment pre-growth items).</li>
+      <li>Elevated JWT <code>ownerContext</code> to a tracked Phase 4 stretch item (was buried under 1.3 stretch).</li>
+      <li>Phase numbering: old Phase 3 (Stripe) stays deferred; old Phases 4–5 renumbered so launch work is Phase 2.</li>
+      <li>Repo snapshot updated: <strong>83</strong> test files · <strong>9</strong> isolation suites · CI includes <code>test:isolation</code>.</li>
+    </ul>
+  </div>
+
+  <div class="order">
+    <h2>Recommended execution order</h2>
+    <ol class="order-steps">
+      <li>
+        <span class="order-n">01</span>
+        <span><strong>2.4 Error monitoring</strong> — know when production breaks before strangers hit it</span>
+        <span class="order-tag tag-blocker">Blocker</span>
+      </li>
+      <li>
+        <span class="order-n">02</span>
+        <span><strong>2.3 Privacy + terms</strong> — LFPDPPP notice before collecting real financial data</span>
+        <span class="order-tag tag-blocker">Blocker</span>
+      </li>
+      <li>
+        <span class="order-n">03</span>
+        <span><strong>2.2 Public landing</strong> — value prop + CTA; careful <code>proxy.ts</code> matcher surgery</span>
+        <span class="order-tag tag-blocker">Blocker</span>
+      </li>
+      <li>
+        <span class="order-n">04</span>
+        <span><strong>2.5 Admin panel</strong> — user lookup + password override (only recovery path without email)</span>
+        <span class="order-tag tag-blocker">Blocker</span>
+      </li>
+      <li>
+        <span class="order-n">05</span>
+        <span><strong>3.1 PostHog</strong> — onboarding funnel + feature usage before growth experiments</span>
+        <span class="order-tag tag-growth">Pre-growth</span>
+      </li>
+      <li>
+        <span class="order-n">06</span>
+        <span><strong>3.2 CI quality gates</strong> — calendar-date validator + finance coverage floor</span>
+        <span class="order-tag tag-growth">Pre-growth</span>
+      </li>
+      <li>
+        <span class="order-n">07</span>
+        <span><strong>4.x Growth</strong> — Nu/BBVA parsers, feature flags, JWT owner context</span>
+        <span class="order-tag tag-later">Later</span>
+      </li>
+    </ol>
+  </div>
+
+  <div class="progress-strip">
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--green)">5</span>
+      <span class="progress-label">Done · Phase 1 + 2.1</span>
+    </div>
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--red)">4</span>
+      <span class="progress-label">Launch blockers open</span>
+    </div>
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--amber)">2</span>
+      <span class="progress-label">Pre-growth open</span>
+    </div>
+    <div class="progress-cell">
+      <span class="progress-num" style="color:var(--blue)">3</span>
+      <span class="progress-label">Later / growth open</span>
+    </div>
+  </div>
+
+  <div class="status-grid">
+    <div class="status-card done">
+      <h3>Already shipped</h3>
+      <ul class="status-list">
+        <li>NextAuth v5 credentials + inactive-user guard</li>
+        <li>Registration, onboarding wizard, in-app password change</li>
+        <li>Single Prisma client + <code>validate:prisma-imports</code></li>
+        <li>Rate limiting (Upstash + in-memory fallback)</li>
+        <li>9 isolation suites in CI · house-mode authz fixed</li>
+        <li>Full MX finance domain (fortnights, loans, pantry, 5 parsers)</li>
+      </ul>
+    </div>
+    <div class="status-card gap">
+      <h3>Launch blockers (🔴)</h3>
+      <ul class="status-list">
+        <li>Error monitoring (Sentry or equivalent)</li>
+        <li><code>/privacy</code> + <code>/terms</code> in Spanish (LFPDPPP)</li>
+        <li>Public landing at <code>/</code> with CTA to register</li>
+        <li>Admin: user lookup + password override</li>
+      </ul>
+    </div>
+    <div class="status-card ready">
+      <h3>Pre-growth (🟡)</h3>
+      <ul class="status-list">
+        <li>Product analytics (PostHog)</li>
+        <li>Add <code>validate:calendar-dates</code> to <code>ci</code></li>
+        <li>Vitest coverage threshold on <code>src/lib/finance/**</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--green)">5</span>
+      <span class="summary-label">Done · 1.1–1.4, 2.1</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--red)">4</span>
+      <span class="summary-label">Blockers · 2.2–2.5</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--amber)">2</span>
+      <span class="summary-label">Pre-growth · 3.1–3.2</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--blue)">3</span>
+      <span class="summary-label">Later · 4.1–4.3</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-num" style="color:var(--text-muted)">0</span>
+      <span class="summary-label">Stripe · deferred</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-pip" style="background:var(--green)"></span> Small (1–3 days)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--amber)"></span> Medium (3–7 days)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--red)"></span> Large (1–2 weeks)</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--red)"></span> 🔴 Launch blocker</div>
+    <div class="legend-item"><span class="legend-pip" style="background:var(--green)"></span> Done · ✓ = criterion met</div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-1">PHASE 1</span>
+      <span class="phase-title">Security &amp; data integrity — complete</span>
+      <span class="phase-timeline">4 / 4 done</span>
+    </div>
+    <p class="phase-intro">
+      Closed per assessment v2. Kept here as the foundation this plan builds on.
+      Full acceptance criteria and PRD links remain in
+      <code>docs/micasa-execution-plan-v2.html</code> and the closed GitHub issues.
+    </p>
+    <div class="done-compact">
+      <div class="done-compact-title">Shipped workstreams</div>
+      <div class="done-chips">
+        <span class="done-chip">1.1 Prisma · #106</span>
+        <span class="done-chip">1.2 Rate limit · #107</span>
+        <span class="done-chip">1.3 Isolation · #108 · PR #132</span>
+        <span class="done-chip">1.4 Owner context · #109 · PR #131</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-2">PHASE 2</span>
+      <span class="phase-title">Launch readiness — before any real user</span>
+      <span class="phase-timeline">~2–3 weeks · 1 done · 4 blockers</span>
+    </div>
+    <p class="phase-intro">
+      Assessment v2’s four 🔴 blockers. Do these in the recommended order above.
+      Funnel polish (2.1) is already shipped; strangers still cannot discover the product,
+      you cannot see production errors, and locked-out users have no recovery path.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.1 — Polish registration &amp; login funnel</div>
+            <div class="task-why">
+              Shipped: shared register Zod schema, generic duplicate-email response, in-app password
+              change with current-password verification, onboarding guard, inactive-user login block,
+              and <code>scripts/playwright-auth-funnel.sh</code>.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-done">Done</span>
+            <span class="score-change">Acquisition 2→5</span>
+          </div>
+        </div>
+        <div class="task-links">
+          <span>PRD:</span> <a href="../tasks/prd-polish-registration-login-funnel.md">tasks/prd-polish-registration-login-funnel.md</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/120">#120 closed</a>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 4 / 4</div>
+          <ul class="criteria-list">
+            <li class="met">Login ↔ register cross-links</li>
+            <li class="met">Duplicate email returns generic error (no enumeration)</li>
+            <li class="met">Credential users can change password (current password required)</li>
+            <li class="met">Playwright E2E: register → onboarding → dashboard</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task blocker-border">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.2 — Public landing page at <code>/</code></div>
+            <div class="task-why">
+              Today <code>/</code> redirects unauthenticated users to <code>/login</code>. No value prop,
+              screenshots, or path for a stranger to evaluate the product. Assessment: acquisition is
+              “hardened but invisible.” Requires careful <code>proxy.ts</code> matcher surgery so
+              landing stays public while dashboard stays protected.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Blocker · 0/5</span>
+            <span class="score-change">↑ Acquisition → ~7</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 5</div>
+          <ul class="criteria-list">
+            <li>Public <code>/</code>: value prop, product screenshots, primary CTA to <code>/register</code></li>
+            <li>Logged-in users still route to dashboard / onboarding</li>
+            <li>SEO basics: title, description, OG image</li>
+            <li><code>proxy.ts</code> updated so landing is public without weakening dashboard auth</li>
+            <li>Footer links to <code>/privacy</code> and <code>/terms</code> (pages from 2.3)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task blocker-border">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.3 — Privacy policy + terms of service (LFPDPPP)</div>
+            <div class="task-why">
+              Assessment legal score: <strong>1/10</strong>. A personal finance app storing wallet balances,
+              loans, and credit card statements for Mexican users needs a Spanish privacy notice and terms
+              before public launch — legal exposure and trust signal. Split from landing so legal copy
+              can ship even if marketing polish lags.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-new">Blocker · 0/4</span>
+            <span class="score-change">↑ Legal 1→6+</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 4</div>
+          <ul class="criteria-list">
+            <li>Static <code>/privacy</code> page in Spanish covering data collected, purpose, retention, rights (LFPDPPP)</li>
+            <li>Static <code>/terms</code> page in Spanish</li>
+            <li>Both routes public in <code>proxy.ts</code>; linked from landing, register, and login</li>
+            <li>Noindex optional; content reviewed for accuracy against actual data practices</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task blocker-border">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.4 — Error monitoring (Sentry or equivalent)</div>
+            <div class="task-why">
+              Assessment observability: <strong>2/10</strong>, unchanged. If statement import throws or a
+              loan schedule fails in production, you learn when a user complains.
+              <code>finance-log.ts</code> writes structured JSON to stdout — useful only if aggregated.
+              Ship before the first non-test user.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-new">Blocker · 0/3</span>
+            <span class="score-change">↑ Observability → ~5</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 3</div>
+          <ul class="criteria-list">
+            <li>Sentry (or similar) in Next.js server, edge/proxy, and client bundles</li>
+            <li>Statement import + API errors tagged with user/owner context (no PII in titles)</li>
+            <li>Alert on error-rate spike; source maps uploaded on deploy</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task blocker-border">
+        <div class="task-main">
+          <div>
+            <div class="task-title">2.5 — Admin panel (support + password override)</div>
+            <div class="task-why">
+              No password-reset email path (out of scope). A forgotten password currently means direct DB
+              intervention — and there is no admin UI. Assessment: this is the single biggest operational
+              gap and compounds with the recovery hole. Minimal <code>/admin</code>: user lookup +
+              temporary password set (communicate out-of-band).
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Blocker · 0/5</span>
+            <span class="score-change">↑ Ops + Auth recovery</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 5</div>
+          <ul class="criteria-list">
+            <li><code>/admin</code> gated by <code>User.is_admin</code> or env allowlist</li>
+            <li>User list + detail: wallets, fortnights, loans, onboarding status</li>
+            <li>Last 50 finance-log / recent events per user (best-effort from available logs)</li>
+            <li>Admin can set temporary password for credential users (out-of-band communicate)</li>
+            <li>Routes noindexed; excluded from sitemap; mutations audited</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-3">PHASE 3</span>
+      <span class="phase-title">Pre-growth quality — before acquisition spend</span>
+      <span class="phase-timeline">~1 week · 0 done · 1 partial carry</span>
+    </div>
+    <p class="phase-intro">
+      Assessment 🟡 items. Not required for a private beta of trusted users, but required before you
+      optimize funnels or ship aggressive refactors. Completes the remaining criteria from old task 4.4.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">3.1 — Product analytics (PostHog)</div>
+            <div class="task-why">
+              No way to answer onboarding drop-off, feature usage, or D7 retention. Every post-launch
+              product decision is a guess without instrumentation. PostHog is a day of work and answers
+              the questions the CTO lens called out.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-new">Pre-growth · 0/4</span>
+            <span class="score-change">↑ Observability + product</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 4</div>
+          <ul class="criteria-list">
+            <li>SDK in root layout + server instrumentation; identify on login</li>
+            <li>Events: <code>onboarding_completed</code>, <code>expense_added</code>, <code>statement_imported</code></li>
+            <li>Onboarding funnel dashboard in PostHog</li>
+            <li>No PII in event properties — user ID only</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">3.2 — CI quality gates (calendar dates + coverage)</div>
+            <div class="task-why">
+              <code>validate:calendar-dates</code> exists but is absent from <code>npm run ci</code> —
+              it only runs when someone remembers. No Vitest coverage threshold means finance coverage
+              can silently regress. Domain tests are strong (83 files); lock the floor now.
+              Money-path unit tests from old 4.4 are already met.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-s">Small</span>
+            <span class="status-badge st-partial">Partial · 4/6</span>
+            <span class="score-change">↑ Tests 6→7+</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 4 / 6</div>
+          <ul class="criteria-list">
+            <li class="met">Fortnight aggregation + installment exclusions — service tests exist</li>
+            <li class="met">Liquidity projection — 180-day horizon tests</li>
+            <li class="met">Wallet balances — transfer / card payment tests</li>
+            <li class="met">Loan schedules — weekly / fortnightly / monthly tests</li>
+            <li>Add <code>validate:calendar-dates</code> to the <code>ci</code> script</li>
+            <li>Coverage gate ~70% on <code>src/lib/finance/**</code></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DEFERRED MONETIZATION -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-d">DEFERRED</span>
+      <span class="phase-title">Monetization (Stripe) — out of scope</span>
+      <span class="phase-timeline">Revisit when billing is in scope</span>
+    </div>
+    <p class="phase-intro">
+      Unchanged from v2. Beta and public launch do not require paid plans. Revisit after Phase 2–3
+      when acquisition and ops are trustworthy.
+    </p>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num ph-4">PHASE 4</span>
+      <span class="phase-title">Growth &amp; hardening — after launch</span>
+      <span class="phase-timeline">~2–3 weeks</span>
+    </div>
+    <p class="phase-intro">
+      Assessment 🔵 later items. Expand addressable market and close remaining architectural debt
+      once the public surface and ops tooling exist.
+    </p>
+    <div class="tasks">
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.1 — Expand statement import (Nu, BBVA)</div>
+            <div class="task-why">
+              Today: Mercado Pago, CA Departamental, CA Efectivo, DiDi Card, Liverpool. Mass-market
+              Mexico runs on Nu and BBVA — parser infrastructure is mature; ~2–3 days per institution.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Later · 0/4</span>
+            <span class="score-change">↑ TAM</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 4</div>
+          <ul class="criteria-list">
+            <li><code>parse-nu-statement.ts</code> (CSV) and <code>parse-bbva-statement.ts</code> (PDF)</li>
+            <li>Both in provider enum + import UI</li>
+            <li>Rollback via existing rollback service</li>
+            <li>≥3 anonymized fixtures per provider; Spanish error messages</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.2 — Lightweight feature flags (DB-backed)</div>
+            <div class="task-why">
+              Gradual rollouts for new parsers or beta UI without env-var deploys.
+              A <code>feature_flags</code> table with a short TTL cache is enough at this scale.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-m">Medium</span>
+            <span class="status-badge st-new">Later · 0/3</span>
+            <span class="score-change">↑ Release control</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 3</div>
+          <ul class="criteria-list">
+            <li><code>feature_flags</code> table + <code>isFeatureEnabled(key, userId)</code> helper</li>
+            <li>Usable in Server Components, Server Actions, and API routes</li>
+            <li>Admin UI to toggle globally or per user; cache invalidated on update</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-main">
+          <div>
+            <div class="task-title">4.3 — Server-validated owner context (JWT claim)</div>
+            <div class="task-why">
+              <code>ownerType</code> / <code>ownerId</code> still arrive via query params from localStorage.
+              Isolation tests cover abuse cases, but ownership is not a server-validated session claim.
+              High blast radius — plan as its own slice after launch blockers are closed.
+            </div>
+          </div>
+          <div class="task-meta">
+            <span class="effort-badge ef-l">Large</span>
+            <span class="status-badge st-new">Later · 0/3</span>
+            <span class="score-change">↑ Isolation 8→9</span>
+          </div>
+        </div>
+        <div class="task-criteria">
+          <div class="criteria-label">Acceptance criteria · 0 / 3</div>
+          <ul class="criteria-list">
+            <li>Active owner stored as server-validated session/JWT claim (not client-only query params)</li>
+            <li>House membership re-checked on claim change; personal owner must match session user</li>
+            <li>Isolation suite updated; client finance-context reads claim via API, not inventing ownerId</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="footer">
+    <strong style="color:var(--text-secondary)">Source of truth for gaps:</strong>
+    SaaS Readiness Assessment v2 (July 2026) — live repo scan · excludes Stripe, email, OAuth.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Explicitly out of scope (this revision):</strong>
+    transactional email (password reset, verification, billing, lifecycle), Google OAuth,
+    Stripe / subscriptions, native mobile, public API, bank Open Finance, multi-region,
+    Postgres RLS (defense-in-depth — separate future migration).
+    <br><br>
+    <strong style="color:var(--text-secondary)">Deferred until email infra exists:</strong>
+    forgot-password self-service, email verification on signup, lifecycle nudges.
+    Admin password override (2.5) is the interim recovery path.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Score path:</strong>
+    Auth 6 · Isolation 8 · Infra 8 · Tests 6 · Acquisition 5 · Observability 2 · Domain 9 · Legal 1
+    → weighted <strong style="color:var(--amber)">6/10</strong>.
+    Phase 2 blockers target ~8/10 public-ready.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Repo snapshot:</strong>
+    Next.js 16 · React 19 · Prisma 7 · ~25–31 models · 76 API routes · 83 test files ·
+    9 isolation suites · statement providers: Mercado Pago, CA Departamental, CA Efectivo, DiDi Card, Liverpool.
+    <br><br>
+    <strong style="color:var(--text-secondary)">Last updated:</strong> Jul 24, 2026 ·
+    grounded in assessment v2 · supersedes execution plan v2 ·
+    implement via <code>/ship-feature</code> after PRDs for 2.2–2.5
+  </div>
+
+</div>
+</body>
+</html>
