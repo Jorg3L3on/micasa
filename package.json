@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
     "backfill:pantry-products": "tsx --tsconfig tsconfig.json scripts/backfill-pantry-products-from-receipts.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
@@ -17,7 +18,7 @@
     "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
-    "ci": "npm run validate:dashboard-ui && npm run validate:prisma-imports && prisma generate && npm test && npm run test:isolation && npm run build"
+    "ci": "npm run validate:dashboard-ui && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -70,6 +71,7 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.1.3",
     "prisma": "^7.2.0",
