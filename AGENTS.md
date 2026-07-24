@@ -9,7 +9,7 @@ npm run dev          # Start development server
 npm run build        # Production build
 npm run lint         # Run ESLint
 npm test             # Run Vitest tests (src/**/*.test.ts)
-npm run ci           # Full CI: validate dashboard UI + prisma generate + test + build
+npm run ci           # Full CI: validators + prisma generate + coverage tests + build
 
 # Database
 npx prisma generate  # Regenerate Prisma client (outputs to src/generated/prisma)
@@ -228,5 +228,5 @@ To re-seed: `npx prisma db seed` (destructive — clears all data first).
 - **Lint exits with code 1** due to pre-existing warnings/errors in the codebase (React hooks violations, unused vars). This is expected; do not treat lint failure as a blocker for CI unless you introduced new errors.
 - **Prisma client output** is `src/generated/prisma` (non-default). Always import from there or via `src/lib/prisma.ts`.
 - After schema changes, run `npx prisma generate` before starting the dev server.
-- The `npm run ci` script runs: `validate:dashboard-ui` → `validate:prisma-imports` → `prisma generate` → `vitest run` → `next build`.
+- The `npm run ci` script runs: `validate:dashboard-ui` → `validate:prisma-imports` → `validate:calendar-dates` → `prisma generate` → `vitest run --coverage` (≈70% floor on `src/lib/finance/**`) → isolation tests → `next build`.
 - The dev server uses `--webpack` mode by default (`npm run dev`). Turbopack mode is available via `npm run dev:turbo`.
