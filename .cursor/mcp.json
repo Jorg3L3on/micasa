@@ -3,7 +3,12 @@
     "micasa-postgres": {
       "type": "stdio",
       "command": "node",
-      "args": ["${workspaceFolder}/scripts/micasa-mcp-postgres.mjs"]
+      "args": [
+        "${workspaceFolder}/scripts/micasa-mcp-postgres.mjs"
+      ]
+    },
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp/ziglabs/javascript-nextjs"
     }
   }
 }
