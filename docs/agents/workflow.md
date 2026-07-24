@@ -3,14 +3,15 @@
 ## Overview
 
 ```text
-Idea → PRD → Issues → feat/<slug> → implement → you merge slices → final PR → main (prod)
+Idea → PRD → Issues → feat/<slug> → implement → agent merges slices → final PR → main (prod)
 ```
 
 | Step | Tool |
 | ---- | ---- |
 | Plan | `prd` or `to-prd` |
 | Orchestrate | `ship-feature` |
-| Merge PRs | **You** |
+| Merge slice PRs into `feat/<slug>` | **Agent** (after CI green) |
+| Merge final PR to `main` | **You** (production) |
 
 Shared skills: `~/.cursor/skills/` (`prd`, `to-prd`, `to-issues`, `implement-issue`, `ship-feature`, `validate-issues`).
 
@@ -28,8 +29,8 @@ bash /Users/jorgeleon/Developer/Projects/zigzag/docs/agent-workflow/scripts/inst
 
 1. Parent PRD issue on GitHub
 2. Slice issues
-3. `feat/my-feature` + slice PRs (you merge each; `continue`)
-4. Agent opens final PR to `main` (you merge once)
+3. `feat/my-feature` + slice PRs (agent merges each into the integration branch)
+4. Agent opens final PR to `main` (you merge once — production)
 
 See [deployment.md](./deployment.md) and [CONTRIBUTING.md](../../CONTRIBUTING.md).
 

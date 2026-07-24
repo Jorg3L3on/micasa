@@ -68,6 +68,8 @@ Create a `.env` file in the project root:
 DATABASE_URL="postgresql://..."
 NEXTAUTH_SECRET="replace-with-a-strong-secret"
 NEXTAUTH_URL="http://localhost:3000"
+# Optional: bootstrap platform admins before User.is_admin is set
+# MICASA_ADMIN_EMAILS="you@example.com"
 ```
 
 ### 3) Generate Prisma client
@@ -89,6 +91,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `DATABASE_URL`: PostgreSQL connection string
 - `NEXTAUTH_SECRET`: NextAuth signing secret
 - `NEXTAUTH_URL`: Base URL for auth callbacks and session behavior
+- `MICASA_ADMIN_EMAILS` (optional): Comma-separated emails granted `/admin` access in addition to `User.is_admin`
 - `UPSTASH_REDIS_REST_URL` (optional): Upstash Redis REST URL for distributed rate limiting in production
 - `UPSTASH_REDIS_REST_TOKEN` (optional): Upstash Redis REST token; omit both Upstash vars for in-memory limiting in local dev
 - `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` (optional): Sentry DSN; SDK is inert when unset
