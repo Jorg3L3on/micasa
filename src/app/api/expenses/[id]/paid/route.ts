@@ -56,6 +56,7 @@ export async function PATCH(
     const expense = await toggleExpensePaid({
       id: expenseId,
       paid: validatedData.paid,
+      ownerFilter,
     });
 
     return NextResponse.json(
