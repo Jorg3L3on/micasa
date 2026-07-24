@@ -105,6 +105,15 @@ export function LoginForm({
                 Crear cuenta
               </Link>
             </p>
+            <p className="text-center text-xs text-muted-foreground">
+              <Link href="/privacy" className="underline hover:text-foreground">
+                Aviso de privacidad
+              </Link>
+              {' · '}
+              <Link href="/terms" className="underline hover:text-foreground">
+                Términos de uso
+              </Link>
+            </p>
           </div>
         </div>
       </form>
