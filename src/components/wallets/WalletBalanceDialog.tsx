@@ -96,6 +96,7 @@ export default function WalletBalanceDialog({
       toast.error(
         error instanceof Error ? error.message : 'No se pudo actualizar el saldo',
       );
+      onOpenChange(false);
     } finally {
       setSavingBalance(false);
     }
