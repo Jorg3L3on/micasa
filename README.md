@@ -91,6 +91,9 @@ Open [http://localhost:3000](http://localhost:3000).
 - `NEXTAUTH_URL`: Base URL for auth callbacks and session behavior
 - `UPSTASH_REDIS_REST_URL` (optional): Upstash Redis REST URL for distributed rate limiting in production
 - `UPSTASH_REDIS_REST_TOKEN` (optional): Upstash Redis REST token; omit both Upstash vars for in-memory limiting in local dev
+- `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` (optional): Sentry DSN; SDK is inert when unset
+- `SENTRY_AUTH_TOKEN` (optional): Auth token for source map upload on Vercel builds
+- `SENTRY_ORG` / `SENTRY_PROJECT` (optional): Sentry org/project slugs for `withSentryConfig`
 
 ## Available Scripts
 
