@@ -9,7 +9,7 @@ npm run dev          # Start development server
 npm run build        # Production build
 npm run lint         # Run ESLint
 npm test             # Run Vitest tests (src/**/*.test.ts)
-npm run ci           # Full CI: validate dashboard UI + prisma generate + test + build
+npm run ci           # Full CI: validators + prisma generate + coverage tests + build
 
 # Database
 npx prisma generate  # Regenerate Prisma client (outputs to src/generated/prisma)

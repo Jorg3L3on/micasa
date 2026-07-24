@@ -31,8 +31,11 @@ jobs:
       - name: Prisma import rules
         run: npm run validate:prisma-imports
 
-      - name: Unit tests
-        run: npm test
+      - name: Calendar date anti-patterns
+        run: npm run validate:calendar-dates
+
+      - name: Unit tests with finance coverage gate
+        run: npm run test:coverage
 
       - name: Cross-tenant isolation tests
         run: npm run test:isolation
