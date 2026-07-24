@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateLoanPaymentForOwner } from '@/lib/finance/loan.service';
+import {
+  reportApiError,
+  setOwnerSentryContext,
+} from '@/lib/observability/report-error';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updateLoanPaymentSchema } from '@/schemas/loan.schema';
 
@@ -8,9 +12,19 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const route = 'PATCH /api/loans/payments/[id]';
+  let owner:
+    | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
+    | undefined;
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
+    owner = {
+      userId: context.userId,
+      ownerType: context.ownerType,
+      ownerId: context.ownerId,
+    };
+    setOwnerSentryContext(owner);
 
     const { id } = await params;
     const paymentId = Number(id);
@@ -48,6 +62,7 @@ export async function PATCH(
       return NextResponse.json({ error: message }, { status: 404 });
     }
     console.error('Error updating loan payment:', error);
+    reportApiError(error, { route, owner });
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

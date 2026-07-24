@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
+import {
+  reportApiError,
+  setOwnerSentryContext,
+} from '@/lib/observability/report-error';
 import prisma from '@/lib/prisma';
 import { rollbackCreditCardStatementImport } from '@/lib/server/credit-card-statement/rollback-statement-import.service';
 
@@ -13,9 +17,19 @@ export async function DELETE(
     params,
   }: { params: Promise<{ id: string; importId: string }> },
 ) {
+  const route = 'DELETE /api/credit-cards/[id]/statement-imports/[importId]';
+  let owner:
+    | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
+    | undefined;
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
+    owner = {
+      userId: context.userId,
+      ownerType: context.ownerType,
+      ownerId: context.ownerId,
+    };
+    setOwnerSentryContext(owner);
 
     const { id, importId } = await params;
     const walletId = Number(id);
@@ -76,6 +90,7 @@ export async function DELETE(
     }
 
     console.error('statement-import DELETE', error);
+    reportApiError(error, { route, status: 500, owner });
     return NextResponse.json(
       { error: 'No se pudo revertir la importación' },
       { status: 500 },

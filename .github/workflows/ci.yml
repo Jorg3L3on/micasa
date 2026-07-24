@@ -38,4 +38,8 @@ jobs:
         run: npm run test:isolation
 
       - name: Next.js build
+        env:
+          # Source map upload via withSentryConfig (org/project in next.config.ts)
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          CI: true
         run: npm run build
