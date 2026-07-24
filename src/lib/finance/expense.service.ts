@@ -71,6 +71,7 @@ export type CreateExpenseInput = {
 
 type UpdateExpenseInput = {
   id: number;
+  ownerFilter: OwnerFilter;
   fortnightId?: number;
   categoryId?: number;
   description?: string;
@@ -83,10 +84,12 @@ type UpdateExpenseInput = {
 type TogglePaidInput = {
   id: number;
   paid: boolean;
+  ownerFilter: OwnerFilter;
 };
 
 type DeleteExpenseInput = {
   id: number;
+  ownerFilter: OwnerFilter;
 };
 
 export type ExpenseWithMeta = Awaited<
@@ -331,8 +334,17 @@ export async function createExpense(input: CreateExpenseInput) {
 }
 
 export async function updateExpense(input: UpdateExpenseInput) {
-  const { id, fortnightId, categoryId, description, amount, isPaid, paymentDate, walletId } =
-    input;
+  const {
+    id,
+    ownerFilter,
+    fortnightId,
+    categoryId,
+    description,
+    amount,
+    isPaid,
+    paymentDate,
+    walletId,
+  } = input;
 
   if (amount !== undefined && amount <= 0) {
     const error = new Error('Amount must be greater than 0') as ExpenseServiceError;
@@ -341,8 +353,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
   }
 
   if (categoryId) {
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    const category = await prisma.category.findFirst({
+      where: { id: categoryId, ...ownerFilter },
     });
     if (!category) {
       const error = new Error('Category not found') as ExpenseServiceError;
@@ -352,8 +364,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    const existing = await tx.expense.findUnique({
-      where: { id },
+    const existing = await tx.expense.findFirst({
+      where: { id, ...ownerFilter },
       include: {
         category: { select: { name: true, icon: true } },
         wallet: { select: { id: true, name: true, type: true } },
@@ -394,8 +406,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
     let newFortnight = currentFortnight;
 
     if (fortnightId !== undefined) {
-      const ft = await tx.fortnight.findUnique({
-        where: { id: fortnightId },
+      const ft = await tx.fortnight.findFirst({
+        where: { id: fortnightId, ...ownerFilter },
         select: { id: true, user_id: true, house_id: true },
       });
 
@@ -421,8 +433,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
     let newWalletType = currentWalletType;
 
     if (requestedWalletId !== undefined && requestedWalletId !== null) {
-      const wallet = await tx.wallet.findUnique({
-        where: { id: requestedWalletId },
+      const wallet = await tx.wallet.findFirst({
+        where: { id: requestedWalletId, ...ownerFilter },
         select: { id: true, user_id: true, house_id: true, type: true },
       });
 
@@ -548,11 +560,11 @@ export async function updateExpense(input: UpdateExpenseInput) {
 }
 
 export async function toggleExpensePaid(input: TogglePaidInput) {
-  const { id, paid } = input;
+  const { id, paid, ownerFilter } = input;
 
   const updated = await prisma.$transaction(async (tx) => {
-    const existing = await tx.expense.findUnique({
-      where: { id },
+    const existing = await tx.expense.findFirst({
+      where: { id, ...ownerFilter },
       include: {
         category: { select: { name: true, icon: true } },
         wallet: { select: { id: true, name: true, type: true } },
@@ -644,11 +656,11 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
 }
 
 export async function deleteExpense(input: DeleteExpenseInput) {
-  const { id } = input;
+  const { id, ownerFilter } = input;
 
   await prisma.$transaction(async (tx) => {
-    const expense = await tx.expense.findUnique({
-      where: { id },
+    const expense = await tx.expense.findFirst({
+      where: { id, ...ownerFilter },
       select: {
         id: true,
         wallet_id: true,

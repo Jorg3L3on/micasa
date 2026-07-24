@@ -38,6 +38,9 @@ export async function PATCH(
     }
     const message =
       error instanceof Error ? error.message : 'Error al actualizar el préstamo';
+    if (message === 'Préstamo no encontrado') {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
     console.error('Error updating loan:', error);
     return NextResponse.json({ error: message }, { status: 400 });
   }
@@ -72,6 +75,9 @@ export async function DELETE(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Error al eliminar el préstamo';
+    if (message === 'Préstamo no encontrado') {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
     console.error('Error deleting loan:', error);
     return NextResponse.json({ error: message }, { status: 400 });
   }

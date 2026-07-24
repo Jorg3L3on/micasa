@@ -41,6 +41,12 @@ export async function PATCH(
       error instanceof Error
         ? error.message
         : 'Error al actualizar el pago del préstamo';
+    if (
+      message === 'Pago de préstamo no encontrado' ||
+      message === 'Préstamo no encontrado'
+    ) {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
     console.error('Error updating loan payment:', error);
     return NextResponse.json({ error: message }, { status: 400 });
   }
