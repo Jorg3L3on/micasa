@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { TransferType } from '@/generated/prisma/client';
 import { createUserToHouseTransfer } from '@/lib/transfers';
+import { getOwnerContext } from '@/lib/server/get-owner-context';
 
 const createTransferSchema = z.object({
   amount: z.number().positive(),
@@ -18,30 +19,20 @@ const createTransferSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { ownerType, ownerId } = context;
 
-    const userIdParam = searchParams.get('user_id');
-    const houseIdParam = searchParams.get('house_id');
+    const { searchParams } = new URL(request.url);
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
     const where: Prisma.TransferWhereInput = {
       type: TransferType.USER_TO_HOUSE,
+      ...(ownerType === 'user'
+        ? { user_id: ownerId }
+        : { house_id: ownerId }),
     };
-
-    if (userIdParam) {
-      const userId = Number(userIdParam);
-      if (!Number.isNaN(userId)) {
-        where.user_id = userId;
-      }
-    }
-
-    if (houseIdParam) {
-      const houseId = Number(houseIdParam);
-      if (!Number.isNaN(houseId)) {
-        where.house_id = houseId;
-      }
-    }
 
     if (fromParam || toParam) {
       where.created_at = {};
@@ -105,8 +96,42 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+    const { userId, ownerType, ownerId } = context;
+
     const body = await request.json();
     const data = createTransferSchema.parse(body);
+
+    // Only the authenticated user may transfer from their personal account.
+    if (data.user_id !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Active owner context must match the transfer's user or house side.
+    if (ownerType === 'user' && data.user_id !== ownerId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (ownerType === 'house' && data.house_id !== ownerId) {
+      return NextResponse.json(
+        { error: 'Transfer house does not match active house context' },
+        { status: 400 },
+      );
+    }
+
+    const membership = await prisma.houseMember.findFirst({
+      where: {
+        house_id: data.house_id,
+        user_id: userId,
+      },
+      select: { id: true },
+    });
+    if (!membership) {
+      return NextResponse.json(
+        { error: 'User is not a member of this house' },
+        { status: 403 },
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: data.user_id },

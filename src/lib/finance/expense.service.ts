@@ -15,6 +15,7 @@ import {
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
+import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
 type ExpenseServiceError = Error & { code?: string };
 
@@ -137,6 +138,30 @@ export async function listExpenses(
       OR: [{ user_id: userId }, { house_id: { in: houseIds } }],
     },
   };
+
+  if (options?.fortnightIds !== undefined) {
+    where.fortnight_id = { in: options.fortnightIds };
+  }
+  if (options?.is_paid !== undefined) {
+    where.is_paid = options.is_paid;
+  }
+
+  return prisma.expense.findMany({
+    where,
+    include: {
+      category: { select: { name: true, icon: true } },
+      wallet: { select: { name: true } },
+    },
+    orderBy: { created_at: 'desc' },
+  });
+}
+
+/** Lists expenses for the active owner only (personal or one house). */
+export async function listExpensesByOwner(
+  ownerFilter: OwnerFilter,
+  options?: ListExpensesOptions,
+) {
+  const where: Prisma.ExpenseWhereInput = { ...ownerFilter };
 
   if (options?.fortnightIds !== undefined) {
     where.fortnight_id = { in: options.fortnightIds };
