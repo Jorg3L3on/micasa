@@ -183,6 +183,7 @@ NextAuth is configured in `src/lib/auth.ts`. Session includes `userId`. Protecte
 DATABASE_URL    # PostgreSQL / Neon connection string (required)
 NEXTAUTH_SECRET # JWT signing secret (required)
 NEXTAUTH_URL    # App base URL, e.g. http://localhost:3000
+MICASA_ADMIN_EMAILS # Optional comma-separated emails for /admin (plus User.is_admin)
 ```
 
 ## Agent skills

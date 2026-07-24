@@ -4,14 +4,16 @@ import { NextResponse } from 'next/server';
 
 const proxy = auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isOnDashboard = req.nextUrl.pathname.startsWith('/dashboard');
-  const isOnRoot = req.nextUrl.pathname === '/';
+  const pathname = req.nextUrl.pathname;
+  const isOnDashboard = pathname.startsWith('/dashboard');
+  const isOnAdmin = pathname.startsWith('/admin');
+  const isOnRoot = pathname === '/';
 
-  if ((isOnDashboard || isOnRoot) && !isLoggedIn) {
+  if ((isOnDashboard || isOnRoot || isOnAdmin) && !isLoggedIn) {
     return Response.redirect(new URL('/login', req.nextUrl));
   }
 
-  if (isLoggedIn && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/register')) {
+  if (isLoggedIn && (pathname === '/login' || pathname === '/register')) {
     return Response.redirect(new URL('/dashboard', req.nextUrl));
   }
 
