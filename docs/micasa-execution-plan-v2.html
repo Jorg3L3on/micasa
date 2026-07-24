@@ -264,19 +264,19 @@
 <div class="container">
 
   <div class="header">
-    <div class="eyebrow">MiCasa · Execution Roadmap · v2 · updated Jul 10, 2026 (live repo scan)</div>
+    <div class="eyebrow">MiCasa · Execution Roadmap · v2 · updated Jul 24, 2026 (live repo scan)</div>
     <h1 class="title">What to build next, <span>grounded in what already exists.</span></h1>
     <p class="header-meta">
-      Scope: critical gaps before public SaaS · Current readiness ~5.5/10 · Target: production-ready at 8/10 ·
-      12 active tasks · <strong style="color:var(--green);font-weight:600">2 done</strong> · <strong style="color:var(--amber);font-weight:600">3 partial</strong> · Audited against repo <code style="font-family:var(--mono);font-size:12px;color:#c4b5fd">main</code>
+      Scope: critical gaps before public SaaS · Current readiness ~6/10 · Target: production-ready at 8/10 ·
+      12 active tasks · <strong style="color:var(--green);font-weight:600">4 done</strong> · <strong style="color:var(--amber);font-weight:600">1 partial</strong> · Audited against repo <code style="font-family:var(--mono);font-size:12px;color:#c4b5fd">main</code>
     </p>
   </div>
 
   <div class="callout">
-    <strong>Current status (Jul 10, 2026):</strong>
-    <strong style="color:var(--green)">1.1</strong> and <strong style="color:var(--green)">1.2</strong> are shipped (GitHub #106, #107 closed).
-    <strong style="color:var(--amber)">1.4</strong> is partially done — several audit routes fixed, but <code>/api/transfers</code> and house-mode tests remain.
-    <strong style="color:var(--red)">1.3</strong> and Phases 2–5 are not implemented yet.
+    <strong>Current status (Jul 24, 2026):</strong>
+    <strong style="color:var(--green)">1.1</strong>, <strong style="color:var(--green)">1.2</strong>, and <strong style="color:var(--green)">1.4</strong> are shipped (GitHub #106, #107, #109 closed · PR #131).
+    <strong style="color:var(--green)">2.1</strong> funnel polish is also shipped (#120).
+    <strong style="color:var(--red)">1.3</strong> (isolation tests) and remaining Phases 2–5 items are not implemented yet.
     <br><br>
     <strong>Constraints:</strong> No transactional email · No Google OAuth · No Stripe (Phase 3 deferred).
   </div>
@@ -296,21 +296,22 @@
       <li><strong>Phase 1 PRDs published</strong> — GitHub #106–#109 + Notion tasks + local <code>tasks/prd-*.md</code>.</li>
       <li><strong>1.1 + 1.2 implemented</strong> — Prisma consolidation and rate limiting merged to <code>main</code>.</li>
       <li><strong>2.1 implemented</strong> — Registration/login funnel polish merged to <code>main</code> (GitHub <a href="https://github.com/Jorg3L3on/micasa/issues/120">#120</a>, PR <a href="https://github.com/Jorg3L3on/micasa/pull/129">#129</a>).</li>
+      <li><strong>1.4 implemented</strong> — House/owner-context correctness finished: transfers + house-mode tests + QA script (GitHub <a href="https://github.com/Jorg3L3on/micasa/issues/109">#109</a>, PR <a href="https://github.com/Jorg3L3on/micasa/pull/131">#131</a>).</li>
     </ul>
   </div>
 
   <div class="progress-strip">
     <div class="progress-cell">
-      <span class="progress-num" style="color:var(--green)">2 / 4</span>
-      <span class="progress-label">Phase 1 · done (#106, #107)</span>
+      <span class="progress-num" style="color:var(--green)">3 / 4</span>
+      <span class="progress-label">Phase 1 · done (#106, #107, #109)</span>
     </div>
     <div class="progress-cell">
-      <span class="progress-num" style="color:var(--green)">3 / 12</span>
-      <span class="progress-label">Fully done · 2 partial (1.4, 4.4)</span>
+      <span class="progress-num" style="color:var(--green)">4 / 12</span>
+      <span class="progress-label">Fully done · 1 partial (4.4)</span>
     </div>
     <div class="progress-cell">
-      <span class="progress-num" style="color:var(--blue)">1</span>
-      <span class="progress-label">Phase 1 · partial (1.4 owner-context)</span>
+      <span class="progress-num" style="color:var(--red)">1</span>
+      <span class="progress-label">Phase 1 · backlog (1.3 isolation)</span>
     </div>
   </div>
 
@@ -329,6 +330,7 @@
         <li>Registration funnel hardening: generic duplicate-email error, shared Zod schema, redirect to onboarding</li>
         <li>In-app password change with current-password verification (<code>/account</code>)</li>
         <li>Playwright E2E: <code>scripts/playwright-auth-funnel.sh</code> (register → onboarding → dashboard)</li>
+        <li>Owner-context correctness: transfers authz, house-mode regression tests, manual QA script</li>
       </ul>
     </div>
     <div class="status-card ready">
@@ -337,14 +339,13 @@
         <li><strong style="color:var(--green)">Done</strong> 1.1 Prisma · <a href="https://github.com/Jorg3L3on/micasa/issues/106" style="color:var(--blue)">#106</a></li>
         <li><strong style="color:var(--green)">Done</strong> 1.2 Rate limit · <a href="https://github.com/Jorg3L3on/micasa/issues/107" style="color:var(--blue)">#107</a></li>
         <li><strong style="color:var(--red)">Backlog</strong> 1.3 Isolation · <a href="https://github.com/Jorg3L3on/micasa/issues/108" style="color:var(--blue)">#108</a></li>
-        <li><strong style="color:var(--amber)">Partial</strong> 1.4 Owner context · <a href="https://github.com/Jorg3L3on/micasa/issues/109" style="color:var(--blue)">#109</a></li>
+        <li><strong style="color:var(--green)">Done</strong> 1.4 Owner context · <a href="https://github.com/Jorg3L3on/micasa/issues/109" style="color:var(--blue)">#109</a></li>
       </ul>
     </div>
     <div class="status-card gap">
       <h3>Still missing (blockers)</h3>
       <ul class="status-list">
         <li>Cross-tenant isolation test suite + CI gate (1.3)</li>
-        <li><code>/api/transfers</code> owner-context + house-mode regression tests (1.4)</li>
         <li>Public marketing landing (root redirects to login today)</li>
         <li>Production error monitoring (Sentry or equivalent)</li>
         <li>Product analytics (PostHog or equivalent)</li>
@@ -355,12 +356,12 @@
 
   <div class="summary">
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--green)">3</span>
-      <span class="summary-label">Done · 1.1, 1.2, 2.1</span>
+      <span class="summary-num" style="color:var(--green)">4</span>
+      <span class="summary-label">Done · 1.1, 1.2, 1.4, 2.1</span>
     </div>
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--amber)">2</span>
-      <span class="summary-label">Partial · 1.4, 4.4</span>
+      <span class="summary-num" style="color:var(--amber)">1</span>
+      <span class="summary-label">Partial · 4.4</span>
     </div>
     <div class="summary-cell">
       <span class="summary-num" style="color:var(--red)">7</span>
@@ -371,7 +372,7 @@
       <span class="summary-label">Phase 3 · deferred</span>
     </div>
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--blue)">19</span>
+      <span class="summary-num" style="color:var(--blue)">22</span>
       <span class="summary-label">Criteria met (of 52 total)</span>
     </div>
   </div>
@@ -389,11 +390,11 @@
     <div class="phase-header">
       <span class="phase-num ph-1">PHASE 1</span>
       <span class="phase-title">Security &amp; data integrity — before any external users</span>
-      <span class="phase-timeline">2 done · 1 partial · 1 backlog</span>
+      <span class="phase-timeline">3 done · 1 backlog</span>
     </div>
     <p class="phase-intro">
-      <strong>1.1</strong> and <strong>1.2</strong> are merged. Next up: <strong>1.3</strong> (isolation tests) and finish <strong>1.4</strong>
-      (<code>/api/transfers</code> + house-mode regression tests). Implement order: 1.3 → finish 1.4.
+      <strong>1.1</strong>, <strong>1.2</strong>, and <strong>1.4</strong> are merged. Next up: <strong>1.3</strong>
+      (cross-tenant isolation tests + CI gate).
     </p>
     <div class="tasks">
 
@@ -499,31 +500,32 @@
           <div>
             <div class="task-title">1.4 — House / owner-context correctness (multi-owner audit)</div>
             <div class="task-why">
-              Partially shipped since the March audit: wallets, reports, income-templates, expense-templates,
-              and create-month now use <code>getOwnerContext</code>. Still open: <code>/api/transfers</code>,
-              manual QA script, and house-mode regression tests.
+              Shipped: finance routes + <code>/api/transfers</code> use <code>getOwnerContext</code>; personal
+              <code>ownerId</code> must match session; house-mode regression tests; manual QA at
+              <code>docs/qa/house-owner-context-manual-qa.md</code>.
             </div>
           </div>
           <div class="task-meta">
             <span class="effort-badge ef-l">Large</span>
-            <span class="status-badge st-partial">Partial · 3/6</span>
+            <span class="status-badge st-done">Done</span>
             <span class="score-change">↑ Product correctness</span>
           </div>
         </div>
         <div class="task-links">
           <span>PRD:</span> <a href="../tasks/prd-house-owner-context.md">tasks/prd-house-owner-context.md</a>
-          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/109">#109 open</a>
+          <span>GitHub:</span> <a href="https://github.com/Jorg3L3on/micasa/issues/109">#109 closed</a>
+          <span>PR:</span> <a href="https://github.com/Jorg3L3on/micasa/pull/131">#131</a>
           <span>Notion:</span> <a href="https://app.notion.com/p/39a542e742e9812b8bcdc5889e3c4756">1.4</a>
         </div>
         <div class="task-criteria">
-          <div class="criteria-label">Acceptance criteria · 3 / 6</div>
+          <div class="criteria-label">Acceptance criteria · 6 / 6</div>
           <ul class="criteria-list">
             <li class="met">Most finance routes respect owner context; wallets, reports, income/expense templates, create-month fixed</li>
             <li class="met"><code>/api/reports</code> and <code>/api/income-templates</code> use <code>getOwnerContext</code></li>
-            <li><code>/api/transfers</code> uses <code>getOwnerContext</code> — still pending</li>
+            <li class="met"><code>/api/transfers</code> uses <code>getOwnerContext</code> + membership / caller checks</li>
             <li class="met">Fortnight create-month uses request owner via <code>ownerFilter</code> (not <code>defaultUser</code>)</li>
-            <li>Manual QA script: personal vs house mode — not documented yet</li>
-            <li>Regression tests for wallets, expenses, fortnights in house mode — not added yet</li>
+            <li class="met">Manual QA script: personal vs house mode — <code>docs/qa/house-owner-context-manual-qa.md</code></li>
+            <li class="met">Regression tests for wallets, expenses, fortnights in house mode</li>
           </ul>
         </div>
       </div>
@@ -827,8 +829,8 @@
     Next.js 16 · React 19 · Prisma 7 · 25 models · 76 API routes · 66 test files ·
     statement providers: Mercado Pago, CA Departamental, CA Efectivo, DiDi Card, Liverpool.
     <br><br>
-    <strong style="color:var(--text-secondary)">Last updated:</strong> Jul 10, 2026 (live repo scan) ·
-    Phase 1: <strong style="color:var(--green)">1.1 + 1.2 done</strong>, 1.4 partial, 1.3 backlog ·
+    <strong style="color:var(--text-secondary)">Last updated:</strong> Jul 24, 2026 (live repo scan) ·
+    Phase 1: <strong style="color:var(--green)">1.1 + 1.2 + 1.4 done</strong>, 1.3 backlog ·
     GitHub #106–#109 · implement via <code style="font-family:var(--mono);font-size:11px;color:#c4b5fd">/ship-feature tasks/prd-*.md</code>
   </div>
 
