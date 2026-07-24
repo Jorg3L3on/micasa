@@ -18,14 +18,14 @@ Details: [docs/agents/workflow.md](docs/agents/workflow.md).
 
 1. **Plan** — `/prd` → `tasks/prd-*.md` or `/to-prd` → parent GitHub issue
 2. **Ship** — `/ship-feature tasks/prd-….md` (parent issue + slice issues + `feat/<slug>` branch)
-3. **You merge** each slice PR into `feat/<slug>` (preview on Vercel)
+3. **Agent merges** each slice PR into `feat/<slug>` after CI is green (preview on Vercel)
 4. **You merge** the final PR `feat/<slug>` → `main` once (production)
 
 **One-time:** `bash scripts/create-github-labels.sh` after `gh auth login`.
 
 **Shared Cursor skills** (optional, install once per machine): see [docs/agents/workflow.md](docs/agents/workflow.md) for the install script path on your machine.
 
-Agents must not merge PRs unless you explicitly ask.
+Agents may merge slice PRs into `feat/<slug>`. Agents must **not** merge to `main` or push to production.
 
 ## Before you open a PR
 

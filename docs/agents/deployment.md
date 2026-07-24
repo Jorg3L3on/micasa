@@ -9,7 +9,7 @@ Slice work from **`ship-feature`** uses **`feat/<feature-slug>`** so incomplete 
 | Slice PRs | `feat/<slug>` | Preview |
 | Release | PR `feat/<slug>` → `main` | Production (once) |
 
-Agents open slice PRs into `feat/<slug>` and the final PR to `main`. **You merge** all PRs.
+Agents open slice PRs into `feat/<slug>`, **merge those slice PRs** once CI is green, and open the final PR to `main`. **You merge only** the final PR to `main` (production).
 
 ## Per PRD
 
