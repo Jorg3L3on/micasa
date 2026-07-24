@@ -322,6 +322,7 @@ export async function PUT(request: NextRequest) {
 
     const transaction = await updateExpense({
       id: Number(id),
+      ownerFilter,
       fortnightId: validatedData.fortnight_id,
       categoryId: validatedData.category_id,
       description: validatedData.description,
@@ -477,7 +478,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await deleteExpense({ id: expenseId });
+    await deleteExpense({ id: expenseId, ownerFilter });
 
     return NextResponse.json(
       { message: 'Transaction deleted successfully' },
