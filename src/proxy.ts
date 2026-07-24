@@ -20,7 +20,10 @@ const proxy = auth((req) => {
     return NextResponse.next();
   }
 
-  if (!isLoggedIn && pathname.startsWith('/dashboard')) {
+  if (
+    !isLoggedIn &&
+    (pathname.startsWith('/dashboard') || pathname.startsWith('/admin'))
+  ) {
     return Response.redirect(new URL('/login', req.nextUrl));
   }
 
