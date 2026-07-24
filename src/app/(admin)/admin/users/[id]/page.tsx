@@ -15,6 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/calendar-dates';
+import { AdminSetTempPasswordDialog } from '@/components/admin/AdminSetTempPasswordDialog';
 
 type AdminUserDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -47,16 +48,23 @@ export default async function AdminUserDetailPage({
             <h1 className="text-lg font-semibold tracking-tight">{user.name}</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">{user.email}</p>
           </div>
-          <div className="flex flex-wrap gap-1">
-            <Badge variant={user.active ? 'secondary' : 'destructive'}>
-              {user.active ? 'Activo' : 'Inactivo'}
-            </Badge>
-            <Badge variant="outline">
-              {user.onboarding_completed
-                ? 'Onboarding completo'
-                : 'Sin onboarding'}
-            </Badge>
-            {user.is_admin ? <Badge variant="outline">Admin</Badge> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={user.active ? 'secondary' : 'destructive'}>
+                {user.active ? 'Activo' : 'Inactivo'}
+              </Badge>
+              <Badge variant="outline">
+                {user.onboarding_completed
+                  ? 'Onboarding completo'
+                  : 'Sin onboarding'}
+              </Badge>
+              {user.is_admin ? <Badge variant="outline">Admin</Badge> : null}
+            </div>
+            <AdminSetTempPasswordDialog
+              userId={user.id}
+              userName={user.name}
+              userEmail={user.email}
+            />
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
