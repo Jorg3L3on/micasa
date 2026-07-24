@@ -20,7 +20,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'MiCasa',
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
+  title: {
+    default: 'MiCasa',
+    template: '%s',
+  },
   description:
     'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   icons: {
@@ -35,6 +39,15 @@ export const metadata: Metadata = {
     title: 'MiCasa',
     description:
       'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+    locale: 'es_MX',
+    type: 'website',
+    siteName: 'MiCasa',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MiCasa',
+    description:
+      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   },
 };
 
@@ -44,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es-MX" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
