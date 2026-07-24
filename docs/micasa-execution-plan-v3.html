@@ -385,7 +385,7 @@
     <p class="header-meta">
       Source: <code>micasa-assessment-v2.html</code> (SaaS readiness 6/10) ·
       Supersedes <code>docs/micasa-execution-plan-v2.html</code> ·
-      Target: public-ready at ~8/10 · Phase 1 security is closed
+      Target: public-ready at ~8/10 · Phase 1 + Phase 2 closed
     </p>
   </div>
 
@@ -397,13 +397,13 @@
       </div>
     </div>
     <div>
-      <div class="score-label">SaaS readiness — assessment v2</div>
+      <div class="score-label">SaaS readiness — assessment v2 baseline · Phase 2 closed</div>
       <div class="score-sub">
-        Phase 1 (security &amp; data integrity) is fully shipped. Foundational risks are closed.
-        What remains is the public-facing layer and ops tooling — not the infrastructure underneath.
-        This plan reorders remaining work around the assessment’s four launch blockers.
+        Phase 1 (security &amp; data integrity) and Phase 2 (launch readiness) are fully shipped:
+        landing, legal pages, Sentry, and admin recovery. Remaining work is pre-growth quality
+        and later market expansion — not launch blockers.
       </div>
-      <div class="score-delta">↑ +2 from original 4/10 · Phase 1 + 2.1–2.4 complete</div>
+      <div class="score-delta">↑ +2 from original 4/10 · Phase 1 + 2.1–2.5 + 3.2 complete</div>
     </div>
   </div>
 
@@ -411,9 +411,9 @@
     <div class="dim-card">
       <div class="dim-header">
         <span class="dim-name">Auth &amp; session</span>
-        <span class="dim-score" style="color:var(--amber)">6</span>
+        <span class="dim-score" style="color:var(--amber)">7</span>
       </div>
-      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:60%;background:var(--amber)"></div></div>
+      <div class="dim-bar-bg"><div class="dim-bar-fill" style="width:70%;background:var(--amber)"></div></div>
     </div>
     <div class="dim-card">
       <div class="dim-header">
@@ -470,13 +470,15 @@
     <strong>Current status (Jul 24, 2026):</strong>
     <strong style="color:var(--green)">Phase 1 complete</strong> — Prisma consolidation, rate limiting,
     cross-tenant isolation suite (9 domains in CI), and house/owner-context correctness are shipped
-    (#106–#109). Funnel polish <strong style="color:var(--green)">2.1</strong> (#120),
-    public landing + legal <strong style="color:var(--green)">2.2–2.3</strong> (PR #134), and
-    error monitoring <strong style="color:var(--green)">2.4</strong> (#133 / PR #135) are also shipped.
+    (#106–#109).
+    <strong style="color:var(--green)">Phase 2 complete</strong> — funnel polish
+    <strong style="color:var(--green)">2.1</strong> (#120),
+    public landing + legal <strong style="color:var(--green)">2.2–2.3</strong> (PR #134),
+    error monitoring <strong style="color:var(--green)">2.4</strong> (#133 / PR #135), and
+    admin panel <strong style="color:var(--green)">2.5</strong> (#138–#140 / release PR #146).
+    CI quality gates <strong style="color:var(--green)">3.2</strong> are also shipped.
     <br><br>
-    <strong>v3 focus:</strong> ship the remaining assessment blocker before any real user —
-    admin recovery —
-    then pre-growth quality gates, then market expansion.
+    <strong>v3 focus:</strong> remaining pre-growth item (PostHog 3.1), then market expansion.
     <br><br>
     <strong>Constraints (unchanged):</strong> No transactional email · No Google OAuth · No Stripe.
   </div>
@@ -516,8 +518,8 @@
       </li>
       <li>
         <span class="order-n">04</span>
-        <span><strong>2.5 Admin panel</strong> — user lookup + password override (only recovery path without email)</span>
-        <span class="order-tag tag-blocker">Blocker</span>
+        <span><strong>2.5 Admin panel</strong> — shipped (#137 / release PR #146)</span>
+        <span class="order-tag tag-done">Done</span>
       </li>
       <li>
         <span class="order-n">05</span>
@@ -539,11 +541,11 @@
 
   <div class="progress-strip">
     <div class="progress-cell">
-      <span class="progress-num" style="color:var(--green)">9</span>
-      <span class="progress-label">Done · Phase 1 + 2.1–2.4 + 3.2</span>
+      <span class="progress-num" style="color:var(--green)">10</span>
+      <span class="progress-label">Done · Phase 1 + 2.1–2.5 + 3.2</span>
     </div>
     <div class="progress-cell">
-      <span class="progress-num" style="color:var(--red)">1</span>
+      <span class="progress-num" style="color:var(--green)">0</span>
       <span class="progress-label">Launch blockers open</span>
     </div>
     <div class="progress-cell">
@@ -568,13 +570,14 @@
         <li>Full MX finance domain (fortnights, loans, pantry, 5 parsers)</li>
         <li>Sentry error monitoring (client/server/edge, source maps, spike alert)</li>
         <li>Public landing at <code>/</code> + Spanish <code>/privacy</code> and <code>/terms</code></li>
+        <li>Admin <code>/admin</code>: user lookup + temporary password override (audited)</li>
         <li>CI quality gates: <code>validate:calendar-dates</code> + finance coverage floor</li>
       </ul>
     </div>
-    <div class="status-card gap">
+    <div class="status-card done">
       <h3>Launch blockers (🔴)</h3>
       <ul class="status-list">
-        <li>Admin: user lookup + password override</li>
+        <li>None — Phase 2 launch readiness is complete</li>
       </ul>
     </div>
     <div class="status-card ready">
@@ -587,12 +590,12 @@
 
   <div class="summary">
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--green)">9</span>
-      <span class="summary-label">Done · 1.1–1.4, 2.1–2.4, 3.2</span>
+      <span class="summary-num" style="color:var(--green)">10</span>
+      <span class="summary-label">Done · 1.1–1.4, 2.1–2.5, 3.2</span>
     </div>
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--red)">1</span>
-      <span class="summary-label">Blockers · 2.5</span>
+      <span class="summary-num" style="color:var(--green)">0</span>
+      <span class="summary-label">Blockers · none</span>
     </div>
     <div class="summary-cell">
       <span class="summary-num" style="color:var(--amber)">1</span>
@@ -644,12 +647,12 @@
     <div class="phase-header">
       <span class="phase-num ph-2">PHASE 2</span>
       <span class="phase-title">Launch readiness — before any real user</span>
-      <span class="phase-timeline">~2–3 weeks · 4 done · 1 blocker</span>
+      <span class="phase-timeline">5 / 5 done</span>
     </div>
     <p class="phase-intro">
-      Assessment v2’s four 🔴 blockers. Do these in the recommended order above.
-      Funnel polish (2.1), public landing + legal (2.2–2.3), and Sentry (2.4) are shipped;
-      locked-out users still have no recovery path without admin (2.5).
+      Assessment v2’s four 🔴 blockers plus funnel polish — all shipped.
+      Funnel polish (2.1), public landing + legal (2.2–2.3), Sentry (2.4), and admin recovery (2.5)
+      close Phase 2. Next open item is PostHog (3.1).
     </p>
     <div class="tasks">
 
@@ -777,31 +780,45 @@
         </div>
       </div>
 
-      <div class="task blocker-border">
+      <div class="task">
         <div class="task-main">
           <div>
             <div class="task-title">2.5 — Admin panel (support + password override)</div>
             <div class="task-why">
-              No password-reset email path (out of scope). A forgotten password currently means direct DB
-              intervention — and there is no admin UI. Assessment: this is the single biggest operational
-              gap and compounds with the recovery hole. Minimal <code>/admin</code>: user lookup +
-              temporary password set (communicate out-of-band).
+              Shipped: gated <code>/admin</code> shell (<code>User.is_admin</code> +
+              <code>MICASA_ADMIN_EMAILS</code>), user list/detail with wallets/fortnights/loans/
+              onboarding + last-50 activity feed, temporary password override with
+              <code>AdminAuditLog</code>, and noindex / sitemap exclusion.
             </div>
           </div>
           <div class="task-meta">
             <span class="effort-badge ef-m">Medium</span>
-            <span class="status-badge st-new">Blocker · 0/5</span>
-            <span class="score-change">↑ Ops + Auth recovery</span>
+            <span class="status-badge st-done">Done</span>
+            <span class="score-change">Ops + Auth recovery ↑</span>
           </div>
         </div>
+        <div class="task-links">
+          <span>PRD:</span>
+          <a href="https://github.com/Jorg3L3on/micasa/issues/137">#137</a>
+          <span>GitHub:</span>
+          <a href="https://github.com/Jorg3L3on/micasa/issues/138">#138</a>,
+          <a href="https://github.com/Jorg3L3on/micasa/issues/139">#139</a>,
+          <a href="https://github.com/Jorg3L3on/micasa/issues/140">#140</a> closed
+          <span>PRs:</span>
+          <a href="https://github.com/Jorg3L3on/micasa/pull/141">#141</a>,
+          <a href="https://github.com/Jorg3L3on/micasa/pull/143">#143</a>,
+          <a href="https://github.com/Jorg3L3on/micasa/pull/145">#145</a>
+          <span>Release:</span>
+          <a href="https://github.com/Jorg3L3on/micasa/pull/146">#146</a>
+        </div>
         <div class="task-criteria">
-          <div class="criteria-label">Acceptance criteria · 0 / 5</div>
+          <div class="criteria-label">Acceptance criteria · 5 / 5</div>
           <ul class="criteria-list">
-            <li><code>/admin</code> gated by <code>User.is_admin</code> or env allowlist</li>
-            <li>User list + detail: wallets, fortnights, loans, onboarding status</li>
-            <li>Last 50 finance-log / recent events per user (best-effort from available logs)</li>
-            <li>Admin can set temporary password for credential users (out-of-band communicate)</li>
-            <li>Routes noindexed; excluded from sitemap; mutations audited</li>
+            <li class="met"><code>/admin</code> gated by <code>User.is_admin</code> or env allowlist</li>
+            <li class="met">User list + detail: wallets, fortnights, loans, onboarding status</li>
+            <li class="met">Last 50 finance-log / recent events per user (best-effort from available logs)</li>
+            <li class="met">Admin can set temporary password for credential users (out-of-band communicate)</li>
+            <li class="met">Routes noindexed; excluded from sitemap; mutations audited</li>
           </ul>
         </div>
       </div>
@@ -854,16 +871,15 @@
           <div>
             <div class="task-title">3.2 — CI quality gates (calendar dates + coverage)</div>
             <div class="task-why">
-              <code>validate:calendar-dates</code> exists but is absent from <code>npm run ci</code> —
-              it only runs when someone remembers. No Vitest coverage threshold means finance coverage
-              can silently regress. Domain tests are strong (83 files); lock the floor now.
-              Money-path unit tests from old 4.4 are already met.
+              Shipped: <code>validate:calendar-dates</code> wired into <code>npm run ci</code> and GitHub
+              Actions, plus a Vitest coverage floor on <code>src/lib/finance/**</code>. Money-path unit
+              tests from old 4.4 remain met.
             </div>
           </div>
           <div class="task-meta">
             <span class="effort-badge ef-s">Small</span>
             <span class="status-badge st-done">Done</span>
-            <span class="score-change">↑ Tests 6→7+</span>
+            <span class="score-change">Tests 6→7</span>
           </div>
         </div>
         <div class="task-criteria">
@@ -1001,12 +1017,11 @@
     <br><br>
     <strong style="color:var(--text-secondary)">Deferred until email infra exists:</strong>
     forgot-password self-service, email verification on signup, lifecycle nudges.
-    Admin password override (2.5) is the interim recovery path.
+    Admin password override (2.5, shipped) is the interim recovery path.
     <br><br>
     <strong style="color:var(--text-secondary)">Score path:</strong>
-    Auth 6 · Isolation 8 · Infra 8 · Tests 6 · Acquisition 5 · Observability 2 · Domain 9 · Legal 1
-    → weighted <strong style="color:var(--amber)">6/10</strong>.
-    Phase 2 blockers target ~8/10 public-ready.
+    Auth 7 · Isolation 8 · Infra 8 · Tests 7 · Acquisition 5 · Observability 5 · Domain 9 · Legal 6
+    → assessment baseline <strong style="color:var(--amber)">6/10</strong>; Phase 2 closed toward ~8/10 public-ready.
     <br><br>
     <strong style="color:var(--text-secondary)">Repo snapshot:</strong>
     Next.js 16 · React 19 · Prisma 7 · ~25–31 models · 76 API routes · 83 test files ·
@@ -1014,7 +1029,7 @@
     <br><br>
     <strong style="color:var(--text-secondary)">Last updated:</strong> Jul 24, 2026 ·
     grounded in assessment v2 · supersedes execution plan v2 ·
-    implement via <code>/ship-feature</code> after PRDs for 2.2–2.5
+    Phase 2 complete · next: 3.1 PostHog via <code>/ship-feature</code>
   </div>
 
 </div>
