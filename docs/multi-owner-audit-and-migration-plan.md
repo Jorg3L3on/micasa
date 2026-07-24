@@ -1,7 +1,28 @@
 # Multi-Owner Finance System — Full Audit & Migration Plan
 
 **Date:** 2026-03-08  
-**Scope:** Analysis and planning only. No code changes.
+**Last status update:** 2026-07-24 (Phase 1.4 / #109)  
+**Scope:** Originally analysis only. Implementation status below.
+
+## Implementation status (2026-07-24)
+
+| Item | Status |
+|------|--------|
+| Wallets API `getOwnerContext` + `listWalletsByOwner` / create-for-owner | ✅ Resolved |
+| Reports API auth + `ownerFilter` | ✅ Resolved |
+| Income / expense templates `getOwnerContext` | ✅ Resolved |
+| Fortnights create-month / catalog / override-amount via request owner | ✅ Resolved |
+| Transactions GET via `listPlanningTransactions(ownerFilter)` | ✅ Resolved |
+| Expense paid toggle ownership check | ✅ Resolved |
+| **Transfers** `getOwnerContext` + membership / caller checks | ✅ Resolved (#109) |
+| `getOwnerContext` rejects `ownerType=user` when `ownerId` ≠ session user | ✅ Resolved (#109) |
+| House-mode regression tests (wallets, expenses, fortnights) | ✅ Resolved (#109) |
+| Manual QA script personal vs house | ✅ `docs/qa/house-owner-context-manual-qa.md` |
+| Onboarding / account / houses (personal-only by design) | N/A — intentional |
+
+Historical findings in §§1–8 below are kept for reference; treat the table above as source of truth for what’s left.
+
+---
 
 The system supports two contexts:
 - **PERSONAL MODE:** `ownerType = "user"`, `ownerId = session.user.id`
