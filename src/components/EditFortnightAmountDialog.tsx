@@ -62,9 +62,10 @@ export default function EditFortnightAmountDialog({
   const handleSubmit = async (data: OverrideAmountFormValues) => {
     try {
       await onSubmit(data)
-      onOpenChange(false)
     } catch {
-      // Error handling is done in the parent component
+      // Parent shows toast; close either way after the attempt.
+    } finally {
+      onOpenChange(false)
     }
   }
 

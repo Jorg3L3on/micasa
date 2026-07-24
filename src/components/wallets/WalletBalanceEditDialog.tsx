@@ -83,14 +83,16 @@ export const WalletBalanceEditDialog = ({
       );
       onSaved?.(wallet.id, parsed);
       toast.success('Saldo actualizado');
+      onOpenChange(false);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'No se pudo actualizar el saldo',
       );
+      onOpenChange(false);
     } finally {
       setSavingBalance(false);
     }
-  }, [balanceInput, context, onSaved, wallet]);
+  }, [balanceInput, context, onOpenChange, onSaved, wallet]);
 
   const isCredit = wallet ? isCreditType(wallet.type) : false;
 

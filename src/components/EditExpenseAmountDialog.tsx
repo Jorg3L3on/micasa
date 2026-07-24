@@ -90,9 +90,10 @@ export default function EditExpenseAmountDialog({
   const handleSubmit = async (data: ExpenseAmountFormValues) => {
     try {
       await onSubmit(data)
-      onOpenChange(false)
     } catch {
-      // Error handling is done in the parent component
+      // Parent shows toast; close either way after the attempt.
+    } finally {
+      onOpenChange(false)
     }
   }
 

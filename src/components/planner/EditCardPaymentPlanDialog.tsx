@@ -70,9 +70,10 @@ export const EditCardPaymentPlanDialog = ({
   const handleSubmit = async (data: CardPaymentPlanFormValues) => {
     try {
       await onSubmit(data);
-      onOpenChange(false);
     } catch {
-      // Parent handles error toast/state
+      // Parent shows toast; close either way after the attempt.
+    } finally {
+      onOpenChange(false);
     }
   };
 
@@ -80,9 +81,10 @@ export const EditCardPaymentPlanDialog = ({
     if (!onClearPlan) return;
     try {
       await onClearPlan();
-      onOpenChange(false);
     } catch {
-      // Parent handles error toast/state
+      // Parent shows toast; close either way after the attempt.
+    } finally {
+      onOpenChange(false);
     }
   };
 
