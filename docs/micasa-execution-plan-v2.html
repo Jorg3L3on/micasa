@@ -308,7 +308,7 @@
       <span class="progress-label">Phase 1 · complete (#106–#109)</span>
     </div>
     <div class="progress-cell">
-      <span class="progress-num" style="color:var(--green)">5 / 12</span>
+      <span class="progress-num" style="color:var(--green)">6 / 12</span>
       <span class="progress-label">Fully done · 1 partial (4.4)</span>
     </div>
     <div class="progress-cell">
@@ -349,7 +349,6 @@
       <h3>Still missing (blockers)</h3>
       <ul class="status-list">
         <li>Public marketing landing (root redirects to login today)</li>
-        <li>Production error monitoring (Sentry or equivalent)</li>
         <li>Product analytics (PostHog or equivalent)</li>
         <li>Admin / support tooling</li>
       </ul>
@@ -358,15 +357,15 @@
 
   <div class="summary">
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--green)">5</span>
-      <span class="summary-label">Done · 1.1–1.4, 2.1</span>
+      <span class="summary-num" style="color:var(--green)">6</span>
+      <span class="summary-label">Done · 1.1–1.4, 2.1, 4.1</span>
     </div>
     <div class="summary-cell">
       <span class="summary-num" style="color:var(--amber)">1</span>
       <span class="summary-label">Partial · 4.4</span>
     </div>
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--red)">6</span>
+      <span class="summary-num" style="color:var(--red)">5</span>
       <span class="summary-label">Not started</span>
     </div>
     <div class="summary-cell">
@@ -374,7 +373,7 @@
       <span class="summary-label">Phase 3 · deferred</span>
     </div>
     <div class="summary-cell">
-      <span class="summary-num" style="color:var(--blue)">26</span>
+      <span class="summary-num" style="color:var(--blue)">29</span>
       <span class="summary-label">Criteria met (of 52 total)</span>
     </div>
   </div>
@@ -641,22 +640,25 @@
           <div>
             <div class="task-title">4.1 — Error monitoring (Sentry or equivalent)</div>
             <div class="task-why">
-              No production error tracking today. Server exceptions, failed webhooks, and client crashes in
-              the dashboard currently rely on users reporting bugs. Ship before or alongside Phase 2 public launch.
+              Shipped: <code>@sentry/nextjs</code> on server, edge/proxy, and client; statement-import
+              500s tagged with owner context (no PII in titles); source maps via
+              <code>withSentryConfig</code> when <code>SENTRY_AUTH_TOKEN</code> is set; ops checklist in
+              <code>docs/agents/deployment.md</code> (DSN + error-rate alert). GitHub
+              <a href="https://github.com/Jorg3L3on/micasa/issues/133">#133</a> (v3 task 2.4).
             </div>
           </div>
           <div class="task-meta">
             <span class="effort-badge ef-s">Small</span>
-            <span class="status-badge st-new">Not started · 0/3</span>
+            <span class="status-badge st-done">Done</span>
             <span class="score-change">↑ Incident response</span>
           </div>
         </div>
         <div class="task-criteria">
-          <div class="criteria-label">Acceptance criteria · 0 / 3</div>
+          <div class="criteria-label">Acceptance criteria · 3 / 3</div>
           <ul class="criteria-list">
-            <li>Sentry (or similar) in Next.js server, edge/proxy, and client bundles</li>
-            <li>Statement import and API route errors tagged with user/owner context (no PII in titles)</li>
-            <li>Alert on error rate spike; source maps uploaded on deploy</li>
+            <li class="met">Sentry (or similar) in Next.js server, edge/proxy, and client bundles</li>
+            <li class="met">Statement import and API route errors tagged with user/owner context (no PII in titles)</li>
+            <li class="met">Alert on error rate spike; source maps uploaded on deploy</li>
           </ul>
         </div>
       </div>

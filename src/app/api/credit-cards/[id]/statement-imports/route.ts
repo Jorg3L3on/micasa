@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { captureOwnerError } from '@/lib/observability/sentry';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import prisma from '@/lib/prisma';
 import { StatementImportProvider } from '@/generated/prisma/client';
@@ -23,9 +24,21 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let ownerForErrors: {
+    userId?: number;
+    ownerType?: string;
+    ownerId?: number;
+  } = {};
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
+
+    ownerForErrors = {
+      userId: context.userId,
+      ownerType: context.ownerType,
+      ownerId: context.ownerId,
+    };
 
     const { id } = await params;
     const walletId = Number(id);
@@ -85,6 +98,13 @@ export async function GET(
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     console.error('statement-imports GET', error);
+    captureOwnerError(error, {
+      userId: ownerForErrors.userId,
+      ownerType: ownerForErrors.ownerType,
+      ownerId: ownerForErrors.ownerId,
+      feature: 'statement-import',
+      tags: { statement_import_op: 'list' },
+    });
     return NextResponse.json(
       { error: 'No se pudieron cargar las importaciones' },
       { status: 500 },
@@ -96,9 +116,21 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let ownerForErrors: {
+    userId?: number;
+    ownerType?: string;
+    ownerId?: number;
+  } = {};
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
+
+    ownerForErrors = {
+      userId: context.userId,
+      ownerType: context.ownerType,
+      ownerId: context.ownerId,
+    };
 
     const session = await auth();
     const createdBy = session?.user?.id ? Number(session.user.id) : NaN;
@@ -250,6 +282,13 @@ export async function POST(
     }
 
     console.error('statement-imports POST', error);
+    captureOwnerError(error, {
+      userId: ownerForErrors.userId,
+      ownerType: ownerForErrors.ownerType,
+      ownerId: ownerForErrors.ownerId,
+      feature: 'statement-import',
+      tags: { statement_import_op: 'create' },
+    });
     return NextResponse.json(
       { error: 'No se pudo importar el estado de cuenta' },
       { status: 500 },

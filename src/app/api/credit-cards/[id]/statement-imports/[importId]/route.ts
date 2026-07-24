@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { captureOwnerError } from '@/lib/observability/sentry';
 import prisma from '@/lib/prisma';
 import { rollbackCreditCardStatementImport } from '@/lib/server/credit-card-statement/rollback-statement-import.service';
 
@@ -13,9 +14,21 @@ export async function DELETE(
     params,
   }: { params: Promise<{ id: string; importId: string }> },
 ) {
+  let ownerForErrors: {
+    userId?: number;
+    ownerType?: string;
+    ownerId?: number;
+  } = {};
+
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
+
+    ownerForErrors = {
+      userId: context.userId,
+      ownerType: context.ownerType,
+      ownerId: context.ownerId,
+    };
 
     const { id, importId } = await params;
     const walletId = Number(id);
@@ -76,6 +89,13 @@ export async function DELETE(
     }
 
     console.error('statement-import DELETE', error);
+    captureOwnerError(error, {
+      userId: ownerForErrors.userId,
+      ownerType: ownerForErrors.ownerType,
+      ownerId: ownerForErrors.ownerId,
+      feature: 'statement-import',
+      tags: { statement_import_op: 'rollback' },
+    });
     return NextResponse.json(
       { error: 'No se pudo revertir la importación' },
       { status: 500 },
