@@ -1,9 +1,22 @@
 import type { Metadata } from 'next';
+import { DM_Sans, Syne } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { LandingPage } from '@/components/landing/landing-page';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+
+const landingDisplay = Syne({
+  subsets: ['latin'],
+  variable: '--font-landing-display',
+  display: 'swap',
+});
+
+const landingSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-landing-sans',
+  display: 'swap',
+});
 
 const SITE_TITLE = 'MiCasa — Planifica tu dinero por quincenas';
 const SITE_DESCRIPTION =
@@ -44,5 +57,9 @@ export default async function Home() {
     redirect('/dashboard');
   }
 
-  return <LandingPage />;
+  return (
+    <div className={`${landingDisplay.variable} ${landingSans.variable}`}>
+      <LandingPage />
+    </div>
+  );
 }
