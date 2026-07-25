@@ -1042,7 +1042,6 @@ async function getDuePaymentsWithAsOf(
   const currentCyclePurchaseSums = new Map<number, number>();
   const currentCyclePaymentSums = new Map<number, number>();
   const importedTotalByWallet = new Map<number, number>();
-  const hasAnyImportByWallet = new Map<number, boolean>();
   const hasAlignedImportByWallet = new Map<number, boolean>();
   const projectedInstallmentSums = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
@@ -1097,10 +1096,6 @@ async function getDuePaymentsWithAsOf(
     });
 
     for (const wid of cardIds) {
-      hasAnyImportByWallet.set(
-        wid,
-        allImportsForGroup.some((row) => row.wallet_id === wid),
-      );
       const selectedImport = resolveStatementImportForStatementWindow(
         allImportsForGroup,
         wid,
@@ -1147,11 +1142,11 @@ async function getDuePaymentsWithAsOf(
     const outstandingBalance = Number(card.amount);
     const window = windowByWallet.get(card.id)!;
     const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
-    const hasAnyImport = hasAnyImportByWallet.get(card.id) === true;
-    const hasAlignedImport = hasAlignedImportByWallet.get(card.id) === true;
+    // Current/next fortnights pass allowOutstandingBalanceFallback: true and must
+    // estimate from wallet debt even when imports exist but none align to the cycle.
+    // Historical fortnights pass false so we do not invent dues from today's debt.
     const allowOutstandingBalanceFallback =
-      (options?.allowOutstandingBalanceFallback ?? true) &&
-      (!hasAnyImport || hasAlignedImport);
+      options?.allowOutstandingBalanceFallback ?? true;
 
     const obligation = buildCardStatementObligation({
       walletId: card.id,

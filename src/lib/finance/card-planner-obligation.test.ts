@@ -46,6 +46,7 @@ describe('derivePlannerStatus', () => {
       derivePlannerStatus({
         remainingPlannerAmount: 0,
         paymentsAppliedToFortnight: 694.76,
+        outstandingBalance: 3190,
         visibleDueDate: '2026-07-05',
         todayYmd: '2026-07-07',
       }),
@@ -57,6 +58,7 @@ describe('derivePlannerStatus', () => {
       derivePlannerStatus({
         remainingPlannerAmount: 500,
         paymentsAppliedToFortnight: 0,
+        outstandingBalance: 500,
         visibleDueDate: '2026-07-05',
         todayYmd: '2026-07-07',
       }),
@@ -68,10 +70,53 @@ describe('derivePlannerStatus', () => {
       derivePlannerStatus({
         remainingPlannerAmount: 1217.01,
         paymentsAppliedToFortnight: 0,
+        outstandingBalance: 7554,
         visibleDueDate: '2026-07-13',
         todayYmd: '2026-07-07',
       }),
     ).toBe('por_pagar');
+  });
+
+  it('returns sin_cargo when nothing due and no debt', () => {
+    expect(
+      derivePlannerStatus({
+        remainingPlannerAmount: 0,
+        paymentsAppliedToFortnight: 0,
+        targetAmount: 0,
+        outstandingBalance: 0,
+        visibleDueDate: '2026-07-18',
+        todayYmd: '2026-07-24',
+      }),
+    ).toBe('sin_cargo');
+  });
+
+  it('does not mark pagado for $0 target while wallet still has debt', () => {
+    // Screenshot fixture: DIDI / MP style false Pagado $0
+    expect(
+      derivePlannerStatus({
+        remainingPlannerAmount: 0,
+        paymentsAppliedToFortnight: 0,
+        paymentsAppliedToStatement: 0,
+        targetAmount: 0,
+        outstandingBalance: 2913.07,
+        visibleDueDate: '2026-07-18',
+        todayYmd: '2026-07-24',
+      }),
+    ).toBe('vencido');
+  });
+
+  it('returns pagado when statement payments covered a zero remaining target', () => {
+    expect(
+      derivePlannerStatus({
+        remainingPlannerAmount: 0,
+        paymentsAppliedToFortnight: 0,
+        paymentsAppliedToStatement: 2519.99,
+        targetAmount: 0,
+        outstandingBalance: 0,
+        visibleDueDate: '2026-06-18',
+        todayYmd: '2026-06-20',
+      }),
+    ).toBe('pagado');
   });
 });
 
@@ -146,6 +191,30 @@ describe('Liverpool fixtures (planner vs statement)', () => {
 
     expect(planner.remainingPlannerAmount).toBe(200);
     expect(planner.plannerStatus).toBe('vencido');
+  });
+  it('zero plan with debt does not become pagado (screenshot regression)', () => {
+    const statement = buildStatement({
+      asOf: '2026-07-18',
+      cutoff: 3,
+      due: 18,
+      walletDebt: 2913.07,
+      importDue: null,
+      statementPayments: 0,
+    });
+
+    const planner = buildCardPlannerObligation({
+      fortnightId: 38,
+      statement,
+      plannedGrossAmount: 0,
+      paymentsAppliedToFortnight: 0,
+      todayYmd: '2026-07-24',
+    });
+
+    // $0 plan is ignored; suggested falls back to wallet debt.
+    expect(planner.plannedPayment).toBeNull();
+    expect(planner.targetAmount).toBe(2913.07);
+    expect(planner.plannerStatus).toBe('vencido');
+    expect(planner.outstandingBalance).toBe(2913.07);
   });
 });
 

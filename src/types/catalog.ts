@@ -258,7 +258,11 @@ export type MercadoPagoStatementImportResponse = {
   warnings: string[];
 };
 
-export type PlannerCardPaymentStatusUi = 'pagado' | 'vencido' | 'por_pagar';
+export type PlannerCardPaymentStatusUi =
+  | 'pagado'
+  | 'vencido'
+  | 'por_pagar'
+  | 'sin_cargo';
 
 export type CardObligationAmountSource =
   | 'import'

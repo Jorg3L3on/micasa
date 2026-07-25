@@ -32,25 +32,35 @@ export const derivePlannerStatus = (input: {
   paymentsAppliedToFortnight: number;
   paymentsAppliedToStatement?: number;
   targetAmount?: number;
+  outstandingBalance?: number;
   visibleDueDate: string;
   todayYmd?: string;
 }): PlannerCardPaymentStatusUi => {
+  const today = input.todayYmd ?? todayCalendarDate();
+  const outstanding = input.outstandingBalance ?? 0;
+  const target = input.targetAmount ?? 0;
+  const statementPaid = input.paymentsAppliedToStatement ?? 0;
+
   if (input.remainingPlannerAmount <= 0) {
+    // Pagado only when money was actually applied.
     if (input.paymentsAppliedToFortnight > 0) {
       return 'pagado';
     }
-    if (
-      (input.targetAmount ?? 0) <= 0 &&
-      (input.paymentsAppliedToStatement ?? 0) > 0
-    ) {
+    if (target <= 0 && statementPaid > 0) {
       return 'pagado';
     }
-    if ((input.targetAmount ?? 0) <= 0) {
-      return 'pagado';
+    if (outstanding <= 0) {
+      return 'sin_cargo';
     }
+    // Safety net: remaining is 0 but wallet still has debt (stale estimate).
+    // Prefer open status so the row is actionable until due is restored.
+    if (today > input.visibleDueDate) {
+      return 'vencido';
+    }
+    return 'por_pagar';
   }
-  const today = input.todayYmd ?? todayCalendarDate();
-  if (input.remainingPlannerAmount > 0 && today > input.visibleDueDate) {
+
+  if (today > input.visibleDueDate) {
     return 'vencido';
   }
   return 'por_pagar';
@@ -74,10 +84,12 @@ export const buildCardPlannerObligation = (input: {
   todayYmd?: string;
 }): CardPlannerObligationDto => {
   const suggestedAmount = input.statement.remainingStatementDue;
-  const targetAmount =
-    input.plannedGrossAmount != null
+  // Legacy $0 plans must not override the suggested due (treat as no plan).
+  const plannedGross =
+    input.plannedGrossAmount != null && input.plannedGrossAmount > 0
       ? input.plannedGrossAmount
-      : suggestedAmount;
+      : null;
+  const targetAmount = plannedGross ?? suggestedAmount;
   const remainingPlannerAmount = Math.max(
     targetAmount - input.paymentsAppliedToFortnight,
     0,
@@ -88,6 +100,7 @@ export const buildCardPlannerObligation = (input: {
     paymentsAppliedToFortnight: input.paymentsAppliedToFortnight,
     paymentsAppliedToStatement: input.statement.paymentsAppliedToStatement,
     targetAmount,
+    outstandingBalance: input.statement.outstandingBalance,
     visibleDueDate,
     todayYmd: input.todayYmd,
   });
@@ -102,12 +115,12 @@ export const buildCardPlannerObligation = (input: {
     suggestedStatementAmount: input.statement.suggestedStatementAmount,
     paymentsAppliedToStatement: input.statement.paymentsAppliedToStatement,
     remainingStatementDue: input.statement.remainingStatementDue,
-    plannedPayment: input.plannedGrossAmount,
+    plannedPayment: plannedGross,
     obligationAmountSource: input.statement.obligationAmountSource,
     isEstimate: input.statement.isEstimate,
     outstandingBalance: input.statement.outstandingBalance,
     isStaleFullyCoveredPlan: isPlannerPlanStale({
-      plannedGrossAmount: input.plannedGrossAmount,
+      plannedGrossAmount: plannedGross,
       remainingPlannerAmount,
       paymentsAppliedToFortnight: input.paymentsAppliedToFortnight,
     }),

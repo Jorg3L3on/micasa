@@ -18,6 +18,7 @@ import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPayment
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
+  isPendingPlannerCardPayment,
 } from '@/components/planner/FortnightCardPaymentsPanel';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
@@ -757,8 +758,8 @@ export default function FortnightColumn({
 
   const pendingCardPaymentsCount = useMemo(
     () =>
-      cardDueItems.filter(
-        (item) => getPlannerCardPaymentStatus(item) !== 'pagado',
+      cardDueItems.filter((item) =>
+        isPendingPlannerCardPayment(getPlannerCardPaymentStatus(item)),
       ).length,
     [cardDueItems],
   );

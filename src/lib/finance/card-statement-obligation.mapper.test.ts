@@ -48,4 +48,14 @@ describe('toPlannerCardPaymentStatusUi', () => {
       }),
     ).toBe('pagado');
   });
+
+  it('maps no_obligation to sin_cargo', () => {
+    expect(
+      toPlannerCardPaymentStatusUi({
+        status: 'no_obligation',
+        remainingStatementDue: 0,
+        remainingPlannedAmount: null,
+      }),
+    ).toBe('sin_cargo');
+  });
 });
