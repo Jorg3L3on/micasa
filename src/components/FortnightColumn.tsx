@@ -42,7 +42,6 @@ import {
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
 import {
-  clearFortnightCardPaymentPlan,
   getPlannerDuePayments,
 } from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
@@ -339,10 +338,6 @@ export default function FortnightColumn({
   const handlePlannerCardPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {
       if (!plannerPaymentCard) return;
-      const targetBeforePay = getEffectiveCardPaymentAmount(plannerPaymentCard);
-      const hadPlan =
-        plannerPaymentCard.plannedPayment != null &&
-        plannerPaymentCard.plannedPayment > 0;
       try {
         setPlannerPaymentSubmitting(true);
         setPlannerPaymentError(null);
@@ -355,16 +350,8 @@ export default function FortnightColumn({
           },
           context,
         );
-        if (
-          hadPlan &&
-          data.amount >= targetBeforePay - 0.009
-        ) {
-          await clearFortnightCardPaymentPlan(
-            fortnightId,
-            plannerPaymentCard.walletId,
-            context,
-          );
-        }
+        // Keep the plan after paying: clearing it reopens the full statement
+        // suggested amount and makes a covered plan look "por pagar" again.
         toast.success('Pago registrado');
         setPlannerPaymentDialogOpen(false);
         setPlannerPaymentCard(null);

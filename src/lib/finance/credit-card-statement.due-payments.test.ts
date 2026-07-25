@@ -285,6 +285,84 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     });
   });
 
+  it('keeps Liverpool-style full pay visible when debt is zero but statement credit is zero', async () => {
+    // Pay after due day: debt cleared, payment not in statement window → must NOT disappear.
+    vi.setSystemTime(new Date(Date.UTC(2026, 5, 10, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 31,
+        name: 'Liverpool Carmen',
+        type: 'DEPARTMENT_STORE_CARD',
+        amount: 0,
+        cutoff_day: 6,
+        due_day: 5,
+      },
+    ]);
+    // Statement purchase/payment aggregates (no statement credit for late pay).
+    queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      // Planner layer fortnight payments
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 31, total: 3190.02 }])
+      .mockResolvedValueOnce([]);
+    findManyStatementImports.mockResolvedValue([]);
+    findManyExpenses.mockResolvedValue([]);
+    findFirstFortnight
+      .mockResolvedValueOnce({ id: 35 })
+      .mockResolvedValueOnce({ id: 36 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 6);
+
+    expect(result.first).toHaveLength(1);
+    expect(result.first[0]).toMatchObject({
+      walletId: 31,
+      outstandingBalance: 0,
+      nextDuePayment: 0,
+      paymentsAppliedToStatement: 0,
+      paymentsAppliedToFortnight: 3190.02,
+      plannerStatus: 'pagado',
+    });
+    expect(result.second).toEqual([]);
+  });
+
+  it('zeros ghost import due when wallet debt is already paid off', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 6, 24, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 29,
+        name: 'Mercado Pago',
+        type: 'CREDIT_CARD',
+        amount: 0,
+        cutoff_day: 7,
+        due_day: 17,
+      },
+    ]);
+    queryRaw.mockResolvedValue([]);
+    findManyStatementImports.mockResolvedValue([
+      {
+        wallet_id: 29,
+        total_due: 7646.7,
+        period_end: new Date(Date.UTC(2026, 6, 7, 12, 0, 0)),
+        payment_due_date: null,
+        created_at: new Date(Date.UTC(2026, 6, 14, 12, 0, 0)),
+      },
+    ]);
+    findManyExpenses.mockResolvedValue([]);
+    findFirstFortnight
+      .mockResolvedValueOnce({ id: 37 })
+      .mockResolvedValueOnce({ id: 38 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 7);
+
+    // Paid-off card with only a stale import and no fortnight/statement credit
+    // is not planner-relevant (no ghost actionable row).
+    expect(result.second).toEqual([]);
+  });
+
   it('hides zero-balance planner cards with no statement activity', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 16, 15, 0, 0)));
     findManyWallets.mockResolvedValue([

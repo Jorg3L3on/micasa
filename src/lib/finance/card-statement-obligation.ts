@@ -276,7 +276,12 @@ export const computeNextDuePayment = ({
       : 0;
 
   if (importedTotalDue != null) {
-    return Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+    const fromImport = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+    // Wallet paid off → do not keep a stale import total as actionable due.
+    if (outstandingBalance <= 0) {
+      return 0;
+    }
+    return fromImport;
   }
   if (ledgerDue > 0) {
     return ledgerDue;
