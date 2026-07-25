@@ -5,6 +5,7 @@ import {
   detectStaleCoveredPlan,
   detectTamperedGeneratedExpense,
   detectWalletDebtDrift,
+  detectZeroPlannedAmount,
   isStaleFullyCoveredPlan,
 } from '@/lib/finance/credit-card-reconciliation';
 
@@ -130,6 +131,39 @@ describe('detectStaleCoveredPlan', () => {
     });
     expect(issue?.kind).toBe('stale_covered_plan');
     expect(issue?.repairAction).toBe('clear_stale_plan');
+  });
+});
+
+describe('detectZeroPlannedAmount', () => {
+  it('flags $0 plans as repairable', () => {
+    const issue = detectZeroPlannedAmount({
+      id: 20,
+      walletId: 26,
+      walletName: 'DIDI Card',
+      fortnightId: 38,
+      fortnightLabel: 'Segunda quincena - Julio 2026',
+      plannedAmount: 0,
+      paymentsAppliedToStatement: 0,
+      remainingStatementDue: 2913,
+    });
+    expect(issue?.kind).toBe('zero_planned_amount');
+    expect(issue?.repairAction).toBe('clear_zero_plan');
+    expect(issue?.repairable).toBe(true);
+  });
+
+  it('ignores positive plans', () => {
+    expect(
+      detectZeroPlannedAmount({
+        id: 5,
+        walletId: 3,
+        walletName: 'Liverpool',
+        fortnightId: 20,
+        fortnightLabel: 'Abr 2026 · 1ª',
+        plannedAmount: 694.76,
+        paymentsAppliedToStatement: 0,
+        remainingStatementDue: 1000,
+      }),
+    ).toBeNull();
   });
 });
 
