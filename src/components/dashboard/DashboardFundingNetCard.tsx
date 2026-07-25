@@ -38,7 +38,7 @@ export default function DashboardFundingNetCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-border/60 bg-card p-4 shadow-sm',
+        'card-surface p-4',
         className,
       )}
     >

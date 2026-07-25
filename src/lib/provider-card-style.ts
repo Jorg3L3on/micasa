@@ -61,18 +61,42 @@ const getCardColor = (providerIconKey?: string | null, fallbackType?: string) =>
 };
 
 export type ProviderCardTone = 'subtle' | 'wow' | 'calm';
+export type ProviderCardScheme = 'light' | 'dark';
+
+/** Calm cards adapt to theme; wow/subtle stay dark plastic surfaces. */
+export const isProviderCardDarkSurface = (
+  tone: ProviderCardTone,
+  scheme: ProviderCardScheme,
+): boolean => tone !== 'calm' || scheme === 'dark';
 
 export const getProviderCardStyle = (
   providerIconKey?: string | null,
   fallbackType?: string,
   tone: ProviderCardTone = 'subtle',
+  scheme: ProviderCardScheme = 'dark',
 ): CSSProperties | undefined => {
   const baseColor = getCardColor(providerIconKey, fallbackType);
   if (!baseColor) return undefined;
 
-  // Calm tone: a shared dark surface with only a subtle brand tint, and the
-  // brand color expressed as a left accent stripe instead of flooding the card.
+  // Calm tone: shared surface with a subtle brand tint and left accent stripe.
   if (tone === 'calm') {
+    if (scheme === 'light') {
+      return {
+        background: `
+          radial-gradient(125% 95% at 0% 0%, ${rgba(baseColor, 0.16)} 0%, transparent 52%),
+          radial-gradient(90% 80% at 100% 100%, ${rgba(baseColor, 0.07)} 0%, transparent 60%),
+          linear-gradient(155deg, #ffffff 0%, #f3f5f8 100%)
+        `,
+        borderColor: rgba(baseColor, 0.3),
+        boxShadow: `
+          inset 3px 0 0 ${rgba(baseColor, 0.82)},
+          inset 0 1px 0 rgba(255, 255, 255, 0.95),
+          0 1px 2px rgba(15, 23, 42, 0.04),
+          0 10px 22px -14px rgba(15, 23, 42, 0.16)
+        `,
+      };
+    }
+
     return {
       background: `
         radial-gradient(125% 95% at 0% 0%, ${rgba(baseColor, 0.24)} 0%, transparent 52%),

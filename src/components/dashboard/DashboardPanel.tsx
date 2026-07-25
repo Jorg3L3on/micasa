@@ -71,7 +71,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   return (
     <div className="w-full space-y-5">
       <section
-        className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        className="card-surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
         aria-labelledby="dashboard-period-title"
         aria-describedby="dashboard-period-label"
       >

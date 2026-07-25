@@ -37,7 +37,7 @@ export default function DashboardLoanSummaryCard({
 
   return (
     <section
-      className="flex min-h-[320px] flex-col rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5"
+      className="card-surface flex min-h-[320px] flex-col p-4 sm:p-5"
       aria-label="Préstamos del periodo"
     >
       <div className="mb-4 flex items-start justify-between gap-3">

@@ -96,7 +96,7 @@ export function RegisterForm({
   };
 
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
+    <div className={cn('card-surface flex flex-col gap-6 p-6 sm:p-8', className)} {...props}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)}>
           <div className="flex flex-col gap-1">
