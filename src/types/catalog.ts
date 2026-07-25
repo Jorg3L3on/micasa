@@ -258,14 +258,11 @@ export type MercadoPagoStatementImportResponse = {
   warnings: string[];
 };
 
-export type PlannerCardPaymentStatusUi = 'pagado' | 'vencido' | 'por_pagar';
+export type PlannerCardPaymentStatusUi =
+  import('@/lib/finance/card-statement-obligation').PlannerCardPaymentStatusUi;
 
 export type CardObligationAmountSource =
-  | 'import'
-  | 'ledger'
-  | 'wallet_debt'
-  | 'projection'
-  | 'none';
+  import('@/lib/finance/card-statement-obligation').CardObligationAmountSource;
 
 export type DuePaymentItem = {
   walletId: number;

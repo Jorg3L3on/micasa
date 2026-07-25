@@ -22,7 +22,11 @@ export type CardStatementObligationStatus =
   | 'no_obligation';
 
 /** UI-facing planner status (Spanish labels in components). */
-export type PlannerCardPaymentStatusUi = 'pagado' | 'vencido' | 'por_pagar';
+export type PlannerCardPaymentStatusUi =
+  | 'pagado'
+  | 'vencido'
+  | 'por_pagar'
+  | 'sin_cargo';
 
 /** Short hint when the suggested amount is not from an imported statement. */
 export const formatCardObligationAmountSourceHint = (
@@ -272,7 +276,12 @@ export const computeNextDuePayment = ({
       : 0;
 
   if (importedTotalDue != null) {
-    return Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+    const fromImport = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
+    // Wallet paid off → do not keep a stale import total as actionable due.
+    if (outstandingBalance <= 0) {
+      return 0;
+    }
+    return fromImport;
   }
   if (ledgerDue > 0) {
     return ledgerDue;
@@ -382,7 +391,10 @@ export const toPlannerCardPaymentStatusUi = (
   const effectiveRemaining =
     obligation.remainingPlannedAmount ?? obligation.remainingStatementDue;
   if (effectiveRemaining <= 0) {
-    return 'pagado';
+    if (obligation.status === 'paid') {
+      return 'pagado';
+    }
+    return 'sin_cargo';
   }
   if (obligation.status === 'overdue') {
     return 'vencido';

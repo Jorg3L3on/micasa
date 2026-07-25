@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
 describe('getEffectiveCardPaymentAmount', () => {
-  it('uses planned payment when set', () => {
+  it('uses planned payment when set (legacy fallback)', () => {
     expect(
       getEffectiveCardPaymentAmount({
         nextDuePayment: 4579.54,
@@ -22,12 +22,12 @@ describe('getEffectiveCardPaymentAmount', () => {
     ).toBe(0);
   });
 
-  it('subtracts actual payments from a planned payment (legacy fallback)', () => {
+  it('subtracts fortnight payments from a planned payment (legacy fallback)', () => {
     expect(
       getEffectiveCardPaymentAmount({
         nextDuePayment: 3884.78,
         plannedPayment: 694.76,
-        paymentsAppliedToStatement: 694.76,
+        paymentsAppliedToFortnight: 694.76,
       }),
     ).toBe(0);
   });
@@ -41,12 +41,12 @@ describe('getEffectiveCardPaymentAmount', () => {
     ).toBe(4579.54);
   });
 
-  it('allows explicit zero plan', () => {
+  it('ignores non-positive plans and uses suggested due', () => {
     expect(
       getEffectiveCardPaymentAmount({
         nextDuePayment: 1000,
         plannedPayment: 0,
       }),
-    ).toBe(0);
+    ).toBe(1000);
   });
 });

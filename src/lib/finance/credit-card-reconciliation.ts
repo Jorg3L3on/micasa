@@ -7,11 +7,13 @@ export type CardReconciliationIssueKind =
   | 'wallet_debt_drift'
   | 'orphan_payment'
   | 'stale_covered_plan'
+  | 'zero_planned_amount'
   | 'tampered_generated_expense'
   | 'import_sync_drift';
 
 export type CardReconciliationRepairAction =
   | 'clear_stale_plan'
+  | 'clear_zero_plan'
   | 'sync_wallet_debt'
   | 'sync_import_total'
   | 'fix_generated_expense';
@@ -228,6 +230,31 @@ export const detectTamperedGeneratedExpense = (
   };
 };
 
+export const detectZeroPlannedAmount = (
+  plan: CardReconciliationPlanInput,
+): CardReconciliationIssue | null => {
+  if (plan.plannedAmount > 0) {
+    return null;
+  }
+
+  return {
+    kind: 'zero_planned_amount',
+    walletId: plan.walletId,
+    walletName: plan.walletName,
+    severity: 'warning',
+    message: `Plan de ${plan.fortnightLabel} tiene monto $0; se interpreta como pagado por error.`,
+    details: {
+      planId: plan.id,
+      fortnightId: plan.fortnightId,
+      plannedAmount: plan.plannedAmount,
+    },
+    repairable: true,
+    repairAction: 'clear_zero_plan',
+    planId: plan.id,
+    fortnightId: plan.fortnightId,
+  };
+};
+
 export const detectStaleCoveredPlan = (
   plan: CardReconciliationPlanInput,
 ): CardReconciliationIssue | null => {
@@ -283,6 +310,11 @@ export const detectCardReconciliationIssues = (input: {
   }
 
   for (const plan of input.plans) {
+    const zeroPlan = detectZeroPlannedAmount(plan);
+    if (zeroPlan) {
+      issues.push(zeroPlan);
+      continue;
+    }
     const stale = detectStaleCoveredPlan(plan);
     if (stale) issues.push(stale);
   }
@@ -293,9 +325,10 @@ export const detectCardReconciliationIssues = (input: {
       ({
         wallet_debt_drift: 0,
         tampered_generated_expense: 1,
-        stale_covered_plan: 2,
-        import_sync_drift: 3,
-        orphan_payment: 4,
+        zero_planned_amount: 2,
+        stale_covered_plan: 3,
+        import_sync_drift: 4,
+        orphan_payment: 5,
       })[k];
     if (severityOrder[a.severity] !== severityOrder[b.severity]) {
       return severityOrder[a.severity] - severityOrder[b.severity];
