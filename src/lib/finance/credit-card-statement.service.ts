@@ -979,10 +979,14 @@ const hasPlannerRelevantCardActivity = (item: {
   outstandingBalance: number;
   nextDuePayment: number;
   paymentsAppliedToStatement: number;
+  paymentsAppliedToFortnight?: number;
+  plannerStatus?: string;
 }) =>
   item.outstandingBalance > 0 ||
   item.nextDuePayment > 0 ||
-  item.paymentsAppliedToStatement > 0;
+  item.paymentsAppliedToStatement > 0 ||
+  (item.paymentsAppliedToFortnight ?? 0) > 0 ||
+  item.plannerStatus === 'pagado';
 
 /**
  * Cards with statement activity and due-day matching `dueDayPredicate`, as of `asOf`.
@@ -1180,8 +1184,11 @@ async function getDuePaymentsWithAsOf(
     };
   });
 
+  // When includeZeroObligation, keep all due-day rows here. Fortnight payments /
+  // pagado are unknown until applyPlannerLayerToDueItems — filtering early drops
+  // fully paid Liverpool-style rows (debt 0, statement credit 0, fortnight pay > 0).
   if (options?.includeZeroObligation) {
-    return items.filter(hasPlannerRelevantCardActivity);
+    return items;
   }
   return items.filter((item) => item.nextDuePayment > 0);
 }
@@ -1266,7 +1273,10 @@ export async function getDuePaymentsForPlannerMonth(
     applyPlannerLayerToDueItems(second, fortnightSecond?.id, ownerFilter),
   ]);
 
-  return { first, second };
+  return {
+    first: first.filter(hasPlannerRelevantCardActivity),
+    second: second.filter(hasPlannerRelevantCardActivity),
+  };
 }
 
 /** Suma `nextDuePayment` de tarjetas con corte en la quincena (misma lógica que planificación / due-payments). */
