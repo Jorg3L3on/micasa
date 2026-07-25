@@ -31,6 +31,7 @@ const emptyKindCounts = (): Record<CardReconciliationIssueKind, number> => ({
   wallet_debt_drift: 0,
   orphan_payment: 0,
   stale_covered_plan: 0,
+  zero_planned_amount: 0,
   tampered_generated_expense: 0,
   import_sync_drift: 0,
 });
@@ -270,21 +271,24 @@ const repairStalePlan = async (
   dryRun: boolean,
 ): Promise<string | null> => {
   if (
-    issue.repairAction !== 'clear_stale_plan' ||
+    (issue.repairAction !== 'clear_stale_plan' &&
+      issue.repairAction !== 'clear_zero_plan') ||
     issue.fortnightId == null ||
     issue.planId == null
   ) {
     return null;
   }
+  const label =
+    issue.repairAction === 'clear_zero_plan' ? 'plan $0' : 'plan obsoleto';
   if (dryRun) {
-    return `Eliminar plan obsoleto #${issue.planId} (${issue.walletName})`;
+    return `Eliminar ${label} #${issue.planId} (${issue.walletName})`;
   }
   await clearCreditCardPaymentPlan(
     ownerFilter,
     issue.fortnightId,
     issue.walletId,
   );
-  return `Plan obsoleto eliminado: ${issue.walletName} (${issue.details.fortnightId})`;
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)} eliminado: ${issue.walletName} (${issue.details.fortnightId})`;
 };
 
 const repairWalletDebt = async (
@@ -433,6 +437,7 @@ const repairIssue = async (
 ): Promise<string | null> => {
   switch (issue.repairAction as CardReconciliationRepairAction | undefined) {
     case 'clear_stale_plan':
+    case 'clear_zero_plan':
       return repairStalePlan(ownerFilter, issue, dryRun);
     case 'sync_wallet_debt':
       return repairWalletDebt(ownerFilter, issue, dryRun);

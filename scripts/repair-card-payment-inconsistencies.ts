@@ -1,10 +1,12 @@
 /**
- * Repairs common card payment inconsistencies (stale plans, wallet drift, tampered expenses).
+ * Repairs common card payment inconsistencies (stale plans, zero plans, wallet drift, tampered expenses).
  *
  * Usage:
  *   npx tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts
  *   npx tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts --dry-run
  *   npx tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts --wallet-id=3
+ *   npx tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts --house-id=3
+ *   npx tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts --user-id=1
  */
 import prisma from '../src/lib/prisma';
 import type { OwnerFilter } from '../src/lib/server/get-owner-context';
@@ -17,9 +19,21 @@ const parseArgs = () => {
   const dryRun = process.argv.includes('--dry-run');
   const walletArg = process.argv.find((arg) => arg.startsWith('--wallet-id='));
   const walletId = walletArg ? Number(walletArg.split('=')[1]) : undefined;
+  const houseArg = process.argv.find((arg) => arg.startsWith('--house-id='));
+  const houseId = houseArg ? Number(houseArg.split('=')[1]) : undefined;
   const userArg = process.argv.find((arg) => arg.startsWith('--user-id='));
-  const userId = userArg ? Number(userArg.split('=')[1]) : 1;
-  const ownerFilter: OwnerFilter = { user_id: userId, house_id: null };
+  const userId = userArg ? Number(userArg.split('=')[1]) : undefined;
+
+  let ownerFilter: OwnerFilter;
+  if (houseId != null && Number.isFinite(houseId)) {
+    ownerFilter = { user_id: null, house_id: houseId };
+  } else {
+    ownerFilter = {
+      user_id: userId != null && Number.isFinite(userId) ? userId : 1,
+      house_id: null,
+    };
+  }
+
   return {
     dryRun,
     walletId: Number.isFinite(walletId) ? walletId : undefined,
@@ -44,7 +58,12 @@ async function main() {
   const result = await repairCreditCardReconciliationIssues(ownerFilter, {
     dryRun,
     walletId,
-    kinds: ['stale_covered_plan', 'wallet_debt_drift', 'tampered_generated_expense'],
+    kinds: [
+      'stale_covered_plan',
+      'zero_planned_amount',
+      'wallet_debt_drift',
+      'tampered_generated_expense',
+    ],
   });
 
   console.log(`\n${dryRun ? 'Dry run' : 'Applied'} repairs:`);

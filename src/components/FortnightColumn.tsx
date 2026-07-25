@@ -18,6 +18,7 @@ import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPayment
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
+  isPendingPlannerCardPayment,
 } from '@/components/planner/FortnightCardPaymentsPanel';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
@@ -41,7 +42,6 @@ import {
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
 import {
-  clearFortnightCardPaymentPlan,
   getPlannerDuePayments,
 } from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
@@ -338,8 +338,6 @@ export default function FortnightColumn({
   const handlePlannerCardPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {
       if (!plannerPaymentCard) return;
-      const targetBeforePay = getEffectiveCardPaymentAmount(plannerPaymentCard);
-      const hadPlan = plannerPaymentCard.plannedPayment != null;
       try {
         setPlannerPaymentSubmitting(true);
         setPlannerPaymentError(null);
@@ -352,16 +350,8 @@ export default function FortnightColumn({
           },
           context,
         );
-        if (
-          hadPlan &&
-          data.amount >= targetBeforePay - 0.009
-        ) {
-          await clearFortnightCardPaymentPlan(
-            fortnightId,
-            plannerPaymentCard.walletId,
-            context,
-          );
-        }
+        // Keep the plan after paying: clearing it reopens the full statement
+        // suggested amount and makes a covered plan look "por pagar" again.
         toast.success('Pago registrado');
         setPlannerPaymentDialogOpen(false);
         setPlannerPaymentCard(null);
@@ -757,8 +747,11 @@ export default function FortnightColumn({
 
   const pendingCardPaymentsCount = useMemo(
     () =>
-      cardDueItems.filter(
-        (item) => getPlannerCardPaymentStatus(item) !== 'pagado',
+      cardDueItems.filter((item) =>
+        isPendingPlannerCardPayment(
+          getPlannerCardPaymentStatus(item),
+          item.effectiveAmount ?? getEffectiveCardPaymentAmount(item),
+        ),
       ).length,
     [cardDueItems],
   );

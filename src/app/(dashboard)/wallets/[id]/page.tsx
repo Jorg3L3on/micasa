@@ -17,7 +17,6 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan, createCreditCardPayment } from '@/lib/api/credit-cards';
-import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
@@ -249,14 +248,6 @@ export default function WalletDetailPage() {
 
   const handleCreditPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {
-      const targetBeforePay =
-        paymentSuggestedOverride ??
-        paymentPlanItems.find((item) => item.fortnightId === paymentFortnightId)
-          ?.effectiveAmount ??
-        0;
-      const matchingPlan = paymentFortnightId
-        ? paymentPlanItems.find((item) => item.fortnightId === paymentFortnightId)
-        : undefined;
       try {
         setPaymentSubmitting(true);
         setPaymentError(null);
@@ -269,16 +260,7 @@ export default function WalletDetailPage() {
           },
           context,
         );
-        if (
-          matchingPlan?.plannedPayment != null &&
-          data.amount >= targetBeforePay - 0.009
-        ) {
-          await clearFortnightCardPaymentPlan(
-            matchingPlan.fortnightId,
-            walletId,
-            context,
-          );
-        }
+        // Keep the plan after paying so a covered custom plan stays "pagado".
         toast.success('Pago registrado');
         setPaymentDialogOpen(false);
         setPaymentFortnightId(undefined);
@@ -292,14 +274,7 @@ export default function WalletDetailPage() {
         setPaymentSubmitting(false);
       }
     },
-    [
-      context,
-      loadData,
-      paymentFortnightId,
-      paymentPlanItems,
-      paymentSuggestedOverride,
-      walletId,
-    ],
+    [context, loadData, paymentFortnightId, walletId],
   );
 
   const handleOpenPlanPayment = useCallback(
