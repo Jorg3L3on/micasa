@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, CalendarRange, House, WalletCards } from 'lucide-react';
 
+import { MicasaMark } from '@/components/brand/micasa-mark';
 import { Button } from '@/components/ui/button';
 import { ProductMock } from '@/components/landing/product-mocks';
 
@@ -46,16 +46,13 @@ export const LandingPage = () => {
       />
 
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 md:px-8">
-        <Link href="/" className="inline-flex items-center" aria-label="MiCasa inicio">
-          <Image
-            src="/logo-white.svg"
-            alt="MiCasa"
-            width={160}
-            height={51}
-            className="h-10 w-auto"
-            priority
-            unoptimized
-          />
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2.5 text-white transition-opacity hover:opacity-90"
+          aria-label="MiCasa inicio"
+        >
+          <MicasaMark className="h-8 w-auto text-white/70" />
+          <span className="text-lg font-semibold tracking-tight">MiCasa</span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3" aria-label="Acceso">
           <Button variant="ghost" className="h-9 text-white/80 hover:bg-white/10 hover:text-white" asChild>
