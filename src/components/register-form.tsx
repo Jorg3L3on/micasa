@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import Image from 'next/image';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
+import { MicasaMark } from '@/components/brand/micasa-mark';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -103,19 +103,11 @@ export function RegisterForm({
             <div className="flex flex-col items-center gap-4">
               <Link
                 href="/"
-                className="flex flex-col items-center gap-2 font-medium"
+                className="inline-flex flex-col items-center gap-2 font-medium text-foreground"
+                aria-label="MiCasa inicio"
               >
-                <div className="flex h-24 w-60 items-center justify-center rounded-md">
-                  <Image
-                    src="/logo-black.svg"
-                    alt="MiCasa logo"
-                    width={240}
-                    height={76}
-                    className="h-auto w-60"
-                    unoptimized
-                  />
-                </div>
-                <span className="sr-only">MiCasa</span>
+                <MicasaMark className="h-12 w-auto text-muted-foreground" />
+                <span className="text-lg font-semibold tracking-tight">MiCasa</span>
               </Link>
               <h1 className="text-xl font-bold">Crear cuenta</h1>
             </div>

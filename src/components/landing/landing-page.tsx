@@ -51,7 +51,7 @@ export const LandingPage = () => {
           className="inline-flex items-center gap-2.5 text-white transition-opacity hover:opacity-90"
           aria-label="MiCasa inicio"
         >
-          <MicasaMark className="h-8 w-auto text-white/70" />
+          <MicasaMark className="h-9 w-auto text-white/70" />
           <span className="text-lg font-semibold tracking-tight">MiCasa</span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3" aria-label="Acceso">
