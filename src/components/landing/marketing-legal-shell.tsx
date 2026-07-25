@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 
+import { MicasaMark } from '@/components/brand/micasa-mark';
 import { Button } from '@/components/ui/button';
 
 type MarketingLegalShellProps = {
@@ -19,23 +19,13 @@ export const MarketingLegalShell = ({
     <div className="min-h-svh bg-background text-foreground">
       <header className="border-b border-border/60">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-4">
-          <Link href="/" className="inline-flex items-center" aria-label="MiCasa inicio">
-            <Image
-              src="/logo-black.svg"
-              alt="MiCasa"
-              width={140}
-              height={44}
-              className="h-9 w-auto dark:hidden"
-              unoptimized
-            />
-            <Image
-              src="/logo-white.svg"
-              alt="MiCasa"
-              width={140}
-              height={44}
-              className="hidden h-9 w-auto dark:block"
-              unoptimized
-            />
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-90"
+            aria-label="MiCasa inicio"
+          >
+            <MicasaMark className="h-7 w-auto text-muted-foreground" />
+            <span className="text-base font-semibold tracking-tight">MiCasa</span>
           </Link>
           <Button variant="outline" size="sm" asChild>
             <Link href="/register">Crear cuenta</Link>
