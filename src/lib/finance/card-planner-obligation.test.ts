@@ -90,8 +90,8 @@ describe('derivePlannerStatus', () => {
     ).toBe('sin_cargo');
   });
 
-  it('does not mark pagado for $0 target while wallet still has debt', () => {
-    // Screenshot fixture: DIDI / MP style false Pagado $0
+  it('returns sin_cargo for $0 target even when wallet still has debt', () => {
+    // Historical / no-estimate cycle: debt remains but nothing is due this quincena.
     expect(
       derivePlannerStatus({
         remainingPlannerAmount: 0,
@@ -102,7 +102,7 @@ describe('derivePlannerStatus', () => {
         visibleDueDate: '2026-07-18',
         todayYmd: '2026-07-24',
       }),
-    ).toBe('vencido');
+    ).toBe('sin_cargo');
   });
 
   it('returns pagado when statement payments covered a zero remaining target', () => {
