@@ -47,7 +47,7 @@ export default function StatCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm',
+        'card-surface flex flex-col gap-3 p-4',
         className,
       )}
     >
