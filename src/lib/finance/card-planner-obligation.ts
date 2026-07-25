@@ -37,7 +37,6 @@ export const derivePlannerStatus = (input: {
   todayYmd?: string;
 }): PlannerCardPaymentStatusUi => {
   const today = input.todayYmd ?? todayCalendarDate();
-  const outstanding = input.outstandingBalance ?? 0;
   const target = input.targetAmount ?? 0;
   const statementPaid = input.paymentsAppliedToStatement ?? 0;
 
@@ -49,15 +48,10 @@ export const derivePlannerStatus = (input: {
     if (target <= 0 && statementPaid > 0) {
       return 'pagado';
     }
-    if (outstanding <= 0) {
-      return 'sin_cargo';
-    }
-    // Safety net: remaining is 0 but wallet still has debt (stale estimate).
-    // Prefer open status so the row is actionable until due is restored.
-    if (today > input.visibleDueDate) {
-      return 'vencido';
-    }
-    return 'por_pagar';
+    // Nothing due this cycle (with or without leftover wallet debt).
+    // Current/next fortnights restore a wallet-debt estimate before this runs;
+    // do not invent actionable por_pagar/vencido at $0.
+    return 'sin_cargo';
   }
 
   if (today > input.visibleDueDate) {

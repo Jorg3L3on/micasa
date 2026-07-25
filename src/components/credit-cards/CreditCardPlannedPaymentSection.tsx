@@ -23,7 +23,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 type CreditCardPlannedPaymentSectionProps = {
   walletId: number;
   items: CreditCardPaymentPlanView[];
-  onPlanUpdated?: () => void;
+  onPlanUpdated?: () => void | Promise<void>;
   onPayCard?: (item: CreditCardPaymentPlanView) => void;
   payingFortnightId?: number | null;
 };
@@ -79,7 +79,7 @@ export const CreditCardPlannedPaymentSection = ({
         context,
       );
       toast.success('Pago planeado guardado');
-      onPlanUpdated?.();
+      await onPlanUpdated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo guardar el plan';
@@ -98,7 +98,7 @@ export const CreditCardPlannedPaymentSection = ({
         context,
       );
       toast.success('Se usará el monto sugerido');
-      onPlanUpdated?.();
+      await onPlanUpdated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo restablecer';
@@ -157,8 +157,9 @@ export const CreditCardPlannedPaymentSection = ({
               fortnightPaid > 0 &&
               item.paymentsAppliedToStatement === 0;
             const isPending =
-              item.plannerStatus === 'por_pagar' ||
-              item.plannerStatus === 'vencido';
+              (item.plannerStatus === 'por_pagar' ||
+                item.plannerStatus === 'vencido') &&
+              item.effectiveAmount > 0;
 
             return (
               <li

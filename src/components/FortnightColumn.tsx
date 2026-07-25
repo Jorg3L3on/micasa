@@ -340,7 +340,9 @@ export default function FortnightColumn({
     async (data: CreditCardPaymentSubmitPayload) => {
       if (!plannerPaymentCard) return;
       const targetBeforePay = getEffectiveCardPaymentAmount(plannerPaymentCard);
-      const hadPlan = plannerPaymentCard.plannedPayment != null;
+      const hadPlan =
+        plannerPaymentCard.plannedPayment != null &&
+        plannerPaymentCard.plannedPayment > 0;
       try {
         setPlannerPaymentSubmitting(true);
         setPlannerPaymentError(null);
@@ -759,7 +761,10 @@ export default function FortnightColumn({
   const pendingCardPaymentsCount = useMemo(
     () =>
       cardDueItems.filter((item) =>
-        isPendingPlannerCardPayment(getPlannerCardPaymentStatus(item)),
+        isPendingPlannerCardPayment(
+          getPlannerCardPaymentStatus(item),
+          item.effectiveAmount ?? getEffectiveCardPaymentAmount(item),
+        ),
       ).length,
     [cardDueItems],
   );

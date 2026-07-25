@@ -57,10 +57,12 @@ export const getPlannerCardPaymentStatus = (
   item: DuePaymentItem,
 ): PlannerCardPaymentStatus => item.plannerStatus ?? 'por_pagar';
 
-/** Pending badge: only actionable open obligations. */
+/** Pending badge / pay CTA: only actionable open obligations with amount. */
 export const isPendingPlannerCardPayment = (
   status: PlannerCardPaymentStatus,
-): boolean => status === 'por_pagar' || status === 'vencido';
+  amount = 1,
+): boolean =>
+  (status === 'por_pagar' || status === 'vencido') && amount > 0;
 
 const statusLabel = (s: PlannerCardPaymentStatus) => {
   if (s === 'pagado') return 'Pagado';
@@ -89,9 +91,9 @@ type FortnightCardPaymentsPanelProps = {
   plannerPeriod: 'FIRST' | 'SECOND';
   isCompact?: boolean;
   onPayCard?: (item: DuePaymentItem) => void;
+  onPlanUpdated?: () => void | Promise<void>;
   /** Mientras se cargan billeteras/categorías para el diálogo de pago */
   payingWalletId?: number | null;
-  onPlanUpdated?: () => void;
 };
 
 const FortnightCardPaymentsPanel = ({
@@ -156,7 +158,7 @@ const FortnightCardPaymentsPanel = ({
         context,
       );
       toast.success('Pago planeado guardado');
-      onPlanUpdated?.();
+      await onPlanUpdated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo guardar el plan';
@@ -175,7 +177,7 @@ const FortnightCardPaymentsPanel = ({
         context,
       );
       toast.success('Se usará el monto sugerido');
-      onPlanUpdated?.();
+      await onPlanUpdated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo restablecer';
@@ -365,7 +367,7 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
-                    {hasCustomPlan && isPendingPlannerCardPayment(status) ? (
+                    {hasCustomPlan && isPendingPlannerCardPayment(status, effectiveAmount) ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
                         <span className="text-muted-foreground/60">
@@ -373,7 +375,7 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
-                    {estimateHint && isPendingPlannerCardPayment(status) ? (
+                    {estimateHint && isPendingPlannerCardPayment(status, effectiveAmount) ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
                         <span className="text-muted-foreground/60">
@@ -473,7 +475,7 @@ const FortnightCardPaymentsPanel = ({
                     </Tooltip>
                   ) : null}
 
-                  {onPayCard && isPendingPlannerCardPayment(status) ? (
+                  {onPayCard && isPendingPlannerCardPayment(status, effectiveAmount) ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="inline-flex">

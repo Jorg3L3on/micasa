@@ -473,14 +473,15 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       });
     }
     // Historical month after installments end: no invented wallet-debt due.
-    // Remaining debt with zero cycle due → safety-net open status, not false pagado.
+    // Remaining debt with zero cycle due → sin_cargo (not false pagado / $0 pending).
     expect(october.second[0]).toMatchObject({
       walletId: 29,
       nextDuePayment: 0,
       effectiveAmount: 0,
-      plannerStatus: 'por_pagar',
+      plannerStatus: 'sin_cargo',
       obligationAmountSource: 'none',
     });
     expect(october.second[0]?.plannerStatus).not.toBe('pagado');
+    expect(october.second[0]?.plannerStatus).not.toBe('por_pagar');
   });
 });
