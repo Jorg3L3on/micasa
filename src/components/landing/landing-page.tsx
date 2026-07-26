@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   motion,
@@ -16,7 +16,6 @@ import { ArrowRight, CalendarRange, House, WalletCards } from 'lucide-react';
 import { MicasaMark } from '@/components/brand/micasa-mark';
 import { LandingAtmosphere } from '@/components/landing/landing-atmosphere';
 import { ProductMock } from '@/components/landing/product-mocks';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const FEATURES = [
@@ -39,7 +38,7 @@ const FEATURES = [
 
 const HEADLINE_WORDS = ['Tu', 'quincena,', 'clara', 'de', 'punta', 'a', 'punta.'];
 
-const MagneticButton = ({
+const MagneticLink = ({
   children,
   className,
   href,
@@ -53,16 +52,14 @@ const MagneticButton = ({
   const reduceMotion = useReducedMotion();
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 260, damping: 18, mass: 0.4 });
-  const springY = useSpring(y, { stiffness: 260, damping: 18, mass: 0.4 });
+  const springX = useSpring(x, { stiffness: 280, damping: 18, mass: 0.35 });
+  const springY = useSpring(y, { stiffness: 280, damping: 18, mass: 0.35 });
 
   const handlePointerMove = (event: PointerEvent<HTMLAnchorElement>) => {
     if (reduceMotion) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const offsetX = event.clientX - rect.left - rect.width / 2;
-    const offsetY = event.clientY - rect.top - rect.height / 2;
-    x.set(offsetX * 0.22);
-    y.set(offsetY * 0.22);
+    x.set((event.clientX - rect.left - rect.width / 2) * 0.28);
+    y.set((event.clientY - rect.top - rect.height / 2) * 0.28);
   };
 
   const handlePointerLeave = () => {
@@ -72,27 +69,21 @@ const MagneticButton = ({
 
   return (
     <motion.div style={{ x: springX, y: springY }} className="inline-flex">
-      <Button
-        size="lg"
-        variant={variant === 'primary' ? 'default' : 'outline'}
+      <Link
+        href={href}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
         className={cn(
-          'h-12 px-7 text-base transition-[box-shadow,transform] duration-300',
+          'inline-flex h-12 items-center justify-center gap-2 rounded-md px-7 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E8DF5]/50',
           variant === 'primary' &&
-            'bg-[#0b1220] text-white hover:bg-[#152038] shadow-none',
+            'bg-[#0b1220] text-white hover:bg-[#152038]',
           variant === 'secondary' &&
-            'border-[#0b1220]/15 bg-white/50 text-[#0b1220] backdrop-blur-sm hover:bg-white/80 hover:text-[#0b1220]',
+            'border border-[#0b1220]/15 bg-white/55 text-[#0b1220] backdrop-blur-sm hover:border-[#0b1220]/25 hover:bg-white/85',
           className
         )}
-        asChild
       >
-        <Link
-          href={href}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
-        >
-          {children}
-        </Link>
-      </Button>
+        {children}
+      </Link>
     </motion.div>
   );
 };
@@ -111,10 +102,10 @@ const Reveal = ({
   return (
     <motion.div
       className={className}
-      initial={reduceMotion ? false : { opacity: 0, y: 28, filter: 'blur(8px)' }}
+      initial={reduceMotion ? false : { opacity: 0, y: 32, filter: 'blur(10px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      viewport={{ once: true, margin: '-10% 0px' }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, margin: '-12% 0px' }}
+      transition={{ duration: 0.75, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
     </motion.div>
@@ -124,101 +115,154 @@ const Reveal = ({
 export const LandingPage = () => {
   const reduceMotion = useReducedMotion();
   const heroRef = useRef<HTMLElement>(null);
+  const spotlightX = useMotionValue(50);
+  const spotlightY = useMotionValue(30);
+  const smoothSpotX = useSpring(spotlightX, { stiffness: 60, damping: 20 });
+  const smoothSpotY = useSpring(spotlightY, { stiffness: 60, damping: 20 });
+  const spotlight = useMotionTemplate`radial-gradient(540px circle at ${smoothSpotX}% ${smoothSpotY}%, rgba(46,141,245,0.18), transparent 55%)`;
+  const [headerSolid, setHeaderSolid] = useState(false);
+
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start'],
   });
+  const { scrollY } = useScroll();
+
+  useEffect(() => {
+    return scrollY.on('change', (value) => {
+      setHeaderSolid(value > 24);
+    });
+  }, [scrollY]);
 
   const productY = useTransform(
     scrollYProgress,
     [0, 1],
-    reduceMotion ? [0, 0] : [0, 120]
+    reduceMotion ? [0, 0] : [0, 140]
   );
   const productScale = useTransform(
     scrollYProgress,
     [0, 1],
-    reduceMotion ? [1, 1] : [1, 1.06]
+    reduceMotion ? [1, 1] : [1, 1.08]
   );
   const productOpacity = useTransform(
     scrollYProgress,
-    [0, 0.85],
-    reduceMotion ? [1, 1] : [1, 0.55]
+    [0, 0.9],
+    reduceMotion ? [1, 1] : [1, 0.45]
   );
   const productRotate = useTransform(
     scrollYProgress,
     [0, 1],
-    reduceMotion ? [0, 0] : [0.8, -1.2]
+    reduceMotion ? [0, 0] : [1.4, -2]
   );
   const productTransform = useMotionTemplate`translate3d(0, ${productY}px, 0) scale(${productScale}) rotateX(${productRotate}deg)`;
+
+  const handleHeroPointerMove = (event: PointerEvent<HTMLElement>) => {
+    if (reduceMotion) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    spotlightX.set(((event.clientX - rect.left) / rect.width) * 100);
+    spotlightY.set(((event.clientY - rect.top) / rect.height) * 100);
+  };
 
   return (
     <div
       className={cn(
-        'relative min-h-svh overflow-x-hidden bg-[#f3f6fa] text-[#0b1220]',
+        'relative min-h-svh overflow-x-hidden bg-[#eef3f8] text-[#0b1220]',
         'font-[family-name:var(--font-landing-sans)]'
       )}
     >
       <LandingAtmosphere />
 
-      <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 md:px-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2.5 text-[#0b1220] transition-opacity hover:opacity-80"
-          aria-label="MiCasa inicio"
-        >
-          <MicasaMark className="h-8 w-auto" />
-          <span className="font-[family-name:var(--font-landing-display)] text-lg font-semibold tracking-tight">
-            MiCasa
-          </span>
-        </Link>
-        <nav className="flex items-center gap-2 sm:gap-3" aria-label="Acceso">
-          <Button
-            variant="ghost"
-            className="h-9 text-[#0b1220]/70 hover:bg-[#0b1220]/5 hover:text-[#0b1220]"
-            asChild
+      {/* Film grain — subtle texture without flat fill */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.035] mix-blend-multiply"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+      />
+
+      <header
+        className={cn(
+          'sticky top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-300',
+          headerSolid
+            ? 'border-b border-[#0b1220]/8 bg-[#eef3f8]/75 backdrop-blur-xl'
+            : 'border-b border-transparent bg-transparent'
+        )}
+      >
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 md:px-8">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2.5 text-[#0b1220] transition-opacity hover:opacity-80"
+            aria-label="MiCasa inicio"
           >
-            <Link href="/login">Iniciar sesión</Link>
-          </Button>
-          <Button
-            className="h-9 bg-[#0b1220] text-white hover:bg-[#152038]"
-            asChild
-          >
-            <Link href="/register">Crear cuenta</Link>
-          </Button>
-        </nav>
+            <MicasaMark className="h-8 w-auto" />
+            <span className="font-[family-name:var(--font-landing-display)] text-lg font-semibold tracking-tight">
+              MiCasa
+            </span>
+          </Link>
+          <nav className="flex items-center gap-2 sm:gap-3" aria-label="Acceso">
+            <Link
+              href="/login"
+              className="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-[#0b1220]/70 transition-colors hover:bg-[#0b1220]/5 hover:text-[#0b1220]"
+            >
+              Iniciar sesión
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex h-9 items-center rounded-md bg-[#0b1220] px-4 text-sm font-medium text-white transition-colors hover:bg-[#152038]"
+            >
+              Crear cuenta
+            </Link>
+          </nav>
+        </div>
       </header>
 
       <main>
-        {/* Hero — one composition: brand, headline, sentence, CTAs, full-bleed product plane */}
         <section
           ref={heroRef}
-          className="relative z-10 flex min-h-[calc(100svh-4.5rem)] flex-col"
+          onPointerMove={handleHeroPointerMove}
+          className="relative z-10 flex min-h-[calc(100svh-4.25rem)] flex-col"
         >
-          <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 pb-10 pt-4 md:px-8 md:pb-14 md:pt-2">
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0"
+            style={{ background: spotlight }}
+          />
+
+          <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 pb-8 pt-6 md:px-8 md:pb-12 md:pt-4">
             <motion.div
               initial="hidden"
               animate="show"
               variants={{
                 show: {
-                  transition: { staggerChildren: reduceMotion ? 0 : 0.08 },
+                  transition: { staggerChildren: reduceMotion ? 0 : 0.07 },
                 },
               }}
-              className="relative z-10 max-w-3xl"
+              className="relative max-w-3xl"
             >
               <motion.p
                 variants={{
-                  hidden: { opacity: 0, y: reduceMotion ? 0 : 24 },
+                  hidden: { opacity: 0, y: reduceMotion ? 0 : 28 },
                   show: { opacity: 1, y: 0 },
                 }}
-                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                className="font-[family-name:var(--font-landing-display)] text-[clamp(3.5rem,12vw,7.5rem)] font-bold leading-[0.9] tracking-[-0.04em]"
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+                className="font-[family-name:var(--font-landing-display)] text-[clamp(4.25rem,15vw,8.25rem)] font-bold leading-[0.88] tracking-[-0.045em] text-[#0b1220]"
               >
-                <span className="bg-[linear-gradient(115deg,#0b1220_10%,#2E8DF5_55%,#0ea5e9_90%)] bg-clip-text text-transparent">
+                <motion.span
+                  className="inline-block bg-[linear-gradient(115deg,#0b1220_8%,#2E8DF5_48%,#0891b2_88%)] bg-[length:220%_100%] bg-clip-text text-transparent"
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : { backgroundPositionX: ['0%', '100%', '0%'] }
+                  }
+                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+                >
                   MiCasa
-                </span>
+                </motion.span>
               </motion.p>
 
-              <h1 className="mt-6 max-w-2xl text-balance font-[family-name:var(--font-landing-display)] text-[clamp(1.75rem,4.5vw,3.25rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[#0b1220]">
+              <h1 className="mt-7 max-w-2xl text-balance font-[family-name:var(--font-landing-display)] text-[clamp(1.85rem,4.8vw,3.4rem)] font-semibold leading-[1.1] tracking-[-0.03em] text-[#0b1220]">
                 {HEADLINE_WORDS.map((word, index) => (
                   <motion.span
                     key={`${word}-${index}`}
@@ -226,8 +270,8 @@ export const LandingPage = () => {
                     variants={{
                       hidden: {
                         opacity: 0,
-                        y: reduceMotion ? 0 : 18,
-                        filter: reduceMotion ? 'blur(0px)' : 'blur(6px)',
+                        y: reduceMotion ? 0 : 20,
+                        filter: reduceMotion ? 'blur(0px)' : 'blur(8px)',
                       },
                       show: {
                         opacity: 1,
@@ -248,7 +292,7 @@ export const LandingPage = () => {
                   show: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-5 max-w-md text-pretty text-base leading-relaxed text-[#0b1220]/60 sm:text-lg"
+                className="mt-5 max-w-md text-pretty text-base leading-relaxed text-[#0b1220]/58 sm:text-lg"
               >
                 Planifica ingresos, gastos y obligaciones por quincenas — el ritmo
                 real de cobrar y pagar en México.
@@ -262,22 +306,22 @@ export const LandingPage = () => {
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="mt-9 flex flex-wrap items-center gap-3"
               >
-                <MagneticButton href="/register" variant="primary">
+                <MagneticLink href="/register" variant="primary">
                   Empezar gratis
                   <ArrowRight className="size-4" aria-hidden />
-                </MagneticButton>
-                <MagneticButton href="/login" variant="secondary">
+                </MagneticLink>
+                <MagneticLink href="/login" variant="secondary">
                   Ya tengo cuenta
-                </MagneticButton>
+                </MagneticLink>
               </motion.div>
             </motion.div>
           </div>
 
-          <div className="relative z-0 w-full [perspective:1400px]">
+          <div className="relative z-0 mt-auto w-full [perspective:1600px]">
             <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 56 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 64 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 1.05, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
               <motion.div
                 className="origin-bottom will-change-transform"
@@ -287,19 +331,18 @@ export const LandingPage = () => {
                   transformStyle: 'preserve-3d',
                 }}
               >
-                <div className="relative left-1/2 w-[min(140vw,92rem)] -translate-x-1/2">
+                <div className="relative left-1/2 w-[min(152vw,96rem)] -translate-x-1/2">
                   <ProductMock variant="hero" />
                 </div>
               </motion.div>
             </motion.div>
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#f3f6fa] to-transparent"
+              className="pointer-events-none absolute inset-x-0 -bottom-px h-32 bg-linear-to-t from-[#eef3f8] via-[#eef3f8]/70 to-transparent"
             />
           </div>
         </section>
 
-        {/* Product proof — one job: see the product surfaces */}
         <section
           id="producto"
           className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28"
@@ -309,7 +352,7 @@ export const LandingPage = () => {
             <Reveal>
               <h2
                 id="producto-heading"
-                className="max-w-2xl font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl"
+                className="max-w-2xl font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.75rem]"
               >
                 Del plan quincenal al saldo real
               </h2>
@@ -321,16 +364,25 @@ export const LandingPage = () => {
 
             <div className="mt-14 grid gap-5 lg:grid-cols-2">
               <Reveal delay={0.05}>
-                <ProductMock variant="dashboard" />
+                <motion.div
+                  whileHover={reduceMotion ? undefined : { y: -4 }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+                >
+                  <ProductMock variant="dashboard" />
+                </motion.div>
               </Reveal>
               <Reveal delay={0.12}>
-                <ProductMock variant="wallets" />
+                <motion.div
+                  whileHover={reduceMotion ? undefined : { y: -4 }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+                >
+                  <ProductMock variant="wallets" />
+                </motion.div>
               </Reveal>
             </div>
           </div>
         </section>
 
-        {/* Capabilities — one job: three reasons, no card clutter */}
         <section
           className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28"
           aria-labelledby="capacidades-heading"
@@ -339,62 +391,87 @@ export const LandingPage = () => {
             <Reveal>
               <h2
                 id="capacidades-heading"
-                className="font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl"
+                className="font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.75rem]"
               >
                 Hecho para cómo se vive el dinero aquí
               </h2>
             </Reveal>
 
-            <ul className="mt-14 grid gap-12 sm:grid-cols-3 sm:gap-8">
+            <ul className="mt-14 grid gap-12 sm:grid-cols-3 sm:gap-10">
               {FEATURES.map((feature, index) => (
-                <Reveal key={feature.title} delay={index * 0.08}>
-                  <li>
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2E8DF5]/12 ring-1 ring-[#2E8DF5]/15">
-                      <feature.icon
-                        className="size-5 text-[#1d6fd1]"
-                        aria-hidden
-                      />
-                    </span>
-                    <h3 className="mt-5 font-[family-name:var(--font-landing-display)] text-lg font-semibold tracking-tight text-[#0b1220]">
-                      {feature.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-[#0b1220]/55">
-                      {feature.body}
-                    </p>
-                  </li>
-                </Reveal>
+                <motion.li
+                  key={feature.title}
+                  className="group"
+                  initial={
+                    reduceMotion
+                      ? false
+                      : { opacity: 0, y: 32, filter: 'blur(10px)' }
+                  }
+                  whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  viewport={{ once: true, margin: '-12% 0px' }}
+                  transition={{
+                    duration: 0.75,
+                    delay: index * 0.08,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2E8DF5]/12 ring-1 ring-[#2E8DF5]/15 transition-transform duration-300 group-hover:-translate-y-0.5">
+                    <feature.icon
+                      className="size-5 text-[#1d6fd1]"
+                      aria-hidden
+                    />
+                  </span>
+                  <h3 className="mt-5 font-[family-name:var(--font-landing-display)] text-lg font-semibold tracking-tight text-[#0b1220]">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#0b1220]/55">
+                    {feature.body}
+                  </p>
+                </motion.li>
               ))}
             </ul>
           </div>
         </section>
 
-        {/* Closing CTA — one job */}
         <section className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28">
           <div className="mx-auto max-w-6xl px-6 md:px-8">
             <Reveal>
-              <div className="relative overflow-hidden border border-[#0b1220]/10 bg-[#0b1220] px-8 py-14 text-white sm:px-12 md:py-16">
-                <div
+              <div className="relative overflow-hidden bg-[#0b1220] px-8 py-16 text-white sm:px-12 md:py-20">
+                <motion.div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_80%_at_0%_0%,rgba(46,141,245,0.35),transparent_55%),radial-gradient(ellipse_50%_60%_at_100%_100%,rgba(14,165,233,0.2),transparent_50%)]"
+                  className="pointer-events-none absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#2E8DF5]/30 blur-3xl"
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : { x: [0, 40, 0], y: [0, 24, 0], opacity: [0.4, 0.7, 0.4] }
+                  }
+                  transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl"
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : { x: [0, -30, 0], y: [0, -20, 0], opacity: [0.3, 0.55, 0.3] }
+                  }
+                  transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
                 />
                 <div className="relative max-w-xl">
-                  <h2 className="font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
+                  <h2 className="font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] sm:text-4xl md:text-[2.75rem]">
                     Empieza tu próxima quincena con claridad
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-white/60">
                     Sin tarjeta. Empiezas en minutos.
                   </p>
-                  <div className="mt-8">
-                    <Button
-                      size="lg"
-                      className="h-12 bg-white px-7 text-base text-[#0b1220] hover:bg-white/90"
-                      asChild
+                  <div className="mt-9">
+                    <Link
+                      href="/register"
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-medium text-[#0b1220] transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                     >
-                      <Link href="/register">
-                        Crear cuenta
-                        <ArrowRight className="size-4" aria-hidden />
-                      </Link>
-                    </Button>
+                      Crear cuenta
+                      <ArrowRight className="size-4" aria-hidden />
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -407,13 +484,13 @@ export const LandingPage = () => {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-[#0b1220]/45 md:flex-row md:items-center md:justify-between md:px-8">
           <p>© {new Date().getFullYear()} MiCasa. Hecho para quincenas en México.</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
-            <Link className="hover:text-[#0b1220]/80" href="/privacy">
+            <Link className="transition-colors hover:text-[#0b1220]/80" href="/privacy">
               Aviso de privacidad
             </Link>
-            <Link className="hover:text-[#0b1220]/80" href="/terms">
+            <Link className="transition-colors hover:text-[#0b1220]/80" href="/terms">
               Términos de uso
             </Link>
-            <Link className="hover:text-[#0b1220]/80" href="/login">
+            <Link className="transition-colors hover:text-[#0b1220]/80" href="/login">
               Iniciar sesión
             </Link>
           </nav>
