@@ -227,8 +227,14 @@ const CreditCardStatementImportDialog = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Archivo PDF</Label>
+              <Label
+                htmlFor="statement-pdf-file"
+                className="text-xs font-medium"
+              >
+                Archivo PDF
+              </Label>
               <input
+                id="statement-pdf-file"
                 key={fileInputKey}
                 ref={fileInputRef}
                 type="file"

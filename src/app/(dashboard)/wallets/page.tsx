@@ -910,13 +910,11 @@ export default function WalletsPage() {
                 variant="outline"
                 size="icon"
                 className="shrink-0 sm:hidden"
+                aria-label="Ver proyección de liquidez"
                 asChild
               >
-                <Link
-                  href="/wallets/liquidity"
-                  aria-label="Ver proyección de liquidez"
-                >
-                  <LineChart className="h-4 w-4" />
+                <Link href="/wallets/liquidity">
+                  <LineChart className="h-4 w-4" aria-hidden />
                 </Link>
               </Button>
             </TooltipTrigger>

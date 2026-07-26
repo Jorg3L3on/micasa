@@ -285,7 +285,7 @@ export function AlertsBell() {
                   href={alertHref}
                   onClick={() => handleAlertClick(alert)}
                   className={cn(
-                    'flex w-full cursor-pointer items-start gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+                    'flex w-full cursor-pointer items-start gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     isSeen && 'opacity-70',
                   )}
                   aria-label={`Ver alerta: ${alert.title}`}

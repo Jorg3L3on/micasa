@@ -44,6 +44,7 @@ export default async function AdminHomePage({
             placeholder="Nombre o correo…"
             className="h-9 pl-8"
             aria-label="Nombre o correo"
+            maxLength={200}
           />
         </div>
         <Button type="submit" className="h-9 shrink-0">

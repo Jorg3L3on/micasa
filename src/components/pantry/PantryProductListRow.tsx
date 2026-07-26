@@ -89,11 +89,7 @@ export const PantryProductListRow = ({
           </div>
         </button>
 
-        <div
-          className="flex shrink-0 items-start pt-0.5"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
+        <div className="flex shrink-0 items-start pt-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

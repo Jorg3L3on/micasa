@@ -247,18 +247,26 @@ export default function HouseUsersPage() {
                 <Label htmlFor="add-user-email">Email</Label>
                 <Input
                   id="add-user-email"
+                  name="email"
                   type="email"
                   value={addUserEmail}
                   onChange={(e) => setAddUserEmail(e.target.value)}
                   placeholder="email@ejemplo.com"
                   disabled={addUserLoading}
                   required
-                  aria-label="Email del usuario"
+                  autoComplete="email"
                   aria-invalid={!!addUserError}
+                  aria-describedby={
+                    addUserError ? 'add-user-email-error' : undefined
+                  }
                 />
               </div>
               {addUserError && (
-                <p className="text-destructive text-sm" role="alert">
+                <p
+                  id="add-user-email-error"
+                  className="text-destructive text-sm"
+                  role="alert"
+                >
                   {addUserError}
                 </p>
               )}

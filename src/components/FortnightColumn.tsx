@@ -322,6 +322,11 @@ export default function FortnightColumn({
       router.refresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'No se pudieron actualizar los datos del reporte',
+      );
     } finally {
       setIsRefreshing(false);
     }

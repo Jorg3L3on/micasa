@@ -644,10 +644,12 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
             </DialogDescription>
           </DialogHeader>
           <Textarea
+            id="bulk-items"
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             rows={8}
             placeholder={'Leche x 2\nHuevos x 1\nPan integral'}
+            aria-label="Ítems a agregar en bloque"
           />
           <DialogFooter>
             <Button

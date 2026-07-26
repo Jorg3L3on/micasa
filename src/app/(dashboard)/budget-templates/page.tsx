@@ -28,6 +28,7 @@ import {
 import {
   AlertCircle,
   LayoutList,
+  Loader2,
   Pencil,
   PiggyBank,
   Repeat2,
@@ -51,6 +52,8 @@ export default function BudgetTemplatesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<BudgetListItem | null>(null);
   const [nameFilter, setNameFilter] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [reactivatingId, setReactivatingId] = useState<number | null>(null);
 
   const filteredTemplates = useMemo(() => {
     const query = nameFilter.trim().toLowerCase();
@@ -74,6 +77,7 @@ export default function BudgetTemplatesPage() {
 
   const handleCreate = async (step1: Step1Values, step2: Step2Values) => {
     try {
+      setIsCreating(true);
       setFormError(null);
       await createBudget(
         {
@@ -94,6 +98,8 @@ export default function BudgetTemplatesPage() {
       const message = err instanceof Error ? err.message : 'Error al crear plantilla';
       setFormError(message);
       throw err;
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -146,11 +152,14 @@ export default function BudgetTemplatesPage() {
   const handleReactivate = useCallback(async (tpl: BudgetListItem) => {
     try {
       setError(null);
+      setReactivatingId(tpl.id);
       await setBudgetActive(tpl.id, true, context);
       toast.success('Plantilla reactivada');
       await fetchTemplates();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al reactivar plantilla');
+    } finally {
+      setReactivatingId(null);
     }
   }, [context, fetchTemplates]);
 
@@ -214,9 +223,15 @@ export default function BudgetTemplatesPage() {
                   size="icon"
                   className="size-11 sm:size-8"
                   onClick={() => handleReactivate(tpl)}
+                  disabled={reactivatingId === tpl.id}
                   aria-label={`Reactivar ${tpl.name}`}
+                  aria-busy={reactivatingId === tpl.id}
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  {reactivatingId === tpl.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
                 </Button>
               ) : (
                 <>
@@ -254,7 +269,7 @@ export default function BudgetTemplatesPage() {
         },
       },
     ],
-    [handleReactivate],
+    [handleReactivate, reactivatingId],
   );
 
   return (
@@ -273,12 +288,13 @@ export default function BudgetTemplatesPage() {
         </div>
         <Button
           className="h-11 w-full sm:h-9 sm:w-auto"
+          disabled={isCreating}
           onClick={() => {
             setFormError(null);
             setCreateDialogOpen(true);
           }}
         >
-          <PiggyBank className="mr-2 h-4 w-4" aria-hidden />
+          <PiggyBank data-icon="inline-start" className="h-4 w-4" aria-hidden />
           <span className="sm:hidden">Nueva</span>
           <span className="hidden sm:inline">Nueva plantilla</span>
         </Button>
@@ -354,6 +370,7 @@ export default function BudgetTemplatesPage() {
                         setDeleteDialogOpen(true);
                       }}
                       onReactivate={handleReactivate}
+                      isReactivating={reactivatingId === template.id}
                     />
                   ))
                 )}
@@ -377,6 +394,7 @@ export default function BudgetTemplatesPage() {
         onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) setFormError(null); }}
         onSubmit={handleCreate}
         error={formError && createDialogOpen ? formError : null}
+        isPending={isCreating}
       />
 
       {selected && (

@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LayoutList, Pencil, Repeat2, RotateCcw, Trash2 } from 'lucide-react';
+import { LayoutList, Loader2, Pencil, Repeat2, RotateCcw, Trash2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem } from '@/types/catalog';
 import { BUDGET_FREQUENCY_LABELS, type BudgetFrequency } from '@/schemas/budget.schema';
@@ -13,6 +13,7 @@ type BudgetTemplateMobileCardProps = {
   onAllocations: (template: BudgetListItem) => void;
   onDeactivate: (template: BudgetListItem) => void;
   onReactivate: (template: BudgetListItem) => void;
+  isReactivating?: boolean;
 };
 
 export function BudgetTemplateMobileCard({
@@ -21,6 +22,7 @@ export function BudgetTemplateMobileCard({
   onAllocations,
   onDeactivate,
   onReactivate,
+  isReactivating = false,
 }: BudgetTemplateMobileCardProps) {
   const frequencyLabel =
     BUDGET_FREQUENCY_LABELS[template.frequency as BudgetFrequency] ?? template.frequency;
@@ -72,9 +74,15 @@ export function BudgetTemplateMobileCard({
             size="icon"
             className="size-11"
             onClick={() => onReactivate(template)}
+            disabled={isReactivating}
             aria-label={`Reactivar ${template.name}`}
+            aria-busy={isReactivating}
           >
-            <RotateCcw className="h-4 w-4" />
+            {isReactivating ? (
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
           </Button>
         ) : (
           <>

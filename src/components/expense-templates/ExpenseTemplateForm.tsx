@@ -286,31 +286,30 @@ export function ExpenseTemplateForm({
                           </FormItem>
                         )}
                       />
-                      {appliesFirstFortnight && (
-                        <FormField
-                          control={form.control}
-                          name="dueDayFirst"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Dia de vencimiento (1-15)
-                              </FormLabel>
-                              <FormControl>
-                                <BoundedDayFieldInput
-                                  className={FIELD_CLASSNAME}
-                                  min={1}
-                                  max={15}
-                                  aria-label="Dia de vencimiento primera quincena"
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
+                      <FormField
+                        control={form.control}
+                        name="dueDayFirst"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">
+                              Dia de vencimiento (1-15)
+                            </FormLabel>
+                            <FormControl>
+                              <BoundedDayFieldInput
+                                className={FIELD_CLASSNAME}
+                                min={1}
+                                max={15}
+                                aria-label="Dia de vencimiento primera quincena"
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                disabled={!appliesFirstFortnight}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
                     <div className="space-y-3 rounded-lg border border-border/60 p-3">
@@ -336,31 +335,30 @@ export function ExpenseTemplateForm({
                           </FormItem>
                         )}
                       />
-                      {appliesSecondFortnight && (
-                        <FormField
-                          control={form.control}
-                          name="dueDaySecond"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Dia de vencimiento (16-31)
-                              </FormLabel>
-                              <FormControl>
-                                <BoundedDayFieldInput
-                                  className={FIELD_CLASSNAME}
-                                  min={16}
-                                  max={31}
-                                  aria-label="Dia de vencimiento segunda quincena"
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
+                      <FormField
+                        control={form.control}
+                        name="dueDaySecond"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">
+                              Dia de vencimiento (16-31)
+                            </FormLabel>
+                            <FormControl>
+                              <BoundedDayFieldInput
+                                className={FIELD_CLASSNAME}
+                                min={16}
+                                max={31}
+                                aria-label="Dia de vencimiento segunda quincena"
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                disabled={!appliesSecondFortnight}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 )}

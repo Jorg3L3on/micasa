@@ -78,7 +78,10 @@ export function PantryProductCombobox({
           placeholder={placeholder}
           className="h-11 text-base"
           autoComplete="off"
+          role="combobox"
+          aria-label="Buscar o agregar producto"
           aria-expanded={open}
+          aria-autocomplete="list"
         />
         <Button
           type="button"
