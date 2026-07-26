@@ -1,218 +1,544 @@
 'use client';
 
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, CalendarRange, House, WalletCards } from 'lucide-react';
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 
 import { MicasaMark } from '@/components/brand/micasa-mark';
-import { Button } from '@/components/ui/button';
+import { FortnightScrub } from '@/components/landing/fortnight-scrub';
+import { LandingAtmosphere } from '@/components/landing/landing-atmosphere';
 import { ProductMock } from '@/components/landing/product-mocks';
+import { cn } from '@/lib/utils';
 
-const FEATURES = [
+const STEPS = [
   {
-    icon: CalendarRange,
-    title: 'Planificación por quincenas',
-    body: 'Organiza ingresos y gastos en periodos 1–15 y 16–fin de mes, como cobras en México.',
+    n: '01',
+    title: 'Arma la quincena',
+    body: 'Ingresos y gastos en periodos 1–15 y 16–fin de mes — el ritmo real de cobrar en México.',
   },
   {
-    icon: WalletCards,
-    title: 'Billeteras, tarjetas y préstamos',
-    body: 'Sigue efectivo, débito, crédito, estados de cuenta y cuotas sin perder el hilo del flujo de caja.',
+    n: '02',
+    title: 'Sigue cada salida',
+    body: 'Efectivo, débito, crédito, estados de cuenta y cuotas sin perder el hilo del flujo de caja.',
   },
   {
-    icon: House,
-    title: 'Personal o casa compartida',
-    body: 'Lleva tus finanzas a solas o con el hogar: un solo lugar para la quincena de todos.',
+    n: '03',
+    title: 'Solo o en casa',
+    body: 'Finanzas personales o compartidas: un solo lugar para la quincena de todos.',
   },
 ] as const;
 
-export const LandingPage = () => {
+const HEADLINE_WORDS = ['Tu', 'quincena,', 'clara', 'de', 'punta', 'a', 'punta.'];
+
+const PROOF = [
+  'Hecho para quincenas mexicanas',
+  'Personal o casa compartida',
+  'Tarjetas, préstamos y proyección',
+] as const;
+
+const MagneticLink = ({
+  children,
+  className,
+  href,
+  variant = 'primary',
+}: {
+  children: ReactNode;
+  className?: string;
+  href: string;
+  variant?: 'primary' | 'secondary';
+}) => {
   const reduceMotion = useReducedMotion();
-  const fadeUp = {
-    hidden: { opacity: 0, y: reduceMotion ? 0 : 18 },
-    show: { opacity: 1, y: 0 },
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 280, damping: 18, mass: 0.35 });
+  const springY = useSpring(y, { stiffness: 280, damping: 18, mass: 0.35 });
+
+  const handlePointerMove = (event: PointerEvent<HTMLAnchorElement>) => {
+    if (reduceMotion) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    x.set((event.clientX - rect.left - rect.width / 2) * 0.28);
+    y.set((event.clientY - rect.top - rect.height / 2) * 0.28);
+  };
+
+  const handlePointerLeave = () => {
+    x.set(0);
+    y.set(0);
   };
 
   return (
-    <div className="relative min-h-svh overflow-x-hidden bg-[#0a0b10] text-white">
-      {/* Atmosphere — brand blue→violet plane, not a flat fill */}
+    <motion.div style={{ x: springX, y: springY }} className="inline-flex w-full sm:w-auto">
+      <Link
+        href={href}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        className={cn(
+          'inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-7 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E8DF5]/50 sm:w-auto',
+          variant === 'primary' && 'bg-[#0b1220] text-white hover:bg-[#152038]',
+          variant === 'secondary' &&
+            'border border-[#0b1220]/15 bg-white/55 text-[#0b1220] backdrop-blur-sm hover:border-[#0b1220]/25 hover:bg-white/85',
+          className
+        )}
+      >
+        {children}
+      </Link>
+    </motion.div>
+  );
+};
+
+const Reveal = ({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) => {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className={className}
+      initial={reduceMotion ? false : { opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-10% 0px' }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+export const LandingPage = () => {
+  const reduceMotion = useReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
+  const spotlightX = useMotionValue(50);
+  const spotlightY = useMotionValue(28);
+  const smoothSpotX = useSpring(spotlightX, { stiffness: 60, damping: 20 });
+  const smoothSpotY = useSpring(spotlightY, { stiffness: 60, damping: 20 });
+  const spotlight = useMotionTemplate`radial-gradient(520px circle at ${smoothSpotX}% ${smoothSpotY}%, rgba(46,141,245,0.16), transparent 58%)`;
+  const [headerSolid, setHeaderSolid] = useState(false);
+
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const { scrollY } = useScroll();
+
+  useEffect(() => {
+    return scrollY.on('change', (value) => {
+      setHeaderSolid(value > 24);
+    });
+  }, [scrollY]);
+
+  const productY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduceMotion ? [0, 0] : [0, 80]
+  );
+  const productScale = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduceMotion ? [1, 1] : [1, 1.03]
+  );
+  const productRotate = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduceMotion ? [0, 0] : [1.1, -0.6]
+  );
+  const productTransform = useMotionTemplate`translate3d(0, ${productY}px, 0) scale(${productScale}) rotateX(${productRotate}deg)`;
+
+  const handleHeroPointerMove = (event: PointerEvent<HTMLElement>) => {
+    if (reduceMotion) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    spotlightX.set(((event.clientX - rect.left) / rect.width) * 100);
+    spotlightY.set(((event.clientY - rect.top) / rect.height) * 100);
+  };
+
+  return (
+    <div
+      className={cn(
+        'relative min-h-svh overflow-x-hidden bg-[#eef3f8] text-[#0b1220]',
+        'font-[family-name:var(--font-landing-sans)]'
+      )}
+    >
+      <LandingAtmosphere />
+
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(46,141,245,0.35),transparent_55%),radial-gradient(ellipse_50%_40%_at_90%_20%,rgba(172,61,243,0.22),transparent_50%),radial-gradient(ellipse_40%_30%_at_10%_40%,rgba(46,141,245,0.12),transparent_45%)]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.03] mix-blend-multiply"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
       />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 md:px-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2.5 text-white transition-opacity hover:opacity-90"
-          aria-label="MiCasa inicio"
-        >
-          <MicasaMark className="h-9 w-auto text-white/70" />
-          <span className="text-lg font-semibold tracking-tight">MiCasa</span>
-        </Link>
-        <nav className="flex items-center gap-2 sm:gap-3" aria-label="Acceso">
-          <Button variant="ghost" className="h-9 text-white/80 hover:bg-white/10 hover:text-white" asChild>
-            <Link href="/login">Iniciar sesión</Link>
-          </Button>
-          <Button className="h-9 shadow-lg shadow-violet-600/20" asChild>
-            <Link href="/register">Crear cuenta</Link>
-          </Button>
-        </nav>
+      <header
+        className={cn(
+          'sticky top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-300',
+          headerSolid
+            ? 'border-b border-[#0b1220]/8 bg-[#eef3f8]/80 backdrop-blur-xl'
+            : 'border-b border-transparent bg-transparent'
+        )}
+      >
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-6 md:px-8">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2.5 text-[#0b1220] transition-opacity hover:opacity-80"
+            aria-label="MiCasa inicio"
+          >
+            <MicasaMark className="h-7 w-auto sm:h-8" />
+            <span className="font-[family-name:var(--font-landing-display)] text-base font-semibold tracking-tight sm:text-lg">
+              MiCasa
+            </span>
+          </Link>
+          <nav className="flex items-center gap-1.5 sm:gap-3" aria-label="Acceso">
+            <Link
+              href="/login"
+              className="inline-flex h-9 items-center rounded-md px-2.5 text-sm font-medium text-[#0b1220]/70 transition-colors hover:bg-[#0b1220]/5 hover:text-[#0b1220] sm:px-3"
+            >
+              Iniciar sesión
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex h-9 items-center rounded-md bg-[#0b1220] px-3 text-sm font-medium text-white transition-colors hover:bg-[#152038] sm:px-4"
+            >
+              Crear cuenta
+            </Link>
+          </nav>
+        </div>
       </header>
 
       <main>
-        {/* Hero — one composition: brand, headline, sentence, CTAs, dominant product visual */}
-        <section className="relative z-10 mx-auto grid min-h-[calc(100svh-5.5rem)] w-full max-w-6xl items-center gap-10 px-6 pb-16 pt-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:gap-12 md:px-8 md:pb-20 md:pt-4">
+        <section
+          ref={heroRef}
+          onPointerMove={handleHeroPointerMove}
+          className="relative z-10 flex min-h-[calc(100svh-3.75rem)] flex-col"
+        >
           <motion.div
-            className="max-w-xl"
-            initial="hidden"
-            animate="show"
-            variants={{
-              show: {
-                transition: { staggerChildren: reduceMotion ? 0 : 0.1 },
-              },
-            }}
-          >
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.45 }}
-              className="mb-4 font-[family-name:var(--font-geist-sans)] text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl"
-            >
-              <span className="bg-linear-to-r from-[#2E8DF5] to-[#AC3DF3] bg-clip-text text-transparent">
-                MiCasa
-              </span>
-            </motion.p>
-            <motion.h1
-              variants={fadeUp}
-              transition={{ duration: 0.45 }}
-              className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-[2.75rem] md:leading-[1.15]"
-            >
-              Tu quincena, clara de punta a punta.
-            </motion.h1>
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.45 }}
-              className="mt-4 max-w-md text-pretty text-base leading-relaxed text-white/65 sm:text-lg"
-            >
-              Planifica ingresos, gastos y obligaciones por quincenas — el ritmo
-              real de cobrar y pagar en México.
-            </motion.p>
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0"
+            style={{ background: spotlight }}
+          />
+
+          <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-6 pt-4 sm:justify-center sm:px-6 sm:pb-8 sm:pt-6 md:px-8 md:pb-10">
             <motion.div
-              variants={fadeUp}
-              transition={{ duration: 0.45 }}
-              className="mt-8 flex flex-wrap items-center gap-3"
+              initial="hidden"
+              animate="show"
+              variants={{
+                show: {
+                  transition: { staggerChildren: reduceMotion ? 0 : 0.07 },
+                },
+              }}
+              className="relative max-w-3xl"
             >
-              <Button size="lg" className="h-11 px-6 text-base shadow-lg shadow-violet-600/25" asChild>
-                <Link href="/register">
+              <motion.p
+                variants={{
+                  hidden: { opacity: 0, y: reduceMotion ? 0 : 24 },
+                  show: { opacity: 1, y: 0 },
+                }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className="font-[family-name:var(--font-landing-display)] text-[clamp(3.25rem,12vw,8rem)] font-bold leading-[0.9] tracking-[-0.045em] text-[#0b1220]"
+              >
+                <motion.span
+                  className="inline-block bg-[linear-gradient(115deg,#0b1220_10%,#2E8DF5_50%,#0891b2_90%)] bg-[length:220%_100%] bg-clip-text text-transparent"
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : { backgroundPositionX: ['0%', '100%', '0%'] }
+                  }
+                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+                >
+                  MiCasa
+                </motion.span>
+              </motion.p>
+
+              <h1 className="mt-5 max-w-2xl text-balance font-[family-name:var(--font-landing-display)] text-[clamp(1.65rem,4.4vw,3.25rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[#0b1220] sm:mt-7">
+                {HEADLINE_WORDS.map((word, index) => (
+                  <motion.span
+                    key={`${word}-${index}`}
+                    className="mr-[0.28em] inline-block last:mr-0"
+                    variants={{
+                      hidden: {
+                        opacity: 0,
+                        y: reduceMotion ? 0 : 18,
+                      },
+                      show: { opacity: 1, y: 0 },
+                    }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+              </h1>
+
+              <motion.p
+                variants={{
+                  hidden: { opacity: 0, y: reduceMotion ? 0 : 14 },
+                  show: { opacity: 1, y: 0 },
+                }}
+                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-4 max-w-lg text-pretty text-[0.95rem] leading-relaxed text-[#0b1220]/58 sm:mt-5 sm:text-lg"
+              >
+                Organiza ingresos, gastos y obligaciones al ritmo real de cobrar y
+                pagar en México: dos quincenas, un plan.
+              </motion.p>
+
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, y: reduceMotion ? 0 : 14 },
+                  show: { opacity: 1, y: 0 },
+                }}
+                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-7 flex w-full flex-col gap-3 sm:mt-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
+              >
+                <MagneticLink href="/register" variant="primary">
                   Empezar gratis
                   <ArrowRight className="size-4" aria-hidden />
-                </Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-11 border-white/20 bg-white/5 px-6 text-base text-white hover:bg-white/10 hover:text-white"
-                asChild
-              >
-                <Link href="/login">Ya tengo cuenta</Link>
-              </Button>
-            </motion.div>
-          </motion.div>
+                </MagneticLink>
+                <MagneticLink href="/login" variant="secondary">
+                  Ya tengo cuenta
+                </MagneticLink>
+              </motion.div>
 
-          <motion.div
-            className="relative"
-            initial={{ opacity: 0, y: reduceMotion ? 0 : 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: reduceMotion ? 0 : 0.15 }}
-          >
+              <motion.p
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1 },
+                }}
+                transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.15 }}
+                className="mt-4 text-sm text-[#0b1220]/45"
+              >
+                Gratis · Sin tarjeta · Listo en minutos
+              </motion.p>
+            </motion.div>
+          </div>
+
+          <div className="relative z-0 mt-2 w-full sm:mt-auto [perspective:1600px]">
             <motion.div
-              aria-hidden
-              className="absolute -inset-6 rounded-[2rem] bg-linear-to-br from-[#2E8DF5]/25 via-transparent to-[#AC3DF3]/30 blur-2xl"
-              animate={
-                reduceMotion
-                  ? undefined
-                  : { opacity: [0.45, 0.75, 0.45], scale: [1, 1.03, 1] }
-              }
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <ProductMock className="relative" variant="fortnight" />
-          </motion.div>
+              initial={reduceMotion ? false : { opacity: 0, y: 48 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.95, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <motion.div
+                className="origin-bottom will-change-transform"
+                style={{
+                  transform: productTransform,
+                  transformStyle: 'preserve-3d',
+                }}
+              >
+                <div className="relative w-full md:left-1/2 md:w-[min(148vw,94rem)] md:-translate-x-1/2">
+                  <ProductMock variant="hero" />
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
         </section>
 
-        {/* Screenshots / product proof */}
+        {/* Quiet proof — after hero composition, one job */}
         <section
-          id="producto"
-          className="relative z-10 border-t border-white/10 bg-black/25 py-20 md:py-28"
-          aria-labelledby="producto-heading"
+          className="relative z-10 border-y border-[#0b1220]/8 bg-white/40"
+          aria-label="Por qué MiCasa"
         >
-          <div className="mx-auto max-w-6xl px-6 md:px-8">
-            <div className="max-w-2xl">
-              <h2
-                id="producto-heading"
-                className="text-2xl font-semibold tracking-tight text-white sm:text-3xl"
-              >
-                Del plan quincenal al saldo real
-              </h2>
-              <p className="mt-3 text-base leading-relaxed text-white/60">
-                Un vistazo a cómo MiCasa organiza tu flujo de efectivo, billeteras
-                y el panel del día a día.
-              </p>
-            </div>
-
-            <div className="mt-12 grid gap-6 lg:grid-cols-2">
-              <ProductMock variant="dashboard" />
-              <ProductMock variant="wallets" />
-            </div>
-
-            <ul className="mt-16 grid gap-10 sm:grid-cols-3">
-              {FEATURES.map((feature) => (
-                <li key={feature.title}>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-[#2E8DF5]/20 to-[#AC3DF3]/20 ring-1 ring-white/10">
-                    <feature.icon
-                      className="size-5 text-[#8eb8ff]"
-                      aria-hidden
-                    />
-                  </span>
-                  <h3 className="mt-4 text-base font-semibold text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/55">
-                    {feature.body}
-                  </p>
+          <Reveal>
+            <ul className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-6 text-sm text-[#0b1220]/55 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 md:px-8 md:py-7">
+              {PROOF.map((item) => (
+                <li
+                  key={item}
+                  className="font-[family-name:var(--font-landing-display)] text-[0.95rem] font-medium tracking-tight text-[#0b1220]/70 sm:text-base"
+                >
+                  {item}
                 </li>
               ))}
             </ul>
+          </Reveal>
+        </section>
 
-            <div className="mt-14 flex flex-wrap items-center gap-3">
-              <Button size="lg" className="h-11 px-6" asChild>
-                <Link href="/register">
-                  Crear cuenta
-                  <ArrowRight className="size-4" aria-hidden />
-                </Link>
-              </Button>
-              <p className="text-sm text-white/45">
-                Sin tarjeta. Empiezas en minutos.
+        <FortnightScrub />
+
+        <section
+          id="producto"
+          className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28"
+          aria-labelledby="producto-heading"
+        >
+          <div className="mx-auto max-w-6xl px-5 sm:px-6 md:px-8">
+            <Reveal>
+              <h2
+                id="producto-heading"
+                className="max-w-2xl font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.75rem]"
+              >
+                Del plan al flujo real
+              </h2>
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-[#0b1220]/55">
+                Las mismas superficies que usas en la app: liquidez hacia adelante y
+                crédito sin sorpresas de corte.
               </p>
+            </Reveal>
+
+            <div className="mt-14 space-y-16 md:space-y-24">
+              <Reveal>
+                <div className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
+                  <div className="max-w-md">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
+                      Liquidez
+                    </p>
+                    <h3 className="mt-3 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-[#0b1220] sm:text-3xl">
+                      Ve el valle antes de llegar a él
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
+                      Proyección a 180 días con nómina, gastos, tarjetas y préstamos —
+                      para saber cuándo apretar y cuándo sobra.
+                    </p>
+                  </div>
+                  <ProductMock variant="liquidity" />
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.06}>
+                <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+                  <div className="order-2 lg:order-1">
+                    <ProductMock variant="cards" />
+                  </div>
+                  <div className="order-1 max-w-md lg:order-2 lg:justify-self-end">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
+                      Crédito
+                    </p>
+                    <h3 className="mt-3 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-[#0b1220] sm:text-3xl">
+                      Cortes y cuotas sin sorpresas
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
+                      Mercado Pago, DiDi y más: usado, mínimo y cuotas activas en el
+                      mismo ritmo quincenal.
+                    </p>
+                  </div>
+                </div>
+              </Reveal>
             </div>
           </div>
         </section>
+
+        <section
+          className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28"
+          aria-labelledby="pasos-heading"
+        >
+          <div className="mx-auto max-w-6xl px-5 sm:px-6 md:px-8">
+            <Reveal>
+              <h2
+                id="pasos-heading"
+                className="font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.75rem]"
+              >
+                Tres movimientos. Toda la quincena.
+              </h2>
+            </Reveal>
+
+            <ol className="mt-14 divide-y divide-[#0b1220]/10 border-y border-[#0b1220]/10">
+              {STEPS.map((step, index) => (
+                <motion.li
+                  key={step.n}
+                  className="grid gap-4 py-8 sm:grid-cols-[5rem_1fr] sm:gap-10 md:py-10"
+                  initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-8% 0px' }}
+                  transition={{
+                    duration: 0.6,
+                    delay: index * 0.06,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <span className="font-[family-name:var(--font-landing-display)] text-sm font-semibold tracking-[0.18em] text-[#2E8DF5]">
+                    {step.n}
+                  </span>
+                  <div>
+                    <h3 className="font-[family-name:var(--font-landing-display)] text-xl font-semibold tracking-tight text-[#0b1220] sm:text-2xl">
+                      {step.title}
+                    </h3>
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
+                      {step.body}
+                    </p>
+                  </div>
+                </motion.li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="relative z-10 border-t border-[#0b1220]/8">
+          <Reveal>
+            <div className="relative overflow-hidden bg-[#0b1220] px-5 py-20 text-white sm:px-8 md:px-12 md:py-28">
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#2E8DF5]/28 blur-3xl"
+                animate={
+                  reduceMotion
+                    ? undefined
+                    : { x: [0, 36, 0], y: [0, 20, 0], opacity: [0.35, 0.65, 0.35] }
+                }
+                transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-cyan-400/18 blur-3xl"
+                animate={
+                  reduceMotion
+                    ? undefined
+                    : { x: [0, -28, 0], y: [0, -16, 0], opacity: [0.25, 0.5, 0.25] }
+                }
+                transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div className="relative mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-xl">
+                  <p className="font-[family-name:var(--font-landing-display)] text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+                    MiCasa
+                  </p>
+                  <h2 className="mt-5 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] sm:text-3xl md:text-4xl">
+                    La próxima quincena, con el plan ya armado
+                  </h2>
+                  <p className="mt-4 text-base leading-relaxed text-white/60">
+                    Crea tu cuenta gratis. Sin tarjeta. En minutos estás en tu
+                    primera quincena.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <Link
+                    href="/register"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-medium text-[#0b1220] transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  >
+                    Crear cuenta gratis
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-12 items-center justify-center rounded-md px-5 text-base font-medium text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  >
+                    Ya tengo cuenta
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-white/45 md:flex-row md:items-center md:justify-between md:px-8">
+      <footer className="relative z-10 border-t border-[#0b1220]/8 bg-[#eef3f8]">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-[#0b1220]/45 sm:px-6 md:flex-row md:items-center md:justify-between md:px-8">
           <p>© {new Date().getFullYear()} MiCasa. Hecho para quincenas en México.</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
-            <Link className="hover:text-white/80" href="/privacy">
+            <Link className="transition-colors hover:text-[#0b1220]/80" href="/privacy">
               Aviso de privacidad
             </Link>
-            <Link className="hover:text-white/80" href="/terms">
+            <Link className="transition-colors hover:text-[#0b1220]/80" href="/terms">
               Términos de uso
             </Link>
-            <Link className="hover:text-white/80" href="/login">
+            <Link className="transition-colors hover:text-[#0b1220]/80" href="/login">
               Iniciar sesión
             </Link>
           </nav>
