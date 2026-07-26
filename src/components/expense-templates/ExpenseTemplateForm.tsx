@@ -51,7 +51,7 @@ type ExpenseTemplateFormProps = {
   paymentMethods: PaymentMethodOption[];
   cutoffSectionOpen: boolean;
   onCutoffSectionOpenChange: (open: boolean) => void;
-  onSubmit: (data: ExpenseTemplateFormValues) => Promise<void>;
+  onSave: (data: ExpenseTemplateFormValues) => Promise<void>;
   cancelHref: string;
 };
 
@@ -68,7 +68,7 @@ export function ExpenseTemplateForm({
   paymentMethods,
   cutoffSectionOpen,
   onCutoffSectionOpenChange,
-  onSubmit,
+  onSave,
   cancelHref,
 }: ExpenseTemplateFormProps) {
   const isRecurring = form.watch('isRecurring');
@@ -100,7 +100,7 @@ export function ExpenseTemplateForm({
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}

@@ -23,6 +23,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
+import { mapLoanFormIssues } from '@/lib/loans/map-loan-form-issues';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import StatCard from '@/components/dashboard/StatCard';
 import { Badge } from '@/components/ui/badge';
@@ -264,21 +265,6 @@ const mapPaymentActionError = (message: string): PaymentActionErrors => {
     return { paidAt: message };
   }
   return { general: message };
-};
-
-const mapLoanFormIssues = (
-  issues: Array<{ path: PropertyKey[]; message: string }>,
-): LoanFormErrors => {
-  const errors: LoanFormErrors = {};
-  for (const issue of issues) {
-    const key = issue.path[0];
-    if (typeof key === 'string' && loanFormErrorFields.has(key as keyof LoanFormState)) {
-      errors[key as keyof LoanFormState] = issue.message;
-      continue;
-    }
-    errors.general = issue.message;
-  }
-  return errors;
 };
 
 /** FormMessage-compatible field validation error renderer. */
@@ -605,7 +591,7 @@ export default function LoansPage() {
     });
 
     if (!parsed.success) {
-      setFormErrors(mapLoanFormIssues(parsed.error.issues));
+      setFormErrors(mapLoanFormIssues(parsed.error.issues, loanFormErrorFields));
       return;
     }
 
@@ -1910,6 +1896,7 @@ export default function LoansPage() {
                             }
                           >
                             <SelectTrigger
+                              aria-label="Cuenta relacionada para seguimiento"
                               className={cn(
                                 loanEditErrors.linkedWalletId &&
                                   'border-destructive focus:ring-destructive/30',

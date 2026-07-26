@@ -186,7 +186,7 @@ export default function NewExpenseTemplatePage() {
         paymentMethods={paymentMethods}
         cutoffSectionOpen={cutoffSectionOpen}
         onCutoffSectionOpenChange={setCutoffSectionOpen}
-        onSubmit={handleSubmit}
+        onSave={handleSubmit}
         cancelHref={`/expense-templates${queryString ? `?${queryString}` : ''}`}
       />
     </div>

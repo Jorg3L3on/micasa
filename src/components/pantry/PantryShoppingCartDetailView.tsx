@@ -364,7 +364,8 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
           asChild
         >
           <Link href={backHref} aria-label="Volver">
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" aria-hidden />
+            <span className="sr-only">Volver</span>
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
