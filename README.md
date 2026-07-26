@@ -1,178 +1,169 @@
 # MiCasa
 
-MiCasa is a personal and household finance manager focused on biweekly planning.  
-It helps you organize incomes, expenses, budgets, wallets, and card activity by fortnight so you can plan cash flow with more precision.
+<p align="center">
+  <img src="public/apple-touch-icon.png" alt="MiCasa" width="72" height="72" />
+</p>
 
-## Table of Contents
+**Fortnight-first personal & household finance** — plan incomes, expenses, wallets, cards, and loans around Mexico’s real pay rhythm (`1–15` / `16–fin`), alone or as a shared house.
 
-- [Why MiCasa](#why-micasa)
-- [Core Features](#core-features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Available Scripts](#available-scripts)
-- [Project Architecture](#project-architecture)
-- [Quality and CI](#quality-and-ci)
-- [Releases](#releases)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
+[Live demo](https://micasa-three.vercel.app) · [Releases](https://github.com/Jorg3L3on/micasa/releases) · [Changelog](./CHANGELOG.md)
 
-## Why MiCasa
+![MiCasa landing — fortnight planning hero](docs/images/landing-hero.jpg)
 
-Most budgeting apps treat months as a single block. MiCasa uses **fortnights** (`FIRST`: days 1-15, `SECOND`: days 16-end) as the core planning unit, which better matches real-life pay cycles and recurring obligations.
+## Why fortnights
 
-MiCasa also supports both individual and shared household contexts, so financial data can belong to a single user or a house.
+Most budgeting apps treat the month as one block. MiCasa uses **quincenas** as the planning unit so cash flow matches how people in Mexico actually get paid and settle obligations.
 
-## Core Features
+- **Personal or house** ownership on wallets, expenses, budgets, and more (`OWNER` / `ADMIN` / `MEMBER`)
+- **Liquidity projection** (~180 days) across funding wallets, card cycles, and loan schedules
+- **Card reality** — statement imports, payment plans per fortnight, reconciliation tooling
 
-- **Fortnight-first planning** for expenses, incomes, and budget allocation (recurrent budgets and budget periods).
-- **Dashboard** with monthly and period summaries, chart insights, liquidity projection (~180 days), and upcoming obligations (cards and loans).
-- **Multi-context ownership** (user vs house) with role-based house membership (`OWNER`, `ADMIN`, `MEMBER`).
-- **Wallets and transfers** across payment method types (cash, debit, credit, department-store cards).
-- **Credit cards** — statement cycles, payments, imports (Mercado Pago, CA Departamental, CA Efectivo, DiDi Card) with rollback.
-- **Loans (Préstamos)** — schedules, wallet or payroll payment sources, integration with expenses, liquidity, dashboard, and transactions.
-- **Pantry** — receipt upload, product catalog, shopping carts, expense ↔ receipt linking.
-- **Tasks** — lists, habits, routines (household productivity alongside finance).
-- **Categories** with optional icons across expense UI and API.
+| Two quincenas, one month | Liquidity & credit at a glance |
+| --- | --- |
+| ![Fortnight scrub](docs/images/landing-scrub.jpg) | ![Liquidity and cards](docs/images/landing-liquidity.jpg) |
 
-## Tech Stack
+## Core features
 
-- **Framework**: Next.js 16 (App Router), React 19, TypeScript
-- **Database**: PostgreSQL with Prisma 7
-- **Auth**: NextAuth v5 (JWT strategy)
-- **UI**: Tailwind CSS v4, Radix UI, shadcn patterns
-- **Validation and Forms**: Zod v4, react-hook-form
-- **Tables and Charts**: TanStack Table, Recharts
-- **Testing**: Vitest
+- **Fortnight planning** — expenses, incomes, recurrent budgets / budget periods, fortnight planner UI
+- **Dashboard** — period summaries, obligations (cards + loans), liquidity teaser
+- **Wallets & transfers** — cash, debit, credit, and department-store cards; house assignees
+- **Credit cards** — statement cycles, planned payments per fortnight, reconciliation; imports from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, **DiDi Card**, and **Liverpool** (with rollback)
+- **Loans (préstamos)** — schedules, wallet or payroll sources, expense linking, planner + liquidity
+- **Pantry** — receipt upload, product catalog, shopping carts, expense ↔ receipt linking
+- **Onboarding** — first-run setup after registration
+- **Admin** — gated `/admin` shell (`User.is_admin` and/or `MICASA_ADMIN_EMAILS`)
 
-## Contributing & AI workflow
+## Tech stack
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/agents/workflow.md](docs/agents/workflow.md) for PR checks and Cursor skills (`/ship-feature`, `/prd`).
+| Layer | Choice |
+| --- | --- |
+| App | Next.js 16 (App Router), React 19, TypeScript |
+| Data | PostgreSQL, Prisma 7 (`@prisma/adapter-pg` locally, Neon in production) |
+| Auth | NextAuth v5 (JWT, credentials) |
+| UI | Tailwind CSS v4, Radix UI, TanStack Table, Recharts |
+| Validation | Zod v4, react-hook-form |
+| Quality | Vitest (unit + coverage gate + isolation), ESLint |
+| Ops | Optional Sentry + Upstash Redis rate limiting |
 
-## Getting Started
+## Getting started
 
-### 1) Clone and install
+**Prerequisites:** Node 22+, PostgreSQL 16+ running locally.
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Jorg3L3on/micasa.git
 cd micasa
 npm install
-```
-
-### 2) Configure environment
-
-Create a `.env` file in the project root:
-
-```env
-DATABASE_URL="postgresql://..."
-NEXTAUTH_SECRET="replace-with-a-strong-secret"
-NEXTAUTH_URL="http://localhost:3000"
-# Optional: bootstrap platform admins before User.is_admin is set
-# MICASA_ADMIN_EMAILS="you@example.com"
-```
-
-### 3) Generate Prisma client
-
-```bash
+cp .env.example .env   # edit secrets if needed
 npx prisma generate
-```
-
-### 4) Run the app
-
-```bash
+npx prisma migrate dev
+npx prisma db seed     # optional demo users (destructive on existing data)
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Environment Variables
+Seed accounts (after `db seed`):
 
-- `DATABASE_URL`: PostgreSQL connection string
-- `NEXTAUTH_SECRET`: NextAuth signing secret
-- `NEXTAUTH_URL`: Base URL for auth callbacks and session behavior
-- `MICASA_ADMIN_EMAILS` (optional): Comma-separated emails granted `/admin` access in addition to `User.is_admin`
-- `UPSTASH_REDIS_REST_URL` (optional): Upstash Redis REST URL for distributed rate limiting in production
-- `UPSTASH_REDIS_REST_TOKEN` (optional): Upstash Redis REST token; omit both Upstash vars for in-memory limiting in local dev
-- `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` (optional): Sentry DSN; SDK is inert when unset
-- `SENTRY_AUTH_TOKEN` (optional): Auth token for source map upload on Vercel builds
-- `SENTRY_ORG` / `SENTRY_PROJECT` (optional): Sentry org/project slugs for `withSentryConfig`
+| Name | Email | Password |
+| --- | --- | --- |
+| Jorge | `jorgeleon983@gmail.com` | `temp1234` |
+| Carmen | `Consepcionsolorzano39@gmail.com` | `temp1234` |
 
-## Available Scripts
+> Calendar dates (expense payment days, “today”, etc.) use **`America/Mexico_City`** via `src/lib/calendar-dates.ts` — not UTC date slicing.
 
-- `npm run dev`: start local development server (webpack mode)
-- `npm run dev:turbo`: start local development server (Turbopack mode)
-- `npm run build`: production build
-- `npm run start`: run production server
-- `npm run lint`: run ESLint
-- `npm test`: run Vitest test suite (`vitest run`)
-- `npm run validate:dashboard-ui`: validate dashboard metric strip consistency rules
-- `npm run backfill:pantry-products`: backfill pantry products from receipt lines
-- `npm run ci`: run local CI pipeline (`validate:dashboard-ui`, `prisma generate`, tests, build)
+## Environment variables
 
-## Project Architecture
+Copy [`.env.example`](./.env.example). Required:
 
-High-level flow:
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | JWT signing secret |
+| `NEXTAUTH_URL` | App base URL (e.g. `http://localhost:3000`) |
 
-1. Server-rendered pages and layouts fetch from API routes.
-2. Client-side mutations use typed fetch helpers in `src/lib/api`.
-3. Route handlers validate payloads with Zod schemas.
-4. Prisma queries are scoped through owner context (`user` or `house`).
+Optional:
 
-Important directories:
+| Variable | Purpose |
+| --- | --- |
+| `MICASA_ADMIN_EMAILS` | Comma-separated emails granted `/admin` (plus `User.is_admin`) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Distributed rate limits in production; omit both for in-memory local limiting |
+| `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` | Sentry DSN (SDK inert when unset) |
+| `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` | Source maps on Vercel builds |
 
-- `src/app`: App Router pages and route handlers
-- `src/components`: UI and feature components
-- `src/lib/finance`: domain services (expenses, wallets, loans, liquidity projection, etc.)
-- `src/lib/server`: owner context, statement import parsers, pantry processing
-- `src/schemas`: Zod schemas per resource
-- `prisma`: Prisma schema (~31 models), migrations, and seed script
+## Scripts
 
-Further reading: [`docs/finance-architecture.md`](docs/finance-architecture.md), [`docs/finance-invariants.md`](docs/finance-invariants.md), [`docs/agents/domain.md`](docs/agents/domain.md).
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Dev server (webpack) |
+| `npm run dev:turbo` | Dev server (Turbopack) |
+| `npm run build` / `npm start` | Production build / serve |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest unit suite |
+| `npm run test:coverage` | Vitest with finance coverage floor |
+| `npm run test:isolation` | Cross-tenant isolation tests |
+| `npm run validate:dashboard-ui` | Dashboard metric-strip rules |
+| `npm run validate:prisma-imports` | Prisma import conventions |
+| `npm run validate:calendar-dates` | Calendar-date anti-patterns |
+| `npm run ci` | Full local CI (validators → generate → coverage → isolation → build) |
+| `npm run repair:card-payments` | Repair card payment inconsistencies |
+| `npm run backfill:pantry-products` | Backfill pantry products from receipts |
+| `npm run backfill:fortnightly-loan-payments` | Realign fortnightly loan payments |
 
-Core domain concept:
+## Architecture
 
-- `FortnightPeriod.FIRST`: day 1-15
-- `FortnightPeriod.SECOND`: day 16-end of month
+Request flow:
+
+1. Server pages/layouts fetch via `src/lib/api-server.ts`
+2. Client mutations use typed helpers in `src/lib/api/*`
+3. Route handlers resolve owner context → validate with Zod → Prisma
+4. Queries are scoped to **user** or **house** via `getOwnerContext`
+
+Important paths:
+
+```
+src/app/            # App Router pages + API route handlers
+src/components/     # UI (landing, dashboard, planner, …)
+src/lib/finance/    # Domain services (expenses, cards, loans, liquidity, …)
+src/lib/server/     # Owner context, statement parsers, pantry, admin
+src/schemas/        # Zod schemas per resource
+prisma/             # schema (~26 models), migrations, seed
+```
+
+Domain docs: [`docs/finance-architecture.md`](docs/finance-architecture.md) · [`docs/finance-invariants.md`](docs/finance-invariants.md) · [`docs/agents/domain.md`](docs/agents/domain.md)
 
 ## Quality and CI
 
-GitHub Actions runs CI on push to `main`/`master` and on pull requests with these checks:
+GitHub Actions (push to `main` / PRs) runs the same pipeline as `npm run ci`:
 
-- Prisma client generation
-- Dashboard UI consistency validation
-- Unit tests
-- Next.js production build
+1. Prisma generate  
+2. Dashboard UI, Prisma import, and calendar-date validators  
+3. Unit tests with finance coverage gate  
+4. Cross-tenant isolation tests  
+5. Next.js production build  
 
-Before opening a PR, run:
-
-```bash
-npm run ci
-```
+Node version in CI: **22.12.0**.
 
 ## Releases
 
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Release checklist: [`docs/release-process.md`](./docs/release-process.md)
-- GitHub releases: `https://github.com/Jorg3L3on/micasa/releases`
+- Production branch is **`main`** (Vercel). Feature work ships on `feat/<slug>` first — see [`docs/agents/deployment.md`](docs/agents/deployment.md).
 
 ## Roadmap
 
-Near-term focus:
-
-- Harden loan ↔ expense sync and liquidity edge cases.
-- More test coverage for finance services and API routes.
-- Security policy and architecture diagrams for contributors.
-- Public demo assets and screenshots.
+- Harden card payment plans ↔ statement obligations and reconciliation edge cases  
+- Deeper finance-service and API route coverage  
+- Richer demo seed data for screenshots and onboarding  
+- Contributor diagrams for owner context and wallet accounting  
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, PR checks, and the **Cursor agent workflow** (`/ship-feature`, `/prd`).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the Cursor agent workflow in [`docs/agents/workflow.md`](docs/agents/workflow.md) (`/prd`, `/ship-feature`).
 
-1. Open an issue describing the bug or feature.
-2. Create a focused branch (`feat/<slug>` per [docs/agents/deployment.md](docs/agents/deployment.md)).
-3. Run `npm run ci` before opening a pull request.
+1. Open an issue (or use the agent workflow to create slice issues).  
+2. Branch from `feat/<slug>` per [deployment docs](docs/agents/deployment.md).  
+3. Run `npm run ci` before opening a PR.  
 
 ## License
 
-This project is licensed under the MIT License. See [`LICENSE`](./LICENSE) for details.
+MIT — see [`LICENSE`](./LICENSE).

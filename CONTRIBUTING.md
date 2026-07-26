@@ -4,7 +4,7 @@
 
 ```bash
 npm install
-# Create .env in project root (see README.md Environment Variables)
+cp .env.example .env   # see README.md for full setup + seed
 npx prisma generate
 npx prisma migrate dev
 npm run dev
