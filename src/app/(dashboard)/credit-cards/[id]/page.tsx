@@ -690,7 +690,7 @@ const CreditCardDetailPageContent = () => {
         submitting={paymentSubmitting}
         error={paymentError}
         fortnightId={paymentFortnightId}
-        onSubmit={handlePaymentSubmit}
+        onConfirm={handlePaymentSubmit}
       />
 
       <CreditCardQuickPurchaseDialog
@@ -755,7 +755,7 @@ const CreditCardDetailPageContent = () => {
           setEditCardDialogOpen(open);
           if (!open) setEditCardFormError(null);
         }}
-        onSubmit={handleEditCard}
+        onSave={handleEditCard}
         mode="edit"
         showAmountField={!isCreditOrStoreCardWalletType(card.type)}
         allowedTypes={['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}

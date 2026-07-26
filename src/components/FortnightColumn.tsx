@@ -1151,7 +1151,7 @@ export default function FortnightColumn({
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}
-        onSubmit={handlePlannerCardPaymentSubmit}
+        onConfirm={handlePlannerCardPaymentSubmit}
       />
     </>
   );

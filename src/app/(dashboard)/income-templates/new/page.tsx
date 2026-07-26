@@ -314,6 +314,7 @@ export default function NewIncomeTemplatePage() {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        aria-label="Activo"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">

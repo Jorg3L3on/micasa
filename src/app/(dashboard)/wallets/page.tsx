@@ -1479,7 +1479,7 @@ export default function WalletsPage() {
           setCreateDialogOpen(open);
           setFormError(null);
         }}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         mode="create"
         error={formError && createDialogOpen ? formError : null}
       />
@@ -1511,7 +1511,7 @@ export default function WalletsPage() {
                 setFormError(null);
               }
             }}
-            onSubmit={handleEdit}
+            onSave={handleEdit}
             mode="edit"
             showAmountField={!isCreditType(selectedWallet.type)}
             defaultValues={{

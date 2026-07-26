@@ -202,7 +202,7 @@ export default function HouseUsersPage() {
             className="h-9 shrink-0 rounded-xl"
             onClick={() => setAddUserDialogOpen(true)}
           >
-            <UserPlus className="h-4 w-4" aria-hidden />
+            <UserPlus data-icon="inline-start" className="h-4 w-4" aria-hidden />
             Agregar usuario
           </Button>
         ) : null}

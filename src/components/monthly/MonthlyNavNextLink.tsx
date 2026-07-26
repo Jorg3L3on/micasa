@@ -25,6 +25,7 @@ export function MonthlyNavNextLink({ href, label }: MonthlyNavNextLinkProps) {
               strokeWidth={2.25}
               aria-hidden
             />
+            <span className="sr-only">Ir al mes siguiente: {label}</span>
           </Link>
         </Button>
       </TooltipTrigger>

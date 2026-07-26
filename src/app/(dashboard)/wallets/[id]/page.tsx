@@ -546,7 +546,7 @@ export default function WalletDetailPage() {
           submitting={paymentSubmitting}
           error={paymentError}
           fortnightId={paymentFortnightId}
-          onSubmit={handleCreditPaymentSubmit}
+          onConfirm={handleCreditPaymentSubmit}
         />
       ) : null}
     </div>

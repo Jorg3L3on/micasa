@@ -85,7 +85,7 @@ const TYPE_META: Record<WalletFormValues['type'], TypeMeta> = {
 type WalletFormProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: WalletFormValues) => Promise<void>;
+  onSave: (data: WalletFormValues) => Promise<void>;
   defaultValues?: WalletFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
@@ -123,7 +123,7 @@ const buildWalletFormDefaults = (
 export default function WalletForm({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultValues,
   mode,
   error,
@@ -144,7 +144,7 @@ export default function WalletForm({
 
   const handleSubmit = async (data: WalletFormInput) => {
     const parsedData = walletSchema.parse(data);
-    await onSubmit(parsedData);
+    await onSave(parsedData);
     form.reset();
     onOpenChange(false);
   };
