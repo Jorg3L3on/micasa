@@ -281,8 +281,8 @@ const mapLoanFormIssues = (
   return errors;
 };
 
-/** FieldError / FormMessage-compatible validation error renderer. */
-function FieldError({
+/** FormMessage-compatible field validation error renderer. */
+function FormMessage({
   id,
   children,
 }: {
@@ -297,13 +297,15 @@ function FieldError({
   );
 }
 
+const FieldError = FormMessage;
+
 const LoanFieldErrorMessage = ({
   id,
   message,
 }: {
   id?: string;
   message?: string | null;
-}) => <FieldError id={id}>{message}</FieldError>;
+}) => <FormMessage id={id}>{message}</FormMessage>;
 
 const mapLoanEditError = (message: string): LoanEditErrors => {
   const normalized = message.toLowerCase();
@@ -1105,6 +1107,15 @@ export default function LoansPage() {
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSubmit}>
+            {(formErrors.general ||
+              formErrors.name ||
+              formErrors.lender ||
+              formErrors.principalAmount) && (
+              <FormMessage>
+                Revisa los campos marcados. Hay errores de validación en el
+                formulario.
+              </FormMessage>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="loan-name">Nombre</Label>

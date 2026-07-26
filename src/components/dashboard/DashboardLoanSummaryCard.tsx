@@ -168,6 +168,9 @@ export default function DashboardLoanSummaryCard({
                           aria-label={`Ver ${obligation.loanName ?? obligation.description}`}
                         >
                           <ArrowRight className="h-4 w-4" aria-hidden />
+                          <span className="sr-only">
+                            Ver {obligation.loanName ?? obligation.description}
+                          </span>
                         </Link>
                       </Button>
                     </div>

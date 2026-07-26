@@ -50,7 +50,7 @@ export type CreditCardPaymentDialogProps = {
   error: string | null;
   /** When paying from planner / Compromisos, pin expense to this fortnight. */
   fortnightId?: number;
-  onSubmit: (data: CreditCardPaymentSubmitPayload) => Promise<void>;
+  onConfirm: (data: CreditCardPaymentSubmitPayload) => Promise<void>;
 };
 
 const CreditCardPaymentDialog = ({
@@ -63,7 +63,7 @@ const CreditCardPaymentDialog = ({
   submitting,
   error,
   fortnightId,
-  onSubmit,
+  onConfirm,
 }: CreditCardPaymentDialogProps) => {
   const [sourceWalletId, setSourceWalletId] = useState('');
   const [amount, setAmount] = useState('');
@@ -151,7 +151,7 @@ const CreditCardPaymentDialog = ({
       }
     }
 
-    await onSubmit(payload);
+    await onConfirm(payload);
   };
 
   const displayError = localError ?? error;
