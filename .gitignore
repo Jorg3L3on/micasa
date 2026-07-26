@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 .env.sentry-build-plugin
 
 # vercel
@@ -68,3 +69,11 @@ next-env.d.ts
 src/lib/server/credit-card-statement/fixtures/
 playwright-cli/
 output/playwright/
+
+# Real bank / card statements — NEVER commit
+Estado_de_Cuenta*.pdf
+*_estado_de_cuenta*.pdf
+*_Estado_de_Cuenta*.pdf
+*.statement.pdf
+/statements/
+/estados-de-cuenta/
