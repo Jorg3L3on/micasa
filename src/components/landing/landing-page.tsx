@@ -319,7 +319,7 @@ export const LandingPage = () => {
                   transformStyle: 'preserve-3d',
                 }}
               >
-                <div className="relative left-1/2 w-[min(148vw,94rem)] -translate-x-1/2">
+                <div className="relative w-full md:left-1/2 md:w-[min(148vw,94rem)] md:-translate-x-1/2">
                   <ProductMock variant="hero" />
                 </div>
               </motion.div>
