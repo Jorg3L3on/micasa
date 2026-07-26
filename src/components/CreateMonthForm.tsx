@@ -10,6 +10,11 @@ import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights, getCreatedMonths } from '@/lib/api/fortnights';
 import { formatMonth } from '@/lib/utils';
+import { z } from 'zod';
+
+const createMonthSchema = z.object({
+  month: z.string().min(1, 'Selecciona un mes y año'),
+});
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
@@ -80,12 +85,15 @@ export default function CreateMonthForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedKey) {
-      setValidationError('Selecciona un mes y año');
-      toast.error('Selecciona un mes y año');
+    const parsed = createMonthSchema.safeParse({ month: selectedKey });
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues[0]?.message ?? 'Selecciona un mes y año';
+      setValidationError(message);
+      toast.error(message);
       return;
     }
-    const [y, m] = selectedKey.split('-').map(Number);
+    const [y, m] = parsed.data.month.split('-').map(Number);
     if (Number.isNaN(y) || Number.isNaN(m) || m < 1 || m > 12) {
       setValidationError('Selecciona un mes válido');
       toast.error('Selecciona un mes válido');

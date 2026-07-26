@@ -211,32 +211,35 @@ export default function NewIncomeTemplatePage() {
                       <FormLabel>
                         Miembro que transfiere a la casa (opcional)
                       </FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value ? String(field.value) : ''}
-                          onValueChange={(value) =>
-                            field.onChange(
-                              value ? Number(value) : null,
-                            )
-                          }
-                          disabled={loadingMembers || houseMembers.length === 0}
-                        >
-                          <SelectTrigger className={`w-full ${FIELD_CLASSNAME}`}>
+                      <Select
+                        value={field.value ? String(field.value) : ''}
+                        onValueChange={(value) =>
+                          field.onChange(
+                            value ? Number(value) : null,
+                          )
+                        }
+                        disabled={loadingMembers || houseMembers.length === 0}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className={`w-full ${FIELD_CLASSNAME}`}
+                            aria-label="Miembro que transfiere a la casa (opcional)"
+                          >
                             <SelectValue placeholder="Selecciona un miembro (opcional)" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {houseMembers.map((member) => (
-                              <SelectItem
-                                key={member.id}
-                                value={String(member.id)}
-                              >
-                                {member.name}
-                                {member.email ? ` (${member.email})` : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
+                        </FormControl>
+                        <SelectContent>
+                          {houseMembers.map((member) => (
+                            <SelectItem
+                              key={member.id}
+                              value={String(member.id)}
+                            >
+                              {member.name}
+                              {member.email ? ` (${member.email})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormDescription className="text-xs">
                         Si seleccionas un miembro, este ingreso se registrará como
                         transferencia de ese usuario hacia la casa (creando un gasto

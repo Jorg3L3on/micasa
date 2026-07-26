@@ -468,16 +468,15 @@ export function ExpenseTemplateForm({
               </div>
 
               <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                <Link href={cancelHref}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    disabled={isSubmitting}
-                  >
-                    Cancelar
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={isSubmitting}
+                  asChild
+                >
+                  <Link href={cancelHref}>Cancelar</Link>
+                </Button>
                 <Button
                   type="submit"
                   className="h-11 w-full sm:w-auto"

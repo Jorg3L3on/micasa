@@ -2369,6 +2369,11 @@ export default function LoansPage() {
                                                 aria-invalid={Boolean(
                                                   paymentActionErrors.sourceWalletId,
                                                 )}
+                                                aria-describedby={
+                                                  paymentActionErrors.sourceWalletId
+                                                    ? `loan-payment-${payment.id}-source-wallet-error`
+                                                    : undefined
+                                                }
                                               >
                                                 <SelectValue placeholder="Selecciona billetera" />
                                               </SelectTrigger>
@@ -2401,7 +2406,11 @@ export default function LoansPage() {
                                               </p>
                                             ) : null}
                                             {paymentActionErrors.sourceWalletId ? (
-                                              <p className="text-xs text-destructive">
+                                              <p
+                                                id={`loan-payment-${payment.id}-source-wallet-error`}
+                                                className="text-xs text-destructive"
+                                                role="alert"
+                                              >
                                                 {paymentActionErrors.sourceWalletId}
                                               </p>
                                             ) : null}

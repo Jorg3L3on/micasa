@@ -38,6 +38,7 @@ export default function MonthlyHeader({
                   strokeWidth={2.25}
                   aria-hidden
                 />
+                <span className="sr-only">Ir al mes anterior: {prevMonthLabel}</span>
               </Link>
             </Button>
           ) : (

@@ -231,7 +231,7 @@ export default function CategoriesPage() {
           setCreateDialogOpen(open);
           setFormError(null);
         }}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         mode="create"
         error={formError && createDialogOpen ? formError : null}
       />
@@ -245,7 +245,7 @@ export default function CategoriesPage() {
               setSelectedCategory(null);
               setFormError(null);
             }}
-            onSubmit={handleEdit}
+            onSave={handleEdit}
             mode="edit"
             defaultValues={{
               name: selectedCategory.name,

@@ -665,7 +665,7 @@ const CreditCardDetailPageContent = () => {
               setPaymentDialogOpen(true);
             }}
           >
-            <Wallet className="mr-2 h-4 w-4" />
+            <Wallet data-icon="inline-start" className="h-4 w-4" aria-hidden />
             Registrar pago
           </Button>
         </div>
