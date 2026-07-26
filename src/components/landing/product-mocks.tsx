@@ -17,12 +17,16 @@ export const ProductMock = ({
     return (
       <div
         className={cn(
-          'overflow-hidden border-y border-white/10 bg-[#0e1118] text-left',
+          'overflow-hidden border-y border-white/10 bg-[#0e1118] text-left shadow-[0_40px_120px_-48px_rgba(15,23,42,0.55)]',
           className
         )}
         role="img"
         aria-label="Vista previa del planificador por quincenas de MiCasa"
       >
+        <div
+          aria-hidden
+          className="h-px w-full bg-linear-to-r from-transparent via-[#2E8DF5]/70 to-transparent"
+        />
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3 sm:px-8">
           <div className="flex items-center gap-3">
             <span className="text-xs font-medium tracking-wide text-white/50">
