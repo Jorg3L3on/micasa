@@ -1,6 +1,10 @@
 'use client';
 
+import { LineChart } from 'lucide-react';
+
 import { AnimatedAmount } from '@/components/landing/animated-amount';
+import { LiquidityChart } from '@/components/landing/liquidity-chart';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { cn } from '@/lib/utils';
 
 type ProductMockProps = {
@@ -8,7 +12,71 @@ type ProductMockProps = {
   variant?: 'hero' | 'liquidity' | 'cards' | 'wallets' | 'dashboard' | 'fortnight';
 };
 
-/** Static UI frames used as landing “screenshots” (no live data). */
+const AppChrome = ({
+  title,
+  subtitle,
+  tabs,
+}: {
+  title: string;
+  subtitle?: string;
+  tabs?: readonly string[];
+}) => (
+  <div className="border-b border-white/10 px-4 py-3 sm:px-5">
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium text-white/70">{title}</p>
+        {subtitle ? (
+          <p className="mt-0.5 truncate text-[11px] text-white/35">{subtitle}</p>
+        ) : null}
+      </div>
+      {tabs?.length ? (
+        <div className="hidden items-center gap-1 sm:flex">
+          {tabs.map((tab, index) => (
+            <span
+              key={tab}
+              className={cn(
+                'rounded-md px-2 py-1 text-[11px]',
+                index === 0
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/40'
+              )}
+            >
+              {tab}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  </div>
+);
+
+const MetricStrip = ({
+  label,
+  value,
+  border,
+  tone = 'text-white',
+}: {
+  label: string;
+  value: string;
+  border: string;
+  tone?: string;
+}) => (
+  <div
+    className={cn(
+      'rounded-lg border border-white/10 border-l-[3px] bg-white/[0.03] px-2.5 py-2',
+      border
+    )}
+  >
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+      {label}
+    </p>
+    <p className={cn('mt-0.5 font-mono text-sm font-bold tabular-nums', tone)}>
+      {value}
+    </p>
+  </div>
+);
+
+/** Static UI frames styled like the live MiCasa app chrome (no live data). */
 export const ProductMock = ({
   className,
   variant = 'fortnight',
@@ -17,7 +85,7 @@ export const ProductMock = ({
     return (
       <div
         className={cn(
-          'overflow-hidden border-y border-white/10 bg-[#0e1118] text-left shadow-[0_40px_120px_-48px_rgba(15,23,42,0.55)]',
+          'overflow-hidden border-y border-white/10 bg-[#121212] text-left shadow-[0_40px_120px_-48px_rgba(15,23,42,0.55)]',
           className
         )}
         role="img"
@@ -27,55 +95,62 @@ export const ProductMock = ({
           aria-hidden
           className="h-px w-full bg-linear-to-r from-transparent via-[#2E8DF5]/70 to-transparent"
         />
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3 sm:px-8">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium tracking-wide text-white/50">
-              Quincena · 1–15 jul
-            </span>
-            <span className="hidden h-1 w-1 rounded-full bg-white/20 sm:block" />
-            <span className="hidden text-xs text-white/35 sm:inline">Casa León</span>
-          </div>
-          <div className="flex items-center gap-4 text-[11px] text-white/40">
-            <span>Ingresos</span>
-            <span className="text-white/70">Gastos</span>
-            <span>Balance</span>
-          </div>
-        </div>
+        <AppChrome
+          title="Quincena · 1–15 jul 2026"
+          subtitle="Casa León · vista compartida"
+          tabs={['Resumen', 'Ingresos', 'Gastos']}
+        />
 
         <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-3 border-b border-white/10 p-5 sm:p-8 lg:border-b-0 lg:border-r">
-            <div className="flex items-end justify-between gap-4">
+          <div className="space-y-4 border-b border-white/10 p-4 sm:p-6 lg:border-b-0 lg:border-r">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
                   Balance quincena
                 </p>
-                <p className="mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl">
+                <p className="mt-1 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl">
                   <AnimatedAmount value={3370} />
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-[11px] text-white/40">Pagado 58%</p>
-                <div className="mt-2 flex h-1.5 w-28 overflow-hidden rounded-full bg-white/10 sm:w-36">
-                  <div className="h-full w-[58%] bg-emerald-500" />
+              <div className="min-w-[9rem]">
+                <div className="flex items-center justify-between text-[11px] text-white/45">
+                  <span>Pagado</span>
+                  <span className="font-mono tabular-nums text-white/70">58%</span>
+                </div>
+                <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full w-[58%] rounded-l-full bg-emerald-500" />
                   <div className="h-full w-[42%] bg-amber-400" />
+                </div>
+                <div className="mt-1.5 flex gap-3 text-[9px] text-white/40">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Listo
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    Pendiente
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {[
-                { name: 'Nómina', amount: '+$12,000', tone: 'text-emerald-400' },
-                { name: 'Freelance', amount: '+$3,500', tone: 'text-emerald-400' },
-                { name: 'Renta', amount: '-$8,500', tone: 'text-white/80' },
-                { name: 'Despensa', amount: '-$2,180', tone: 'text-white/80' },
-                { name: 'Tarjeta', amount: '-$1,450', tone: 'text-white/80' },
-                { name: 'Luz', amount: '-$1,000', tone: 'text-white/80' },
+                { name: 'Nómina', amount: '+$12,000', tone: 'text-emerald-400', paid: true },
+                { name: 'Freelance', amount: '+$3,500', tone: 'text-emerald-400', paid: true },
+                { name: 'Renta', amount: '-$8,500', tone: 'text-white/80', paid: true },
+                { name: 'Despensa', amount: '-$2,180', tone: 'text-white/80', paid: false },
+                { name: 'Tarjeta', amount: '-$1,450', tone: 'text-white/80', paid: false },
+                { name: 'Luz', amount: '-$1,000', tone: 'text-white/80', paid: false },
               ].map((row) => (
                 <div
                   key={row.name}
-                  className="flex items-center justify-between border border-white/[0.06] bg-white/[0.03] px-3 py-2.5"
+                  className={cn(
+                    'flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5',
+                    row.paid ? 'bg-white/[0.02] opacity-75' : 'bg-white/[0.03]'
+                  )}
                 >
-                  <span className="text-xs text-white/75">{row.name}</span>
+                  <span className="text-xs text-white/80">{row.name}</span>
                   <span
                     className={cn(
                       'font-mono text-xs font-semibold tabular-nums',
@@ -89,36 +164,70 @@ export const ProductMock = ({
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-4 p-5 sm:p-8">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
-                Hoy en la quincena
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-white/55">
-                Renta pagada. Quedan despensa y tarjeta antes del día 15.
-              </p>
-            </div>
-            <div className="space-y-2">
-              {[
-                { label: 'Listo', value: '$8,500', border: 'border-l-emerald-500/60' },
-                { label: 'Por pagar', value: '$3,630', border: 'border-l-amber-500/60' },
-                { label: 'Sobra', value: '$3,370', border: 'border-l-[#2E8DF5]/60' },
-              ].map((metric) => (
-                <div
-                  key={metric.label}
-                  className={cn(
-                    'border border-white/10 border-l-[3px] bg-white/[0.03] px-3 py-2.5',
-                    metric.border
-                  )}
-                >
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-white/40">
-                    {metric.label}
+          <div className="space-y-3 p-4 sm:p-6">
+            <div className="rounded-lg border border-white/10 border-l-[3px] border-l-emerald-500/50 bg-transparent px-3 py-3">
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
+                  <LineChart className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    Disponible
                   </p>
-                  <p className="mt-1 font-mono text-sm font-bold tabular-nums text-white">
-                    {metric.value}
+                  <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
+                    <AnimatedAmount value={18450} durationMs={1600} />
                   </p>
                 </div>
-              ))}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-md border border-white/10 bg-[#161616] px-2.5 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <WalletProviderIcon
+                      providerIconKey="BBVA"
+                      className="h-5 w-5"
+                      showTooltipLabel={false}
+                    />
+                    <p className="truncate text-[11px] text-white/55">BBVA Débito</p>
+                  </div>
+                  <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
+                    $12,200
+                  </p>
+                </div>
+                <div className="rounded-md border border-white/10 bg-[#161616] px-2.5 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <WalletProviderIcon
+                      providerIconKey="CASH_GENERIC"
+                      className="h-5 w-5"
+                      showTooltipLabel={false}
+                    />
+                    <p className="truncate text-[11px] text-white/55">Efectivo</p>
+                  </div>
+                  <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
+                    $6,250
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <MetricStrip
+                label="Ingresos"
+                value="$24,000"
+                border="border-l-blue-500/50"
+                tone="text-blue-300"
+              />
+              <MetricStrip
+                label="Gastos"
+                value="$11,380"
+                border="border-l-violet-500/50"
+                tone="text-violet-300"
+              />
+              <MetricStrip
+                label="Pendiente"
+                value="$3,420"
+                border="border-l-amber-500/50"
+                tone="text-amber-300"
+              />
             </div>
           </div>
         </div>
@@ -129,65 +238,41 @@ export const ProductMock = ({
   if (variant === 'liquidity') {
     return (
       <div
-        className={cn('overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-left', className)}
+        className={cn(
+          'overflow-hidden rounded-xl border border-[#0b1220]/10 bg-[#121212] text-left shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)]',
+          className
+        )}
         role="img"
         aria-label="Vista previa de proyección de liquidez a 180 días"
       >
-        <div className="border-b border-white/10 px-5 py-3">
-          <p className="text-xs font-medium text-white/50">Liquidez · 180 días</p>
-        </div>
-        <div className="space-y-5 p-5 sm:p-6">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
-              Punto más bajo
-            </p>
-            <p className="mt-2 font-mono text-3xl font-bold tabular-nums text-amber-300">
-              <AnimatedAmount value={4820} decimals={0} />
-            </p>
-            <p className="mt-1 text-xs text-white/45">12 sep · después de colegiatura</p>
+        <AppChrome
+          title="Liquidez"
+          subtitle="Proyección a 180 días · efectivo y débito"
+        />
+        <div className="space-y-4 p-4 sm:p-5">
+          <div className="flex items-start gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
+              <LineChart className="h-4 w-4 text-emerald-400" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                Punto más bajo
+              </p>
+              <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-amber-300">
+                <AnimatedAmount value={4820} decimals={0} />
+              </p>
+              <p className="mt-1 text-xs text-white/45">
+                12 sep · después de colegiatura y corte MP
+              </p>
+            </div>
           </div>
 
-          <div className="relative h-28 overflow-hidden border border-white/10 bg-black/20">
-            <svg
-              viewBox="0 0 320 112"
-              className="absolute inset-0 h-full w-full"
-              aria-hidden
-            >
-              <defs>
-                <linearGradient id="liqFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2E8DF5" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#2E8DF5" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0 40 C40 28, 70 52, 110 46 C150 40, 180 70, 220 58 C260 46, 290 62, 320 34 L320 112 L0 112 Z"
-                fill="url(#liqFill)"
-              />
-              <path
-                d="M0 40 C40 28, 70 52, 110 46 C150 40, 180 70, 220 58 C260 46, 290 62, 320 34"
-                fill="none"
-                stroke="#2E8DF5"
-                strokeWidth="2.5"
-              />
-              <circle cx="180" cy="70" r="4" fill="#fbbf24" />
-            </svg>
-          </div>
+          <LiquidityChart />
 
           <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Hoy', value: '$18.4k' },
-              { label: '30 días', value: '$11.2k' },
-              { label: '180 días', value: '$9.6k' },
-            ].map((item) => (
-              <div key={item.label} className="border border-white/10 bg-white/[0.03] px-2.5 py-2">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/40">
-                  {item.label}
-                </p>
-                <p className="mt-1 font-mono text-xs font-bold tabular-nums text-white">
-                  {item.value}
-                </p>
-              </div>
-            ))}
+            <MetricStrip label="Hoy" value="$18.4k" border="border-l-emerald-500/50" />
+            <MetricStrip label="30 días" value="$11.2k" border="border-l-blue-500/50" />
+            <MetricStrip label="180 días" value="$9.6k" border="border-l-amber-500/50" />
           </div>
         </div>
       </div>
@@ -197,114 +282,104 @@ export const ProductMock = ({
   if (variant === 'cards') {
     return (
       <div
-        className={cn('overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-left', className)}
+        className={cn(
+          'overflow-hidden rounded-xl border border-[#0b1220]/10 bg-[#121212] text-left shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)]',
+          className
+        )}
         role="img"
         aria-label="Vista previa de tarjetas y cuotas pendientes"
       >
-        <div className="border-b border-white/10 px-5 py-3">
-          <p className="text-xs font-medium text-white/50">Tarjetas · ciclo actual</p>
-        </div>
-        <div className="space-y-3 p-5 sm:p-6">
+        <AppChrome title="Mis tarjetas" subtitle="2 tarjetas · ciclo actual" />
+        <div className="space-y-3 p-4 sm:p-5">
           {[
             {
               name: 'Mercado Pago',
+              providerIconKey: 'MERCADO_PAGO',
               due: 'Corte 28 jul',
               used: '$6,840',
-              min: 'Mín. $820',
-              accent: 'border-l-[#2E8DF5]/60',
+              limit: 'de $15,000',
+              min: 'Mínimo $820',
+              usedPct: 46,
+              accent: 'from-[#0ea5e9]/30 to-[#0ea5e9]/5',
             },
             {
               name: 'DiDi Card',
+              providerIconKey: 'DIDI',
               due: 'Corte 5 ago',
               used: '$2,150',
-              min: 'Mín. $340',
-              accent: 'border-l-violet-400/60',
+              limit: 'de $8,000',
+              min: 'Mínimo $340',
+              usedPct: 27,
+              accent: 'from-[#ea580c]/30 to-[#ea580c]/5',
             },
           ].map((card) => (
             <div
               key={card.name}
               className={cn(
-                'border border-white/10 border-l-[3px] bg-white/[0.03] px-3 py-3',
+                'rounded-xl border border-white/10 bg-linear-to-br p-3.5',
                 card.accent
               )}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-white/90">{card.name}</p>
-                  <p className="mt-0.5 text-[11px] text-white/40">{card.due}</p>
+                <div className="flex items-center gap-2">
+                  <WalletProviderIcon
+                    providerIconKey={card.providerIconKey}
+                    className="h-7 w-7"
+                    showTooltipLabel={false}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-white">{card.name}</p>
+                    <p className="text-[11px] text-white/45">{card.due}</p>
+                  </div>
                 </div>
-                <p className="font-mono text-sm font-bold tabular-nums text-white">
-                  {card.used}
-                </p>
+                <div className="text-right">
+                  <p className="font-mono text-sm font-bold tabular-nums text-white">
+                    {card.used}
+                  </p>
+                  <p className="text-[10px] text-white/40">{card.limit}</p>
+                </div>
               </div>
-              <p className="mt-2 text-[11px] text-white/45">{card.min}</p>
+              <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-black/30">
+                <div
+                  className="h-full rounded-full bg-white/80"
+                  style={{ width: `${card.usedPct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-white/55">{card.min}</p>
             </div>
           ))}
-          <div className="border border-white/10 bg-black/20 px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
-              Cuotas activas
-            </p>
-            <p className="mt-1 text-sm text-white/75">
-              Laptop · 4/12 · <span className="font-mono tabular-nums">$1,190</span>/mes
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (variant === 'wallets') {
-    return (
-      <div
-        className={cn('overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-left', className)}
-        role="img"
-        aria-label="Vista previa de billeteras y saldo disponible"
-      >
-        <div className="border-b border-white/10 px-5 py-3">
-          <p className="text-xs font-medium text-white/50">Billeteras</p>
-        </div>
-        <div className="space-y-3 p-5">
-          <div className="border border-white/10 border-l-[3px] border-l-emerald-500/60 bg-white/[0.03] px-3 py-3">
+          <div className="rounded-lg border border-white/10 border-l-[3px] border-l-violet-500/50 bg-white/[0.03] px-3 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-              Disponible
+              Cuota activa
             </p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
-              <AnimatedAmount value={18450} />
+            <p className="mt-1 text-sm text-white/80">
+              Laptop · 4/12 ·{' '}
+              <span className="font-mono font-semibold tabular-nums text-white">
+                $1,190
+              </span>
+              /mes
             </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {[
-              { name: 'BBVA Débito', amount: '$12,200.00' },
-              { name: 'Efectivo', amount: '$6,250.00' },
-            ].map((wallet) => (
-              <div
-                key={wallet.name}
-                className="border border-white/10 bg-white/[0.03] px-3 py-2.5"
-              >
-                <p className="truncate text-xs font-medium text-white/80">{wallet.name}</p>
-                <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
-                  {wallet.amount}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
     );
   }
 
-  // legacy fortnight / dashboard kept for compatibility
   return (
     <div
-      className={cn('overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-left', className)}
+      className={cn(
+        'overflow-hidden rounded-xl border border-[#0b1220]/10 bg-[#121212] text-left',
+        className
+      )}
       role="img"
-      aria-label="Vista previa del planificador por quincenas"
+      aria-label="Vista previa de MiCasa"
     >
-      <div className="border-b border-white/10 px-5 py-3">
-        <p className="text-xs font-medium text-white/50">Quincena · 1–15 jul</p>
-      </div>
+      <AppChrome title="MiCasa" />
       <div className="p-5">
-        <p className="font-mono text-xl font-bold tabular-nums text-emerald-400">$3,370.00</p>
+        <p className="font-mono text-xl font-bold tabular-nums text-emerald-400">
+          $3,370.00
+        </p>
       </div>
     </div>
   );

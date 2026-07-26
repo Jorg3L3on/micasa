@@ -39,6 +39,12 @@ const STEPS = [
 
 const HEADLINE_WORDS = ['Tu', 'quincena,', 'clara', 'de', 'punta', 'a', 'punta.'];
 
+const PROOF = [
+  'Hecho para quincenas mexicanas',
+  'Personal o casa compartida',
+  'Tarjetas, préstamos y proyección',
+] as const;
+
 const MagneticLink = ({
   children,
   className,
@@ -281,10 +287,10 @@ export const LandingPage = () => {
                   show: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-4 max-w-md text-pretty text-[0.95rem] leading-relaxed text-[#0b1220]/58 sm:mt-5 sm:text-lg"
+                className="mt-4 max-w-lg text-pretty text-[0.95rem] leading-relaxed text-[#0b1220]/58 sm:mt-5 sm:text-lg"
               >
-                Planifica ingresos, gastos y obligaciones por quincenas — el ritmo
-                real de cobrar y pagar en México.
+                Organiza ingresos, gastos y obligaciones al ritmo real de cobrar y
+                pagar en México: dos quincenas, un plan.
               </motion.p>
 
               <motion.div
@@ -303,6 +309,17 @@ export const LandingPage = () => {
                   Ya tengo cuenta
                 </MagneticLink>
               </motion.div>
+
+              <motion.p
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1 },
+                }}
+                transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.15 }}
+                className="mt-4 text-sm text-[#0b1220]/45"
+              >
+                Gratis · Sin tarjeta · Listo en minutos
+              </motion.p>
             </motion.div>
           </div>
 
@@ -327,6 +344,25 @@ export const LandingPage = () => {
           </div>
         </section>
 
+        {/* Quiet proof — after hero composition, one job */}
+        <section
+          className="relative z-10 border-y border-[#0b1220]/8 bg-white/40"
+          aria-label="Por qué MiCasa"
+        >
+          <Reveal>
+            <ul className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-6 text-sm text-[#0b1220]/55 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 md:px-8 md:py-7">
+              {PROOF.map((item) => (
+                <li
+                  key={item}
+                  className="font-[family-name:var(--font-landing-display)] text-[0.95rem] font-medium tracking-tight text-[#0b1220]/70 sm:text-base"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+        </section>
+
         <FortnightScrub />
 
         <section
@@ -343,14 +379,14 @@ export const LandingPage = () => {
                 Del plan al flujo real
               </h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-[#0b1220]/55">
-                Cada superficie cuenta una historia distinta: hacia dónde va tu
-                efectivo, y qué deuda ya está en el horizonte.
+                Las mismas superficies que usas en la app: liquidez hacia adelante y
+                crédito sin sorpresas de corte.
               </p>
             </Reveal>
 
             <div className="mt-14 space-y-16 md:space-y-24">
               <Reveal>
-                <div className="grid items-end gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
+                <div className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
                   <div className="max-w-md">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
                       Liquidez
@@ -359,8 +395,8 @@ export const LandingPage = () => {
                       Ve el valle antes de llegar a él
                     </h3>
                     <p className="mt-3 text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
-                      Proyección a 180 días con nómina, gastos recurrentes, tarjetas
-                      y préstamos — para saber cuándo apretar y cuándo sobra.
+                      Proyección a 180 días con nómina, gastos, tarjetas y préstamos —
+                      para saber cuándo apretar y cuándo sobra.
                     </p>
                   </div>
                   <ProductMock variant="liquidity" />
@@ -368,7 +404,7 @@ export const LandingPage = () => {
               </Reveal>
 
               <Reveal delay={0.06}>
-                <div className="grid items-end gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+                <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
                   <div className="order-2 lg:order-1">
                     <ProductMock variant="cards" />
                   </div>
@@ -458,23 +494,32 @@ export const LandingPage = () => {
                 }
                 transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
               />
-              <div className="relative mx-auto max-w-6xl">
-                <p className="font-[family-name:var(--font-landing-display)] text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-                  MiCasa
-                </p>
-                <h2 className="mt-5 max-w-xl font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] sm:text-3xl md:text-4xl">
-                  Empieza tu próxima quincena con claridad
-                </h2>
-                <p className="mt-4 max-w-md text-base leading-relaxed text-white/60">
-                  Sin tarjeta. Empiezas en minutos.
-                </p>
-                <div className="mt-9">
+              <div className="relative mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-xl">
+                  <p className="font-[family-name:var(--font-landing-display)] text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+                    MiCasa
+                  </p>
+                  <h2 className="mt-5 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] sm:text-3xl md:text-4xl">
+                    La próxima quincena, con el plan ya armado
+                  </h2>
+                  <p className="mt-4 text-base leading-relaxed text-white/60">
+                    Crea tu cuenta gratis. Sin tarjeta. En minutos estás en tu
+                    primera quincena.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Link
                     href="/register"
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-medium text-[#0b1220] transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   >
-                    Crear cuenta
+                    Crear cuenta gratis
                     <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-12 items-center justify-center rounded-md px-5 text-base font-medium text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  >
+                    Ya tengo cuenta
                   </Link>
                 </div>
               </div>
