@@ -3,11 +3,8 @@
 import { useRef } from 'react';
 import {
   motion,
-  useMotionValue,
-  useMotionValueEvent,
   useReducedMotion,
   useScroll,
-  useSpring,
   useTransform,
   type MotionValue,
 } from 'framer-motion';
@@ -72,34 +69,34 @@ export const FortnightScrub = () => {
     offset: ['start start', 'end end'],
   });
 
-  // Finish the morph before the section unpins so the end state is always seen
-  const rawProgress = useTransform(scrollYProgress, [0.05, 0.72], [0, 1]);
-  const progress = useSpring(rawProgress, {
-    stiffness: 180,
-    damping: 32,
-    mass: 0.25,
-  });
-
-  const balanceMv = useMotionValue<number>(FIRST.balance);
-  const paidMv = useMotionValue<number>(FIRST.paid);
-  const balanceText = useTransform(balanceMv, (v) => formatMoney(Math.round(v)));
-  const paidText = useTransform(paidMv, (v) => `${Math.round(v)}%`);
-  const paidWidth = useTransform(paidMv, (v) => `${v}%`);
-  const pendingWidth = useTransform(paidMv, (v) => `${100 - v}%`);
-  const trackWidth = useTransform(progress, (v) => `${v * 100}%`);
-  const firstOpacity = useTransform(progress, [0, 0.45, 1], [1, 0.35, 0.2]);
-  const secondOpacity = useTransform(progress, [0, 0.55, 1], [0.2, 0.5, 1]);
-  const firstListOpacity = useTransform(progress, [0, 0.42], [1, 0]);
-  const secondListOpacity = useTransform(progress, [0.38, 0.85], [0, 1]);
-  const activeLabel = useTransform(progress, (v) =>
-    v < 0.5 ? FIRST.title : SECOND.title
+  // Complete morph well before unpin so Segunda is always reached
+  const progress = useTransform(scrollYProgress, [0.04, 0.58], [0, 1]);
+  const discreteProgress = useTransform(progress, (v) =>
+    reduceMotion ? (v > 0.5 ? 1 : 0) : v
   );
 
-  useMotionValueEvent(progress, 'change', (latest) => {
-    const t = reduceMotion ? (latest > 0.5 ? 1 : 0) : latest;
-    balanceMv.set(FIRST.balance + (SECOND.balance - FIRST.balance) * t);
-    paidMv.set(FIRST.paid + (SECOND.paid - FIRST.paid) * t);
-  });
+  const balanceText = useTransform(discreteProgress, (t) =>
+    formatMoney(Math.round(FIRST.balance + (SECOND.balance - FIRST.balance) * t))
+  );
+  const paidText = useTransform(discreteProgress, (t) =>
+    `${Math.round(FIRST.paid + (SECOND.paid - FIRST.paid) * t)}%`
+  );
+  const paidWidth = useTransform(
+    discreteProgress,
+    (t) => `${FIRST.paid + (SECOND.paid - FIRST.paid) * t}%`
+  );
+  const pendingWidth = useTransform(
+    discreteProgress,
+    (t) => `${100 - (FIRST.paid + (SECOND.paid - FIRST.paid) * t)}%`
+  );
+  const trackWidth = useTransform(discreteProgress, (t) => `${t * 100}%`);
+  const firstOpacity = useTransform(discreteProgress, [0, 0.45, 1], [1, 0.35, 0.2]);
+  const secondOpacity = useTransform(discreteProgress, [0, 0.55, 1], [0.2, 0.5, 1]);
+  const firstListOpacity = useTransform(discreteProgress, [0, 0.4], [1, 0]);
+  const secondListOpacity = useTransform(discreteProgress, [0.35, 0.75], [0, 1]);
+  const activeLabel = useTransform(discreteProgress, (t) =>
+    t < 0.5 ? FIRST.title : SECOND.title
+  );
 
   return (
     <section
@@ -107,7 +104,7 @@ export const FortnightScrub = () => {
       className="relative z-10 border-t border-[#0b1220]/8"
       aria-labelledby="quincena-scrub-heading"
     >
-      <div className="h-[200vh] md:h-[220vh]">
+      <div className="h-[180vh] md:h-[200vh]">
         <div className="sticky top-[3.75rem] flex min-h-[calc(100svh-3.75rem)] items-center py-8 md:py-12">
           <div className="mx-auto w-full max-w-6xl px-5 sm:px-6 md:px-8">
             <div className="max-w-2xl">
@@ -215,7 +212,10 @@ const PeriodLists = ({
   opacity: MotionValue<number>;
   className?: string;
 }) => (
-  <motion.div style={{ opacity }} className={cn('grid gap-4 sm:grid-cols-2', className)}>
+  <motion.div
+    style={{ opacity }}
+    className={cn('grid gap-4 sm:grid-cols-2', className)}
+  >
     <div className="space-y-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300/80">
         Ingresos
