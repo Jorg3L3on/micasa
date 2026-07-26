@@ -69,131 +69,143 @@ export const FortnightScrub = () => {
     offset: ['start start', 'end end'],
   });
 
-  // Complete morph well before unpin so Segunda is always reached
-  const progress = useTransform(scrollYProgress, [0.04, 0.58], [0, 1]);
-  const discreteProgress = useTransform(progress, (v) =>
-    reduceMotion ? (v > 0.5 ? 1 : 0) : v
-  );
+  const progress = useTransform(scrollYProgress, (latest) => {
+    if (reduceMotion) return latest > 0.45 ? 1 : 0;
+    // Map most of the pin distance into a full 0→1 morph
+    const start = 0.06;
+    const end = 0.62;
+    if (latest <= start) return 0;
+    if (latest >= end) return 1;
+    return (latest - start) / (end - start);
+  });
 
-  const balanceText = useTransform(discreteProgress, (t) =>
+  const balanceText = useTransform(progress, (t) =>
     formatMoney(Math.round(FIRST.balance + (SECOND.balance - FIRST.balance) * t))
   );
-  const paidText = useTransform(discreteProgress, (t) =>
+  const paidText = useTransform(progress, (t) =>
     `${Math.round(FIRST.paid + (SECOND.paid - FIRST.paid) * t)}%`
   );
   const paidWidth = useTransform(
-    discreteProgress,
+    progress,
     (t) => `${FIRST.paid + (SECOND.paid - FIRST.paid) * t}%`
   );
   const pendingWidth = useTransform(
-    discreteProgress,
+    progress,
     (t) => `${100 - (FIRST.paid + (SECOND.paid - FIRST.paid) * t)}%`
   );
-  const trackWidth = useTransform(discreteProgress, (t) => `${t * 100}%`);
-  const firstOpacity = useTransform(discreteProgress, [0, 0.45, 1], [1, 0.35, 0.2]);
-  const secondOpacity = useTransform(discreteProgress, [0, 0.55, 1], [0.2, 0.5, 1]);
-  const firstListOpacity = useTransform(discreteProgress, [0, 0.4], [1, 0]);
-  const secondListOpacity = useTransform(discreteProgress, [0.35, 0.75], [0, 1]);
-  const activeLabel = useTransform(discreteProgress, (t) =>
+  const trackWidth = useTransform(progress, (t) => `${t * 100}%`);
+  const firstOpacity = useTransform(progress, [0, 0.45, 1], [1, 0.35, 0.2]);
+  const secondOpacity = useTransform(progress, [0, 0.55, 1], [0.2, 0.5, 1]);
+  const firstListOpacity = useTransform(progress, [0, 0.38], [1, 0]);
+  const secondListOpacity = useTransform(progress, [0.32, 0.7], [0, 1]);
+  const activeLabel = useTransform(progress, (t) =>
     t < 0.5 ? FIRST.title : SECOND.title
   );
 
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 border-t border-[#0b1220]/8"
+      className="relative z-10 h-[220vh] border-t border-[#0b1220]/8"
       aria-labelledby="quincena-scrub-heading"
     >
-      <div className="h-[180vh] md:h-[200vh]">
-        <div className="sticky top-[3.75rem] flex min-h-[calc(100svh-3.75rem)] items-center py-8 md:py-12">
-          <div className="mx-auto w-full max-w-6xl px-5 sm:px-6 md:px-8">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
-                El ritmo MiCasa
-              </p>
-              <h2
-                id="quincena-scrub-heading"
-                className="mt-3 font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.6rem]"
-              >
-                Desliza el mes: dos quincenas, una claridad
-              </h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
-                Sigue bajando — el balance y los gastos cruzan del 1–15 al 16–fin.
-              </p>
-            </div>
-
-            <div className="mt-7 flex items-center gap-3" aria-hidden>
-              <motion.span
-                style={{ opacity: firstOpacity }}
-                className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
-              >
-                {FIRST.label}
-              </motion.span>
-              <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-[#0b1220]/10">
-                <motion.div
-                  className="absolute inset-y-0 left-0 rounded-full bg-[#2E8DF5]"
-                  style={{ width: trackWidth }}
-                />
-              </div>
-              <motion.span
-                style={{ opacity: secondOpacity }}
-                className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
-              >
-                {SECOND.label}
-              </motion.span>
-            </div>
-
-            <div
-              className="mt-5 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)]"
-              role="img"
-              aria-label="Comparación animada entre primera y segunda quincena"
+      <div className="sticky top-[3.75rem] h-[calc(100svh-3.75rem)] overflow-y-auto overscroll-contain">
+        <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-center px-5 py-8 sm:px-6 md:px-8 md:py-10">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
+              El ritmo MiCasa
+            </p>
+            <h2
+              id="quincena-scrub-heading"
+              className="mt-3 font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.6rem]"
             >
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3 sm:px-8">
-                <motion.span className="text-xs font-medium text-white/70">
-                  {activeLabel}
-                </motion.span>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40">
-                    Pagado
-                  </p>
-                  <motion.p className="font-mono text-sm font-semibold tabular-nums text-white">
-                    {paidText}
-                  </motion.p>
+              Desliza el mes: dos quincenas, una claridad
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
+              Sigue bajando — el balance y los gastos cruzan del 1–15 al 16–fin.
+            </p>
+          </div>
+
+          <div className="mt-6 flex items-center gap-3" aria-hidden>
+            <motion.span
+              style={{ opacity: firstOpacity }}
+              className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
+            >
+              {FIRST.label}
+            </motion.span>
+            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-[#0b1220]/10">
+              <motion.div
+                className="absolute inset-y-0 left-0 rounded-full bg-[#2E8DF5]"
+                style={{ width: trackWidth }}
+              />
+            </div>
+            <motion.span
+              style={{ opacity: secondOpacity }}
+              className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
+            >
+              {SECOND.label}
+            </motion.span>
+          </div>
+
+          <div
+            className="mt-5 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)]"
+            role="img"
+            aria-label="Comparación animada entre primera y segunda quincena"
+            data-scrub-panel
+          >
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3 sm:px-8">
+              <motion.span
+                className="text-xs font-medium text-white/70"
+                data-scrub-title
+              >
+                {activeLabel}
+              </motion.span>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-wider text-white/40">
+                  Pagado
+                </p>
+                <motion.p
+                  className="font-mono text-sm font-semibold tabular-nums text-white"
+                  data-scrub-paid
+                >
+                  {paidText}
+                </motion.p>
+              </div>
+            </div>
+
+            <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+              <div className="border-b border-white/10 p-5 sm:p-7 lg:border-b-0 lg:border-r">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
+                  Balance quincena
+                </p>
+                <motion.p
+                  className="mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl"
+                  data-scrub-balance
+                >
+                  {balanceText}
+                </motion.p>
+                <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <motion.div
+                    className="h-full bg-emerald-500"
+                    style={{ width: paidWidth }}
+                  />
+                  <motion.div
+                    className="h-full bg-amber-400"
+                    style={{ width: pendingWidth }}
+                  />
                 </div>
               </div>
 
-              <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-                <div className="border-b border-white/10 p-5 sm:p-7 lg:border-b-0 lg:border-r">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
-                    Balance quincena
-                  </p>
-                  <motion.p className="mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl">
-                    {balanceText}
-                  </motion.p>
-                  <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <motion.div
-                      className="h-full bg-emerald-500"
-                      style={{ width: paidWidth }}
-                    />
-                    <motion.div
-                      className="h-full bg-amber-400"
-                      style={{ width: pendingWidth }}
-                    />
-                  </div>
-                </div>
-
-                <div className="relative min-h-[14rem] p-5 sm:min-h-[15rem] sm:p-6">
-                  <PeriodLists
-                    period={FIRST}
-                    opacity={firstListOpacity}
-                    className="absolute inset-0 p-5 sm:p-6"
-                  />
-                  <PeriodLists
-                    period={SECOND}
-                    opacity={secondListOpacity}
-                    className="absolute inset-0 p-5 sm:p-6"
-                  />
-                </div>
+              <div className="relative min-h-[13.5rem] p-5 sm:min-h-[14.5rem] sm:p-6">
+                <PeriodLists
+                  period={FIRST}
+                  opacity={firstListOpacity}
+                  className="absolute inset-0 p-5 sm:p-6"
+                />
+                <PeriodLists
+                  period={SECOND}
+                  opacity={secondListOpacity}
+                  className="absolute inset-0 p-5 sm:p-6"
+                />
               </div>
             </div>
           </div>
