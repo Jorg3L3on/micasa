@@ -167,7 +167,9 @@ export const LandingPage = () => {
   return (
     <div
       className={cn(
-        'relative min-h-svh overflow-x-hidden bg-[#eef3f8] text-[#0b1220]',
+        // overflow-x-clip: hide hero bleed without creating a scrollport
+        // (overflow-x-hidden breaks position:sticky for the fortnight scrub).
+        'relative min-h-svh overflow-x-clip bg-[#eef3f8] text-[#0b1220]',
         'font-[family-name:var(--font-landing-sans)]'
       )}
     >
