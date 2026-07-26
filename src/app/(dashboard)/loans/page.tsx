@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -281,20 +281,29 @@ const mapLoanFormIssues = (
   return errors;
 };
 
+/** FieldError / FormMessage-compatible validation error renderer. */
+function FieldError({
+  id,
+  children,
+}: {
+  id?: string;
+  children?: ReactNode;
+}) {
+  if (!children) return null;
+  return (
+    <p id={id} className="text-xs text-destructive" role="alert">
+      {children}
+    </p>
+  );
+}
+
 const LoanFieldErrorMessage = ({
   id,
   message,
 }: {
   id?: string;
   message?: string | null;
-}) => {
-  if (!message) return null;
-  return (
-    <p id={id} className="text-xs text-destructive" role="alert">
-      {message}
-    </p>
-  );
-};
+}) => <FieldError id={id}>{message}</FieldError>;
 
 const mapLoanEditError = (message: string): LoanEditErrors => {
   const normalized = message.toLowerCase();
@@ -2307,13 +2316,22 @@ export default function LoansPage() {
                                               aria-invalid={Boolean(
                                                 paymentActionErrors.paidAt,
                                               )}
+                                              aria-describedby={
+                                                paymentActionErrors.paidAt
+                                                  ? `loan-payment-${payment.id}-paid-at-error`
+                                                  : undefined
+                                              }
                                               className={cn(
                                                 paymentActionErrors.paidAt &&
                                                   'border-destructive focus-visible:ring-destructive/30',
                                               )}
                                             />
                                             {paymentActionErrors.paidAt ? (
-                                              <p className="text-xs text-destructive">
+                                              <p
+                                                id={`loan-payment-${payment.id}-paid-at-error`}
+                                                className="text-xs text-destructive"
+                                                role="alert"
+                                              >
                                                 {paymentActionErrors.paidAt}
                                               </p>
                                             ) : null}

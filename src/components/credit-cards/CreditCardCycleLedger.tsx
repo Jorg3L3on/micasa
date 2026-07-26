@@ -247,10 +247,10 @@ export const CreditCardCycleLedger = ({
                     const { purchase } = entry;
                     const msi = isInstallmentPurchase(purchase);
                     return (
-                      <li key={entry.id}>
+                      <li key={entry.id} className="flex items-stretch gap-1 rounded-xl">
                         <Link
                           href={getFortnightHref(purchase, ownerQueryString)}
-                          className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40"
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40"
                         >
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
                             <ArrowUpRight className="h-4 w-4" aria-hidden />
@@ -277,21 +277,19 @@ export const CreditCardCycleLedger = ({
                             <p className="font-mono text-sm font-semibold tabular-nums text-destructive">
                               −{formatCurrency(purchase.amount)}
                             </p>
-                            {msi && onGoToCuotas ? (
-                              <button
-                                type="button"
-                                className="text-[10px] text-primary hover:underline"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onGoToCuotas();
-                                }}
-                              >
-                                Ver en Cuotas
-                              </button>
-                            ) : null}
                           </div>
                         </Link>
+                        {msi && onGoToCuotas ? (
+                          <button
+                            type="button"
+                            className="shrink-0 self-center px-2 text-[10px] text-primary hover:underline"
+                            onClick={() => {
+                              onGoToCuotas();
+                            }}
+                          >
+                            Ver en Cuotas
+                          </button>
+                        ) : null}
                       </li>
                     );
                   }

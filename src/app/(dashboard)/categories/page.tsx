@@ -192,7 +192,7 @@ export default function CategoriesPage() {
           onClick={() => setCreateDialogOpen(true)}
           aria-label="Agregar categoría"
         >
-          <Plus className="h-4 w-4" aria-hidden />
+          <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
           Agregar categoría
         </Button>
       </div>

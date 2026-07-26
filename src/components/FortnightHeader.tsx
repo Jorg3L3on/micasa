@@ -85,6 +85,7 @@ export default function FortnightHeader({
                   strokeWidth={2.25}
                   aria-hidden
                 />
+                <span className="sr-only">Quincena anterior</span>
               </Link>
             </Button>
           </TooltipTrigger>
@@ -104,6 +105,7 @@ export default function FortnightHeader({
                   strokeWidth={2.25}
                   aria-hidden
                 />
+                <span className="sr-only">Quincena siguiente</span>
               </Link>
             </Button>
           </TooltipTrigger>

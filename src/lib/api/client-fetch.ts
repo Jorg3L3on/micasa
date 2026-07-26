@@ -69,7 +69,7 @@ export async function clientFetchFromApi<T>(
   });
 
   if (!res.ok) {
-    let errorMessage = `No se pudo completar la solicitud (${endpoint})`;
+    let failureReason = `No se pudo completar la solicitud (${endpoint})`;
     let errorDetails: ApiErrorDetail[] | undefined;
     let apiCode: string | undefined;
     try {
@@ -78,12 +78,12 @@ export async function clientFetchFromApi<T>(
         apiCode = error.code;
       }
       if (error.error) {
-        errorMessage = error.error;
+        failureReason = error.error;
       }
       if (error.details && Array.isArray(error.details)) {
         errorDetails = error.details;
         if (errorDetails && errorDetails.length > 0) {
-          errorMessage = error.details
+          failureReason = error.details
             .map((detail) =>
               typeof detail === 'string'
                 ? detail
@@ -95,7 +95,7 @@ export async function clientFetchFromApi<T>(
     } catch {
       // If JSON parsing fails, use default message
     }
-    const error = new Error(errorMessage) as ClientApiError;
+    const error = new Error(failureReason) as ClientApiError;
     error.status = res.status;
     error.details = errorDetails;
     error.code = apiCode;

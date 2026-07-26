@@ -53,6 +53,8 @@ export default function BudgetTemplatesPage() {
   const [selected, setSelected] = useState<BudgetListItem | null>(null);
   const [nameFilter, setNameFilter] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingAllocations, setIsUpdatingAllocations] = useState(false);
   const [reactivatingId, setReactivatingId] = useState<number | null>(null);
 
   const filteredTemplates = useMemo(() => {
@@ -106,6 +108,7 @@ export default function BudgetTemplatesPage() {
   const handleUpdateTemplate = async (values: Step1Values) => {
     if (!selected) return;
     try {
+      setIsUpdating(true);
       setFormError(null);
       await updateBudgetTemplate(selected.id, values, context);
       toast.success('Plantilla actualizada');
@@ -116,12 +119,15 @@ export default function BudgetTemplatesPage() {
       const message = err instanceof Error ? err.message : 'Error al actualizar plantilla';
       setFormError(message);
       throw err;
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleUpdateAllocations = async (allocations: Step2Values['allocations']) => {
     if (!selected) return;
     try {
+      setIsUpdatingAllocations(true);
       setFormError(null);
       await updateBudgetAllocations(selected.id, allocations, context);
       toast.success('Asignaciones actualizadas');
@@ -132,6 +138,8 @@ export default function BudgetTemplatesPage() {
       const message = err instanceof Error ? err.message : 'Error al actualizar asignaciones';
       setFormError(message);
       throw err;
+    } finally {
+      setIsUpdatingAllocations(false);
     }
   };
 
@@ -412,8 +420,9 @@ export default function BudgetTemplatesPage() {
               if (!open) { setSelected(null); setFormError(null); }
             }}
             budget={selected}
-            onSubmit={handleUpdateTemplate}
+            onSave={handleUpdateTemplate}
             error={formError && editDialogOpen ? formError : null}
+            disabled={isUpdating}
           />
 
           <BudgetAllocationsDialog
@@ -423,8 +432,9 @@ export default function BudgetTemplatesPage() {
               if (!open) { setSelected(null); setFormError(null); }
             }}
             budget={selected}
-            onSubmit={handleUpdateAllocations}
+            onSave={handleUpdateAllocations}
             error={formError && allocDialogOpen ? formError : null}
+            disabled={isUpdatingAllocations}
           />
 
           <ConfirmDeleteDialog

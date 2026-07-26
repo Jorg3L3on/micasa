@@ -408,12 +408,13 @@ export default function EditIncomeTemplatePage() {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-base font-medium">
-                        Activo
-                      </FormLabel>
+                            aria-label="Activo"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-base font-medium">
+                            Activo
+                          </FormLabel>
                       <FormDescription>
                         Las plantillas activas se usan al crear un mes
                       </FormDescription>

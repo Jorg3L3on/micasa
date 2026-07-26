@@ -6,13 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights, getCreatedMonths } from '@/lib/api/fortnights';
@@ -153,39 +146,36 @@ export default function CreateMonthForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor={selectId} className="text-sm font-medium">
           Mes a crear
         </Label>
-        <Select
+        <select
+          id={selectId}
+          name="month"
           value={selectedKey}
-          onValueChange={(value) => {
-            setSelectedKey(value);
+          onChange={(event) => {
+            setSelectedKey(event.target.value);
             setValidationError(null);
           }}
           disabled={submitting || loadingMonths}
           required
+          aria-invalid={Boolean(validationError)}
+          aria-describedby={
+            validationError ? `${idPrefix}-validation-error` : undefined
+          }
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-xs"
         >
-          <SelectTrigger
-            id={selectId}
-            aria-label="Selecciona mes a crear"
-            aria-invalid={Boolean(validationError)}
-            aria-describedby={
-              validationError ? `${idPrefix}-validation-error` : undefined
-            }
-            className="w-full sm:max-w-xs"
-          >
-            <SelectValue placeholder={getSelectPlaceholder()} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <option value="" disabled>
+            {getSelectPlaceholder()}
+          </option>
+          {availableOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
         {validationError ? (
           <p
             id={`${idPrefix}-validation-error`}

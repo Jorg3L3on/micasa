@@ -211,7 +211,12 @@ export const WalletMovementsFeed = ({
                 {formatDate(date)}
               </p>
               <ul className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-muted/10 dark:bg-muted/5">
-                {rows.map((m) => {
+                {rows.length === 0 ? (
+                  <li className="px-3 py-4 text-center text-sm text-muted-foreground">
+                    Sin movimientos en esta fecha.
+                  </li>
+                ) : (
+                  rows.map((m) => {
                   const isIn = m.direction === 'in';
                   const fortnightLink =
                     m.fortnightYear != null &&
@@ -272,7 +277,8 @@ export const WalletMovementsFeed = ({
                       </span>
                     </li>
                   );
-                })}
+                })
+                )}
               </ul>
             </section>
           ))}

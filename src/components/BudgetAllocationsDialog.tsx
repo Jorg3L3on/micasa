@@ -43,8 +43,9 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   budget: BudgetListItem;
-  onSubmit: (allocations: Step2Values['allocations']) => Promise<void>;
+  onSave: (allocations: Step2Values['allocations']) => Promise<void>;
   error?: string | null;
+  disabled?: boolean;
 };
 
 function AllocationSummary({
@@ -104,8 +105,9 @@ export default function BudgetAllocationsDialog({
   open,
   onOpenChange,
   budget,
-  onSubmit,
+  onSave,
   error,
+  disabled = false,
 }: Props) {
   const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
@@ -183,7 +185,7 @@ export default function BudgetAllocationsDialog({
       });
       return;
     }
-    await onSubmit(data.allocations);
+    await onSave(data.allocations);
     onOpenChange(false);
   });
 
@@ -390,11 +392,12 @@ export default function BudgetAllocationsDialog({
                 disabled={
                   !isFullyAllocated ||
                   form.formState.isSubmitting ||
+                  disabled ||
                   loadingOptions ||
                   Boolean(optionsError)
                 }
               >
-                {form.formState.isSubmitting ? (
+                {form.formState.isSubmitting || disabled ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
                     Guardando…
