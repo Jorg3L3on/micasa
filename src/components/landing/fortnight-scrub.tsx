@@ -105,28 +105,31 @@ export const FortnightScrub = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 h-[200vh] border-t border-[#0b1220]/8 md:h-[220vh]"
+      className="relative z-10 h-[160vh] border-t border-[#0b1220]/8 md:h-[180vh]"
       aria-labelledby="quincena-scrub-heading"
     >
-      {/* Sticky pin only — no nested overflow scroll (that trapped page scroll). */}
-      <div className="sticky top-[3.75rem] flex min-h-[calc(100svh-3.75rem)] items-center">
-        <div className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10">
+      {/*
+        Exact viewport pin + overflow-hidden (not overflow-y-auto): page scroll
+        drives the scrub. Nested overflow-y-auto/overscroll-contain trapped wheel.
+      */}
+      <div className="sticky top-[3.75rem] flex h-[calc(100svh-3.75rem)] items-center overflow-hidden">
+        <div className="mx-auto w-full max-w-6xl px-5 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
               El ritmo MiCasa
             </p>
             <h2
               id="quincena-scrub-heading"
-              className="mt-3 font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.6rem]"
+              className="mt-2 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:mt-3 sm:text-4xl md:text-[2.6rem]"
             >
               Desliza el mes: dos quincenas, una claridad
             </h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:mt-3 sm:text-base">
               Sigue bajando — el balance y los gastos cruzan del 1–15 al 16–fin.
             </p>
           </div>
 
-          <div className="mt-5 flex items-center gap-3 sm:mt-6" aria-hidden>
+          <div className="mt-4 flex items-center gap-3 sm:mt-5" aria-hidden>
             <motion.span
               style={{ opacity: firstOpacity }}
               className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
@@ -148,7 +151,7 @@ export const FortnightScrub = () => {
           </div>
 
           <div
-            className="mt-4 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)] sm:mt-5"
+            className="mt-4 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)]"
             role="img"
             aria-label="Comparación animada entre primera y segunda quincena"
             data-scrub-panel
@@ -174,7 +177,7 @@ export const FortnightScrub = () => {
             </div>
 
             <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-              <div className="border-b border-white/10 p-5 sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="border-b border-white/10 p-4 sm:p-7 lg:border-b-0 lg:border-r">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
                   Balance quincena
                 </p>
@@ -196,16 +199,16 @@ export const FortnightScrub = () => {
                 </div>
               </div>
 
-              <div className="relative min-h-[13.5rem] p-5 sm:min-h-[14.5rem] sm:p-6">
+              <div className="relative min-h-[11.5rem] p-4 sm:min-h-[14.5rem] sm:p-6">
                 <PeriodLists
                   period={FIRST}
                   opacity={firstListOpacity}
-                  className="absolute inset-0 p-5 sm:p-6"
+                  className="absolute inset-0 p-4 sm:p-6"
                 />
                 <PeriodLists
                   period={SECOND}
                   opacity={secondListOpacity}
-                  className="absolute inset-0 p-5 sm:p-6"
+                  className="absolute inset-0 p-4 sm:p-6"
                 />
               </div>
             </div>
