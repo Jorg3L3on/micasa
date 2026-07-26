@@ -105,11 +105,12 @@ export const FortnightScrub = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 h-[220vh] border-t border-[#0b1220]/8"
+      className="relative z-10 h-[200vh] border-t border-[#0b1220]/8 md:h-[220vh]"
       aria-labelledby="quincena-scrub-heading"
     >
-      <div className="sticky top-[3.75rem] h-[calc(100svh-3.75rem)] overflow-y-auto overscroll-contain">
-        <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-center px-5 py-8 sm:px-6 md:px-8 md:py-10">
+      {/* Sticky pin only — no nested overflow scroll (that trapped page scroll). */}
+      <div className="sticky top-[3.75rem] flex min-h-[calc(100svh-3.75rem)] items-center">
+        <div className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
               El ritmo MiCasa
@@ -125,7 +126,7 @@ export const FortnightScrub = () => {
             </p>
           </div>
 
-          <div className="mt-6 flex items-center gap-3" aria-hidden>
+          <div className="mt-5 flex items-center gap-3 sm:mt-6" aria-hidden>
             <motion.span
               style={{ opacity: firstOpacity }}
               className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
@@ -147,7 +148,7 @@ export const FortnightScrub = () => {
           </div>
 
           <div
-            className="mt-5 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)]"
+            className="mt-4 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)] sm:mt-5"
             role="img"
             aria-label="Comparación animada entre primera y segunda quincena"
             data-scrub-panel
