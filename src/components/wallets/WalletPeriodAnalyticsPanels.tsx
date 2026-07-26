@@ -211,7 +211,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   </p>
                 </div>
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
-                  <BarChart3 className="h-4 w-4" aria-hidden />
+                  <BarChart3 className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               </div>
               {topCategories.length > 0 ? (

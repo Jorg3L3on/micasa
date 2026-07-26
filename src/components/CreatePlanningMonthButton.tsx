@@ -89,8 +89,7 @@ export default function CreatePlanningMonthButton({
             className={cn(
               'h-4 w-4 animate-spin',
               variant === 'compact' && 'text-violet-600 dark:text-violet-400',
-            )}
-          />
+            )} data-icon="inline-start" />
         ) : (
           <CalendarPlus
             className={cn(

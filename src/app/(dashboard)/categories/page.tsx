@@ -157,7 +157,7 @@ export default function CategoriesPage() {
                 onClick={() => openEditDialog(category)}
                 aria-label={`Editar ${category.name}`}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4" data-icon="inline-start" />
               </Button>
               <Button
                 variant="ghost"
@@ -165,7 +165,7 @@ export default function CategoriesPage() {
                 onClick={() => openDeleteDialog(category)}
                 aria-label={`Eliminar ${category.name}`}
               >
-                <Trash2 className="h-4 w-4 text-destructive" />
+                <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
               </Button>
             </div>
           );

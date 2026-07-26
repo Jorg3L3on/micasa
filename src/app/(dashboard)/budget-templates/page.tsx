@@ -236,7 +236,7 @@ export default function BudgetTemplatesPage() {
                   aria-busy={reactivatingId === tpl.id}
                 >
                   {reactivatingId === tpl.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                   ) : (
                     <RotateCcw className="h-4 w-4" />
                   )}
@@ -250,7 +250,7 @@ export default function BudgetTemplatesPage() {
                     onClick={() => { setSelected(tpl); setFormError(null); setEditDialogOpen(true); }}
                     aria-label={`Editar ${tpl.name}`}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" data-icon="inline-start" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -259,7 +259,7 @@ export default function BudgetTemplatesPage() {
                     onClick={() => { setSelected(tpl); setFormError(null); setAllocDialogOpen(true); }}
                     aria-label={`Ver asignaciones de ${tpl.name}`}
                   >
-                    <LayoutList className="h-4 w-4" />
+                    <LayoutList className="h-4 w-4" data-icon="inline-start" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -268,7 +268,7 @@ export default function BudgetTemplatesPage() {
                     onClick={() => { setSelected(tpl); setError(null); setDeleteDialogOpen(true); }}
                     aria-label={`Desactivar ${tpl.name}`}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
                   </Button>
                 </>
               )}

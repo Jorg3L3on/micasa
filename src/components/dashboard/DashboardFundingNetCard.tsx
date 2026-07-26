@@ -58,14 +58,14 @@ export default function DashboardFundingNetCard({
                 className="h-9 w-9 rounded-lg border border-border/60 bg-muted/20"
                 aria-label="Ver desglose de efectivo neto en cuentas"
               >
-                <Info className="h-4 w-4" aria-hidden />
+                <Info className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </Button>
             </DialogTrigger>
             <DialogContent className="border-emerald-500/30 sm:max-w-2xl">
               <DialogHeader>
                 <div className="flex items-center gap-2">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
-                    <Banknote className="h-4 w-4" aria-hidden />
+                    <Banknote className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   </span>
                   <DialogTitle className="text-sm font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     Desglose de billeteras vs pendiente

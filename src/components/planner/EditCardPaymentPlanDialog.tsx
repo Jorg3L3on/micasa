@@ -30,7 +30,7 @@ import {
 type EditCardPaymentPlanDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CardPaymentPlanFormValues) => Promise<void>;
+  onSave: (data: CardPaymentPlanFormValues) => Promise<void>;
   onClearPlan?: () => Promise<void>;
   walletName: string;
   fortnightLabel: string;
@@ -44,7 +44,7 @@ type EditCardPaymentPlanDialogProps = {
 export const EditCardPaymentPlanDialog = ({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   onClearPlan,
   walletName,
   fortnightLabel,
@@ -69,7 +69,7 @@ export const EditCardPaymentPlanDialog = ({
 
   const handleSubmit = async (data: CardPaymentPlanFormValues) => {
     try {
-      await onSubmit(data);
+      await onSave(data);
       onOpenChange(false);
     } catch {
       // Parent sets error; keep dialog open so the user can fix it.

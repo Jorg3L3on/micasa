@@ -183,7 +183,7 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
                   }}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border">
-                    <Home className="size-3.5 shrink-0" />
+                    <Home className="size-3.5 shrink-0" data-icon="inline-start" />
                   </div>
                   {house.name}
                 </DropdownMenuItem>
@@ -198,7 +198,7 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
                 onClick={handleCreateHouse}
               >
                 <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" />
+                  <Plus className="size-4" data-icon="inline-start" />
                 </div>
                 <div className="text-muted-foreground font-medium">
                   Crear casa

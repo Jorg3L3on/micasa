@@ -466,7 +466,7 @@ const FortnightCardPaymentsPanel = ({
                           onClick={() => handleOpenPlanDialog(item)}
                           aria-label={`Editar pago planeado: ${item.walletName}`}
                         >
-                          <Pencil className="size-3.5" aria-hidden />
+                          <Pencil className="size-3.5" aria-hidden data-icon="inline-start" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={6}>
@@ -499,10 +499,9 @@ const FortnightCardPaymentsPanel = ({
                             {payingWalletId === item.walletId ? (
                               <Loader2
                                 className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden
-                              />
+                                aria-hidden data-icon="inline-start" />
                             ) : (
-                              <Banknote className="size-3.5" aria-hidden />
+                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
                             )}
                           </Button>
                         </span>
@@ -542,7 +541,7 @@ const FortnightCardPaymentsPanel = ({
               setPlanError(null);
             }
           }}
-          onSubmit={handleSavePlan}
+          onSave={handleSavePlan}
           onClearPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

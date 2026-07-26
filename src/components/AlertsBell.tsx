@@ -222,7 +222,7 @@ export function AlertsBell() {
         tabIndex={0}
         disabled
       >
-        <Bell className="size-5 opacity-60" aria-hidden />
+        <Bell className="size-5 opacity-60" aria-hidden data-icon="inline-start" />
       </Button>
     );
   }
@@ -237,7 +237,7 @@ export function AlertsBell() {
           aria-label="Alertas"
           tabIndex={0}
         >
-          <Bell className="size-5" aria-hidden />
+          <Bell className="size-5" aria-hidden data-icon="inline-start" />
           {unseenCount > 0 && (
             <span
               className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground"
@@ -259,7 +259,7 @@ export function AlertsBell() {
         <div className="p-1">
           {loading && !data && (
             <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
+              <Loader2 className="size-4 animate-spin" aria-hidden data-icon="inline-start" />
               <span className="text-sm">Cargando…</span>
             </div>
           )}
@@ -316,7 +316,7 @@ export function AlertsBell() {
                       dismissAlert(id);
                     }}
                   >
-                    <X className="size-3.5" aria-hidden />
+                    <X className="size-3.5" aria-hidden data-icon="inline-start" />
                   </Button>
                 </div>
               );

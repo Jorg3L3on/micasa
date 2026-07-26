@@ -97,13 +97,13 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
             </span>
             {totals.items_count > 0 && cart.status === 'BOUGHT' ? (
               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" />
+                <CheckCircle2 className="h-3 w-3" data-icon="inline-start" />
                 Completado
               </span>
             ) : null}
             {totals.items_count > 0 && cart.status !== 'BOUGHT' ? (
               <span className="inline-flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" />
+                <CheckCircle2 className="h-3 w-3" data-icon="inline-start" />
                 {totals.checked_count}/{totals.items_count}
               </span>
             ) : null}

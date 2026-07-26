@@ -23,8 +23,7 @@ export function MonthlyNavNextLink({ href, label }: MonthlyNavNextLinkProps) {
             <ChevronRight
               className="size-5 shrink-0"
               strokeWidth={2.25}
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-end" />
             <span className="sr-only">Ir al mes siguiente: {label}</span>
           </Link>
         </Button>

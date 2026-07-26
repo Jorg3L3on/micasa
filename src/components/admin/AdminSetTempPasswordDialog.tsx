@@ -119,7 +119,11 @@ export const AdminSetTempPasswordDialog = ({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button variant="outline" className="h-9 gap-2 rounded-xl">
-            <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            <KeyRound
+              className="h-3.5 w-3.5"
+              aria-hidden
+              data-icon="inline-start"
+            />
             Contraseña temporal
           </Button>
         </DialogTrigger>
@@ -135,6 +139,7 @@ export const AdminSetTempPasswordDialog = ({
             <form
               onSubmit={form.handleSubmit(handleSubmitForm)}
               className="space-y-4"
+              aria-busy={submitting}
             >
               <FormField
                 control={form.control}
@@ -180,10 +185,17 @@ export const AdminSetTempPasswordDialog = ({
                   type="button"
                   variant="ghost"
                   onClick={() => handleOpenChange(false)}
+                  disabled={submitting}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Continuar</Button>
+                <Button
+                  type="submit"
+                  disabled={submitting || form.formState.isSubmitting}
+                  aria-busy={submitting || form.formState.isSubmitting}
+                >
+                  Continuar
+                </Button>
               </DialogFooter>
             </form>
           </Form>

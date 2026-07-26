@@ -127,7 +127,7 @@ function MonthPicker({
         onClick={prev}
         aria-label="Mes anterior"
       >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
+        <ChevronLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />
       </Button>
       <span className="min-w-32 text-center text-sm font-medium tabular-nums" aria-live="polite">
         {MONTH_NAMES[month - 1]} {year}
@@ -140,7 +140,7 @@ function MonthPicker({
         disabled={isCurrentMonth}
         aria-label="Mes siguiente"
       >
-        <ChevronRight className="h-4 w-4" aria-hidden />
+        <ChevronRight className="h-4 w-4" aria-hidden data-icon="inline-end" />
       </Button>
     </div>
   );
@@ -265,8 +265,7 @@ function PeriodSummary({
               'h-4 w-4 transition-transform duration-200 ease-out motion-reduce:transition-none',
               expanded && 'rotate-180',
             )}
-            aria-hidden
-          />
+            aria-hidden data-icon="inline-end" />
         </Button>
       </div>
 

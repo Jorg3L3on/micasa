@@ -186,7 +186,11 @@ export const CreditCardCycleLedger = ({
                   className="h-9 gap-1.5 rounded-xl"
                   aria-label="Filtrar movimientos"
                 >
-                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+                  <MoreHorizontal
+                    className="h-4 w-4"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                   Filtros
                 </Button>
               </DropdownMenuTrigger>
@@ -363,7 +367,7 @@ export const CreditCardCycleLedger = ({
           className="h-9 flex-1 rounded-xl"
           onClick={onRegisterPurchase}
         >
-          <Wallet className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+          <Wallet className="mr-1.5 h-3.5 w-3.5" aria-hidden data-icon="inline-start" />
           Compra
         </Button>
         <Button

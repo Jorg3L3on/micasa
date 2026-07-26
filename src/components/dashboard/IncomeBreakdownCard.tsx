@@ -58,9 +58,9 @@ export default function IncomeBreakdownCard({
                   : `Por persona (${byPerson.length})`}
               </span>
               {open ? (
-                <ChevronUp className="size-4 shrink-0" aria-hidden />
+                <ChevronUp className="size-4 shrink-0" aria-hidden data-icon="inline-end" />
               ) : (
-                <ChevronDown className="size-4 shrink-0" aria-hidden />
+                <ChevronDown className="size-4 shrink-0" aria-hidden data-icon="inline-end" />
               )}
             </CollapsibleTrigger>
             <CollapsibleContent>

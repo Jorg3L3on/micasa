@@ -225,13 +225,13 @@ export default function PantryProductsPage() {
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
           <Link href={receiptsHref}>
-            <Receipt className="h-4 w-4" />
+            <Receipt className="h-4 w-4" aria-hidden data-icon="inline-start" />
             Recibos
           </Link>
         </Button>
         <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
           <Link href={insightsHref}>
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" aria-hidden data-icon="inline-start" />
             Ver insights
           </Link>
         </Button>
@@ -323,7 +323,7 @@ export default function PantryProductsPage() {
               role="status"
               aria-label="Cargando productos"
             >
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <Loader2 className="h-8 w-8 animate-spin" data-icon="inline-start" />
             </div>
           ) : products.length === 0 ? (
             <EmptyState
@@ -384,7 +384,7 @@ export default function PantryProductsPage() {
                           }
                           aria-label="Página anterior"
                         >
-                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                         <Button
                           type="button"
@@ -398,7 +398,7 @@ export default function PantryProductsPage() {
                           }
                           aria-label="Página siguiente"
                         >
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4" data-icon="inline-end" />
                         </Button>
                       </div>
                     </div>
@@ -416,7 +416,7 @@ export default function PantryProductsPage() {
           setCreateOpen(open);
           setFormError(null);
         }}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         mode="create"
         error={formError && createOpen ? formError : null}
       />
@@ -430,7 +430,7 @@ export default function PantryProductsPage() {
               if (!open) setSelected(null);
               setFormError(null);
             }}
-            onSubmit={handleEdit}
+            onSave={handleEdit}
             mode="edit"
             defaultValues={productToFormDefaults(selected)}
             error={formError && editOpen ? formError : null}

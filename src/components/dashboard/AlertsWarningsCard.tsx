@@ -43,7 +43,7 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
       >
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden data-icon="inline-start" />
           </span>
           <CardTitle className="text-sm font-semibold leading-none">
             Alertas y avisos

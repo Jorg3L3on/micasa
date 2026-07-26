@@ -139,13 +139,11 @@ export default function UpcomingObligationsCard({
                                 {ob.source === 'loan_payment' ? (
                                   <ArrowRight
                                     className="h-4 w-4 text-amber-600 dark:text-amber-400"
-                                    aria-hidden
-                                  />
+                                    aria-hidden data-icon="inline-start" />
                                 ) : (
                                   <Check
                                     className="h-4 w-4 text-green-600 dark:text-green-400"
-                                    aria-hidden
-                                  />
+                                    aria-hidden data-icon="inline-start" />
                                 )}
                               </Button>
                             </TooltipTrigger>

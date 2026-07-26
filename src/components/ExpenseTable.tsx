@@ -490,8 +490,7 @@ export default function ExpenseTable({
                   className={cn(
                     'text-emerald-500 dark:text-emerald-400',
                     isCompact ? 'h-4 w-4' : 'h-5 w-5',
-                  )}
-                />
+                  )} data-icon="inline-start" />
               </div>
             );
           }
@@ -510,8 +509,7 @@ export default function ExpenseTable({
                     'text-green-600 dark:text-green-400',
                     isCompact ? 'h-4 w-4' : 'h-5 w-5',
                   )}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
               </div>
             );
           }
@@ -546,8 +544,7 @@ export default function ExpenseTable({
                 <CheckCircle2
                   className={cn(
                     isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4',
-                  )}
-                />
+                  )} data-icon="inline-start" />
               </Button>
             </div>
           );
@@ -733,8 +730,7 @@ export default function ExpenseTable({
                 >
                   <MoreVertical
                     className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
-                    aria-hidden
-                  />
+                    aria-hidden data-icon="inline-start" />
                 </Button>
               </div>
             );
@@ -752,8 +748,7 @@ export default function ExpenseTable({
                   >
                     <MoreVertical
                       className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
-                      aria-hidden
-                    />
+                      aria-hidden data-icon="inline-start" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -761,7 +756,7 @@ export default function ExpenseTable({
                     onClick={() => handleEditAmount(expense)}
                     disabled={isUpdating}
                   >
-                    <Pencil className="mr-2 h-4 w-4" />
+                    <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
                     Modificar gasto
                   </DropdownMenuItem>
                   {expense.is_paid ? (
@@ -769,7 +764,7 @@ export default function ExpenseTable({
                       onClick={() => handlePaidToggle(expense, false)}
                       disabled={isUpdating}
                     >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      <CheckCircle2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                       Deshacer pago
                     </DropdownMenuItem>
                   ) : (
@@ -781,7 +776,7 @@ export default function ExpenseTable({
                       disabled={isUpdating}
                       className="text-destructive"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                       Eliminar
                     </DropdownMenuItem>
                   )}
@@ -982,7 +977,7 @@ export default function ExpenseTable({
                             )}
                             aria-label="Pagado"
                           >
-                            <CheckCircle2 className="h-5 w-5" />
+                            <CheckCircle2 className="h-5 w-5" data-icon="inline-start" />
                           </span>
                         ) : isIncomeRow || isCardPay || isLoanPay ? (
                           <span
@@ -1006,7 +1001,7 @@ export default function ExpenseTable({
                             disabled={isUpdating}
                             aria-label={`Marcar ${e.description} como pagado`}
                           >
-                            <CheckCircle2 className="h-4 w-4" />
+                            <CheckCircle2 className="h-4 w-4" data-icon="inline-start" />
                           </Button>
                         )}
                       </div>
@@ -1128,7 +1123,7 @@ export default function ExpenseTable({
                             disabled
                             aria-label="Más acciones"
                           >
-                            <MoreVertical className="h-4 w-4" aria-hidden />
+                            <MoreVertical className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           </Button>
                         ) : (
                           <DropdownMenu>
@@ -1140,7 +1135,7 @@ export default function ExpenseTable({
                                 disabled={isUpdating}
                                 aria-label={`Más acciones para ${e.description}`}
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreVertical className="h-4 w-4" data-icon="inline-start" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -1148,7 +1143,7 @@ export default function ExpenseTable({
                                 onClick={() => handleEditAmount(e)}
                                 disabled={isUpdating}
                               >
-                                <Pencil className="mr-2 h-4 w-4" />
+                                <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
                                 Modificar gasto
                               </DropdownMenuItem>
                               {e.is_paid ? (
@@ -1156,7 +1151,7 @@ export default function ExpenseTable({
                                   onClick={() => handlePaidToggle(e, false)}
                                   disabled={isUpdating}
                                 >
-                                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                                  <CheckCircle2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                                   Deshacer pago
                                 </DropdownMenuItem>
                               ) : (
@@ -1168,7 +1163,7 @@ export default function ExpenseTable({
                                   disabled={isUpdating}
                                   className="text-destructive"
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                                   Eliminar
                                 </DropdownMenuItem>
                               )}
@@ -1404,7 +1399,7 @@ export default function ExpenseTable({
               setEditingExpense(null);
             }
           }}
-          onSubmit={handleUpdateAmount}
+          onSave={handleUpdateAmount}
           defaultAmount={toDisplayAmount(editingExpense.amount)}
           defaultWalletId={editingExpense.wallet_id ?? null}
           expenseDescription={editingExpense.description}

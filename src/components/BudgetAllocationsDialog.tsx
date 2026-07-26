@@ -357,7 +357,7 @@ export default function BudgetAllocationsDialog({
                         disabled={fields.length === 1}
                         aria-label="Eliminar asignación"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" data-icon="inline-start" />
                       </Button>
                     </div>
                   </div>
@@ -373,7 +373,7 @@ export default function BudgetAllocationsDialog({
               onClick={handleAppend}
               disabled={loadingOptions || Boolean(optionsError)}
             >
-              <Plus className="mr-1 h-4 w-4" aria-hidden />
+              <Plus className="mr-1 h-4 w-4" aria-hidden data-icon="inline-start" />
               Agregar asignación
             </Button>
 
@@ -399,7 +399,7 @@ export default function BudgetAllocationsDialog({
               >
                 {form.formState.isSubmitting || disabled ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                     Guardando…
                   </>
                 ) : (

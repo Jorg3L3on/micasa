@@ -183,7 +183,7 @@ export const PantryHomeInsights = () => {
             asChild
           >
             <Link href={receiptsHref}>
-              <Receipt className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" />
+              <Receipt className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
               Recibos
             </Link>
           </Button>
@@ -276,7 +276,7 @@ export const PantryHomeInsights = () => {
           <CardContent className="relative flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
             <div className="flex min-w-0 gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/15 dark:bg-emerald-500/15 dark:ring-emerald-500/20">
-                <Receipt className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <Receipt className="h-5 w-5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-snug text-foreground">
@@ -317,7 +317,7 @@ export const PantryHomeInsights = () => {
             >
               <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-                  <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                  <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                 </span>
                 <div className="min-w-0">
                   <CardTitle
@@ -345,8 +345,7 @@ export const PantryHomeInsights = () => {
                         <p className="line-clamp-2 text-[11px] text-muted-foreground">
                           <CalendarDays
                             className="mr-1 inline h-3 w-3 align-text-bottom text-muted-foreground"
-                            aria-hidden
-                          />
+                            aria-hidden data-icon="inline-start" />
                           {formatDate(highlights.last_purchase.at)}
                         </p>
                       </>
@@ -503,7 +502,7 @@ export const PantryHomeInsights = () => {
                 {data.guardrail_alerts.length > 0 ? (
                   <div className="mt-3 rounded-lg border border-amber-500/35 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                     <div className="mb-1 flex items-center gap-1.5 font-medium">
-                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <AlertTriangle className="h-3.5 w-3.5" data-icon="inline-start" />
                       Guardrail
                     </div>
                     {data.guardrail_alerts[0]?.message}
@@ -526,7 +525,7 @@ export const PantryHomeInsights = () => {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-                    <BarChart3 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <BarChart3 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                   </span>
                   <div className="min-w-0">
                     <CardTitle className="text-sm font-semibold leading-none">

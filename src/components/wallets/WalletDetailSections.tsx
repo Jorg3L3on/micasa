@@ -164,8 +164,7 @@ export const WalletPeriodWorkspaceShell = ({
                     'h-3 w-3 transition-transform',
                     snap === 'peek' && 'rotate-180',
                   )}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-end" />
                 {snap === 'peek' ? 'Vista compacta' : snap === 'half' ? 'Medio' : 'Completo'}
               </span>
             </button>
@@ -245,7 +244,7 @@ export const WalletDetailHeaderActions = ({
       className="inline-flex h-9 min-w-0 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       aria-label="Volver a billeteras"
     >
-      <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
+      <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden data-icon="inline-start" />
       <span className="truncate sm:inline">Billeteras</span>
     </Link>
     <DropdownMenu>
@@ -264,7 +263,7 @@ export const WalletDetailHeaderActions = ({
         {canImport ? (
           <>
             <DropdownMenuItem onClick={onRegisterExpense} className="cursor-pointer">
-              <Plus className="mr-2 h-4 w-4 shrink-0" />
+              <Plus className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
               Registrar gasto
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onRegisterIncome} className="cursor-pointer">
@@ -274,17 +273,17 @@ export const WalletDetailHeaderActions = ({
           </>
         ) : null}
         <DropdownMenuItem onClick={onAdjustBalance} className="cursor-pointer">
-          <Pencil className="mr-2 h-4 w-4 shrink-0" />
+          <Pencil className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
           Ajustar saldo
         </DropdownMenuItem>
         {canImport ? (
           <DropdownMenuItem onClick={onImport} className="cursor-pointer">
-            <Upload className="mr-2 h-4 w-4 shrink-0" />
+            <Upload className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
             Importar CSV
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem onClick={onExportCsv} className="cursor-pointer">
-          <Download className="mr-2 h-4 w-4 shrink-0" />
+          <Download className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
           Exportar CSV
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -563,7 +562,7 @@ export const WalletPeriodSummary = ({
           onClick={onPrevious}
           aria-label="Mes anterior"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
           <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -579,7 +578,7 @@ export const WalletPeriodSummary = ({
           disabled={isCurrentMonth}
           aria-label="Mes siguiente"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" data-icon="inline-end" />
         </Button>
         {!isCurrentMonth ? (
           <Button

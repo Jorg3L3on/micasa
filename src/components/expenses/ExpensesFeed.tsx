@@ -438,7 +438,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
                 onClick={handleOpenCreate}
                 aria-label="Agregar gasto"
               >
-                <Plus className="h-4 w-4" aria-hidden />
+                <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Agregar gasto</TooltipContent>
@@ -448,7 +448,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             className="hidden h-9 gap-1.5 rounded-xl sm:inline-flex"
             onClick={handleOpenCreate}
           >
-            <Plus className="h-4 w-4" aria-hidden />
+            <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
             Agregar gasto
           </Button>
         </div>
@@ -475,7 +475,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
               onClick={handleOpenCreate}
               className="h-9 gap-1.5 rounded-xl"
             >
-              <Plus className="h-4 w-4" aria-hidden />
+              <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
               Agregar gasto
             </Button>
           </div>
@@ -580,7 +580,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             >
               {isRepeatSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden data-icon="inline-start" />
                   Registrando…
                 </>
               ) : (
@@ -636,7 +636,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             : 'Registra un gasto; asignamos la quincena automáticamente.'
         }
         defaults={createDefaults}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         error={createError}
       />
 
@@ -651,7 +651,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         mode="edit"
         title="Editar gasto"
         defaults={editDefaults}
-        onSubmit={handleUpdate}
+        onSave={handleUpdate}
         onDelete={handleDelete}
         error={editError}
       />

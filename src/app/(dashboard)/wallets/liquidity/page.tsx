@@ -56,7 +56,7 @@ export default function LiquidityPage() {
             className="shrink-0 gap-2 px-5 text-sm font-medium"
             aria-label="Proyección de liquidez"
           >
-            <LineChart className="size-4 shrink-0" aria-hidden />
+            <LineChart className="size-4 shrink-0" aria-hidden data-icon="inline-start" />
             Proyección
           </TabsTrigger>
           <TabsTrigger

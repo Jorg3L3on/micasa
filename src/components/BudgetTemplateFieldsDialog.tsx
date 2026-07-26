@@ -152,7 +152,10 @@ export default function BudgetTemplateFieldsDialog({
                   <FormLabel>Frecuencia</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger
+                        className="w-full"
+                        aria-label="Frecuencia del presupuesto"
+                      >
                         <SelectValue placeholder="Selecciona frecuencia" />
                       </SelectTrigger>
                     </FormControl>
@@ -176,7 +179,11 @@ export default function BudgetTemplateFieldsDialog({
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-2 space-y-0">
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        aria-label="Presupuesto recurrente"
+                      />
                     </FormControl>
                     <FormLabel className="cursor-pointer font-normal">
                       Recurrente (genera periodos al crear nuevo mes)
@@ -241,7 +248,7 @@ export default function BudgetTemplateFieldsDialog({
               >
                 {form.formState.isSubmitting || disabled ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                     Guardando…
                   </>
                 ) : (

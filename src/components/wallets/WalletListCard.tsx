@@ -416,7 +416,7 @@ export const WalletListCard = ({
               onPointerDown={handleStopOverlayPointer}
               onClick={handleStopOverlayPointer}
             >
-              <MoreVertical className="h-3.5 w-3.5" />
+              <MoreVertical className="h-3.5 w-3.5" data-icon="inline-start" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
@@ -451,14 +451,14 @@ export const WalletListCard = ({
               onClick={() => onEdit(wallet)}
               className="cursor-pointer"
             >
-              <Pencil className="mr-2 h-4 w-4" />
+              <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(wallet)}
               className="cursor-pointer text-destructive focus:text-destructive"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
               Eliminar
             </DropdownMenuItem>
           </DropdownMenuContent>

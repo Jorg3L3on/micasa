@@ -134,9 +134,9 @@ export function CreditCardInstallmentProjectionBlock() {
           aria-label={expanded ? 'Ocultar proyección de cuotas' : 'Ver proyección de cuotas'}
         >
           {expanded ? (
-            <ChevronUp className="h-4 w-4" aria-hidden />
+            <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
           ) : (
-            <ChevronDown className="h-4 w-4" aria-hidden />
+            <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
           )}
         </Button>
       </CardHeader>

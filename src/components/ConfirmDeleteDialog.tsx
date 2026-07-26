@@ -75,7 +75,7 @@ export default function ConfirmDeleteDialog({
           >
             {isDeleting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                 {loadingLabel}
               </>
             ) : (

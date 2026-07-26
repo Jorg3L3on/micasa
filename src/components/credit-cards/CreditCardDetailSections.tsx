@@ -250,7 +250,7 @@ export const CreditCardDetailHeaderActions = ({
       className="inline-flex h-9 min-w-0 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       aria-label="Volver a billeteras"
     >
-      <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
+      <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden data-icon="inline-start" />
       <span className="truncate sm:inline">Billeteras</span>
     </Link>
     <DropdownMenu>
@@ -267,7 +267,7 @@ export const CreditCardDetailHeaderActions = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuItem onClick={onEditCard} className="cursor-pointer">
-          <Pencil className="mr-2 h-4 w-4 shrink-0" />
+          <Pencil className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
           Editar tarjeta
         </DropdownMenuItem>
         {onAdjustBalance ? (
@@ -277,11 +277,11 @@ export const CreditCardDetailHeaderActions = ({
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem onClick={onOpenImportDialog} className="cursor-pointer">
-          <Upload className="mr-2 h-4 w-4 shrink-0" />
+          <Upload className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
           Importar estado de cuenta
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onExportCsv} className="cursor-pointer">
-          <Download className="mr-2 h-4 w-4 shrink-0" />
+          <Download className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
           Exportar CSV
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onExportPdf} className="cursor-pointer">
@@ -608,7 +608,7 @@ export const CreditCardCycleSummary = ({
               onClick={onAdjustDebt}
               aria-label="Ajustar deuda registrada"
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-3 w-3" data-icon="inline-start" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">Alinear deuda con el emisor</TooltipContent>
@@ -647,7 +647,7 @@ export const CreditCardCycleSummary = ({
           onClick={onPreviousCycle}
           aria-label="Ciclo anterior"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
           <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -665,7 +665,7 @@ export const CreditCardCycleSummary = ({
           disabled={isCurrentCycle}
           aria-label="Ciclo siguiente"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" data-icon="inline-end" />
         </Button>
         {!isCurrentCycle ? (
           <Button
@@ -701,7 +701,7 @@ export const CreditCardStatementSummaryCard = ({
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-          <Receipt className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+          <Receipt className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
         </span>
         <div>
           <CardTitle className="text-sm font-semibold leading-none">
@@ -715,7 +715,7 @@ export const CreditCardStatementSummaryCard = ({
       <CardContent className="divide-y divide-border/40 p-0 pb-0">
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Receipt className="h-3 w-3 text-violet-500" />
+            <Receipt className="h-3 w-3 text-violet-500" data-icon="inline-start" />
             Periodo
           </span>
           <span className="text-right font-medium">
@@ -724,7 +724,7 @@ export const CreditCardStatementSummaryCard = ({
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Landmark className="h-3 w-3 text-blue-500" />
+            <Landmark className="h-3 w-3 text-blue-500" data-icon="inline-start" />
             {statement.imported_statement_total != null
               ? 'Total importado'
               : 'Saldo del corte'}

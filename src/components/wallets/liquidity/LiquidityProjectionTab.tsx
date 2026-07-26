@@ -191,8 +191,7 @@ export function LiquidityProjectionTab() {
               hasShortfall
                 ? 'text-destructive'
                 : 'text-emerald-600 dark:text-emerald-400',
-            )}
-          />
+            )} data-icon="inline-start" />
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -240,7 +239,7 @@ export function LiquidityProjectionTab() {
             <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-3 py-3 dark:from-emerald-500/12 dark:to-emerald-500/5">
               <div className="mb-2 flex items-center gap-1.5">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20">
-                  <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80">
                   Liquidez hoy
@@ -407,7 +406,7 @@ export function LiquidityProjectionTab() {
               <CardContent className="px-3 py-3">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-                    <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                   </span>
                   <p className="text-sm font-semibold leading-none">Composición de deuda</p>
                 </div>
@@ -433,7 +432,7 @@ export function LiquidityProjectionTab() {
               <CardContent className="px-3 py-3">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-                    <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                   </span>
                   <p className="text-sm font-semibold leading-none">Restante mensual</p>
                 </div>

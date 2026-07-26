@@ -175,8 +175,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
             <BarChart3
               className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">
@@ -350,8 +349,7 @@ function AllocationSummary({
               'h-4 w-4 shrink-0 transition-transform duration-200 ease-out motion-reduce:transition-none',
               expanded && 'rotate-180',
             )}
-            aria-hidden
-          />
+            aria-hidden data-icon="inline-end" />
         </div>
       ) : null}
     </div>
@@ -703,7 +701,7 @@ export default function BudgetPeriodDetail({
                   className="mt-3 h-9 border-destructive/40 bg-background text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => setReloadKey((current) => current + 1)}
                 >
-                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  <RefreshCw className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   Reintentar
                 </Button>
               </div>

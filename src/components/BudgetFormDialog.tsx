@@ -332,7 +332,10 @@ export default function BudgetFormDialog({
                     <FormLabel>Frecuencia</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label="Frecuencia del presupuesto"
+                        >
                           <SelectValue placeholder="Selecciona frecuencia" />
                         </SelectTrigger>
                       </FormControl>
@@ -359,6 +362,7 @@ export default function BudgetFormDialog({
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          aria-label="Presupuesto recurrente"
                         />
                       </FormControl>
                       <FormLabel className="cursor-pointer font-normal">
@@ -419,7 +423,7 @@ export default function BudgetFormDialog({
                 </Button>
                 <Button type="submit" className="h-11 sm:h-9">
                   Siguiente
-                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden data-icon="inline-end" />
                 </Button>
               </DialogFooter>
             </form>
@@ -570,7 +574,7 @@ export default function BudgetFormDialog({
                           disabled={fields.length === 1}
                           aria-label="Eliminar asignación"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                       </div>
                     </div>
@@ -586,7 +590,7 @@ export default function BudgetFormDialog({
                 onClick={handleAppend}
                 disabled={loadingOptions || Boolean(optionsError)}
               >
-                <Plus className="mr-1 h-4 w-4" aria-hidden />
+                <Plus className="mr-1 h-4 w-4" aria-hidden data-icon="inline-start" />
                 Agregar asignación
               </Button>
 
@@ -597,7 +601,7 @@ export default function BudgetFormDialog({
                   className="h-11 sm:h-9"
                   onClick={() => setStep(1)}
                 >
-                  <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
+                  <ChevronLeft className="mr-1 h-4 w-4" aria-hidden data-icon="inline-start" />
                   Anterior
                 </Button>
                 <Button
@@ -614,7 +618,7 @@ export default function BudgetFormDialog({
                 >
                   {form2.formState.isSubmitting || isPending || disabled ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                       Creando…
                     </>
                   ) : (

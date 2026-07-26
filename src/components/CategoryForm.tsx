@@ -182,7 +182,7 @@ export default function CategoryForm({
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                     {mode === 'create' ? 'Creando...' : 'Actualizando...'}
                   </>
                 ) : mode === 'create' ? (

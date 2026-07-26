@@ -181,7 +181,7 @@ export default function StepWallets() {
                   handleTypeChange(wallet.id, value as WalletDraft['type'])
                 }
               >
-                <SelectTrigger className="w-full sm:w-[180px]" size="default">
+                <SelectTrigger className="w-full sm:w-[180px]" size="default" aria-label="Seleccionar opción">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,7 +201,7 @@ export default function StepWallets() {
                   )
                 }
               >
-                <SelectTrigger className="w-full sm:w-[220px]" size="default">
+                <SelectTrigger className="w-full sm:w-[220px]" size="default" aria-label="Seleccionar opción">
                   <SelectValue
                     placeholder="Empresa o banco"
                     aria-label={
@@ -238,7 +238,7 @@ export default function StepWallets() {
                 aria-label={`Eliminar billetera ${wallet.name}`}
                 className="h-10 w-10 shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-auto"
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-4" data-icon="inline-start" />
               </Button>
             </motion.li>
           );

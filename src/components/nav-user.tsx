@@ -131,7 +131,7 @@ export function NavUser({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuItem disabled className="opacity-60">
-                    <Bell />
+                    <Bell data-icon="inline-start" />
                     Notificaciones
                   </DropdownMenuItem>
                 </TooltipTrigger>
@@ -144,7 +144,7 @@ export function NavUser({
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: '/login' })}
             >
-              <LogOut />
+              <LogOut data-icon="inline-start" />
               Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>

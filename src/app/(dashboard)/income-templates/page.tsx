@@ -164,7 +164,7 @@ export default function IncomeTemplatesPage() {
                 onClick={() => handleEdit(template)}
                 aria-label={`Editar ${template.name}`}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4" data-icon="inline-start" />
               </Button>
               <Button
                 variant="ghost"
@@ -172,7 +172,7 @@ export default function IncomeTemplatesPage() {
                 onClick={() => openDeleteDialog(template)}
                 aria-label={`Eliminar ${template.name}`}
               >
-                <Trash2 className="h-4 w-4 text-destructive" />
+                <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
               </Button>
             </div>
           );

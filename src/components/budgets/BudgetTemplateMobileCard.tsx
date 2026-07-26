@@ -79,7 +79,7 @@ export function BudgetTemplateMobileCard({
             aria-busy={isReactivating}
           >
             {isReactivating ? (
-              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
             ) : (
               <RotateCcw className="h-4 w-4" />
             )}
@@ -93,7 +93,7 @@ export function BudgetTemplateMobileCard({
               onClick={() => onEdit(template)}
               aria-label={`Editar ${template.name}`}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-4 w-4" data-icon="inline-start" />
             </Button>
             <Button
               variant="ghost"
@@ -102,7 +102,7 @@ export function BudgetTemplateMobileCard({
               onClick={() => onAllocations(template)}
               aria-label={`Ver asignaciones de ${template.name}`}
             >
-              <LayoutList className="h-4 w-4" />
+              <LayoutList className="h-4 w-4" data-icon="inline-start" />
             </Button>
             <Button
               variant="ghost"
@@ -111,7 +111,7 @@ export function BudgetTemplateMobileCard({
               onClick={() => onDeactivate(template)}
               aria-label={`Desactivar ${template.name}`}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
             </Button>
           </>
         )}

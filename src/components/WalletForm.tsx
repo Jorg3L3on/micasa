@@ -492,7 +492,7 @@ export default function WalletForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-1.5">
-                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" data-icon="inline-start" />
                           Día de corte
                         </FormLabel>
                         <FormControl>
@@ -527,7 +527,7 @@ export default function WalletForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-1.5">
-                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" data-icon="inline-start" />
                           Día de pago
                         </FormLabel>
                         <FormControl>
@@ -570,7 +570,7 @@ export default function WalletForm({
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                     {mode === 'create' ? 'Creando…' : 'Guardando…'}
                   </>
                 ) : mode === 'create' ? (

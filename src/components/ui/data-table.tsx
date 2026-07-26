@@ -137,7 +137,7 @@ export function DataTable<TData>({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
-                    Columnas <ChevronDown className="ml-2 h-4 w-4" />
+                    Columnas <ChevronDown className="ml-2 h-4 w-4" data-icon="inline-end" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -281,7 +281,7 @@ export function DataTable<TData>({
               disabled={!table.getCanPreviousPage()}
               aria-label="Página anterior"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
             </Button>
             <Button
               variant="outline"
@@ -290,7 +290,7 @@ export function DataTable<TData>({
               disabled={!table.getCanNextPage()}
               aria-label="Página siguiente"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" data-icon="inline-end" />
             </Button>
           </div>
         </div>

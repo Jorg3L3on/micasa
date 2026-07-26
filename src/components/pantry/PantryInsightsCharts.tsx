@@ -128,7 +128,7 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
     >
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-          <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
         </span>
         <div className="min-w-0">
           <CardTitle className="text-sm font-semibold leading-none">
@@ -142,7 +142,7 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
       <CardContent className="grid gap-8 pt-0 lg:grid-cols-2 lg:gap-6">
         <div className="min-w-0 space-y-2 border-border/50 lg:border-r lg:pr-6 lg:pb-0 pb-6 border-b lg:border-b-0">
           <div className="flex items-center gap-2">
-            <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden data-icon="inline-start" />
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gasto por mes
             </p>
@@ -196,7 +196,7 @@ export const PantryInsightsCharts = ({ charts, hasReceipts }: Props) => {
 
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+            <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Top gasto por producto
             </p>

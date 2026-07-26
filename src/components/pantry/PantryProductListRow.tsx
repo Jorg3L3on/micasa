@@ -104,7 +104,7 @@ export const PantryProductListRow = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onOpenEdit}>
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4" data-icon="inline-start" />
                 Editar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -112,7 +112,7 @@ export const PantryProductListRow = ({
                 className="text-destructive focus:text-destructive"
                 onClick={onOpenDelete}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" data-icon="inline-start" />
                 Eliminar
               </DropdownMenuItem>
             </DropdownMenuContent>

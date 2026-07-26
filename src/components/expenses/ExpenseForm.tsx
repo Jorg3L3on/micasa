@@ -36,7 +36,7 @@ export type ExpenseFormProps = {
   defaults?: Partial<AddExpenseFormValues>;
   /** When provided, templates are filtered by this period. Otherwise, derived from the selected date. */
   fortnightPeriod?: 'FIRST' | 'SECOND';
-  onSubmit: (values: AddExpenseFormValues) => Promise<void>;
+  onSave: (values: AddExpenseFormValues) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => Promise<void>;
   error?: string | null;
@@ -60,7 +60,7 @@ export default function ExpenseForm({
   mode,
   defaults,
   fortnightPeriod,
-  onSubmit,
+  onSave,
   onCancel,
   onDelete,
   error,
@@ -246,7 +246,7 @@ export default function ExpenseForm({
   const handleSubmit = async (values: AddExpenseFormValues) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(values);
+      await onSave(values);
     } finally {
       setIsSubmitting(false);
     }
@@ -498,6 +498,11 @@ export default function ExpenseForm({
                   checked={field.value}
                   onCheckedChange={field.onChange}
                   disabled={isCreditCardPaymentMethod}
+                  aria-label={
+                    isCreditCardPaymentMethod
+                      ? 'Pagado al usar la tarjeta'
+                      : 'Pagado'
+                  }
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
@@ -526,6 +531,7 @@ export default function ExpenseForm({
                           form.setValue('applyToBothFortnights', false);
                         }
                       }}
+                      aria-label="Es recurrente"
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
@@ -544,6 +550,7 @@ export default function ExpenseForm({
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        aria-label="Aplicar a ambas quincenas"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">

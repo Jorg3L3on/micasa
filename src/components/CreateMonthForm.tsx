@@ -36,7 +36,7 @@ export default function CreateMonthForm({
   >([]);
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string>('');
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [lastCreated, setLastCreated] = useState<{
     year: number;
@@ -83,8 +83,8 @@ export default function CreateMonthForm({
     fetchCreated();
   }, [lastCreated, context]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const createMonth = async () => {
+    if (isSubmitting) return;
     const parsed = createMonthSchema.safeParse({ month: selectedKey });
     if (!parsed.success) {
       const message =
@@ -101,7 +101,7 @@ export default function CreateMonthForm({
     }
     setValidationError(null);
     try {
-      setSubmitting(true);
+      setIsSubmitting(true);
       setLastCreated(null);
       const result = await createMonthFortnights(y, m, context);
       setLastCreated({ year: y, month: m });
@@ -135,7 +135,7 @@ export default function CreateMonthForm({
       setValidationError(message);
       toast.error(message);
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -154,7 +154,14 @@ export default function CreateMonthForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void createMonth();
+      }}
+      className="space-y-4"
+      aria-busy={isSubmitting}
+    >
       <div className="space-y-2">
         <Label htmlFor={selectId} className="text-sm font-medium">
           Mes a crear
@@ -167,7 +174,7 @@ export default function CreateMonthForm({
             setSelectedKey(event.target.value);
             setValidationError(null);
           }}
-          disabled={submitting || loadingMonths}
+          disabled={isSubmitting || loadingMonths}
           required
           aria-invalid={Boolean(validationError)}
           aria-describedby={
@@ -198,15 +205,20 @@ export default function CreateMonthForm({
         <Button
           type="submit"
           disabled={
-            submitting ||
+            isSubmitting ||
             loadingMonths ||
             availableOptions.length === 0 ||
             !selectedKey
           }
+          aria-busy={isSubmitting}
         >
-          {submitting ? (
+          {isSubmitting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              <Loader2
+                className="mr-2 h-4 w-4 animate-spin"
+                aria-hidden
+                data-icon="inline-start"
+              />
               Creando...
             </>
           ) : (
@@ -221,7 +233,7 @@ export default function CreateMonthForm({
                 lastCreated.year
               }`}
             >
-              <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+              <ExternalLink className="mr-2 h-4 w-4" aria-hidden data-icon="inline-start" />
               Ver mes
             </Link>
           </Button>

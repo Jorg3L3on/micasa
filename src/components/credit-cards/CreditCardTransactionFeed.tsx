@@ -265,13 +265,13 @@ export const CreditCardRecentMovements = ({
 
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <ActivityMetric
-            icon={<Receipt className="h-3.5 w-3.5" aria-hidden />}
+            icon={<Receipt className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />}
             label="Compras"
             value={formatCurrency(purchaseTotal)}
             tone="violet"
           />
           <ActivityMetric
-            icon={<Wallet className="h-3.5 w-3.5" aria-hidden />}
+            icon={<Wallet className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />}
             label="Pagos"
             value={formatCurrency(paymentTotal)}
             tone="emerald"

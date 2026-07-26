@@ -247,6 +247,7 @@ export function ExpenseTemplateForm({
                               form.setValue('dueDaySecond', null);
                             }
                           }}
+                          aria-label="Se repite de forma periodica"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
@@ -273,7 +274,7 @@ export function ExpenseTemplateForm({
                               <Checkbox
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
-                              />
+                               aria-label="Opción" />
                             </FormControl>
                             <div className="space-y-1 leading-none">
                               <FormLabel className="text-sm font-medium">
@@ -322,7 +323,7 @@ export function ExpenseTemplateForm({
                               <Checkbox
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
-                              />
+                               aria-label="Opción" />
                             </FormControl>
                             <div className="space-y-1 leading-none">
                               <FormLabel className="text-sm font-medium">
@@ -383,8 +384,7 @@ export function ExpenseTemplateForm({
                     className={cn(
                       'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
                       cutoffSectionOpen && 'rotate-180',
-                    )}
-                  />
+                    )} data-icon="inline-end" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-2 px-3 pb-3 pt-0">
                   <p className="text-xs leading-relaxed text-muted-foreground">
@@ -427,7 +427,7 @@ export function ExpenseTemplateForm({
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                        />
+                         aria-label="Opción" />
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="text-sm font-medium">
@@ -451,7 +451,7 @@ export function ExpenseTemplateForm({
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                          />
+                           aria-label="Opción" />
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-medium">

@@ -137,7 +137,7 @@ const CreditCardMercadoPagoImportDialog = ({
         <DialogHeader>
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-              <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
             </span>
             <div className="min-w-0 space-y-1.5">
               <DialogTitle className="text-left text-base">
@@ -181,7 +181,7 @@ const CreditCardMercadoPagoImportDialog = ({
                 }
                 disabled={mpImportSubmitting}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9" aria-label="Seleccionar opción">
                   <SelectValue placeholder="Predeterminada" />
                 </SelectTrigger>
                 <SelectContent>
@@ -262,7 +262,7 @@ const CreditCardMercadoPagoImportDialog = ({
                           onClick={() => onDownloadImport(row.id)}
                           aria-label="Descargar PDF importado"
                         >
-                          <Download className="h-3.5 w-3.5" />
+                          <Download className="h-3.5 w-3.5" data-icon="inline-start" />
                           PDF
                         </Button>
                       ) : null}
@@ -274,7 +274,7 @@ const CreditCardMercadoPagoImportDialog = ({
                         onClick={() => onRollbackClick(row.id)}
                         aria-label="Revertir esta importación"
                       >
-                        <Undo2 className="h-3.5 w-3.5" />
+                        <Undo2 className="h-3.5 w-3.5" data-icon="inline-start" />
                         Revertir
                       </Button>
                     </div>

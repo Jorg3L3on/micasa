@@ -123,7 +123,7 @@ export const FortnightViewControls = ({
           </>
         ) : (
           <>
-            <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
+            <BarChart3 className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
             Mostrar resumen
           </>
         )}
