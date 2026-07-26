@@ -73,22 +73,30 @@ export function CreateHouseDialog({
         <DialogHeader>
           <DialogTitle>Crear casa</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="create-house-name">Nombre</Label>
               <Input
                 id="create-house-name"
+                name="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nombre de la casa"
                 disabled={loading}
-                aria-label="Nombre de la casa"
+                required
+                minLength={1}
+                maxLength={100}
                 aria-invalid={!!error}
+                aria-describedby={error ? 'create-house-name-error' : undefined}
               />
             </div>
             {error && (
-              <p className="text-destructive text-sm" role="alert">
+              <p
+                id="create-house-name-error"
+                className="text-destructive text-sm"
+                role="alert"
+              >
                 {error}
               </p>
             )}

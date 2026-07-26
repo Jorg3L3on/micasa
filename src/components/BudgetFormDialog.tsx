@@ -60,7 +60,7 @@ import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (step1: Step1Values, step2: Step2Values) => Promise<void>;
+  onCreate: (step1: Step1Values, step2: Step2Values) => Promise<void>;
   error?: string | null;
   isPending?: boolean;
   disabled?: boolean;
@@ -122,7 +122,7 @@ function AllocationSummary({
 export default function BudgetFormDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onCreate,
   error,
   isPending = false,
   disabled = false,
@@ -230,7 +230,7 @@ export default function BudgetFormDialog({
       });
       return;
     }
-    await onSubmit(step1Data, data);
+    await onCreate(step1Data, data);
     handleClose();
   });
 
@@ -282,7 +282,7 @@ export default function BudgetFormDialog({
         </div>
 
         {error ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" role="alert" aria-live="assertive">
             <AlertCircle className="h-4 w-4" aria-hidden />
             <AlertDescription>{error}</AlertDescription>
           </Alert>

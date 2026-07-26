@@ -1126,9 +1126,9 @@ export default function ExpenseTable({
                             size="icon"
                             className="h-8 w-8"
                             disabled
-                            aria-hidden
+                            aria-label="Más acciones"
                           >
-                            <MoreVertical className="h-4 w-4" />
+                            <MoreVertical className="h-4 w-4" aria-hidden />
                           </Button>
                         ) : (
                           <DropdownMenu>

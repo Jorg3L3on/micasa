@@ -281,6 +281,21 @@ const mapLoanFormIssues = (
   return errors;
 };
 
+const LoanFieldErrorMessage = ({
+  id,
+  message,
+}: {
+  id?: string;
+  message?: string | null;
+}) => {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-destructive" role="alert">
+      {message}
+    </p>
+  );
+};
+
 const mapLoanEditError = (message: string): LoanEditErrors => {
   const normalized = message.toLowerCase();
   if (normalized.includes('billetera') || normalized.includes('cuenta')) {
@@ -1098,7 +1113,10 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.name ? (
-                  <p id="loan-name-error" className="text-xs text-destructive" role="alert">{formErrors.name}</p>
+                  <LoanFieldErrorMessage
+                    id="loan-name-error"
+                    message={formErrors.name}
+                  />
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -1438,7 +1456,10 @@ export default function LoansPage() {
               </div>
             </div>
             {formErrors.general ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <div
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                role="alert"
+              >
                 {formErrors.general}
               </div>
             ) : null}
@@ -1809,13 +1830,22 @@ export default function LoansPage() {
                               setLoanEditField('name', event.target.value)
                             }
                             aria-invalid={Boolean(loanEditErrors.name)}
+                            aria-describedby={
+                              loanEditErrors.name
+                                ? `loan-${selectedLoan.id}-edit-name-error`
+                                : undefined
+                            }
                             className={cn(
                               loanEditErrors.name &&
                                 'border-destructive focus-visible:ring-destructive/30',
                             )}
                           />
                           {loanEditErrors.name ? (
-                            <p className="text-xs text-destructive">
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-name-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.name}
                             </p>
                           ) : null}
@@ -1831,13 +1861,22 @@ export default function LoansPage() {
                               setLoanEditField('lender', event.target.value)
                             }
                             aria-invalid={Boolean(loanEditErrors.lender)}
+                            aria-describedby={
+                              loanEditErrors.lender
+                                ? `loan-${selectedLoan.id}-edit-lender-error`
+                                : undefined
+                            }
                             className={cn(
                               loanEditErrors.lender &&
                                 'border-destructive focus-visible:ring-destructive/30',
                             )}
                           />
                           {loanEditErrors.lender ? (
-                            <p className="text-xs text-destructive">
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-lender-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.lender}
                             </p>
                           ) : null}
@@ -1856,6 +1895,11 @@ export default function LoansPage() {
                                   'border-destructive focus:ring-destructive/30',
                               )}
                               aria-invalid={Boolean(loanEditErrors.linkedWalletId)}
+                              aria-describedby={
+                                loanEditErrors.linkedWalletId
+                                  ? `loan-${selectedLoan.id}-edit-linked-wallet-error`
+                                  : undefined
+                              }
                             >
                               <SelectValue />
                             </SelectTrigger>
@@ -1877,7 +1921,11 @@ export default function LoansPage() {
                             Relaciona el préstamo para consulta; no mueve dinero.
                           </p>
                           {loanEditErrors.linkedWalletId ? (
-                            <p className="text-xs text-destructive">
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-linked-wallet-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.linkedWalletId}
                             </p>
                           ) : null}
@@ -1899,6 +1947,11 @@ export default function LoansPage() {
                                 aria-invalid={Boolean(
                                   loanEditErrors.incomeTemplateId,
                                 )}
+                                aria-describedby={
+                                  loanEditErrors.incomeTemplateId
+                                    ? `loan-${selectedLoan.id}-edit-income-template-error`
+                                    : undefined
+                                }
                               >
                                 <SelectValue />
                               </SelectTrigger>
@@ -1929,7 +1982,11 @@ export default function LoansPage() {
                             </p>
                           ) : null}
                           {loanEditErrors.incomeTemplateId ? (
-                            <p className="text-xs text-destructive">
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-income-template-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.incomeTemplateId}
                             </p>
                           ) : null}

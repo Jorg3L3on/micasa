@@ -682,6 +682,7 @@ function HistoryTab() {
                             >
                               Detalle
                               <ChevronDown
+                                data-icon="inline-end"
                                 className={cn(
                                   'h-3.5 w-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none',
                                   expanded && 'rotate-180',

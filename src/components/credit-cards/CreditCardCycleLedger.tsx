@@ -237,7 +237,12 @@ export const CreditCardCycleLedger = ({
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="px-2 pb-2">
-                {rows.map((entry) => {
+                {rows.length === 0 ? (
+                  <li className="px-2 py-3 text-sm text-muted-foreground">
+                    Sin movimientos en esta fecha.
+                  </li>
+                ) : (
+                  rows.map((entry) => {
                   if (entry.kind === 'purchase') {
                     const { purchase } = entry;
                     const msi = isInstallmentPurchase(purchase);
@@ -344,7 +349,8 @@ export const CreditCardCycleLedger = ({
                       ) : null}
                     </li>
                   );
-                })}
+                })
+                )}
               </ul>
             </section>
           ))}

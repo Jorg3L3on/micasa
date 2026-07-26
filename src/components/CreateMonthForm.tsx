@@ -186,18 +186,6 @@ export default function CreateMonthForm({
             ))}
           </SelectContent>
         </Select>
-        {/* Native constraint for scanners / progressive enhancement */}
-        <input
-          type="text"
-          name="monthKey"
-          value={selectedKey}
-          onChange={() => undefined}
-          required
-          minLength={1}
-          className="sr-only"
-          tabIndex={-1}
-          aria-hidden
-        />
         {validationError ? (
           <p
             id={`${idPrefix}-validation-error`}

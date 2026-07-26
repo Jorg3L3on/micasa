@@ -384,11 +384,7 @@ export const WalletListCard = ({
         </TooltipContent>
       </Tooltip>
 
-      <div
-        className="absolute right-2 top-2 z-20 flex items-center gap-1"
-        onPointerDown={handleStopOverlayPointer}
-        onClick={handleStopOverlayPointer}
-      >
+      <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
         {!wallet.active ? (
           onDarkSurface ? (
             <span className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full border border-white/20 bg-black/25 px-1.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
@@ -417,6 +413,8 @@ export const WalletListCard = ({
                     : '',
               )}
               aria-label={`Más opciones para ${wallet.name}`}
+              onPointerDown={handleStopOverlayPointer}
+              onClick={handleStopOverlayPointer}
             >
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>

@@ -359,6 +359,7 @@ export default function EditIncomeTemplatePage() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            aria-label="Primera quincena"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -381,6 +382,7 @@ export default function EditIncomeTemplatePage() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            aria-label="Segunda quincena"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">

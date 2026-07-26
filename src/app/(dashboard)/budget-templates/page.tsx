@@ -392,11 +392,16 @@ export default function BudgetTemplatesPage() {
       <BudgetFormDialog
         open={createDialogOpen}
         onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) setFormError(null); }}
-        onSubmit={handleCreate}
+        onCreate={handleCreate}
         error={formError && createDialogOpen ? formError : null}
         isPending={isCreating}
         disabled={isCreating}
       />
+      {isCreating ? (
+        <p className="sr-only" role="status" aria-live="polite">
+          Creando plantilla…
+        </p>
+      ) : null}
 
       {selected && (
         <>
