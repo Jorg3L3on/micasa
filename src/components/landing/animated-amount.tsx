@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 
 type AnimatedAmountProps = {
@@ -17,7 +17,7 @@ const formatAmount = (value: number, decimals: number) =>
     maximumFractionDigits: decimals,
   });
 
-/** Count-up for landing mock figures; instant when reduced motion is preferred. */
+/** Count-up for landing mock figures; shows final value until in view. */
 export const AnimatedAmount = ({
   value,
   className,
@@ -26,7 +26,10 @@ export const AnimatedAmount = ({
   durationMs = 1400,
 }: AnimatedAmountProps) => {
   const reduceMotion = useReducedMotion();
-  const [display, setDisplay] = useState(reduceMotion ? value : 0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [display, setDisplay] = useState(value);
+  const hasAnimated = useRef(false);
+  const frameRef = useRef(0);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -34,24 +37,44 @@ export const AnimatedAmount = ({
       return;
     }
 
-    let frame = 0;
-    const start = performance.now();
+    const node = ref.current;
+    if (!node || hasAnimated.current) {
+      setDisplay(value);
+      return;
+    }
 
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - (1 - progress) ** 3;
-      setDisplay(value * eased);
-      if (progress < 1) {
-        frame = requestAnimationFrame(tick);
-      }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || hasAnimated.current) return;
+        hasAnimated.current = true;
+        observer.disconnect();
+
+        const start = performance.now();
+        setDisplay(0);
+
+        const tick = (now: number) => {
+          const progress = Math.min(1, (now - start) / durationMs);
+          const eased = 1 - (1 - progress) ** 3;
+          setDisplay(value * eased);
+          if (progress < 1) {
+            frameRef.current = requestAnimationFrame(tick);
+          }
+        };
+
+        frameRef.current = requestAnimationFrame(tick);
+      },
+      { threshold: 0.35 }
+    );
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frameRef.current);
     };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
   }, [durationMs, reduceMotion, value]);
 
   return (
-    <span className={className}>
+    <span ref={ref} className={className}>
       {prefix}
       {formatAmount(display, decimals)}
     </span>
