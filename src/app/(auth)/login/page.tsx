@@ -1,14 +1,21 @@
 import { Suspense } from 'react';
+
+import { LoginStage } from '@/components/auth/login-stage';
 import { LoginForm } from '@/components/login-form';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <Suspense fallback={<div className="h-[280px] animate-pulse rounded-md bg-muted" />}>
-          <LoginForm />
-        </Suspense>
-      </div>
-    </div>
+    <LoginStage>
+      <Suspense
+        fallback={
+          <div
+            className="h-[280px] animate-pulse rounded-xl bg-white/[0.04]"
+            aria-hidden
+          />
+        }
+      >
+        <LoginForm />
+      </Suspense>
+    </LoginStage>
   );
 }

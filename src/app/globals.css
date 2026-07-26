@@ -206,3 +206,34 @@
   --rdp-accent-background-color: oklch(0.22 0.04 264);
   --rdp-today-color: oklch(0.72 0.16 264);
 }
+
+/* Login redesign — aurora + fortnight pulse motion */
+@keyframes login-aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-2%, 3%) scale(1.06);
+  }
+}
+
+@keyframes login-pulse-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes login-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
