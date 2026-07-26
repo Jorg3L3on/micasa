@@ -8,7 +8,7 @@ export const LandingAtmosphere = () => {
 
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[#f3f6fa]" />
+      <div className="absolute inset-0 bg-[#eef3f8]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_10%_-10%,rgba(46,141,245,0.22),transparent_55%),radial-gradient(ellipse_70%_55%_at_95%_5%,rgba(14,165,233,0.14),transparent_50%),radial-gradient(ellipse_60%_45%_at_50%_100%,rgba(16,185,129,0.1),transparent_55%)]" />
 
       <motion.div

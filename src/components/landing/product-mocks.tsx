@@ -1,3 +1,6 @@
+'use client';
+
+import { AnimatedAmount } from '@/components/landing/animated-amount';
 import { cn } from '@/lib/utils';
 
 type ProductMockProps = {
@@ -54,7 +57,7 @@ export const ProductMock = ({
                   Balance quincena
                 </p>
                 <p className="mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl">
-                  $3,370.00
+                  <AnimatedAmount value={3370} />
                 </p>
               </div>
               <div className="text-right">
@@ -99,7 +102,7 @@ export const ProductMock = ({
                 Disponible
               </p>
               <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">
-                $18,450.00
+                <AnimatedAmount value={18450} durationMs={1600} />
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <div className="border border-white/10 bg-black/20 px-3 py-2">
