@@ -168,7 +168,7 @@ export const ProductMock = ({
             <div className="rounded-lg border border-white/10 border-l-[3px] border-l-emerald-500/50 bg-transparent px-3 py-3">
               <div className="flex items-start gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
-                  <LineChart className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
+                  <LineChart className="h-3.5 w-3.5 text-emerald-400" aria-hidden data-icon="inline-start" />
                 </span>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
@@ -185,8 +185,7 @@ export const ProductMock = ({
                     <WalletProviderIcon
                       providerIconKey="BBVA"
                       className="h-5 w-5"
-                      showTooltipLabel={false}
-                    />
+                      showTooltipLabel={false} data-icon="inline-start" />
                     <p className="truncate text-[11px] text-white/55">BBVA Débito</p>
                   </div>
                   <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
@@ -198,8 +197,7 @@ export const ProductMock = ({
                     <WalletProviderIcon
                       providerIconKey="CASH_GENERIC"
                       className="h-5 w-5"
-                      showTooltipLabel={false}
-                    />
+                      showTooltipLabel={false} data-icon="inline-start" />
                     <p className="truncate text-[11px] text-white/55">Efectivo</p>
                   </div>
                   <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
@@ -252,7 +250,7 @@ export const ProductMock = ({
         <div className="space-y-4 p-4 sm:p-5">
           <div className="flex items-start gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
-              <LineChart className="h-4 w-4 text-emerald-400" aria-hidden />
+              <LineChart className="h-4 w-4 text-emerald-400" aria-hidden data-icon="inline-start" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
@@ -325,8 +323,7 @@ export const ProductMock = ({
                   <WalletProviderIcon
                     providerIconKey={card.providerIconKey}
                     className="h-7 w-7"
-                    showTooltipLabel={false}
-                  />
+                    showTooltipLabel={false} data-icon="inline-start" />
                   <div>
                     <p className="text-sm font-semibold text-white">{card.name}</p>
                     <p className="text-[11px] text-white/45">{card.due}</p>

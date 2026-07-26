@@ -31,7 +31,7 @@ import {
 type PantryProductFormProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: PantryProductFormValues) => Promise<void>;
+  onSave: (data: PantryProductFormValues) => Promise<void>;
   defaultValues?: PantryProductFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
@@ -50,7 +50,7 @@ const emptyDefaults: PantryProductFormValues = {
 export const PantryProductForm = ({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultValues,
   mode,
   error,
@@ -70,7 +70,7 @@ export const PantryProductForm = ({
 
   const handleSubmit = async (data: PantryProductFormValues) => {
     try {
-      await onSubmit(data);
+      await onSave(data);
       form.reset();
       onOpenChange(false);
     } catch {
@@ -225,6 +225,7 @@ export const PantryProductForm = ({
                       checked={field.value}
                       onCheckedChange={(v) => field.onChange(v === true)}
                       id="pantry-product-active"
+                      aria-label="Producto activo"
                     />
                   </FormControl>
                   <FormLabel
@@ -251,7 +252,7 @@ export const PantryProductForm = ({
               >
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                     {mode === 'create' ? 'Guardando…' : 'Actualizando…'}
                   </>
                 ) : mode === 'create' ? (

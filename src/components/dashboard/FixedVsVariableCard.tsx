@@ -21,7 +21,7 @@ export default function FixedVsVariableCard({
       <CardHeader>
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <PieChart className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+            <PieChart className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
           </span>
           <CardTitle className="text-sm font-semibold leading-none">
             Fijos vs variables

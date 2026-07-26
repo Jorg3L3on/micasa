@@ -117,7 +117,7 @@ export default function SwipeableExpenseRow({
             className="flex size-11 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Eliminar gasto"
           >
-            <Trash2 className="size-5 shrink-0" aria-hidden />
+            <Trash2 className="size-5 shrink-0" aria-hidden data-icon="inline-start" />
           </button>
         </div>
       </div>

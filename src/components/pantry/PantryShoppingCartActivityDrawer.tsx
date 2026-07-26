@@ -133,7 +133,7 @@ export function PantryShoppingCartActivityDrawer({
           ) : null}
           {loading ? (
             <div className="flex justify-center py-6 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" data-icon="inline-start" />
             </div>
           ) : rows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">

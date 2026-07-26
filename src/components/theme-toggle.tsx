@@ -23,7 +23,7 @@ export function ThemeToggle() {
         aria-label="Toggle theme"
         disabled
       >
-        <Sun className="size-5" />
+        <Sun className="size-5" data-icon="inline-start" />
       </Button>
     );
   }
@@ -52,9 +52,9 @@ export function ThemeToggle() {
       tabIndex={0}
     >
       {isDark ? (
-        <Sun className="size-5" aria-hidden />
+        <Sun className="size-5" aria-hidden data-icon="inline-start" />
       ) : (
-        <Moon className="size-5" aria-hidden />
+        <Moon className="size-5" aria-hidden data-icon="inline-start" />
       )}
     </Button>
   );

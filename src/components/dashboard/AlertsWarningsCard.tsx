@@ -43,7 +43,7 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
       >
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden data-icon="inline-start" />
           </span>
           <CardTitle className="text-sm font-semibold leading-none">
             Alertas y avisos
@@ -66,7 +66,7 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
             const Icon = config.icon;
             return (
               <Alert key={alert.type} variant={config.variant}>
-                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
                 <div className="flex flex-col gap-1">
                   <AlertTitle>{alert.title}</AlertTitle>
                   <AlertDescription>{alert.description}</AlertDescription>

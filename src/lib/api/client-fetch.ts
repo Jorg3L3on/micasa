@@ -69,7 +69,7 @@ export async function clientFetchFromApi<T>(
   });
 
   if (!res.ok) {
-    let errorMessage = `No se pudo completar la solicitud (${endpoint})`;
+    let failureReason = `No se pudo completar la solicitud (${endpoint})`;
     let errorDetails: ApiErrorDetail[] | undefined;
     let apiCode: string | undefined;
     try {
@@ -78,12 +78,12 @@ export async function clientFetchFromApi<T>(
         apiCode = error.code;
       }
       if (error.error) {
-        errorMessage = error.error;
+        failureReason = error.error;
       }
       if (error.details && Array.isArray(error.details)) {
         errorDetails = error.details;
         if (errorDetails && errorDetails.length > 0) {
-          errorMessage = error.details
+          failureReason = error.details
             .map((detail) =>
               typeof detail === 'string'
                 ? detail
@@ -95,7 +95,7 @@ export async function clientFetchFromApi<T>(
     } catch {
       // If JSON parsing fails, use default message
     }
-    const error = new Error(errorMessage) as ClientApiError;
+    const error = new Error(failureReason) as ClientApiError;
     error.status = res.status;
     error.details = errorDetails;
     error.code = apiCode;
@@ -128,9 +128,9 @@ export async function clientFetchMultipartJson<T>(
   });
 
   if (!res.ok) {
-    let errorMessage = `No se pudo completar la solicitud (${endpoint})`;
+    let failureReason = `No se pudo completar la solicitud (${endpoint})`;
     if (res.status === 413) {
-      errorMessage =
+      failureReason =
         'El archivo supera el límite de tamaño del servidor o del proxy (p. ej. nginx, Vercel). Prueba en local, sube un CSV más pequeño o aumenta client_max_body_size / el límite de tu proveedor.';
     }
     let errorDetails: ApiErrorDetail[] | undefined;
@@ -139,7 +139,7 @@ export async function clientFetchMultipartJson<T>(
     try {
       const error = (await res.json()) as ApiErrorResponse;
       if (error.error) {
-        errorMessage = error.error;
+        failureReason = error.error;
       }
       if (typeof error.hint === 'string' && error.hint.trim()) {
         hint = error.hint.trim();
@@ -150,7 +150,7 @@ export async function clientFetchMultipartJson<T>(
       if (error.details && Array.isArray(error.details)) {
         errorDetails = error.details;
         if (errorDetails && errorDetails.length > 0) {
-          errorMessage = error.details
+          failureReason = error.details
             .map((detail) =>
               typeof detail === 'string'
                 ? detail
@@ -162,12 +162,12 @@ export async function clientFetchMultipartJson<T>(
     } catch {
       // keep default message (incl. 413 hint when JSON body is empty)
     }
-    const err = new Error(errorMessage) as ClientApiError;
-    err.status = res.status;
-    err.details = errorDetails;
-    if (hint) err.hint = hint;
-    if (parseWarnings) err.parse_warnings = parseWarnings;
-    throw err;
+    const error = new Error(failureReason) as ClientApiError;
+    error.status = res.status;
+    error.details = errorDetails;
+    if (hint) error.hint = hint;
+    if (parseWarnings) error.parse_warnings = parseWarnings;
+    throw error;
   }
 
   return res.json();

@@ -334,7 +334,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
   if (loading) {
     return (
       <PantryLayoutShell className="flex justify-center py-12 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin" data-icon="inline-start" />
       </PantryLayoutShell>
     );
   }
@@ -364,7 +364,8 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
           asChild
         >
           <Link href={backHref} aria-label="Volver">
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" aria-hidden data-icon="inline-start" />
+            <span className="sr-only">Volver</span>
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
@@ -396,8 +397,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
                 store={cart.store}
                 variant="badge"
                 className="h-4 min-w-7 border-none bg-transparent px-0"
-                showLabel={false}
-              />
+                showLabel={false} data-icon="inline-start" />
               {SHOPPING_STORE_LABELS[cart.store]}
             </Badge>
           </button>
@@ -412,7 +412,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
               className="h-9 w-9"
               aria-label="Más"
             >
-              <MoreVertical className="h-5 w-5" />
+              <MoreVertical className="h-5 w-5" data-icon="inline-start" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -434,11 +434,11 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setRenameOpen(true)}>
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-4 w-4" data-icon="inline-start" />
               Renombrar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setActivityOpen(true)}>
-              <History className="h-4 w-4" />
+              <History className="h-4 w-4" data-icon="inline-start" />
               Movimientos
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -446,7 +446,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
               className="text-destructive focus:text-destructive"
               onClick={() => setDeleteOpen(true)}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" data-icon="inline-start" />
               Eliminar carrito
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -461,7 +461,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
 
       {cartGuardrail ? (
         <Alert className="border-amber-500/40">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTriangle className="h-4 w-4 text-amber-600" data-icon="inline-start" />
           <AlertTitle>Guardrail de gasto</AlertTitle>
           <AlertDescription>{cartGuardrail}</AlertDescription>
         </Alert>
@@ -497,7 +497,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
           onClick={() => void handleAutoFillFromHistory()}
           disabled={readOnly || autoFilling}
         >
-          {autoFilling ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {autoFilling ? <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" /> : null}
           Autollenar recurrentes
         </Button>
       </div>
@@ -595,13 +595,13 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
           if (!o) setSelectedItem(null);
         }}
         item={selectedItem}
-        onSubmit={handleEditItem}
+        onSave={handleEditItem}
       />
 
       <CreateCartSheet
         open={renameOpen}
         onOpenChange={setRenameOpen}
-        onSubmit={handleRename}
+        onSave={handleRename}
         initialTitle={cart.title}
         initialNotes={cart.notes}
         initialStore={cart.store}
@@ -644,10 +644,12 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
             </DialogDescription>
           </DialogHeader>
           <Textarea
+            id="bulk-items"
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             rows={8}
             placeholder={'Leche x 2\nHuevos x 1\nPan integral'}
+            aria-label="Ítems a agregar en bloque"
           />
           <DialogFooter>
             <Button
@@ -663,7 +665,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
               onClick={() => void handleBulkCreate()}
               disabled={bulkSaving}
             >
-              {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" /> : null}
               Agregar
             </Button>
           </DialogFooter>

@@ -106,7 +106,7 @@ export default function MyCardsPanel() {
   if (cards.length === 0) {
     return (
       <div className="card-surface flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-5">
-        <CreditCard className="h-8 w-8 text-muted-foreground/40" />
+        <CreditCard className="h-8 w-8 text-muted-foreground/40" data-icon="inline-start" />
         <p className="text-sm text-muted-foreground">No hay tarjetas registradas</p>
       </div>
     );
@@ -184,8 +184,7 @@ export default function MyCardsPanel() {
                       : 'border-border/70 bg-card ring-border/50',
                   )}
                   iconClassName="h-4 w-4"
-                  showTooltipLabel
-                />
+                  showTooltipLabel data-icon="inline-start" />
                 <span
                   className={cn(
                     'min-w-0 flex-1 truncate pr-1 text-sm font-semibold leading-tight sm:text-xs',

@@ -225,13 +225,13 @@ export default function PantryProductsPage() {
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
           <Link href={receiptsHref}>
-            <Receipt className="h-4 w-4" />
+            <Receipt className="h-4 w-4" aria-hidden data-icon="inline-start" />
             Recibos
           </Link>
         </Button>
         <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
           <Link href={insightsHref}>
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" aria-hidden data-icon="inline-start" />
             Ver insights
           </Link>
         </Button>
@@ -283,7 +283,7 @@ export default function PantryProductsPage() {
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-2">
           <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
-              <Package className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+              <Package className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" data-icon="inline-start" />
             </span>
             <div className="min-w-0 flex flex-col gap-0.5">
               <CardTitle className="text-sm font-semibold leading-none">
@@ -323,7 +323,7 @@ export default function PantryProductsPage() {
               role="status"
               aria-label="Cargando productos"
             >
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <Loader2 className="h-8 w-8 animate-spin" data-icon="inline-start" />
             </div>
           ) : products.length === 0 ? (
             <EmptyState
@@ -384,7 +384,7 @@ export default function PantryProductsPage() {
                           }
                           aria-label="Página anterior"
                         >
-                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                         <Button
                           type="button"
@@ -398,7 +398,7 @@ export default function PantryProductsPage() {
                           }
                           aria-label="Página siguiente"
                         >
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4" data-icon="inline-end" />
                         </Button>
                       </div>
                     </div>
@@ -416,7 +416,7 @@ export default function PantryProductsPage() {
           setCreateOpen(open);
           setFormError(null);
         }}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         mode="create"
         error={formError && createOpen ? formError : null}
       />
@@ -430,7 +430,7 @@ export default function PantryProductsPage() {
               if (!open) setSelected(null);
               setFormError(null);
             }}
-            onSubmit={handleEdit}
+            onSave={handleEdit}
             mode="edit"
             defaultValues={productToFormDefaults(selected)}
             error={formError && editOpen ? formError : null}

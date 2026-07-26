@@ -170,7 +170,7 @@ export default function SummaryBlock({
           className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
           aria-label={text}
         >
-          <Info className="h-3 w-3" aria-hidden />
+          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[14rem] text-xs">
@@ -196,7 +196,7 @@ export default function SummaryBlock({
               className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20 shadow-sm ring-1 ring-primary/25"
               aria-hidden
             >
-              <BarChart3 className="h-4 w-4 text-primary" />
+              <BarChart3 className="h-4 w-4 text-primary" data-icon="inline-start" />
             </span>
             <div className="min-w-0 space-y-0.5">
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
@@ -224,9 +224,9 @@ export default function SummaryBlock({
                 }
               >
                 {isExpanded ? (
-                  <ChevronUp className="h-4 w-4" aria-hidden />
+                  <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" aria-hidden />
+                  <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
                 )}
               </Button>
             </TooltipTrigger>
@@ -256,7 +256,7 @@ export default function SummaryBlock({
                 <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
                   <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20 sm:h-6 sm:w-6">
-                      <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5" />
+                      <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                     </span>
                     <span className="truncate text-[9px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 sm:text-[10px]">
                       Ingresos
@@ -271,7 +271,7 @@ export default function SummaryBlock({
                       aria-label="Modificar ingresos de la quincena"
                       tabIndex={0}
                     >
-                      <Pencil className="h-2.5 w-2.5" />
+                      <Pencil className="h-2.5 w-2.5" data-icon="inline-start" />
                     </Button>
                   )}
                 </div>
@@ -291,7 +291,7 @@ export default function SummaryBlock({
               <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-2 py-2 dark:from-emerald-500/12 dark:to-emerald-500/5 sm:px-3 sm:py-3">
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20 sm:h-6 sm:w-6">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" />
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                   </span>
                   <span className="truncate text-[9px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 sm:text-[10px]">
                     Pagado
@@ -311,7 +311,7 @@ export default function SummaryBlock({
               <div className="relative rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 px-2 py-2 dark:from-amber-500/12 dark:to-amber-500/5 sm:px-3 sm:py-3">
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20 sm:h-6 sm:w-6">
-                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" />
+                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                   </span>
                   <span className="truncate text-[9px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 sm:text-[10px]">
                     Pendiente
@@ -373,7 +373,7 @@ export default function SummaryBlock({
               >
                 <div className="mb-2 flex items-center gap-1.5">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
                     Cargos a tarjeta
@@ -433,8 +433,7 @@ export default function SummaryBlock({
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-muted-foreground',
                     )}
-                    aria-hidden
-                  />
+                    aria-hidden data-icon="inline-start" />
                 </span>
                 Desglose de billeteras vs pendiente
               </h4>
@@ -595,7 +594,7 @@ export default function SummaryBlock({
                                 aria-label={`Modificar ${displayLabel}`}
                                 tabIndex={0}
                               >
-                                <Pencil className="h-3 w-3" />
+                                <Pencil className="h-3 w-3" data-icon="inline-start" />
                               </Button>
                             )}
                           </div>

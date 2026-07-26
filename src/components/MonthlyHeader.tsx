@@ -36,8 +36,8 @@ export default function MonthlyHeader({
                 <ChevronLeft
                   className="size-5 shrink-0"
                   strokeWidth={2.25}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
+                <span className="sr-only">Ir al mes anterior: {prevMonthLabel}</span>
               </Link>
             </Button>
           ) : (
@@ -51,8 +51,7 @@ export default function MonthlyHeader({
                 <ChevronLeft
                   className="size-5 shrink-0"
                   strokeWidth={2.25}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
               </Button>
             </span>
           )}

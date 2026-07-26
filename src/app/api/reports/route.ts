@@ -185,8 +185,9 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error generating report:', error);
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to generate report';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to generate report' },
+      { status: 500 },
+    );
   }
 }

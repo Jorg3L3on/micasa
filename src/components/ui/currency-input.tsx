@@ -1,23 +1,31 @@
 'use client';
 
+import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-type CurrencyInputProps = {
+type CurrencyInputProps = Omit<
+  React.ComponentPropsWithoutRef<'input'>,
+  'value' | 'onChange' | 'type'
+> & {
   value: unknown;
   onChange: (val: number) => void;
-  className?: string;
-  placeholder?: string;
-  disabled?: boolean;
 };
 
-export function CurrencyInput({
-  value,
-  onChange,
-  className,
-  placeholder = '0',
-  disabled,
-}: CurrencyInputProps) {
+export const CurrencyInput = React.forwardRef<
+  HTMLInputElement,
+  CurrencyInputProps
+>(function CurrencyInput(
+  {
+    value,
+    onChange,
+    className,
+    placeholder = '0',
+    disabled,
+    ...props
+  },
+  ref,
+) {
   const num = Number(value) || 0;
   const displayValue =
     num > 0
@@ -39,10 +47,14 @@ export function CurrencyInput({
 
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-sm text-muted-foreground">
+      <span
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-sm text-muted-foreground"
+        aria-hidden
+      >
         $
       </span>
       <Input
+        ref={ref}
         type="text"
         inputMode="decimal"
         className={cn('pl-7', className)}
@@ -50,7 +62,9 @@ export function CurrencyInput({
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
+        {...props}
+        aria-label={props['aria-label'] ?? 'Monto'}
       />
     </div>
   );
-}
+});

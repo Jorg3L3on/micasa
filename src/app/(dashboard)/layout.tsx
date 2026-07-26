@@ -8,6 +8,7 @@ import {
 } from '@/components/dashboard-shell-dynamic';
 import { DashboardTooltipProvider } from '@/components/dashboard/DashboardTooltipProvider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import DashboardLoading from './loading';
 
 export default async function DashboardLayout({
   children,
@@ -45,7 +46,7 @@ export default async function DashboardLayout({
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-background">
             <div className="container mx-auto">
-              <Suspense>{children}</Suspense>
+              <Suspense fallback={<DashboardLoading />}>{children}</Suspense>
             </div>
           </div>
         </SidebarInset>

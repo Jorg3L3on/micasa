@@ -322,6 +322,11 @@ export default function FortnightColumn({
       router.refresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'No se pudieron actualizar los datos del reporte',
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -813,7 +818,7 @@ export default function FortnightColumn({
             onClick={onShowSummaryCard}
             aria-label={`Mostrar resumen de la quincena: ${label}`}
           >
-            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+            <BarChart3 className="h-3.5 w-3.5 shrink-0" data-icon="inline-start" />
             Mostrar resumen
           </Button>
         )}
@@ -942,7 +947,7 @@ export default function FortnightColumn({
                         : undefined
                     }
                   >
-                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                     <span className={cn('hidden sm:inline', compactTabs && 'sm:hidden')}>
                       Agregar gasto
                     </span>
@@ -964,7 +969,7 @@ export default function FortnightColumn({
                         disabled={!fortnightId || fortnightId <= 0}
                         aria-label="Más acciones de esta quincena"
                       >
-                        <MoreVertical className="h-4 w-4" aria-hidden />
+                        <MoreVertical className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </Button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
@@ -977,7 +982,7 @@ export default function FortnightColumn({
                     disabled={!fortnightId || fortnightId <= 0}
                     onSelect={() => setPayrollDialogOpen(true)}
                   >
-                    <Banknote className="h-4 w-4 shrink-0" aria-hidden />
+                    <Banknote className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
                     Recibir quincena
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -994,10 +999,9 @@ export default function FortnightColumn({
                     {isRefreshing || isRegenerating ? (
                       <Loader2
                         className="h-4 w-4 shrink-0 animate-spin"
-                        aria-hidden
-                      />
+                        aria-hidden data-icon="inline-start" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
                     )}
                     Regenerar desde plantillas
                   </DropdownMenuItem>
@@ -1102,7 +1106,7 @@ export default function FortnightColumn({
           if (!open) setEditingIncomeId(null);
           setOverrideError(null);
         }}
-        onSubmit={handleOverrideAmount}
+        onSave={handleOverrideAmount}
         defaultAmount={
           editingIncomeId != null ? editingIncomeAmount : tenemos
         }
@@ -1117,7 +1121,7 @@ export default function FortnightColumn({
           setAddExpenseDialogOpen(open);
           setAddExpenseError(null);
         }}
-        onSubmit={handleAddExpense}
+        onCreate={handleAddExpense}
         fortnightLabel={label}
         fortnightId={fortnightId}
         year={year}
@@ -1146,7 +1150,7 @@ export default function FortnightColumn({
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}
-        onSubmit={handlePlannerCardPaymentSubmit}
+        onConfirm={handlePlannerCardPaymentSubmit}
       />
     </>
   );

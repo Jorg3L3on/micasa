@@ -47,7 +47,13 @@ function MobileSidebarCloseOnRouteInner() {
 
 function MobileSidebarCloseOnRoute() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <span className="sr-only" role="status">
+          Cargando navegación…
+        </span>
+      }
+    >
       <MobileSidebarCloseOnRouteInner />
     </Suspense>
   );

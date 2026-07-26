@@ -228,8 +228,7 @@ const WalletBalanceStrip = ({
                               : 'ring-border/60',
                           )}
                           iconClassName="h-3.5 w-3.5"
-                          showTooltipLabel={false}
-                        />
+                          showTooltipLabel={false} data-icon="inline-start" />
                         {showDueReminder && (
                           <span
                             className={cn(
@@ -267,8 +266,7 @@ const WalletBalanceStrip = ({
                               'text-emerald-600 dark:text-emerald-300',
                             accent === 'neutral' && 'text-muted-foreground',
                           )}
-                          aria-hidden
-                        />
+                          aria-hidden data-icon="inline-start" />
                         {showDueReminder && (
                           <span
                             className={cn(
@@ -445,8 +443,7 @@ const WalletBalanceStrip = ({
                         providerIconKey={wallet.provider_icon_key}
                         className="h-5 w-5 rounded-md shadow-sm ring-1 ring-border/50"
                         iconClassName="h-3 w-3"
-                        showTooltipLabel={false}
-                      />
+                        showTooltipLabel={false} data-icon="inline-start" />
                     ) : (
                       <span
                         className={cn(
@@ -495,9 +492,9 @@ const WalletBalanceStrip = ({
             }
           >
             {stripVisible ? (
-              <ChevronUp className="h-4 w-4" aria-hidden />
+              <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
             ) : (
-              <ChevronDown className="h-4 w-4" aria-hidden />
+              <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
             )}
           </Button>
         </TooltipTrigger>

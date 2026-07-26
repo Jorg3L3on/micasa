@@ -51,7 +51,7 @@ type ExpenseTemplateFormProps = {
   paymentMethods: PaymentMethodOption[];
   cutoffSectionOpen: boolean;
   onCutoffSectionOpenChange: (open: boolean) => void;
-  onSubmit: (data: ExpenseTemplateFormValues) => Promise<void>;
+  onSave: (data: ExpenseTemplateFormValues) => Promise<void>;
   cancelHref: string;
 };
 
@@ -68,7 +68,7 @@ export function ExpenseTemplateForm({
   paymentMethods,
   cutoffSectionOpen,
   onCutoffSectionOpenChange,
-  onSubmit,
+  onSave,
   cancelHref,
 }: ExpenseTemplateFormProps) {
   const isRecurring = form.watch('isRecurring');
@@ -86,7 +86,7 @@ export function ExpenseTemplateForm({
         <CardHeader className="border-b border-border/60">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-              <ReceiptText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              <ReceiptText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
             </span>
             <div>
               <CardTitle className="text-sm font-semibold leading-none">
@@ -100,7 +100,7 @@ export function ExpenseTemplateForm({
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -247,6 +247,7 @@ export function ExpenseTemplateForm({
                               form.setValue('dueDaySecond', null);
                             }
                           }}
+                          aria-label="Se repite de forma periodica"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
@@ -273,7 +274,7 @@ export function ExpenseTemplateForm({
                               <Checkbox
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
-                              />
+                               aria-label="Opción" />
                             </FormControl>
                             <div className="space-y-1 leading-none">
                               <FormLabel className="text-sm font-medium">
@@ -286,31 +287,30 @@ export function ExpenseTemplateForm({
                           </FormItem>
                         )}
                       />
-                      {appliesFirstFortnight && (
-                        <FormField
-                          control={form.control}
-                          name="dueDayFirst"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Dia de vencimiento (1-15)
-                              </FormLabel>
-                              <FormControl>
-                                <BoundedDayFieldInput
-                                  className={FIELD_CLASSNAME}
-                                  min={1}
-                                  max={15}
-                                  aria-label="Dia de vencimiento primera quincena"
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
+                      <FormField
+                        control={form.control}
+                        name="dueDayFirst"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">
+                              Dia de vencimiento (1-15)
+                            </FormLabel>
+                            <FormControl>
+                              <BoundedDayFieldInput
+                                className={FIELD_CLASSNAME}
+                                min={1}
+                                max={15}
+                                aria-label="Dia de vencimiento primera quincena"
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                disabled={!appliesFirstFortnight}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
                     <div className="space-y-3 rounded-lg border border-border/60 p-3">
@@ -323,7 +323,7 @@ export function ExpenseTemplateForm({
                               <Checkbox
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
-                              />
+                               aria-label="Opción" />
                             </FormControl>
                             <div className="space-y-1 leading-none">
                               <FormLabel className="text-sm font-medium">
@@ -336,31 +336,30 @@ export function ExpenseTemplateForm({
                           </FormItem>
                         )}
                       />
-                      {appliesSecondFortnight && (
-                        <FormField
-                          control={form.control}
-                          name="dueDaySecond"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Dia de vencimiento (16-31)
-                              </FormLabel>
-                              <FormControl>
-                                <BoundedDayFieldInput
-                                  className={FIELD_CLASSNAME}
-                                  min={16}
-                                  max={31}
-                                  aria-label="Dia de vencimiento segunda quincena"
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
+                      <FormField
+                        control={form.control}
+                        name="dueDaySecond"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">
+                              Dia de vencimiento (16-31)
+                            </FormLabel>
+                            <FormControl>
+                              <BoundedDayFieldInput
+                                className={FIELD_CLASSNAME}
+                                min={16}
+                                max={31}
+                                aria-label="Dia de vencimiento segunda quincena"
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                disabled={!appliesSecondFortnight}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 )}
@@ -385,8 +384,7 @@ export function ExpenseTemplateForm({
                     className={cn(
                       'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
                       cutoffSectionOpen && 'rotate-180',
-                    )}
-                  />
+                    )} data-icon="inline-end" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-2 px-3 pb-3 pt-0">
                   <p className="text-xs leading-relaxed text-muted-foreground">
@@ -429,7 +427,7 @@ export function ExpenseTemplateForm({
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                        />
+                         aria-label="Opción" />
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="text-sm font-medium">
@@ -453,7 +451,7 @@ export function ExpenseTemplateForm({
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                          />
+                           aria-label="Opción" />
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-medium">
@@ -470,16 +468,15 @@ export function ExpenseTemplateForm({
               </div>
 
               <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                <Link href={cancelHref}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    disabled={isSubmitting}
-                  >
-                    Cancelar
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={isSubmitting}
+                  asChild
+                >
+                  <Link href={cancelHref}>Cancelar</Link>
+                </Button>
                 <Button
                   type="submit"
                   className="h-11 w-full sm:w-auto"

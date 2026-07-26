@@ -133,7 +133,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   return (
     <FinanceContext.Provider value={value}>
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <span className="sr-only" role="status">
+            Sincronizando contexto financiero…
+          </span>
+        }
+      >
         <FinanceProviderSync
           setContext={setContext}
           currentUserIdRef={currentUserIdRef}

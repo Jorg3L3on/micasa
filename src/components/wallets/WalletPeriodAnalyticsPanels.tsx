@@ -76,8 +76,7 @@ const InsightStat = ({
           tone === 'good' && 'text-emerald-600 dark:text-emerald-400',
           tone === 'warn' && 'text-amber-600 dark:text-amber-400',
         )}
-        aria-hidden
-      />
+        aria-hidden data-icon="inline-start" />
       {label}
     </div>
     <p className="font-mono text-sm font-bold tabular-nums text-foreground">
@@ -135,7 +134,7 @@ export const WalletPeriodAnalyticsPanels = ({
                 </p>
               </div>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
-                <TrendingUp className="h-4 w-4" aria-hidden />
+                <TrendingUp className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </span>
             </div>
             {hasDailyActivity ? (
@@ -211,7 +210,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   </p>
                 </div>
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
-                  <BarChart3 className="h-4 w-4" aria-hidden />
+                  <BarChart3 className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               </div>
               {topCategories.length > 0 ? (
@@ -260,7 +259,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   </p>
                 </div>
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  <PieChartIcon className="h-4 w-4" aria-hidden />
+                  <PieChartIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               </div>
               {mixRows.length > 0 ? (
@@ -317,7 +316,7 @@ export const WalletPeriodAnalyticsPanels = ({
           <CardContent className="space-y-3 px-4 py-4">
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
-                <Gauge className="h-4 w-4" aria-hidden />
+                <Gauge className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </span>
               <div>
                 <p className="text-sm font-semibold leading-none">
@@ -372,7 +371,7 @@ export const WalletPeriodAnalyticsPanels = ({
               {analytics.largestOutflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
                   <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" data-icon="inline-start" />
                     Mayor egreso
                   </p>
                   <p className="truncate text-sm font-medium">
@@ -386,7 +385,7 @@ export const WalletPeriodAnalyticsPanels = ({
               {analytics.largestInflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
                   <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                     Mayor ingreso
                   </p>
                   <p className="truncate text-sm font-medium">

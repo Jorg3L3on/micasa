@@ -40,7 +40,7 @@ export default async function AdminUserDetailPage({
           href="/admin"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />
           Volver al listado
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -78,7 +78,7 @@ export default async function AdminUserDetailPage({
       >
         <div className="mb-2 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <Home className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
+            <Home className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden data-icon="inline-start" />
           </span>
           <h2 className="text-sm font-semibold leading-none">Casas</h2>
         </div>
@@ -107,8 +107,7 @@ export default async function AdminUserDetailPage({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
             <Wallet
               className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <h2 className="text-sm font-semibold leading-none">Billeteras</h2>
         </div>
@@ -145,8 +144,7 @@ export default async function AdminUserDetailPage({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
             <CalendarRange
               className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <h2 className="text-sm font-semibold leading-none">
             Quincenas recientes
@@ -184,8 +182,7 @@ export default async function AdminUserDetailPage({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
             <HandCoins
               className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <h2 className="text-sm font-semibold leading-none">Préstamos</h2>
         </div>
@@ -221,8 +218,7 @@ export default async function AdminUserDetailPage({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-500/10 dark:bg-slate-500/15">
             <History
               className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <div>
             <h2 className="text-sm font-semibold leading-none">

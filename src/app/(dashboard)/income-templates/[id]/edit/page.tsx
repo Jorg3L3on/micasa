@@ -197,11 +197,13 @@ export default function EditIncomeTemplatePage() {
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error || 'Plantilla no encontrada'}
         </div>
-        <Link
-          href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
-        >
-          <Button variant="outline">Volver a plantillas</Button>
-        </Link>
+        <Button variant="outline" asChild>
+          <Link
+            href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+          >
+            Volver a plantillas
+          </Link>
+        </Button>
       </div>
     );
   }
@@ -303,32 +305,35 @@ export default function EditIncomeTemplatePage() {
                       <FormLabel>
                         Miembro que transfiere a la casa (opcional)
                       </FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value ? String(field.value) : ''}
-                          onValueChange={(value) =>
-                            field.onChange(
-                              value ? Number(value) : null,
-                            )
-                          }
-                          disabled={loadingMembers || houseMembers.length === 0}
-                        >
-                          <SelectTrigger className={`w-full ${FIELD_CLASSNAME}`}>
+                      <Select
+                        value={field.value ? String(field.value) : ''}
+                        onValueChange={(value) =>
+                          field.onChange(
+                            value ? Number(value) : null,
+                          )
+                        }
+                        disabled={loadingMembers || houseMembers.length === 0}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className={`w-full ${FIELD_CLASSNAME}`}
+                            aria-label="Miembro que transfiere a la casa (opcional)"
+                          >
                             <SelectValue placeholder="Selecciona un miembro (opcional)" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {houseMembers.map((member) => (
-                              <SelectItem
-                                key={member.id}
-                                value={String(member.id)}
-                              >
-                                {member.name}
-                                {member.email ? ` (${member.email})` : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
+                        </FormControl>
+                        <SelectContent>
+                          {houseMembers.map((member) => (
+                            <SelectItem
+                              key={member.id}
+                              value={String(member.id)}
+                            >
+                              {member.name}
+                              {member.email ? ` (${member.email})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormDescription className="text-xs">
                         Si seleccionas un miembro, este ingreso se registrará como
                         transferencia de ese usuario hacia la casa (creando un gasto
@@ -354,6 +359,7 @@ export default function EditIncomeTemplatePage() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            aria-label="Primera quincena"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -376,6 +382,7 @@ export default function EditIncomeTemplatePage() {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            aria-label="Segunda quincena"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -401,12 +408,13 @@ export default function EditIncomeTemplatePage() {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-base font-medium">
-                        Activo
-                      </FormLabel>
+                            aria-label="Activo"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-base font-medium">
+                            Activo
+                          </FormLabel>
                       <FormDescription>
                         Las plantillas activas se usan al crear un mes
                       </FormDescription>
@@ -416,17 +424,13 @@ export default function EditIncomeTemplatePage() {
               />
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link
-                  href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
+                <Button type="button" variant="outline" asChild>
+                  <Link
+                    href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
                   >
                     Cancelar
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? 'Guardando...' : 'Actualizar'}
                 </Button>

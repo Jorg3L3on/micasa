@@ -76,8 +76,7 @@ export const PeriodCategoryPieCard = ({
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
           <PieChartIcon
             className="h-4 w-4 text-violet-600 dark:text-violet-400"
-            aria-hidden
-          />
+            aria-hidden data-icon="inline-start" />
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">

@@ -115,7 +115,7 @@ export default function FortnightLoanPaymentsPanel({
                       : 'bg-sky-500/10 text-sky-600 ring-sky-500/30 dark:text-sky-300',
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </span>
 
               <div className="min-w-0 flex-1">
@@ -173,7 +173,7 @@ export default function FortnightLoanPaymentsPanel({
                     className="h-7 gap-1 px-2 text-[10px]"
                   >
                     <Link href={loanHref(item)}>
-                      <ArrowRight className="h-3 w-3" aria-hidden />
+                      <ArrowRight className="h-3 w-3" aria-hidden data-icon="inline-start" />
                       Gestionar
                     </Link>
                   </Button>
