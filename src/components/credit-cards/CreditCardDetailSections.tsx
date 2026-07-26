@@ -262,7 +262,7 @@ export const CreditCardDetailHeaderActions = ({
           className="h-9 w-9 shrink-0"
           aria-label={`Más acciones para ${card.name}`}
         >
-          <MoreHorizontal className="h-5 w-5" />
+          <MoreHorizontal className="h-5 w-5" data-icon="inline-start" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
@@ -272,7 +272,7 @@ export const CreditCardDetailHeaderActions = ({
         </DropdownMenuItem>
         {onAdjustBalance ? (
           <DropdownMenuItem onClick={onAdjustBalance} className="cursor-pointer">
-            <SlidersHorizontal className="mr-2 h-4 w-4 shrink-0" />
+            <SlidersHorizontal className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
             Ajustar deuda
           </DropdownMenuItem>
         ) : null}
@@ -285,7 +285,7 @@ export const CreditCardDetailHeaderActions = ({
           Exportar CSV
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onExportPdf} className="cursor-pointer">
-          <FileText className="mr-2 h-4 w-4 shrink-0" />
+          <FileText className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
           Exportar PDF
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -345,11 +345,10 @@ export const CreditCardVisualHero = ({
                 <WalletProviderIcon
                   providerIconKey={card.provider_icon_key}
                   className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
-                  iconClassName="h-4 w-4"
-                />
+                  iconClassName="h-4 w-4" data-icon="inline-start" />
               ) : (
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/15">
-                  <CreditCard className="h-4 w-4" aria-hidden />
+                  <CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               )}
               <div className="min-w-0">
@@ -481,7 +480,7 @@ export const CreditCardDuePaymentStrip = ({
                   : 'border-border/60 text-muted-foreground',
           )}
         >
-          <CalendarClock className="h-3 w-3" aria-hidden />
+          <CalendarClock className="h-3 w-3" aria-hidden data-icon="inline-start" />
           {dueLabel}
         </Badge>
         <span className="text-[10px] text-muted-foreground">
@@ -558,7 +557,7 @@ export const CreditCardQuickActions = ({
           aria-label={ariaLabel ?? label}
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-background/85 shadow-sm transition-colors hover:bg-muted/40 dark:bg-background/60">
-            <Icon className="h-5 w-5 text-foreground" aria-hidden />
+            <Icon className="h-5 w-5 text-foreground" aria-hidden data-icon="inline-start" />
           </span>
           <span className="max-w-[4.5rem] text-center text-[11px] font-medium leading-tight text-muted-foreground">
             {label}
@@ -675,7 +674,11 @@ export const CreditCardCycleSummary = ({
             onClick={onResetToToday}
             aria-label="Volver al ciclo actual"
           >
-            <RotateCcw className="mr-1 h-3 w-3" aria-hidden />
+            <RotateCcw
+              className="mr-1 h-3 w-3"
+              aria-hidden
+              data-icon="inline-start"
+            />
             Hoy
           </Button>
         ) : null}

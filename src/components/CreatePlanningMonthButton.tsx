@@ -95,8 +95,7 @@ export default function CreatePlanningMonthButton({
             className={cn(
               'h-4 w-4',
               variant === 'compact' && 'text-violet-600 dark:text-violet-400',
-            )}
-          />
+            )} data-icon="inline-start" />
         )}
       </span>
       <span className="flex min-w-0 flex-col items-start gap-0.5">

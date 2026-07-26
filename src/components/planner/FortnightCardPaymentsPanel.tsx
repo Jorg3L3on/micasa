@@ -294,8 +294,7 @@ const FortnightCardPaymentsPanel = ({
                             ? 'text-muted-foreground'
                             : 'text-violet-600 dark:text-violet-300',
                     )}
-                    aria-hidden
-                  />
+                    aria-hidden data-icon="inline-start" />
                 </span>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -185,8 +185,7 @@ export default function BudgetTemplatesPage() {
               <>
                 <Repeat2
                   className="h-3.5 w-3.5 shrink-0 text-violet-500"
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
                 <span className="sr-only">Recurrente</span>
               </>
             )}
@@ -238,7 +237,7 @@ export default function BudgetTemplatesPage() {
                   {reactivatingId === tpl.id ? (
                     <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                   ) : (
-                    <RotateCcw className="h-4 w-4" />
+                    <RotateCcw className="h-4 w-4" data-icon="inline-start" />
                   )}
                 </Button>
               ) : (
@@ -310,7 +309,7 @@ export default function BudgetTemplatesPage() {
 
       {error && !deleteDialogOpen ? (
         <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" aria-hidden />
+          <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
           <div>
             <AlertTitle>No se pudo completar la acción</AlertTitle>
             <AlertDescription>{error}</AlertDescription>

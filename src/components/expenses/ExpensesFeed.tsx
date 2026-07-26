@@ -462,7 +462,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Coins className="size-7" aria-hidden />
+              <Coins className="size-7" aria-hidden data-icon="inline-start" />
             </div>
             <div className="space-y-1">
               <p className="text-base font-medium">Aún no hay gastos</p>

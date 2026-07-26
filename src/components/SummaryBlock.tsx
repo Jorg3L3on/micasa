@@ -311,7 +311,7 @@ export default function SummaryBlock({
               <div className="relative rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 px-2 py-2 dark:from-amber-500/12 dark:to-amber-500/5 sm:px-3 sm:py-3">
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20 sm:h-6 sm:w-6">
-                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" />
+                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                   </span>
                   <span className="truncate text-[9px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 sm:text-[10px]">
                     Pendiente
@@ -373,7 +373,7 @@ export default function SummaryBlock({
               >
                 <div className="mb-2 flex items-center gap-1.5">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
                     Cargos a tarjeta

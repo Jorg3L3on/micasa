@@ -48,7 +48,7 @@ const NavUserShell = ({
           <span className="truncate font-medium">{user.name}</span>
           <span className="truncate text-xs">{user.email}</span>
         </div>
-        <ChevronsUpDown className="ml-auto size-4 opacity-50" />
+        <ChevronsUpDown className="ml-auto size-4 opacity-50" data-icon="inline-start" />
       </div>
     </SidebarMenuItem>
   </SidebarMenu>
@@ -93,7 +93,7 @@ export function NavUser({
                 <span className="truncate font-medium">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-4" data-icon="inline-start" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

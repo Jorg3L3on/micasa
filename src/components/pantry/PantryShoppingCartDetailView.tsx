@@ -397,8 +397,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
                 store={cart.store}
                 variant="badge"
                 className="h-4 min-w-7 border-none bg-transparent px-0"
-                showLabel={false}
-              />
+                showLabel={false} data-icon="inline-start" />
               {SHOPPING_STORE_LABELS[cart.store]}
             </Badge>
           </button>
@@ -439,7 +438,7 @@ export default function PantryShoppingCartDetailView({ cartId }: Props) {
               Renombrar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setActivityOpen(true)}>
-              <History className="h-4 w-4" />
+              <History className="h-4 w-4" data-icon="inline-start" />
               Movimientos
             </DropdownMenuItem>
             <DropdownMenuSeparator />

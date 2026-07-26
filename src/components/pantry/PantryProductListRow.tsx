@@ -99,7 +99,7 @@ export const PantryProductListRow = ({
                 className="h-9 w-9 shrink-0"
                 aria-label={`Más opciones para ${product.name}`}
               >
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                <MoreHorizontal className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

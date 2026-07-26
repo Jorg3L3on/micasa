@@ -210,7 +210,7 @@ export default function BudgetAllocationsDialog({
 
         {error ? (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden />
+            <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -224,7 +224,7 @@ export default function BudgetAllocationsDialog({
 
             {form.formState.errors.root ? (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" aria-hidden />
+                <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 <AlertDescription>
                   {form.formState.errors.root.message}
                 </AlertDescription>
@@ -240,7 +240,7 @@ export default function BudgetAllocationsDialog({
                 </div>
               ) : optionsError ? (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" aria-hidden />
+                  <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   <div className="min-w-0 flex-1">
                     <AlertDescription>{optionsError}</AlertDescription>
                     <Button
@@ -339,8 +339,7 @@ export default function BudgetAllocationsDialog({
                               onChange={f.onChange}
                               className="h-11 text-sm sm:h-8 sm:text-xs"
                               placeholder="0"
-                              aria-label={`Monto de la asignación ${index + 1}`}
-                            />
+                              aria-label={`Monto de la asignación ${index + 1}`} data-icon="inline-start" />
                           </FormControl>
                           <FormMessage className="text-[10px]" />
                         </FormItem>

@@ -297,8 +297,7 @@ export function AlertsBell() {
                   >
                     <Icon
                       className={cn('mt-0.5 size-4 shrink-0', config.iconClass)}
-                      aria-hidden
-                    />
+                      aria-hidden data-icon="inline-start" />
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p className="font-medium leading-tight">{alert.title}</p>
                       <p className="text-muted-foreground text-xs leading-snug">

@@ -118,7 +118,7 @@ export const FortnightViewControls = ({
       >
         {summaryVisible ? (
           <>
-            <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+            <EyeOff className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
             Ocultar resumen
           </>
         ) : (

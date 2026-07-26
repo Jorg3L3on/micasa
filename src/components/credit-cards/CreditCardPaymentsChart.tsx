@@ -157,7 +157,7 @@ export const CreditCardPaymentsChart = ({
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-          <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+          <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
         </span>
         <div className="min-w-0">
           <CardTitle className="text-sm font-semibold leading-none">

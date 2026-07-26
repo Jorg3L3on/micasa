@@ -114,8 +114,7 @@ const ExpenseWalletLabel = ({
             isCompact ? 'h-3 w-3' : 'h-3.5 w-3.5',
           )}
           iconClassName={isCompact ? 'h-3 w-3' : 'h-3.5 w-3.5'}
-          showTooltipLabel={false}
-        />
+          showTooltipLabel={false} data-icon="inline-start" />
       ) : null}
       <span className="truncate text-muted-foreground/65">{walletLabel}</span>
     </span>
@@ -582,8 +581,7 @@ export default function ExpenseTable({
                       ? 'text-muted-foreground/70'
                       : 'text-foreground/70',
                   )}
-                  iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
-                />
+                  iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'} data-icon="inline-start" />
                 <span
                   className={cn(
                     'truncate',
@@ -1017,8 +1015,7 @@ export default function ExpenseTable({
                                   ? 'text-muted-foreground/70'
                                   : 'text-foreground/70',
                               )}
-                              iconClassName="h-4 w-4"
-                            />
+                              iconClassName="h-4 w-4" data-icon="inline-start" />
                             <span
                               className={cn(
                                 'min-w-0 truncate',

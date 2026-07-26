@@ -157,7 +157,7 @@ function LoadError({
 }) {
   return (
     <Alert variant="destructive">
-      <AlertCircle className="h-4 w-4" aria-hidden />
+      <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
       <div className="min-w-0 flex-1">
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription>{message}</AlertDescription>

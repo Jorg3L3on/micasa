@@ -167,8 +167,7 @@ export const CreditCardCycleLedger = ({
             <div className="relative sm:w-64">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
+                aria-hidden data-icon="inline-start" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -257,7 +256,7 @@ export const CreditCardCycleLedger = ({
                           className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40"
                         >
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                            <ArrowUpRight className="h-4 w-4" aria-hidden />
+                            <ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
@@ -306,7 +305,7 @@ export const CreditCardCycleLedger = ({
                         className="flex items-center gap-3 rounded-xl px-2 py-2.5"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                          <ArrowDownLeft className="h-4 w-4" aria-hidden />
+                          <ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">
@@ -334,7 +333,7 @@ export const CreditCardCycleLedger = ({
                       className="flex items-center gap-3 rounded-xl px-2 py-2.5"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <FileText className="h-4 w-4" aria-hidden />
+                        <FileText className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">Importación de estado de cuenta</p>

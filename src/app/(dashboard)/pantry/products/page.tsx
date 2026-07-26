@@ -283,7 +283,7 @@ export default function PantryProductsPage() {
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-2">
           <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
-              <Package className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+              <Package className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" data-icon="inline-start" />
             </span>
             <div className="min-w-0 flex flex-col gap-0.5">
               <CardTitle className="text-sm font-semibold leading-none">

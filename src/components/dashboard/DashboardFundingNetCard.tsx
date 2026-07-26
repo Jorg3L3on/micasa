@@ -144,7 +144,7 @@ export default function DashboardFundingNetCard({
           </Dialog>
 
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400">
-            <Scale className="h-4 w-4 text-white" aria-hidden />
+            <Scale className="h-4 w-4 text-white" aria-hidden data-icon="inline-start" />
           </div>
         </div>
       </div>

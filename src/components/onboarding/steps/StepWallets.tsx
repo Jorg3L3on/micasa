@@ -165,7 +165,7 @@ export default function StepWallets() {
                 className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
                 aria-hidden
               >
-                <Icon className="size-4" strokeWidth={2} />
+                <Icon className="size-4" strokeWidth={2} data-icon="inline-start" />
               </span>
               <Input
                 type="text"
@@ -221,8 +221,7 @@ export default function StepWallets() {
                         <WalletProviderIcon
                           providerIconKey={provider.key}
                           className="h-5 w-5 rounded-md border-0"
-                          showTooltipLabel={false}
-                        />
+                          showTooltipLabel={false} data-icon="inline-start" />
                         {provider.label}
                       </span>
                     </SelectItem>

@@ -270,7 +270,7 @@ const CreditCardStatementImportDialog = ({
                       : 'bg-muted text-muted-foreground',
                   )}
                 >
-                  <FileText className="h-4 w-4" aria-hidden />
+                  <FileText className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-foreground">

@@ -443,7 +443,7 @@ export default function PantryReceiptsPage() {
       >
         <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+            <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
           </span>
           <div className="flex flex-1 flex-col gap-0.5">
             <CardTitle className="text-sm font-semibold leading-none">

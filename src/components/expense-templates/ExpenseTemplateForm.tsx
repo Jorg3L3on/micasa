@@ -86,7 +86,7 @@ export function ExpenseTemplateForm({
         <CardHeader className="border-b border-border/60">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-              <ReceiptText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              <ReceiptText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
             </span>
             <div>
               <CardTitle className="text-sm font-semibold leading-none">

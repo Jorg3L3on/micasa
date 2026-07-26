@@ -66,7 +66,7 @@ export default function AlertsWarningsCard({ data }: AlertsWarningsCardProps) {
             const Icon = config.icon;
             return (
               <Alert key={alert.type} variant={config.variant}>
-                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
                 <div className="flex flex-col gap-1">
                   <AlertTitle>{alert.title}</AlertTitle>
                   <AlertDescription>{alert.description}</AlertDescription>

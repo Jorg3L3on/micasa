@@ -316,7 +316,7 @@ export function DataTableColumnHeader<TData>({
       aria-label={`Ordenar por ${title}`}
     >
       {title}
-      <ArrowUpDown className="ml-2 h-4 w-4" />
+      <ArrowUpDown className="ml-2 h-4 w-4" data-icon="inline-start" />
     </Button>
   );
 }

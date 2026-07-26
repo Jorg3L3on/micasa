@@ -256,7 +256,7 @@ export const WalletDetailHeaderActions = ({
           className="h-9 w-9 shrink-0"
           aria-label={`Más acciones para ${walletName}`}
         >
-          <MoreHorizontal className="h-5 w-5" />
+          <MoreHorizontal className="h-5 w-5" data-icon="inline-start" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
@@ -267,7 +267,7 @@ export const WalletDetailHeaderActions = ({
               Registrar gasto
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onRegisterIncome} className="cursor-pointer">
-              <Coins className="mr-2 h-4 w-4 shrink-0" />
+              <Coins className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
               Registrar ingreso
             </DropdownMenuItem>
           </>
@@ -347,11 +347,10 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <WalletProviderIcon
                   providerIconKey={wallet.provider_icon_key}
                   className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
-                  iconClassName="h-4 w-4"
-                />
+                  iconClassName="h-4 w-4" data-icon="inline-start" />
               ) : (
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/15">
-                  <FallbackIcon className="h-4 w-4" aria-hidden />
+                  <FallbackIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               )}
               <div className="min-w-0">
@@ -456,7 +455,7 @@ export const WalletQuickActions = ({
           aria-label={ariaLabel ?? label}
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/15 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/8">
-            <Icon className="h-5 w-5 text-foreground dark:text-white" aria-hidden />
+            <Icon className="h-5 w-5 text-foreground dark:text-white" aria-hidden data-icon="inline-start" />
           </span>
           <span className="max-w-[4.5rem] text-center text-[11px] font-medium leading-tight text-muted-foreground">
             {label}
@@ -588,7 +587,7 @@ export const WalletPeriodSummary = ({
             onClick={onResetToToday}
             aria-label="Volver al mes actual"
           >
-            <RotateCcw className="mr-1 h-3 w-3" aria-hidden />
+            <RotateCcw className="mr-1 h-3 w-3" aria-hidden data-icon="inline-start" />
             Hoy
           </Button>
         ) : null}

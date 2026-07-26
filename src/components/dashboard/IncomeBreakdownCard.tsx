@@ -27,7 +27,7 @@ export default function IncomeBreakdownCard({
       <CardHeader>
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
+            <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden data-icon="inline-start" />
           </span>
           <CardTitle className="text-sm font-semibold leading-none">
             Desglose de ingresos

@@ -185,8 +185,7 @@ export const ProductMock = ({
                     <WalletProviderIcon
                       providerIconKey="BBVA"
                       className="h-5 w-5"
-                      showTooltipLabel={false}
-                    />
+                      showTooltipLabel={false} data-icon="inline-start" />
                     <p className="truncate text-[11px] text-white/55">BBVA Débito</p>
                   </div>
                   <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
@@ -198,8 +197,7 @@ export const ProductMock = ({
                     <WalletProviderIcon
                       providerIconKey="CASH_GENERIC"
                       className="h-5 w-5"
-                      showTooltipLabel={false}
-                    />
+                      showTooltipLabel={false} data-icon="inline-start" />
                     <p className="truncate text-[11px] text-white/55">Efectivo</p>
                   </div>
                   <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
@@ -325,8 +323,7 @@ export const ProductMock = ({
                   <WalletProviderIcon
                     providerIconKey={card.providerIconKey}
                     className="h-7 w-7"
-                    showTooltipLabel={false}
-                  />
+                    showTooltipLabel={false} data-icon="inline-start" />
                   <div>
                     <p className="text-sm font-semibold text-white">{card.name}</p>
                     <p className="text-[11px] text-white/45">{card.due}</p>

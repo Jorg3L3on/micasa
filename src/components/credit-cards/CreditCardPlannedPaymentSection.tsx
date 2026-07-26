@@ -120,7 +120,7 @@ export const CreditCardPlannedPaymentSection = ({
       >
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
           </span>
           <div>
             <p className="text-sm font-semibold leading-none">

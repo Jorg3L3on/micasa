@@ -196,7 +196,7 @@ export const LandingPage = () => {
             className="inline-flex items-center gap-2.5 text-[#0b1220] transition-opacity hover:opacity-80"
             aria-label="MiCasa inicio"
           >
-            <MicasaMark className="h-7 w-auto sm:h-8" />
+            <MicasaMark className="h-7 w-auto sm:h-8" data-icon="inline-start" />
             <span className="font-[family-name:var(--font-landing-display)] text-base font-semibold tracking-tight sm:text-lg">
               MiCasa
             </span>

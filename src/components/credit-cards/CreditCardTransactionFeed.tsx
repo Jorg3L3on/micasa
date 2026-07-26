@@ -62,7 +62,7 @@ export const CreditCardFeedEmpty = ({
 }: FeedEmptyProps) => (
   <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/15 px-4 py-8 text-center">
     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50">
-      <Inbox className="h-4 w-4 text-muted-foreground" aria-hidden />
+      <Inbox className="h-4 w-4 text-muted-foreground" aria-hidden data-icon="inline-start" />
     </span>
     <p className="text-sm font-medium text-foreground">{message}</p>
     {description ? (
@@ -215,8 +215,7 @@ export const CreditCardRecentMovements = ({
               <div className="relative sm:w-72">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -277,7 +276,7 @@ export const CreditCardRecentMovements = ({
             tone="emerald"
           />
           <ActivityMetric
-            icon={<SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />}
+            icon={<SlidersHorizontal className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />}
             label="Neto"
             value={formatSignedCurrency(cycleNet)}
             tone={cycleNet >= 0 ? 'emerald' : 'rose'}
@@ -358,8 +357,7 @@ export const CreditCardRecentMovements = ({
                             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10 ring-1 ring-violet-500/20">
                               <ArrowUpRight
                                 className="h-4 w-4 text-violet-600 dark:text-violet-400"
-                                aria-hidden
-                              />
+                                aria-hidden data-icon="inline-start" />
                             </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex min-w-0 items-center gap-2">
@@ -409,8 +407,7 @@ export const CreditCardRecentMovements = ({
                             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20">
                               <ArrowDownLeft
                                 className="h-4 w-4 text-emerald-600 dark:text-emerald-400"
-                                aria-hidden
-                              />
+                                aria-hidden data-icon="inline-start" />
                             </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex min-w-0 items-center gap-2">

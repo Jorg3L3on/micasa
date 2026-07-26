@@ -57,7 +57,7 @@ export function BudgetTemplateMobileCard({
       <div className="mt-3 flex flex-wrap gap-1.5">
         {template.recurrent ? (
           <Badge variant="outline" className="gap-1 text-[10px]">
-            <Repeat2 className="h-3 w-3" aria-hidden />
+            <Repeat2 className="h-3 w-3" aria-hidden data-icon="inline-start" />
             Recurrente
           </Badge>
         ) : null}
@@ -81,7 +81,7 @@ export function BudgetTemplateMobileCard({
             {isReactivating ? (
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
             ) : (
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" data-icon="inline-start" />
             )}
           </Button>
         ) : (

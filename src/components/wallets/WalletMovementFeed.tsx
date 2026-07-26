@@ -145,9 +145,9 @@ export const WalletMovementsFeed = ({
             >
               Ordenar · {SORT_LABELS[field]}
               {dir === 'desc' ? (
-                <ArrowDown className="h-3 w-3" />
+                <ArrowDown className="h-3 w-3" data-icon="inline-start" />
               ) : (
-                <ArrowUp className="h-3 w-3" />
+                <ArrowUp className="h-3 w-3" data-icon="inline-start" />
               )}
             </Button>
           </DropdownMenuTrigger>
@@ -236,9 +236,9 @@ export const WalletMovementsFeed = ({
                         aria-hidden
                       >
                         {isIn ? (
-                          <ArrowDownLeft className="h-4 w-4" />
+                          <ArrowDownLeft className="h-4 w-4" data-icon="inline-start" />
                         ) : (
-                          <ArrowUpRight className="h-4 w-4" />
+                          <ArrowUpRight className="h-4 w-4" data-icon="inline-start" />
                         )}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -299,7 +299,7 @@ const WalletFeedEmpty = ({
 }) => (
   <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center">
     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
-      <Inbox className="h-5 w-5 text-muted-foreground" aria-hidden />
+      <Inbox className="h-5 w-5 text-muted-foreground" aria-hidden data-icon="inline-start" />
     </span>
     <div>
       <p className="text-sm font-medium">Sin movimientos en este periodo</p>

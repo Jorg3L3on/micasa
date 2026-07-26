@@ -172,7 +172,7 @@ export const PantryHomeInsights = () => {
             asChild
           >
             <Link href={shoppingHref}>
-              <ShoppingCart className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <ShoppingCart className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"  data-icon="inline-start" />
               Lista de compras
             </Link>
           </Button>
@@ -194,7 +194,7 @@ export const PantryHomeInsights = () => {
             asChild
           >
             <Link href={productsHref}>
-              <Package className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+              <Package className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400"  data-icon="inline-start" />
               Productos
             </Link>
           </Button>

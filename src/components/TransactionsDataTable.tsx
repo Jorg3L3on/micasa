@@ -153,9 +153,9 @@ export default function TransactionsDataTable({
               )}
             >
               {row.original.type === 'expense' ? (
-                <ArrowDownRight className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <ArrowDownRight className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
               ) : (
-                <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
               )}
             </span>
             <span className="font-medium truncate">
@@ -364,7 +364,7 @@ export default function TransactionsDataTable({
           <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-3 py-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
-                <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Ingresos
@@ -378,7 +378,7 @@ export default function TransactionsDataTable({
           <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-3 py-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
-                <TrendingDown className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+                <TrendingDown className="h-3 w-3 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Gastos

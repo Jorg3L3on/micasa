@@ -24,7 +24,7 @@ export const MarketingLegalShell = ({
             className="inline-flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-90"
             aria-label="MiCasa inicio"
           >
-            <MicasaMark className="h-7 w-auto text-muted-foreground" />
+            <MicasaMark className="h-7 w-auto text-muted-foreground" data-icon="inline-start" />
             <span className="text-base font-semibold tracking-tight">MiCasa</span>
           </Link>
           <Button variant="outline" size="sm" asChild>

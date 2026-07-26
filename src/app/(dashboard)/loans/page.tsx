@@ -1002,7 +1002,7 @@ export default function LoansPage() {
                 >
                   <div className="flex min-w-0 gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
-                      <Icon className="h-4 w-4" aria-hidden />
+                      <Icon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
@@ -2194,7 +2194,7 @@ export default function LoansPage() {
                                     tone.iconBox,
                                   )}
                                 >
-                                  <StatusIcon className="h-4 w-4" aria-hidden />
+                                  <StatusIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                                 </span>
 
                                 <div className="min-w-0">
@@ -2222,8 +2222,7 @@ export default function LoansPage() {
                                     <span className="inline-flex items-center gap-1">
                                       <ReceiptText
                                         className="h-3 w-3"
-                                        aria-hidden
-                                      />
+                                        aria-hidden data-icon="inline-start" />
                                       {payment.linkedExpenseId
                                         ? `Gasto #${payment.linkedExpenseId}`
                                         : 'Sin gasto vinculado'}

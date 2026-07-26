@@ -250,8 +250,7 @@ export const WalletListCard = ({
                     : 'border border-border/70 bg-card ring-border/50',
                 )}
                 iconClassName="h-5 w-5"
-                showTooltipLabel={false}
-              />
+                showTooltipLabel={false} data-icon="inline-start" />
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
@@ -388,12 +387,12 @@ export const WalletListCard = ({
         {!wallet.active ? (
           onDarkSurface ? (
             <span className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full border border-white/20 bg-black/25 px-1.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden data-icon="inline-start" />
               Inactivo
             </span>
           ) : (
             <Badge variant="outline" className="h-5 shrink-0 gap-0.5 px-1.5 text-[9px]">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden data-icon="inline-start" />
               Inactivo
             </Badge>
           )

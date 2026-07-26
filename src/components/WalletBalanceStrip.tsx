@@ -228,8 +228,7 @@ const WalletBalanceStrip = ({
                               : 'ring-border/60',
                           )}
                           iconClassName="h-3.5 w-3.5"
-                          showTooltipLabel={false}
-                        />
+                          showTooltipLabel={false} data-icon="inline-start" />
                         {showDueReminder && (
                           <span
                             className={cn(
@@ -444,8 +443,7 @@ const WalletBalanceStrip = ({
                         providerIconKey={wallet.provider_icon_key}
                         className="h-5 w-5 rounded-md shadow-sm ring-1 ring-border/50"
                         iconClassName="h-3 w-3"
-                        showTooltipLabel={false}
-                      />
+                        showTooltipLabel={false} data-icon="inline-start" />
                     ) : (
                       <span
                         className={cn(

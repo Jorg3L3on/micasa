@@ -256,7 +256,7 @@ export function LiquidityProjectionTab() {
             <div className="relative rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/8 to-violet-500/3 px-3 py-3 dark:from-violet-500/12 dark:to-violet-500/5">
               <div className="mb-2 flex items-center gap-1.5">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                  <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                  <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
                   Obligaciones
@@ -382,7 +382,7 @@ export function LiquidityProjectionTab() {
               <CardContent className="px-3 py-3">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-                    <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
                   </span>
                   <p className="text-sm font-semibold leading-none">Ingreso vs deudas</p>
                 </div>
@@ -459,7 +459,7 @@ export function LiquidityProjectionTab() {
             >
               <div className="flex items-center gap-2.5 border-b border-border/40 bg-gradient-to-r from-violet-500/8 to-violet-500/3 px-3 py-2.5 dark:from-violet-500/12">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                  <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                  <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                 </span>
                 <span className="flex-1 text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
                   Riesgo de uso de tarjetas
@@ -501,7 +501,7 @@ export function LiquidityProjectionTab() {
                                   : isUnrated
                                     ? 'text-muted-foreground'
                                     : 'text-emerald-600 dark:text-emerald-400',
-                            )} />
+                            )} data-icon="inline-start" />
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">{card.card_name}</p>
@@ -565,7 +565,7 @@ export function LiquidityProjectionTab() {
           <div role="region" aria-label="Serie mensual de liquidez">
             <div className="mb-3 flex items-center gap-2.5">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20 dark:bg-blue-500/15 dark:ring-blue-500/25">
-                <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -655,7 +655,7 @@ export function LiquidityProjectionTab() {
               className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/30 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Ver cómo leer esta proyección"
             >
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-data-[state=open]/assume:rotate-180" />
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-data-[state=open]/assume:rotate-180" data-icon="inline-end" />
               Cómo leer esta proyección
             </CollapsibleTrigger>
             <CollapsibleContent>

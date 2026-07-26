@@ -35,8 +35,7 @@ export default async function AdminHomePage({
         <div className="relative flex-1">
           <Search
             className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
+            aria-hidden data-icon="inline-start" />
           <Input
             name="q"
             type="search"

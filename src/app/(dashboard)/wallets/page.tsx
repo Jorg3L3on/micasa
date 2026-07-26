@@ -972,7 +972,7 @@ export default function WalletsPage() {
                       className="h-10 w-full justify-between gap-2 sm:max-w-md"
                     >
                       <span className="flex min-w-0 items-center gap-2 text-left">
-                        <ListFilter className="h-4 w-4 shrink-0" />
+                        <ListFilter className="h-4 w-4 shrink-0" data-icon="inline-start" />
                         <span className="truncate font-medium">
                           Filtros, búsqueda y orden
                         </span>
@@ -1063,9 +1063,9 @@ export default function WalletsPage() {
                           }
                         >
                           {sortDir === 'asc' ? (
-                            <ArrowDownAZ className="h-4 w-4" />
+                            <ArrowDownAZ className="h-4 w-4" data-icon="inline-start" />
                           ) : (
-                            <ArrowDownZA className="h-4 w-4" />
+                            <ArrowDownZA className="h-4 w-4" data-icon="inline-start" />
                           )}
                         </Button>
                       </TooltipTrigger>
@@ -1361,7 +1361,7 @@ export default function WalletsPage() {
                           className="h-9 gap-1.5"
                           aria-label="Filtros de línea de crédito para tarjetas"
                         >
-                          <ListFilter className="h-4 w-4" />
+                          <ListFilter className="h-4 w-4" data-icon="inline-start" />
                           <span className="hidden sm:inline">Tarjetas</span>
                           <span className="sm:hidden">TC</span>
                           {creditLineFilter !== 'all' ? (

@@ -144,8 +144,7 @@ export default async function AdminUserDetailPage({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
             <CalendarRange
               className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <h2 className="text-sm font-semibold leading-none">
             Quincenas recientes
@@ -219,8 +218,7 @@ export default async function AdminUserDetailPage({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-500/10 dark:bg-slate-500/15">
             <History
               className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <div>
             <h2 className="text-sm font-semibold leading-none">
