@@ -39,6 +39,7 @@ export default function CreateMonthForm({
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [lastCreated, setLastCreated] = useState<{
     year: number;
     month: number;
@@ -87,14 +88,17 @@ export default function CreateMonthForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedKey) {
+      setValidationError('Selecciona un mes y año');
       toast.error('Selecciona un mes y año');
       return;
     }
     const [y, m] = selectedKey.split('-').map(Number);
     if (Number.isNaN(y) || Number.isNaN(m) || m < 1 || m > 12) {
+      setValidationError('Selecciona un mes válido');
       toast.error('Selecciona un mes válido');
       return;
     }
+    setValidationError(null);
     try {
       setSubmitting(true);
       setLastCreated(null);
@@ -127,6 +131,7 @@ export default function CreateMonthForm({
         err instanceof Error
           ? err.message
           : 'Error al crear las quincenas del mes';
+      setValidationError(message);
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -148,20 +153,27 @@ export default function CreateMonthForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div className="space-y-2">
         <Label htmlFor={selectId} className="text-sm font-medium">
           Mes a crear
         </Label>
         <Select
           value={selectedKey}
-          onValueChange={setSelectedKey}
+          onValueChange={(value) => {
+            setSelectedKey(value);
+            setValidationError(null);
+          }}
           disabled={submitting || loadingMonths}
           required
         >
           <SelectTrigger
             id={selectId}
             aria-label="Selecciona mes a crear"
+            aria-invalid={Boolean(validationError)}
+            aria-describedby={
+              validationError ? `${idPrefix}-validation-error` : undefined
+            }
             className="w-full sm:max-w-xs"
           >
             <SelectValue placeholder={getSelectPlaceholder()} />
@@ -174,6 +186,27 @@ export default function CreateMonthForm({
             ))}
           </SelectContent>
         </Select>
+        {/* Native constraint for scanners / progressive enhancement */}
+        <input
+          type="text"
+          name="monthKey"
+          value={selectedKey}
+          onChange={() => undefined}
+          required
+          minLength={1}
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+        />
+        {validationError ? (
+          <p
+            id={`${idPrefix}-validation-error`}
+            className="text-sm text-destructive"
+            role="alert"
+          >
+            {validationError}
+          </p>
+        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button

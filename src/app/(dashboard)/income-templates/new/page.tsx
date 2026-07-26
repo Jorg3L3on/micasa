@@ -324,17 +324,13 @@ export default function NewIncomeTemplatePage() {
               />
 
               <div className="flex justify-end gap-4 pt-4">
-                <Link
-                  href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
+                <Button type="button" variant="outline" asChild>
+                  <Link
+                    href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
                   >
                     Cancelar
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? 'Guardando...' : 'Crear'}
                 </Button>

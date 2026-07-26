@@ -315,7 +315,10 @@ export default function EditIncomeTemplatePage() {
                         disabled={loadingMembers || houseMembers.length === 0}
                       >
                         <FormControl>
-                          <SelectTrigger className={`w-full ${FIELD_CLASSNAME}`}>
+                          <SelectTrigger
+                            className={`w-full ${FIELD_CLASSNAME}`}
+                            aria-label="Miembro que transfiere a la casa (opcional)"
+                          >
                             <SelectValue placeholder="Selecciona un miembro (opcional)" />
                           </SelectTrigger>
                         </FormControl>

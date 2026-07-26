@@ -728,10 +728,12 @@ export default function ExpenseTable({
                   size="icon"
                   className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
                   disabled={isUpdating}
+                  aria-label="Más opciones"
                   aria-hidden
                 >
                   <MoreVertical
                     className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                    aria-hidden
                   />
                 </Button>
               </div>
@@ -746,9 +748,11 @@ export default function ExpenseTable({
                     size="icon"
                     className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
                     disabled={isUpdating}
+                    aria-label={`Más opciones para ${expense.description || 'gasto'}`}
                   >
                     <MoreVertical
                       className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                      aria-hidden
                     />
                   </Button>
                 </DropdownMenuTrigger>

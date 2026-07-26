@@ -77,11 +77,17 @@ export function LoginForm({
                 type="email"
                 placeholder="m@ejemplo.com"
                 required
+                autoComplete="email"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Contraseña</Label>
-              <PasswordInput id="password" name="password" required />
+              <PasswordInput
+                id="password"
+                name="password"
+                required
+                autoComplete="current-password"
+              />
             </div>
             {error && (
               <div className="text-sm text-red-500" role="alert">

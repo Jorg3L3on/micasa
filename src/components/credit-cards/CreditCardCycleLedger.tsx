@@ -209,8 +209,25 @@ export const CreditCardCycleLedger = ({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="p-4">
-          <CreditCardFeedEmpty message="Ningún resultado con el filtro aplicado." />
+        <div className="p-4" role="status">
+          <CreditCardFeedEmpty
+            message="Ningún resultado con el filtro aplicado."
+            description="Prueba otro filtro o limpia la búsqueda para ver todos los movimientos."
+            action={{
+              label: 'Ver todos',
+              onClick: () => {
+                setFilter('all');
+                setQuery('');
+              },
+            }}
+          />
+        </div>
+      ) : grouped.length === 0 ? (
+        <div className="p-4" role="status">
+          <p className="text-sm font-medium text-foreground">Sin movimientos</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            No hay entradas para mostrar en este ciclo.
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-border/40">

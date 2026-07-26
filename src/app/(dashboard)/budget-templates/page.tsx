@@ -395,6 +395,7 @@ export default function BudgetTemplatesPage() {
         onSubmit={handleCreate}
         error={formError && createDialogOpen ? formError : null}
         isPending={isCreating}
+        disabled={isCreating}
       />
 
       {selected && (

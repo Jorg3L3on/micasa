@@ -63,6 +63,7 @@ type Props = {
   onSubmit: (step1: Step1Values, step2: Step2Values) => Promise<void>;
   error?: string | null;
   isPending?: boolean;
+  disabled?: boolean;
 };
 
 function AllocationSummary({
@@ -124,6 +125,7 @@ export default function BudgetFormDialog({
   onSubmit,
   error,
   isPending = false,
+  disabled = false,
 }: Props) {
   const { context } = useFinanceContext();
   const [step, setStep] = useState<1 | 2>(1);
@@ -605,11 +607,12 @@ export default function BudgetFormDialog({
                     !isFullyAllocated ||
                     form2.formState.isSubmitting ||
                     isPending ||
+                    disabled ||
                     loadingOptions ||
                     Boolean(optionsError)
                   }
                 >
-                  {form2.formState.isSubmitting || isPending ? (
+                  {form2.formState.isSubmitting || isPending || disabled ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
                       Creando…

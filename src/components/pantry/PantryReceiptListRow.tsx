@@ -109,11 +109,7 @@ export const PantryReceiptListRow = ({
           </div>
         </button>
 
-        <div
-          className="flex shrink-0 items-start gap-0.5 pt-0.5"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
+        <div className="flex shrink-0 items-start gap-0.5 pt-0.5">
           {receipt.linked_expense_id != null ? (
             <Tooltip>
               <TooltipTrigger asChild>
