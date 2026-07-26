@@ -849,7 +849,7 @@ export default function LoansPage() {
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" aria-hidden />
+          <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
           Nuevo préstamo
         </Button>
       </div>
@@ -1947,6 +1947,7 @@ export default function LoansPage() {
                               }
                             >
                               <SelectTrigger
+                                aria-label="Ingreso relacionado con la deducción"
                                 className={cn(
                                   loanEditErrors.incomeTemplateId &&
                                     'border-destructive focus:ring-destructive/30',

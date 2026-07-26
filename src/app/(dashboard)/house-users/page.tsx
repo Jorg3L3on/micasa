@@ -241,7 +241,10 @@ export default function HouseUsersPage() {
           <DialogHeader>
             <DialogTitle>Agregar usuario</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleAddUserSubmit}>
+          <form
+            onSubmit={handleAddUserSubmit}
+            aria-busy={addUserLoading}
+          >
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="add-user-email">Email</Label>
