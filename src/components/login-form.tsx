@@ -6,7 +6,6 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
-import { MicasaMark } from '@/components/brand/micasa-mark';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -60,17 +59,6 @@ export function LoginForm({
 
   return (
     <div className={cn('flex h-full flex-col', className)} {...props}>
-      <div className="mb-8 min-[781px]:hidden">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-[#f4f3f8]"
-          aria-label="MiCasa inicio"
-        >
-          <MicasaMark className="h-8 w-auto" />
-          <span className="text-base">MiCasa</span>
-        </Link>
-      </div>
-
       <div className="mb-8">
         <p className="mb-1.5 text-xs text-[#8b899a]">Acceder a tu cuenta</p>
         <h1 className="text-2xl font-semibold tracking-tight text-[#f4f3f8]">
