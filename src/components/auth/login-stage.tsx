@@ -49,7 +49,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
             }}
           />
 
-          <aside className="relative hidden flex-col justify-between border-r border-white/[0.09] bg-linear-to-b from-[#2E8DF5]/[0.06] to-[#AC3DF3]/[0.05] px-10 py-12 min-[781px]:flex">
+          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-[#2E8DF5]/[0.06] to-[#AC3DF3]/[0.05] px-7 pt-8 pb-7 max-[780px]:gap-7 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-[#f4f3f8]"
@@ -59,7 +59,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
               <span className="text-base">MiCasa</span>
             </Link>
 
-            <div className="mt-10">
+            <div className="min-[781px]:mt-10">
               <p className="mb-3.5 text-[11px] font-semibold tracking-[0.14em] text-[#55535f] uppercase">
                 Bienvenido de vuelta
               </p>
@@ -72,10 +72,10 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
               </p>
             </div>
 
-            <FortnightPulse className="mt-10" />
+            <FortnightPulse className="max-[780px]:mt-0 min-[781px]:mt-10" />
           </aside>
 
-          <div className="relative flex flex-col px-7 py-10 sm:px-11 sm:py-12">
+          <div className="relative flex flex-col px-7 py-8 sm:px-11 sm:py-12 max-[780px]:pt-8">
             {children}
           </div>
         </div>

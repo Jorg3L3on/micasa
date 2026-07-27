@@ -57,7 +57,7 @@ export const FortnightPulse = ({
   const todayX = dayToPulseX(day, daysInMonth);
 
   return (
-    <div className={cn('mt-auto', className)} role="img" aria-label={`Hoy: ${todayLabel}`}>
+    <div className={cn(className)} role="img" aria-label={`Hoy: ${todayLabel}`}>
       <div className="mb-3.5 flex items-baseline justify-between">
         <span className="text-xs text-[#8b899a]">Este mes</span>
         <span className="font-[family-name:var(--font-geist-mono)] text-xs font-medium text-[#f4f3f8]">
