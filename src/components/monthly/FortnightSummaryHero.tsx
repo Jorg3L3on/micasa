@@ -39,26 +39,9 @@ export const FortnightSummaryHero = ({
   payrollDeductionAmount = 0,
 }: FortnightSummaryHeroProps) => {
   const displayFundingNet = fundingNetApplies ? fundingNetInAccounts : 0;
-  const incomeColumnPct = 44;
-  const splitColumnPct = 100 - incomeColumnPct;
-  const positiveRemainder = Math.max(incomeRemainder, 0);
-  const splitTotal = Math.max(committedAmount + positiveRemainder, 1);
-  const hasCommittedExpenses = committedAmount > 0;
-  const rawExpensePct =
-    hasCommittedExpenses
-      ? splitColumnPct * (committedAmount / splitTotal)
-      : 10;
-  const rawAvailablePct =
-    positiveRemainder > 0
-      ? splitColumnPct * (positiveRemainder / splitTotal)
-      : 8;
-  const splitScale = splitColumnPct / (rawExpensePct + rawAvailablePct);
-  const expenseColumnPct = rawExpensePct * splitScale;
-  const availableColumnPct = rawAvailablePct * splitScale;
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <SummaryStep
           number="1"
           title="Entró"
@@ -102,61 +85,6 @@ export const FortnightSummaryHero = ({
           tone="real"
           icon={<CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         />
-      </div>
-
-      <div
-        className="overflow-hidden rounded-xl border border-border/60 bg-background/45 p-2.5 shadow-inner"
-        aria-label="Ingresos menos gastos igual a disponible"
-      >
-        <div
-          className="grid h-[4.75rem] overflow-hidden rounded-lg border border-border/40 bg-muted/20 sm:h-20"
-          style={{
-            gridTemplateColumns: `${incomeColumnPct}% ${expenseColumnPct}% ${availableColumnPct}%`,
-          }}
-        >
-          <FlowSegment
-            className="border-emerald-400/40 bg-gradient-to-r from-emerald-500/80 to-emerald-500/35 text-emerald-50"
-            label="Ingresos"
-            amount={periodIncome}
-          />
-          <FlowSegment
-            className="z-10 -ml-3 border-destructive/60 bg-gradient-to-r from-destructive/75 to-destructive/40 pl-5 text-destructive-foreground [clip-path:polygon(8%_0,100%_0,92%_100%,0_100%)]"
-            label={hasCommittedExpenses ? 'Gastos' : 'Sin gastos'}
-            amount={committedAmount}
-            compact={!hasCommittedExpenses}
-          />
-          <FlowSegment
-            className="z-20 -ml-3 border-violet-400/50 bg-gradient-to-r from-violet-600/80 to-primary/55 pl-5 text-primary-foreground [clip-path:polygon(8%_0,100%_0,100%_100%,0_100%)]"
-            label="Disponible"
-            amount={incomeRemainder}
-          />
-        </div>
-        <p className="mt-2 text-center text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
-          Después de gastos te quedan{' '}
-          <span
-            className={cn(
-              'font-mono font-semibold tabular-nums',
-              incomeRemainder >= 0
-                ? 'text-emerald-700 dark:text-emerald-300'
-                : 'text-destructive',
-            )}
-          >
-            {formatCurrency(incomeRemainder)}
-          </span>
-          ; tus cuentas hoy muestran{' '}
-          <span
-            className={cn(
-              'font-mono font-semibold tabular-nums',
-              displayFundingNet >= 0
-                ? 'text-emerald-700 dark:text-emerald-300'
-                : 'text-destructive',
-            )}
-          >
-            {formatCurrency(displayFundingNet)}
-          </span>
-          .
-        </p>
-      </div>
     </div>
   );
 };
@@ -171,17 +99,6 @@ type SummaryStepProps = {
   tone: SummaryStepTone;
   icon: ReactNode;
   connector?: boolean;
-};
-
-const toneClasses: Record<SummaryStepTone, string> = {
-  income:
-    'border-l-[3px] border-l-emerald-500/70',
-  expense:
-    'border-l-[3px] border-l-destructive/70',
-  available:
-    'border-l-[3px] border-l-violet-500/70',
-  real:
-    'border-l-[3px] border-l-rose-500/70',
 };
 
 const numberToneClasses: Record<SummaryStepTone, string> = {
@@ -201,7 +118,7 @@ function SummaryStep({
   connector = false,
 }: SummaryStepProps) {
   return (
-    <div className={cn(stepBaseClass, toneClasses[tone])}>
+    <div className={stepBaseClass}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
@@ -235,45 +152,6 @@ function SummaryStep({
           <ArrowRight className="h-3.5 w-3.5" />
         </span>
       ) : null}
-    </div>
-  );
-}
-
-type FlowSegmentProps = {
-  label: string;
-  amount: number;
-  className: string;
-  compact?: boolean;
-};
-
-function FlowSegment({
-  label,
-  amount,
-  className,
-  compact = false,
-}: FlowSegmentProps) {
-  return (
-    <div
-      className={cn(
-        'relative flex min-w-0 flex-col items-center justify-center border px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]',
-        className,
-      )}
-    >
-      {compact ? null : (
-        <span className="hidden font-mono text-sm font-bold tabular-nums sm:block sm:text-lg">
-          {formatCurrency(amount)}
-        </span>
-      )}
-      <span
-        className={cn(
-          'font-semibold opacity-85',
-          compact
-            ? 'hidden text-[9px] leading-tight sm:inline'
-            : 'text-[10px] sm:mt-1 sm:text-xs',
-        )}
-      >
-        {label}
-      </span>
     </div>
   );
 }
