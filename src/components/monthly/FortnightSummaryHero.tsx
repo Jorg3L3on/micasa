@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
-  ArrowDownLeft,
+  ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   CreditCard,
@@ -24,14 +24,47 @@ type FortnightSummaryHeroProps = {
   payrollDeductionAmount?: number;
 };
 
-const stepBaseClass =
-  'group relative min-h-32 overflow-hidden rounded-xl border border-border/60 bg-card/60 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md';
+type StepTone = 'income' | 'expense' | 'available' | 'real';
 
-const stepNumberClass =
-  'inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-muted/40 text-[10px] font-bold text-muted-foreground';
-
-const stepIconClass =
-  'rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground';
+const toneClasses: Record<
+  StepTone,
+  {
+    card: string;
+    title: string;
+    subtitle: string;
+    amount: string;
+    icon: string;
+  }
+> = {
+  income: {
+    card: 'border-emerald-500/45 bg-emerald-500/[0.04] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08),0_0_24px_-12px_rgba(16,185,129,0.45)]',
+    title: 'text-emerald-600 dark:text-emerald-300',
+    subtitle: 'text-emerald-700/55 dark:text-emerald-300/55',
+    amount: 'text-emerald-600 dark:text-emerald-400',
+    icon: 'bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/35 dark:text-emerald-300',
+  },
+  expense: {
+    card: 'border-destructive/45 bg-destructive/[0.04] shadow-[inset_0_0_0_1px_rgba(239,68,68,0.08),0_0_24px_-12px_rgba(239,68,68,0.4)]',
+    title: 'text-destructive/90',
+    subtitle: 'text-destructive/55',
+    amount: 'text-destructive',
+    icon: 'bg-destructive/15 text-destructive ring-1 ring-destructive/35',
+  },
+  available: {
+    card: 'border-violet-500/45 bg-violet-500/[0.04] shadow-[inset_0_0_0_1px_rgba(139,92,246,0.08),0_0_24px_-12px_rgba(139,92,246,0.45)]',
+    title: 'text-violet-600 dark:text-violet-300',
+    subtitle: 'text-violet-700/55 dark:text-violet-300/55',
+    amount: 'text-violet-600 dark:text-violet-400',
+    icon: 'bg-violet-500/15 text-violet-600 ring-1 ring-violet-500/35 dark:text-violet-300',
+  },
+  real: {
+    card: 'border-rose-500/45 bg-rose-500/[0.04] shadow-[inset_0_0_0_1px_rgba(244,63,94,0.08),0_0_24px_-12px_rgba(244,63,94,0.4)]',
+    title: 'text-rose-600 dark:text-rose-300',
+    subtitle: 'text-rose-700/55 dark:text-rose-300/55',
+    amount: 'text-rose-600 dark:text-rose-400',
+    icon: 'bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/35 dark:text-rose-300',
+  },
+};
 
 export const FortnightSummaryHero = ({
   periodIncome,
@@ -42,6 +75,7 @@ export const FortnightSummaryHero = ({
   payrollDeductionAmount = 0,
 }: FortnightSummaryHeroProps) => {
   const displayFundingNet = fundingNetApplies ? fundingNetInAccounts : 0;
+  const realTone: StepTone = displayFundingNet < 0 ? 'real' : 'income';
 
   return (
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -50,7 +84,8 @@ export const FortnightSummaryHero = ({
         title="Entró"
         subtitle="Ingresos totales"
         amount={periodIncome}
-        icon={<ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+        tone="income"
+        icon={<ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         connector
       />
       <SummaryStep
@@ -62,7 +97,8 @@ export const FortnightSummaryHero = ({
             : 'Total gastado'
         }
         amount={committedAmount}
-        icon={<ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+        tone="expense"
+        icon={<ArrowDownRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         connector
       />
       <SummaryStep
@@ -70,6 +106,7 @@ export const FortnightSummaryHero = ({
         title="Queda disponible"
         subtitle="Disponible para usar"
         amount={incomeRemainder}
+        tone="available"
         icon={<Wallet className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         connector
       />
@@ -82,6 +119,7 @@ export const FortnightSummaryHero = ({
             : 'No aplica a esta quincena'
         }
         amount={displayFundingNet}
+        tone={realTone}
         icon={<CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />}
       />
     </div>
@@ -93,6 +131,7 @@ type SummaryStepProps = {
   title: string;
   subtitle: string;
   amount: number;
+  tone: StepTone;
   icon: ReactNode;
   connector?: boolean;
 };
@@ -102,31 +141,50 @@ function SummaryStep({
   title,
   subtitle,
   amount,
+  tone,
   icon,
   connector = false,
 }: SummaryStepProps) {
+  const styles = toneClasses[tone];
+
   return (
-    <div className={stepBaseClass}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-2">
-            <span className={stepNumberClass}>{number}</span>
-            <h3 className="text-xs font-semibold leading-tight text-foreground sm:text-sm">
-              {title}
-            </h3>
-          </div>
-          <p className="text-[10px] text-muted-foreground sm:text-xs">{subtitle}</p>
-        </div>
-        <span className={stepIconClass}>{icon}</span>
+    <div
+      className={cn(
+        'group relative flex min-h-32 flex-col overflow-hidden rounded-xl border bg-card/70 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
+        styles.card,
+      )}
+    >
+      <div className="min-w-0 space-y-1">
+        <h3
+          className={cn(
+            'text-xs font-semibold leading-tight sm:text-sm',
+            styles.title,
+          )}
+        >
+          <span className="font-bold">({number})</span> {title}
+        </h3>
+        <p className={cn('text-[10px] sm:text-xs', styles.subtitle)}>{subtitle}</p>
       </div>
+
       <p
         className={cn(
-          'mt-5 font-mono text-xl font-bold leading-none tracking-tight tabular-nums text-foreground sm:text-2xl',
-          amount < 0 && 'text-destructive',
+          'mt-4 font-mono text-xl font-bold leading-none tracking-tight tabular-nums sm:text-2xl',
+          styles.amount,
         )}
       >
         {formatCurrency(amount)}
       </p>
+
+      <span
+        className={cn(
+          'mt-auto inline-flex h-8 w-8 items-center justify-center rounded-full',
+          styles.icon,
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
+
       {connector ? (
         <span
           className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground shadow-sm lg:flex"
