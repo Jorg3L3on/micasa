@@ -74,6 +74,7 @@ export const MonthlyFortnightCategoryPie = ({
       scopeLabel={scopeLabel}
       rows={rows}
       compact
+      className="border-violet-500/30 bg-[#0c0c12] shadow-[0_0_0_1px_rgba(139,92,246,0.12),0_0_20px_rgba(139,92,246,0.15)]"
     />
   );
 };
