@@ -30,7 +30,7 @@ type MonthlyPanelTopBarProps = {
 };
 
 const navButtonClass =
-  'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-card/80 text-muted-foreground shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-primary/35 hover:bg-muted/45 hover:text-foreground hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45';
+  'inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-xl border border-border/60 bg-card/80 px-2 text-sm font-medium text-muted-foreground shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-primary/35 hover:bg-muted/45 hover:text-foreground hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 sm:min-w-28 sm:px-3';
 
 const periodButtonClass = (active: boolean) =>
   cn(
@@ -73,7 +73,7 @@ export function MonthlyPanelTopBar({
       role="group"
       aria-label="Selector de mes y quincena"
     >
-      <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-2">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-4">
         <Tooltip>
           <TooltipTrigger asChild>
             {hasPrevMonth ? (
@@ -83,7 +83,7 @@ export function MonthlyPanelTopBar({
                 aria-label={`Ir al mes anterior: ${prevMonthLabel}`}
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />
-                <span className="sr-only">Ir a {prevMonthLabel}</span>
+                <span className="hidden max-w-24 truncate sm:inline">{prevMonthLabel}</span>
               </Link>
             ) : (
               <span
@@ -91,7 +91,7 @@ export function MonthlyPanelTopBar({
                 aria-label={`Mes anterior: ${prevMonthLabel} (no disponible)`}
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />
-                <span className="sr-only">{prevMonthLabel}</span>
+                <span className="hidden max-w-24 truncate sm:inline">{prevMonthLabel}</span>
               </span>
             )}
           </TooltipTrigger>
@@ -157,7 +157,7 @@ export function MonthlyPanelTopBar({
                 className={cn(navButtonClass, 'justify-self-end')}
                 aria-label={`Ir al mes siguiente: ${nextMonthLabel}`}
               >
-                <span className="sr-only">Ir a {nextMonthLabel}</span>
+                <span className="hidden max-w-24 truncate sm:inline">{nextMonthLabel}</span>
                 <ChevronRight className="h-4 w-4" aria-hidden data-icon="inline-end" />
               </Link>
             </TooltipTrigger>

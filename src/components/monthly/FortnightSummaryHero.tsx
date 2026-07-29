@@ -2,7 +2,13 @@
 
 import type { ReactNode } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
-import { ArrowDownLeft, ArrowUpRight, CreditCard, Wallet } from 'lucide-react';
+import {
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  CreditCard,
+  Wallet,
+} from 'lucide-react';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
@@ -52,7 +58,7 @@ export const FortnightSummaryHero = ({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 2xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <SummaryStep
           number="1"
           title="Entró"
@@ -60,6 +66,7 @@ export const FortnightSummaryHero = ({
           amount={periodIncome}
           tone="income"
           icon={<ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+          connector
         />
         <SummaryStep
           number="2"
@@ -72,6 +79,7 @@ export const FortnightSummaryHero = ({
           amount={committedAmount}
           tone="expense"
           icon={<ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+          connector
         />
         <SummaryStep
           number="3"
@@ -80,6 +88,7 @@ export const FortnightSummaryHero = ({
           amount={incomeRemainder}
           tone="available"
           icon={<Wallet className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+          connector
         />
         <SummaryStep
           number="4"
@@ -161,6 +170,7 @@ type SummaryStepProps = {
   amount: number;
   tone: SummaryStepTone;
   icon: ReactNode;
+  connector?: boolean;
 };
 
 const toneClasses: Record<SummaryStepTone, string> = {
@@ -188,6 +198,7 @@ function SummaryStep({
   amount,
   tone,
   icon,
+  connector = false,
 }: SummaryStepProps) {
   return (
     <div className={cn(stepBaseClass, toneClasses[tone])}>
@@ -216,6 +227,14 @@ function SummaryStep({
       >
         {formatCurrency(amount)}
       </p>
+      {connector ? (
+        <span
+          className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground shadow-sm lg:flex"
+          aria-hidden
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      ) : null}
     </div>
   );
 }
