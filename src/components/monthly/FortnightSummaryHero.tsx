@@ -19,10 +19,10 @@ type FortnightSummaryHeroProps = {
 };
 
 const stepBaseClass =
-  'relative min-h-[8.75rem] rounded-2xl border bg-card/55 p-4 shadow-sm transition-all duration-200';
+  'group relative min-h-32 overflow-hidden rounded-xl border border-border/60 bg-card/60 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md';
 
 const stepNumberClass =
-  'inline-flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-bold';
+  'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold';
 
 export const FortnightSummaryHero = ({
   periodIncome,
@@ -33,14 +33,15 @@ export const FortnightSummaryHero = ({
   payrollDeductionAmount = 0,
 }: FortnightSummaryHeroProps) => {
   const displayFundingNet = fundingNetApplies ? fundingNetInAccounts : 0;
-  const incomeColumnPct = 42;
+  const incomeColumnPct = 44;
   const splitColumnPct = 100 - incomeColumnPct;
   const positiveRemainder = Math.max(incomeRemainder, 0);
   const splitTotal = Math.max(committedAmount + positiveRemainder, 1);
+  const hasCommittedExpenses = committedAmount > 0;
   const rawExpensePct =
-    committedAmount > 0
+    hasCommittedExpenses
       ? splitColumnPct * (committedAmount / splitTotal)
-      : 12;
+      : 10;
   const rawAvailablePct =
     positiveRemainder > 0
       ? splitColumnPct * (positiveRemainder / splitTotal)
@@ -50,8 +51,8 @@ export const FortnightSummaryHero = ({
   const availableColumnPct = rawAvailablePct * splitScale;
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 2xl:grid-cols-4">
         <SummaryStep
           number="1"
           title="Entró"
@@ -95,33 +96,34 @@ export const FortnightSummaryHero = ({
       </div>
 
       <div
-        className="overflow-hidden rounded-2xl border border-border/50 bg-background/55 p-3 shadow-inner"
+        className="overflow-hidden rounded-xl border border-border/60 bg-background/45 p-2.5 shadow-inner"
         aria-label="Ingresos menos gastos igual a disponible"
       >
         <div
-          className="grid h-20 overflow-hidden rounded-xl border border-border/40 bg-muted/30 sm:h-24"
+          className="grid h-[4.75rem] overflow-hidden rounded-lg border border-border/40 bg-muted/20 sm:h-20"
           style={{
             gridTemplateColumns: `${incomeColumnPct}% ${expenseColumnPct}% ${availableColumnPct}%`,
           }}
         >
           <FlowSegment
-            className="border-emerald-400/60 bg-gradient-to-r from-emerald-500/85 to-emerald-500/35 text-emerald-50"
+            className="border-emerald-400/40 bg-gradient-to-r from-emerald-500/80 to-emerald-500/35 text-emerald-50"
             label="Ingresos"
             amount={periodIncome}
           />
           <FlowSegment
-            className="-ml-4 border-destructive/70 bg-gradient-to-r from-destructive/80 to-destructive/45 pl-7 text-destructive-foreground [clip-path:polygon(8%_0,100%_0,92%_100%,0_100%)]"
-            label="Gastos"
+            className="z-10 -ml-3 border-destructive/60 bg-gradient-to-r from-destructive/75 to-destructive/40 pl-5 text-destructive-foreground [clip-path:polygon(8%_0,100%_0,92%_100%,0_100%)]"
+            label={hasCommittedExpenses ? 'Gastos' : 'Sin gastos'}
             amount={committedAmount}
+            compact={!hasCommittedExpenses}
           />
           <FlowSegment
-            className="-ml-4 border-violet-400/70 bg-gradient-to-r from-violet-600/80 to-primary/55 pl-7 text-primary-foreground [clip-path:polygon(8%_0,100%_0,100%_100%,0_100%)]"
+            className="z-20 -ml-3 border-violet-400/50 bg-gradient-to-r from-violet-600/80 to-primary/55 pl-5 text-primary-foreground [clip-path:polygon(8%_0,100%_0,100%_100%,0_100%)]"
             label="Disponible"
             amount={incomeRemainder}
           />
         </div>
-        <p className="mt-2 text-center text-[11px] leading-snug text-muted-foreground">
-          Después de gastos, quedan{' '}
+        <p className="mt-2 text-center text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+          Después de gastos te quedan{' '}
           <span
             className={cn(
               'font-mono font-semibold tabular-nums',
@@ -163,13 +165,13 @@ type SummaryStepProps = {
 
 const toneClasses: Record<SummaryStepTone, string> = {
   income:
-    'border-emerald-500/25 border-l-[3px] border-l-emerald-500/70 text-emerald-700 dark:text-emerald-300',
+    'border-l-[3px] border-l-emerald-500/70',
   expense:
-    'border-destructive/25 border-l-[3px] border-l-destructive/70 text-destructive',
+    'border-l-[3px] border-l-destructive/70',
   available:
-    'border-violet-500/25 border-l-[3px] border-l-violet-500/70 text-violet-700 dark:text-violet-300',
+    'border-l-[3px] border-l-violet-500/70',
   real:
-    'border-destructive/25 border-l-[3px] border-l-destructive/70 text-destructive',
+    'border-l-[3px] border-l-rose-500/70',
 };
 
 const numberToneClasses: Record<SummaryStepTone, string> = {
@@ -189,21 +191,29 @@ function SummaryStep({
 }: SummaryStepProps) {
   return (
     <div className={cn(stepBaseClass, toneClasses[tone])}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
             <span className={cn(stepNumberClass, numberToneClasses[tone])}>
               {number}
             </span>
-            <h3 className="text-sm font-semibold leading-tight">{title}</h3>
+            <h3 className="text-xs font-semibold leading-tight sm:text-sm">{title}</h3>
           </div>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-[10px] text-muted-foreground sm:text-xs">{subtitle}</p>
         </div>
-        <span className={cn('rounded-xl border p-2', numberToneClasses[tone])}>
+        <span className={cn('rounded-lg border p-1.5', numberToneClasses[tone])}>
           {icon}
         </span>
       </div>
-      <p className="mt-5 font-mono text-2xl font-black leading-none tracking-tight tabular-nums">
+      <p
+        className={cn(
+          'mt-5 font-mono text-xl font-bold leading-none tracking-tight tabular-nums sm:text-2xl',
+          tone === 'income' && 'text-emerald-700 dark:text-emerald-300',
+          tone === 'expense' && 'text-destructive',
+          tone === 'available' && 'text-violet-700 dark:text-violet-300',
+          tone === 'real' && (amount < 0 ? 'text-destructive' : 'text-emerald-700 dark:text-emerald-300'),
+        )}
+      >
         {formatCurrency(amount)}
       </p>
     </div>
@@ -214,9 +224,15 @@ type FlowSegmentProps = {
   label: string;
   amount: number;
   className: string;
+  compact?: boolean;
 };
 
-function FlowSegment({ label, amount, className }: FlowSegmentProps) {
+function FlowSegment({
+  label,
+  amount,
+  className,
+  compact = false,
+}: FlowSegmentProps) {
   return (
     <div
       className={cn(
@@ -224,10 +240,14 @@ function FlowSegment({ label, amount, className }: FlowSegmentProps) {
         className,
       )}
     >
-      <span className="font-mono text-lg font-black tabular-nums sm:text-xl">
-        {formatCurrency(amount)}
+      {compact ? null : (
+        <span className="font-mono text-sm font-bold tabular-nums sm:text-lg">
+          {formatCurrency(amount)}
+        </span>
+      )}
+      <span className={cn('font-semibold opacity-85', compact ? 'text-[9px] leading-tight' : 'mt-1 text-[10px] sm:text-xs')}>
+        {label}
       </span>
-      <span className="mt-1 text-xs font-semibold opacity-85">{label}</span>
     </div>
   );
 }

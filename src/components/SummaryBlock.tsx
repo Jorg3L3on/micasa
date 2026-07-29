@@ -154,18 +154,18 @@ export default function SummaryBlock({
   return (
     <Card
       className={cn(
-        'relative gap-0 overflow-hidden rounded-2xl border-violet-500/20 py-0 shadow-lg',
-        'bg-gradient-to-br from-violet-500/12 via-card to-primary/5',
-        'ring-1 ring-violet-500/10 dark:from-violet-500/18 dark:via-card dark:to-primary/8 dark:ring-violet-500/15',
+        'relative gap-0 overflow-hidden rounded-2xl border-border/60 py-0 shadow-sm',
+        'bg-card dark:bg-card/95',
+        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-violet-500/45',
       )}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
-      <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
+      <CardContent className="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20 shadow-sm ring-1 ring-primary/25"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/20"
               aria-hidden
             >
               <BarChart3 className="h-4 w-4 text-primary" data-icon="inline-start" />
