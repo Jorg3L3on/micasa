@@ -28,7 +28,10 @@ const stepBaseClass =
   'group relative min-h-32 overflow-hidden rounded-xl border border-border/60 bg-card/60 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md';
 
 const stepNumberClass =
-  'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold';
+  'inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-muted/40 text-[10px] font-bold text-muted-foreground';
+
+const stepIconClass =
+  'rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground';
 
 export const FortnightSummaryHero = ({
   periodIncome,
@@ -42,70 +45,70 @@ export const FortnightSummaryHero = ({
 
   return (
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <SummaryStep
-          number="1"
-          title="Entró"
-          subtitle="Ingresos totales"
-          amount={periodIncome}
-          tone="income"
-          icon={<ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />}
-          connector
-        />
-        <SummaryStep
-          number="2"
-          title="Se fue en gastos"
-          subtitle={
-            payrollDeductionAmount > 0
-              ? 'Gastos + deducciones'
-              : 'Total gastado'
-          }
-          amount={committedAmount}
-          tone="expense"
-          icon={<ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
-          connector
-        />
-        <SummaryStep
-          number="3"
-          title="Queda disponible"
-          subtitle="Disponible para usar"
-          amount={incomeRemainder}
-          tone="available"
-          icon={<Wallet className="h-4 w-4" aria-hidden data-icon="inline-start" />}
-          connector
-        />
-        <SummaryStep
-          number="4"
-          title="Saldo real"
-          subtitle={
-            fundingNetApplies
-              ? 'Después de pendientes'
-              : 'No aplica a esta quincena'
-          }
-          amount={displayFundingNet}
-          tone="real"
-          icon={<CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />}
-        />
+      <SummaryStep
+        number="1"
+        title="Entró"
+        subtitle="Ingresos totales"
+        amount={periodIncome}
+        amountTone="positive"
+        icon={<ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+        connector
+      />
+      <SummaryStep
+        number="2"
+        title="Se fue en gastos"
+        subtitle={
+          payrollDeductionAmount > 0
+            ? 'Gastos + deducciones'
+            : 'Total gastado'
+        }
+        amount={committedAmount}
+        amountTone="expense"
+        icon={<ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+        connector
+      />
+      <SummaryStep
+        number="3"
+        title="Queda disponible"
+        subtitle="Disponible para usar"
+        amount={incomeRemainder}
+        amountTone="available"
+        icon={<Wallet className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+        connector
+      />
+      <SummaryStep
+        number="4"
+        title="Saldo real"
+        subtitle={
+          fundingNetApplies
+            ? 'Después de pendientes'
+            : 'No aplica a esta quincena'
+        }
+        amount={displayFundingNet}
+        amountTone={displayFundingNet < 0 ? 'negative' : 'positive'}
+        icon={<CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />}
+      />
     </div>
   );
 };
 
-type SummaryStepTone = 'income' | 'expense' | 'available' | 'real';
+type AmountTone = 'positive' | 'expense' | 'available' | 'negative';
 
 type SummaryStepProps = {
   number: string;
   title: string;
   subtitle: string;
   amount: number;
-  tone: SummaryStepTone;
+  amountTone: AmountTone;
   icon: ReactNode;
   connector?: boolean;
 };
 
-const numberToneClasses: Record<SummaryStepTone, string> = {
-  income: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  expense: 'border-destructive/40 bg-destructive/10 text-destructive',
-  available: 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300',
-  real: 'border-destructive/40 bg-destructive/10 text-destructive',
+const amountToneClasses: Record<AmountTone, string> = {
+  positive: 'text-emerald-700 dark:text-emerald-300',
+  expense: 'text-destructive',
+  available: 'text-violet-700 dark:text-violet-300',
+  negative: 'text-destructive',
 };
 
 function SummaryStep({
@@ -113,7 +116,7 @@ function SummaryStep({
   title,
   subtitle,
   amount,
-  tone,
+  amountTone,
   icon,
   connector = false,
 }: SummaryStepProps) {
@@ -122,24 +125,19 @@ function SummaryStep({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
-            <span className={cn(stepNumberClass, numberToneClasses[tone])}>
-              {number}
-            </span>
-            <h3 className="text-xs font-semibold leading-tight sm:text-sm">{title}</h3>
+            <span className={stepNumberClass}>{number}</span>
+            <h3 className="text-xs font-semibold leading-tight text-foreground sm:text-sm">
+              {title}
+            </h3>
           </div>
           <p className="text-[10px] text-muted-foreground sm:text-xs">{subtitle}</p>
         </div>
-        <span className={cn('rounded-lg border p-1.5', numberToneClasses[tone])}>
-          {icon}
-        </span>
+        <span className={stepIconClass}>{icon}</span>
       </div>
       <p
         className={cn(
           'mt-5 font-mono text-xl font-bold leading-none tracking-tight tabular-nums sm:text-2xl',
-          tone === 'income' && 'text-emerald-700 dark:text-emerald-300',
-          tone === 'expense' && 'text-destructive',
-          tone === 'available' && 'text-violet-700 dark:text-violet-300',
-          tone === 'real' && (amount < 0 ? 'text-destructive' : 'text-emerald-700 dark:text-emerald-300'),
+          amountToneClasses[amountTone],
         )}
       >
         {formatCurrency(amount)}
