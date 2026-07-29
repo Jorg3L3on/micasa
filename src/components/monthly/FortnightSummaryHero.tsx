@@ -40,7 +40,7 @@ export const FortnightSummaryHero = ({
   const rawExpensePct =
     committedAmount > 0
       ? splitColumnPct * (committedAmount / splitTotal)
-      : 8;
+      : 12;
   const rawAvailablePct =
     positiveRemainder > 0
       ? splitColumnPct * (positiveRemainder / splitTotal)
