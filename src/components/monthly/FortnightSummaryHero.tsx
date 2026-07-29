@@ -50,7 +50,6 @@ export const FortnightSummaryHero = ({
         title="Entró"
         subtitle="Ingresos totales"
         amount={periodIncome}
-        amountTone="positive"
         icon={<ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         connector
       />
@@ -63,7 +62,6 @@ export const FortnightSummaryHero = ({
             : 'Total gastado'
         }
         amount={committedAmount}
-        amountTone="expense"
         icon={<ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         connector
       />
@@ -72,7 +70,6 @@ export const FortnightSummaryHero = ({
         title="Queda disponible"
         subtitle="Disponible para usar"
         amount={incomeRemainder}
-        amountTone="available"
         icon={<Wallet className="h-4 w-4" aria-hidden data-icon="inline-start" />}
         connector
       />
@@ -85,30 +82,19 @@ export const FortnightSummaryHero = ({
             : 'No aplica a esta quincena'
         }
         amount={displayFundingNet}
-        amountTone={displayFundingNet < 0 ? 'negative' : 'positive'}
         icon={<CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />}
       />
     </div>
   );
 };
 
-type AmountTone = 'positive' | 'expense' | 'available' | 'negative';
-
 type SummaryStepProps = {
   number: string;
   title: string;
   subtitle: string;
   amount: number;
-  amountTone: AmountTone;
   icon: ReactNode;
   connector?: boolean;
-};
-
-const amountToneClasses: Record<AmountTone, string> = {
-  positive: 'text-emerald-700 dark:text-emerald-300',
-  expense: 'text-destructive',
-  available: 'text-violet-700 dark:text-violet-300',
-  negative: 'text-destructive',
 };
 
 function SummaryStep({
@@ -116,7 +102,6 @@ function SummaryStep({
   title,
   subtitle,
   amount,
-  amountTone,
   icon,
   connector = false,
 }: SummaryStepProps) {
@@ -136,8 +121,8 @@ function SummaryStep({
       </div>
       <p
         className={cn(
-          'mt-5 font-mono text-xl font-bold leading-none tracking-tight tabular-nums sm:text-2xl',
-          amountToneClasses[amountTone],
+          'mt-5 font-mono text-xl font-bold leading-none tracking-tight tabular-nums text-foreground sm:text-2xl',
+          amount < 0 && 'text-destructive',
         )}
       >
         {formatCurrency(amount)}
