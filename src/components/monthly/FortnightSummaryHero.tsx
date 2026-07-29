@@ -26,6 +26,11 @@ type FortnightSummaryHeroProps = {
 
 type StepTone = 'income' | 'expense' | 'available' | 'real';
 
+/**
+ * Spec: match the user reference cards — vivid full-border outline, visible outer
+ * glow, bright amount/title, filled circular icon bottom-left.
+ * Do not dilute these opacities for “calm UI”.
+ */
 const toneClasses: Record<
   StepTone,
   {
@@ -37,32 +42,44 @@ const toneClasses: Record<
   }
 > = {
   income: {
-    card: 'border-emerald-500/45 bg-emerald-500/[0.04] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08),0_0_24px_-12px_rgba(16,185,129,0.45)]',
-    title: 'text-emerald-600 dark:text-emerald-300',
-    subtitle: 'text-emerald-700/55 dark:text-emerald-300/55',
-    amount: 'text-emerald-600 dark:text-emerald-400',
-    icon: 'bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/35 dark:text-emerald-300',
+    card: cn(
+      'border-2 border-emerald-400/90 bg-[#0b1612]',
+      'shadow-[0_0_0_1px_rgba(52,211,153,0.35),0_0_28px_rgba(16,185,129,0.55)]',
+    ),
+    title: 'text-emerald-300',
+    subtitle: 'text-emerald-300/70',
+    amount: 'text-emerald-400',
+    icon: 'bg-emerald-500/25 text-emerald-300 ring-2 ring-emerald-400/70',
   },
   expense: {
-    card: 'border-destructive/45 bg-destructive/[0.04] shadow-[inset_0_0_0_1px_rgba(239,68,68,0.08),0_0_24px_-12px_rgba(239,68,68,0.4)]',
-    title: 'text-destructive/90',
-    subtitle: 'text-destructive/55',
-    amount: 'text-destructive',
-    icon: 'bg-destructive/15 text-destructive ring-1 ring-destructive/35',
+    card: cn(
+      'border-2 border-rose-400/90 bg-[#1a0f12]',
+      'shadow-[0_0_0_1px_rgba(251,113,133,0.35),0_0_28px_rgba(244,63,94,0.55)]',
+    ),
+    title: 'text-rose-300',
+    subtitle: 'text-rose-300/70',
+    amount: 'text-rose-400',
+    icon: 'bg-rose-500/25 text-rose-300 ring-2 ring-rose-400/70',
   },
   available: {
-    card: 'border-violet-500/45 bg-violet-500/[0.04] shadow-[inset_0_0_0_1px_rgba(139,92,246,0.08),0_0_24px_-12px_rgba(139,92,246,0.45)]',
-    title: 'text-violet-600 dark:text-violet-300',
-    subtitle: 'text-violet-700/55 dark:text-violet-300/55',
-    amount: 'text-violet-600 dark:text-violet-400',
-    icon: 'bg-violet-500/15 text-violet-600 ring-1 ring-violet-500/35 dark:text-violet-300',
+    card: cn(
+      'border-2 border-violet-400/90 bg-[#120f1c]',
+      'shadow-[0_0_0_1px_rgba(167,139,250,0.35),0_0_28px_rgba(139,92,246,0.55)]',
+    ),
+    title: 'text-violet-300',
+    subtitle: 'text-violet-300/70',
+    amount: 'text-violet-400',
+    icon: 'bg-violet-500/25 text-violet-300 ring-2 ring-violet-400/70',
   },
   real: {
-    card: 'border-rose-500/45 bg-rose-500/[0.04] shadow-[inset_0_0_0_1px_rgba(244,63,94,0.08),0_0_24px_-12px_rgba(244,63,94,0.4)]',
-    title: 'text-rose-600 dark:text-rose-300',
-    subtitle: 'text-rose-700/55 dark:text-rose-300/55',
-    amount: 'text-rose-600 dark:text-rose-400',
-    icon: 'bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/35 dark:text-rose-300',
+    card: cn(
+      'border-2 border-rose-400/90 bg-[#1a0f12]',
+      'shadow-[0_0_0_1px_rgba(251,113,133,0.35),0_0_28px_rgba(244,63,94,0.55)]',
+    ),
+    title: 'text-rose-300',
+    subtitle: 'text-rose-300/70',
+    amount: 'text-rose-400',
+    icon: 'bg-rose-500/25 text-rose-300 ring-2 ring-rose-400/70',
   },
 };
 
@@ -78,7 +95,7 @@ export const FortnightSummaryHero = ({
   const realTone: StepTone = displayFundingNet < 0 ? 'real' : 'income';
 
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
       <SummaryStep
         number="1"
         title="Entró"
@@ -150,7 +167,8 @@ function SummaryStep({
   return (
     <div
       className={cn(
-        'group relative flex min-h-32 flex-col overflow-hidden rounded-xl border bg-card/70 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
+        // No overflow-hidden — it clips the outer neon glow from the reference.
+        'group relative flex min-h-36 flex-col rounded-2xl px-3.5 py-3.5 transition-transform duration-200 hover:-translate-y-0.5',
         styles.card,
       )}
     >
@@ -168,7 +186,7 @@ function SummaryStep({
 
       <p
         className={cn(
-          'mt-4 font-mono text-xl font-bold leading-none tracking-tight tabular-nums sm:text-2xl',
+          'mt-5 font-mono text-xl font-bold leading-none tracking-tight tabular-nums sm:text-2xl',
           styles.amount,
         )}
       >
@@ -177,7 +195,7 @@ function SummaryStep({
 
       <span
         className={cn(
-          'mt-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+          'mt-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
           styles.icon,
         )}
         aria-hidden
@@ -187,7 +205,7 @@ function SummaryStep({
 
       {connector ? (
         <span
-          className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground shadow-sm lg:flex"
+          className="absolute -right-3.5 top-1/2 z-10 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-[#0c0c10] text-white/80 shadow-md lg:flex"
           aria-hidden
         >
           <ArrowRight className="h-3.5 w-3.5" />
