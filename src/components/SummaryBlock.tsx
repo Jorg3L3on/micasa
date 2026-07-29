@@ -21,12 +21,8 @@ import {
   BarChart3,
   CreditCard,
   Banknote,
-  CircleDollarSign,
-  PiggyBank,
-  Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
-import { getFortnightIncomeCommittedPercent } from '@/components/monthly/fortnight-income-commitment';
 import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
 import type {
   FundingWalletBreakdownItem,
@@ -149,51 +145,28 @@ export default function SummaryBlock({
     ? pendiente
     : 0;
 
-  const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
-    tenemos,
-    pagado,
-    pendiente + payrollLoanDeduction,
-  );
-  const showIncomeRing = tenemos > 0;
-
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
     return t;
   };
 
-  const metricHint = (text: string) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-          aria-label={text}
-        >
-          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[14rem] text-xs">
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
-
   return (
     <Card
       className={cn(
-        'relative gap-0 overflow-hidden rounded-2xl border-violet-500/20 py-0 shadow-lg',
-        'bg-gradient-to-br from-violet-500/12 via-card to-primary/5',
-        'ring-1 ring-violet-500/10 dark:from-violet-500/18 dark:via-card dark:to-primary/8 dark:ring-violet-500/15',
+        // overflow-visible so neon card glows in FortnightSummaryHero are not clipped
+        'relative gap-0 overflow-visible rounded-2xl border border-violet-500/35 py-0',
+        'bg-[#0c0c12]',
+        'shadow-[0_0_0_1px_rgba(139,92,246,0.18),0_0_28px_rgba(139,92,246,0.22)]',
       )}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
-      <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
+      <CardContent className="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20 shadow-sm ring-1 ring-primary/25"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/20"
               aria-hidden
             >
               <BarChart3 className="h-4 w-4 text-primary" data-icon="inline-start" />
@@ -238,12 +211,11 @@ export default function SummaryBlock({
 
         <FortnightSummaryHero
           periodIncome={tenemos}
+          committedAmount={comprometidoEfectivo}
           incomeRemainder={trasPagarPlaneado}
           fundingNetInAccounts={displayFundingNet}
           fundingNetApplies={billeterasVsPendienteAplica}
           payrollDeductionAmount={payrollLoanDeduction}
-          percentCommitted={incomeCommittedPercent}
-          showGauge={showIncomeRing}
         />
 
         {isExpanded && (

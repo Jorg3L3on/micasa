@@ -54,7 +54,7 @@ export const MonthlyBudgetSidebar = ({
   if (totalBudget <= 0 && categories.length === 0) {
     return (
       <aside
-        className="rounded-xl border border-border/60 bg-card p-4 shadow-sm"
+        className="rounded-xl border border-violet-500/30 bg-[#0c0c12] p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.12),0_0_20px_rgba(139,92,246,0.15)]"
         aria-label="Presupuesto de la quincena"
       >
         <h2 className="text-sm font-semibold">Presupuesto de la quincena</h2>
@@ -71,7 +71,7 @@ export const MonthlyBudgetSidebar = ({
 
   return (
     <aside
-      className="space-y-5 rounded-xl border border-border/60 bg-card p-4 shadow-sm"
+      className="space-y-5 rounded-xl border border-violet-500/30 bg-[#0c0c12] p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.12),0_0_20px_rgba(139,92,246,0.15)]"
       aria-label="Presupuesto de la quincena y categorías"
     >
       <section aria-labelledby="monthly-budget-heading">

@@ -951,16 +951,14 @@ export default function ExpenseTable({
                     <li
                       key={`m-${e.planning_row_kind ?? 'expense'}-${e.id}`}
                       className={cn(
-                        'group/row relative flex items-start gap-2.5 overflow-hidden rounded-xl border px-2.5 py-2.5 transition-all',
-                        // left accent stripe via border-l width
-                        'border-l-[3px]',
+                        'group/row relative flex items-start gap-2.5 overflow-hidden rounded-xl border border-border/60 px-2.5 py-2.5 transition-all',
                         // subtle top gloss
                         'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                         isCardCharge
-                          ? 'border-violet-500/15 border-l-violet-500/70 bg-gradient-to-br from-violet-500/8 via-card to-violet-500/3 dark:from-violet-500/14 dark:via-card/60 dark:to-violet-500/5'
+                          ? 'bg-violet-500/[0.04]'
                           : e.is_paid
-                            ? 'border-emerald-500/15 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/4'
-                            : 'border-border/40 border-l-primary/45 bg-card/60 active:scale-[0.995] active:border-primary/40',
+                            ? 'bg-emerald-500/[0.04] opacity-90'
+                            : 'bg-card/60 active:scale-[0.995] active:border-border',
                       )}
                     >
                       {/* Status / pay toggle */}
@@ -1277,14 +1275,9 @@ export default function ExpenseTable({
                         key={`${row.original.planning_row_kind ?? 'expense'}-${row.original.id}`}
                         className={cn(
                           'transition-colors group/row',
-                          isCardChargeExpenseRow(row.original)
-                            ? 'border-l-[3px] border-l-violet-500/60'
-                            : row.original.is_paid
-                              ? 'border-l-[3px] border-l-emerald-500/40'
-                              : 'border-l-[3px] border-l-primary/25 hover:border-l-primary/50',
                           row.original.is_paid
                             ? 'bg-emerald-50/25 dark:bg-emerald-950/15 opacity-75 hover:opacity-90 hover:bg-emerald-50/35 dark:hover:bg-emerald-950/25'
-                            : 'hover:bg-primary/5 dark:hover:bg-primary/8',
+                            : 'hover:bg-muted/30',
                         )}
                       >
                         {row.getVisibleCells().map((cell) => (

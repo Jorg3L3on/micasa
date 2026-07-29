@@ -71,7 +71,11 @@ export default function CreatePlanningMonthButton({
       className={cn(
         'h-auto min-h-9 shrink-0 justify-start gap-2.5 whitespace-normal',
         variant === 'compact'
-          ? 'rounded-xl border-border/60 bg-card py-2 pl-2 pr-3 text-left shadow-sm transition-all hover:border-violet-500/40 hover:shadow-md dark:bg-card/80'
+          ? cn(
+              'rounded-xl border-2 border-violet-400/70 bg-violet-500/10 py-2 pl-2 pr-3 text-left',
+              'shadow-[0_0_0_1px_rgba(167,139,250,0.35),0_0_22px_rgba(139,92,246,0.4)]',
+              'transition-all hover:border-violet-300/90 hover:bg-violet-500/15',
+            )
           : 'rounded-lg px-4 py-2',
       )}
     >

@@ -828,7 +828,7 @@ export default function FortnightColumn({
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-2 sm:p-1.5">
+          <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-white/10 bg-[#0c0c12] p-1 shadow-[0_0_0_1px_rgba(139,92,246,0.12)] sm:mb-3.5 sm:gap-2 sm:p-1.5">
             <TabsList
               variant="line"
               className={cn(
@@ -837,13 +837,11 @@ export default function FortnightColumn({
                   'w-full overflow-x-auto scrollbar-hide [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0',
                 '[&_[data-slot=tabs-trigger]]:rounded-full',
                 '[&_[data-slot=tabs-trigger]]:transition-all',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:from-primary/90',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:to-primary/75',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:text-primary-foreground',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:shadow-sm',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:bg-violet-500/20',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:text-violet-200',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:shadow-[0_0_0_1px_rgba(167,139,250,0.55),0_0_22px_rgba(139,92,246,0.45)]',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:ring-1',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-primary/30',
+                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-violet-400/70',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:border-transparent',
                 '[&_[data-slot=tabs-trigger][data-state=inactive]]:text-foreground/70',
                 '[&_[data-slot=tabs-trigger][data-state=inactive]]:hover:text-foreground/90',
@@ -866,7 +864,7 @@ export default function FortnightColumn({
                       'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
                       compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
                       columnTab === 'expenses' && unpaidExpenseCount > 0 &&
-                        'bg-primary-foreground/20 text-primary-foreground',
+                        'bg-violet-400/25 text-violet-100',
                     )}
                     aria-hidden
                   >
@@ -893,7 +891,7 @@ export default function FortnightColumn({
                       'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
                       compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
                       columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
-                        'bg-primary-foreground/20 text-primary-foreground',
+                        'bg-violet-400/25 text-violet-100',
                     )}
                     aria-hidden
                   >
@@ -919,7 +917,7 @@ export default function FortnightColumn({
                       'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
                       compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
                       columnTab === 'loans' && pendingLoanPaymentsCount > 0 &&
-                        'bg-primary-foreground/20 text-primary-foreground',
+                        'bg-violet-400/25 text-violet-100',
                     )}
                     aria-hidden
                   >
@@ -937,7 +935,7 @@ export default function FortnightColumn({
                     onClick={() => setAddExpenseDialogOpen(true)}
                     disabled={!fortnightId || fortnightId <= 0}
                     className={cn(
-                      'h-9 w-9 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8 sm:w-auto sm:px-3',
+                      'h-9 w-9 gap-1.5 border-violet-400/60 bg-violet-500/15 p-0 text-violet-200 shadow-[0_0_0_1px_rgba(167,139,250,0.35),0_0_16px_rgba(139,92,246,0.3)] hover:bg-violet-500/25 hover:text-violet-100 sm:h-8 sm:w-auto sm:px-3',
                       compactTabs && 'sm:w-9 sm:px-0',
                     )}
                     aria-label="Agregar gasto a esta quincena"
@@ -1018,15 +1016,17 @@ export default function FortnightColumn({
               )}
             >
               {sortedTransactions.length === 0 ? (
-                <EmptyState
-                  message="Sin gastos en esta quincena"
-                  description="Empieza con un gasto para ver totales y el estado del mes."
-                  action={{
-                    label: 'Agregar primer gasto',
-                    onClick: () => setAddExpenseDialogOpen(true),
-                    variant: 'default',
-                  }}
-                />
+                <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-white/10 bg-[#0c0c12]/60">
+                  <EmptyState
+                    message="Sin gastos en esta quincena"
+                    description="Empieza con un gasto para ver totales y el estado del mes."
+                    action={{
+                      label: 'Agregar primer gasto',
+                      onClick: () => setAddExpenseDialogOpen(true),
+                      variant: 'default',
+                    }}
+                  />
+                </div>
               ) : (
                 <ExpenseTable
                   expenses={sortedTransactions}

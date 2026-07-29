@@ -46,6 +46,7 @@ type PeriodCategoryPieCardProps = {
   subtitle?: string;
   rows: CategoryPieRow[];
   compact?: boolean;
+  className?: string;
 };
 
 export const PeriodCategoryPieCard = ({
@@ -54,6 +55,7 @@ export const PeriodCategoryPieCard = ({
   subtitle = 'Planificación (efectivo/débito); sin cargos solo TC ni cuotas MSI.',
   rows,
   compact = false,
+  className,
 }: PeriodCategoryPieCardProps) => {
   const chartId = useId().replace(/:/g, '');
   const chartData = useMemo(() => buildCategoryPieChartData(rows), [rows]);
@@ -68,7 +70,10 @@ export const PeriodCategoryPieCard = ({
 
   return (
     <div
-      className="flex flex-col rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5"
+      className={cn(
+        'flex flex-col rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5',
+        className,
+      )}
       role="region"
       aria-label={`${title}, ${scopeLabel}`}
     >
