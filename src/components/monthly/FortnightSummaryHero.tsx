@@ -33,6 +33,21 @@ export const FortnightSummaryHero = ({
   payrollDeductionAmount = 0,
 }: FortnightSummaryHeroProps) => {
   const displayFundingNet = fundingNetApplies ? fundingNetInAccounts : 0;
+  const incomeColumnPct = 42;
+  const splitColumnPct = 100 - incomeColumnPct;
+  const positiveRemainder = Math.max(incomeRemainder, 0);
+  const splitTotal = Math.max(committedAmount + positiveRemainder, 1);
+  const rawExpensePct =
+    committedAmount > 0
+      ? splitColumnPct * (committedAmount / splitTotal)
+      : 8;
+  const rawAvailablePct =
+    positiveRemainder > 0
+      ? splitColumnPct * (positiveRemainder / splitTotal)
+      : 8;
+  const splitScale = splitColumnPct / (rawExpensePct + rawAvailablePct);
+  const expenseColumnPct = rawExpensePct * splitScale;
+  const availableColumnPct = rawAvailablePct * splitScale;
 
   return (
     <div className="space-y-4">
@@ -83,7 +98,12 @@ export const FortnightSummaryHero = ({
         className="overflow-hidden rounded-2xl border border-border/50 bg-background/55 p-3 shadow-inner"
         aria-label="Ingresos menos gastos igual a disponible"
       >
-        <div className="grid h-20 grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,.78fr)] overflow-hidden rounded-xl border border-border/40 bg-muted/30 sm:h-24">
+        <div
+          className="grid h-20 overflow-hidden rounded-xl border border-border/40 bg-muted/30 sm:h-24"
+          style={{
+            gridTemplateColumns: `${incomeColumnPct}% ${expenseColumnPct}% ${availableColumnPct}%`,
+          }}
+        >
           <FlowSegment
             className="border-emerald-400/60 bg-gradient-to-r from-emerald-500/85 to-emerald-500/35 text-emerald-50"
             label="Ingresos"
