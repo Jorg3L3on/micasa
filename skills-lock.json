@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "superdesign": {
+      "source": "superdesigndev/superdesign-skill",
+      "sourceType": "github",
+      "skillPath": "skills/superdesign/SKILL.md",
+      "computedHash": "7bcd8d356976e049ad9061f585358ca3e140a719335f8954f5c1366e0738c8a8"
+    }
+  }
+}
