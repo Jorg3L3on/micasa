@@ -154,7 +154,8 @@ export default function SummaryBlock({
   return (
     <Card
       className={cn(
-        'relative gap-0 overflow-hidden rounded-2xl border-border/60 py-0 shadow-sm',
+        // overflow-visible so neon card glows in FortnightSummaryHero are not clipped
+        'relative gap-0 overflow-visible rounded-2xl border-border/60 py-0 shadow-sm',
         'bg-card dark:bg-card/95',
         'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-violet-500/45',
       )}
