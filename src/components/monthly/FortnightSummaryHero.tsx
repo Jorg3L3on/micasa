@@ -241,11 +241,18 @@ function FlowSegment({
       )}
     >
       {compact ? null : (
-        <span className="font-mono text-sm font-bold tabular-nums sm:text-lg">
+        <span className="hidden font-mono text-sm font-bold tabular-nums sm:block sm:text-lg">
           {formatCurrency(amount)}
         </span>
       )}
-      <span className={cn('font-semibold opacity-85', compact ? 'text-[9px] leading-tight' : 'mt-1 text-[10px] sm:text-xs')}>
+      <span
+        className={cn(
+          'font-semibold opacity-85',
+          compact
+            ? 'hidden text-[9px] leading-tight sm:inline'
+            : 'text-[10px] sm:mt-1 sm:text-xs',
+        )}
+      >
         {label}
       </span>
     </div>
