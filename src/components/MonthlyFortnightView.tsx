@@ -6,7 +6,6 @@ import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FortnightViewControls } from '@/components/monthly/FortnightViewControls';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
-import { cn } from '@/lib/utils';
 import type {
   DuePaymentItem,
   PlannerCardChargesSummary,
@@ -17,8 +16,6 @@ import type {
   WalletListItem,
 } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
-
-type FortnightPeriod = 'FIRST' | 'SECOND';
 
 type FortnightSummary = {
   totalIncome: number;
@@ -80,7 +77,6 @@ export default function MonthlyFortnightView({
     prefsReady,
     period,
     summaryVisible,
-    setPeriod,
     setSummaryVisible,
   } = useMonthlyPanelPreferences();
 
@@ -135,13 +131,7 @@ export default function MonthlyFortnightView({
     <div className="space-y-4">
       {walletStripSection}
       <FortnightViewControls
-        year={year}
-        month={month}
-        period={period}
-        firstLabel={first.label}
-        secondLabel={second.label}
         summaryVisible={summaryVisible}
-        onPeriodChange={setPeriod}
         onSummaryVisibleChange={setSummaryVisible}
       />
 

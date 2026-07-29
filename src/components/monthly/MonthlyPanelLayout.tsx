@@ -44,11 +44,7 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      <div
-        className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4"
-        role="group"
-        aria-label="Selector de mes"
-      >
+      <div className="mb-5" role="group" aria-label="Selector de mes">
         {monthHeader}
       </div>
 

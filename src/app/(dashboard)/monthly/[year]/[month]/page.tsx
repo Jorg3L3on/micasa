@@ -7,6 +7,7 @@ import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
+import { MonthlyPanelTopBar } from '@/components/monthly/MonthlyPanelTopBar';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getSuggestedFortnightPeriodForMonth } from '@/lib/fortnight-calendar';
@@ -236,50 +237,28 @@ export default async function MonthlyPage({
   const loanDueSecond = plannerLoanDue.second;
 
   const monthHeader = (
-    <>
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-        <div className="shrink-0">
-          <MonthlyHeader
-            year={year}
-            month={month}
-            monthName={monthName}
-            hasPrevMonth={hasPrevMonth}
-            prevHref={prevHref}
-            prevMonthLabel={prevMonthLabel}
-          />
-        </div>
-
-        <div className="min-w-0 flex-1 text-center" aria-live="polite">
-          <h1 className="truncate text-lg font-semibold leading-tight">
-            {monthName} {year}
-          </h1>
-          <div className="mt-0.5 flex items-center justify-center gap-1.5">
-            <p className="text-xs text-muted-foreground">
-              Panel financiero mensual
-            </p>
-            {isCurrentMonth ? (
-              <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
-                <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
-                Actual
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="shrink-0">
-          {hasNextMonth ? (
-            <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
-          ) : (
-            <CreateNextMonthButton
-              nextYear={nextYear}
-              nextMonth={nextMonth}
-              nextMonthLabel={nextMonthLabel}
-              canCreate={canCreateNextMonth}
-            />
-          )}
-        </div>
-      </div>
-    </>
+    <MonthlyPanelTopBar
+      year={year}
+      month={month}
+      monthName={monthName}
+      isCurrentMonth={isCurrentMonth}
+      hasPrevMonth={hasPrevMonth}
+      prevHref={prevHref}
+      prevMonthLabel={prevMonthLabel}
+      hasNextMonth={hasNextMonth}
+      nextHref={nextHref}
+      nextMonthLabel={nextMonthLabel}
+      firstLabel={firstLabel}
+      secondLabel={secondLabel}
+      nextFallbackAction={
+        <CreateNextMonthButton
+          nextYear={nextYear}
+          nextMonth={nextMonth}
+          nextMonthLabel={nextMonthLabel}
+          canCreate={canCreateNextMonth}
+        />
+      }
+    />
   );
 
   return (

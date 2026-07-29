@@ -21,12 +21,8 @@ import {
   BarChart3,
   CreditCard,
   Banknote,
-  CircleDollarSign,
-  PiggyBank,
-  Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
-import { getFortnightIncomeCommittedPercent } from '@/components/monthly/fortnight-income-commitment';
 import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
 import type {
   FundingWalletBreakdownItem,
@@ -149,35 +145,11 @@ export default function SummaryBlock({
     ? pendiente
     : 0;
 
-  const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
-    tenemos,
-    pagado,
-    pendiente + payrollLoanDeduction,
-  );
-  const showIncomeRing = tenemos > 0;
-
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
     return t;
   };
-
-  const metricHint = (text: string) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-          aria-label={text}
-        >
-          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[14rem] text-xs">
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
 
   return (
     <Card
@@ -238,12 +210,11 @@ export default function SummaryBlock({
 
         <FortnightSummaryHero
           periodIncome={tenemos}
+          committedAmount={comprometidoEfectivo}
           incomeRemainder={trasPagarPlaneado}
           fundingNetInAccounts={displayFundingNet}
           fundingNetApplies={billeterasVsPendienteAplica}
           payrollDeductionAmount={payrollLoanDeduction}
-          percentCommitted={incomeCommittedPercent}
-          showGauge={showIncomeRing}
         />
 
         {isExpanded && (
