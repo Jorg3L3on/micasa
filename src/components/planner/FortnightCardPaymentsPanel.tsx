@@ -190,7 +190,7 @@ const FortnightCardPaymentsPanel = ({
     return (
       <div
         className={cn(
-          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
+          'rounded-xl border border-white/10 bg-[#0c0c12]/60 px-4 py-8 text-center',
           isCompact ? 'text-xs' : 'text-sm',
         )}
         role="region"
@@ -257,18 +257,13 @@ const FortnightCardPaymentsPanel = ({
               <li
                 key={item.walletId}
                 className={cn(
-                  'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
-                  'border-l-[3px]',
+                  'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border/60 px-3 transition-all',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                   isCompact ? 'py-2.5' : 'py-3',
-                  status === 'vencido' &&
-                    'border-destructive/25 border-l-destructive bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
-                  status === 'por_pagar' &&
-                    'border-amber-500/25 border-l-amber-500/70 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
-                  status === 'pagado' &&
-                    'border-emerald-500/20 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
-                  status === 'sin_cargo' &&
-                    'border-border/50 border-l-border bg-muted/20 opacity-80',
+                  status === 'vencido' && 'bg-destructive/[0.04]',
+                  status === 'por_pagar' && 'bg-card/70 hover:bg-muted/20',
+                  status === 'pagado' && 'bg-emerald-500/[0.04]',
+                  status === 'sin_cargo' && 'bg-muted/20 opacity-80',
                 )}
               >
                 <span

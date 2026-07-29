@@ -68,7 +68,7 @@ export const PeriodCategoryPieCard = ({
 
   return (
     <div
-      className="flex flex-col rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5"
+      className="flex flex-col rounded-xl border border-violet-500/30 bg-[#0c0c12] p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.12),0_0_20px_rgba(139,92,246,0.15)] sm:p-5"
       role="region"
       aria-label={`${title}, ${scopeLabel}`}
     >

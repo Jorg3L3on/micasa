@@ -155,9 +155,9 @@ export default function SummaryBlock({
     <Card
       className={cn(
         // overflow-visible so neon card glows in FortnightSummaryHero are not clipped
-        'relative gap-0 overflow-visible rounded-2xl border-border/60 py-0 shadow-sm',
-        'bg-card dark:bg-card/95',
-        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-violet-500/45',
+        'relative gap-0 overflow-visible rounded-2xl border border-violet-500/35 py-0',
+        'bg-[#0c0c12]',
+        'shadow-[0_0_0_1px_rgba(139,92,246,0.18),0_0_28px_rgba(139,92,246,0.22)]',
       )}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}

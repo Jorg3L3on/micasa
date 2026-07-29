@@ -65,7 +65,7 @@ export default function FortnightLoanPaymentsPanel({
     return (
       <div
         className={cn(
-          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
+          'rounded-xl border border-white/10 bg-[#0c0c12]/60 px-4 py-8 text-center',
           isCompact ? 'text-xs' : 'text-sm',
         )}
         role="region"
@@ -93,16 +93,12 @@ export default function FortnightLoanPaymentsPanel({
             <li
               key={item.id}
               className={cn(
-                'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-l-[3px] px-3 transition-all',
+                'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border/60 px-3 transition-all',
                 isCompact ? 'py-2.5' : 'py-3',
-                visual === 'overdue' &&
-                  'border-destructive/25 border-l-destructive bg-gradient-to-br from-destructive/10 via-card to-destructive/3',
-                visual === 'pending' &&
-                  'border-amber-500/25 border-l-amber-500/70 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2',
-                visual === 'paid' &&
-                  'border-emerald-500/20 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2',
-                visual === 'muted' &&
-                  'border-border/50 border-l-muted-foreground/40 bg-card',
+                visual === 'overdue' && 'bg-destructive/[0.04]',
+                visual === 'pending' && 'bg-card/70',
+                visual === 'paid' && 'bg-emerald-500/[0.04]',
+                visual === 'muted' && 'bg-muted/20',
               )}
             >
               <span
