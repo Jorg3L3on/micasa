@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Wallet as WalletIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
@@ -103,6 +103,9 @@ const WalletDetailSkeleton = () => (
 
 export default function WalletDetailPage() {
   const params = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { context } = useFinanceContext();
   const walletId = Number(params.id);
 
@@ -111,6 +114,9 @@ export default function WalletDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<{ from: string; to: string }>(() => {
+    const qFrom = searchParams.get('from');
+    const qTo = searchParams.get('to');
+    if (qFrom && qTo) return { from: qFrom, to: qTo };
     const now = new Date();
     const y = now.getUTCFullYear();
     const m = now.getUTCMonth();
@@ -121,7 +127,10 @@ export default function WalletDetailPage() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expenseError, setExpenseError] = useState<string | null>(null);
   const [incomeOpen, setIncomeOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<WalletDetailTab>('resumen');
+  const [activeTab, setActiveTab] = useState<WalletDetailTab>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'movimientos' || tab === 'compromisos' ? tab : 'resumen';
+  });
   const [paymentPlanItems, setPaymentPlanItems] = useState<
     CreditCardPaymentPlanView[]
   >([]);
@@ -144,6 +153,18 @@ export default function WalletDetailPage() {
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (activeTab === 'resumen') next.delete('tab');
+    else next.set('tab', activeTab);
+    next.set('from', range.from);
+    next.set('to', range.to);
+    const currentQs = searchParams.toString();
+    const nextQs = next.toString();
+    if (nextQs === currentQs) return;
+    router.replace(nextQs ? `${pathname}?${nextQs}` : pathname, { scroll: false });
+  }, [activeTab, pathname, range.from, range.to, router, searchParams]);
 
   const backHref = `/wallets${ownerQueryString}`;
 

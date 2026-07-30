@@ -205,7 +205,7 @@ export default function CategoriesPage() {
       )}
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="py-4">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
               Cargando...

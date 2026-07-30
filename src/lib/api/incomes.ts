@@ -54,7 +54,7 @@ export async function createIncome(
     received_at: string;
     transfer_from_user_id?: number;
     income_template_id?: number | null;
-    wallet_id?: number | null;
+    wallet_id: number;
   },
   context?: FinanceContextType,
 ) {

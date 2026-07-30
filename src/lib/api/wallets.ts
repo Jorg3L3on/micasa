@@ -4,6 +4,20 @@ import type { FinanceContextType } from '@/types/finance-context';
 import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import type { WalletMetricsResponse } from '@/lib/finance/wallet-balance-evolution.service';
+
+export const WALLET_METRICS_MONTHS = 6;
+
+export async function getWalletMetrics(
+  context?: FinanceContextType,
+  months = WALLET_METRICS_MONTHS,
+): Promise<WalletMetricsResponse> {
+  return clientFetchFromApi<WalletMetricsResponse>(
+    `/api/wallets/metrics?months=${months}`,
+    undefined,
+    context,
+  );
+}
 
 const getEffectiveCreditLimit = ({
   credit_limit,

@@ -40,7 +40,14 @@ export async function POST(request: NextRequest) {
       error &&
       typeof error === 'object' &&
       'code' in error &&
-      ['ALLOC_EXCEEDS_BUDGET', 'CURRENT_FORTNIGHT_NOT_FOUND'].includes(
+      [
+        'ALLOC_EXCEEDS_BUDGET',
+        'ALLOC_NOT_EQUAL_BUDGET',
+        'EMPTY_ALLOCATION',
+        'CURRENT_FORTNIGHT_NOT_FOUND',
+        'OWNER_MISMATCH_WALLET',
+        'OWNER_MISMATCH_CATEGORY',
+      ].includes(
         (error as ErrorWithCode).code ?? '',
       )
     ) {

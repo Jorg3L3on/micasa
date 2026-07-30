@@ -707,7 +707,7 @@ describe('getDashboardData', () => {
     expect(data.fundingNetVsPendingExpense).toBe(5207.27);
   });
 
-  it('limits upcoming obligations to five sorted by due date', async () => {
+  it('returns up to five expenses and three loans sorted by due date', async () => {
     setupWithCurrentFortnight();
     const makeExpense = (id: number, dueDay: number) => ({
       id,
@@ -744,12 +744,16 @@ describe('getDashboardData', () => {
       period: 'FIRST',
     });
 
-    expect(data.upcomingObligations).toHaveLength(5);
+    const expenses = data.upcomingObligations.filter(
+      (o) => o.source === 'expense',
+    );
+    const loans = data.upcomingObligations.filter(
+      (o) => o.source === 'loan_payment',
+    );
+    expect(expenses).toHaveLength(5);
+    expect(loans).toHaveLength(1);
     const dueDates = data.upcomingObligations.map((o) => o.dueDate);
     expect([...dueDates].sort()).toEqual(dueDates);
-    expect(data.upcomingObligations.some((o) => o.source === 'loan_payment')).toBe(
-      true,
-    );
   });
 
   it('emits high commitment alert when expenses reach 80% of income', async () => {

@@ -9,3 +9,4 @@ export { default as PeriodComparisonCard } from './PeriodComparisonCard';
 export { default as LiquidityTeaserCard } from './LiquidityTeaserCard';
 export { default as DashboardCommittedCashBar } from './DashboardCommittedCashBar';
 export { default as DashboardCreditSummaryStrip } from './DashboardCreditSummaryStrip';
+export { default as DashboardCashflowCard } from './DashboardCashflowCard';

@@ -134,7 +134,14 @@ export default function BudgetAllocationsDialog({
     (sum: number, a: { amount: unknown }) => sum + (Number(a.amount) || 0),
     0,
   );
-  const isFullyAllocated = Math.abs(allocated - budget.allocated_amount) < 0.01;
+  const hasEmptyAllocation = (watchedAllocations ?? []).some(
+    (allocation) =>
+      Number(allocation.wallet_id) <= 0 ||
+      Number(allocation.category_id) <= 0 ||
+      Number(allocation.amount) <= 0,
+  );
+  const isFullyAllocated =
+    !hasEmptyAllocation && Math.abs(allocated - budget.allocated_amount) < 0.01;
 
   const loadOptions = useCallback(() => {
     setLoadingOptions(true);
@@ -219,6 +226,12 @@ export default function BudgetAllocationsDialog({
               totalAmount={budget.allocated_amount}
               allocations={watchedAllocations ?? []}
             />
+
+            {hasEmptyAllocation ? (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                Completa cada asignación con cartera, categoría y un monto mayor a $0.00.
+              </div>
+            ) : null}
 
             {form.formState.errors.root ? (
               <Alert variant="destructive">

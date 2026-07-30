@@ -170,8 +170,16 @@ export default function BudgetFormDialog({
     (sum: number, a: { amount: unknown }) => sum + (Number(a.amount) || 0),
     0,
   );
+  const hasEmptyAllocation = (watchedAllocations ?? []).some(
+    (allocation) =>
+      Number(allocation.wallet_id) <= 0 ||
+      Number(allocation.category_id) <= 0 ||
+      Number(allocation.amount) <= 0,
+  );
   const isFullyAllocated =
-    step1Data !== null && Math.abs(allocated - Number(step1Data.allocated_amount)) < 0.01;
+    step1Data !== null &&
+    !hasEmptyAllocation &&
+    Math.abs(allocated - Number(step1Data.allocated_amount)) < 0.01;
 
   const loadOptions = useCallback(() => {
     setLoadingOptions(true);
@@ -413,7 +421,11 @@ export default function BudgetFormDialog({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="h-11 sm:h-9">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="h-11 bg-white sm:h-9 dark:bg-card"
+                >
                   Siguiente
                   <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
                 </Button>
@@ -430,6 +442,12 @@ export default function BudgetFormDialog({
                 totalAmount={Number(step1Data.allocated_amount)}
                 allocations={watchedAllocations ?? []}
               />
+
+              {hasEmptyAllocation ? (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Completa cada asignación con cartera, categoría y un monto mayor a $0.00.
+                </div>
+              ) : null}
 
               {form2.formState.errors.root ? (
                 <Alert variant="destructive">
@@ -598,7 +616,8 @@ export default function BudgetFormDialog({
                 </Button>
                 <Button
                   type="submit"
-                  className="h-11 sm:h-9"
+                  variant="outline"
+                  className="h-11 bg-white sm:h-9 dark:bg-card"
                   disabled={
                     !isFullyAllocated ||
                     form2.formState.isSubmitting ||

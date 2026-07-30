@@ -20,6 +20,62 @@ import {
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
 
+async function syncPeriodSnapshot(periodId: number, budgetId: number): Promise<void> {
+  if (
+    !prisma.budget ||
+    typeof prisma.budget.findUnique !== 'function' ||
+    !prisma.budgetPeriodSnapshot ||
+    typeof prisma.budgetPeriodSnapshot.upsert !== 'function' ||
+    !prisma.budgetPeriodSnapshotAllocation ||
+    typeof prisma.budgetPeriodSnapshotAllocation.createMany !== 'function'
+  ) {
+    return;
+  }
+  const budget = await prisma.budget.findUnique({
+    where: { id: budgetId },
+    include: {
+      allocations: {
+        include: {
+          wallet: { select: { id: true, name: true } },
+          category: { select: { id: true, name: true, icon: true } },
+        },
+      },
+    },
+  });
+  if (!budget) return;
+
+  await prisma.$transaction(async (tx) => {
+    const snapshot = await tx.budgetPeriodSnapshot.upsert({
+      where: { budget_period_id: periodId },
+      update: {
+        budget_name: budget.name,
+        total_amount: budget.total_amount,
+      },
+      create: {
+        budget_period_id: periodId,
+        budget_name: budget.name,
+        total_amount: budget.total_amount,
+      },
+    });
+    await tx.budgetPeriodSnapshotAllocation.deleteMany({
+      where: { snapshot_id: snapshot.id },
+    });
+    if (budget.allocations.length > 0) {
+      await tx.budgetPeriodSnapshotAllocation.createMany({
+        data: budget.allocations.map((allocation) => ({
+          snapshot_id: snapshot.id,
+          wallet_id: allocation.wallet.id,
+          wallet_name: allocation.wallet.name,
+          category_id: allocation.category.id,
+          category_name: allocation.category.name,
+          category_icon: allocation.category.icon ?? null,
+          allocated_amount: allocation.amount,
+        })),
+      });
+    }
+  });
+}
+
 async function insertPeriods(budgetId: number, windows: DateRange[]): Promise<number> {
   let created = 0;
   for (const w of windows) {
@@ -28,9 +84,10 @@ async function insertPeriods(budgetId: number, windows: DateRange[]): Promise<nu
       select: { id: true },
     });
     if (existing) continue;
-    await prisma.budgetPeriod.create({
+    const period = await prisma.budgetPeriod.create({
       data: { budget_id: budgetId, start_date: w.start_date, end_date: w.end_date },
     });
+    await syncPeriodSnapshot(period.id, budgetId);
     created++;
   }
   return created;
@@ -170,6 +227,22 @@ export async function syncBudgetPeriodsAfterTemplateUpdate(
   );
 }
 
+export async function refreshFuturePeriodSnapshots(
+  budgetId: number,
+  asOf: Date = new Date(),
+): Promise<void> {
+  if (!prisma.budgetPeriod || typeof prisma.budgetPeriod.findMany !== 'function') return;
+  const todayEnd = endOfCalendarDay(todayCalendarDate(asOf));
+  const periods = await prisma.budgetPeriod.findMany({
+    where: {
+      budget_id: budgetId,
+      start_date: { gt: todayEnd },
+    },
+    select: { id: true },
+  });
+  await Promise.all(periods.map((period) => syncPeriodSnapshot(period.id, budgetId)));
+}
+
 export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
   const todayYmd = formatCalendarDate(asOf);
   const year = Number(todayYmd.slice(0, 4));
@@ -189,10 +262,15 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
         include: {
           allocations: {
             include: {
-              wallet: { select: { id: true, name: true } },
-              category: { select: { id: true, name: true, icon: true } },
+              wallet: { select: { name: true } },
+              category: { select: { name: true, icon: true } },
             },
           },
+        },
+      },
+      snapshot: {
+        include: {
+          allocations: true,
         },
       },
     },
@@ -200,53 +278,143 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
   });
 
   return Promise.all(
-    periods.map(async (period) => {
-      const { budget } = period;
-      const allocationInputs = budget.allocations.map((a) => ({
-        wallet_id: a.wallet_id,
-        category_id: a.category_id,
-        amount: Number(a.amount),
-      }));
-
-      const spend =
-        allocationInputs.length > 0
-          ? await computePeriodSpendByAllocations(
-              prisma,
-              allocationInputs,
-              {
-                start_date: period.start_date,
-                end_date: period.end_date,
-              },
-              ownerFilter,
-            )
-          : { total_spent: 0, by_allocation: [] };
-
-      const allocatedAmount = Number(budget.total_amount);
-      return {
-        period_id: period.id,
-        budget_id: budget.id,
-        name: budget.name,
-        frequency: budget.frequency,
-        start_date: period.start_date.toISOString(),
-        end_date: period.end_date.toISOString(),
-        allocated_amount: allocatedAmount,
-        spent_amount: spend.total_spent,
-        remaining_amount: allocatedAmount - spend.total_spent,
-        active: budget.active,
-        recurrent: budget.recurrent,
-        allocations: budget.allocations.map((a, index) => ({
-          id: a.id,
-          wallet_id: a.wallet_id,
-          wallet_name: a.wallet.name,
-          category_id: a.category_id,
-          category_name: a.category.name,
-          category_icon: a.category.icon ?? null,
-          amount: Number(a.amount),
-          spent_amount: spend.by_allocation[index]?.spent_amount ?? 0,
-        })),
-      };
-    }),
+    periods.map((period) => mapBudgetPeriodItem(period, ownerFilter)),
   );
+}
+
+type BudgetPeriodWithBudget = {
+  id: number;
+  start_date: Date;
+  end_date: Date;
+  budget: {
+    id: number;
+    name: string;
+    frequency: BudgetFrequency;
+    total_amount: unknown;
+    active: boolean;
+    recurrent: boolean;
+    allocations?: Array<{
+      id: number;
+      wallet_id: number;
+      category_id: number;
+      amount: unknown;
+      wallet: { name: string };
+      category: { name: string; icon: string | null };
+    }>;
+  };
+  snapshot: null | {
+    id: number;
+    budget_name: string;
+    total_amount: unknown;
+    allocations: Array<{
+      id: number;
+      wallet_id: number;
+      wallet_name: string;
+      category_id: number;
+      category_name: string;
+      category_icon: string | null;
+      allocated_amount: unknown;
+    }>;
+  };
+};
+
+async function mapBudgetPeriodItem(
+  period: BudgetPeriodWithBudget,
+  ownerFilter: OwnerFilter,
+) {
+  const { budget } = period;
+  const fallbackAllocations =
+    budget.allocations?.map((allocation) => ({
+      id: allocation.id,
+      wallet_id: allocation.wallet_id,
+      wallet_name: allocation.wallet.name,
+      category_id: allocation.category_id,
+      category_name: allocation.category.name,
+      category_icon: allocation.category.icon ?? null,
+      allocated_amount: allocation.amount,
+    })) ?? [];
+  const snapshotAllocations = period.snapshot?.allocations ?? fallbackAllocations;
+  const allocationInputs = snapshotAllocations.map((allocation) => ({
+    wallet_id: allocation.wallet_id,
+    category_id: allocation.category_id,
+    amount: Number(allocation.allocated_amount),
+  }));
+
+  const spend =
+    allocationInputs.length > 0
+      ? await computePeriodSpendByAllocations(
+          prisma,
+          allocationInputs,
+          {
+            start_date: period.start_date,
+            end_date: period.end_date,
+          },
+          ownerFilter,
+        )
+      : { total_spent: 0, by_allocation: [] };
+
+  const allocatedAmount = Number(period.snapshot?.total_amount ?? budget.total_amount);
+  return {
+    period_id: period.id,
+    budget_id: budget.id,
+    name: period.snapshot?.budget_name ?? budget.name,
+    frequency: budget.frequency,
+    start_date: period.start_date.toISOString(),
+    end_date: period.end_date.toISOString(),
+    allocated_amount: allocatedAmount,
+    spent_amount: spend.total_spent,
+    remaining_amount: allocatedAmount - spend.total_spent,
+    active: budget.active,
+    recurrent: budget.recurrent,
+    allocations: snapshotAllocations.map((a, index) => ({
+      id: a.id,
+      wallet_id: a.wallet_id,
+      wallet_name: a.wallet_name,
+      category_id: a.category_id,
+      category_name: a.category_name,
+      category_icon: a.category_icon ?? null,
+      amount: Number(a.allocated_amount),
+      spent_amount: spend.by_allocation[index]?.spent_amount ?? 0,
+    })),
+  };
+}
+
+export async function listScheduledPeriods(ownerFilter: OwnerFilter, asOf: Date) {
+  const todayEnd = endOfCalendarDay(todayCalendarDate(asOf));
+  const periods = await prisma.budgetPeriod.findMany({
+    where: {
+      start_date: { gt: todayEnd },
+      budget: { ...ownerFilter, active: true },
+    },
+    include: {
+      budget: {
+        include: {
+          allocations: {
+            include: {
+              wallet: { select: { name: true } },
+              category: { select: { name: true, icon: true } },
+            },
+          },
+        },
+      },
+      snapshot: { include: { allocations: true } },
+    },
+    orderBy: [{ budget_id: 'asc' }, { start_date: 'asc' }],
+  });
+
+  const selected: BudgetPeriodWithBudget[] = [];
+  const seenRecurrentBudgetIds = new Set<number>();
+  for (const period of periods) {
+    if (!period.budget.recurrent) {
+      selected.push(period);
+      continue;
+    }
+    if (seenRecurrentBudgetIds.has(period.budget.id)) continue;
+    seenRecurrentBudgetIds.add(period.budget.id);
+    selected.push(period);
+  }
+
+  return Promise.all(selected.map((period) => mapBudgetPeriodItem(period, ownerFilter)));
 }
 
 export async function listHistoryPeriods(
@@ -270,10 +438,15 @@ export async function listHistoryPeriods(
         include: {
           allocations: {
             include: {
-              wallet: { select: { id: true, name: true } },
-              category: { select: { id: true, name: true, icon: true } },
+              wallet: { select: { name: true } },
+              category: { select: { name: true, icon: true } },
             },
           },
+        },
+      },
+      snapshot: {
+        include: {
+          allocations: true,
         },
       },
     },
@@ -315,17 +488,28 @@ export async function listHistoryPeriods(
     if (!grouped.has(budget.id)) {
       grouped.set(budget.id, {
         budget_id: budget.id,
-        name: budget.name,
+        name: period.snapshot?.budget_name ?? budget.name,
         frequency: budget.frequency,
-        allocated_amount: Number(budget.total_amount),
+        allocated_amount: Number(period.snapshot?.total_amount ?? budget.total_amount),
         periods: [],
       });
     }
 
-    const allocationInputs = budget.allocations.map((a) => ({
+    const snapshotAllocations =
+      period.snapshot?.allocations ??
+      budget.allocations.map((allocation) => ({
+        id: allocation.id,
+        wallet_id: allocation.wallet_id,
+        wallet_name: allocation.wallet.name,
+        category_id: allocation.category_id,
+        category_name: allocation.category.name,
+        category_icon: allocation.category.icon ?? null,
+        allocated_amount: allocation.amount,
+      }));
+    const allocationInputs = snapshotAllocations.map((a) => ({
       wallet_id: a.wallet_id,
       category_id: a.category_id,
-      amount: Number(a.amount),
+      amount: Number(a.allocated_amount),
     }));
 
     const spend =
@@ -341,24 +525,24 @@ export async function listHistoryPeriods(
           )
         : { total_spent: 0, by_allocation: [] };
 
-    const allocatedAmount = Number(budget.total_amount);
+    const allocatedAmount = Number(period.snapshot?.total_amount ?? budget.total_amount);
     grouped.get(budget.id)!.periods.push({
       period_id: period.id,
-      name: budget.name,
+      name: period.snapshot?.budget_name ?? budget.name,
       frequency: budget.frequency,
       start_date: period.start_date.toISOString(),
       end_date: period.end_date.toISOString(),
       allocated_amount: allocatedAmount,
       spent_amount: spend.total_spent,
       remaining_amount: allocatedAmount - spend.total_spent,
-      allocations: budget.allocations.map((a, index) => ({
+      allocations: snapshotAllocations.map((a, index) => ({
         id: a.id,
         wallet_id: a.wallet_id,
-        wallet_name: a.wallet.name,
+        wallet_name: a.wallet_name,
         category_id: a.category_id,
-        category_name: a.category.name,
-        category_icon: a.category.icon ?? null,
-        amount: Number(a.amount),
+        category_name: a.category_name,
+        category_icon: a.category_icon ?? null,
+        amount: Number(a.allocated_amount),
         spent_amount: spend.by_allocation[index]?.spent_amount ?? 0,
       })),
     });
@@ -427,6 +611,11 @@ export async function listBudgetPeriodExpensesByAllocation(
       budget: ownerFilter,
     },
     include: {
+      snapshot: {
+        include: {
+          allocations: true,
+        },
+      },
       budget: {
         include: {
           allocations: true,
@@ -439,7 +628,13 @@ export async function listBudgetPeriodExpensesByAllocation(
     throw Object.assign(new Error('Período de presupuesto no encontrado'), { code: 'P2025' });
   }
 
-  const allocations = period.budget.allocations;
+  const allocations =
+    period.snapshot?.allocations ??
+    period.budget.allocations.map((allocation) => ({
+      id: allocation.id,
+      wallet_id: allocation.wallet_id,
+      category_id: allocation.category_id,
+    }));
   if (allocations.length === 0) {
     return [];
   }

@@ -39,6 +39,8 @@ import { dateStringSchema } from '@/schemas/common.schema';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createIncome } from '@/lib/api/incomes';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import type { PaymentMethodOption } from '@/types/catalog';
 
 type HouseUserItem = {
   id: number;
@@ -57,6 +59,7 @@ const quickIncomeSchema = z.object({
     })
     .positive('El monto debe ser mayor a 0'),
   date: dateStringSchema,
+  wallet_id: z.number().int().positive('La billetera es requerida'),
 });
 
 type QuickIncomeFormValues = z.infer<typeof quickIncomeSchema>;
@@ -99,6 +102,9 @@ function getDefaultIncomeDate(
   );
 }
 
+const fundingWalletsOnly = (wallets: PaymentMethodOption[]) =>
+  wallets.filter((w) => w.type === 'CASH' || w.type === 'DEBIT_CARD');
+
 export default function DashboardQuickIncomeDialog({
   open,
   onOpenChange,
@@ -111,8 +117,19 @@ export default function DashboardQuickIncomeDialog({
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [houseMembers, setHouseMembers] = useState<HouseUserItem[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
+  const [loadingWallets, setLoadingWallets] = useState(false);
 
   const isHouseContext = context.type === 'house';
+
+  useEffect(() => {
+    if (!open) return;
+    setLoadingWallets(true);
+    getPaymentMethodOptions(context)
+      .then((list) => setWallets(fundingWalletsOnly(list)))
+      .catch(() => setWallets([]))
+      .finally(() => setLoadingWallets(false));
+  }, [open, context]);
 
   useEffect(() => {
     if (!open || !isHouseContext) return;
@@ -133,6 +150,7 @@ export default function DashboardQuickIncomeDialog({
         fortnight.month,
         fortnight.period,
       ),
+      wallet_id: 0,
     },
   });
 
@@ -148,6 +166,7 @@ export default function DashboardQuickIncomeDialog({
           amount: values.amount,
           source: values.source,
           received_at: values.date,
+          wallet_id: values.wallet_id,
           ...(isHouseContext && isTransferFromMember && selectedMemberId
             ? { transfer_from_user_id: Number(selectedMemberId) }
             : {}),
@@ -162,6 +181,7 @@ export default function DashboardQuickIncomeDialog({
           fortnight.month,
           fortnight.period,
         ),
+        wallet_id: 0,
       });
       setIsTransferFromMember(false);
       setSelectedMemberId('');
@@ -182,6 +202,7 @@ export default function DashboardQuickIncomeDialog({
           fortnight.month,
           fortnight.period,
         ),
+        wallet_id: 0,
       });
       setIsTransferFromMember(false);
       setSelectedMemberId('');
@@ -195,7 +216,8 @@ export default function DashboardQuickIncomeDialog({
         <DialogHeader>
           <DialogTitle>Agregar ingreso — {fortnight.label}</DialogTitle>
           <DialogDescription>
-            Registra un nuevo ingreso rápido para este periodo.
+            Registra un ingreso en una billetera de efectivo o débito. El saldo
+            de la cuenta aumenta al guardar.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -296,6 +318,42 @@ export default function DashboardQuickIncomeDialog({
             />
             <FormField
               control={form.control}
+              name="wallet_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Billetera</FormLabel>
+                  <Select
+                    value={field.value > 0 ? String(field.value) : undefined}
+                    onValueChange={(value) => field.onChange(Number(value))}
+                    disabled={loadingWallets || wallets.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={
+                            loadingWallets
+                              ? 'Cargando…'
+                              : wallets.length === 0
+                                ? 'Sin billeteras de efectivo/débito'
+                                : 'Selecciona billetera'
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {wallets.map((wallet) => (
+                        <SelectItem key={wallet.id} value={String(wallet.id)}>
+                          {wallet.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="date"
               render={({ field }) => (
                 <FormItem>
@@ -320,6 +378,7 @@ export default function DashboardQuickIncomeDialog({
                 type="submit"
                 disabled={
                   isSubmitting ||
+                  wallets.length === 0 ||
                   (isHouseContext && isTransferFromMember && !selectedMemberId)
                 }
               >

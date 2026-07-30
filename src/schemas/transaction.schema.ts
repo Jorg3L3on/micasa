@@ -23,6 +23,28 @@ export const createTransactionFieldsSchema = z.object({
   credit_installment_total: z.number().int().positive().optional().nullable(),
 });
 
+export const withPaidWalletRefine = <T extends z.ZodTypeAny>(schema: T) =>
+  schema.refine(
+    (d: unknown) => {
+      const o = d as {
+        is_paid?: boolean;
+        wallet_id?: number | null;
+        payment_method_id?: number;
+        card_id?: number | null;
+      };
+      if (!o.is_paid) return true;
+      return (
+        (o.wallet_id != null && o.wallet_id > 0) ||
+        (o.payment_method_id != null && o.payment_method_id > 0) ||
+        (o.card_id != null && o.card_id > 0)
+      );
+    },
+    {
+      message: 'La billetera es requerida para un gasto pagado',
+      path: ['wallet_id'],
+    },
+  );
+
 export const withCreditInstallmentPairRefine = <T extends z.ZodTypeAny>(schema: T) =>
   schema.refine((d: unknown) => {
     const o = d as {
@@ -39,8 +61,8 @@ export const withCreditInstallmentPairRefine = <T extends z.ZodTypeAny>(schema: 
     path: ['credit_installment_current'],
   });
 
-export const createTransactionSchema = withCreditInstallmentPairRefine(
-  createTransactionFieldsSchema,
+export const createTransactionSchema = withPaidWalletRefine(
+  withCreditInstallmentPairRefine(createTransactionFieldsSchema),
 );
 
 export const updateTransactionSchema = z.object({

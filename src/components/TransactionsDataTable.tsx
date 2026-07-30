@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -25,13 +25,34 @@ import {
   ArrowUpRight,
   TrendingUp,
   TrendingDown,
-  Wallet,
   Receipt,
   DollarSign,
+  Wallet,
   X,
 } from 'lucide-react';
+import { DASHBOARD_METRIC_STRIP_CLASS } from '@/components/dashboard/constants';
 
 const ALL_VALUE = '__all__';
+
+function TransactionsEmpty({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Receipt className="size-7" aria-hidden />
+      </div>
+      <div className="space-y-1">
+        <p className="text-base font-medium text-balance">{title}</p>
+        <p className="text-sm text-muted-foreground text-pretty">{description}</p>
+      </div>
+    </div>
+  );
+}
 
 type TransactionsDataTableProps = {
   transactions: TransactionRow[];
@@ -47,9 +68,16 @@ export default function TransactionsDataTable({
   const year = searchParams.get('year') || '';
   const period = searchParams.get('period') || '';
   const type = searchParams.get('type') || '';
+  const categoryFromQuery = searchParams.get('category') || ALL_VALUE;
+  const paymentFromQuery = searchParams.get('paymentMethod') || ALL_VALUE;
 
-  const [categoryFilter, setCategoryFilter] = useState(ALL_VALUE);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState(ALL_VALUE);
+  const [categoryFilter, setCategoryFilter] = useState(categoryFromQuery);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState(paymentFromQuery);
+
+  useEffect(() => {
+    setCategoryFilter(categoryFromQuery);
+    setPaymentMethodFilter(paymentFromQuery);
+  }, [categoryFromQuery, paymentFromQuery]);
 
   const currentYear = new Date().getFullYear();
 
@@ -86,19 +114,19 @@ export default function TransactionsDataTable({
   }, [transactions, categoryFilter, paymentMethodFilter]);
 
   const summary = useMemo(() => {
-    const incomeTotal = transactions
+    const incomeTotal = filteredTransactions
       .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + Number(t.amount), 0);
-    const expenseTotal = transactions
+    const expenseTotal = filteredTransactions
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0);
     return {
       income: incomeTotal,
       expenses: expenseTotal,
       net: incomeTotal - expenseTotal,
-      count: transactions.length,
+      count: filteredTransactions.length,
     };
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   const handleServerFilter = useCallback(
     (field: string, value: string) => {
@@ -108,9 +136,25 @@ export default function TransactionsDataTable({
       } else {
         newParams.delete(field);
       }
-      router.push(
+      router.replace(
         `/transactions${newParams.toString() ? `?${newParams.toString()}` : ''}`,
+        { scroll: false },
       );
+    },
+    [router, searchParams],
+  );
+
+  const handleClientFilter = useCallback(
+    (field: 'category' | 'paymentMethod', value: string) => {
+      const newParams = new URLSearchParams(searchParams.toString());
+      if (value && value !== ALL_VALUE) newParams.set(field, value);
+      else newParams.delete(field);
+      router.replace(
+        `/transactions${newParams.toString() ? `?${newParams.toString()}` : ''}`,
+        { scroll: false },
+      );
+      if (field === 'category') setCategoryFilter(value);
+      else setPaymentMethodFilter(value);
     },
     [router, searchParams],
   );
@@ -121,8 +165,15 @@ export default function TransactionsDataTable({
   const handleClearAllFilters = useCallback(() => {
     setCategoryFilter(ALL_VALUE);
     setPaymentMethodFilter(ALL_VALUE);
-    router.push('/transactions');
-  }, [router]);
+    const newParams = new URLSearchParams(searchParams.toString());
+    ['month', 'year', 'period', 'type', 'category', 'paymentMethod'].forEach((key) =>
+      newParams.delete(key),
+    );
+    router.replace(
+      `/transactions${newParams.toString() ? `?${newParams.toString()}` : ''}`,
+      { scroll: false },
+    );
+  }, [router, searchParams]);
 
   const columns = useMemo<ColumnDef<TransactionRow>[]>(
     () => [
@@ -307,7 +358,7 @@ export default function TransactionsDataTable({
       </Select>
 
       {categories.length > 0 && (
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter} onValueChange={(value) => handleClientFilter('category', value)}>
           <SelectTrigger className="w-[150px]" size="sm" aria-label="Filtrar por categoría">
             <SelectValue placeholder="Categoría" />
           </SelectTrigger>
@@ -323,7 +374,7 @@ export default function TransactionsDataTable({
       )}
 
       {paymentMethods.length > 0 && (
-        <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+        <Select value={paymentMethodFilter} onValueChange={(value) => handleClientFilter('paymentMethod', value)}>
           <SelectTrigger className="w-[160px]" size="sm" aria-label="Filtrar por método de pago">
             <SelectValue placeholder="Método de pago" />
           </SelectTrigger>
@@ -355,109 +406,130 @@ export default function TransactionsDataTable({
 
   return (
     <div className="space-y-6">
-      {transactions.length > 0 && (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <header className="min-w-0">
+          <h2 className="mb-0.5 text-base font-medium leading-tight">
+            Transacciones
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Ingresos y gastos pagados en tu contexto actual.
+          </p>
+        </header>
+      </div>
+
+      {transactions.length > 0 ? (
         <div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-2 gap-4 lg:grid-cols-4"
           role="region"
           aria-label="Resumen de transacciones"
         >
-          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
-                <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+          <div
+            className={cn(
+              DASHBOARD_METRIC_STRIP_CLASS,
+              'border-l-[3px] border-l-blue-500/50 px-3 py-3',
+            )}
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted">
+                <TrendingUp className="h-3 w-3 text-muted-foreground" aria-hidden />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Ingresos
               </p>
             </div>
-            <p className="text-lg font-bold font-mono tabular-nums text-blue-700 dark:text-blue-300">
+            <p className="font-mono text-lg font-bold tabular-nums text-foreground">
               {formatCurrency(summary.income)}
             </p>
           </div>
 
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
-                <TrendingDown className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+          <div
+            className={cn(
+              DASHBOARD_METRIC_STRIP_CLASS,
+              'border-l-[3px] border-l-violet-500/50 px-3 py-3',
+            )}
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted">
+                <TrendingDown
+                  className="h-3 w-3 text-muted-foreground"
+                  aria-hidden
+                />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Gastos
               </p>
             </div>
-            <p className="text-lg font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300">
+            <p className="font-mono text-lg font-bold tabular-nums text-foreground">
               {formatCurrency(summary.expenses)}
             </p>
           </div>
 
           <div
             className={cn(
-              'rounded-lg border border-l-[3px] px-3 py-3',
+              DASHBOARD_METRIC_STRIP_CLASS,
+              'border-l-[3px] px-3 py-3',
               summary.net >= 0
-                ? 'border-l-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/8'
-                : 'border-l-destructive/50 bg-destructive/5 dark:bg-destructive/8',
+                ? 'border-l-emerald-500/50'
+                : 'border-l-destructive/50',
             )}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-md shrink-0',
-                  summary.net >= 0
-                    ? 'bg-emerald-500/10 dark:bg-emerald-500/15'
-                    : 'bg-destructive/10 dark:bg-destructive/15',
-                )}
-              >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted">
                 <DollarSign
-                  className={cn(
-                    'h-3 w-3',
-                    summary.net >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-destructive',
-                  )}
+                  className="h-3 w-3 text-muted-foreground"
+                  aria-hidden
                 />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Balance
               </p>
             </div>
-            <p
-              className={cn(
-                'text-lg font-bold font-mono tabular-nums',
-                summary.net >= 0
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : 'text-destructive',
-              )}
-            >
+            <p className="font-mono text-lg font-bold tabular-nums text-foreground">
               {formatCurrency(summary.net)}
             </p>
           </div>
 
-          <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
-                <Receipt className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+          <div
+            className={cn(
+              DASHBOARD_METRIC_STRIP_CLASS,
+              'border-l-[3px] border-l-amber-500/50 px-3 py-3',
+            )}
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted">
+                <Receipt className="h-3 w-3 text-muted-foreground" aria-hidden />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Transacciones
               </p>
             </div>
-            <p className="text-lg font-bold font-mono tabular-nums">
+            <p className="font-mono text-lg font-bold tabular-nums text-foreground">
               {summary.count}
             </p>
           </div>
         </div>
-      )}
+      ) : null}
 
       <Card className="overflow-hidden border-border/60">
-        <CardContent className="pt-6">
+        <CardContent className="py-4">
           <DataTable
             data={filteredTransactions}
             columns={columns}
             filterColumn="description"
             filterPlaceholder="Buscar por descripción..."
             emptyMessage={
-              hasActiveFilters
-                ? 'No se encontraron transacciones con los filtros seleccionados.'
-                : 'No hay transacciones registradas.'
+              <TransactionsEmpty
+                title={
+                  hasActiveFilters
+                    ? 'No hay coincidencias'
+                    : 'Aún no hay transacciones'
+                }
+                description={
+                  hasActiveFilters
+                    ? 'Prueba otros filtros.'
+                    : 'Registra gastos o ingresos para verlos aquí.'
+                }
+              />
             }
             filterSlot={filterSlot}
             columnVisibility

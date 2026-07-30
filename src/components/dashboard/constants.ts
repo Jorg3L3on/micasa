@@ -48,10 +48,13 @@ export function getPeriodLabel({
 export const DASHBOARD_GRID_CLASS =
   'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';
 
-/** Wallet hero: funding net + credit summary (lg 5-col). */
-export const DASHBOARD_HERO_GRID_CLASS =
-  'grid grid-cols-1 gap-4 lg:grid-cols-5 [&>*]:min-w-0';
+/** Equal two-column row for paired dashboard cards (lg+). */
+export const DASHBOARD_PAIR_GRID_CLASS =
+  'grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0 lg:[&>*]:h-full';
 
-/** Period KPI strip: 2-col mobile, 4-col desktop. */
+/** @deprecated Alias of DASHBOARD_PAIR_GRID_CLASS. */
+export const DASHBOARD_HERO_GRID_CLASS = DASHBOARD_PAIR_GRID_CLASS;
+
+/** @deprecated Prefer DashboardCashflowCard; kept for non-dashboard KPI grids. */
 export const DASHBOARD_KPI_GRID_CLASS =
   'grid grid-cols-2 gap-4 lg:grid-cols-4 [&>*]:min-w-0';

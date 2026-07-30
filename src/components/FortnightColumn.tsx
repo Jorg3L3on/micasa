@@ -1,7 +1,7 @@
 'use client';
 
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
@@ -125,8 +125,6 @@ type FortnightColumnProps = {
   cardDueItems?: DuePaymentItem[];
   loanDueItems?: LoanDuePaymentItem[];
   wallets?: WalletListItem[];
-  /** Bump from parent after external saldo changes so resumen refreshes funding vs pendiente. */
-  summaryFundingRefreshNonce?: number;
   preferenceScope?: string;
   /** Narrow column when both fortnights are shown side by side. */
   dualColumnLayout?: boolean;
@@ -146,7 +144,6 @@ export default function FortnightColumn({
   cardDueItems: initialCardDueItems = [],
   loanDueItems = [],
   wallets = [],
-  summaryFundingRefreshNonce,
   preferenceScope = 'default',
   dualColumnLayout = false,
 }: FortnightColumnProps) {
@@ -157,7 +154,6 @@ export default function FortnightColumn({
     return s ? `?${s}` : '';
   }, [context]);
   const router = useRouter();
-  const lastAppliedFundingNonceRef = useRef(0);
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
   const [summary, setSummary] = useState<Summary>(initialSummary);
@@ -326,14 +322,6 @@ export default function FortnightColumn({
       setIsRefreshing(false);
     }
   }, [year, month, period, context, router, refreshCardDueItems]);
-
-  useEffect(() => {
-    if (summaryFundingRefreshNonce == null) return;
-    if (summaryFundingRefreshNonce < 1) return;
-    if (summaryFundingRefreshNonce === lastAppliedFundingNonceRef.current) return;
-    lastAppliedFundingNonceRef.current = summaryFundingRefreshNonce;
-    void refreshData();
-  }, [summaryFundingRefreshNonce, refreshData]);
 
   const handlePlannerCardPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {

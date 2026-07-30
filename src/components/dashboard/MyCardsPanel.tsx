@@ -1,22 +1,162 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CreditCard } from 'lucide-react';
+import Link from 'next/link';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
-import { getProviderCardStyle } from '@/lib/provider-card-style';
-import { formatCurrency } from '@/lib/utils';
-import type { WalletListItem } from '@/types/catalog';
-import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
+import {
+  getProviderBrandColor,
+  getProviderCardStyle,
+  getWalletBrandCssVars,
+} from '@/lib/provider-card-style';
+import {
+  buildWalletAttentionCards,
+  type WalletAttentionCard,
+} from '@/lib/finance/wallet-attention';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import type { DuePaymentItem, WalletListItem } from '@/types/catalog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
-const CARD_TYPES = ['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
+type PlannerMonthDuePayments = {
+  first: DuePaymentItem[];
+  second: DuePaymentItem[];
+};
+
+const roleLabel = (roles: WalletAttentionCard['roles']): string => {
+  const hasUsage = roles.includes('usage');
+  const hasPayment = roles.includes('payment');
+  if (hasUsage && hasPayment) return 'Mayor uso · Próximo pago';
+  if (hasUsage) return 'Mayor uso';
+  return 'Próximo pago';
+};
+
+function AttentionCard({
+  card,
+  ownerQueryString,
+}: {
+  card: WalletAttentionCard;
+  ownerQueryString: string;
+}) {
+  const providerCardStyle = getProviderCardStyle(
+    card.providerIconKey,
+    card.type,
+    'list',
+  );
+  const brandColor =
+    getProviderBrandColor(card.providerIconKey, card.type) ?? '#6366f1';
+  const brandCssVars = getWalletBrandCssVars(brandColor);
+  const style = { ...providerCardStyle, ...brandCssVars };
+  const href = `/credit-cards/${card.walletId}${ownerQueryString}`;
+  const hasUsage = card.roles.includes('usage');
+  const hasPayment = card.roles.includes('payment');
+  const usagePercent = card.usagePercent ?? 0;
+
+  return (
+    <Link
+      href={href}
+      aria-label={`${card.name}, ${roleLabel(card.roles)}`}
+      className={cn(
+        'group flex min-h-[140px] flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm',
+        'transition-shadow duration-200 hover:shadow-md motion-reduce:transition-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        !providerCardStyle && 'border-border/60',
+      )}
+      style={style}
+    >
+      <div className="flex items-start gap-2.5">
+        <WalletProviderIcon
+          providerIconKey={card.providerIconKey}
+          className="h-8 w-8 shrink-0 rounded-lg border border-border/60 bg-card shadow-sm ring-1 ring-border/60"
+          iconClassName="h-4 w-4"
+          showTooltipLabel={false}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-tight text-foreground">
+            {card.name}
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {roleLabel(card.roles)}
+          </p>
+        </div>
+      </div>
+
+      {hasUsage && hasPayment ? (
+        <div className="mt-auto grid grid-cols-2 gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Uso
+            </p>
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums tracking-tight text-foreground">
+              {usagePercent.toFixed(0)}%
+            </p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {formatCurrency(card.debtAmount ?? 0)}
+              {card.creditLimit != null && card.creditLimit > 0
+                ? ` de ${formatCurrency(card.creditLimit)}`
+                : ''}
+            </p>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Por pagar
+            </p>
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums tracking-tight text-foreground">
+              {formatCurrency(card.nextDuePayment ?? 0)}
+            </p>
+            {card.statementDueDate ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {formatDate(card.statementDueDate)}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : hasUsage ? (
+        <div className="mt-auto space-y-2">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Deuda
+              </p>
+              <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums tracking-tight text-foreground">
+                {formatCurrency(card.debtAmount ?? 0)}
+              </p>
+            </div>
+            <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-muted-foreground">
+              {usagePercent.toFixed(0)}% usado
+            </p>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+            <div
+              className="h-full rounded-full bg-[var(--wallet-brand)] transition-[width] duration-200 motion-reduce:transition-none"
+              style={{ width: `${Math.min(usagePercent, 100)}%` }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-auto">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Por pagar
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums tracking-tight text-foreground">
+            {formatCurrency(card.nextDuePayment ?? 0)}
+          </p>
+          {card.statementDueDate ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Vence {formatDate(card.statementDueDate)}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </Link>
+  );
+}
 
 export default function MyCardsPanel() {
   const { context } = useFinanceContext();
-  const [cards, setCards] = useState<WalletListItem[]>([]);
+  const [wallets, setWallets] = useState<WalletListItem[]>([]);
+  const [duePayments, setDuePayments] = useState<DuePaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -29,47 +169,26 @@ export default function MyCardsPanel() {
       setLoading(false);
       return;
     }
+
+    const today = todayCalendarDate();
+    const year = Number(today.slice(0, 4));
+    const month = Number(today.slice(5, 7));
+
     try {
       setLoading(true);
-      const wallets = await clientFetchFromApi<WalletListItem[]>(
-        '/api/wallets',
-        undefined,
-        context,
-      );
-      const sortedCards = wallets
-        .filter((wallet) => CARD_TYPES.includes(wallet.type) && wallet.active)
-        .sort((a, b) => {
-          const getTypeRank = (type: string) => {
-            if (type === 'CASH') return 0;
-            if (type === 'DEBIT_CARD') return 1;
-            if (type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') return 2;
-            return 3;
-          };
-
-          const rankDiff = getTypeRank(a.type) - getTypeRank(b.type);
-          if (rankDiff !== 0) return rankDiff;
-
-          const bothCreditTypes =
-            (a.type === 'CREDIT_CARD' || a.type === 'DEPARTMENT_STORE_CARD') &&
-            (b.type === 'CREDIT_CARD' || b.type === 'DEPARTMENT_STORE_CARD');
-
-          if (bothCreditTypes) {
-            const getUsedPct = (wallet: WalletListItem) => {
-              const limit = Number(wallet.credit_limit ?? 0);
-              if (limit <= 0) return Number.POSITIVE_INFINITY;
-              return Math.max(0, Number(wallet.amount)) / limit;
-            };
-
-            const usedPctDiff = getUsedPct(a) - getUsedPct(b);
-            if (usedPctDiff !== 0) return usedPctDiff;
-          }
-
-          return a.name.localeCompare(b.name);
-        });
-
-      setCards(sortedCards);
+      const [walletList, partitioned] = await Promise.all([
+        clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
+        clientFetchFromApi<PlannerMonthDuePayments>(
+          `/api/wallets/due-payments?year=${year}&month=${month}`,
+          undefined,
+          context,
+        ),
+      ]);
+      setWallets(walletList.filter((w) => w.active));
+      setDuePayments([...(partitioned.first ?? []), ...(partitioned.second ?? [])]);
     } catch {
-      setCards([]);
+      setWallets([]);
+      setDuePayments([]);
     } finally {
       setLoading(false);
     }
@@ -79,130 +198,45 @@ export default function MyCardsPanel() {
     void load();
   }, [load]);
 
-  const handleOpenCardModal = useCallback((card: WalletListItem) => {
-    setSelectedCard(card);
-  }, []);
+  const cards = useMemo(
+    () =>
+      buildWalletAttentionCards({
+        wallets,
+        duePayments,
+      }),
+    [wallets, duePayments],
+  );
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm animate-pulse">
-        <div className="mb-4 h-5 w-24 rounded bg-muted/40" />
-        <div className="flex gap-3">
-          <div className="h-32 min-w-[70vw] shrink-0 rounded-xl bg-muted/30 sm:min-w-[220px]" />
-          <div className="h-32 min-w-[70vw] shrink-0 rounded-xl bg-muted/20 sm:min-w-[220px]" />
-        </div>
+      <div
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+        aria-busy="true"
+        aria-label="Cargando tarjetas a vigilar"
+      >
+        <div className="h-[140px] animate-pulse rounded-xl border border-border/60 bg-muted/30" />
+        <div className="hidden h-[140px] animate-pulse rounded-xl border border-border/60 bg-muted/20 sm:block" />
       </div>
     );
   }
 
-  if (cards.length === 0) {
-    return (
-      <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-        <CreditCard className="h-8 w-8 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">No hay tarjetas registradas</p>
-      </div>
-    );
-  }
+  if (cards.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-foreground">Mis tarjetas</h3>
-        <span className="text-xs text-muted-foreground">{cards.length} tarjeta{cards.length !== 1 ? 's' : ''}</span>
-      </div>
-      <div className="relative">
-        <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-linear-to-r from-card to-transparent sm:w-8"
-          aria-hidden
+    <section
+      className={cn(
+        'grid gap-4',
+        cards.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+      )}
+      aria-label="Tarjetas a vigilar"
+    >
+      {cards.map((card) => (
+        <AttentionCard
+          key={`${card.walletId}-${card.roles.join('-')}`}
+          card={card}
+          ownerQueryString={ownerQueryString}
         />
-        <div
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-linear-to-l from-card to-transparent sm:w-8"
-          aria-hidden
-        />
-        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide [-webkit-overflow-scrolling:touch]">
-        {cards.map((card) => {
-          const cardStyle = getProviderCardStyle(card.provider_icon_key, card.type, 'calm');
-          const limit = card.credit_limit ?? 0;
-          const usagePercent =
-            limit > 0
-              ? Math.min((Math.max(0, Number(card.amount)) / limit) * 100, 100)
-              : 0;
-
-          return (
-            <button
-              key={card.id}
-              type="button"
-              onClick={() => handleOpenCardModal(card)}
-              aria-label={`Abrir detalles de ${card.name}`}
-              className="group relative block w-[70vw] max-w-[260px] snap-start shrink-0 overflow-hidden rounded-xl border p-3 text-left text-white ring-1 ring-inset ring-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01] sm:w-[220px] sm:max-w-none"
-              style={cardStyle}
-            >
-              <span className="pointer-events-none absolute -left-10 -top-10 h-24 w-24 rounded-full bg-white/8 blur-2xl" />
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent" />
-              <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/14 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100" />
-              <div className="mb-3 flex items-start gap-2">
-                <WalletProviderIcon
-                  providerIconKey={card.provider_icon_key}
-                  className="h-7 w-7 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
-                  iconClassName="h-4 w-4"
-                  showTooltipLabel
-                />
-                <span className="min-w-0 flex-1 truncate pr-1 text-sm font-semibold leading-tight opacity-90 sm:text-xs">
-                  {card.name}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-xs opacity-75 sm:text-[11px]">
-                  <span className="truncate">Saldo actual</span>
-                  {limit > 0 ? (
-                    <span className="truncate text-right">Límite</span>
-                  ) : (
-                    <span />
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <span className="min-w-0 truncate text-base font-bold font-mono tabular-nums sm:text-[15px]">
-                    {formatCurrency(card.amount)}
-                  </span>
-                  {limit > 0 && (
-                    <span className="min-w-0 truncate text-right text-base font-bold font-mono tabular-nums opacity-90 sm:text-[15px]">
-                      {formatCurrency(limit)}
-                    </span>
-                  )}
-                </div>
-                {limit > 0 && (
-                  <div className="mt-1 space-y-1">
-                    <div className="h-1.5 w-full rounded-full bg-white/20">
-                      <div
-                        className="h-1.5 rounded-full bg-white/80 transition-all"
-                        style={{ width: `${usagePercent}%` }}
-                      />
-                    </div>
-                    <p className="text-center text-xs opacity-70 sm:text-[11px]">
-                      {usagePercent.toFixed(0)}% utilizado
-                    </p>
-                  </div>
-                )}
-              </div>
-            </button>
-          );
-        })}
-        </div>
-      </div>
-
-      <WalletBalanceEditDialog
-        wallet={selectedCard}
-        ownerQueryString={ownerQueryString}
-        onOpenChange={(open) => {
-          if (!open) setSelectedCard(null);
-        }}
-        onSaved={(walletId, newAmount) => {
-          setSelectedCard((prev) =>
-            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
-          );
-          void load();
-        }}
-      />
-    </div>
+      ))}
+    </section>
   );
 }

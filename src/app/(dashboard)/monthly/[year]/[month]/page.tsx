@@ -116,7 +116,6 @@ export default async function MonthlyPage({
     nextFirstInfo,
     nextSecondInfo,
     wallets,
-    duePayments,
     plannerDue,
     plannerLoanDue,
     firstTransactions,
@@ -211,24 +210,7 @@ export default async function MonthlyPage({
     throw new Error('Resumen mensual incompleto');
   }
 
-  const dueWalletIds = duePayments.map((dp) => dp.walletId);
-  const [, , currentDay] = todayCalendarDate().split('-').map(Number);
-  const isFirstFortnight = currentDay <= 15;
   const suggestedPeriod = getSuggestedFortnightPeriodForMonth(year, month);
-  const paidWalletIds = isCurrentMonth
-    ? wallets
-        .filter((w) => {
-          if (w.type !== 'CREDIT_CARD' && w.type !== 'DEPARTMENT_STORE_CARD') {
-            return false;
-          }
-          if (w.due_day == null) return false;
-          const dueInFortnight = isFirstFortnight
-            ? w.due_day >= 1 && w.due_day <= 15
-            : w.due_day >= 16;
-          return dueInFortnight && !dueWalletIds.includes(w.id);
-        })
-        .map((w) => w.id)
-    : [];
 
   const cardDueFirst = plannerDue.first;
   const cardDueSecond = plannerDue.second;
@@ -293,6 +275,7 @@ export default async function MonthlyPage({
       budgetPanel={budgetPanel}
       firstTransactions={firstTransactions}
       secondTransactions={secondTransactions}
+      wallets={wallets}
       monthHeader={monthHeader}
     >
       <MonthlyFortnightView
@@ -300,8 +283,6 @@ export default async function MonthlyPage({
         year={year}
         month={month}
         wallets={wallets}
-        paidWalletIds={paidWalletIds}
-        isCurrentMonth={isCurrentMonth}
         first={{
           label: firstLabel,
           transactions: firstTransactions,

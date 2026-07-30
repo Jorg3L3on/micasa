@@ -174,7 +174,7 @@ export default function HouseUsersPage() {
   if (context.type !== 'house') {
     return (
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="py-4">
           <p className="py-8 text-center text-muted-foreground">
             Select a house to manage its users
           </p>
@@ -216,7 +216,7 @@ export default function HouseUsersPage() {
       )}
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="py-4">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
               Cargando...

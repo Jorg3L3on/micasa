@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
+import { ArrowRight, Landmark } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import type { DashboardData } from '@/types/dashboard';
@@ -37,35 +37,32 @@ export default function DashboardLoanSummaryCard({
 
   return (
     <section
-      className="flex min-h-[320px] flex-col rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5"
+      className="flex min-h-0 flex-col rounded-xl border border-border/60 bg-card p-6"
       aria-label="Préstamos del periodo"
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
-            <HandCoins
-              className="h-4 w-4 text-amber-600 dark:text-amber-400"
-              aria-hidden
-            />
-          </span>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">
-              Préstamos del periodo
-            </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Billetera y deducciones de nómina en esta vista
-            </p>
-          </div>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h3 className="text-sm font-medium text-foreground">
+            Préstamos del periodo
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Billetera y deducciones de nómina
+          </p>
         </div>
-        <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs" asChild>
-          <Link href={loansHref}>Ver</Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+          asChild
+        >
+          <Link href={loansHref}>Ver todos</Link>
         </Button>
       </div>
 
       {!hasLoanActivity ? (
         <div className="flex flex-1 items-center">
           <EmptyState
-            message="No hay pagos de préstamos en este periodo."
+            message="Sin pagos de préstamos en este periodo."
             description="Los próximos pagos aparecerán aquí cuando estén programados."
             action={{
               label: 'Ir a préstamos',
@@ -75,99 +72,107 @@ export default function DashboardLoanSummaryCard({
           />
         </div>
       ) : (
-        <div className="flex flex-1 flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-border/60 px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-1 flex-col gap-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground">
                 Pendiente billetera
               </p>
               <p
                 className={cn(
-                  'mt-1 font-mono text-xl font-bold tabular-nums sm:text-2xl',
+                  'mt-1 font-mono text-xl font-medium tabular-nums',
                   walletPendingTotal > 0
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-foreground',
+                    ? 'text-foreground'
+                    : 'text-muted-foreground',
                 )}
               >
                 {formatCurrency(walletPendingTotal)}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {walletPendingCount} cuota{walletPendingCount === 1 ? '' : 's'}{' '}
-                desde efectivo/débito
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {walletPendingCount} cuota{walletPendingCount === 1 ? '' : 's'}
               </p>
             </div>
 
-            <div className="rounded-lg border border-border/60 px-3 py-3">
+            <div>
               <div className="flex items-center gap-1.5">
                 <Landmark
-                  className="h-3 w-3 text-violet-600 dark:text-violet-400"
+                  className="h-3 w-3 text-muted-foreground"
                   aria-hidden
                 />
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Deducción nómina
                 </p>
               </div>
               <p
                 className={cn(
-                  'mt-1 font-mono text-xl font-bold tabular-nums sm:text-2xl',
+                  'mt-1 font-mono text-xl font-medium tabular-nums',
                   payrollTotal > 0
-                    ? 'text-violet-600 dark:text-violet-400'
-                    : 'text-foreground',
+                    ? 'text-foreground'
+                    : 'text-muted-foreground',
                 )}
               >
                 {formatCurrency(payrollTotal)}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {payrollCount > 0
-                  ? `${payrollCount} deducción${payrollCount === 1 ? '' : 'es'} pendiente${payrollCount === 1 ? '' : 's'}`
-                  : 'Sin deducciones de nómina en el periodo'}
+                  ? `${payrollCount} deducción${payrollCount === 1 ? '' : 'es'}`
+                  : 'Sin deducciones'}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <MetricBlock label="Pagado" amount={paidTotal} positive />
-            <MetricBlock
-              label="Total periodo"
-              amount={loanSummary?.total ?? paidTotal + walletPendingTotal + payrollTotal}
-            />
+          <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Pagado</p>
+              <p className="mt-1 font-mono text-sm font-medium tabular-nums text-green-600 dark:text-green-400">
+                {formatCurrency(paidTotal)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total periodo</p>
+              <p className="mt-1 font-mono text-sm font-medium tabular-nums text-foreground">
+                {formatCurrency(
+                  loanSummary?.total ?? paidTotal + walletPendingTotal + payrollTotal,
+                )}
+              </p>
+            </div>
           </div>
 
           {loanObligations.length > 0 ? (
             <div className="border-t border-border/60 pt-4">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 text-xs text-muted-foreground">
                 Próximos pagos
-              </h4>
-              <ul className="mt-3 space-y-2">
+              </p>
+              <ul className="space-y-1.5">
                 {loanObligations.map((obligation) => (
                   <li
                     key={`${obligation.source}-${obligation.id}`}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2"
+                    className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="truncate text-sm text-foreground">
                         {obligation.description}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {obligation.lender ?? obligation.category} ·{' '}
                         {formatDate(obligation.dueDate)}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="font-mono text-sm font-bold tabular-nums">
+                      <span className="font-mono text-sm font-medium tabular-nums text-foreground">
                         {formatCurrency(obligation.amount)}
                       </span>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-7 w-7"
                         asChild
                       >
                         <Link
                           href={buildLoanHref(ownerQueryString, obligation.loanId)}
                           aria-label={`Ver ${obligation.loanName ?? obligation.description}`}
                         >
-                          <ArrowRight className="h-4 w-4" aria-hidden />
+                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                         </Link>
                       </Button>
                     </div>
@@ -178,40 +183,13 @@ export default function DashboardLoanSummaryCard({
           ) : null}
 
           {totalCount > 0 ? (
-            <p className="text-[10px] text-muted-foreground">
-              {totalCount} pago{totalCount === 1 ? '' : 's'} en el periodo (incluye
-              pagados y pendientes).
+            <p className="text-xs text-muted-foreground">
+              {totalCount} pago{totalCount === 1 ? '' : 's'} en el periodo.
             </p>
           ) : null}
         </div>
       )}
     </section>
-  );
-}
-
-function MetricBlock({
-  label,
-  amount,
-  positive = false,
-}: {
-  label: string;
-  amount: number;
-  positive?: boolean;
-}) {
-  return (
-    <div className="rounded-lg border border-border/60 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-1 font-mono text-sm font-bold tabular-nums text-foreground',
-          positive && 'text-emerald-600 dark:text-emerald-400',
-        )}
-      >
-        {formatCurrency(amount)}
-      </p>
-    </div>
   );
 }
 

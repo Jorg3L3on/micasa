@@ -62,6 +62,7 @@ export async function createUserToHouseTransferInTx(
       user_id: null,
       house_id: houseId,
       fortnight_id: houseFortnightId,
+      wallet_id: houseWalletId ?? null,
     },
   });
 

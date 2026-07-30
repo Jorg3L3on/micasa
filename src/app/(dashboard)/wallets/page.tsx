@@ -8,15 +8,14 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowDownAZ,
   ArrowDownZA,
   ChevronDown,
-  LineChart,
   ListFilter,
-  WalletIcon,
+  Plus,
   X,
   Zap,
 } from 'lucide-react';
@@ -40,6 +39,7 @@ import { createCreditCard, updateCreditCard } from '@/lib/api/credit-cards';
 import {
   createWallet,
   deleteWallet,
+  getWalletMetrics,
   updateWallet,
 } from '@/lib/api/wallets';
 import {
@@ -73,6 +73,7 @@ import {
 import type { WalletListItem } from '@/types/catalog';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
+import type { WalletBalanceMetrics } from '@/lib/finance/wallet-balance-evolution';
 import { cn } from '@/lib/utils';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -153,6 +154,7 @@ const KIND_FILTER_CHIPS: { value: KindFilterValue; label: string }[] = [
 ];
 
 const FILTERS_STORAGE_KEY = 'micasa.wallets.listFilters';
+const FILTERS_OPEN_STORAGE_KEY = 'micasa.wallets.filtersOpen';
 
 const isStoredTypeFilter = (v: unknown): v is string =>
   v === TYPE_FILTER_ALL ||
@@ -377,9 +379,45 @@ const compareWallets = (
 };
 
 export default function WalletsPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { context } = useFinanceContext();
+  const initialSearch = searchParams.get('q') ?? '';
+  const sortParam = searchParams.get('sort');
+  const initialSortKey: SortKey =
+    sortParam === 'amount' || sortParam === 'available' ? sortParam : 'name';
+  const initialSortDir = searchParams.get('dir') === 'desc' ? 'desc' : 'asc';
+  const initialType = searchParams.get('type') ?? TYPE_FILTER_ALL;
+  const statusParam = searchParams.get('status');
+  const initialStatus: StatusFilterValue =
+    statusParam === 'active' || statusParam === 'inactive' ? statusParam : STATUS_FILTER_ALL;
+  const balanceParam = searchParams.get('balance');
+  const initialBalance: BalanceFilterValue =
+    balanceParam === 'nonzero' || balanceParam === 'zero' ? balanceParam : BALANCE_FILTER_ALL;
+  const creditLineParam = searchParams.get('creditLine');
+  const initialCreditLine: CreditLineFilterValue =
+    creditLineParam === 'with_line' ||
+    creditLineParam === 'no_line' ||
+    creditLineParam === 'negative_available'
+      ? creditLineParam
+      : 'all';
+  const kindParam = searchParams.get('kind');
+  const initialKind: KindFilterValue =
+    kindParam === 'funding' || kindParam === 'credit' ? kindParam : 'all';
+  const assigneeParam = searchParams.get('assignee');
+  const initialAssignee: AssigneeFilterValue =
+    assigneeParam === 'unassigned'
+      ? 'unassigned'
+      : assigneeParam && Number.isFinite(Number(assigneeParam)) && Number(assigneeParam) > 0
+        ? Number(assigneeParam)
+        : ASSIGNEE_FILTER_ALL;
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
+  const [walletMetrics, setWalletMetrics] = useState<
+    Record<string, WalletBalanceMetrics>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [metricsLoading, setMetricsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -389,19 +427,19 @@ export default function WalletsPage() {
   );
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [typeFilter, setTypeFilter] = useState<string>(TYPE_FILTER_ALL);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(initialSortDir);
+  const [typeFilter, setTypeFilter] = useState<string>(initialType);
   const [statusFilter, setStatusFilter] =
-    useState<StatusFilterValue>(STATUS_FILTER_ALL);
+    useState<StatusFilterValue>(initialStatus);
   const [balanceFilter, setBalanceFilter] =
-    useState<BalanceFilterValue>(BALANCE_FILTER_ALL);
+    useState<BalanceFilterValue>(initialBalance);
   const [creditLineFilter, setCreditLineFilter] =
-    useState<CreditLineFilterValue>('all');
-  const [kindFilter, setKindFilter] = useState<KindFilterValue>('all');
+    useState<CreditLineFilterValue>(initialCreditLine);
+  const [kindFilter, setKindFilter] = useState<KindFilterValue>(initialKind);
   const [assigneeFilter, setAssigneeFilter] =
-    useState<AssigneeFilterValue>(ASSIGNEE_FILTER_ALL);
+    useState<AssigneeFilterValue>(initialAssignee);
   const [houseMembers, setHouseMembers] = useState<
     { id: number; name: string }[]
   >([]);
@@ -697,6 +735,22 @@ export default function WalletsPage() {
   }, []);
 
   useLayoutEffect(() => {
+    const hasQueryFilters =
+      Boolean(searchParams.get('q')) ||
+      Boolean(searchParams.get('kind')) ||
+      Boolean(searchParams.get('type')) ||
+      Boolean(searchParams.get('status')) ||
+      Boolean(searchParams.get('balance')) ||
+      Boolean(searchParams.get('creditLine')) ||
+      Boolean(searchParams.get('assignee')) ||
+      Boolean(searchParams.get('sort')) ||
+      Boolean(searchParams.get('dir'));
+    const rawFiltersOpen = localStorage.getItem(FILTERS_OPEN_STORAGE_KEY);
+    if (rawFiltersOpen === '1') setFiltersOpen(true);
+    if (hasQueryFilters) {
+      setFiltersReady(true);
+      return;
+    }
     const s = parseStoredFilters();
     if (s) {
       if (s.typeFilter != null) setTypeFilter(s.typeFilter);
@@ -709,35 +763,61 @@ export default function WalletsPage() {
       if (s.assigneeFilter != null) setAssigneeFilter(s.assigneeFilter);
     }
     setFiltersReady(true);
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!filtersReady) return;
     try {
-      const payload: StoredWalletListFilters = {
-        typeFilter,
-        statusFilter,
-        balanceFilter,
-        creditLineFilter,
-        sortKey,
-        sortDir,
-        kindFilter,
-        assigneeFilter,
-      };
-      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(FILTERS_OPEN_STORAGE_KEY, filtersOpen ? '1' : '0');
     } catch {
       /* ignore quota / private mode */
     }
   }, [
     filtersReady,
-    typeFilter,
-    statusFilter,
+    filtersOpen,
+  ]);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    const next = new URLSearchParams(searchParams.toString());
+    const setOrDelete = (key: string, value: string | null) => {
+      if (!value) next.delete(key);
+      else next.set(key, value);
+    };
+    setOrDelete('q', searchQuery.trim() ? searchQuery.trim() : null);
+    setOrDelete('kind', kindFilter === 'all' ? null : kindFilter);
+    setOrDelete('type', typeFilter === TYPE_FILTER_ALL ? null : typeFilter);
+    setOrDelete('status', statusFilter === STATUS_FILTER_ALL ? null : statusFilter);
+    setOrDelete('balance', balanceFilter === BALANCE_FILTER_ALL ? null : balanceFilter);
+    setOrDelete('creditLine', creditLineFilter === 'all' ? null : creditLineFilter);
+    if (!isHouseContext || assigneeFilter === ASSIGNEE_FILTER_ALL) {
+      next.delete('assignee');
+    } else if (assigneeFilter === 'unassigned') {
+      next.set('assignee', 'unassigned');
+    } else {
+      next.set('assignee', String(assigneeFilter));
+    }
+    setOrDelete('sort', sortKey === 'name' ? null : sortKey);
+    setOrDelete('dir', sortDir === 'asc' ? null : sortDir);
+    const currentQs = searchParams.toString();
+    const nextQs = next.toString();
+    if (nextQs === currentQs) return;
+    router.replace(nextQs ? `${pathname}?${nextQs}` : pathname, { scroll: false });
+  }, [
+    assigneeFilter,
     balanceFilter,
     creditLineFilter,
-    sortKey,
-    sortDir,
+    filtersReady,
+    isHouseContext,
     kindFilter,
-    assigneeFilter,
+    pathname,
+    router,
+    searchParams,
+    searchQuery,
+    sortDir,
+    sortKey,
+    statusFilter,
+    typeFilter,
   ]);
 
   useEffect(() => {
@@ -772,6 +852,18 @@ export default function WalletsPage() {
     };
   }, [context]);
 
+  const fetchWalletMetrics = useCallback(async () => {
+    try {
+      setMetricsLoading(true);
+      const data = await getWalletMetrics(context);
+      setWalletMetrics(data.by_wallet_id);
+    } catch {
+      setWalletMetrics({});
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [context]);
+
   const fetchWallets = useCallback(async () => {
     try {
       setLoading(true);
@@ -792,8 +884,9 @@ export default function WalletsPage() {
   }, [context]);
 
   useEffect(() => {
-    fetchWallets();
-  }, [fetchWallets]);
+    void fetchWallets();
+    void fetchWalletMetrics();
+  }, [fetchWallets, fetchWalletMetrics]);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
@@ -819,6 +912,7 @@ export default function WalletsPage() {
         toast.success('Billetera creada');
       }
       await fetchWallets();
+      await fetchWalletMetrics();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
@@ -840,6 +934,7 @@ export default function WalletsPage() {
         toast.success('Billetera actualizada');
       }
       await fetchWallets();
+      await fetchWalletMetrics();
       setEditDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
@@ -857,6 +952,7 @@ export default function WalletsPage() {
       await deleteWallet(selectedWallet.id, context);
       toast.success('Eliminada');
       await fetchWallets();
+      await fetchWalletMetrics();
       setDeleteDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
@@ -892,51 +988,25 @@ export default function WalletsPage() {
   }, []);
 
   return (
-    <div className="space-y-4 pb-24">
-      <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Acciones de billeteras"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">Billeteras</h2>
-          <p className="text-xs text-muted-foreground">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <header className="min-w-0">
+          <h2 className="mb-0.5 text-base font-medium leading-tight">Billeteras</h2>
+          <p className="text-sm text-muted-foreground">
             Saldo, tarjetas y líneas disponibles en tu contexto actual.
           </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0 sm:hidden"
-                asChild
-              >
-                <Link
-                  href="/wallets/liquidity"
-                  aria-label="Ver proyección de liquidez"
-                >
-                  <LineChart className="h-4 w-4" />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              Proyección de liquidez
-            </TooltipContent>
-          </Tooltip>
-          <Button variant="outline" asChild className="hidden sm:inline-flex">
-            <Link href="/wallets/liquidity" aria-label="Ver proyección de liquidez">
-              <LineChart className="h-4 w-4" />
-              Proyección de liquidez
-            </Link>
-          </Button>
+        </header>
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             type="button"
-            className="hidden h-9 rounded-xl sm:inline-flex"
+            variant="outline"
+            className="h-9 shrink-0 bg-white dark:bg-card"
             onClick={() => setCreateDialogOpen(true)}
+            aria-label="Agregar billetera o tarjeta"
           >
-            <WalletIcon className="h-4 w-4" />
-            Agregar billetera o tarjeta
+            <Plus className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Agregar billetera o tarjeta</span>
+            <span className="sm:hidden">Agregar</span>
           </Button>
         </div>
       </div>
@@ -949,7 +1019,7 @@ export default function WalletsPage() {
       )}
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="py-4">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
               Cargando...
@@ -1440,14 +1510,16 @@ export default function WalletsPage() {
                 </p>
               ) : (
                 <ul
-                  className="grid list-none gap-3 p-0 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
+                  className="grid list-none grid-cols-1 gap-3 p-0 sm:gap-4 md:grid-cols-2"
                   role="list"
                 >
                   {displayWallets.map((wallet) => (
-                    <li key={wallet.id}>
+                    <li key={wallet.id} className="min-w-0">
                       <WalletListCard
                         wallet={wallet}
                         ownerQueryString={ownerQueryString}
+                        metrics={walletMetrics[String(wallet.id)] ?? null}
+                        metricsLoading={metricsLoading}
                         onEdit={openEditDialog}
                         onDelete={openDeleteDialog}
                         onOpenBalance={setBalanceWallet}
@@ -1461,16 +1533,6 @@ export default function WalletsPage() {
         </CardContent>
       </Card>
       </div>
-
-      <Button
-        type="button"
-        size="icon"
-        aria-label="Agregar billetera o tarjeta"
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg sm:hidden"
-        onClick={() => setCreateDialogOpen(true)}
-      >
-        <WalletIcon className="h-6 w-6" />
-      </Button>
 
       <WalletForm
         open={createDialogOpen}
@@ -1496,6 +1558,7 @@ export default function WalletsPage() {
           setBalanceWallet((prev) =>
             prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
           );
+          void fetchWalletMetrics();
         }}
       />
 

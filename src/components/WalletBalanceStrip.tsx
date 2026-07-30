@@ -1,499 +1,283 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import Link from 'next/link';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
-import { getProviderCardStyle } from '@/lib/provider-card-style';
-import { formatCurrency, cn } from '@/lib/utils';
-import { ChevronDown, ChevronUp, CreditCard, Landmark, Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
+  isCreditOrStoreCardWalletType,
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethodType,
+} from '@/domain/payment-method';
+import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
+import { formatCurrency, cn } from '@/lib/utils';
+import { CreditCard, Landmark, Wallet, WalletCards } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-
-const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
 
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
-  paidWalletIds?: number[];
-  /** Past/future monthly views must not use “today” due reminders */
-  isCurrentMonth?: boolean;
-  /** After saldo persists to the API (e.g. refetch resumen / billeteras vs pendiente). */
-  onBalancesPersisted?: () => void;
 };
 
-const WalletBalanceStrip = ({
-  wallets,
-  paidWalletIds = [],
-  isCurrentMonth = true,
-  onBalancesPersisted,
-}: WalletBalanceStripProps) => {
+type StripTileProps = {
+  wallet: WalletListItem;
+  ownerQueryString: string;
+};
+
+const getTypeRank = (type: string) => {
+  if (type === 'CASH') return 0;
+  if (type === 'DEBIT_CARD') return 1;
+  if (type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') return 2;
+  return 3;
+};
+
+function WalletStripTile({
+  wallet,
+  ownerQueryString,
+}: StripTileProps) {
+  const isCard = isCreditOrStoreCardWalletType(wallet.type);
+  const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
+  const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
+  const providerLabel =
+    getWalletProviderOption(wallet.provider_icon_key)?.label ?? typeLabel;
+  const detailHref = useMemo(
+    () =>
+      isCard
+        ? `/credit-cards/${wallet.id}${ownerQueryString}`
+        : `/wallets/${wallet.id}${ownerQueryString}`,
+    [isCard, wallet.id, ownerQueryString],
+  );
+
+  const creditLimit = Number(wallet.credit_limit ?? 0);
+  const isNegativeBalance = isFunding && wallet.amount < 0;
+  const isOverLimit =
+    isCard && creditLimit > 0 && wallet.amount > creditLimit;
+  const hasAlert = isNegativeBalance || isOverLimit;
+
+  const fallbackAccent = isCard
+    ? 'neutral'
+    : wallet.type === 'DEBIT_CARD'
+      ? 'blue'
+      : wallet.type === 'CASH'
+        ? 'emerald'
+        : 'neutral';
+
+  const WalletIcon =
+    isCard
+      ? CreditCard
+      : wallet.type === 'DEBIT_CARD'
+        ? Landmark
+        : Wallet;
+
+  const badgeClassName =
+    wallet.type === 'CASH'
+      ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+      : wallet.type === 'DEBIT_CARD'
+        ? 'border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+        : 'border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300';
+
+  return (
+    <Link
+      href={detailHref}
+      className={cn(
+        'group mx-1 flex min-h-[62px] items-center gap-3 rounded-[15px] border-b border-border/60 bg-transparent px-3 py-2.5 text-left',
+        'transition-colors duration-200 ease-out hover:bg-muted/35 active:bg-muted/50 motion-reduce:transition-none',
+        'focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        hasAlert && 'bg-rose-500/5',
+      )}
+      aria-label={`Ver detalles de ${wallet.name}, ${formatCurrency(wallet.amount)}`}
+    >
+      {wallet.provider_icon_key ? (
+        <WalletProviderIcon
+          providerIconKey={wallet.provider_icon_key}
+          className="h-8 w-8 rounded-md border border-border/70 bg-background p-0.5 shadow-none"
+          iconClassName="h-4 w-4"
+          showTooltipLabel={false}
+        />
+      ) : (
+        <span
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background',
+            fallbackAccent === 'blue' && 'text-blue-600 dark:text-blue-400',
+            fallbackAccent === 'emerald' &&
+              'text-emerald-600 dark:text-emerald-400',
+            fallbackAccent === 'neutral' && 'text-muted-foreground',
+          )}
+        >
+          <WalletIcon className="h-4 w-4" aria-hidden />
+        </span>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium leading-tight text-foreground">
+          {wallet.name}
+        </p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {providerLabel}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <span
+          className={cn(
+            'font-mono text-sm font-semibold tabular-nums text-foreground',
+            hasAlert && 'text-destructive',
+          )}
+        >
+          {formatCurrency(wallet.amount)}
+        </span>
+        <span
+          className={cn(
+            'inline-flex max-w-[9.5rem] items-center truncate rounded-full border px-2 py-0.5 text-[10px] font-medium',
+            badgeClassName,
+          )}
+        >
+          {typeLabel}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+const WalletBalanceStrip = ({ wallets }: WalletBalanceStripProps) => {
   const { context } = useFinanceContext();
-  const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
-  const [balanceOverrides, setBalanceOverrides] = useState<Record<number, number>>({});
+  const sectionId = useId().replace(/:/g, '');
+  const headingId = `${sectionId}-heading`;
+  const scrollHintId = `${sectionId}-scroll-hint`;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEdges, setScrollEdges] = useState({
+    top: false,
+    bottom: false,
+  });
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
-  const [stripVisible, setStripVisible] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      const raw = window.localStorage.getItem(WALLET_STRIP_VISIBLE_KEY);
-      if (raw === 'false') return false;
-      if (raw === 'true') return true;
-    } catch {
-      /* ignore */
-    }
-    return true;
-  });
 
-  const persistStripVisible = useCallback((visible: boolean) => {
-    try {
-      localStorage.setItem(WALLET_STRIP_VISIBLE_KEY, visible ? 'true' : 'false');
-    } catch {
-      /* ignore */
-    }
+  const sortedWallets = useMemo(() => {
+    return [...wallets].sort((a, b) => {
+      const rankDiff = getTypeRank(a.type) - getTypeRank(b.type);
+      if (rankDiff !== 0) return rankDiff;
+
+      const bothCreditTypes =
+        isCreditOrStoreCardWalletType(a.type) &&
+        isCreditOrStoreCardWalletType(b.type);
+
+      if (bothCreditTypes) {
+        const getUsedPct = (wallet: WalletListItem) => {
+          const limit = Number(wallet.credit_limit ?? 0);
+          if (limit <= 0) return Number.POSITIVE_INFINITY;
+          return Math.max(0, Number(wallet.amount)) / limit;
+        };
+
+        const usedPctDiff = getUsedPct(a) - getUsedPct(b);
+        if (usedPctDiff !== 0) return usedPctDiff;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [wallets]);
+
+  const updateScrollEdges = useCallback(() => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    const maxScrollTop = viewport.scrollHeight - viewport.clientHeight;
+    setScrollEdges({
+      top: viewport.scrollTop > 2,
+      bottom: maxScrollTop - viewport.scrollTop > 2,
+    });
   }, []);
 
-  const handleToggleStrip = useCallback(() => {
-    setStripVisible((prev) => {
-      const next = !prev;
-      persistStripVisible(next);
-      return next;
-    });
-  }, [persistStripVisible]);
-
-  const getEffectiveAmount = (wallet: WalletListItem) =>
-    balanceOverrides[wallet.id] ?? wallet.amount;
-
-  const handleOpenWalletModal = useCallback((wallet: WalletListItem) => {
-    const effectiveAmount = balanceOverrides[wallet.id] ?? wallet.amount;
-    setSelectedWallet({ ...wallet, amount: effectiveAmount });
-  }, [balanceOverrides]);
-
-  const sortedWallets = [...wallets].sort((a, b) => {
-    const getTypeRank = (type: string) => {
-      if (type === 'CASH') return 0;
-      if (type === 'DEBIT_CARD') return 1;
-      if (type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') return 2;
-      return 3;
-    };
-
-    const rankDiff = getTypeRank(a.type) - getTypeRank(b.type);
-    if (rankDiff !== 0) return rankDiff;
-
-    const bothCreditTypes =
-      (a.type === 'CREDIT_CARD' || a.type === 'DEPARTMENT_STORE_CARD') &&
-      (b.type === 'CREDIT_CARD' || b.type === 'DEPARTMENT_STORE_CARD');
-
-    if (bothCreditTypes) {
-      const getUsedPct = (wallet: WalletListItem) => {
-        const limit = Number(wallet.credit_limit ?? 0);
-        if (limit <= 0) return Number.POSITIVE_INFINITY;
-        return Math.max(0, Number(getEffectiveAmount(wallet))) / limit;
-      };
-
-      const usedPctDiff = getUsedPct(a) - getUsedPct(b);
-      if (usedPctDiff !== 0) return usedPctDiff;
-    }
-
-    return a.name.localeCompare(b.name);
-  });
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    updateScrollEdges();
+    const observer = new ResizeObserver(updateScrollEdges);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [sortedWallets.length, updateScrollEdges]);
 
   if (wallets.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-1 items-start gap-2">
-      {stripVisible ? (
-        <div
-          className="relative min-w-0 flex-1 pt-0.5"
-          role="region"
-          aria-label="Saldos de billeteras"
+    <Card
+      className="min-w-0 gap-0 overflow-hidden border-border/60 py-0"
+      role="region"
+      aria-labelledby={headingId}
+      aria-describedby={scrollHintId}
+    >
+      <CardHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2">
+        <CardTitle className="truncate text-sm font-semibold text-foreground">
+          <h2 id={headingId}>Billeteras</h2>
+        </CardTitle>
+        <Badge
+          variant="secondary"
+          className="h-7 gap-1.5 border border-border/60 bg-muted/50 px-2.5 text-muted-foreground shadow-none"
+          aria-label={`${sortedWallets.length} ${
+            sortedWallets.length === 1 ? 'billetera' : 'billeteras'
+          }`}
         >
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-linear-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-linear-to-l from-background to-transparent" />
-          <div className="overflow-x-auto scrollbar-hide px-1">
-            <div className="flex gap-2 py-0.5 pr-1">
-              {sortedWallets.map((wallet) => {
-                const isCreditType =
-                  wallet.type === 'CREDIT_CARD' ||
-                  wallet.type === 'DEPARTMENT_STORE_CARD';
-                const effectiveAmount = getEffectiveAmount(wallet);
+          <WalletCards className="h-3.5 w-3.5" aria-hidden />
+          <span className="font-mono font-semibold tabular-nums text-foreground">
+            {sortedWallets.length}
+          </span>
+          <span>{sortedWallets.length === 1 ? 'cuenta' : 'cuentas'}</span>
+        </Badge>
+      </CardHeader>
+      <p id={scrollHintId} className="sr-only">
+        Lista vertical desplazable. Usa la rueda, gestos táctiles o las teclas
+        de dirección para recorrer las billeteras.
+      </p>
 
-                const creditLimit = wallet.credit_limit ?? 0;
-                const percentUsed = (() => {
-                  if (isCreditType) {
-                    if (!creditLimit || creditLimit <= 0) return 0;
-                    return Math.max(
-                      0,
-                      Math.min(100, (Math.max(0, effectiveAmount) / creditLimit) * 100),
-                    );
-                  }
-                  return effectiveAmount > 0 ? 100 : 0;
-                })();
-
-                const today = new Date();
-                const currentDay = today.getDate();
-
-                const isFirstFortnight = currentDay <= 15;
-                const walletAlreadyPaid = paidWalletIds.includes(wallet.id);
-                const dueInCurrentFortnight =
-                  isCreditType &&
-                  !walletAlreadyPaid &&
-                  wallet.due_day != null &&
-                  (isFirstFortnight
-                    ? wallet.due_day >= 1 && wallet.due_day <= 15
-                    : wallet.due_day >= 16);
-
-                const isDueNear = (() => {
-                  if (!dueInCurrentFortnight) return false;
-                  const daysUntilDue = wallet.due_day! - currentDay;
-                  return daysUntilDue >= 0 && daysUntilDue <= 5;
-                })();
-
-                const isDuePast = (() => {
-                  if (!dueInCurrentFortnight) return false;
-                  return wallet.due_day! < currentDay;
-                })();
-
-                const showDueReminder =
-                  isCurrentMonth &&
-                  (isDueNear || isDuePast) &&
-                  !walletAlreadyPaid;
-
-                const WalletIcon =
-                  wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD'
-                    ? CreditCard
-                    : wallet.type === 'DEBIT_CARD'
-                      ? Landmark
-                      : Wallet;
-
-                const isFunding =
-                  wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
-                const fallbackAccent =
-                  isCreditType
-                    ? 'violet'
-                    : wallet.type === 'DEBIT_CARD'
-                      ? 'blue'
-                      : wallet.type === 'CASH'
-                        ? 'emerald'
-                        : 'neutral';
-
-                const hasBankIcon = Boolean(wallet.provider_icon_key);
-                const providerCardStyle = getProviderCardStyle(
-                  wallet.provider_icon_key,
-                  wallet.type,
-                  'calm',
-                );
-                const useProviderGradient = Boolean(providerCardStyle);
-                const accent = hasBankIcon ? 'neutral' : fallbackAccent;
-
-                const cardContent = (
-                  <div className="flex items-start gap-1.5">
-                    {hasBankIcon ? (
-                      <span className="relative mt-0.5 shrink-0">
-                        <span
-                          className={cn(
-                            'absolute inset-0 rounded-md',
-                            useProviderGradient
-                              ? 'bg-white/88 dark:bg-white/92'
-                              : 'bg-card/95 dark:bg-card/90',
-                          )}
-                          aria-hidden
-                        />
-                        <WalletProviderIcon
-                          providerIconKey={wallet.provider_icon_key}
-                          className={cn(
-                            'relative h-7 w-7 rounded-md shadow-sm ring-1',
-                            useProviderGradient
-                              ? 'ring-white/45'
-                              : 'ring-border/60',
-                          )}
-                          iconClassName="h-3.5 w-3.5"
-                          showTooltipLabel={false}
-                        />
-                        {showDueReminder && (
-                          <span
-                            className={cn(
-                              'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
-                              isDuePast
-                                ? 'bg-destructive animate-pulse'
-                                : 'bg-amber-500',
-                            )}
-                            aria-hidden
-                          />
-                        )}
-                      </span>
-                    ) : (
-                      <span
-                        className={cn(
-                          'relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
-                          accent === 'violet' &&
-                            'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
-                          accent === 'blue' &&
-                            'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
-                          accent === 'emerald' &&
-                            'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10',
-                          accent === 'neutral' &&
-                            'bg-muted/60 ring-border/60',
-                        )}
-                      >
-                        <WalletIcon
-                          className={cn(
-                            'h-3 w-3',
-                            accent === 'violet' &&
-                              'text-violet-600 dark:text-violet-300',
-                            accent === 'blue' &&
-                              'text-blue-600 dark:text-blue-300',
-                            accent === 'emerald' &&
-                              'text-emerald-600 dark:text-emerald-300',
-                            accent === 'neutral' && 'text-muted-foreground',
-                          )}
-                          aria-hidden
-                        />
-                        {showDueReminder && (
-                          <span
-                            className={cn(
-                              'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
-                              isDuePast
-                                ? 'bg-destructive animate-pulse'
-                                : 'bg-amber-500',
-                            )}
-                            aria-hidden
-                          />
-                        )}
-                      </span>
-                    )}
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <p
-                        className={cn(
-                          'truncate text-[9.5px] font-semibold leading-tight',
-                          useProviderGradient
-                            ? 'text-white/85'
-                            : 'text-muted-foreground/90',
-                        )}
-                      >
-                        {wallet.name}
-                      </p>
-                      <p
-                        className={cn(
-                          'font-mono text-[13px] font-black tabular-nums leading-none sm:text-sm',
-                          effectiveAmount < 0
-                            ? useProviderGradient
-                              ? 'text-red-100'
-                              : 'text-destructive'
-                            : useProviderGradient
-                              ? 'text-white'
-                              : 'text-foreground',
-                        )}
-                      >
-                        {formatCurrency(effectiveAmount)}
-                      </p>
-                      {isCreditType && (
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <div
-                            className={cn(
-                              'relative h-1 w-10 overflow-hidden rounded-full sm:w-12',
-                              useProviderGradient ? 'bg-white/25' : 'bg-muted/50',
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all',
-                                useProviderGradient
-                                  ? 'bg-white/85'
-                                  : 'bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
-                              )}
-                              style={{ width: `${percentUsed}%` }}
-                              aria-hidden
-                            />
-                          </div>
-                          {wallet.due_day != null && (
-                            <span
-                              className={cn(
-                                'whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tabular-nums',
-                                walletAlreadyPaid
-                                  ? useProviderGradient
-                                    ? 'bg-emerald-500/25 text-emerald-50'
-                                    : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                                  : !isCurrentMonth
-                                    ? useProviderGradient
-                                      ? 'text-white/75'
-                                      : 'text-muted-foreground/70'
-                                    : isDuePast
-                                      ? useProviderGradient
-                                        ? 'text-red-100'
-                                        : 'text-destructive'
-                                      : isDueNear
-                                        ? useProviderGradient
-                                          ? 'text-amber-100'
-                                          : 'text-amber-600 dark:text-amber-400'
-                                        : useProviderGradient
-                                          ? 'text-white/75'
-                                          : 'text-muted-foreground/70',
-                              )}
-                            >
-                              {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-
-                const cardClasses = cn(
-                  'group relative min-w-[136px] shrink-0 overflow-hidden rounded-xl border px-2 py-1.5 sm:min-w-[164px] sm:px-2.5 sm:py-2',
-                  'backdrop-blur-sm ring-1 ring-inset ring-white/5 transition-all duration-300',
-                  // subtle inner gloss highlight
-                  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent dark:before:via-white/10',
-                  // faint diagonal sheen for premium finish
-                  'after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.12)_48%,transparent_72%)] after:opacity-45 after:transition-opacity after:duration-300',
-                  accent === 'violet' &&
-                    'border-violet-500/30 bg-gradient-to-br from-violet-500/12 via-background to-violet-500/4 dark:from-violet-500/20 dark:via-card dark:to-violet-500/5',
-                  accent === 'blue' &&
-                    'border-blue-500/30 bg-gradient-to-br from-blue-500/12 via-background to-blue-500/4 dark:from-blue-500/20 dark:via-card dark:to-blue-500/5',
-                  accent === 'emerald' &&
-                    'border-emerald-500/30 bg-gradient-to-br from-emerald-500/12 via-background to-emerald-500/4 dark:from-emerald-500/20 dark:via-card dark:to-emerald-500/5',
-                  accent === 'neutral' && 'border-border/60 bg-card dark:bg-card/80',
-                  (isCreditType || isFunding) &&
-                    cn(
-                      'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
-                      useProviderGradient &&
-                        'border-white/25 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.9)] hover:border-white/40 hover:shadow-[0_16px_34px_-14px_rgba(15,23,42,0.95)] hover:after:opacity-70',
-                      !useProviderGradient &&
-                        accent === 'violet' &&
-                        'hover:border-violet-500/60 hover:shadow-violet-500/15',
-                      !useProviderGradient &&
-                        accent === 'blue' &&
-                        'hover:border-blue-500/60 hover:shadow-blue-500/15',
-                      !useProviderGradient &&
-                        accent === 'emerald' &&
-                        'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
-                      !useProviderGradient &&
-                        accent === 'neutral' &&
-                        'hover:border-border',
-                    ),
-                );
-
-                return (
-                  <button
-                    key={wallet.id}
-                    type="button"
-                    onClick={() => handleOpenWalletModal(wallet)}
-                    className={cardClasses}
-                    style={providerCardStyle}
-                    aria-label={`Abrir detalles de ${wallet.name}`}
-                  >
-                    {useProviderGradient ? (
-                      <>
-                        <span className="pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full bg-white/8 blur-2xl" />
-                        <span className="pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full bg-black/20 blur-2xl" />
-                      </>
-                    ) : null}
-                    {cardContent}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="min-w-0 flex-1 pt-0.5">
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex min-w-max items-center gap-2.5 py-0.5 pr-1">
-              {sortedWallets.map((wallet) => {
-                const isCreditType =
-                  wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD';
-                return (
-                  <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
-                    {wallet.provider_icon_key ? (
-                      <WalletProviderIcon
-                        providerIconKey={wallet.provider_icon_key}
-                        className="h-5 w-5 rounded-md shadow-sm ring-1 ring-border/50"
-                        iconClassName="h-3 w-3"
-                        showTooltipLabel={false}
-                      />
-                    ) : (
-                      <span
-                        className={cn(
-                          'h-1.5 w-1.5 shrink-0 rounded-full',
-                          isCreditType
-                            ? 'bg-violet-500/60'
-                            : wallet.type === 'DEBIT_CARD'
-                              ? 'bg-blue-500/60'
-                              : 'bg-muted-foreground/40',
-                        )}
-                        aria-hidden
-                      />
-                    )}
-                    <span className="max-w-[80px] truncate text-[10px] font-medium text-muted-foreground/80">
-                      {wallet.name}
-                    </span>
-                    <span
-                      className={cn(
-                        'font-mono text-[10px] font-semibold tabular-nums',
-                        wallet.amount < 0 ? 'text-destructive/80' : 'text-foreground/80',
-                      )}
-                    >
-                      {formatCurrency(getEffectiveAmount(wallet))}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/60"
-            onClick={handleToggleStrip}
-            aria-expanded={stripVisible}
-            aria-label={
-              stripVisible
-                ? 'Ocultar tarjetas de saldos de billeteras'
-                : 'Mostrar tarjetas de saldos de billeteras'
-            }
+      <CardContent className="px-2">
+        <div className="relative">
+          {scrollEdges.top ? (
+            <div
+              className="pointer-events-none absolute inset-x-px top-px z-20 h-6 rounded-t-lg bg-linear-to-b from-card to-transparent"
+              aria-hidden
+            />
+          ) : null}
+          {scrollEdges.bottom ? (
+            <div
+              className="pointer-events-none absolute inset-x-px bottom-px z-20 h-8 rounded-b-lg bg-linear-to-t from-card to-transparent"
+              aria-hidden
+            />
+          ) : null}
+          <div
+            ref={scrollRef}
+            className="max-h-[252px] space-y-1 overflow-y-auto overscroll-y-contain rounded-lg border border-border/60 [scrollbar-gutter:stable] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            role="region"
+            aria-label="Saldos de billeteras"
+            tabIndex={0}
+            onScroll={updateScrollEdges}
           >
-            {stripVisible ? (
-              <ChevronUp className="h-4 w-4" aria-hidden />
-            ) : (
-              <ChevronDown className="h-4 w-4" aria-hidden />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={4}>
-          Mostrar u ocultar saldos de billeteras
-        </TooltipContent>
-      </Tooltip>
+            {sortedWallets.map((wallet) => (
+              <WalletStripTile
+                key={wallet.id}
+                wallet={wallet}
+                ownerQueryString={ownerQueryString}
+              />
+            ))}
+          </div>
+        </div>
+      </CardContent>
 
-      <WalletBalanceEditDialog
-        wallet={selectedWallet}
-        ownerQueryString={ownerQueryString}
-        onOpenChange={(open) => {
-          if (!open) setSelectedWallet(null);
-        }}
-        onSaved={(walletId, newAmount) => {
-          setBalanceOverrides((prev) => ({ ...prev, [walletId]: newAmount }));
-          setSelectedWallet((prev) =>
-            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
-          );
-          onBalancesPersisted?.();
-        }}
-      />
-    </div>
+    </Card>
   );
 };
 

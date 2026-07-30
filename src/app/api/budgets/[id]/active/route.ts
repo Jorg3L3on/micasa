@@ -22,8 +22,8 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { active } = setBudgetActiveSchema.parse(body);
-    const budget = await setBudgetActive(id, ownerFilter, active);
+    const { active, effective_date } = setBudgetActiveSchema.parse(body);
+    const budget = await setBudgetActive(id, ownerFilter, active, effective_date);
     return NextResponse.json(budget, { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -33,9 +33,11 @@ export async function PATCH(
       error &&
       typeof error === 'object' &&
       'code' in error &&
-      (error as ErrorWithCode).code === 'P2025'
+      ['P2025', 'CURRENT_FORTNIGHT_NOT_FOUND'].includes((error as ErrorWithCode).code ?? '')
     ) {
-      return NextResponse.json({ error: 'Presupuesto no encontrado' }, { status: 404 });
+      const code = (error as ErrorWithCode).code;
+      const status = code === 'P2025' ? 404 : 422;
+      return NextResponse.json({ error: (error as ErrorWithCode).message }, { status });
     }
     console.error('Error updating budget active state:', error);
     return NextResponse.json({ error: 'Failed to update budget' }, { status: 500 });

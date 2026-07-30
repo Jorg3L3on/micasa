@@ -14,19 +14,20 @@ export type CategoryPieSlice = {
   pct: number;
 };
 
+/** Whisper Money–inspired chart accents: coral (gastos) + emerald, then vivid companions. */
 export const CATEGORY_PIE_SLICE_COLORS = [
-  '#6366f1',
-  '#10b981',
-  '#f97316',
-  '#eab308',
-  '#ec4899',
-  '#14b8a6',
-  '#8b5cf6',
-  '#06b6d4',
-  '#84cc16',
-  '#f43f5e',
-  '#0ea5e9',
-  '#a855f7',
+  '#ff4d6d',
+  '#34d399',
+  '#60a5fa',
+  '#fbbf24',
+  '#a78bfa',
+  '#2dd4bf',
+  '#fb923c',
+  '#f472b6',
+  '#38bdf8',
+  '#4ade80',
+  '#e879f9',
+  '#f87171',
 ] as const;
 
 const MAX_SLICES = 8;
