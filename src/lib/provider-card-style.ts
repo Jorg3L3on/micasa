@@ -78,6 +78,7 @@ export const getProviderCardStyle = (
   const baseColor = getCardColor(providerIconKey, fallbackType);
   if (!baseColor) return undefined;
 
+  // Calm tone: shared surface with a subtle brand tint and left accent stripe.
   if (tone === 'calm') {
     if (scheme === 'light') {
       return {

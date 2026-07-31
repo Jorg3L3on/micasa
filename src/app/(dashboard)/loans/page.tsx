@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -265,12 +266,46 @@ const mapPaymentActionError = (message: string): PaymentActionErrors => {
   return { general: message };
 };
 
+/** FormMessage-compatible field validation error renderer. */
+function FormMessage({
+  id,
+  children,
+}: {
+  id?: string;
+  children?: ReactNode;
+}) {
+  if (!children) return null;
+  return (
+    <p id={id} className="text-xs text-destructive" role="alert">
+      {children}
+    </p>
+  );
+}
+
+const FieldError = FormMessage;
+
+const LoanFieldErrorMessage = ({
+  id,
+  message,
+}: {
+  id?: string;
+  message?: string | null;
+}) => <FormMessage id={id}>{message}</FormMessage>;
+
+const mapLoanFormIssues = <T extends string>(
   issues: Array<{ path: PropertyKey[]; message: string }>,
+  fieldKeys: ReadonlySet<T>,
+): Partial<Record<T | 'general', string>> => {
+  const byField: Partial<Record<T | 'general', string>> = {};
   for (const issue of issues) {
     const key = issue.path[0];
+    if (typeof key === 'string' && fieldKeys.has(key as T)) {
+      byField[key as T] = issue.message;
       continue;
     }
+    byField.general = issue.message;
   }
+  return byField;
 };
 
 const mapLoanEditError = (message: string): LoanEditErrors => {
@@ -384,6 +419,7 @@ export default function LoansPage() {
   const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
   const [formErrors, setFormErrors] = useState<LoanFormErrors>({});
 
@@ -551,6 +587,12 @@ export default function LoansPage() {
     });
   };
 
+  const createLoanFromForm = async () => {
+    if (isSubmitting) return;
+    if (form.paymentSource === 'WALLET' && !form.sourceWalletId) {
+      setFormErrors({ sourceWalletId: 'Selecciona una billetera de origen' });
+      return;
+    }
     const parsed = createLoanSchema.safeParse({
       name: form.name,
       lender: form.lender,
@@ -568,9 +610,11 @@ export default function LoansPage() {
     });
 
     if (!parsed.success) {
+      setFormErrors(mapLoanFormIssues(parsed.error.issues, loanFormErrorFields));
       return;
     }
 
+    setIsSubmitting(true);
     setFormErrors({});
     try {
       const payload: CreateLoanInput = parsed.data;
@@ -586,6 +630,7 @@ export default function LoansPage() {
       setFormErrors({ general: message });
       toast.error(message);
     } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -823,6 +868,7 @@ export default function LoansPage() {
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="gap-2">
+          <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
           Nuevo préstamo
         </Button>
       </div>
@@ -904,11 +950,13 @@ export default function LoansPage() {
       <div className="rounded-xl border border-border/60 bg-card shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden data-icon="inline-start" />
             Cargando préstamos...
           </div>
         ) : loadError ? (
           <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
+              <AlertTriangle className="h-5 w-5" aria-hidden data-icon="inline-start" />
             </span>
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">
@@ -954,6 +1002,7 @@ export default function LoansPage() {
                 >
                   <div className="flex min-w-0 gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
+                      <Icon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
@@ -1020,6 +1069,7 @@ export default function LoansPage() {
                         Próximo
                       </p>
                       <p className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium sm:justify-end">
+                        <CalendarDays className="h-3 w-3" aria-hidden data-icon="inline-start" />
                         {loan.nextPayment
                           ? formatDate(loan.nextPayment.dueDate)
                           : 'Sin pagos'}
@@ -1037,6 +1087,11 @@ export default function LoansPage() {
                     }}
                     aria-label={`Ver detalle de ${loan.name}`}
                   >
+                    <Eye
+                      className="h-3.5 w-3.5"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
                     Detalle
                   </Button>
                 </li>
@@ -1060,6 +1115,23 @@ export default function LoansPage() {
               Captura el total, frecuencia y origen de pago para generar el calendario.
             </DialogDescription>
           </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void createLoanFromForm();
+            }}
+            aria-busy={isSubmitting}
+          >
+            {(formErrors.general ||
+              formErrors.name ||
+              formErrors.lender ||
+              formErrors.principalAmount) && (
+              <FormMessage>
+                Revisa los campos marcados. Hay errores de validación en el
+                formulario.
+              </FormMessage>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="loan-name">Nombre</Label>
@@ -1077,6 +1149,10 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.name ? (
+                  <LoanFieldErrorMessage
+                    id="loan-name-error"
+                    message={formErrors.name}
+                  />
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -1095,6 +1171,7 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.lender ? (
+                  <p id="loan-lender-error" className="text-xs text-destructive" role="alert">{formErrors.lender}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -1122,6 +1199,7 @@ export default function LoansPage() {
                   </SelectContent>
                 </Select>
                 {formErrors.type ? (
+                  <p id="loan-type-error" className="text-xs text-destructive" role="alert">{formErrors.type}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -1150,6 +1228,7 @@ export default function LoansPage() {
                   </SelectContent>
                 </Select>
                 {formErrors.frequency ? (
+                  <p id="loan-frequency-error" className="text-xs text-destructive" role="alert">
                     {formErrors.frequency}
                   </p>
                 ) : null}
@@ -1172,6 +1251,7 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.principalAmount ? (
+                  <p id="loan-principal-error" className="text-xs text-destructive" role="alert">
                     {formErrors.principalAmount}
                   </p>
                 ) : null}
@@ -1194,6 +1274,7 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.paymentAmount ? (
+                  <p id="loan-payment-error" className="text-xs text-destructive" role="alert">
                     {formErrors.paymentAmount}
                   </p>
                 ) : null}
@@ -1216,6 +1297,7 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.paymentCount ? (
+                  <p id="loan-count-error" className="text-xs text-destructive" role="alert">
                     {formErrors.paymentCount}
                   </p>
                 ) : null}
@@ -1236,6 +1318,7 @@ export default function LoansPage() {
                   required
                 />
                 {formErrors.startDate ? (
+                  <p id="loan-start-error" className="text-xs text-destructive" role="alert">
                     {formErrors.startDate}
                   </p>
                 ) : null}
@@ -1274,6 +1357,7 @@ export default function LoansPage() {
                   ingreso esperado.
                 </p>
                 {formErrors.paymentSource ? (
+                  <p id="loan-payment-source-error" className="text-xs text-destructive" role="alert">
                     {formErrors.paymentSource}
                   </p>
                 ) : null}
@@ -1305,6 +1389,7 @@ export default function LoansPage() {
                     </SelectContent>
                   </Select>
                   {formErrors.sourceWalletId ? (
+                    <p id="loan-source-wallet-error" className="text-xs text-destructive" role="alert">
                       {formErrors.sourceWalletId}
                     </p>
                   ) : null}
@@ -1343,6 +1428,7 @@ export default function LoansPage() {
                     («Nómina: …»).
                   </p>
                   {formErrors.incomeTemplateId ? (
+                    <p id="loan-income-template-error" className="text-xs text-destructive" role="alert">
                       {formErrors.incomeTemplateId}
                     </p>
                   ) : null}
@@ -1381,6 +1467,7 @@ export default function LoansPage() {
                   mueve saldo ni paga el préstamo.
                 </p>
                 {formErrors.linkedWalletId ? (
+                  <p id="loan-linked-wallet-error" className="text-xs text-destructive" role="alert">
                     {formErrors.linkedWalletId}
                   </p>
                 ) : null}
@@ -1400,10 +1487,15 @@ export default function LoansPage() {
                   )}
                 />
                 {formErrors.notes ? (
+                  <p id="loan-notes-error" className="text-xs text-destructive" role="alert">{formErrors.notes}</p>
                 ) : null}
               </div>
             </div>
             {formErrors.general ? (
+              <div
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                role="alert"
+              >
                 {formErrors.general}
               </div>
             ) : null}
@@ -1412,12 +1504,22 @@ export default function LoansPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setDialogOpen(false)}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+                className={cn('gap-2', isSubmitting && 'opacity-80')}
               >
+                {isSubmitting ? (
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                 ) : null}
                 Crear préstamo
               </Button>
@@ -1441,6 +1543,7 @@ export default function LoansPage() {
             <DialogHeader className="border-b border-border/60 px-4 py-3 pr-12 text-left sm:px-5">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                  <HandCoins className="h-5 w-5" aria-hidden data-icon="inline-start" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1484,6 +1587,11 @@ export default function LoansPage() {
                         onClick={() => startLoanEdit(selectedLoan)}
                         disabled={loanEditSubmitting || lifecycleSubmitting}
                       >
+                        <Pencil
+                          className="h-3.5 w-3.5"
+                          aria-hidden
+                          data-icon="inline-start"
+                        />
                         Editar
                       </Button>
                       {selectedLoan.status === 'ACTIVE' ? (
@@ -1499,6 +1607,11 @@ export default function LoansPage() {
                           }}
                           disabled={loanEditSubmitting || lifecycleSubmitting}
                         >
+                          <Pause
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                            data-icon="inline-start"
+                          />
                           Pausar
                         </Button>
                       ) : null}
@@ -1515,6 +1628,11 @@ export default function LoansPage() {
                           }}
                           disabled={loanEditSubmitting || lifecycleSubmitting}
                         >
+                          <Play
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                            data-icon="inline-start"
+                          />
                           Reanudar
                         </Button>
                       ) : null}
@@ -1533,6 +1651,11 @@ export default function LoansPage() {
                           disabled={loanEditSubmitting || lifecycleSubmitting}
                           aria-label="Cancelar préstamo"
                         >
+                          <CircleSlash
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                            data-icon="inline-start"
+                          />
                           Cancelar
                         </Button>
                       ) : null}
@@ -1555,6 +1678,11 @@ export default function LoansPage() {
                         }
                         aria-label="Eliminar préstamo"
                       >
+                        <Trash2
+                          className="h-3.5 w-3.5"
+                          aria-hidden
+                          data-icon="inline-start"
+                        />
                         Eliminar
                       </Button>
                     </div>
@@ -1571,6 +1699,7 @@ export default function LoansPage() {
                         </p>
                       </div>
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+                        <Landmark className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </span>
                     </div>
 
@@ -1670,8 +1799,11 @@ export default function LoansPage() {
                           )}
                         >
                           {lifecycleDraft === 'ACTIVE' ? (
+                            <Play className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           ) : lifecycleDraft === 'PAUSED' ? (
+                            <Pause className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           ) : (
+                            <CircleSlash className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           )}
                         </span>
                         <div className="min-w-0 flex-1 space-y-1">
@@ -1716,6 +1848,7 @@ export default function LoansPage() {
                           {lifecycleSubmitting ? (
                             <Loader2
                               className="h-4 w-4 animate-spin"
+                              aria-hidden data-icon="inline-start" />
                           ) : null}
                           Aplicar
                         </Button>
@@ -1765,6 +1898,11 @@ export default function LoansPage() {
                             )}
                           />
                           {loanEditErrors.name ? (
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-name-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.name}
                             </p>
                           ) : null}
@@ -1791,6 +1929,11 @@ export default function LoansPage() {
                             )}
                           />
                           {loanEditErrors.lender ? (
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-lender-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.lender}
                             </p>
                           ) : null}
@@ -1836,6 +1979,11 @@ export default function LoansPage() {
                             Relaciona el préstamo para consulta; no mueve dinero.
                           </p>
                           {loanEditErrors.linkedWalletId ? (
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-linked-wallet-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.linkedWalletId}
                             </p>
                           ) : null}
@@ -1893,6 +2041,11 @@ export default function LoansPage() {
                             </p>
                           ) : null}
                           {loanEditErrors.incomeTemplateId ? (
+                            <p
+                              id={`loan-${selectedLoan.id}-edit-income-template-error`}
+                              className="text-xs text-destructive"
+                              role="alert"
+                            >
                               {loanEditErrors.incomeTemplateId}
                             </p>
                           ) : null}
@@ -1952,7 +2105,9 @@ export default function LoansPage() {
                           {loanEditSubmitting ? (
                             <Loader2
                               className="h-4 w-4 animate-spin"
+                              aria-hidden data-icon="inline-start" />
                           ) : (
+                            <Save className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           )}
                           Guardar
                         </Button>
@@ -2039,6 +2194,7 @@ export default function LoansPage() {
                                     tone.iconBox,
                                   )}
                                 >
+                                  <StatusIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                                 </span>
 
                                 <div className="min-w-0">
@@ -2066,6 +2222,7 @@ export default function LoansPage() {
                                     <span className="inline-flex items-center gap-1">
                                       <ReceiptText
                                         className="h-3 w-3"
+                                        aria-hidden data-icon="inline-start" />
                                       {payment.linkedExpenseId
                                         ? `Gasto #${payment.linkedExpenseId}`
                                         : 'Sin gasto vinculado'}
@@ -2151,6 +2308,11 @@ export default function LoansPage() {
                                       }
                                       disabled={paymentActionSubmitting}
                                     >
+                                      <Undo2
+                                        className="h-3 w-3"
+                                        aria-hidden
+                                        data-icon="inline-start"
+                                      />
                                       Deshacer
                                     </Button>
                                   ) : null}
@@ -2162,6 +2324,7 @@ export default function LoansPage() {
                                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
                                         <CheckCircle2
                                           className="h-4 w-4"
+                                          aria-hidden data-icon="inline-start" />
                                       </span>
                                       <div className="min-w-0 space-y-1">
                                         <p className="text-sm font-semibold text-foreground">
@@ -2218,6 +2381,11 @@ export default function LoansPage() {
                                               )}
                                             />
                                             {paymentActionErrors.paidAt ? (
+                                              <p
+                                                id={`loan-payment-${payment.id}-paid-at-error`}
+                                                className="text-xs text-destructive"
+                                                role="alert"
+                                              >
                                                 {paymentActionErrors.paidAt}
                                               </p>
                                             ) : null}
@@ -2292,6 +2460,11 @@ export default function LoansPage() {
                                               </p>
                                             ) : null}
                                             {paymentActionErrors.sourceWalletId ? (
+                                              <p
+                                                id={`loan-payment-${payment.id}-source-wallet-error`}
+                                                className="text-xs text-destructive"
+                                                role="alert"
+                                              >
                                                 {paymentActionErrors.sourceWalletId}
                                               </p>
                                             ) : null}
@@ -2366,6 +2539,7 @@ export default function LoansPage() {
                                         {paymentActionSubmitting ? (
                                           <Loader2
                                             className="h-4 w-4 animate-spin"
+                                            aria-hidden data-icon="inline-start" />
                                         ) : null}
                                         {paymentActionLabel(
                                           paymentActionDraft.action,

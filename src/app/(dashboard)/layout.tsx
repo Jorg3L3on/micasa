@@ -46,6 +46,7 @@ export default async function DashboardLayout({
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-background">
             <div className="container mx-auto">
+              <Suspense fallback={<DashboardLoading />}>{children}</Suspense>
             </div>
           </div>
         </SidebarInset>

@@ -70,12 +70,6 @@ export const MonthlyPanelPreferencesProvider = ({
     // Always open on the calendar-suggested quincena (current fortnight for the current month).
     setPeriodState(suggestedPeriod);
     try {
-      const storedPeriod = localStorage.getItem(
-        storageKey(PERIOD_STORAGE_KEY, preferenceScope),
-      );
-      if (storedPeriod === 'FIRST' || storedPeriod === 'SECOND') {
-        setPeriodState(storedPeriod);
-      }
       const storedSummary = localStorage.getItem(
         storageKey(SUMMARY_VISIBLE_STORAGE_KEY, preferenceScope),
       );

@@ -17,7 +17,6 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan, createCreditCardPayment } from '@/lib/api/credit-cards';
-import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
@@ -249,14 +248,6 @@ export default function WalletDetailPage() {
 
   const handleCreditPaymentSubmit = useCallback(
     async (data: CreditCardPaymentSubmitPayload) => {
-      const targetBeforePay =
-        paymentSuggestedOverride ??
-        paymentPlanItems.find((item) => item.fortnightId === paymentFortnightId)
-          ?.effectiveAmount ??
-        0;
-      const matchingPlan = paymentFortnightId
-        ? paymentPlanItems.find((item) => item.fortnightId === paymentFortnightId)
-        : undefined;
       try {
         setPaymentSubmitting(true);
         setPaymentError(null);
@@ -269,6 +260,7 @@ export default function WalletDetailPage() {
           },
           context,
         );
+        // Keep the plan after paying so a covered custom plan stays "pagado".
         toast.success('Pago registrado');
         setPaymentDialogOpen(false);
         setPaymentFortnightId(undefined);
@@ -282,6 +274,7 @@ export default function WalletDetailPage() {
         setPaymentSubmitting(false);
       }
     },
+    [context, loadData, paymentFortnightId, walletId],
   );
 
   const handleOpenPlanPayment = useCallback(
@@ -471,6 +464,7 @@ export default function WalletDetailPage() {
               className="h-11 flex-1 gap-1.5 rounded-xl"
               onClick={handleOpenExpense}
             >
+              <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
               Gasto
             </Button>
             <Button
@@ -478,6 +472,7 @@ export default function WalletDetailPage() {
               className="h-11 flex-1 gap-1.5 rounded-xl"
               onClick={() => setIncomeOpen(true)}
             >
+              <WalletIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
               Ingreso
             </Button>
           </div>
@@ -505,6 +500,7 @@ export default function WalletDetailPage() {
           title={`Registrar gasto — ${wallet.name}`}
           description="Registra un gasto pagado con esta billetera; asignamos la quincena automáticamente."
           defaults={{ paymentMethodId: walletId, isPaid: true }}
+          onSave={handleCreateExpense}
           error={expenseError}
         />
       )}
@@ -550,6 +546,7 @@ export default function WalletDetailPage() {
           submitting={paymentSubmitting}
           error={paymentError}
           fortnightId={paymentFortnightId}
+          onConfirm={handleCreditPaymentSubmit}
         />
       ) : null}
     </div>
