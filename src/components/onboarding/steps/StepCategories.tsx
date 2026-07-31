@@ -149,7 +149,7 @@ export default function StepCategories() {
               className="text-muted-foreground hover:text-foreground rounded p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
               aria-label={`Eliminar categoría ${category.name}`}
             >
-              <X className="size-4" strokeWidth={2} />
+              <X className="size-4" strokeWidth={2} data-icon="inline-start" />
             </button>
           </motion.li>
         ))}

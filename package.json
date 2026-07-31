@@ -10,13 +10,15 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:isolation": "vitest run --config vitest.isolation.config.ts",
     "backfill:pantry-products": "tsx --tsconfig tsconfig.json scripts/backfill-pantry-products-from-receipts.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
     "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
-    "ci": "npm run validate:dashboard-ui && npm run validate:prisma-imports && prisma generate && npm test && npm run build"
+    "ci": "npm run validate:dashboard-ui && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -36,6 +38,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/nextjs": "^10.67.0",
     "@tanstack/react-table": "^8.21.3",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -68,6 +71,7 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.1.3",
     "prisma": "^7.2.0",

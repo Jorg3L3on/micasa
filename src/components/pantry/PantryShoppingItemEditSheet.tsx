@@ -27,7 +27,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: PantryShoppingCartItemDto | null;
-  onSubmit: (input: EditItemInput) => Promise<void>;
+  onSave: (input: EditItemInput) => Promise<void>;
 };
 
 const toMoneyInput = (n: number | null): string =>
@@ -37,7 +37,7 @@ export function PantryShoppingItemEditSheet({
   open,
   onOpenChange,
   item,
-  onSubmit,
+  onSave,
 }: Props) {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -83,7 +83,7 @@ export function PantryShoppingItemEditSheet({
     try {
       setSaving(true);
       setError(null);
-      await onSubmit({
+      await onSave({
         name: trimmedName,
         quantity: qty,
         unit_label: unitLabel.trim() || null,
@@ -169,7 +169,7 @@ export function PantryShoppingItemEditSheet({
             disabled={saving}
           >
             {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" />
             ) : (
               'Guardar'
             )}

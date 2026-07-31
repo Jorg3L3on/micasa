@@ -41,7 +41,7 @@ export default function AccountProfile({
             size="sm"
             onClick={() => setDialogOpen(true)}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4" data-icon="inline-start" />
             Editar
           </Button>
         </CardHeader>

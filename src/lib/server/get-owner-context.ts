@@ -9,6 +9,8 @@ export type OwnerFilter =
 export type OwnerContextRole = 'owner' | 'admin' | 'member';
 
 export type OwnerContextSuccess = {
+  /** Authenticated session user id (always the caller). */
+  userId: number;
   ownerType: 'user' | 'house';
   ownerId: number;
   ownerFilter: OwnerFilter;
@@ -96,6 +98,7 @@ export async function getOwnerContext(
     const role: OwnerContextRole =
       membership.role.toLowerCase() as OwnerContextRole;
     return {
+      userId,
       ownerType: 'house',
       ownerId,
       ownerFilter: { user_id: null, house_id: ownerId },
@@ -104,8 +107,14 @@ export async function getOwnerContext(
   }
 
   if (Number.isNaN(ownerId)) ownerId = userId;
+  if (ownerId !== userId) {
+    return {
+      error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
+    };
+  }
   const role: OwnerContextRole = 'owner';
   return {
+    userId,
     ownerType: 'user',
     ownerId,
     ownerFilter: { user_id: ownerId, house_id: null },

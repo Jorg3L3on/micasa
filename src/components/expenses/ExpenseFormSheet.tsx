@@ -25,7 +25,7 @@ type ExpenseFormSheetProps = {
   title: string;
   description?: string;
   defaults?: Partial<AddExpenseFormValues>;
-  onSubmit: (values: AddExpenseFormValues) => Promise<void>;
+  onSave: (values: AddExpenseFormValues) => Promise<void>;
   onDelete?: () => Promise<void>;
   error?: string | null;
 };
@@ -50,7 +50,7 @@ export default function ExpenseFormSheet({
   title,
   description,
   defaults,
-  onSubmit,
+  onSave,
   onDelete,
   error,
 }: ExpenseFormSheetProps) {
@@ -60,8 +60,8 @@ export default function ExpenseFormSheet({
     <ExpenseForm
       mode={mode}
       defaults={defaults}
-      onSubmit={async (values) => {
-        await onSubmit(values);
+      onSave={async (values) => {
+        await onSave(values);
       }}
       onCancel={() => onOpenChange(false)}
       onDelete={

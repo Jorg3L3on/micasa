@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
+import {
+  reportApiError,
+  setOwnerSentryContext,
+} from '@/lib/observability/report-error';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 
 export async function GET(request: NextRequest) {
+  const route = 'GET /api/loans/planner';
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
+    setOwnerSentryContext({
+      userId: context.userId,
+      ownerType: context.ownerType,
+      ownerId: context.ownerId,
+    });
 
     const year = Number(request.nextUrl.searchParams.get('year'));
     const month = Number(request.nextUrl.searchParams.get('month'));
@@ -29,6 +39,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(payments, { status: 200 });
   } catch (error) {
     console.error('Error fetching planner loan payments:', error);
+    reportApiError(error, { route, status: 500 });
     return NextResponse.json(
       { error: 'Error al obtener pagos de préstamos' },
       { status: 500 },

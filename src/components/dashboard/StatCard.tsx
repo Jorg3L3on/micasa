@@ -47,7 +47,7 @@ export default function StatCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm',
+        'card-surface flex flex-col gap-3 p-4',
         className,
       )}
     >
@@ -57,7 +57,7 @@ export default function StatCard({
           className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
           style={{ background: iconGradient }}
         >
-          <Icon className="h-4 w-4 text-white" />
+          <Icon className="h-4 w-4 text-white" data-icon="inline-start" />
         </div>
       </div>
       <div className="flex flex-col gap-1">

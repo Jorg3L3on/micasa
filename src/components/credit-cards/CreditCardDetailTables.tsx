@@ -115,9 +115,9 @@ const PurchaseSortButton = ({
     {label}
     {activeKey === sortKey &&
       (dir === 'desc' ? (
-        <ArrowDown className="ml-0.5 h-3 w-3" />
+        <ArrowDown className="ml-0.5 h-3 w-3" data-icon="inline-start" />
       ) : (
-        <ArrowUp className="ml-0.5 h-3 w-3" />
+        <ArrowUp className="ml-0.5 h-3 w-3" data-icon="inline-start" />
       ))}
   </Button>
 );
@@ -146,9 +146,9 @@ const PaymentSortButton = ({
     {label}
     {activeKey === sortKey &&
       (dir === 'desc' ? (
-        <ArrowDown className="ml-0.5 h-3 w-3" />
+        <ArrowDown className="ml-0.5 h-3 w-3" data-icon="inline-start" />
       ) : (
-        <ArrowUp className="ml-0.5 h-3 w-3" />
+        <ArrowUp className="ml-0.5 h-3 w-3" data-icon="inline-start" />
       ))}
   </Button>
 );

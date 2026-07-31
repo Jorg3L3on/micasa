@@ -18,6 +18,7 @@ import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPayment
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
+  isPendingPlannerCardPayment,
 } from '@/components/planner/FortnightCardPaymentsPanel';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
@@ -322,6 +323,11 @@ export default function FortnightColumn({
       router.refresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'No se pudieron actualizar los datos del reporte',
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -352,16 +358,6 @@ export default function FortnightColumn({
           },
           context,
         );
-        if (
-          hadPlan &&
-          data.amount >= targetBeforePay - 0.009
-        ) {
-          await clearFortnightCardPaymentPlan(
-            fortnightId,
-            plannerPaymentCard.walletId,
-            context,
-          );
-        }
         toast.success('Pago registrado');
         setPlannerPaymentDialogOpen(false);
         setPlannerPaymentCard(null);
@@ -757,8 +753,6 @@ export default function FortnightColumn({
 
   const pendingCardPaymentsCount = useMemo(
     () =>
-      cardDueItems.filter(
-        (item) => getPlannerCardPaymentStatus(item) !== 'pagado',
       ).length,
     [cardDueItems],
   );
@@ -820,7 +814,6 @@ export default function FortnightColumn({
             onClick={onShowSummaryCard}
             aria-label={`Mostrar resumen de la quincena: ${label}`}
           >
-            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
             Mostrar resumen
           </Button>
         )}
@@ -949,7 +942,6 @@ export default function FortnightColumn({
                         : undefined
                     }
                   >
-                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                     <span className={cn('hidden sm:inline', compactTabs && 'sm:hidden')}>
                       Agregar gasto
                     </span>
@@ -971,7 +963,6 @@ export default function FortnightColumn({
                         disabled={!fortnightId || fortnightId <= 0}
                         aria-label="Más acciones de esta quincena"
                       >
-                        <MoreVertical className="h-4 w-4" aria-hidden />
                       </Button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
@@ -984,7 +975,6 @@ export default function FortnightColumn({
                     disabled={!fortnightId || fortnightId <= 0}
                     onSelect={() => setPayrollDialogOpen(true)}
                   >
-                    <Banknote className="h-4 w-4 shrink-0" aria-hidden />
                     Recibir quincena
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -1001,10 +991,7 @@ export default function FortnightColumn({
                     {isRefreshing || isRegenerating ? (
                       <Loader2
                         className="h-4 w-4 shrink-0 animate-spin"
-                        aria-hidden
-                      />
                     ) : (
-                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
                     )}
                     Regenerar desde plantillas
                   </DropdownMenuItem>
@@ -1109,7 +1096,6 @@ export default function FortnightColumn({
           if (!open) setEditingIncomeId(null);
           setOverrideError(null);
         }}
-        onSubmit={handleOverrideAmount}
         defaultAmount={
           editingIncomeId != null ? editingIncomeAmount : tenemos
         }
@@ -1124,7 +1110,6 @@ export default function FortnightColumn({
           setAddExpenseDialogOpen(open);
           setAddExpenseError(null);
         }}
-        onSubmit={handleAddExpense}
         fortnightLabel={label}
         fortnightId={fortnightId}
         year={year}
@@ -1153,7 +1138,6 @@ export default function FortnightColumn({
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}
-        onSubmit={handlePlannerCardPaymentSubmit}
       />
     </>
   );

@@ -50,7 +50,7 @@ export type CreditCardPaymentDialogProps = {
   error: string | null;
   /** When paying from planner / Compromisos, pin expense to this fortnight. */
   fortnightId?: number;
-  onSubmit: (data: CreditCardPaymentSubmitPayload) => Promise<void>;
+  onConfirm: (data: CreditCardPaymentSubmitPayload) => Promise<void>;
 };
 
 const CreditCardPaymentDialog = ({
@@ -63,7 +63,7 @@ const CreditCardPaymentDialog = ({
   submitting,
   error,
   fortnightId,
-  onSubmit,
+  onConfirm,
 }: CreditCardPaymentDialogProps) => {
   const [sourceWalletId, setSourceWalletId] = useState('');
   const [amount, setAmount] = useState('');
@@ -122,8 +122,8 @@ const CreditCardPaymentDialog = ({
     setAmount(String(capped));
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitPayment = async () => {
+    if (submitting) return;
     setLocalError(null);
 
     if (createFortnightExpense && !categoryId) {
@@ -151,10 +151,11 @@ const CreditCardPaymentDialog = ({
       }
     }
 
-    await onSubmit(payload);
+    await onConfirm(payload);
   };
 
   const displayError = localError ?? error;
+  const isSubmitting = submitting;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,7 +169,14 @@ const CreditCardPaymentDialog = ({
             que ves en la tarjeta aquí.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitPayment();
+          }}
+          className="space-y-4"
+          aria-busy={isSubmitting}
+        >
           {displayError && (
             <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
               {displayError}
@@ -326,18 +334,20 @@ const CreditCardPaymentDialog = ({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={
-                submitting ||
+                isSubmitting ||
                 !sourceWalletId ||
                 (createFortnightExpense && !categoryId)
               }
+              aria-busy={isSubmitting}
             >
-              {submitting ? 'Guardando...' : 'Registrar pago'}
+              {isSubmitting ? 'Guardando...' : 'Registrar pago'}
             </Button>
           </DialogFooter>
         </form>

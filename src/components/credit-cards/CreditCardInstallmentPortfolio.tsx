@@ -83,7 +83,7 @@ export const CreditCardInstallmentPortfolio = ({
                     />
                   </div>
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                    <CreditCard className="h-4 w-4" aria-hidden />
+                    <CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   </span>
                 </div>
 
@@ -113,7 +113,7 @@ export const CreditCardInstallmentPortfolio = ({
                 </div>
 
                 <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
+                  <CalendarClock className="h-3 w-3 shrink-0" aria-hidden data-icon="inline-start" />
                   Compra del {formatDate(item.purchase.payment_date)} ·{' '}
                   {item.remainingInstallments} cuota
                   {item.remainingInstallments === 1 ? '' : 's'} pendiente

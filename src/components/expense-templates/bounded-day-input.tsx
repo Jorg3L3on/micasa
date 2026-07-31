@@ -35,6 +35,7 @@ type BoundedDayFieldInputProps = {
   className?: string;
   'aria-label': string;
   placeholder?: string;
+  disabled?: boolean;
 };
 
 /**
@@ -51,6 +52,7 @@ export const BoundedDayFieldInput = ({
   className,
   'aria-label': ariaLabel,
   placeholder,
+  disabled,
 }: BoundedDayFieldInputProps) => {
   const [text, setText] = useState(() => (value == null ? '' : String(value)));
 
@@ -91,6 +93,7 @@ export const BoundedDayFieldInput = ({
       value={text}
       onChange={handleChange}
       onBlur={handleBlur}
+      disabled={disabled}
     />
   );
 };

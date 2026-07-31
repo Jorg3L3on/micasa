@@ -37,7 +37,7 @@ export type CartFormSubmit = {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CartFormSubmit) => Promise<void>;
+  onSave: (data: CartFormSubmit) => Promise<void>;
   initialTitle?: string;
   initialNotes?: string | null;
   initialStore?: ShoppingStore | null;
@@ -46,7 +46,7 @@ type Props = {
 export function CreateCartSheet({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   initialTitle,
   initialNotes,
   initialStore,
@@ -75,7 +75,7 @@ export function CreateCartSheet({
     try {
       setSaving(true);
       setError(null);
-      await onSubmit({
+      await onSave({
         title: trimmed,
         notes: notes.trim() || null,
         store,
@@ -158,7 +158,15 @@ export function CreateCartSheet({
             onClick={handleSubmit}
             disabled={saving}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar'}
+            {saving ? (
+              <Loader2
+                className="h-4 w-4 animate-spin"
+                aria-hidden
+                data-icon="inline-start"
+              />
+            ) : (
+              'Guardar'
+            )}
           </Button>
         </SheetFooter>
       </SheetContent>

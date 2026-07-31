@@ -12,6 +12,7 @@ import {
 import { getMonthlyPreferenceScope } from '@/lib/planner/monthly-page';
 
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
+/** Legacy key — period is no longer persisted so opening Panel financiero uses the current quincena. */
 const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
 const SUMMARY_VISIBLE_STORAGE_KEY = 'micasa.planificacion.summaryVisible';
 
@@ -37,6 +38,8 @@ const migrateStoredLayout = (scope: string) => {
     if (raw === 'both') {
       localStorage.setItem(storageKey(LAYOUT_STORAGE_KEY, scope), 'single');
     }
+    // Drop stale period so a previous quincena choice cannot override the calendar default.
+    localStorage.removeItem(storageKey(PERIOD_STORAGE_KEY, scope));
   } catch {
     /* ignore */
   }
@@ -64,6 +67,8 @@ export const MonthlyPanelPreferencesProvider = ({
 
   useEffect(() => {
     migrateStoredLayout(preferenceScope);
+    // Always open on the calendar-suggested quincena (current fortnight for the current month).
+    setPeriodState(suggestedPeriod);
     try {
       const storedPeriod = localStorage.getItem(
         storageKey(PERIOD_STORAGE_KEY, preferenceScope),
@@ -80,19 +85,11 @@ export const MonthlyPanelPreferencesProvider = ({
       /* ignore */
     }
     setPrefsReady(true);
-  }, [preferenceScope]);
+  }, [preferenceScope, suggestedPeriod]);
 
-  const setPeriod = useCallback(
-    (value: FortnightPeriod) => {
-      setPeriodState(value);
-      try {
-        localStorage.setItem(storageKey(PERIOD_STORAGE_KEY, preferenceScope), value);
-      } catch {
-        /* ignore */
-      }
-    },
-    [preferenceScope],
-  );
+  const setPeriod = useCallback((value: FortnightPeriod) => {
+    setPeriodState(value);
+  }, []);
 
   const setSummaryVisible = useCallback(
     (visible: boolean) => {

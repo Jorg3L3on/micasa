@@ -117,9 +117,9 @@ export function PantryShoppingAddBar({
           aria-label="Agregar al carrito"
         >
           {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" />
           ) : (
-            <Plus className="h-5 w-5" />
+            <Plus className="h-5 w-5" data-icon="inline-start" />
           )}
         </Button>
       </div>

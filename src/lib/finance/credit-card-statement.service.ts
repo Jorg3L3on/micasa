@@ -979,10 +979,14 @@ const hasPlannerRelevantCardActivity = (item: {
   outstandingBalance: number;
   nextDuePayment: number;
   paymentsAppliedToStatement: number;
+  paymentsAppliedToFortnight?: number;
+  plannerStatus?: string;
 }) =>
   item.outstandingBalance > 0 ||
   item.nextDuePayment > 0 ||
-  item.paymentsAppliedToStatement > 0;
+  item.paymentsAppliedToStatement > 0 ||
+  (item.paymentsAppliedToFortnight ?? 0) > 0 ||
+  item.plannerStatus === 'pagado';
 
 /**
  * Cards with statement activity and due-day matching `dueDayPredicate`, as of `asOf`.
@@ -1042,7 +1046,6 @@ async function getDuePaymentsWithAsOf(
   const currentCyclePurchaseSums = new Map<number, number>();
   const currentCyclePaymentSums = new Map<number, number>();
   const importedTotalByWallet = new Map<number, number>();
-  const hasAnyImportByWallet = new Map<number, boolean>();
   const hasAlignedImportByWallet = new Map<number, boolean>();
   const projectedInstallmentSums = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
@@ -1097,10 +1100,6 @@ async function getDuePaymentsWithAsOf(
     });
 
     for (const wid of cardIds) {
-      hasAnyImportByWallet.set(
-        wid,
-        allImportsForGroup.some((row) => row.wallet_id === wid),
-      );
       const selectedImport = resolveStatementImportForStatementWindow(
         allImportsForGroup,
         wid,
@@ -1147,11 +1146,11 @@ async function getDuePaymentsWithAsOf(
     const outstandingBalance = Number(card.amount);
     const window = windowByWallet.get(card.id)!;
     const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
-    const hasAnyImport = hasAnyImportByWallet.get(card.id) === true;
-    const hasAlignedImport = hasAlignedImportByWallet.get(card.id) === true;
+    // Current/next fortnights pass allowOutstandingBalanceFallback: true and must
+    // estimate from wallet debt even when imports exist but none align to the cycle.
+    // Historical fortnights pass false so we do not invent dues from today's debt.
     const allowOutstandingBalanceFallback =
-      (options?.allowOutstandingBalanceFallback ?? true) &&
-      (!hasAnyImport || hasAlignedImport);
+      options?.allowOutstandingBalanceFallback ?? true;
 
     const obligation = buildCardStatementObligation({
       walletId: card.id,
@@ -1185,8 +1184,11 @@ async function getDuePaymentsWithAsOf(
     };
   });
 
+  // When includeZeroObligation, keep all due-day rows here. Fortnight payments /
+  // pagado are unknown until applyPlannerLayerToDueItems — filtering early drops
+  // fully paid Liverpool-style rows (debt 0, statement credit 0, fortnight pay > 0).
   if (options?.includeZeroObligation) {
-    return items.filter(hasPlannerRelevantCardActivity);
+    return items;
   }
   return items.filter((item) => item.nextDuePayment > 0);
 }
@@ -1271,7 +1273,10 @@ export async function getDuePaymentsForPlannerMonth(
     applyPlannerLayerToDueItems(second, fortnightSecond?.id, ownerFilter),
   ]);
 
-  return { first, second };
+  return {
+    first: first.filter(hasPlannerRelevantCardActivity),
+    second: second.filter(hasPlannerRelevantCardActivity),
+  };
 }
 
 /** Suma `nextDuePayment` de tarjetas con corte en la quincena (misma lógica que planificación / due-payments). */

@@ -10,6 +10,7 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   BookmarkIcon,
   MoreVertical,
@@ -20,7 +21,6 @@ import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
 } from '@/domain/payment-method';
-import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,17 +76,20 @@ export const WalletListCard = ({
   onOpenBalance,
 }: WalletListCardProps) => {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheme: ProviderCardScheme =
+    resolvedTheme === 'light' ? 'light' : 'dark';
 
   const isCard = isCreditType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
 
   const providerCardStyle = useMemo(
-    () => getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'calm'),
-    [wallet.provider_icon_key, wallet.type],
   );
   const useProviderGradient = Boolean(providerCardStyle);
+  const onDarkSurface =
+    useProviderGradient && isProviderCardDarkSurface('calm', scheme);
 
   const fallbackAccent = isCard
     ? 'neutral'
@@ -97,16 +100,12 @@ export const WalletListCard = ({
         : 'neutral';
 
   const fallbackShellClass = cn(
-    'border backdrop-blur-sm ring-1 ring-inset ring-white/5 transition-all duration-300',
-    'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-linear-to-r before:from-transparent before:via-white/20 before:to-transparent dark:before:via-white/10',
     fallbackAccent === 'blue' &&
       'border-blue-500/30 bg-linear-to-br from-blue-500/14 via-background to-blue-500/4 dark:from-blue-500/25 dark:via-card dark:to-blue-500/8',
     fallbackAccent === 'emerald' &&
       'border-emerald-500/30 bg-linear-to-br from-emerald-500/14 via-background to-emerald-500/4 dark:from-emerald-500/25 dark:via-card dark:to-emerald-500/8',
-    fallbackAccent === 'neutral' && 'border-border/60 bg-card dark:bg-card/80',
     'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
     fallbackAccent === 'blue' && 'hover:border-blue-500/60 hover:shadow-blue-500/15',
-    fallbackAccent === 'emerald' && 'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
     fallbackAccent === 'neutral' && 'hover:border-border',
   );
 
@@ -161,9 +160,6 @@ export const WalletListCard = ({
     isCard && effectiveLimit > 0 && !isOverLimit && usagePercent >= 80;
   const hasAlert = isNegativeBalance || isOverLimit;
 
-  const onGradient = useProviderGradient;
-  const mutedText = onGradient ? 'text-white/55' : 'text-muted-foreground';
-  const softText = onGradient ? 'text-white/80' : 'text-foreground/80';
 
   return (
     <article
@@ -177,23 +173,16 @@ export const WalletListCard = ({
             onClick={handleCardActivate}
             className={cn(
               'group relative flex aspect-[1.585/1] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015]',
-              onGradient
                 ? 'text-white ring-1 ring-inset ring-white/10 hover:shadow-[0_22px_44px_-18px_rgba(8,12,22,0.95)]'
-                : fallbackShellClass,
+                : useProviderGradient
+                  ? 'text-foreground ring-1 ring-inset ring-black/5 hover:shadow-[0_18px_36px_-18px_rgba(15,23,42,0.28)]'
+                  : fallbackShellClass,
               hasAlert && 'ring-1 ring-inset ring-rose-400/55',
             )}
             style={providerCardStyle}
             aria-label={`Abrir ${wallet.name} (doble toque para editar saldo)`}
           >
-            {/* Surface depth + ornamentation */}
-            {onGradient ? (
               <>
-                <span className="pointer-events-none absolute -right-12 -bottom-16 h-44 w-44 rounded-full border border-white/8" />
-                <span className="pointer-events-none absolute -right-4 -bottom-8 h-44 w-44 rounded-full border border-white/5" />
-                <span className="pointer-events-none absolute -left-12 -top-12 h-32 w-32 rounded-full bg-white/8 blur-2xl" />
-                <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent" />
-                {/* Hover light sweep */}
-                <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/14 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100" />
               </>
             ) : null}
 
@@ -211,20 +200,13 @@ export const WalletListCard = ({
                 providerIconKey={wallet.provider_icon_key}
                 className={cn(
                   'h-9 w-9 shrink-0 rounded-xl shadow-sm ring-1',
-                  onGradient
                     ? 'border border-white/25 bg-white/15 ring-white/10'
-                    : 'border border-border/60 bg-card ring-border/60',
                 )}
                 iconClassName="h-5 w-5"
-                showTooltipLabel={false}
-              />
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
                     'truncate text-sm font-semibold leading-tight',
-                    onGradient ? 'text-white' : 'text-foreground',
-                    !wallet.active && !onGradient && 'text-muted-foreground',
-                    !wallet.active && onGradient && 'text-white/60',
                   )}
                 >
                   {wallet.name}
@@ -245,10 +227,8 @@ export const WalletListCard = ({
                   className={cn(
                     'mt-1 truncate font-mono text-2xl font-bold leading-none tabular-nums tracking-tight',
                     hasAlert
-                      ? onGradient
                         ? 'text-rose-300'
                         : 'text-destructive'
-                      : onGradient
                         ? 'text-white'
                         : 'text-foreground',
                   )}
@@ -280,7 +260,6 @@ export const WalletListCard = ({
                       <p
                         className={cn(
                           'mt-1 font-mono text-sm font-semibold tabular-nums',
-                          onGradient ? 'text-white/90' : 'text-foreground',
                         )}
                       >
                         {formatCurrency(effectiveLimit)}
@@ -289,9 +268,13 @@ export const WalletListCard = ({
                         className={cn(
                           'mt-0.5 text-[10px] font-medium tabular-nums',
                           isOverLimit
-                            ? 'text-rose-300'
+                            ? onDarkSurface
+                              ? 'text-rose-300'
+                              : 'text-destructive'
                             : isNearLimit
-                              ? 'text-amber-300'
+                              ? onDarkSurface
+                                ? 'text-amber-300'
+                                : 'text-amber-600'
                               : mutedText,
                         )}
                       >
@@ -306,9 +289,7 @@ export const WalletListCard = ({
                   <span
                     className={cn(
                       'mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold tabular-nums',
-                      onGradient
                         ? 'bg-white/12 text-white/85 ring-1 ring-inset ring-white/10'
-                        : 'bg-muted/50 text-muted-foreground',
                     )}
                   >
                     Paga {wallet.due_day}
@@ -322,7 +303,6 @@ export const WalletListCard = ({
               <div
                 className={cn(
                   'pointer-events-none absolute inset-x-0 bottom-0 z-0 h-1',
-                  onGradient ? 'bg-black/15' : 'bg-muted/40',
                 )}
                 aria-hidden
               >
@@ -333,9 +313,7 @@ export const WalletListCard = ({
                       ? 'bg-rose-400'
                       : isNearLimit
                         ? 'bg-amber-400'
-                        : onGradient
                           ? 'bg-white/80'
-                          : 'bg-linear-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
                   )}
                   style={{ width: `${isOverLimit ? 100 : usagePercent}%` }}
                 />
@@ -348,20 +326,12 @@ export const WalletListCard = ({
         </TooltipContent>
       </Tooltip>
 
-      <div
-        className="absolute right-2 top-2 z-20 flex items-center gap-1"
-        onPointerDown={handleStopOverlayPointer}
-        onClick={handleStopOverlayPointer}
-      >
         {!wallet.active ? (
-          onGradient ? (
             <span className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full border border-white/20 bg-black/25 px-1.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
               Inactivo
             </span>
           ) : (
             <Badge variant="outline" className="h-5 shrink-0 gap-0.5 px-1.5 text-[9px]">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
               Inactivo
             </Badge>
           )
@@ -374,13 +344,15 @@ export const WalletListCard = ({
               size="icon"
               className={cn(
                 'h-7 w-7 shrink-0 rounded-full',
-                onGradient
                   ? 'text-white/75 hover:bg-white/15 hover:text-white'
-                  : '',
+                  : useProviderGradient
+                    ? 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                    : '',
               )}
               aria-label={`Más opciones para ${wallet.name}`}
+              onPointerDown={handleStopOverlayPointer}
+              onClick={handleStopOverlayPointer}
             >
-              <MoreVertical className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
@@ -415,14 +387,12 @@ export const WalletListCard = ({
               onClick={() => onEdit(wallet)}
               className="cursor-pointer"
             >
-              <Pencil className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(wallet)}
               className="cursor-pointer text-destructive focus:text-destructive"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
               Eliminar
             </DropdownMenuItem>
           </DropdownMenuContent>

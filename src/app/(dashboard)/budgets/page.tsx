@@ -127,7 +127,6 @@ function MonthPicker({
         onClick={prev}
         aria-label="Mes anterior"
       >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
       </Button>
       <span className="min-w-32 text-center text-sm font-medium tabular-nums" aria-live="polite">
         {MONTH_NAMES[month - 1]} {year}
@@ -140,7 +139,6 @@ function MonthPicker({
         disabled={isCurrentMonth}
         aria-label="Mes siguiente"
       >
-        <ChevronRight className="h-4 w-4" aria-hidden />
       </Button>
     </div>
   );
@@ -157,7 +155,6 @@ function LoadError({
 }) {
   return (
     <Alert variant="destructive">
-      <AlertCircle className="h-4 w-4" aria-hidden />
       <div className="min-w-0 flex-1">
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription>{message}</AlertDescription>
@@ -265,8 +262,6 @@ function PeriodSummary({
               'h-4 w-4 transition-transform duration-200 ease-out motion-reduce:transition-none',
               expanded && 'rotate-180',
             )}
-            aria-hidden
-          />
         </Button>
       </div>
 
@@ -415,6 +410,7 @@ function ActivePeriodsTab() {
             >
               Detalle
               <ChevronDown
+                data-icon="inline-end"
                 className={cn(
                   'h-3.5 w-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none',
                   expanded && 'rotate-180',
@@ -681,6 +677,7 @@ function HistoryTab() {
                             >
                               Detalle
                               <ChevronDown
+                                data-icon="inline-end"
                                 className={cn(
                                   'h-3.5 w-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none',
                                   expanded && 'rotate-180',

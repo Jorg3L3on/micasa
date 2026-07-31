@@ -62,8 +62,7 @@ export const CreditCardCycleWorkspaceShell = ({
                     'h-3 w-3 transition-transform',
                     snap === 'peek' && 'rotate-180',
                   )}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-end" />
                 {snap === 'peek' ? 'Vista compacta' : snap === 'half' ? 'Medio' : 'Completo'}
               </span>
             </button>

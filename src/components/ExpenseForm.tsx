@@ -214,6 +214,7 @@ export default function ExpenseForm({
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      aria-label="Plantilla activa"
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
@@ -233,7 +234,11 @@ export default function ExpenseForm({
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2
+                      className="mr-2 h-4 w-4 animate-spin"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
                     {mode === 'create' ? 'Creando...' : 'Actualizando...'}
                   </>
                 ) : mode === 'create' ? (

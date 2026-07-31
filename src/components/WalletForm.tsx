@@ -85,7 +85,7 @@ const TYPE_META: Record<WalletFormValues['type'], TypeMeta> = {
 type WalletFormProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: WalletFormValues) => Promise<void>;
+  onSave: (data: WalletFormValues) => Promise<void>;
   defaultValues?: WalletFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
@@ -123,7 +123,7 @@ const buildWalletFormDefaults = (
 export default function WalletForm({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultValues,
   mode,
   error,
@@ -144,7 +144,7 @@ export default function WalletForm({
 
   const handleSubmit = async (data: WalletFormInput) => {
     const parsedData = walletSchema.parse(data);
-    await onSubmit(parsedData);
+    await onSave(parsedData);
     form.reset();
     onOpenChange(false);
   };
@@ -185,7 +185,7 @@ export default function WalletForm({
                 currentMeta.iconBg,
               )}
             >
-              <HeaderIcon className={cn('h-4.5 w-4.5', currentMeta.accent)} />
+              <HeaderIcon className={cn('h-4.5 w-4.5', currentMeta.accent)} data-icon="inline-start" />
             </span>
             <div>
               <DialogTitle className="text-base">
@@ -297,8 +297,7 @@ export default function WalletForm({
                                   )}
                                 >
                                   <Icon
-                                    className={cn('h-3 w-3', meta.accent)}
-                                  />
+                                    className={cn('h-3 w-3', meta.accent)} data-icon="inline-start" />
                                 </span>
                                 {meta.label}
                               </span>
@@ -339,8 +338,7 @@ export default function WalletForm({
                               <WalletProviderIcon
                                 providerIconKey={provider.key}
                                 className="h-5 w-5 rounded-md border-0"
-                                showTooltipLabel={false}
-                              />
+                                showTooltipLabel={false} data-icon="inline-start" />
                               {provider.label}
                             </span>
                           </SelectItem>
@@ -402,7 +400,7 @@ export default function WalletForm({
               <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
                 <div className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
-                    <DollarSign className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+                    <DollarSign className="h-3 w-3 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                   </span>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Datos de crédito
@@ -492,7 +490,7 @@ export default function WalletForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-1.5">
-                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" data-icon="inline-start" />
                           Día de corte
                         </FormLabel>
                         <FormControl>
@@ -527,7 +525,7 @@ export default function WalletForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-1.5">
-                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" data-icon="inline-start" />
                           Día de pago
                         </FormLabel>
                         <FormControl>
@@ -570,7 +568,7 @@ export default function WalletForm({
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                     {mode === 'create' ? 'Creando…' : 'Guardando…'}
                   </>
                 ) : mode === 'create' ? (

@@ -52,8 +52,6 @@ export const FortnightSummaryHero = ({
             <div className="mb-1 flex items-center gap-1.5">
               <Wallet
                 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                aria-hidden
-              />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Efectivo neto en cuentas
               </span>

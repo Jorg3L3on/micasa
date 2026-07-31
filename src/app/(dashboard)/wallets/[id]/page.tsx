@@ -269,16 +269,6 @@ export default function WalletDetailPage() {
           },
           context,
         );
-        if (
-          matchingPlan?.plannedPayment != null &&
-          data.amount >= targetBeforePay - 0.009
-        ) {
-          await clearFortnightCardPaymentPlan(
-            matchingPlan.fortnightId,
-            walletId,
-            context,
-          );
-        }
         toast.success('Pago registrado');
         setPaymentDialogOpen(false);
         setPaymentFortnightId(undefined);
@@ -292,14 +282,6 @@ export default function WalletDetailPage() {
         setPaymentSubmitting(false);
       }
     },
-    [
-      context,
-      loadData,
-      paymentFortnightId,
-      paymentPlanItems,
-      paymentSuggestedOverride,
-      walletId,
-    ],
   );
 
   const handleOpenPlanPayment = useCallback(
@@ -489,7 +471,6 @@ export default function WalletDetailPage() {
               className="h-11 flex-1 gap-1.5 rounded-xl"
               onClick={handleOpenExpense}
             >
-              <Plus className="h-4 w-4" />
               Gasto
             </Button>
             <Button
@@ -497,7 +478,6 @@ export default function WalletDetailPage() {
               className="h-11 flex-1 gap-1.5 rounded-xl"
               onClick={() => setIncomeOpen(true)}
             >
-              <WalletIcon className="h-4 w-4" />
               Ingreso
             </Button>
           </div>
@@ -525,7 +505,6 @@ export default function WalletDetailPage() {
           title={`Registrar gasto — ${wallet.name}`}
           description="Registra un gasto pagado con esta billetera; asignamos la quincena automáticamente."
           defaults={{ paymentMethodId: walletId, isPaid: true }}
-          onSubmit={handleCreateExpense}
           error={expenseError}
         />
       )}
@@ -571,7 +550,6 @@ export default function WalletDetailPage() {
           submitting={paymentSubmitting}
           error={paymentError}
           fortnightId={paymentFortnightId}
-          onSubmit={handleCreditPaymentSubmit}
         />
       ) : null}
     </div>

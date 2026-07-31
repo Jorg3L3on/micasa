@@ -11,9 +11,15 @@ import {
 } from '@/lib/finance/card-statement-obligation';
 import {
   buildCardPlannerObligation,
+  derivePlannerStatus,
+  isPlannerPlanStale,
   toPlannerDuePaymentFields,
 } from '@/lib/finance/card-planner-obligation';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+
+/** Treat non-positive plans as absent (legacy $0 rows must not force pagado). */
+const normalizePlannedGross = (raw: number | null | undefined): number | null =>
+  raw != null && raw > 0 ? raw : null;
 
 const creditPaymentOwnerWhereSql = (ownerFilter: OwnerFilter) => {
   if (ownerFilter.user_id != null) {
@@ -97,8 +103,15 @@ export async function applyPlannerLayerToDueItems(
       item.effectiveAmount = item.nextDuePayment;
       item.visibleDueDate = item.statementDueDate;
       item.targetAmount = item.nextDuePayment;
-      item.plannerStatus =
-        item.nextDuePayment <= 0 ? 'pagado' : 'por_pagar';
+      item.plannerStatus = derivePlannerStatus({
+        remainingPlannerAmount: item.nextDuePayment,
+        paymentsAppliedToFortnight: 0,
+        paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+        targetAmount: item.nextDuePayment,
+        outstandingBalance: item.outstandingBalance,
+        visibleDueDate: item.statementDueDate,
+        todayYmd,
+      });
       item.isStaleFullyCoveredPlan = false;
     }
     return;
@@ -132,7 +145,9 @@ export async function applyPlannerLayerToDueItems(
   );
 
   for (const item of items) {
-    const plannedGross = planByWallet.get(item.walletId) ?? null;
+    const plannedGross = normalizePlannedGross(
+      planByWallet.get(item.walletId),
+    );
     const paymentsAppliedToFortnight =
       fortnightPayments.get(item.walletId) ?? 0;
 
@@ -155,15 +170,15 @@ export async function applyPlannerLayerToDueItems(
       0,
     );
     const visibleDueDate = item.statementDueDate;
-    const plannerStatus =
-      remainingPlannerAmount <= 0 &&
-      (paymentsAppliedToFortnight > 0 ||
-        (targetAmount <= 0 &&
-          (item.paymentsAppliedToStatement > 0 || targetAmount <= 0)))
-        ? 'pagado'
-        : remainingPlannerAmount > 0 && todayYmd > visibleDueDate
-          ? 'vencido'
-          : 'por_pagar';
+    const plannerStatus = derivePlannerStatus({
+      remainingPlannerAmount,
+      paymentsAppliedToFortnight,
+      paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+      targetAmount,
+      outstandingBalance: item.outstandingBalance,
+      visibleDueDate,
+      todayYmd,
+    });
 
     item.plannedPayment = plannedGross;
     item.paymentsAppliedToFortnight = paymentsAppliedToFortnight;
@@ -172,11 +187,11 @@ export async function applyPlannerLayerToDueItems(
     item.visibleDueDate = visibleDueDate;
     item.targetAmount = targetAmount;
     item.plannerStatus = plannerStatus;
-    item.isStaleFullyCoveredPlan =
-      plannedGross != null &&
-      plannedGross > 0 &&
-      remainingPlannerAmount <= 0 &&
-      paymentsAppliedToFortnight > 0;
+    item.isStaleFullyCoveredPlan = isPlannerPlanStale({
+      plannedGrossAmount: plannedGross,
+      remainingPlannerAmount,
+      paymentsAppliedToFortnight,
+    });
   }
 }
 

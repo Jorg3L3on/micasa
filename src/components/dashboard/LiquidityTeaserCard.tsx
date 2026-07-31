@@ -66,7 +66,6 @@ const LiquidityTeaserCard = () => {
     >
       <div className="flex items-start gap-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-          <LineChart className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
         </span>
         <div className="min-w-0 flex-1 space-y-2">
           <div>

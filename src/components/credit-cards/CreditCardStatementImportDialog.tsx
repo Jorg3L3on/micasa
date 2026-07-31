@@ -189,7 +189,7 @@ const CreditCardStatementImportDialog = ({
         <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 px-4 py-3 text-left">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
-              <Upload className="h-4 w-4 text-sky-600 dark:text-sky-400" aria-hidden />
+              <Upload className="h-4 w-4 text-sky-600 dark:text-sky-400" aria-hidden data-icon="inline-start" />
             </span>
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold leading-tight">
@@ -213,7 +213,7 @@ const CreditCardStatementImportDialog = ({
                 onValueChange={(v) => setProvider(v as Provider)}
                 disabled={submitting}
               >
-                <SelectTrigger id="statement-provider" className="h-10 w-full">
+                <SelectTrigger id="statement-provider" className="h-10 w-full" aria-label="Seleccionar opción">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -227,8 +227,14 @@ const CreditCardStatementImportDialog = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Archivo PDF</Label>
+              <Label
+                htmlFor="statement-pdf-file"
+                className="text-xs font-medium"
+              >
+                Archivo PDF
+              </Label>
               <input
+                id="statement-pdf-file"
                 key={fileInputKey}
                 ref={fileInputRef}
                 type="file"
@@ -264,7 +270,7 @@ const CreditCardStatementImportDialog = ({
                       : 'bg-muted text-muted-foreground',
                   )}
                 >
-                  <FileText className="h-4 w-4" aria-hidden />
+                  <FileText className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-foreground">
@@ -291,7 +297,7 @@ const CreditCardStatementImportDialog = ({
                 }
                 disabled={submitting}
               >
-                <SelectTrigger id="statement-category" className="h-10 w-full">
+                <SelectTrigger id="statement-category" className="h-10 w-full" aria-label="Seleccionar opción">
                   <SelectValue placeholder="Predeterminada" />
                 </SelectTrigger>
                 <SelectContent>
@@ -327,8 +333,7 @@ const CreditCardStatementImportDialog = ({
                     'h-4 w-4 shrink-0 transition-transform',
                     optionsOpen && 'rotate-180',
                   )}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-end" />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 pt-1">
@@ -417,7 +422,7 @@ const CreditCardStatementImportDialog = ({
                             onClick={() => onDownloadImport(row.id)}
                             aria-label="Descargar PDF"
                           >
-                            <Download className="h-4 w-4" />
+                            <Download className="h-4 w-4" data-icon="inline-start" />
                           </Button>
                         ) : null}
                         <Button
@@ -428,7 +433,7 @@ const CreditCardStatementImportDialog = ({
                           onClick={() => onRollbackClick(row.id)}
                           aria-label="Revertir importación"
                         >
-                          <Undo2 className="h-4 w-4" />
+                          <Undo2 className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                       </div>
                     </li>

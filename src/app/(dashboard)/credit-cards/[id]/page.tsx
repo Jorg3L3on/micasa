@@ -49,7 +49,6 @@ import {
   rollbackCreditCardStatementImport,
   updateCreditCard,
 } from '@/lib/api/credit-cards';
-import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
@@ -269,12 +268,7 @@ const CreditCardDetailPageContent = () => {
   }, [asOfDate, context.id, creditCardId]);
 
   const handlePaymentSubmit = async (data: CreditCardPaymentSubmitPayload) => {
-    const targetBeforePay =
-      paymentSuggestedOverride ?? paymentDialogSuggestedAmount;
     const activeFortnightId = paymentFortnightId ?? data.fortnight_id;
-    const matchingPlan = activeFortnightId
-      ? paymentPlanItems.find((item) => item.fortnightId === activeFortnightId)
-      : undefined;
     try {
       setPaymentSubmitting(true);
       setPaymentError(null);
@@ -289,17 +283,7 @@ const CreditCardDetailPageContent = () => {
         context,
       );
 
-      if (
-        matchingPlan?.plannedPayment != null &&
-        data.amount >= targetBeforePay - 0.009
-      ) {
-        await clearFortnightCardPaymentPlan(
-          matchingPlan.fortnightId,
-          creditCardId,
-          context,
-        );
-      }
-
+      // Keep the plan after paying so a covered custom plan stays "pagado".
       toast.success('Pago registrado');
       setPaymentDialogOpen(false);
       setPaymentFortnightId(undefined);
@@ -681,7 +665,7 @@ const CreditCardDetailPageContent = () => {
               setPaymentDialogOpen(true);
             }}
           >
-            <Wallet className="mr-2 h-4 w-4" />
+            <Wallet data-icon="inline-start" className="h-4 w-4" aria-hidden />
             Registrar pago
           </Button>
         </div>
@@ -706,7 +690,7 @@ const CreditCardDetailPageContent = () => {
         submitting={paymentSubmitting}
         error={paymentError}
         fortnightId={paymentFortnightId}
-        onSubmit={handlePaymentSubmit}
+        onConfirm={handlePaymentSubmit}
       />
 
       <CreditCardQuickPurchaseDialog
@@ -771,7 +755,7 @@ const CreditCardDetailPageContent = () => {
           setEditCardDialogOpen(open);
           if (!open) setEditCardFormError(null);
         }}
-        onSubmit={handleEditCard}
+        onSave={handleEditCard}
         mode="edit"
         showAmountField={!isCreditOrStoreCardWalletType(card.type)}
         allowedTypes={['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}

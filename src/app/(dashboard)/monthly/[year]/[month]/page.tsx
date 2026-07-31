@@ -92,7 +92,6 @@ export default async function MonthlyPage({
         <div className="rounded-xl border border-destructive/30 bg-card p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
             </span>
             <div className="space-y-1">
               <h2 className="text-lg font-semibold leading-tight">

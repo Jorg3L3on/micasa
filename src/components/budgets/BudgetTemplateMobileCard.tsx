@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LayoutList, Pencil, Repeat2, RotateCcw, Trash2 } from 'lucide-react';
+import { LayoutList, Loader2, Pencil, Repeat2, RotateCcw, Trash2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem } from '@/types/catalog';
 import { BUDGET_FREQUENCY_LABELS, type BudgetFrequency } from '@/schemas/budget.schema';
@@ -13,6 +13,7 @@ type BudgetTemplateMobileCardProps = {
   onAllocations: (template: BudgetListItem) => void;
   onDeactivate: (template: BudgetListItem) => void;
   onReactivate: (template: BudgetListItem) => void;
+  isReactivating?: boolean;
 };
 
 export function BudgetTemplateMobileCard({
@@ -21,6 +22,7 @@ export function BudgetTemplateMobileCard({
   onAllocations,
   onDeactivate,
   onReactivate,
+  isReactivating = false,
 }: BudgetTemplateMobileCardProps) {
   const frequencyLabel =
     BUDGET_FREQUENCY_LABELS[template.frequency as BudgetFrequency] ?? template.frequency;
@@ -55,7 +57,7 @@ export function BudgetTemplateMobileCard({
       <div className="mt-3 flex flex-wrap gap-1.5">
         {template.recurrent ? (
           <Badge variant="outline" className="gap-1 text-[10px]">
-            <Repeat2 className="h-3 w-3" aria-hidden />
+            <Repeat2 className="h-3 w-3" aria-hidden data-icon="inline-start" />
             Recurrente
           </Badge>
         ) : null}
@@ -72,9 +74,15 @@ export function BudgetTemplateMobileCard({
             size="icon"
             className="size-11"
             onClick={() => onReactivate(template)}
+            disabled={isReactivating}
             aria-label={`Reactivar ${template.name}`}
+            aria-busy={isReactivating}
           >
-            <RotateCcw className="h-4 w-4" />
+            {isReactivating ? (
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
+            ) : (
+              <RotateCcw className="h-4 w-4" data-icon="inline-start" />
+            )}
           </Button>
         ) : (
           <>
@@ -85,7 +93,7 @@ export function BudgetTemplateMobileCard({
               onClick={() => onEdit(template)}
               aria-label={`Editar ${template.name}`}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-4 w-4" data-icon="inline-start" />
             </Button>
             <Button
               variant="ghost"
@@ -94,7 +102,7 @@ export function BudgetTemplateMobileCard({
               onClick={() => onAllocations(template)}
               aria-label={`Ver asignaciones de ${template.name}`}
             >
-              <LayoutList className="h-4 w-4" />
+              <LayoutList className="h-4 w-4" data-icon="inline-start" />
             </Button>
             <Button
               variant="ghost"
@@ -103,7 +111,7 @@ export function BudgetTemplateMobileCard({
               onClick={() => onDeactivate(template)}
               aria-label={`Desactivar ${template.name}`}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
             </Button>
           </>
         )}

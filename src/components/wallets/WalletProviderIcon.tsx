@@ -47,7 +47,7 @@ export const WalletProviderIcon = ({
       ) : provider ? (
         <span className={cn('leading-none', iconClassName)}>{provider.shortLabel}</span>
       ) : (
-        <Landmark className={cn('h-3.5 w-3.5', iconClassName)} aria-hidden="true" />
+        <Landmark className={cn('h-3.5 w-3.5', iconClassName)} aria-hidden="true" data-icon="inline-start" />
       )}
     </span>
   );

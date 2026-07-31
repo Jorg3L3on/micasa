@@ -89,11 +89,7 @@ export const PantryProductListRow = ({
           </div>
         </button>
 
-        <div
-          className="flex shrink-0 items-start pt-0.5"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
+        <div className="flex shrink-0 items-start pt-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -103,12 +99,12 @@ export const PantryProductListRow = ({
                 className="h-9 w-9 shrink-0"
                 aria-label={`Más opciones para ${product.name}`}
               >
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                <MoreHorizontal className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onOpenEdit}>
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4" data-icon="inline-start" />
                 Editar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -116,7 +112,7 @@ export const PantryProductListRow = ({
                 className="text-destructive focus:text-destructive"
                 onClick={onOpenDelete}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" data-icon="inline-start" />
                 Eliminar
               </DropdownMenuItem>
             </DropdownMenuContent>

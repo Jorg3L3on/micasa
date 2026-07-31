@@ -30,7 +30,7 @@ import {
 type EditFortnightAmountDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: OverrideAmountFormValues) => Promise<void>
+  onSave: (data: OverrideAmountFormValues) => Promise<void>
   defaultAmount: number
   fortnightLabel: string
   error?: string | null
@@ -39,7 +39,7 @@ type EditFortnightAmountDialogProps = {
 export default function EditFortnightAmountDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultAmount,
   fortnightLabel,
   error,
@@ -61,10 +61,11 @@ export default function EditFortnightAmountDialog({
 
   const handleSubmit = async (data: OverrideAmountFormValues) => {
     try {
-      await onSubmit(data)
-      onOpenChange(false)
+      await onSave(data)
     } catch {
-      // Error handling is done in the parent component
+      // Parent shows toast; close either way after the attempt.
+    } finally {
+      onOpenChange(false)
     }
   }
 

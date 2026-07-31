@@ -213,8 +213,16 @@ export default function EditAccountDialog({
                 type="button"
                 variant="outline"
                 onClick={() => handleOpenChange(false)}
+                disabled={form.formState.isSubmitting}
               >
                 Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                aria-busy={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
               </Button>
               <Button type="submit">Guardar</Button>
             </DialogFooter>

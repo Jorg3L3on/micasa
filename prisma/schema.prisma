@@ -112,6 +112,8 @@ model User {
   password             String
   active               Boolean @default(true)
   onboarding_completed Boolean @default(false)
+  /// Platform admin (MiCasa support). Distinct from HouseRole.ADMIN.
+  is_admin             Boolean @default(false)
 
   created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
@@ -142,10 +144,33 @@ model User {
   pantry_shopping_activities    PantryShoppingCartActivity[] @relation("PantryShoppingCartActivityUser")
   wallets_assigned              Wallet[]                     @relation("WalletAssignee")
 
+  admin_audit_logs_as_actor  AdminAuditLog[] @relation("AdminAuditActor")
+  admin_audit_logs_as_target AdminAuditLog[] @relation("AdminAuditTarget")
+
   // Shared
   memberships HouseMember[]
   ownedHouses House[]
   transfers   Transfer[]
+}
+
+/**
+ * Append-only audit trail for platform-admin mutations (e.g. password override).
+ * Never store plaintext secrets in metadata.
+ */
+model AdminAuditLog {
+  id             Int      @id @default(autoincrement())
+  actor_user_id  Int
+  target_user_id Int?
+  action         String
+  metadata       Json?
+  created_at     DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  actor  User  @relation("AdminAuditActor", fields: [actor_user_id], references: [id])
+  target User? @relation("AdminAuditTarget", fields: [target_user_id], references: [id])
+
+  @@index([actor_user_id, created_at])
+  @@index([target_user_id, created_at])
+  @@index([action, created_at])
 }
 
 model Fortnight {

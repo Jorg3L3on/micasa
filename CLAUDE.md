@@ -9,7 +9,7 @@ npm run dev          # Start development server
 npm run build        # Production build
 npm run lint         # Run ESLint
 npm test             # Run Vitest tests (src/**/*.test.ts)
-npm run ci           # Full CI: validate dashboard UI + prisma generate + test + build
+npm run ci           # Full CI: validators + prisma generate + coverage tests + build
 
 # Database
 npx prisma generate  # Regenerate Prisma client (outputs to src/generated/prisma)
@@ -183,6 +183,7 @@ NextAuth is configured in `src/lib/auth.ts`. Session includes `userId`. Protecte
 DATABASE_URL    # PostgreSQL / Neon connection string (required)
 NEXTAUTH_SECRET # JWT signing secret (required)
 NEXTAUTH_URL    # App base URL, e.g. http://localhost:3000
+MICASA_ADMIN_EMAILS # Optional comma-separated emails for /admin (plus User.is_admin)
 ```
 
 ## Agent skills

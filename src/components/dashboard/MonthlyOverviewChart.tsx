@@ -74,16 +74,16 @@ export default function MonthlyOverviewChart() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm animate-pulse h-[320px]">
-        <div className="h-5 w-40 bg-muted/40 rounded mb-2" />
-        <div className="h-4 w-24 bg-muted/30 rounded mb-4" />
-        <div className="h-52 bg-muted/20 rounded-lg" />
+      <div className="card-surface h-[320px] animate-pulse p-5">
+        <div className="mb-2 h-5 w-40 rounded bg-muted/40" />
+        <div className="mb-4 h-4 w-24 rounded bg-muted/30" />
+        <div className="h-52 rounded-lg bg-muted/20" />
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="card-surface p-5">
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h3 className="text-base font-semibold text-foreground">Resumen anual</h3>

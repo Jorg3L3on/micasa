@@ -554,8 +554,7 @@ function SidebarMenuButton({
           "min-h-11 h-auto py-2.5",
         className
       )}
-      {...props}
-    />
+      {...props} data-icon="inline-start" />
   )
 
   if (!tooltip) {

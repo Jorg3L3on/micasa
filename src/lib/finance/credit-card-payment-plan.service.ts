@@ -158,7 +158,9 @@ export async function getCreditCardPaymentPlanViews(
   ]);
 
   const planByFortnight = new Map(
-    plans.map((plan) => [plan.fortnight_id, Number(plan.planned_amount)]),
+    plans
+      .map((plan) => [plan.fortnight_id, Number(plan.planned_amount)] as const)
+      .filter(([, amount]) => amount > 0),
   );
   const paymentsByFortnight = new Map(
     fortnightPayments.map((row) => [row.fortnightId, row.total]),
@@ -288,6 +290,13 @@ export async function upsertCreditCardPaymentPlan(
   }
 
   const outstandingBalance = Number(wallet.amount);
+  if (plannedAmount <= 0) {
+    const error = new Error(
+      'El monto planeado debe ser mayor a 0. Usa «Usar sugerido» para quitar el plan.',
+    );
+    (error as { code?: string }).code = 'AMOUNT_INVALID';
+    throw error;
+  }
   if (plannedAmount > outstandingBalance) {
     const error = new Error(
       'El monto planeado no puede superar la deuda actual de la tarjeta',

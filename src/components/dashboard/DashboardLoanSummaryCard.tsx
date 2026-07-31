@@ -37,7 +37,6 @@ export default function DashboardLoanSummaryCard({
 
   return (
     <section
-      className="flex min-h-[320px] flex-col rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5"
       aria-label="Préstamos del periodo"
     >
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -45,8 +44,6 @@ export default function DashboardLoanSummaryCard({
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
             <HandCoins
               className="h-4 w-4 text-amber-600 dark:text-amber-400"
-              aria-hidden
-            />
           </span>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">
@@ -101,8 +98,6 @@ export default function DashboardLoanSummaryCard({
               <div className="flex items-center gap-1.5">
                 <Landmark
                   className="h-3 w-3 text-violet-600 dark:text-violet-400"
-                  aria-hidden
-                />
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Deducción nómina
                 </p>
@@ -167,7 +162,6 @@ export default function DashboardLoanSummaryCard({
                           href={buildLoanHref(ownerQueryString, obligation.loanId)}
                           aria-label={`Ver ${obligation.loanName ?? obligation.description}`}
                         >
-                          <ArrowRight className="h-4 w-4" aria-hidden />
                         </Link>
                       </Button>
                     </div>
