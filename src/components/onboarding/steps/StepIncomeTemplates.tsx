@@ -164,7 +164,7 @@ export default function StepIncomeTemplates() {
                   aria-label={`Eliminar ingreso ${income.name || `número ${index + 1}`}`}
                   className="text-muted-foreground hover:text-destructive -mt-1 shrink-0"
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" data-icon="inline-start" />
                 </Button>
               </div>
 
@@ -271,7 +271,7 @@ export default function StepIncomeTemplates() {
                       id={`income-wallet-${income.id}`}
                       className="w-full"
                       size="default"
-                    >
+                     aria-label="Seleccionar opción">
                       <SelectValue placeholder="Elige una billetera" />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,7 +307,7 @@ export default function StepIncomeTemplates() {
                       id={`income-frequency-${income.id}`}
                       className="w-full sm:max-w-md"
                       size="default"
-                    >
+                     aria-label="Seleccionar opción">
                       <SelectValue placeholder="Frecuencia" />
                     </SelectTrigger>
                     <SelectContent>

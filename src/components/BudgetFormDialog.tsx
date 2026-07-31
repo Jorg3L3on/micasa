@@ -60,8 +60,10 @@ import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (step1: Step1Values, step2: Step2Values) => Promise<void>;
+  onCreate: (step1: Step1Values, step2: Step2Values) => Promise<void>;
   error?: string | null;
+  isPending?: boolean;
+  disabled?: boolean;
 };
 
 function AllocationSummary({
@@ -120,8 +122,10 @@ function AllocationSummary({
 export default function BudgetFormDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onCreate,
   error,
+  isPending = false,
+  disabled = false,
 }: Props) {
   const { context } = useFinanceContext();
   const [step, setStep] = useState<1 | 2>(1);
@@ -234,7 +238,7 @@ export default function BudgetFormDialog({
       });
       return;
     }
-    await onSubmit(step1Data, data);
+    await onCreate(step1Data, data);
     handleClose();
   });
 
@@ -286,8 +290,8 @@ export default function BudgetFormDialog({
         </div>
 
         {error ? (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden />
+          <Alert variant="destructive" role="alert" aria-live="assertive">
+            <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -336,7 +340,10 @@ export default function BudgetFormDialog({
                     <FormLabel>Frecuencia</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label="Frecuencia del presupuesto"
+                        >
                           <SelectValue placeholder="Selecciona frecuencia" />
                         </SelectTrigger>
                       </FormControl>
@@ -363,6 +370,7 @@ export default function BudgetFormDialog({
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          aria-label="Presupuesto recurrente"
                         />
                       </FormControl>
                       <FormLabel className="cursor-pointer font-normal">
@@ -427,7 +435,7 @@ export default function BudgetFormDialog({
                   className="h-11 bg-white sm:h-9 dark:bg-card"
                 >
                   Siguiente
-                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden data-icon="inline-end" />
                 </Button>
               </DialogFooter>
             </form>
@@ -451,7 +459,7 @@ export default function BudgetFormDialog({
 
               {form2.formState.errors.root ? (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" aria-hidden />
+                  <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   <AlertDescription>
                     {form2.formState.errors.root.message}
                   </AlertDescription>
@@ -467,7 +475,7 @@ export default function BudgetFormDialog({
                   </div>
                 ) : optionsError ? (
                   <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" aria-hidden />
+                    <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
                     <div className="min-w-0 flex-1">
                       <AlertDescription>{optionsError}</AlertDescription>
                       <Button
@@ -566,8 +574,7 @@ export default function BudgetFormDialog({
                                 onChange={f.onChange}
                                 className="h-11 text-sm sm:h-8 sm:text-xs"
                                 placeholder="0"
-                                aria-label={`Monto de la asignación ${index + 1}`}
-                              />
+                                aria-label={`Monto de la asignación ${index + 1}`} data-icon="inline-start" />
                             </FormControl>
                             <FormMessage className="text-[10px]" />
                           </FormItem>
@@ -584,7 +591,7 @@ export default function BudgetFormDialog({
                           disabled={fields.length === 1}
                           aria-label="Eliminar asignación"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                       </div>
                     </div>
@@ -600,7 +607,7 @@ export default function BudgetFormDialog({
                 onClick={handleAppend}
                 disabled={loadingOptions || Boolean(optionsError)}
               >
-                <Plus className="mr-1 h-4 w-4" aria-hidden />
+                <Plus className="mr-1 h-4 w-4" aria-hidden data-icon="inline-start" />
                 Agregar asignación
               </Button>
 
@@ -611,7 +618,7 @@ export default function BudgetFormDialog({
                   className="h-11 sm:h-9"
                   onClick={() => setStep(1)}
                 >
-                  <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
+                  <ChevronLeft className="mr-1 h-4 w-4" aria-hidden data-icon="inline-start" />
                   Anterior
                 </Button>
                 <Button
@@ -621,13 +628,15 @@ export default function BudgetFormDialog({
                   disabled={
                     !isFullyAllocated ||
                     form2.formState.isSubmitting ||
+                    isPending ||
+                    disabled ||
                     loadingOptions ||
                     Boolean(optionsError)
                   }
                 >
-                  {form2.formState.isSubmitting ? (
+                  {form2.formState.isSubmitting || isPending || disabled ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                       Creando…
                     </>
                   ) : (

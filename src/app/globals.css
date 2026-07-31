@@ -10,8 +10,8 @@
 
 :root {
   --radius: 0.75rem;
-  /* Light mode – soft canvas like reference dashboards */
-  --background: oklch(0.9875 0.0026 106.45);
+  /* Light mode – cooler grey canvas so white cards lift clearly */
+  --background: oklch(0.94 0.007 265);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -19,30 +19,34 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.585 0.233 264);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.94 0.008 265);
+  --secondary: oklch(0.93 0.008 265);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.94 0.008 265);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.93 0.02 265);
+  --muted: oklch(0.92 0.008 265);
+  --muted-foreground: oklch(0.4 0.01 265);
+  --accent: oklch(0.92 0.02 265);
   --accent-foreground: oklch(0.585 0.233 264);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.89 0.008 265);
-  --input: oklch(0.89 0.008 265);
+  --border: oklch(0.8 0.012 265);
+  --input: oklch(0.8 0.012 265);
   --ring: oklch(0.585 0.233 264);
   --chart-1: oklch(0.585 0.233 264);
   --chart-2: oklch(0.65 0.18 25);
   --chart-3: oklch(0.68 0.16 145);
   --chart-4: oklch(0.7 0.15 290);
   --chart-5: oklch(0.72 0.12 55);
-  --sidebar: oklch(0.9875 0.0026 106.45);
+  --sidebar: oklch(0.97 0.005 265);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.585 0.233 264);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.93 0.02 265);
   --sidebar-accent-foreground: oklch(0.585 0.233 264);
-  --sidebar-border: oklch(0.89 0.008 265);
+  --sidebar-border: oklch(0.84 0.01 265);
   --sidebar-ring: oklch(0.585 0.233 264);
+  /* Soft elevation for white cards on the light canvas */
+  --shadow-card:
+    0 1px 2px rgb(15 23 42 / 0.06),
+    0 10px 28px -12px rgb(15 23 42 / 0.18);
 }
 
 .dark {
@@ -79,6 +83,7 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.18 0.01 265);
   --sidebar-ring: oklch(0.585 0.233 264);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
 }
 
 @theme inline {
@@ -127,6 +132,12 @@
    ========================================================================== */
 
 @layer components {
+  /* Elevated panel shell: stronger separation in light, calm in dark */
+  .card-surface {
+    @apply rounded-xl border border-border/80 bg-card dark:border-border/60;
+    box-shadow: var(--shadow-card);
+  }
+
   /* Glass card: premium layered feel on dark background */
   .card-glass {
     @apply border border-border/50 backdrop-blur-xl bg-card/60!;
@@ -194,4 +205,35 @@
   --rdp-accent-color: oklch(0.68 0.18 264);
   --rdp-accent-background-color: oklch(0.22 0.04 264);
   --rdp-today-color: oklch(0.72 0.16 264);
+}
+
+/* Login redesign — aurora + fortnight pulse motion */
+@keyframes login-aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-2%, 3%) scale(1.06);
+  }
+}
+
+@keyframes login-pulse-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes login-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }

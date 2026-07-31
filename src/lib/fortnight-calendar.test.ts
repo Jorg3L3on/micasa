@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   compareCalendarFortnight,
   getCurrentCalendarFortnightRef,
+  getCurrentMonthlyPanelHref,
   getNextCalendarFortnight,
   getFortnightPeriodForDay,
   getSuggestedFortnightPeriodForMonth,
@@ -88,6 +89,22 @@ describe('getSuggestedFortnightPeriodForMonth', () => {
 
   it('defaults current month to active period', () => {
     expect(getSuggestedFortnightPeriodForMonth(2026, 6, asOf)).toBe('FIRST');
+  });
+});
+
+describe('getCurrentMonthlyPanelHref', () => {
+  const mxNoon = (ymd: string) => new Date(`${ymd}T18:00:00.000Z`);
+
+  it('links to the Mexico City calendar month', () => {
+    expect(getCurrentMonthlyPanelHref(mxNoon('2026-07-24'))).toBe(
+      '/monthly/2026/07',
+    );
+  });
+
+  it('zero-pads single-digit months', () => {
+    expect(getCurrentMonthlyPanelHref(mxNoon('2026-01-05'))).toBe(
+      '/monthly/2026/01',
+    );
   });
 });
 

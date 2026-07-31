@@ -30,7 +30,7 @@ import {
 type EditCardPaymentPlanDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CardPaymentPlanFormValues) => Promise<void>;
+  onSave: (data: CardPaymentPlanFormValues) => Promise<void>;
   onClearPlan?: () => Promise<void>;
   walletName: string;
   fortnightLabel: string;
@@ -44,7 +44,7 @@ type EditCardPaymentPlanDialogProps = {
 export const EditCardPaymentPlanDialog = ({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   onClearPlan,
   walletName,
   fortnightLabel,
@@ -69,10 +69,10 @@ export const EditCardPaymentPlanDialog = ({
 
   const handleSubmit = async (data: CardPaymentPlanFormValues) => {
     try {
-      await onSubmit(data);
+      await onSave(data);
       onOpenChange(false);
     } catch {
-      // Parent handles error toast/state
+      // Parent sets error; keep dialog open so the user can fix it.
     }
   };
 
@@ -82,7 +82,7 @@ export const EditCardPaymentPlanDialog = ({
       await onClearPlan();
       onOpenChange(false);
     } catch {
-      // Parent handles error toast/state
+      // Parent sets error; keep dialog open so the user can retry.
     }
   };
 
@@ -100,7 +100,8 @@ export const EditCardPaymentPlanDialog = ({
           <DialogTitle>Pago planeado — {walletName}</DialogTitle>
           <DialogDescription>
             Cuánto planeas pagar en {fortnightLabel}. No cambia la deuda total de
-            la tarjeta.
+            la tarjeta. Para volver al sugerido usa «Usar sugerido» (no guardes
+            $0).
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -120,9 +121,9 @@ export const EditCardPaymentPlanDialog = ({
                     <Input
                       type="number"
                       step="0.01"
-                      min="0"
+                      min="0.01"
                       max={outstandingBalance > 0 ? outstandingBalance : undefined}
-                      placeholder="0.00"
+                      placeholder="0.01"
                       {...field}
                       value={
                         typeof field.value === 'number' && !Number.isNaN(field.value)

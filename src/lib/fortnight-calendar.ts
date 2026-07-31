@@ -116,3 +116,12 @@ export function getSuggestedFortnightPeriodForMonth(
   }
   return getFortnightPeriodForDay(d);
 }
+
+/**
+ * Sidebar / deep-link to Panel financiero for the current Mexico City month.
+ * Fortnight tab is chosen client-side via `getSuggestedFortnightPeriodForMonth`.
+ */
+export function getCurrentMonthlyPanelHref(asOf: Date = new Date()): string {
+  const { year, month } = getCurrentCalendarFortnightRef(asOf);
+  return `/monthly/${year}/${String(month).padStart(2, '0')}`;
+}

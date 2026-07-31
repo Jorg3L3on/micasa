@@ -3,6 +3,7 @@ export const getEffectiveCardPaymentAmount = (item: {
   effectiveAmount?: number;
   nextDuePayment: number;
   plannedPayment?: number | null;
+  paymentsAppliedToFortnight?: number;
   paymentsAppliedToStatement?: number;
 }): number => {
   if (item.remainingPlannerAmount != null) {
@@ -11,7 +12,13 @@ export const getEffectiveCardPaymentAmount = (item: {
   if (item.effectiveAmount != null) {
     return item.effectiveAmount;
   }
-  return item.plannedPayment != null
-    ? Math.max(item.plannedPayment - (item.paymentsAppliedToStatement ?? 0), 0)
-    : item.nextDuePayment;
+  // Legacy fallback: treat non-positive plans as absent.
+  if (item.plannedPayment != null && item.plannedPayment > 0) {
+    const paid =
+      item.paymentsAppliedToFortnight ??
+      item.paymentsAppliedToStatement ??
+      0;
+    return Math.max(item.plannedPayment - paid, 0);
+  }
+  return item.nextDuePayment;
 };

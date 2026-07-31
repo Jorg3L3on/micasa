@@ -43,7 +43,7 @@ import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 type DashboardQuickExpenseDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: AddExpenseFormValues) => Promise<void>;
+  onSave: (data: AddExpenseFormValues) => Promise<void>;
   fortnight: {
     id: number;
     label: string;
@@ -81,7 +81,7 @@ function getDefaultDateWithinFortnight(
 export default function DashboardQuickExpenseDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   fortnight,
 }: DashboardQuickExpenseDialogProps) {
   const { context } = useFinanceContext();
@@ -215,7 +215,7 @@ export default function DashboardQuickExpenseDialog({
   const handleSubmit = async (values: AddExpenseFormValues) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(values);
+      await onSave(values);
       form.reset();
       onOpenChange(false);
     } finally {
@@ -407,6 +407,11 @@ export default function DashboardQuickExpenseDialog({
                       checked={field.value}
                       onCheckedChange={field.onChange}
                       disabled={isCreditCardPaymentMethod}
+                      aria-label={
+                        isCreditCardPaymentMethod
+                          ? 'Pagado al usar la tarjeta'
+                          : 'Pagado'
+                      }
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
@@ -433,6 +438,7 @@ export default function DashboardQuickExpenseDialog({
                           form.setValue('applyToBothFortnights', false);
                         }
                       }}
+                      aria-label="Es recurrente"
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
@@ -451,6 +457,7 @@ export default function DashboardQuickExpenseDialog({
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        aria-label="Aplicar a ambas quincenas"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">

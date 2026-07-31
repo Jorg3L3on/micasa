@@ -32,7 +32,7 @@ import {
 type CategoryFormProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CategoryFormValues) => Promise<void>;
+  onSave: (data: CategoryFormValues) => Promise<void>;
   defaultValues?: CategoryFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
@@ -41,7 +41,7 @@ type CategoryFormProps = {
 export default function CategoryForm({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultValues,
   mode,
   error,
@@ -78,7 +78,7 @@ export default function CategoryForm({
 
   const handleSubmit = async (data: CategoryFormValues) => {
     try {
-      await onSubmit(data);
+      await onSave(data);
       form.reset();
       onOpenChange(false);
     } catch (submitError) {
@@ -182,7 +182,7 @@ export default function CategoryForm({
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                     {mode === 'create' ? 'Creando...' : 'Actualizando...'}
                   </>
                 ) : mode === 'create' ? (

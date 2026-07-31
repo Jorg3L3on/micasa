@@ -18,7 +18,7 @@ const EmptyState = ({ message, description, action }: EmptyStateProps) => {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
       <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60">
-        <Inbox className="h-6 w-6 text-muted-foreground/60" />
+        <Inbox className="h-6 w-6 text-muted-foreground/60" data-icon="inline-start" />
       </span>
       <p className="text-center text-sm font-medium text-foreground">{message}</p>
       {description ? (

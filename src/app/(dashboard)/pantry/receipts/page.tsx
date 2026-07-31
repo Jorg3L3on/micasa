@@ -407,7 +407,7 @@ export default function PantryReceiptsPage() {
           className="hidden h-9 rounded-xl sm:inline-flex"
           onClick={() => void handleOpenUpload()}
         >
-          <FileUp className="h-4 w-4" />
+          <FileUp className="h-4 w-4" aria-hidden data-icon="inline-start" />
           Importar archivo
         </Button>
       </div>
@@ -443,7 +443,7 @@ export default function PantryReceiptsPage() {
       >
         <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+            <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
           </span>
           <div className="flex flex-1 flex-col gap-0.5">
             <CardTitle className="text-sm font-semibold leading-none">
@@ -463,7 +463,7 @@ export default function PantryReceiptsPage() {
           )}
           {loadingList ? (
             <div className="flex justify-center py-12 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <Loader2 className="h-8 w-8 animate-spin" data-icon="inline-start" />
             </div>
           ) : receipts.length === 0 ? (
             <EmptyState
@@ -525,7 +525,7 @@ export default function PantryReceiptsPage() {
                               }
                               aria-label="Página anterior"
                             >
-                              <ChevronLeft className="h-4 w-4" />
+                              <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>Página anterior</TooltipContent>
@@ -546,7 +546,7 @@ export default function PantryReceiptsPage() {
                               }
                               aria-label="Página siguiente"
                             >
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className="h-4 w-4" data-icon="inline-end" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>Página siguiente</TooltipContent>
@@ -568,7 +568,7 @@ export default function PantryReceiptsPage() {
         className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden"
         onClick={() => void handleOpenUpload()}
       >
-        <FileUp className="h-6 w-6" />
+          <FileUp className="h-6 w-6" aria-hidden data-icon="inline-start" />
       </Button>
 
       <Dialog
@@ -632,14 +632,18 @@ export default function PantryReceiptsPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Tienda (opcional)</Label>
+              <Label htmlFor="receipt-store-modal">Tienda (opcional)</Label>
               <Select
                 value={uploadStore ?? '__NONE__'}
                 onValueChange={(value) =>
                   setUploadStore(value === '__NONE__' ? null : (value as ShoppingStore))
                 }
               >
-                <SelectTrigger className="h-11 w-full min-h-11 sm:h-9 sm:min-h-9">
+                <SelectTrigger
+                  id="receipt-store-modal"
+                  aria-label="Tienda del recibo"
+                  className="h-11 w-full min-h-11 sm:h-9 sm:min-h-9"
+                >
                   <SelectValue placeholder="Sin tienda" />
                 </SelectTrigger>
                 <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
@@ -670,14 +674,18 @@ export default function PantryReceiptsPage() {
               {linkCartOnImport && (
                 <div className="grid gap-3">
                   <div className="space-y-1.5">
-                    <Label>Acción de carrito</Label>
+                    <Label htmlFor="cart-link-mode">Acción de carrito</Label>
                     <Select
                       value={cartLinkMode}
                       onValueChange={(value) =>
                         setCartLinkMode(value as 'existing' | 'new')
                       }
                     >
-                      <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
+                      <SelectTrigger
+                        id="cart-link-mode"
+                        aria-label="Acción de carrito"
+                        className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9"
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper" className="max-h-[min(50dvh,280px)]">
@@ -692,7 +700,7 @@ export default function PantryReceiptsPage() {
                   </div>
                   {cartLinkMode === 'existing' ? (
                     <div className="space-y-1.5">
-                      <Label>Carrito en curso *</Label>
+                      <Label htmlFor="cart-in-progress">Carrito en curso *</Label>
                       <Select
                         value={selectedCartId != null ? String(selectedCartId) : '__NONE__'}
                         onValueChange={(value) =>
@@ -700,7 +708,11 @@ export default function PantryReceiptsPage() {
                         }
                         disabled={cartsLoading}
                       >
-                        <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
+                        <SelectTrigger
+                          id="cart-in-progress"
+                          aria-label="Carrito en curso"
+                          className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9"
+                        >
                           <SelectValue
                             placeholder={cartsLoading ? 'Cargando...' : 'Selecciona un carrito'}
                           />
@@ -754,7 +766,7 @@ export default function PantryReceiptsPage() {
               {registerExpenseOnImport && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5 sm:col-span-2">
-                    <Label>Categoría *</Label>
+                    <Label htmlFor="receipt-expense-category">Categoría *</Label>
                     <Select
                       value={expenseCategoryId != null ? String(expenseCategoryId) : '__NONE__'}
                       onValueChange={(value) =>
@@ -764,7 +776,11 @@ export default function PantryReceiptsPage() {
                       }
                       disabled={expenseCatalogLoading}
                     >
-                      <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
+                      <SelectTrigger
+                        id="receipt-expense-category"
+                        aria-label="Categoría del gasto"
+                        className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9"
+                      >
                         <SelectValue
                           placeholder={
                             expenseCatalogLoading ? 'Cargando…' : 'Selecciona categoría'
@@ -782,7 +798,7 @@ export default function PantryReceiptsPage() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Cartera *</Label>
+                    <Label htmlFor="receipt-expense-wallet">Cartera *</Label>
                     <Select
                       value={expenseWalletId != null ? String(expenseWalletId) : '__NONE__'}
                       onValueChange={(value) =>
@@ -792,7 +808,11 @@ export default function PantryReceiptsPage() {
                       }
                       disabled={expenseCatalogLoading}
                     >
-                      <SelectTrigger className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9">
+                      <SelectTrigger
+                        id="receipt-expense-wallet"
+                        aria-label="Cartera del gasto"
+                        className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9"
+                      >
                         <SelectValue
                           placeholder={
                             expenseCatalogLoading ? 'Cargando…' : 'Selecciona cartera'
@@ -864,7 +884,7 @@ export default function PantryReceiptsPage() {
               onClick={() => void handleUploadSubmit()}
               disabled={uploading}
             >
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Importar'}
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" /> : 'Importar'}
             </Button>
           </DialogFooter>
         </DialogContent>

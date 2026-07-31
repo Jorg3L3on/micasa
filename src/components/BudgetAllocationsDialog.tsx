@@ -43,8 +43,9 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   budget: BudgetListItem;
-  onSubmit: (allocations: Step2Values['allocations']) => Promise<void>;
+  onSave: (allocations: Step2Values['allocations']) => Promise<void>;
   error?: string | null;
+  disabled?: boolean;
 };
 
 function AllocationSummary({
@@ -104,8 +105,9 @@ export default function BudgetAllocationsDialog({
   open,
   onOpenChange,
   budget,
-  onSubmit,
+  onSave,
   error,
+  disabled = false,
 }: Props) {
   const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
@@ -190,7 +192,7 @@ export default function BudgetAllocationsDialog({
       });
       return;
     }
-    await onSubmit(data.allocations);
+    await onSave(data.allocations);
     onOpenChange(false);
   });
 
@@ -215,7 +217,7 @@ export default function BudgetAllocationsDialog({
 
         {error ? (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden />
+            <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -235,7 +237,7 @@ export default function BudgetAllocationsDialog({
 
             {form.formState.errors.root ? (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" aria-hidden />
+                <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 <AlertDescription>
                   {form.formState.errors.root.message}
                 </AlertDescription>
@@ -251,7 +253,7 @@ export default function BudgetAllocationsDialog({
                 </div>
               ) : optionsError ? (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" aria-hidden />
+                  <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   <div className="min-w-0 flex-1">
                     <AlertDescription>{optionsError}</AlertDescription>
                     <Button
@@ -350,8 +352,7 @@ export default function BudgetAllocationsDialog({
                               onChange={f.onChange}
                               className="h-11 text-sm sm:h-8 sm:text-xs"
                               placeholder="0"
-                              aria-label={`Monto de la asignación ${index + 1}`}
-                            />
+                              aria-label={`Monto de la asignación ${index + 1}`} data-icon="inline-start" />
                           </FormControl>
                           <FormMessage className="text-[10px]" />
                         </FormItem>
@@ -368,7 +369,7 @@ export default function BudgetAllocationsDialog({
                         disabled={fields.length === 1}
                         aria-label="Eliminar asignación"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" data-icon="inline-start" />
                       </Button>
                     </div>
                   </div>
@@ -384,7 +385,7 @@ export default function BudgetAllocationsDialog({
               onClick={handleAppend}
               disabled={loadingOptions || Boolean(optionsError)}
             >
-              <Plus className="mr-1 h-4 w-4" aria-hidden />
+              <Plus className="mr-1 h-4 w-4" aria-hidden data-icon="inline-start" />
               Agregar asignación
             </Button>
 
@@ -403,13 +404,14 @@ export default function BudgetAllocationsDialog({
                 disabled={
                   !isFullyAllocated ||
                   form.formState.isSubmitting ||
+                  disabled ||
                   loadingOptions ||
                   Boolean(optionsError)
                 }
               >
-                {form.formState.isSubmitting ? (
+                {form.formState.isSubmitting || disabled ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                     Guardando…
                   </>
                 ) : (

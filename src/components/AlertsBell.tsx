@@ -222,7 +222,7 @@ export function AlertsBell() {
         tabIndex={0}
         disabled
       >
-        <Bell className="size-5 opacity-60" aria-hidden />
+        <Bell className="size-5 opacity-60" aria-hidden data-icon="inline-start" />
       </Button>
     );
   }
@@ -237,7 +237,7 @@ export function AlertsBell() {
           aria-label="Alertas"
           tabIndex={0}
         >
-          <Bell className="size-5" aria-hidden />
+          <Bell className="size-5" aria-hidden data-icon="inline-start" />
           {unseenCount > 0 && (
             <span
               className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground"
@@ -259,7 +259,7 @@ export function AlertsBell() {
         <div className="p-1">
           {loading && !data && (
             <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
+              <Loader2 className="size-4 animate-spin" aria-hidden data-icon="inline-start" />
               <span className="text-sm">Cargando…</span>
             </div>
           )}
@@ -280,41 +280,44 @@ export function AlertsBell() {
               const isSeen = seenIds.has(id);
               const alertHref = buildAlertHref(alert, context);
               return (
-                <Link
+                <div
                   key={id}
-                  href={alertHref}
-                  onClick={() => handleAlertClick(alert)}
                   className={cn(
-                    'flex w-full cursor-pointer items-start gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+                    'flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left text-sm',
                     isSeen && 'opacity-70',
                   )}
-                  aria-label={`Ver alerta: ${alert.title}`}
                 >
-                  <Icon
-                    className={cn('mt-0.5 size-4 shrink-0', config.iconClass)}
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="font-medium leading-tight">{alert.title}</p>
-                    <p className="text-muted-foreground text-xs leading-snug">
-                      {alert.description}
-                    </p>
-                  </div>
+                  <Link
+                    href={alertHref}
+                    onClick={() => handleAlertClick(alert)}
+                    className={cn(
+                      'flex min-w-0 flex-1 cursor-pointer items-start gap-2 rounded-sm text-left outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    )}
+                    aria-label={`Ver alerta: ${alert.title}`}
+                  >
+                    <Icon
+                      className={cn('mt-0.5 size-4 shrink-0', config.iconClass)}
+                      aria-hidden data-icon="inline-start" />
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="font-medium leading-tight">{alert.title}</p>
+                      <p className="text-muted-foreground text-xs leading-snug">
+                        {alert.description}
+                      </p>
+                    </div>
+                  </Link>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
                     aria-label={`Eliminar alerta: ${alert.title}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
+                    onClick={() => {
                       dismissAlert(id);
                     }}
                   >
-                    <X className="size-3.5" aria-hidden />
+                    <X className="size-3.5" aria-hidden data-icon="inline-start" />
                   </Button>
-                </Link>
+                </div>
               );
             })}
         </div>

@@ -17,7 +17,7 @@ export default function CreateMonthCard() {
     <Card className="card-glass rounded-lg border-border/50 border-primary/20">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <CalendarPlus className="h-5 w-5 text-primary" aria-hidden />
+          <CalendarPlus className="h-5 w-5 text-primary" aria-hidden data-icon="inline-start" />
           Crear mes (dos quincenas)
         </CardTitle>
         <CardDescription>

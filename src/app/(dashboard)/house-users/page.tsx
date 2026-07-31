@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Loader2 } from 'lucide-react';
 
 type HouseUserItem = {
   id: number;
@@ -39,7 +39,7 @@ export default function HouseUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [addUserEmail, setAddUserEmail] = useState('');
-  const [addUserLoading, setAddUserLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [addUserError, setAddUserError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
@@ -82,20 +82,24 @@ export default function HouseUsersPage() {
     }
   }, [addUserDialogOpen]);
 
-  const handleAddUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const inviteHouseUser = async () => {
+    if (isSubmitting) return;
     const email = addUserEmail.trim();
     if (!email) {
       setAddUserError('El email es requerido');
       return;
     }
-    setAddUserLoading(true);
+    setIsSubmitting(true);
     setAddUserError(null);
     try {
-      await clientFetchFromApi('/api/house-users', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-      }, context);
+      await clientFetchFromApi(
+        '/api/house-users',
+        {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        },
+        context,
+      );
       setAddUserDialogOpen(false);
       toast.success('Usuario agregado al hogar');
       await fetchUsers();
@@ -104,7 +108,7 @@ export default function HouseUsersPage() {
         err instanceof Error ? err.message : 'Error al agregar el usuario',
       );
     } finally {
-      setAddUserLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -161,7 +165,7 @@ export default function HouseUsersPage() {
                 disabled={removingId === user.id}
                 aria-label={`Quitar ${user.name} del hogar`}
               >
-                <Trash2 className="h-4 w-4 text-destructive" />
+                <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
               </Button>
             </div>
           );
@@ -202,7 +206,7 @@ export default function HouseUsersPage() {
             className="h-9 shrink-0 rounded-xl"
             onClick={() => setAddUserDialogOpen(true)}
           >
-            <UserPlus className="h-4 w-4" aria-hidden />
+            <UserPlus data-icon="inline-start" className="h-4 w-4" aria-hidden />
             Agregar usuario
           </Button>
         ) : null}
@@ -241,24 +245,38 @@ export default function HouseUsersPage() {
           <DialogHeader>
             <DialogTitle>Agregar usuario</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleAddUserSubmit}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void inviteHouseUser();
+            }}
+            aria-busy={isSubmitting}
+          >
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="add-user-email">Email</Label>
                 <Input
                   id="add-user-email"
+                  name="email"
                   type="email"
                   value={addUserEmail}
                   onChange={(e) => setAddUserEmail(e.target.value)}
                   placeholder="email@ejemplo.com"
-                  disabled={addUserLoading}
+                  disabled={isSubmitting}
                   required
-                  aria-label="Email del usuario"
+                  autoComplete="email"
                   aria-invalid={!!addUserError}
+                  aria-describedby={
+                    addUserError ? 'add-user-email-error' : undefined
+                  }
                 />
               </div>
               {addUserError && (
-                <p className="text-destructive text-sm" role="alert">
+                <p
+                  id="add-user-email-error"
+                  className="text-destructive text-sm"
+                  role="alert"
+                >
                   {addUserError}
                 </p>
               )}
@@ -268,12 +286,23 @@ export default function HouseUsersPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setAddUserDialogOpen(false)}
-                disabled={addUserLoading}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={addUserLoading}>
-                {addUserLoading ? 'Agregando…' : 'Agregar'}
+              <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2
+                      className="h-4 w-4 animate-spin"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                    Agregando…
+                  </>
+                ) : (
+                  'Agregar'
+                )}
               </Button>
             </DialogFooter>
           </form>

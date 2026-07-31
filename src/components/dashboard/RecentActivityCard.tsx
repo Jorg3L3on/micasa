@@ -24,7 +24,7 @@ export default function RecentActivityCard({ data }: RecentActivityCardProps) {
       <CardHeader>
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <Activity className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+            <Activity className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
           </span>
           <CardTitle className="text-sm font-semibold leading-none">
             Actividad reciente
@@ -56,15 +56,15 @@ export default function RecentActivityCard({ data }: RecentActivityCardProps) {
                   <span className="shrink-0 mt-0.5">
                     {act.type === 'expense_added' ? (
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15">
-                        <Receipt className="h-3 w-3 text-violet-600 dark:text-violet-400" aria-hidden />
+                        <Receipt className="h-3 w-3 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
                       </span>
                     ) : act.type === 'loan_payment_paid' ? (
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15">
-                        <HandCoins className="h-3 w-3 text-amber-600 dark:text-amber-400" aria-hidden />
+                        <HandCoins className="h-3 w-3 text-amber-600 dark:text-amber-400" aria-hidden data-icon="inline-start" />
                       </span>
                     ) : (
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15">
-                        <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" aria-hidden />
+                        <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" aria-hidden data-icon="inline-start" />
                       </span>
                     )}
                   </span>

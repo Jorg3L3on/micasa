@@ -39,7 +39,7 @@ import { WalletIdentity } from '@/components/wallets/WalletIdentity'
 type EditExpenseAmountDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: ExpenseAmountFormValues) => Promise<void>
+  onSave: (data: ExpenseAmountFormValues) => Promise<void>
   defaultAmount: number
   defaultWalletId?: number | null
   expenseDescription: string
@@ -58,7 +58,7 @@ const NULL_WALLET_VALUE = '__none__'
 export default function EditExpenseAmountDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultAmount,
   defaultWalletId,
   expenseDescription,
@@ -89,10 +89,11 @@ export default function EditExpenseAmountDialog({
 
   const handleSubmit = async (data: ExpenseAmountFormValues) => {
     try {
-      await onSubmit(data)
-      onOpenChange(false)
+      await onSave(data)
     } catch {
-      // Error handling is done in the parent component
+      // Parent shows toast; close either way after the attempt.
+    } finally {
+      onOpenChange(false)
     }
   }
 
@@ -181,7 +182,7 @@ export default function EditExpenseAmountDialog({
                       }}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Método de pago">
                           <SelectValue placeholder="Sin cartera (efectivo)" />
                         </SelectTrigger>
                       </FormControl>
@@ -211,10 +212,21 @@ export default function EditExpenseAmountDialog({
               />
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={form.formState.isSubmitting}
+              >
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                aria-busy={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

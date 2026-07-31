@@ -111,7 +111,7 @@ export function CreditCardInstallmentProjectionBlock() {
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 py-2.5">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
-          <CalendarClock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          <CalendarClock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" data-icon="inline-start" />
         </span>
         <div className="min-w-0 flex-1">
           <CardTitle className="text-sm font-semibold leading-none">
@@ -134,9 +134,9 @@ export function CreditCardInstallmentProjectionBlock() {
           aria-label={expanded ? 'Ocultar proyección de cuotas' : 'Ver proyección de cuotas'}
         >
           {expanded ? (
-            <ChevronUp className="h-4 w-4" aria-hidden />
+            <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
           ) : (
-            <ChevronDown className="h-4 w-4" aria-hidden />
+            <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
           )}
         </Button>
       </CardHeader>

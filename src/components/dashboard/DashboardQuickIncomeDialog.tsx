@@ -254,7 +254,7 @@ export default function DashboardQuickIncomeDialog({
                       onValueChange={setSelectedMemberId}
                       disabled={loadingMembers}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full" aria-label="Seleccionar opción">
                         <SelectValue placeholder="Selecciona un miembro" />
                       </SelectTrigger>
                       <SelectContent>

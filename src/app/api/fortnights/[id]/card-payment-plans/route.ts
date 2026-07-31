@@ -61,7 +61,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (code === 'FORTNIGHT_NOT_FOUND' || code === 'WALLET_NOT_FOUND') {
       return NextResponse.json({ error: (error as Error).message }, { status: 404 });
     }
-    if (code === 'AMOUNT_EXCEEDS_BALANCE') {
+    if (code === 'AMOUNT_EXCEEDS_BALANCE' || code === 'AMOUNT_INVALID') {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
     }
 

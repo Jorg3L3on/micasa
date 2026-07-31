@@ -172,7 +172,7 @@ export default function StepExpenseTemplates() {
                   aria-label={`Eliminar gasto ${expense.name || `número ${index + 1}`}`}
                   className="text-muted-foreground hover:text-destructive -mt-1 shrink-0"
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" data-icon="inline-start" />
                 </Button>
               </div>
 
@@ -254,7 +254,7 @@ export default function StepExpenseTemplates() {
                       id={`expense-category-${expense.id}`}
                       className="w-full"
                       size="default"
-                    >
+                     aria-label="Seleccionar opción">
                       <SelectValue placeholder="Elige una categoría" />
                     </SelectTrigger>
                     <SelectContent>
@@ -287,7 +287,7 @@ export default function StepExpenseTemplates() {
                       id={`expense-wallet-${expense.id}`}
                       className="w-full"
                       size="default"
-                    >
+                     aria-label="Seleccionar opción">
                       <SelectValue placeholder="Elige una billetera" />
                     </SelectTrigger>
                     <SelectContent>
@@ -324,7 +324,7 @@ export default function StepExpenseTemplates() {
                       id={`expense-recurrence-${expense.id}`}
                       className="w-full sm:max-w-md"
                       size="default"
-                    >
+                     aria-label="Seleccionar opción">
                       <SelectValue placeholder="Recurrencia" />
                     </SelectTrigger>
                     <SelectContent>

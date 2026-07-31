@@ -140,6 +140,7 @@ export const PeriodCategoryPieCard = ({
             className="h-4 w-4 text-rose-600 dark:text-rose-400"
             aria-hidden
           />
+
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">

@@ -8,12 +8,14 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowDownAZ,
   ArrowDownZA,
   ChevronDown,
+  LineChart,
   ListFilter,
   Plus,
   X,
@@ -997,6 +999,33 @@ export default function WalletsPage() {
           </p>
         </header>
         <div className="flex shrink-0 items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 sm:hidden"
+                asChild
+              >
+                <Link
+                  href="/wallets/liquidity"
+                  aria-label="Ver proyección de liquidez"
+                >
+                  <LineChart className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Ver proyección de liquidez</span>
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Proyección de liquidez
+            </TooltipContent>
+          </Tooltip>
+          <Button variant="outline" asChild className="hidden sm:inline-flex">
+            <Link href="/wallets/liquidity" aria-label="Ver proyección de liquidez">
+              <LineChart className="h-4 w-4" aria-hidden />
+              Proyección de liquidez
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -1041,7 +1070,7 @@ export default function WalletsPage() {
                       className="h-10 w-full justify-between gap-2 sm:max-w-md"
                     >
                       <span className="flex min-w-0 items-center gap-2 text-left">
-                        <ListFilter className="h-4 w-4 shrink-0" />
+                        <ListFilter className="h-4 w-4 shrink-0" data-icon="inline-start" />
                         <span className="truncate font-medium">
                           Filtros, búsqueda y orden
                         </span>
@@ -1059,6 +1088,8 @@ export default function WalletsPage() {
                           'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
                           filtersOpen && 'rotate-180',
                         )}
+                        aria-hidden
+                        data-icon="inline-end"
                       />
                     </Button>
                   </CollapsibleTrigger>
@@ -1094,7 +1125,7 @@ export default function WalletsPage() {
                         onClick={() => setSearchQuery('')}
                         aria-label="Borrar búsqueda"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" data-icon="inline-start" />
                       </Button>
                     ) : null}
                   </div>
@@ -1130,9 +1161,9 @@ export default function WalletsPage() {
                           }
                         >
                           {sortDir === 'asc' ? (
-                            <ArrowDownAZ className="h-4 w-4" />
+                            <ArrowDownAZ className="h-4 w-4" data-icon="inline-start" />
                           ) : (
-                            <ArrowDownZA className="h-4 w-4" />
+                            <ArrowDownZA className="h-4 w-4" data-icon="inline-start" />
                           )}
                         </Button>
                       </TooltipTrigger>
@@ -1162,7 +1193,7 @@ export default function WalletsPage() {
                       className="h-8 shrink-0 rounded-full px-3 text-xs font-medium"
                       onClick={applyPresetTarjetasConDeuda}
                     >
-                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0"  data-icon="inline-start" />
                       TC con deuda
                     </Button>
                     <Button
@@ -1174,7 +1205,7 @@ export default function WalletsPage() {
                       className="h-8 shrink-0 rounded-full px-3 text-xs font-medium"
                       onClick={applyPresetLiquidezEfectivo}
                     >
-                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0"  data-icon="inline-start" />
                       Liquidez (efectivo)
                     </Button>
                     <Button
@@ -1186,7 +1217,7 @@ export default function WalletsPage() {
                       className="h-8 shrink-0 rounded-full px-3 text-xs font-medium"
                       onClick={applyPresetCupoNegativo}
                     >
-                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0" />
+                      <Zap className="mr-1 h-3.5 w-3.5 shrink-0"  data-icon="inline-start" />
                       Cupo en rojo
                     </Button>
                   </ScrollFadeChipRow>
@@ -1428,7 +1459,7 @@ export default function WalletsPage() {
                           className="h-9 gap-1.5"
                           aria-label="Filtros de línea de crédito para tarjetas"
                         >
-                          <ListFilter className="h-4 w-4" />
+                          <ListFilter className="h-4 w-4" data-icon="inline-start" />
                           <span className="hidden sm:inline">Tarjetas</span>
                           <span className="sm:hidden">TC</span>
                           {creditLineFilter !== 'all' ? (
@@ -1540,7 +1571,7 @@ export default function WalletsPage() {
           setCreateDialogOpen(open);
           setFormError(null);
         }}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         mode="create"
         error={formError && createDialogOpen ? formError : null}
       />
@@ -1573,7 +1604,7 @@ export default function WalletsPage() {
                 setFormError(null);
               }
             }}
-            onSubmit={handleEdit}
+            onSave={handleEdit}
             mode="edit"
             showAmountField={!isCreditType(selectedWallet.type)}
             defaultValues={{

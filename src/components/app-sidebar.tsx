@@ -28,6 +28,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 
 /** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
 function MobileSidebarCloseOnRouteInner() {
@@ -46,18 +47,16 @@ function MobileSidebarCloseOnRouteInner() {
 
 function MobileSidebarCloseOnRoute() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <span className="sr-only" role="status">
+          Cargando navegación…
+        </span>
+      }
+    >
       <MobileSidebarCloseOnRouteInner />
     </Suspense>
   );
-}
-
-/** Mes calendario en UTC (misma fecha en Node SSR y en el navegador para el mismo instante). */
-function getCurrentMonthHrefUtc(): string {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  return `/monthly/${year}/${month}`;
 }
 
 export type AppSidebarNavUser = {
@@ -114,7 +113,7 @@ export function AppSidebar({
     },
     {
       title: 'Panel financiero',
-      url: getCurrentMonthHrefUtc(),
+      url: getCurrentMonthlyPanelHref(),
       icon: Calendar,
       isActive: pathname.startsWith('/monthly/'),
     },

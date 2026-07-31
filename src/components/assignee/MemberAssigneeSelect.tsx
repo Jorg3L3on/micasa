@@ -64,7 +64,7 @@ export default function MemberAssigneeSelect({
         onValueChange={(next) => onChange(next ? Number(next) : '')}
         disabled={disabled || loading || members.length === 0}
       >
-        <SelectTrigger id={id} className="w-full min-w-0">
+        <SelectTrigger id={id} className="w-full min-w-0" aria-label="Seleccionar opción">
           <SelectValue placeholder={loading ? 'Cargando…' : 'Elige un miembro'} />
         </SelectTrigger>
         <SelectContent>

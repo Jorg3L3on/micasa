@@ -167,8 +167,7 @@ export const CreditCardCycleLedger = ({
             <div className="relative sm:w-64">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
+                aria-hidden data-icon="inline-start" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -186,7 +185,11 @@ export const CreditCardCycleLedger = ({
                   className="h-9 gap-1.5 rounded-xl"
                   aria-label="Filtrar movimientos"
                 >
-                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+                  <MoreHorizontal
+                    className="h-4 w-4"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                   Filtros
                 </Button>
               </DropdownMenuTrigger>
@@ -209,8 +212,25 @@ export const CreditCardCycleLedger = ({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="p-4">
-          <CreditCardFeedEmpty message="Ningún resultado con el filtro aplicado." />
+        <div className="p-4" role="status">
+          <CreditCardFeedEmpty
+            message="Ningún resultado con el filtro aplicado."
+            description="Prueba otro filtro o limpia la búsqueda para ver todos los movimientos."
+            action={{
+              label: 'Ver todos',
+              onClick: () => {
+                setFilter('all');
+                setQuery('');
+              },
+            }}
+          />
+        </div>
+      ) : grouped.length === 0 ? (
+        <div className="p-4" role="status">
+          <p className="text-sm font-medium text-foreground">Sin movimientos</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            No hay entradas para mostrar en este ciclo.
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-border/40">
@@ -220,18 +240,23 @@ export const CreditCardCycleLedger = ({
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="px-2 pb-2">
-                {rows.map((entry) => {
+                {rows.length === 0 ? (
+                  <li className="px-2 py-3 text-sm text-muted-foreground">
+                    Sin movimientos en esta fecha.
+                  </li>
+                ) : (
+                  rows.map((entry) => {
                   if (entry.kind === 'purchase') {
                     const { purchase } = entry;
                     const msi = isInstallmentPurchase(purchase);
                     return (
-                      <li key={entry.id}>
+                      <li key={entry.id} className="flex items-stretch gap-1 rounded-xl">
                         <Link
                           href={getFortnightHref(purchase, ownerQueryString)}
-                          className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40"
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40"
                         >
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                            <ArrowUpRight className="h-4 w-4" aria-hidden />
+                            <ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
@@ -255,21 +280,19 @@ export const CreditCardCycleLedger = ({
                             <p className="font-mono text-sm font-semibold tabular-nums text-destructive">
                               −{formatCurrency(purchase.amount)}
                             </p>
-                            {msi && onGoToCuotas ? (
-                              <button
-                                type="button"
-                                className="text-[10px] text-primary hover:underline"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onGoToCuotas();
-                                }}
-                              >
-                                Ver en Cuotas
-                              </button>
-                            ) : null}
                           </div>
                         </Link>
+                        {msi && onGoToCuotas ? (
+                          <button
+                            type="button"
+                            className="shrink-0 self-center px-2 text-[10px] text-primary hover:underline"
+                            onClick={() => {
+                              onGoToCuotas();
+                            }}
+                          >
+                            Ver en Cuotas
+                          </button>
+                        ) : null}
                       </li>
                     );
                   }
@@ -282,7 +305,7 @@ export const CreditCardCycleLedger = ({
                         className="flex items-center gap-3 rounded-xl px-2 py-2.5"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                          <ArrowDownLeft className="h-4 w-4" aria-hidden />
+                          <ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">
@@ -310,7 +333,7 @@ export const CreditCardCycleLedger = ({
                       className="flex items-center gap-3 rounded-xl px-2 py-2.5"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <FileText className="h-4 w-4" aria-hidden />
+                        <FileText className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">Importación de estado de cuenta</p>
@@ -327,7 +350,8 @@ export const CreditCardCycleLedger = ({
                       ) : null}
                     </li>
                   );
-                })}
+                })
+                )}
               </ul>
             </section>
           ))}
@@ -342,7 +366,7 @@ export const CreditCardCycleLedger = ({
           className="h-9 flex-1 rounded-xl"
           onClick={onRegisterPurchase}
         >
-          <Wallet className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+          <Wallet className="mr-1.5 h-3.5 w-3.5" aria-hidden data-icon="inline-start" />
           Compra
         </Button>
         <Button

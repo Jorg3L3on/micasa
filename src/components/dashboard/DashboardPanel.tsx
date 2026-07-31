@@ -34,7 +34,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isViewPending, startViewTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const todayYmd = useHydrationSafeTodayYmd();
   const { context } = useFinanceContext();
   const { summary } = data;
@@ -59,7 +59,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
     const nextParams = new URLSearchParams(searchParams.toString());
     mutator(nextParams);
     const qs = nextParams.toString();
-    startViewTransition(() => {
+    startTransition(() => {
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     });
   };
@@ -103,7 +103,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           className="grid w-full grid-cols-2 rounded-lg bg-muted/60 p-1 sm:w-auto"
           role="group"
           aria-label="Cambiar vista del panel: mes o quincena"
-          aria-busy={isViewPending}
+          aria-busy={isPending}
         >
           <Button
             type="button"
@@ -112,15 +112,17 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
             onClick={() => handleViewChange('month')}
             aria-pressed={selectedView === 'month'}
             aria-label="Mostrar resumen mensual"
-            disabled={isViewPending}
+            disabled={isPending}
+            aria-busy={isPending && selectedView !== 'month'}
             className={cn(
               'h-11 rounded-md px-4 text-sm transition-colors duration-200 motion-reduce:transition-none sm:h-8 sm:text-xs',
               selectedView === 'month'
                 ? 'bg-muted text-foreground hover:bg-muted dark:bg-input/40 dark:hover:bg-input/40'
                 : 'text-muted-foreground hover:text-foreground',
+              isPending && 'opacity-70',
             )}
           >
-            Mes
+            {isPending && selectedView !== 'month' ? 'Cambiando…' : 'Mes'}
           </Button>
           <Button
             type="button"
@@ -129,15 +131,19 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
             onClick={() => handleViewChange('biweekly')}
             aria-pressed={selectedView === 'biweekly'}
             aria-label="Mostrar plan de quincena"
-            disabled={isViewPending}
+            disabled={isPending}
+            aria-busy={isPending && selectedView !== 'biweekly'}
             className={cn(
               'h-11 rounded-md px-4 text-sm transition-colors duration-200 motion-reduce:transition-none sm:h-8 sm:text-xs',
               selectedView === 'biweekly'
                 ? 'bg-muted text-foreground hover:bg-muted dark:bg-input/40 dark:hover:bg-input/40'
                 : 'text-muted-foreground hover:text-foreground',
+              isPending && 'opacity-70',
             )}
           >
-            Quincena
+            {isPending && selectedView !== 'biweekly'
+              ? 'Cambiando…'
+              : 'Quincena'}
           </Button>
         </div>
       </section>

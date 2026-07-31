@@ -233,13 +233,6 @@ export async function createWalletForOwner(
   });
 }
 
-export async function updateWalletMetadata(id: number, data: UpdateWalletInput) {
-  return prisma.wallet.update({
-    where: { id },
-    data,
-  });
-}
-
 export async function updateWalletMetadataForOwner(
   id: number,
   data: UpdateWalletInput,
@@ -292,25 +285,6 @@ export async function updateWalletMetadataForOwner(
     data: prismaData as Prisma.WalletUpdateInput,
     include: ASSIGNEE_INCLUDE,
   });
-}
-
-export async function deleteWalletIfUnused(id: number) {
-  const relatedExpense = await prisma.expense.findFirst({
-    where: { wallet_id: id },
-  });
-  const relatedExpenseTemplate = await prisma.expenseTemplate.findFirst({
-    where: { wallet_id: id },
-  });
-
-  if (relatedExpense || relatedExpenseTemplate) {
-    const error = new Error(
-      'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
-    ) as WalletServiceError;
-    error.code = 'WALLET_IN_USE';
-    throw error;
-  }
-
-  await prisma.wallet.delete({ where: { id } });
 }
 
 export async function deleteWalletIfUnusedForOwner(

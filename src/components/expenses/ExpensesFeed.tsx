@@ -613,7 +613,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             : 'Registra un gasto; asignamos la quincena automáticamente.'
         }
         defaults={createDefaults}
-        onSubmit={handleCreate}
+        onSave={handleCreate}
         error={createError}
       />
 
@@ -628,7 +628,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         mode="edit"
         title="Editar gasto"
         defaults={editDefaults}
-        onSubmit={handleUpdate}
+        onSave={handleUpdate}
         onDelete={handleDelete}
         error={editError}
       />

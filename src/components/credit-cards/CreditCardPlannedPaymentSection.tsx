@@ -23,7 +23,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 type CreditCardPlannedPaymentSectionProps = {
   walletId: number;
   items: CreditCardPaymentPlanView[];
-  onPlanUpdated?: () => void;
+  onPlanUpdated?: () => void | Promise<void>;
   onPayCard?: (item: CreditCardPaymentPlanView) => void;
   payingFortnightId?: number | null;
 };
@@ -37,6 +37,9 @@ const statusAmountClass = (
   }
   if (status === 'vencido') {
     return 'text-destructive';
+  }
+  if (status === 'sin_cargo') {
+    return 'text-muted-foreground';
   }
   return hasCustomPlan
     ? 'text-blue-600 dark:text-blue-400'
@@ -76,7 +79,7 @@ export const CreditCardPlannedPaymentSection = ({
         context,
       );
       toast.success('Pago planeado guardado');
-      onPlanUpdated?.();
+      await onPlanUpdated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo guardar el plan';
@@ -95,7 +98,7 @@ export const CreditCardPlannedPaymentSection = ({
         context,
       );
       toast.success('Se usará el monto sugerido');
-      onPlanUpdated?.();
+      await onPlanUpdated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo restablecer';
@@ -117,7 +120,7 @@ export const CreditCardPlannedPaymentSection = ({
       >
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
           </span>
           <div>
             <p className="text-sm font-semibold leading-none">
@@ -131,7 +134,8 @@ export const CreditCardPlannedPaymentSection = ({
 
         <ul role="list" className="flex flex-col gap-2">
           {items.map((item) => {
-            const hasCustomPlan = item.plannedPayment != null;
+            const hasCustomPlan =
+              item.plannedPayment != null && item.plannedPayment > 0;
             const isStalePlan = item.isStaleFullyCoveredPlan === true;
             const fortnightPaid = item.paymentsAppliedToFortnight ?? 0;
             const sourceHint = formatCardObligationAmountSourceHint(
@@ -140,12 +144,22 @@ export const CreditCardPlannedPaymentSection = ({
             );
             const displayAmount =
               item.plannerStatus === 'pagado'
-                ? fortnightPaid
-                : item.effectiveAmount;
+                ? fortnightPaid > 0
+                  ? fortnightPaid
+                  : item.paymentsAppliedToStatement > 0
+                    ? item.paymentsAppliedToStatement
+                    : item.targetAmount
+                : item.plannerStatus === 'sin_cargo'
+                  ? 0
+                  : item.effectiveAmount;
             const statementMismatch =
               item.plannerStatus === 'pagado' &&
               fortnightPaid > 0 &&
               item.paymentsAppliedToStatement === 0;
+            const isPending =
+              (item.plannerStatus === 'por_pagar' ||
+                item.plannerStatus === 'vencido') &&
+              item.effectiveAmount > 0;
 
             return (
               <li
@@ -173,6 +187,8 @@ export const CreditCardPlannedPaymentSection = ({
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
                       <>Pagado esta quincena</>
+                    ) : item.plannerStatus === 'sin_cargo' ? (
+                      <>Sin cargo en esta quincena</>
                     ) : (
                       <>
                         Sugerido al corte: {formatCurrency(item.suggestedAmount)}
@@ -218,29 +234,33 @@ export const CreditCardPlannedPaymentSection = ({
                     aria-label={
                       item.plannerStatus === 'pagado'
                         ? `Pagado esta quincena: ${formatCurrency(displayAmount)}`
-                        : `Planeado: ${formatCurrency(displayAmount)}`
+                        : item.plannerStatus === 'sin_cargo'
+                          ? 'Sin cargo'
+                          : `Planeado: ${formatCurrency(displayAmount)}`
                     }
                   >
                     {formatCurrency(displayAmount)}
                   </span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                        onClick={() => handleOpenDialog(item)}
-                        aria-label={`Editar pago planeado: ${item.fortnightLabel}`}
-                      >
-                        <Pencil className="size-3.5" aria-hidden />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" sideOffset={6}>
-                      Editar monto de esta quincena
-                    </TooltipContent>
-                  </Tooltip>
-                  {onPayCard && item.plannerStatus !== 'pagado' ? (
+                  {item.plannerStatus !== 'sin_cargo' ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleOpenDialog(item)}
+                          aria-label={`Editar pago planeado: ${item.fortnightLabel}`}
+                        >
+                          <Pencil className="size-3.5" aria-hidden data-icon="inline-start" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={6}>
+                        Editar monto de esta quincena
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  {onPayCard && isPending ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="inline-flex">
@@ -264,10 +284,9 @@ export const CreditCardPlannedPaymentSection = ({
                             {payingFortnightId === item.fortnightId ? (
                               <Loader2
                                 className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden
-                              />
+                                aria-hidden data-icon="inline-start" />
                             ) : (
-                              <Banknote className="size-3.5" aria-hidden />
+                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
                             )}
                           </Button>
                         </span>
@@ -294,16 +313,29 @@ export const CreditCardPlannedPaymentSection = ({
               setPlanError(null);
             }
           }}
-          onSubmit={handleSavePlan}
+          onSave={handleSavePlan}
           onClearPlan={
-            editingItem.plannedPayment != null ? handleClearPlan : undefined
+            editingItem.plannedPayment != null &&
+            editingItem.plannedPayment > 0
+              ? handleClearPlan
+              : undefined
           }
           walletName="esta tarjeta"
           fortnightLabel={editingItem.fortnightLabel}
           suggestedAmount={editingItem.suggestedAmount}
           outstandingBalance={editingItem.outstandingBalance}
-          initialPlannedAmount={editingItem.effectiveAmount}
-          hasCustomPlan={editingItem.plannedPayment != null}
+          initialPlannedAmount={
+            editingItem.plannedPayment != null &&
+            editingItem.plannedPayment > 0
+              ? editingItem.plannedPayment
+              : editingItem.effectiveAmount > 0
+                ? editingItem.effectiveAmount
+                : editingItem.suggestedAmount
+          }
+          hasCustomPlan={
+            editingItem.plannedPayment != null &&
+            editingItem.plannedPayment > 0
+          }
           error={planError}
         />
       ) : null}

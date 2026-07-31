@@ -204,9 +204,9 @@ export default function TransactionsDataTable({
               )}
             >
               {row.original.type === 'expense' ? (
-                <ArrowDownRight className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <ArrowDownRight className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
               ) : (
-                <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
               )}
             </span>
             <span className="font-medium truncate">
@@ -263,7 +263,7 @@ export default function TransactionsDataTable({
         header: 'Método de pago',
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm whitespace-nowrap flex items-center gap-1.5">
-            <Wallet className="h-3.5 w-3.5" />
+            <Wallet className="h-3.5 w-3.5" data-icon="inline-start" />
             {row.original.paymentMethod}
           </span>
         ),
@@ -397,7 +397,7 @@ export default function TransactionsDataTable({
           className="h-8 px-2 text-muted-foreground hover:text-foreground"
           aria-label="Limpiar todos los filtros"
         >
-          <X className="h-4 w-4 mr-1" />
+          <X className="h-4 w-4 mr-1" data-icon="inline-start" />
           Limpiar
         </Button>
       )}

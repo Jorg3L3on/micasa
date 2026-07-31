@@ -3,6 +3,7 @@ import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
 import {
   getProviderCardStyle,
   getWalletBrandCssVars,
+  isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 
 describe('getProviderCardStyle', () => {
@@ -22,6 +23,25 @@ describe('getProviderCardStyle', () => {
     const style = getProviderCardStyle('AMEX', undefined, 'list');
     expect(style?.background).not.toContain('#121720');
     expect(style?.borderLeftWidth).toBe('3px');
+  });
+
+  it('keeps calm dark surfaces for dark scheme', () => {
+    const style = getProviderCardStyle('BANAMEX', 'CREDIT_CARD', 'calm', 'dark');
+    expect(style?.background).toEqual(expect.stringContaining('#10141d'));
+    expect(isProviderCardDarkSurface('calm', 'dark')).toBe(true);
+  });
+
+  it('uses a light calm surface for light scheme', () => {
+    const style = getProviderCardStyle('BANAMEX', 'CREDIT_CARD', 'calm', 'light');
+    expect(style?.background).toEqual(expect.stringContaining('#ffffff'));
+    expect(style?.background).not.toEqual(expect.stringContaining('#10141d'));
+    expect(isProviderCardDarkSurface('calm', 'light')).toBe(false);
+  });
+
+  it('keeps wow tone as a dark plastic surface regardless of scheme', () => {
+    const style = getProviderCardStyle('BBVA', 'CREDIT_CARD', 'wow', 'light');
+    expect(style?.background).toEqual(expect.stringContaining('#0f131c'));
+    expect(isProviderCardDarkSurface('wow', 'light')).toBe(true);
   });
 });
 
