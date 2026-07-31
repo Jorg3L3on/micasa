@@ -33,7 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Banknote, BarChart3, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
+import { Banknote, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -119,8 +119,6 @@ type FortnightColumnProps = {
   year: number;
   month: number;
   period: 'FIRST' | 'SECOND';
-  showSummaryCard?: boolean;
-  onShowSummaryCard?: () => void;
   tableDensity?: ExpenseTableDensity;
   cardDueItems?: DuePaymentItem[];
   loanDueItems?: LoanDuePaymentItem[];
@@ -140,8 +138,6 @@ export default function FortnightColumn({
   year,
   month,
   period,
-  showSummaryCard = true,
-  onShowSummaryCard,
   tableDensity = 'comfortable',
   cardDueItems: initialCardDueItems = [],
   loanDueItems = [],
@@ -765,58 +761,43 @@ export default function FortnightColumn({
   return (
     <>
       <div className="flex flex-col space-y-3 sm:space-y-4">
-        {/* Summary card (toggle desde la barra de planificación) */}
-        {showSummaryCard ? (
-          <SummaryBlock
-            tenemos={tenemos}
-            libre={libre}
-            pagado={pagado}
-            pendiente={pendiente}
-            userIncome={currentFortnightUserIncome}
-            incomeItems={
-              summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
-              []
-            }
-            year={year}
-            month={month}
-            period={period}
-            expenseCount={summaryExpenseCount}
-            paidExpenseCount={summaryPaidExpenseCount}
-            unpaidExpenseCount={summaryUnpaidExpenseCount}
-            cardCharges={summary.cardCharges ?? null}
-            planningOrphanCardPayments={
-              summary.planningOrphanCardPayments ?? null
-            }
-            planningCardStatementDue={
-              summary.planningCardStatementDue ?? null
-            }
-            planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
-            planningPayrollLoanDeduction={
-              summary.planningPayrollLoanDeduction ?? null
-            }
-            fundingWalletBalanceTotal={
-              summary.fundingWalletBalanceTotal ?? 0
-            }
-            fundingNetVsPendingExpense={
-              summary.fundingNetVsPendingExpense ?? 0
-            }
-            fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
-            onEditIncome={handleOpenOverrideDialog}
-            onEditIncomeSource={handleOpenEditIncomeSource}
-          />
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5 border-dashed border-primary/30 text-primary/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
-            onClick={onShowSummaryCard}
-            aria-label={`Mostrar resumen de la quincena: ${label}`}
-          >
-            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-            Mostrar resumen
-          </Button>
-        )}
+        <SummaryBlock
+          tenemos={tenemos}
+          libre={libre}
+          pagado={pagado}
+          pendiente={pendiente}
+          userIncome={currentFortnightUserIncome}
+          incomeItems={
+            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
+            []
+          }
+          year={year}
+          month={month}
+          period={period}
+          expenseCount={summaryExpenseCount}
+          paidExpenseCount={summaryPaidExpenseCount}
+          unpaidExpenseCount={summaryUnpaidExpenseCount}
+          cardCharges={summary.cardCharges ?? null}
+          planningOrphanCardPayments={
+            summary.planningOrphanCardPayments ?? null
+          }
+          planningCardStatementDue={
+            summary.planningCardStatementDue ?? null
+          }
+          planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
+          planningPayrollLoanDeduction={
+            summary.planningPayrollLoanDeduction ?? null
+          }
+          fundingWalletBalanceTotal={
+            summary.fundingWalletBalanceTotal ?? 0
+          }
+          fundingNetVsPendingExpense={
+            summary.fundingNetVsPendingExpense ?? 0
+          }
+          fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
+          onEditIncome={handleOpenOverrideDialog}
+          onEditIncomeSource={handleOpenEditIncomeSource}
+        />
 
         <Tabs
           value={columnTab}

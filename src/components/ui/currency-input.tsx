@@ -9,6 +9,8 @@ type CurrencyInputProps = {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  id?: string;
+  'aria-label'?: string;
 };
 
 export function CurrencyInput({
@@ -17,6 +19,8 @@ export function CurrencyInput({
   className,
   placeholder = '0',
   disabled,
+  id,
+  'aria-label': ariaLabel,
 }: CurrencyInputProps) {
   const num = Number(value) || 0;
   const displayValue =
@@ -43,6 +47,7 @@ export function CurrencyInput({
         $
       </span>
       <Input
+        id={id}
         type="text"
         inputMode="decimal"
         className={cn('pl-7', className)}
@@ -50,6 +55,7 @@ export function CurrencyInput({
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
+        aria-label={ariaLabel}
       />
     </div>
   );

@@ -15,14 +15,48 @@ type FortnightLoanPaymentsPanelProps = {
   isCompact?: boolean;
 };
 
-const getStatusLabel = (status: LoanDuePaymentItem['status']) => {
-  if (status === 'PAID') return 'Pagado';
-  if (status === 'SKIPPED') return 'Omitido';
-  if (status === 'CANCELLED') return 'Cancelado';
-  return 'Por pagar';
+type VisualStatus = 'paid' | 'overdue' | 'pending' | 'muted';
+
+/** Calendar-day difference between due date and today (UTC). */
+const getDaysLeft = (dueDateYmd: string, todayYmd: string): number => {
+  const [dy, dm, dd] = dueDateYmd.split('-').map((n) => parseInt(n, 10));
+  const [ty, tm, td] = todayYmd.split('-').map((n) => parseInt(n, 10));
+  if ([dy, dm, dd, ty, tm, td].some((n) => Number.isNaN(n))) return 0;
+  const due = Date.UTC(dy, dm - 1, dd);
+  const today = Date.UTC(ty, tm - 1, td);
+  return Math.round((due - today) / 86_400_000);
 };
 
-const getVisualStatus = (item: LoanDuePaymentItem, todayYmd: string) => {
+const getStatusAriaLabel = (
+  item: LoanDuePaymentItem,
+  visual: VisualStatus,
+  daysLeft: number,
+): string => {
+  if (visual === 'paid') return 'Pagado';
+  if (visual === 'overdue') return 'Vencido';
+  if (visual === 'muted') {
+    if (item.status === 'SKIPPED') return 'Omitido';
+    if (item.status === 'CANCELLED') return 'Cancelado';
+    return 'Sin estado';
+  }
+  if (daysLeft === 0) return 'Vence hoy';
+  if (daysLeft === 1) return 'Vence en 1 día';
+  return `Vence en ${daysLeft} días`;
+};
+
+const statusDotClass = (visual: VisualStatus, daysLeft: number) => {
+  if (visual === 'paid') return 'bg-emerald-500 dark:bg-emerald-400';
+  if (visual === 'overdue') return 'bg-destructive';
+  if (visual === 'muted') return 'bg-muted-foreground/50';
+  // Pending: amber when close, blue when farther out.
+  if (daysLeft <= 7) return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-blue-500 dark:bg-blue-400';
+};
+
+const getVisualStatus = (
+  item: LoanDuePaymentItem,
+  todayYmd: string,
+): VisualStatus => {
   if (item.status === 'PAID') return 'paid';
   if (item.status === 'CANCELLED' || item.status === 'SKIPPED') return 'muted';
   if (item.dueDate < todayYmd) return 'overdue';
@@ -87,22 +121,27 @@ export default function FortnightLoanPaymentsPanel({
       <ul role="list" className="flex flex-col gap-1.5">
         {rows.map((item) => {
           const visual = getVisualStatus(item, todayYmd);
+          const daysLeft = getDaysLeft(item.dueDate, todayYmd);
+          const statusLabel = getStatusAriaLabel(item, visual, daysLeft);
           const Icon =
             item.paymentSource === 'PAYROLL_DEDUCTION' ? Landmark : HandCoins;
           return (
             <li
               key={item.id}
               className={cn(
-                'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-l-[3px] px-3 transition-all',
+                'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
                 isCompact ? 'py-2.5' : 'py-3',
                 visual === 'overdue' &&
-                  'border-destructive/25 border-l-destructive bg-gradient-to-br from-destructive/10 via-card to-destructive/3',
+                  'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3',
                 visual === 'pending' &&
-                  'border-amber-500/25 border-l-amber-500/70 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2',
+                  daysLeft <= 7 &&
+                  'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2',
+                visual === 'pending' &&
+                  daysLeft > 7 &&
+                  'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2',
                 visual === 'paid' &&
-                  'border-emerald-500/20 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2',
-                visual === 'muted' &&
-                  'border-border/50 border-l-muted-foreground/40 bg-card',
+                  'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2',
+                visual === 'muted' && 'border-border/50 bg-card',
               )}
             >
               <span
@@ -112,7 +151,9 @@ export default function FortnightLoanPaymentsPanel({
                     ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30 dark:text-emerald-300'
                     : visual === 'overdue'
                       ? 'bg-destructive/10 text-destructive ring-destructive/30'
-                      : 'bg-sky-500/10 text-sky-600 ring-sky-500/30 dark:text-sky-300',
+                      : visual === 'pending' && daysLeft <= 7
+                        ? 'bg-amber-500/10 text-amber-600 ring-amber-500/30 dark:text-amber-300'
+                        : 'bg-sky-500/10 text-sky-600 ring-sky-500/30 dark:text-sky-300',
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden />
@@ -131,21 +172,13 @@ export default function FortnightLoanPaymentsPanel({
                   </Link>
                   <span
                     className={cn(
-                      'inline-flex h-4 shrink-0 items-center rounded-full border px-1.5 text-[9px] font-bold uppercase tracking-wider',
-                      visual === 'paid' &&
-                        'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-                      visual === 'overdue' &&
-                        'border-destructive/40 bg-destructive/10 text-destructive',
-                      visual === 'pending' &&
-                        'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                      visual === 'muted' &&
-                        'border-border/60 bg-muted/40 text-muted-foreground',
+                      'h-2 w-2 shrink-0 rounded-full',
+                      statusDotClass(visual, daysLeft),
                     )}
-                  >
-                    {visual === 'overdue'
-                      ? 'Vencido'
-                      : getStatusLabel(item.status)}
-                  </span>
+                    role="img"
+                    aria-label={statusLabel}
+                    title={statusLabel}
+                  />
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                   <span>{item.lender}</span>

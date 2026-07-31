@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
+import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyFortnightCategoryPie } from '@/components/monthly/MonthlyFortnightCategoryPie';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import type { TransactionRow } from '@/types/catalog';
@@ -14,13 +15,18 @@ type MonthlyPanelLayoutProps = {
   ownerKey: string;
   year: number;
   month: number;
+  monthName: string;
+  isCurrentMonth: boolean;
   todayYmd: string;
   suggestedPeriod: FortnightPeriod;
   ownerQuery: string;
   budgetPanel: MonthlyBudgetPanelResult;
   firstTransactions: TransactionRow[];
   secondTransactions: TransactionRow[];
-  monthHeader: ReactNode;
+  firstLabel: string;
+  secondLabel: string;
+  prevControl: ReactNode;
+  nextControl: ReactNode;
   children: ReactNode;
 };
 
@@ -28,13 +34,18 @@ export const MonthlyPanelLayout = ({
   ownerKey,
   year,
   month,
+  monthName,
+  isCurrentMonth,
   todayYmd,
   suggestedPeriod,
   ownerQuery,
   budgetPanel,
   firstTransactions,
   secondTransactions,
-  monthHeader,
+  firstLabel,
+  secondLabel,
+  prevControl,
+  nextControl,
   children,
 }: MonthlyPanelLayoutProps) => {
   return (
@@ -44,12 +55,17 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      <div
-        className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4"
-        role="group"
-        aria-label="Selector de mes"
-      >
-        {monthHeader}
+      <div className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4">
+        <MonthlyChromeHeader
+          year={year}
+          month={month}
+          monthName={monthName}
+          isCurrentMonth={isCurrentMonth}
+          firstLabel={firstLabel}
+          secondLabel={secondLabel}
+          prevControl={prevControl}
+          nextControl={nextControl}
+        />
       </div>
 
       <div

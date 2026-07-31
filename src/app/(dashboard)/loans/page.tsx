@@ -309,7 +309,7 @@ const paymentStatusTone = (status: LoanPaymentVisualStatus) => {
   if (status === 'paid') {
     return {
       icon: CheckCircle2,
-      row: 'border-emerald-500/25 border-l-emerald-500 bg-emerald-500/5',
+      row: 'border-emerald-500/25 bg-emerald-500/5',
       badge:
         'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
       iconBox:
@@ -319,7 +319,7 @@ const paymentStatusTone = (status: LoanPaymentVisualStatus) => {
   if (status === 'overdue') {
     return {
       icon: AlertTriangle,
-      row: 'border-destructive/30 border-l-destructive bg-destructive/5',
+      row: 'border-destructive/30 bg-destructive/5',
       badge: 'border-destructive/40 bg-destructive/10 text-destructive',
       iconBox: 'bg-destructive/10 text-destructive ring-destructive/30',
     };
@@ -327,7 +327,7 @@ const paymentStatusTone = (status: LoanPaymentVisualStatus) => {
   if (status === 'skipped') {
     return {
       icon: CircleSlash,
-      row: 'border-slate-400/25 border-l-slate-400 bg-slate-500/5',
+      row: 'border-slate-400/25 bg-slate-500/5',
       badge:
         'border-slate-400/40 bg-slate-500/10 text-slate-700 dark:text-slate-300',
       iconBox:
@@ -337,14 +337,14 @@ const paymentStatusTone = (status: LoanPaymentVisualStatus) => {
   if (status === 'cancelled') {
     return {
       icon: CircleSlash,
-      row: 'border-rose-500/25 border-l-rose-500 bg-rose-500/5',
+      row: 'border-rose-500/25 bg-rose-500/5',
       badge: 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300',
       iconBox: 'bg-rose-500/10 text-rose-600 ring-rose-500/30 dark:text-rose-300',
     };
   }
   return {
     icon: Clock,
-    row: 'border-amber-500/25 border-l-amber-500 bg-amber-500/5',
+    row: 'border-amber-500/25 bg-amber-500/5',
     badge:
       'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300',
     iconBox:
@@ -2056,7 +2056,7 @@ export default function LoansPage() {
                               <li
                                 key={payment.id}
                                 className={cn(
-                                  'grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border border-l-[3px] p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start',
+                                  'grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start',
                                   tone.row,
                                 )}
                               >

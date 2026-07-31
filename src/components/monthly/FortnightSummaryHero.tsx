@@ -2,7 +2,6 @@
 
 import { FortnightIncomeGauge } from '@/components/monthly/FortnightIncomeGauge';
 import { cn, formatCurrency } from '@/lib/utils';
-import { Wallet } from 'lucide-react';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
@@ -47,11 +46,38 @@ export const FortnightSummaryHero = ({
           <div className="hidden shrink-0 lg:block">{gauge}</div>
         ) : null}
 
-        <div className="min-w-0 flex-1 space-y-3">
-          <div>
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:gap-3">
+          <div className={subBoxClass}>
             <div className="mb-1 flex items-center gap-1.5">
-              <Wallet
-                className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-sky-500"
+                aria-hidden
+              />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Libre del ingreso
+              </span>
+            </div>
+            <p
+              className={cn(
+                'font-mono text-base font-bold tabular-nums sm:text-lg',
+                incomeRemainder >= 0
+                  ? 'text-sky-700 dark:text-sky-300'
+                  : 'text-destructive',
+              )}
+            >
+              {formatCurrency(incomeRemainder)}
+            </p>
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+              {payrollDeductionAmount > 0
+                ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
+                : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado'}
+            </p>
+          </div>
+
+          <div className={subBoxClass}>
+            <div className="mb-1 flex items-center gap-1.5">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
                 aria-hidden
               />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -60,7 +86,7 @@ export const FortnightSummaryHero = ({
             </div>
             <p
               className={cn(
-                'font-mono text-2xl font-bold tabular-nums sm:text-3xl',
+                'font-mono text-base font-bold tabular-nums sm:text-lg',
                 !fundingNetApplies && 'text-muted-foreground',
                 fundingNetApplies &&
                   (fundingNetInAccounts < 0
@@ -70,65 +96,11 @@ export const FortnightSummaryHero = ({
             >
               {formatCurrency(fundingNetInAccounts)}
             </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
               {fundingNetApplies
                 ? 'Efectivo y débito en billeteras, menos lo pendiente por pagar y las deducciones de nómina de esta quincena'
                 : 'Solo aplica a la quincena en curso o a la siguiente'}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div className={subBoxClass}>
-              <div className="mb-1 flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-violet-500"
-                  aria-hidden
-                />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Ingresos del periodo
-                </span>
-              </div>
-              <p
-                className={cn(
-                  'font-mono text-base font-bold tabular-nums sm:text-lg',
-                  periodIncome >= 0
-                    ? 'text-emerald-700 dark:text-emerald-300'
-                    : 'text-destructive',
-                )}
-              >
-                {formatCurrency(periodIncome)}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                Total recibido en esta quincena
-              </p>
-            </div>
-
-            <div className={subBoxClass}>
-              <div className="mb-1 flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-sky-500"
-                  aria-hidden
-                />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Libre del ingreso
-                </span>
-              </div>
-              <p
-                className={cn(
-                  'font-mono text-base font-bold tabular-nums sm:text-lg',
-                  incomeRemainder >= 0
-                    ? 'text-sky-700 dark:text-sky-300'
-                    : 'text-destructive',
-                )}
-              >
-                {formatCurrency(incomeRemainder)}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                {payrollDeductionAmount > 0
-                  ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
-                  : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado'}
-              </p>
-            </div>
           </div>
         </div>
       </div>

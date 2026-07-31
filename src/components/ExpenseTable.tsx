@@ -614,10 +614,10 @@ export default function ExpenseTable({
                     )}
                   >
                     {expense.is_paid
-                      ? `Pagado · día ${dueDay}`
+                      ? `Día ${dueDay}`
                       : showCountdown && daysRemaining !== null && daysRemaining >= 0
                         ? `Día ${dueDay} · en ${daysRemaining} día${daysRemaining !== 1 ? 's' : ''}`
-                        : `Día ${dueDay} · vencido`}
+                        : `Día ${dueDay}`}
                   </Badge>
                 )}
                 {isPlanningCardPaymentRow(expense) ? (
@@ -1059,12 +1059,12 @@ export default function ExpenseTable({
                               )}
                             >
                               {e.is_paid
-                                ? `Pagado · día ${dueDay}`
+                                ? `Día ${dueDay}`
                                 : showCountdown &&
                                     daysRemaining !== null &&
                                     daysRemaining >= 0
                                   ? `Día ${dueDay} · en ${daysRemaining}d`
-                                  : `Día ${dueDay} · vencido`}
+                                  : `Día ${dueDay}`}
                             </Badge>
                           )}
                         </p>
@@ -1281,11 +1281,6 @@ export default function ExpenseTable({
                         key={`${row.original.planning_row_kind ?? 'expense'}-${row.original.id}`}
                         className={cn(
                           'transition-colors group/row',
-                          isCardChargeExpenseRow(row.original)
-                            ? 'border-l-[3px] border-l-violet-500/60'
-                            : row.original.is_paid
-                              ? 'border-l-[3px] border-l-emerald-500/40'
-                              : 'border-l-[3px] border-l-primary/25 hover:border-l-primary/50',
                           row.original.is_paid
                             ? 'bg-emerald-50/25 dark:bg-emerald-950/15 opacity-75 hover:opacity-90 hover:bg-emerald-50/35 dark:hover:bg-emerald-950/25'
                             : 'hover:bg-primary/5 dark:hover:bg-primary/8',
