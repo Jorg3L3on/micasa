@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -12,8 +12,16 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
@@ -23,25 +31,21 @@ import {
 } from '@/schemas/transaction.schema';
 import type {
   CategoryOption,
-  ExpenseTemplateListItem,
   PaymentMethodOption,
 } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { cn, formatCurrency } from '@/lib/utils';
-import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { formatCurrency } from '@/lib/utils';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 export type ExpenseFormProps = {
   mode: 'create' | 'edit';
   defaults?: Partial<AddExpenseFormValues>;
-  /** When provided, templates are filtered by this period. Otherwise, derived from the selected date. */
-  fortnightPeriod?: 'FIRST' | 'SECOND';
   onSubmit: (values: AddExpenseFormValues) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => Promise<void>;
   error?: string | null;
   submitLabel?: string;
-  showTemplateSelector?: boolean;
   showRecurringFields?: boolean;
 };
 
@@ -49,23 +53,14 @@ function getFallbackDate(): string {
   return todayCalendarDate();
 }
 
-function periodForDate(iso: string): 'FIRST' | 'SECOND' | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const day = Number(iso.split('-')[2]);
-  if (!Number.isFinite(day)) return null;
-  return day <= 15 ? 'FIRST' : 'SECOND';
-}
-
 export default function ExpenseForm({
   mode,
   defaults,
-  fortnightPeriod,
   onSubmit,
   onCancel,
   onDelete,
   error,
   submitLabel,
-  showTemplateSelector = true,
   showRecurringFields = true,
 }: ExpenseFormProps) {
   const { context } = useFinanceContext();
@@ -73,7 +68,6 @@ export default function ExpenseForm({
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
     [],
   );
-  const [templates, setTemplates] = useState<ExpenseTemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -94,34 +88,25 @@ export default function ExpenseForm({
   });
 
   const isRecurring = form.watch('isRecurring');
-  const selectedTemplateId = form.watch('expenseTemplateId');
   const selectedPaymentMethodId = form.watch('paymentMethodId');
   const selectedAmount = form.watch('amount');
-  const selectedDate = form.watch('date');
 
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [categoriesData, paymentMethodsData, templatesData] =
-          await Promise.all([
-            clientFetchFromApi<CategoryOption[]>(
-              '/api/categories',
-              undefined,
-              context,
-            ),
-            getPaymentMethodOptions(context),
-            clientFetchFromApi<ExpenseTemplateListItem[]>(
-              '/api/expense-templates',
-              undefined,
-              context,
-            ),
-          ]);
+        const [categoriesData, paymentMethodsData] = await Promise.all([
+          clientFetchFromApi<CategoryOption[]>(
+            '/api/categories',
+            undefined,
+            context,
+          ),
+          getPaymentMethodOptions(context),
+        ]);
         if (cancelled) return;
         setCategories(categoriesData);
         setPaymentMethods(paymentMethodsData);
-        setTemplates(templatesData);
       } catch (err) {
         console.error('Error fetching data:', err);
       } finally {
@@ -133,20 +118,6 @@ export default function ExpenseForm({
       cancelled = true;
     };
   }, [context]);
-
-  const effectivePeriod: 'FIRST' | 'SECOND' =
-    fortnightPeriod ?? periodForDate(selectedDate) ?? 'FIRST';
-
-  const applicableTemplates = useMemo(
-    () =>
-      templates.filter((t) => {
-        if (!t.active) return false;
-        return effectivePeriod === 'FIRST'
-          ? t.appliesFirstFortnight
-          : t.appliesSecondFortnight;
-      }),
-    [templates, effectivePeriod],
-  );
 
   const selectedPaymentMethod = useMemo(
     () =>
@@ -207,42 +178,6 @@ export default function ExpenseForm({
     }
   }, [form, isCreditCardPaymentMethod]);
 
-  const handleTemplateChange = (value: string) => {
-    if (!value) {
-      form.setValue('expenseTemplateId', null);
-      return;
-    }
-    const templateId = parseInt(value, 10);
-    const template = applicableTemplates.find((t) => t.id === templateId);
-    if (!template) {
-      form.setValue('expenseTemplateId', null);
-      return;
-    }
-    form.setValue('expenseTemplateId', template.id);
-    form.setValue('name', template.name);
-    if (template.suggestedAmount != null) {
-      form.setValue('amount', template.suggestedAmount);
-    }
-    if (template.paymentMethodId != null) {
-      form.setValue('paymentMethodId', Number(template.paymentMethodId));
-    }
-    const matchingCategory = categories.find(
-      (c) => c.name === template.category,
-    );
-    if (matchingCategory) {
-      form.setValue('categoryId', matchingCategory.id);
-    }
-    form.setValue('isRecurring', template.isRecurring);
-    if (template.isRecurring) {
-      form.setValue(
-        'applyToBothFortnights',
-        template.appliesFirstFortnight && template.appliesSecondFortnight,
-      );
-    } else {
-      form.setValue('applyToBothFortnights', false);
-    }
-  };
-
   const handleSubmit = async (values: AddExpenseFormValues) => {
     try {
       setIsSubmitting(true);
@@ -273,36 +208,6 @@ export default function ExpenseForm({
             {error}
           </div>
         )}
-        {showTemplateSelector && applicableTemplates.length > 0 && (
-          <FormField
-            control={form.control}
-            name="expenseTemplateId"
-            render={() => (
-              <FormItem>
-                <FormLabel>Usar plantilla de gastos (opcional)</FormLabel>
-                <FormControl>
-                  <select
-                    value={
-                      selectedTemplateId ? String(selectedTemplateId) : ''
-                    }
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                      handleTemplateChange(e.target.value)
-                    }
-                    className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                  >
-                    <option value="">Selecciona una plantilla (opcional)</option>
-                    {applicableTemplates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
         <FormField
           control={form.control}
           name="name"
@@ -318,62 +223,16 @@ export default function ExpenseForm({
         />
         <FormField
           control={form.control}
-          name="categoryId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoría</FormLabel>
-              <FormControl>
-                <select
-                  value={field.value?.toString() || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                    field.onChange(parseInt(e.target.value, 10))
-                  }
-                  onBlur={field.onBlur}
-                  disabled={loading}
-                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                >
-                  <option value="">Selecciona una categoría</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {formatCategoryLabel(c.name, c.icon)}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="amount"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Monto</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0.01"
+                <CurrencyInput
+                  value={field.value}
+                  onChange={field.onChange}
                   placeholder="0.00"
-                  {...field}
-                  value={
-                    typeof field.value === 'number' && !Number.isNaN(field.value)
-                      ? field.value
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    if (next === '') {
-                      field.onChange(NaN);
-                      return;
-                    }
-                    const parsed = Number.parseFloat(next);
-                    field.onChange(
-                      Number.isFinite(parsed) ? parsed : field.value,
-                    );
-                  }}
+                  aria-label="Monto"
                 />
               </FormControl>
               <FormMessage />
@@ -383,98 +242,63 @@ export default function ExpenseForm({
         <FormField
           control={form.control}
           name="paymentMethodId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Método de pago</FormLabel>
-              <FormControl>
-                <select
-                  value={field.value?.toString() || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                    field.onChange(parseInt(e.target.value, 10))
+          render={({ field }) => {
+            const selectedMethod = paymentMethods.find(
+              (pm) => pm.id === Number(field.value),
+            );
+            return (
+              <FormItem>
+                <FormLabel>Método de pago</FormLabel>
+                <Select
+                  value={field.value ? String(field.value) : undefined}
+                  onValueChange={(value) =>
+                    field.onChange(parseInt(value, 10))
                   }
-                  onBlur={field.onBlur}
                   disabled={loading}
-                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 >
-                  <option value="">Selecciona un método de pago</option>
-                  {paymentMethods.map((pm) => (
-                    <option key={pm.id} value={pm.id}>
-                      {`${getWalletProviderOption(pm.provider_icon_key)?.shortLabel ?? '•'} ${pm.name}`}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+                  <FormControl>
+                    <SelectTrigger
+                      className="h-11 w-full max-w-none"
+                      aria-label="Método de pago"
+                    >
+                      <SelectValue placeholder="Selecciona un método de pago">
+                        {selectedMethod ? (
+                          <span className="flex w-full items-center justify-between gap-3">
+                            <WalletIdentity
+                              name={selectedMethod.name}
+                              providerIconKey={selectedMethod.provider_icon_key}
+                              iconClassName="h-5 w-5 rounded-md"
+                            />
+                            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                              {formatCurrency(selectedMethod.amount ?? 0)}
+                            </span>
+                          </span>
+                        ) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {paymentMethods.map((pm) => (
+                      <SelectItem key={pm.id} value={String(pm.id)}>
+                        <span className="flex items-center justify-between gap-3">
+                          <WalletIdentity
+                            name={pm.name}
+                            providerIconKey={pm.provider_icon_key}
+                            iconClassName="h-5 w-5 rounded-md"
+                          />
+                          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                            {formatCurrency(pm.amount ?? 0)}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
-        {selectedPaymentMethod && (
-          <div
-            className={cn(
-              'rounded-md border px-3 py-2 text-xs',
-              exceedsCreditLimit || exceedsFundingBalance
-                ? 'border-destructive/50 bg-destructive/10 text-destructive'
-                : 'border-border/60 bg-muted/30 text-muted-foreground',
-            )}
-            role={
-              exceedsCreditLimit || exceedsFundingBalance ? 'alert' : undefined
-            }
-          >
-            {isCreditCardPaymentMethod ? (
-              <>
-                <p className={cn(exceedsCreditLimit && 'text-destructive')}>
-                  Esta compra se registrará como pagada y aumentará la deuda
-                  actual de la tarjeta.
-                </p>
-                {projectedCardDebt != null && (
-                  <p className="mt-1 font-mono tabular-nums text-foreground">
-                    Deuda proyectada: {formatCurrency(projectedCardDebt)}
-                    {projectedAvailableCredit != null
-                      ? ` · Disponible proyectado: ${formatCurrency(projectedAvailableCredit)}`
-                      : ''}
-                  </p>
-                )}
-                {exceedsCreditLimit && (
-                  <p className="mt-2 font-medium">
-                    El monto supera el crédito disponible de la tarjeta.
-                    Ajusta el monto o el método de pago antes de guardar.
-                  </p>
-                )}
-              </>
-            ) : isFundingPaymentMethod ? (
-              <>
-                <p
-                  className={cn(
-                    exceedsFundingBalance ? 'text-destructive' : undefined,
-                  )}
-                >
-                  Con «Pagado», MiCasa descuenta el monto del saldo de efectivo o
-                  débito de esa billetera.
-                </p>
-                <p className="mt-1 font-mono tabular-nums text-foreground">
-                  Saldo en billetera: {formatCurrency(fundingBalance)}
-                  {isPaidWatch && Number(selectedAmount || 0) > 0 ? (
-                    <>
-                      {' '}
-                      · Después del gasto:{' '}
-                      {formatCurrency(
-                        fundingBalance - Number(selectedAmount || 0),
-                      )}
-                    </>
-                  ) : null}
-                </p>
-                {exceedsFundingBalance && (
-                  <p className="mt-2 font-medium">
-                    El saldo no alcanza para registrar este gasto como pagado.
-                    Quita «Pagado», reduce el monto o elige otra billetera.
-                  </p>
-                )}
-              </>
-            ) : (
-              <p>Este gasto afectará directamente el saldo de la billetera.</p>
-            )}
-          </div>
-        )}
         <FormField
           control={form.control}
           name="date"
@@ -487,6 +311,51 @@ export default function ExpenseForm({
               <FormMessage />
             </FormItem>
           )}
+        />
+        <FormField
+          control={form.control}
+          name="categoryId"
+          render={({ field }) => {
+            const selectedCategory = categories.find(
+              (c) => c.id === Number(field.value),
+            );
+            return (
+              <FormItem>
+                <FormLabel>Categoría</FormLabel>
+                <Select
+                  value={field.value ? String(field.value) : undefined}
+                  onValueChange={(value) =>
+                    field.onChange(parseInt(value, 10))
+                  }
+                  disabled={loading}
+                >
+                  <FormControl>
+                    <SelectTrigger
+                      className="h-11 w-full max-w-none"
+                      aria-label="Categoría"
+                    >
+                      <SelectValue placeholder="Selecciona una categoría">
+                        {selectedCategory ? (
+                          <CategoryLabel
+                            name={selectedCategory.name}
+                            icon={selectedCategory.icon}
+                          />
+                        ) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        <CategoryLabel name={c.name} icon={c.icon} />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
         <FormField
           control={form.control}

@@ -154,7 +154,6 @@ type ExpenseTableProps = {
   date?: string;
   expenses: TransactionRow[];
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void;
-  fortnightLabel?: string;
   totalIncome?: number;
   year?: number;
   month?: number;
@@ -169,7 +168,6 @@ export default function ExpenseTable({
   date,
   expenses,
   onExpenseUpdate,
-  fortnightLabel = '',
   year,
   month,
   period,
@@ -1398,9 +1396,6 @@ export default function ExpenseTable({
           onSubmit={handleUpdateAmount}
           defaultAmount={toDisplayAmount(editingExpense.amount)}
           defaultWalletId={editingExpense.wallet_id ?? null}
-          expenseDescription={editingExpense.description}
-          expenseCategory={editingExpense.category ?? ''}
-          fortnightLabel={fortnightLabel}
           wallets={wallets}
           isPaid={editingExpense.is_paid}
           error={editError && editDialogOpen ? editError : null}

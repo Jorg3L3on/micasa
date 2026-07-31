@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -42,9 +42,6 @@ type EditExpenseAmountDialogProps = {
   onSubmit: (data: ExpenseAmountFormValues) => Promise<void>
   defaultAmount: number
   defaultWalletId?: number | null
-  expenseDescription: string
-  expenseCategory?: string
-  fortnightLabel: string
   wallets?: WalletListItem[]
   isPaid?: boolean
   error?: string | null
@@ -61,9 +58,6 @@ export default function EditExpenseAmountDialog({
   onSubmit,
   defaultAmount,
   defaultWalletId,
-  expenseDescription,
-  expenseCategory = '',
-  fortnightLabel,
   wallets = [],
   isPaid = false,
   error,
@@ -109,22 +103,8 @@ export default function EditExpenseAmountDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Modificar gasto</DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-1">
-              <p>
-                Modificar &quot;{expenseDescription}&quot;
-                {expenseCategory ? (
-                  <>
-                    {' '}
-                    <span className="text-muted-foreground">(Categoría: {expenseCategory})</span>
-                  </>
-                ) : null}{' '}
-                para la quincena {fortnightLabel}.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Monto actual: {formatCurrency(initialAmount)}
-              </p>
-            </div>
+          <DialogDescription>
+            Monto actual: {formatCurrency(initialAmount)}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -139,28 +119,13 @@ export default function EditExpenseAmountDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monto (MXN)</FormLabel>
+                  <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                    <CurrencyInput
+                      value={field.value}
+                      onChange={field.onChange}
                       placeholder="0.00"
-                      {...field}
-                      value={
-                        typeof field.value === 'number' && !Number.isNaN(field.value)
-                          ? field.value
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const next = e.target.value
-                        if (next === '') {
-                          field.onChange(NaN)
-                          return
-                        }
-                        const parsed = Number.parseFloat(next)
-                        field.onChange(Number.isFinite(parsed) ? parsed : field.value)
-                      }}
+                      aria-label="Monto"
                     />
                   </FormControl>
                   <FormMessage />
@@ -182,7 +147,10 @@ export default function EditExpenseAmountDialog({
                       }}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger
+                          className="h-11 w-full max-w-none"
+                          aria-label="Método de pago"
+                        >
                           <SelectValue placeholder="Sin cartera (efectivo)" />
                         </SelectTrigger>
                       </FormControl>

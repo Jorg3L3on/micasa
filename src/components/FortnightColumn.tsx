@@ -1008,7 +1008,6 @@ export default function FortnightColumn({
                 <ExpenseTable
                   expenses={sortedTransactions}
                   onExpenseUpdate={handleExpenseUpdate}
-                  fortnightLabel={label}
                   totalIncome={tenemos}
                   year={year}
                   month={month}
