@@ -202,10 +202,23 @@ const CreditCardPaymentDialog = ({
               onValueChange={setSourceWalletId}
             >
               <SelectTrigger
-                className="w-full max-w-none"
+                className="h-11 w-full max-w-none"
                 aria-label="Selecciona la billetera origen"
               >
-                <SelectValue placeholder="Selecciona una billetera" />
+                <SelectValue placeholder="Selecciona una billetera">
+                  {selectedSource ? (
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <WalletIdentity
+                        name={selectedSource.name}
+                        providerIconKey={selectedSource.provider_icon_key}
+                        iconClassName="h-5 w-5 rounded-md"
+                      />
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {formatCurrency(selectedSource.amount ?? 0)}
+                      </span>
+                    </span>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {fundingWalletOptions.map((wallet) => (
@@ -286,7 +299,7 @@ const CreditCardPaymentDialog = ({
                 onValueChange={setCategoryId}
               >
                 <SelectTrigger
-                  className="w-full max-w-none"
+                  className="h-11 w-full max-w-none"
                   aria-label="Categoría para el gasto en la quincena"
                 >
                   <SelectValue placeholder="Selecciona categoría">

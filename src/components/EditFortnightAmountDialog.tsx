@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -82,7 +82,8 @@ export default function EditFortnightAmountDialog({
         <DialogHeader>
           <DialogTitle>Modificar ingresos — {fortnightLabel}</DialogTitle>
           <DialogDescription>
-            Este monto solo aplica a esta quincena.
+            Monto actual: {formatCurrency(defaultAmount)}. Este monto solo aplica
+            a esta quincena.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -97,34 +98,16 @@ export default function EditFortnightAmountDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monto (MXN)</FormLabel>
+                  <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                    <CurrencyInput
+                      value={field.value}
+                      onChange={field.onChange}
                       placeholder="0.00"
-                      {...field}
-                      value={
-                        typeof field.value === 'number' && !Number.isNaN(field.value)
-                          ? field.value
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        if (next === '') {
-                          field.onChange(NaN);
-                          return;
-                        }
-                        const parsed = Number.parseFloat(next);
-                        field.onChange(Number.isFinite(parsed) ? parsed : field.value);
-                      }}
+                      aria-label="Monto"
                     />
                   </FormControl>
                   <FormMessage />
-                  <p className="text-sm text-muted-foreground">
-                    Monto actual: {formatCurrency(defaultAmount)}
-                  </p>
                 </FormItem>
               )}
             />

@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
@@ -39,15 +39,15 @@ export const WalletBalanceEditDialog = ({
   onSaved,
 }: WalletBalanceEditDialogProps) => {
   const { context } = useFinanceContext();
-  const [balanceInput, setBalanceInput] = useState('');
+  const [balanceInput, setBalanceInput] = useState(0);
   const [savingBalance, setSavingBalance] = useState(false);
 
   useEffect(() => {
     if (!wallet) {
-      setBalanceInput('');
+      setBalanceInput(0);
       return;
     }
-    setBalanceInput(String(wallet.amount));
+    setBalanceInput(Number(wallet.amount) || 0);
   }, [wallet?.id, wallet?.amount, wallet]);
 
   const handleClose = useCallback(
@@ -65,8 +65,7 @@ export const WalletBalanceEditDialog = ({
       return;
     }
 
-    const parsed = Number(balanceInput.replace(/[,\s]/g, ''));
-    if (!Number.isFinite(parsed) || parsed < 0) {
+    if (!Number.isFinite(balanceInput) || balanceInput < 0) {
       toast.error('Ingresa un saldo válido (no negativo)');
       return;
     }
@@ -77,11 +76,11 @@ export const WalletBalanceEditDialog = ({
         `/api/wallets?id=${wallet.id}`,
         {
           method: 'PATCH',
-          body: JSON.stringify({ amount: parsed }),
+          body: JSON.stringify({ amount: balanceInput }),
         },
         context,
       );
-      onSaved?.(wallet.id, parsed);
+      onSaved?.(wallet.id, balanceInput);
       toast.success('Saldo actualizado');
       onOpenChange(false);
     } catch (error) {
@@ -201,15 +200,13 @@ export const WalletBalanceEditDialog = ({
                 <Label htmlFor={BALANCE_INPUT_ID} className="text-xs">
                   Saldo actual
                 </Label>
-                <Input
+                <CurrencyInput
                   id={BALANCE_INPUT_ID}
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
                   value={balanceInput}
-                  onChange={(event) => setBalanceInput(event.target.value)}
+                  onChange={setBalanceInput}
+                  placeholder="0.00"
                   disabled={savingBalance}
+                  aria-label="Saldo actual"
                 />
               </div>
             </div>
