@@ -35,11 +35,12 @@ describe('ensureBudgetPeriodsForMonth', () => {
 
   it('does nothing when fortnights are missing for the month', async () => {
     mocks.fortnightCount.mockResolvedValue(0);
+    mocks.budgetCount.mockResolvedValue(1);
 
     await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 6);
 
-    expect(mocks.budgetCount).not.toHaveBeenCalled();
     expect(mocks.budgetFindMany).not.toHaveBeenCalled();
+    expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
   });
 
   it('generates periods when fortnights exist but none overlap the month', async () => {

@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -675,7 +676,7 @@ export async function updateLoanPaymentForOwner(
   });
 }
 
-export async function listLoanPaymentsForPlannerMonth(
+async function listLoanPaymentsForPlannerMonthImpl(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
@@ -722,6 +723,43 @@ export async function listLoanPaymentsForPlannerMonth(
       return day >= 16;
     }),
   };
+}
+
+/**
+ * Request-scoped memo: the monthly panel calls this several times per render
+ * (directly, via report summaries, and via planning transactions). `cache`
+ * dedupes those calls within one RSC/route request and is a passthrough outside
+ * React (tests, scripts). Keys are primitives because `cache` compares object
+ * arguments by reference.
+ */
+const listLoanPaymentsForPlannerMonthCached = cache(
+  (
+    userId: number | null,
+    houseId: number | null,
+    year: number,
+    month: number,
+  ) =>
+    listLoanPaymentsForPlannerMonthImpl(
+      userId != null
+        ? { user_id: userId, house_id: null }
+        : // OwnerFilter guarantees house_id is set when user_id is null.
+          { user_id: null, house_id: houseId as number },
+      year,
+      month,
+    ),
+);
+
+export function listLoanPaymentsForPlannerMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<PlannerLoanPaymentsResponse> {
+  return listLoanPaymentsForPlannerMonthCached(
+    ownerFilter.user_id ?? null,
+    ownerFilter.house_id ?? null,
+    year,
+    month,
+  );
 }
 
 /** Scheduled loan installments for planner totals (wallet → gasto; nómina → deducción). */

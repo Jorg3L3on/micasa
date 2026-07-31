@@ -70,8 +70,10 @@ export async function getMonthlyBudgetPanel(
     return { first: emptyScope(), second: emptyScope() };
   }
 
-  const first = await buildBudgetScope(periods, firstFortnight, ownerFilter);
-  const second = await buildBudgetScope(periods, secondFortnight, ownerFilter);
+  const [first, second] = await Promise.all([
+    buildBudgetScope(periods, firstFortnight, ownerFilter),
+    buildBudgetScope(periods, secondFortnight, ownerFilter),
+  ]);
 
   return { first, second };
 }
@@ -102,8 +104,28 @@ async function buildBudgetScope(
     { name: string; icon: string | null; budgeted: number; spent: number }
   >();
 
-  for (const period of periods) {
-    const overlap = getPeriodOverlap(period, scope);
+  // Prefetch spend queries concurrently; merge below stays in period order so
+  // totals accumulate exactly as before.
+  const overlaps = periods.map((period) => getPeriodOverlap(period, scope));
+  const spends = await Promise.all(
+    periods.map((period, index) => {
+      const overlap = overlaps[index];
+      if (!overlap || period.budget.allocations.length === 0) return null;
+      return computePeriodSpendByAllocations(
+        prisma,
+        period.budget.allocations.map((a) => ({
+          wallet_id: a.wallet_id,
+          category_id: a.category_id,
+          amount: Number(a.amount),
+        })),
+        overlap,
+        ownerFilter,
+      );
+    }),
+  );
+
+  for (const [index, period] of periods.entries()) {
+    const overlap = overlaps[index];
     if (!overlap) continue;
 
     const { budget } = period;
@@ -119,12 +141,6 @@ async function buildBudgetScope(
       frequency,
       (sourceTotals.get(frequency) ?? 0) + allocatedAmount,
     );
-
-    const allocationInputs = budget.allocations.map((a) => ({
-      wallet_id: a.wallet_id,
-      category_id: a.category_id,
-      amount: Number(a.amount),
-    }));
 
     for (const allocation of budget.allocations) {
       const budgeted = computeEffectiveAllocated(
@@ -147,14 +163,8 @@ async function buildBudgetScope(
       }
     }
 
-    if (allocationInputs.length === 0) continue;
-
-    const spend = await computePeriodSpendByAllocations(
-      prisma,
-      allocationInputs,
-      overlap,
-      ownerFilter,
-    );
+    const spend = spends[index];
+    if (spend == null) continue;
 
     totalSpent += spend.total_spent;
 

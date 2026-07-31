@@ -82,18 +82,42 @@ export async function computePeriodSpendByAllocations(
   window: DateRange,
   ownerFilter: OwnerFilter,
 ): Promise<PeriodSpendResult> {
-  const by_allocation: AllocationSpendResult[] = [];
-  let total_spent = 0;
-
-  for (const allocation of allocations) {
-    const agg = await db.expense.aggregate({
-      where: buildBudgetSpendExpenseWhere(ownerFilter, allocation, window),
-      _sum: { amount: true },
-    });
-    const spent_amount = Number(agg._sum.amount ?? 0);
-    total_spent += spent_amount;
-    by_allocation.push({ spent_amount });
+  if (allocations.length === 0) {
+    return { total_spent: 0, by_allocation: [] };
   }
+
+  // One grouped query instead of one aggregate per allocation. Rows for
+  // wallet+category combos outside the allocation pairs are ignored below.
+  const grouped = await db.expense.groupBy({
+    by: ['wallet_id', 'category_id'],
+    where: {
+      ...ownerFilter,
+      is_paid: true,
+      wallet_id: { in: [...new Set(allocations.map((a) => a.wallet_id))] },
+      category_id: { in: [...new Set(allocations.map((a) => a.category_id))] },
+      payment_date: { gte: window.start_date, lte: window.end_date },
+      ...whereExcludeCreditInstallments(),
+    },
+    _sum: { amount: true },
+  });
+
+  const spentByPair = new Map(
+    grouped.map((row) => [
+      `${row.wallet_id}|${row.category_id}`,
+      Number(row._sum.amount ?? 0),
+    ]),
+  );
+
+  let total_spent = 0;
+  const by_allocation: AllocationSpendResult[] = allocations.map(
+    (allocation) => {
+      const spent_amount =
+        spentByPair.get(`${allocation.wallet_id}|${allocation.category_id}`) ??
+        0;
+      total_spent += spent_amount;
+      return { spent_amount };
+    },
+  );
 
   return { total_spent, by_allocation };
 }

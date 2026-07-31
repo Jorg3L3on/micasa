@@ -111,20 +111,20 @@ export async function ensureBudgetPeriodsForMonth(
   year: number,
   month: number,
 ): Promise<void> {
-  const fortnightCount = await prisma.fortnight.count({
-    where: { ...ownerFilter, year, month },
-  });
-  if (fortnightCount === 0) return;
-
-  const activeRecurrentCount = await prisma.budget.count({
-    where: {
-      ...ownerFilter,
-      active: true,
-      recurrent: true,
-      frequency: { not: 'CUSTOM' },
-    },
-  });
-  if (activeRecurrentCount === 0) return;
+  const [fortnightCount, activeRecurrentCount] = await Promise.all([
+    prisma.fortnight.count({
+      where: { ...ownerFilter, year, month },
+    }),
+    prisma.budget.count({
+      where: {
+        ...ownerFilter,
+        active: true,
+        recurrent: true,
+        frequency: { not: 'CUSTOM' },
+      },
+    }),
+  ]);
+  if (fortnightCount === 0 || activeRecurrentCount === 0) return;
 
   const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
   const monthStart = first.start_date;

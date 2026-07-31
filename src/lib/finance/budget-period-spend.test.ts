@@ -77,9 +77,16 @@ describe('computePeriodSpendByAllocations', () => {
     end_date: endOfCalendarDay('2026-06-15'),
   };
 
-  it('passes owner-scoped paid-only filters to aggregate per allocation', async () => {
-    const aggregate = vi.fn().mockResolvedValue({ _sum: { amount: 120 } });
-    const db = { expense: { aggregate } };
+  it('runs one grouped query with owner-scoped paid-only filters and maps sums per allocation pair', async () => {
+    const groupBy = vi.fn().mockResolvedValue([
+      { wallet_id: 1, category_id: 10, _sum: { amount: 120 } },
+      { wallet_id: 2, category_id: 20, _sum: { amount: 120 } },
+      // Cross-product combo not present in the allocations; must be ignored.
+      { wallet_id: 1, category_id: 20, _sum: { amount: 999 } },
+    ]);
+    const db = { expense: { groupBy } } as unknown as Parameters<
+      typeof computePeriodSpendByAllocations
+    >[0];
 
     const result = await computePeriodSpendByAllocations(
       db,
@@ -93,18 +100,37 @@ describe('computePeriodSpendByAllocations', () => {
 
     expect(result.total_spent).toBe(240);
     expect(result.by_allocation).toEqual([{ spent_amount: 120 }, { spent_amount: 120 }]);
-    expect(aggregate).toHaveBeenCalledTimes(2);
-    expect(aggregate.mock.calls[0][0].where).toMatchObject({
-      user_id: 1,
-      is_paid: true,
-      wallet_id: 1,
-      category_id: 10,
+    expect(groupBy).toHaveBeenCalledTimes(1);
+    expect(groupBy.mock.calls[0][0]).toMatchObject({
+      by: ['wallet_id', 'category_id'],
+      where: {
+        user_id: 1,
+        is_paid: true,
+        wallet_id: { in: [1, 2] },
+        category_id: { in: [10, 20] },
+        payment_date: { gte: window.start_date, lte: window.end_date },
+        OR: [
+          { credit_installment_current: null },
+          { credit_installment_total: null },
+        ],
+      },
     });
-    expect(aggregate.mock.calls[1][0].where).toMatchObject({
-      user_id: 1,
-      is_paid: true,
-      wallet_id: 2,
-      category_id: 20,
-    });
+  });
+
+  it('returns zeros without querying when there are no allocations', async () => {
+    const groupBy = vi.fn();
+    const db = { expense: { groupBy } } as unknown as Parameters<
+      typeof computePeriodSpendByAllocations
+    >[0];
+
+    const result = await computePeriodSpendByAllocations(
+      db,
+      [],
+      window,
+      ownerFilter,
+    );
+
+    expect(result).toEqual({ total_spent: 0, by_allocation: [] });
+    expect(groupBy).not.toHaveBeenCalled();
   });
 });
