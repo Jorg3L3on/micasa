@@ -19,7 +19,7 @@ import { AddExpenseFormValues } from '@/schemas/transaction.schema';
 type AddExpenseDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: AddExpenseFormValues) => Promise<void>;
+  onCreate: (data: AddExpenseFormValues) => Promise<void>;
   fortnightLabel: string;
   fortnightId: number;
   year: number;
@@ -57,7 +57,7 @@ function getDefaultDateForFortnight(
 export default function AddExpenseDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onCreate,
   fortnightLabel,
   year,
   month,
@@ -68,8 +68,8 @@ export default function AddExpenseDialog({
   const resolvedDefaultDate =
     defaultDate || getDefaultDateForFortnight(year, month, period);
 
-  const handleSubmit = async (data: AddExpenseFormValues) => {
-    await onSubmit(data);
+  const handleSave = async (data: AddExpenseFormValues) => {
+    await onCreate(data);
     onOpenChange(false);
   };
 
@@ -87,7 +87,7 @@ export default function AddExpenseDialog({
             key={`${year}-${month}-${period}-${resolvedDefaultDate}`}
             mode="create"
             defaults={{ date: resolvedDefaultDate }}
-            onSubmit={handleSubmit}
+            onSave={handleSave}
             onCancel={() => onOpenChange(false)}
             error={error}
           />

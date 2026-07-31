@@ -366,7 +366,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
   if (loading || !detail) {
     return (
       <PantryLayoutShell className="flex min-h-[40vh] flex-1 items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" data-icon="inline-start" />
       </PantryLayoutShell>
     );
   }
@@ -387,13 +387,13 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
               asChild
             >
               <Link href={listHref}>
-                <ArrowLeft className="h-4 w-4 mr-1" />
+                <ArrowLeft className="h-4 w-4 mr-1" data-icon="inline-start" />
                 Recibos
               </Link>
             </Button>
             <div className="flex flex-row items-center gap-3">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
-                <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
               </span>
               <div className="min-w-0">
                 <CardTitle className="text-sm font-semibold leading-none truncate">
@@ -418,7 +418,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                 onClick={() => void handleDownloadFile()}
                 aria-label="Descargar archivo del recibo"
               >
-                <Download className="h-4 w-4 mr-1" />
+                <Download className="h-4 w-4 mr-1" data-icon="inline-start" />
                 Descargar
               </Button>
             )}
@@ -442,7 +442,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
         <CardContent className="flex flex-col gap-4">
           {detail.parse_warnings.length > 0 && (
             <Alert className="border-amber-500/40 bg-transparent">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTriangle className="h-4 w-4 text-amber-600" data-icon="inline-start" />
               <AlertTitle className="text-sm">Avisos de importación</AlertTitle>
               <AlertDescription className="text-xs">
                 {detail.parse_warnings.join(' ')}
@@ -503,7 +503,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
             >
               <div className="flex flex-wrap items-start gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-                  <Wallet className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                  <Wallet className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
                 </span>
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -558,7 +558,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                     }
                     disabled={expenseCatalogLoading}
                   >
-                    <SelectTrigger className="h-9 w-full">
+                    <SelectTrigger className="h-9 w-full" aria-label="Seleccionar opción">
                       <SelectValue
                         placeholder={
                           expenseCatalogLoading ? 'Cargando…' : 'Selecciona categoría'
@@ -584,7 +584,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                     }
                     disabled={expenseCatalogLoading}
                   >
-                    <SelectTrigger className="h-9 w-full">
+                    <SelectTrigger className="h-9 w-full" aria-label="Seleccionar opción">
                       <SelectValue
                         placeholder={
                           expenseCatalogLoading ? 'Cargando…' : 'Selecciona cartera'
@@ -620,7 +620,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                   disabled={registeringExpense || expenseCatalogLoading}
                 >
                   {registeringExpense ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" />
                   ) : (
                     'Registrar gasto'
                   )}
@@ -647,7 +647,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                     aria-label="Eliminar línea"
                     onClick={() => handleRemoveLine(row.tempKey)}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
                   </Button>
                 </div>
                 <Input
@@ -878,7 +878,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                         aria-label="Eliminar línea"
                         onClick={() => handleRemoveLine(row.tempKey)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -894,7 +894,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
               className="h-8"
               onClick={handleAddLine}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" data-icon="inline-start" />
               Renglón
             </Button>
             <div className="flex flex-wrap items-center gap-4">
@@ -912,7 +912,7 @@ export function PantryReceiptDetailView({ receiptId }: PantryReceiptDetailViewPr
                 onClick={() => void handleSaveLines()}
               >
                 {savingLines ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" />
                 ) : (
                   'Guardar líneas'
                 )}

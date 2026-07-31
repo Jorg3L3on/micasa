@@ -167,7 +167,9 @@ export const LandingPage = () => {
   return (
     <div
       className={cn(
-        'relative min-h-svh overflow-x-hidden bg-[#eef3f8] text-[#0b1220]',
+        // overflow-x-clip: hide hero bleed without creating a scrollport
+        // (overflow-x-hidden breaks position:sticky for the fortnight scrub).
+        'relative min-h-svh overflow-x-clip bg-[#eef3f8] text-[#0b1220]',
         'font-[family-name:var(--font-landing-sans)]'
       )}
     >
@@ -196,7 +198,7 @@ export const LandingPage = () => {
             className="inline-flex items-center gap-2.5 text-[#0b1220] transition-opacity hover:opacity-80"
             aria-label="MiCasa inicio"
           >
-            <MicasaMark className="h-7 w-auto sm:h-8" />
+            <MicasaMark className="h-7 w-auto sm:h-8" data-icon="inline-start" />
             <span className="font-[family-name:var(--font-landing-display)] text-base font-semibold tracking-tight sm:text-lg">
               MiCasa
             </span>
@@ -303,7 +305,7 @@ export const LandingPage = () => {
               >
                 <MagneticLink href="/register" variant="primary">
                   Empezar gratis
-                  <ArrowRight className="size-4" aria-hidden />
+                  <ArrowRight className="size-4" aria-hidden data-icon="inline-start" />
                 </MagneticLink>
                 <MagneticLink href="/login" variant="secondary">
                   Ya tengo cuenta
@@ -513,7 +515,7 @@ export const LandingPage = () => {
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-medium text-[#0b1220] transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   >
                     Crear cuenta gratis
-                    <ArrowRight className="size-4" aria-hidden />
+                    <ArrowRight className="size-4" aria-hidden data-icon="inline-start" />
                   </Link>
                   <Link
                     href="/login"

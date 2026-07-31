@@ -45,8 +45,9 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   budget: BudgetListItem;
-  onSubmit: (values: Step1Values) => Promise<void>;
+  onSave: (values: Step1Values) => Promise<void>;
   error?: string | null;
+  disabled?: boolean;
 };
 
 function toDateInputValue(value: string | null) {
@@ -69,8 +70,9 @@ export default function BudgetTemplateFieldsDialog({
   open,
   onOpenChange,
   budget,
-  onSubmit,
+  onSave,
   error,
+  disabled = false,
 }: Props) {
   const form = useForm<Step1Input>({
     resolver: zodResolver(step1Schema),
@@ -91,7 +93,7 @@ export default function BudgetTemplateFieldsDialog({
   }, [watchedFrequency, form]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    await onSubmit(step1Schema.parse(values));
+    await onSave(step1Schema.parse(values));
     onOpenChange(false);
   });
 
@@ -107,7 +109,7 @@ export default function BudgetTemplateFieldsDialog({
 
         {error ? (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden />
+            <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -150,7 +152,10 @@ export default function BudgetTemplateFieldsDialog({
                   <FormLabel>Frecuencia</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger
+                        className="w-full"
+                        aria-label="Frecuencia del presupuesto"
+                      >
                         <SelectValue placeholder="Selecciona frecuencia" />
                       </SelectTrigger>
                     </FormControl>
@@ -174,7 +179,11 @@ export default function BudgetTemplateFieldsDialog({
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-2 space-y-0">
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        aria-label="Presupuesto recurrente"
+                      />
                     </FormControl>
                     <FormLabel className="cursor-pointer font-normal">
                       Recurrente (genera periodos al crear nuevo mes)
@@ -235,11 +244,11 @@ export default function BudgetTemplateFieldsDialog({
               <Button
                 type="submit"
                 className="h-11 sm:h-9"
-                disabled={form.formState.isSubmitting}
+                disabled={form.formState.isSubmitting || disabled}
               >
-                {form.formState.isSubmitting ? (
+                {form.formState.isSubmitting || disabled ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                     Guardando…
                   </>
                 ) : (

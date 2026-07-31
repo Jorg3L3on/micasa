@@ -46,8 +46,7 @@ export default function DashboardBudgetSummaryCard({
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
             <BarChart3
               className="h-4 w-4 text-sky-600 dark:text-sky-400"
-              aria-hidden
-            />
+              aria-hidden data-icon="inline-start" />
           </span>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">

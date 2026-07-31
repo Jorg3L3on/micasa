@@ -114,8 +114,7 @@ export const WalletBalanceEditDialog = ({
                   providerIconKey={wallet.provider_icon_key}
                   className="h-9 w-9 shrink-0 rounded-lg border border-border/60 shadow-sm"
                   iconClassName="h-5 w-5"
-                  showTooltipLabel={false}
-                />
+                  showTooltipLabel={false} data-icon="inline-start" />
                 <div className="min-w-0 space-y-1">
                   <DialogTitle className="truncate text-left text-base">
                     {wallet.name}

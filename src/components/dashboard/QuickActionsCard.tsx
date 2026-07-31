@@ -151,7 +151,7 @@ export default function QuickActionsCard({
       <CardHeader className={compact ? 'pb-3' : undefined}>
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <Plus className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+            <Plus className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
           </span>
           <CardTitle className="text-sm font-semibold leading-none">
             Acciones rápidas
@@ -179,8 +179,7 @@ export default function QuickActionsCard({
         >
           <Plus
             className={compact ? iconSizeCompact : iconSizeFull}
-            aria-hidden
-          />
+            aria-hidden data-icon="inline-start" />
           <span>{compact ? 'Gasto' : 'Agregar gasto'}</span>
         </Button>
         <Button
@@ -248,7 +247,7 @@ export default function QuickActionsCard({
             <DashboardQuickExpenseDialog
               open={expenseDialogOpen}
               onOpenChange={setExpenseDialogOpen}
-              onSubmit={handleQuickExpenseSubmit}
+              onSave={handleQuickExpenseSubmit}
               fortnight={fortnight}
             />
             <DashboardQuickIncomeDialog

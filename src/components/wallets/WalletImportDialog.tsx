@@ -103,7 +103,7 @@ const WalletImportDialog = ({
         <DialogHeader>
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-              <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
             </span>
             <div className="min-w-0 space-y-1.5">
               <DialogTitle className="text-left text-base">
@@ -136,6 +136,12 @@ const WalletImportDialog = ({
               accept=".csv,text/csv"
               className="cursor-pointer"
               disabled={submitting}
+              aria-invalid={Boolean(result && result.errors.length > 0)}
+              aria-describedby={
+                result && result.errors.length > 0
+                  ? 'wallet-import-field-errors'
+                  : undefined
+              }
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 setFile(f ?? null);
@@ -151,7 +157,11 @@ const WalletImportDialog = ({
             className="h-8 gap-2 text-xs"
             onClick={() => downloadWalletImportCsvTemplate()}
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download
+              className="h-3.5 w-3.5"
+              aria-hidden
+              data-icon="inline-start"
+            />
             Descargar plantilla
           </Button>
 
@@ -165,7 +175,11 @@ const WalletImportDialog = ({
                 Importados: {result.imported} · Omitidos: {result.skipped}
               </p>
               {result.errors.length > 0 && (
-                <div className="mt-2 space-y-1">
+                <div
+                  className="mt-2 space-y-1"
+                  role="alert"
+                  id="wallet-import-field-errors"
+                >
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Errores
                   </p>

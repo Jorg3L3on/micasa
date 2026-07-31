@@ -161,7 +161,11 @@ export const MonthlyBudgetSidebar = ({
           href={`/budgets${ownerQuery}`}
           aria-label="Ver reporte completo de presupuesto de la quincena"
         >
-          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+          <SlidersHorizontal
+            className="h-4 w-4 shrink-0"
+            aria-hidden
+            data-icon="inline-start"
+          />
           Ver reporte completo
         </Link>
       </Button>

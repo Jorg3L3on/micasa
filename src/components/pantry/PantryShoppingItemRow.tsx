@@ -80,7 +80,7 @@ export function PantryShoppingItemRow({
             disabled={disabled}
             aria-label="Editar ítem"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3.5 w-3.5" data-icon="inline-start" />
           </Button>
           <Button
             type="button"
@@ -91,7 +91,7 @@ export function PantryShoppingItemRow({
             disabled={disabled}
             aria-label="Eliminar ítem"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3.5 w-3.5" data-icon="inline-start" />
           </Button>
         </div>
       </div>

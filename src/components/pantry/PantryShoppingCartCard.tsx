@@ -70,11 +70,10 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
             store={cart.store}
             variant="badge"
             className="h-10 min-w-12 rounded-xl border-sky-500/30 bg-sky-500/10 px-2"
-            iconClassName="h-6 w-auto"
-          />
+            iconClassName="h-6 w-auto" data-icon="inline-start" />
         ) : (
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-            <ShoppingCart className="h-5 w-5" />
+            <ShoppingCart className="h-5 w-5" data-icon="inline-start" />
           </span>
         )}
         <div className="min-w-0 flex-1">
@@ -91,19 +90,19 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <ShoppingCart className="h-3 w-3" />
+              <ShoppingCart className="h-3 w-3" data-icon="inline-start" />
               {totals.items_count}
               {totals.items_count === 1 ? ' ítem' : ' ítems'}
             </span>
             {totals.items_count > 0 && cart.status === 'BOUGHT' ? (
               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" />
+                <CheckCircle2 className="h-3 w-3" data-icon="inline-start" />
                 Completado
               </span>
             ) : null}
             {totals.items_count > 0 && cart.status !== 'BOUGHT' ? (
               <span className="inline-flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" />
+                <CheckCircle2 className="h-3 w-3" data-icon="inline-start" />
                 {totals.checked_count}/{totals.items_count}
               </span>
             ) : null}
@@ -112,7 +111,7 @@ export function PantryShoppingCartCard({ cart, href }: Props) {
             </span>
           </div>
           <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <UserIcon className="h-3 w-3" />
+            <UserIcon className="h-3 w-3" data-icon="inline-start" />
             <span className="truncate">Creado por {cart.created_by.name}</span>
           </div>
         </div>

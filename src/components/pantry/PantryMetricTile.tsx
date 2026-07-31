@@ -52,7 +52,7 @@ export const PantryMetricTile = ({
 
   const iconBox = (
     <div className={iconShellClass} style={{ background: gradient }}>
-      <Icon className="h-4 w-4 text-white" aria-hidden />
+      <Icon className="h-4 w-4 text-white" aria-hidden data-icon="inline-start" />
     </div>
   );
 

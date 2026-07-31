@@ -120,7 +120,7 @@ export const CreditCardPlannedPaymentSection = ({
       >
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
           </span>
           <div>
             <p className="text-sm font-semibold leading-none">
@@ -252,7 +252,7 @@ export const CreditCardPlannedPaymentSection = ({
                           onClick={() => handleOpenDialog(item)}
                           aria-label={`Editar pago planeado: ${item.fortnightLabel}`}
                         >
-                          <Pencil className="size-3.5" aria-hidden />
+                          <Pencil className="size-3.5" aria-hidden data-icon="inline-start" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={6}>
@@ -284,10 +284,9 @@ export const CreditCardPlannedPaymentSection = ({
                             {payingFortnightId === item.fortnightId ? (
                               <Loader2
                                 className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden
-                              />
+                                aria-hidden data-icon="inline-start" />
                             ) : (
-                              <Banknote className="size-3.5" aria-hidden />
+                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
                             )}
                           </Button>
                         </span>
@@ -314,7 +313,7 @@ export const CreditCardPlannedPaymentSection = ({
               setPlanError(null);
             }
           }}
-          onSubmit={handleSavePlan}
+          onSave={handleSavePlan}
           onClearPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

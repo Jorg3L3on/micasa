@@ -250,8 +250,7 @@ export const WalletListCard = ({
                     : 'border border-border/70 bg-card ring-border/50',
                 )}
                 iconClassName="h-5 w-5"
-                showTooltipLabel={false}
-              />
+                showTooltipLabel={false} data-icon="inline-start" />
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
@@ -384,20 +383,16 @@ export const WalletListCard = ({
         </TooltipContent>
       </Tooltip>
 
-      <div
-        className="absolute right-2 top-2 z-20 flex items-center gap-1"
-        onPointerDown={handleStopOverlayPointer}
-        onClick={handleStopOverlayPointer}
-      >
+      <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
         {!wallet.active ? (
           onDarkSurface ? (
             <span className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full border border-white/20 bg-black/25 px-1.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden data-icon="inline-start" />
               Inactivo
             </span>
           ) : (
             <Badge variant="outline" className="h-5 shrink-0 gap-0.5 px-1.5 text-[9px]">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden data-icon="inline-start" />
               Inactivo
             </Badge>
           )
@@ -417,8 +412,10 @@ export const WalletListCard = ({
                     : '',
               )}
               aria-label={`Más opciones para ${wallet.name}`}
+              onPointerDown={handleStopOverlayPointer}
+              onClick={handleStopOverlayPointer}
             >
-              <MoreVertical className="h-3.5 w-3.5" />
+              <MoreVertical className="h-3.5 w-3.5" data-icon="inline-start" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
@@ -453,14 +450,14 @@ export const WalletListCard = ({
               onClick={() => onEdit(wallet)}
               className="cursor-pointer"
             >
-              <Pencil className="mr-2 h-4 w-4" />
+              <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(wallet)}
               className="cursor-pointer text-destructive focus:text-destructive"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
               Eliminar
             </DropdownMenuItem>
           </DropdownMenuContent>

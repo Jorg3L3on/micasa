@@ -6,17 +6,15 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights, getCreatedMonths } from '@/lib/api/fortnights';
 import { formatMonth } from '@/lib/utils';
+import { z } from 'zod';
+
+const createMonthSchema = z.object({
+  month: z.string().min(1, 'Selecciona un mes y año'),
+});
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
@@ -38,7 +36,8 @@ export default function CreateMonthForm({
   >([]);
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string>('');
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [lastCreated, setLastCreated] = useState<{
     year: number;
     month: number;
@@ -84,19 +83,25 @@ export default function CreateMonthForm({
     fetchCreated();
   }, [lastCreated, context]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedKey) {
-      toast.error('Selecciona un mes y año');
+  const createMonth = async () => {
+    if (isSubmitting) return;
+    const parsed = createMonthSchema.safeParse({ month: selectedKey });
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues[0]?.message ?? 'Selecciona un mes y año';
+      setValidationError(message);
+      toast.error(message);
       return;
     }
-    const [y, m] = selectedKey.split('-').map(Number);
+    const [y, m] = parsed.data.month.split('-').map(Number);
     if (Number.isNaN(y) || Number.isNaN(m) || m < 1 || m > 12) {
+      setValidationError('Selecciona un mes válido');
       toast.error('Selecciona un mes válido');
       return;
     }
+    setValidationError(null);
     try {
-      setSubmitting(true);
+      setIsSubmitting(true);
       setLastCreated(null);
       const result = await createMonthFortnights(y, m, context);
       setLastCreated({ year: y, month: m });
@@ -127,9 +132,10 @@ export default function CreateMonthForm({
         err instanceof Error
           ? err.message
           : 'Error al crear las quincenas del mes';
+      setValidationError(message);
       toast.error(message);
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -148,46 +154,71 @@ export default function CreateMonthForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void createMonth();
+      }}
+      className="space-y-4"
+      aria-busy={isSubmitting}
+    >
       <div className="space-y-2">
         <Label htmlFor={selectId} className="text-sm font-medium">
           Mes a crear
         </Label>
-        <Select
+        <select
+          id={selectId}
+          name="month"
           value={selectedKey}
-          onValueChange={setSelectedKey}
-          disabled={submitting || loadingMonths}
+          onChange={(event) => {
+            setSelectedKey(event.target.value);
+            setValidationError(null);
+          }}
+          disabled={isSubmitting || loadingMonths}
           required
+          aria-invalid={Boolean(validationError)}
+          aria-describedby={
+            validationError ? `${idPrefix}-validation-error` : undefined
+          }
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-xs"
         >
-          <SelectTrigger
-            id={selectId}
-            aria-label="Selecciona mes a crear"
-            className="w-full sm:max-w-xs"
+          <option value="" disabled>
+            {getSelectPlaceholder()}
+          </option>
+          {availableOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {validationError ? (
+          <p
+            id={`${idPrefix}-validation-error`}
+            className="text-sm text-destructive"
+            role="alert"
           >
-            <SelectValue placeholder={getSelectPlaceholder()} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            {validationError}
+          </p>
+        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="submit"
           disabled={
-            submitting ||
+            isSubmitting ||
             loadingMonths ||
             availableOptions.length === 0 ||
             !selectedKey
           }
+          aria-busy={isSubmitting}
         >
-          {submitting ? (
+          {isSubmitting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              <Loader2
+                className="mr-2 h-4 w-4 animate-spin"
+                aria-hidden
+                data-icon="inline-start"
+              />
               Creando...
             </>
           ) : (
@@ -202,7 +233,7 @@ export default function CreateMonthForm({
                 lastCreated.year
               }`}
             >
-              <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+              <ExternalLink className="mr-2 h-4 w-4" aria-hidden data-icon="inline-start" />
               Ver mes
             </Link>
           </Button>

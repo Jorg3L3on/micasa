@@ -121,7 +121,7 @@ export default function ExpenseCard({
           )}
           {expense.isRecurring && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-              <RefreshCw className="size-3" aria-hidden />
+              <RefreshCw className="size-3" aria-hidden data-icon="inline-start" />
               Recurrente
             </span>
           )}

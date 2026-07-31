@@ -4,7 +4,9 @@ import { useCallback, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FortnightViewControls } from '@/components/monthly/FortnightViewControls';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
+import { cn } from '@/lib/utils';
 import type {
   DuePaymentItem,
   PlannerCardChargesSummary,
@@ -74,7 +76,13 @@ export default function MonthlyFortnightView({
   paidWalletIds,
   isCurrentMonth,
 }: MonthlyFortnightViewProps) {
-  const { prefsReady, period } = useMonthlyPanelPreferences();
+  const {
+    prefsReady,
+    period,
+    summaryVisible,
+    setPeriod,
+    setSummaryVisible,
+  } = useMonthlyPanelPreferences();
 
   const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] =
     useState(0);
@@ -84,6 +92,10 @@ export default function MonthlyFortnightView({
   const handleWalletBalancesPersisted = useCallback(() => {
     setSummaryFundingRefreshNonce((n) => n + 1);
   }, []);
+
+  const handleShowSummaryFromColumn = useCallback(() => {
+    setSummaryVisible(true);
+  }, [setSummaryVisible]);
 
   const walletStripSection =
     wallets.length > 0 ? (
@@ -107,6 +119,9 @@ export default function MonthlyFortnightView({
           aria-busy="true"
           aria-label="Cargando preferencias de vista"
         >
+          <div className="flex justify-start sm:justify-end">
+            <Skeleton className="h-8 w-40 rounded-lg" />
+          </div>
           <div className="space-y-4">
             <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
             <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
@@ -119,6 +134,16 @@ export default function MonthlyFortnightView({
   return (
     <div className="space-y-4">
       {walletStripSection}
+      <FortnightViewControls
+        year={year}
+        month={month}
+        period={period}
+        firstLabel={first.label}
+        secondLabel={second.label}
+        summaryVisible={summaryVisible}
+        onPeriodChange={setPeriod}
+        onSummaryVisibleChange={setSummaryVisible}
+      />
 
       <FortnightColumn
         key={`${ownerKey}-${year}-${month}-${period}`}
@@ -129,6 +154,8 @@ export default function MonthlyFortnightView({
         year={year}
         month={month}
         period={period}
+        showSummaryCard={summaryVisible}
+        onShowSummaryCard={handleShowSummaryFromColumn}
         cardDueItems={activeBundle.cardDueItems}
         loanDueItems={activeBundle.loanDueItems}
         wallets={wallets}

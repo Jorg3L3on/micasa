@@ -665,7 +665,7 @@ const CreditCardDetailPageContent = () => {
               setPaymentDialogOpen(true);
             }}
           >
-            <Wallet className="mr-2 h-4 w-4" />
+            <Wallet data-icon="inline-start" className="h-4 w-4" aria-hidden />
             Registrar pago
           </Button>
         </div>
@@ -690,7 +690,7 @@ const CreditCardDetailPageContent = () => {
         submitting={paymentSubmitting}
         error={paymentError}
         fortnightId={paymentFortnightId}
-        onSubmit={handlePaymentSubmit}
+        onConfirm={handlePaymentSubmit}
       />
 
       <CreditCardQuickPurchaseDialog
@@ -755,7 +755,7 @@ const CreditCardDetailPageContent = () => {
           setEditCardDialogOpen(open);
           if (!open) setEditCardFormError(null);
         }}
-        onSubmit={handleEditCard}
+        onSave={handleEditCard}
         mode="edit"
         showAmountField={!isCreditOrStoreCardWalletType(card.type)}
         allowedTypes={['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}

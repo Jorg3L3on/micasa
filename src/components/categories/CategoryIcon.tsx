@@ -36,7 +36,7 @@ export const CategoryIcon = ({
       )}
       aria-hidden
     >
-      <LucideIcon className={cn('h-3.5 w-3.5', iconClassName)} strokeWidth={2} />
+      <LucideIcon className={cn('h-3.5 w-3.5', iconClassName)} strokeWidth={2} data-icon="inline-start" />
     </span>
   );
 };

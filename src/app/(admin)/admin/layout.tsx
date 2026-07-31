@@ -44,8 +44,7 @@ export default async function AdminLayout({
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
               <Shield
                 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400"
-                aria-hidden
-              />
+                aria-hidden data-icon="inline-start" />
             </span>
             Admin
           </Link>

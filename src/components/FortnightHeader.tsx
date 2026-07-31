@@ -83,8 +83,8 @@ export default function FortnightHeader({
                 <ChevronLeft
                   className="size-5 shrink-0"
                   strokeWidth={2.25}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
+                <span className="sr-only">Quincena anterior</span>
               </Link>
             </Button>
           </TooltipTrigger>
@@ -102,8 +102,8 @@ export default function FortnightHeader({
                 <ChevronRight
                   className="size-5 shrink-0"
                   strokeWidth={2.25}
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-end" />
+                <span className="sr-only">Quincena siguiente</span>
               </Link>
             </Button>
           </TooltipTrigger>

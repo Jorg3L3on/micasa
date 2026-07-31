@@ -41,7 +41,7 @@ import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 export type ExpenseFormProps = {
   mode: 'create' | 'edit';
   defaults?: Partial<AddExpenseFormValues>;
-  onSubmit: (values: AddExpenseFormValues) => Promise<void>;
+  onSave: (values: AddExpenseFormValues) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => Promise<void>;
   error?: string | null;
@@ -56,7 +56,7 @@ function getFallbackDate(): string {
 export default function ExpenseForm({
   mode,
   defaults,
-  onSubmit,
+  onSave,
   onCancel,
   onDelete,
   error,
@@ -181,7 +181,7 @@ export default function ExpenseForm({
   const handleSubmit = async (values: AddExpenseFormValues) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(values);
+      await onSave(values);
     } finally {
       setIsSubmitting(false);
     }

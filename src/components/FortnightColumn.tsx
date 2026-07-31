@@ -33,7 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Banknote, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
+import { Banknote, BarChart3, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -119,6 +119,8 @@ type FortnightColumnProps = {
   year: number;
   month: number;
   period: 'FIRST' | 'SECOND';
+  showSummaryCard?: boolean;
+  onShowSummaryCard?: () => void;
   tableDensity?: ExpenseTableDensity;
   cardDueItems?: DuePaymentItem[];
   loanDueItems?: LoanDuePaymentItem[];
@@ -138,6 +140,8 @@ export default function FortnightColumn({
   year,
   month,
   period,
+  showSummaryCard = true,
+  onShowSummaryCard,
   tableDensity = 'comfortable',
   cardDueItems: initialCardDueItems = [],
   loanDueItems = [],
@@ -318,6 +322,11 @@ export default function FortnightColumn({
       router.refresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'No se pudieron actualizar los datos del reporte',
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -761,43 +770,58 @@ export default function FortnightColumn({
   return (
     <>
       <div className="flex flex-col space-y-3 sm:space-y-4">
-        <SummaryBlock
-          tenemos={tenemos}
-          libre={libre}
-          pagado={pagado}
-          pendiente={pendiente}
-          userIncome={currentFortnightUserIncome}
-          incomeItems={
-            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
-            []
-          }
-          year={year}
-          month={month}
-          period={period}
-          expenseCount={summaryExpenseCount}
-          paidExpenseCount={summaryPaidExpenseCount}
-          unpaidExpenseCount={summaryUnpaidExpenseCount}
-          cardCharges={summary.cardCharges ?? null}
-          planningOrphanCardPayments={
-            summary.planningOrphanCardPayments ?? null
-          }
-          planningCardStatementDue={
-            summary.planningCardStatementDue ?? null
-          }
-          planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
-          planningPayrollLoanDeduction={
-            summary.planningPayrollLoanDeduction ?? null
-          }
-          fundingWalletBalanceTotal={
-            summary.fundingWalletBalanceTotal ?? 0
-          }
-          fundingNetVsPendingExpense={
-            summary.fundingNetVsPendingExpense ?? 0
-          }
-          fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
-          onEditIncome={handleOpenOverrideDialog}
-          onEditIncomeSource={handleOpenEditIncomeSource}
-        />
+        {/* Summary card (toggle desde la barra de planificación) */}
+        {showSummaryCard ? (
+          <SummaryBlock
+            tenemos={tenemos}
+            libre={libre}
+            pagado={pagado}
+            pendiente={pendiente}
+            userIncome={currentFortnightUserIncome}
+            incomeItems={
+              summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
+              []
+            }
+            year={year}
+            month={month}
+            period={period}
+            expenseCount={summaryExpenseCount}
+            paidExpenseCount={summaryPaidExpenseCount}
+            unpaidExpenseCount={summaryUnpaidExpenseCount}
+            cardCharges={summary.cardCharges ?? null}
+            planningOrphanCardPayments={
+              summary.planningOrphanCardPayments ?? null
+            }
+            planningCardStatementDue={
+              summary.planningCardStatementDue ?? null
+            }
+            planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
+            planningPayrollLoanDeduction={
+              summary.planningPayrollLoanDeduction ?? null
+            }
+            fundingWalletBalanceTotal={
+              summary.fundingWalletBalanceTotal ?? 0
+            }
+            fundingNetVsPendingExpense={
+              summary.fundingNetVsPendingExpense ?? 0
+            }
+            fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
+            onEditIncome={handleOpenOverrideDialog}
+            onEditIncomeSource={handleOpenEditIncomeSource}
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-dashed border-primary/30 text-primary/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+            onClick={onShowSummaryCard}
+            aria-label={`Mostrar resumen de la quincena: ${label}`}
+          >
+            <BarChart3 className="h-3.5 w-3.5 shrink-0" data-icon="inline-start" />
+            Mostrar resumen
+          </Button>
+        )}
 
         <Tabs
           value={columnTab}
@@ -923,7 +947,7 @@ export default function FortnightColumn({
                         : undefined
                     }
                   >
-                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                     <span className={cn('hidden sm:inline', compactTabs && 'sm:hidden')}>
                       Agregar gasto
                     </span>
@@ -945,7 +969,7 @@ export default function FortnightColumn({
                         disabled={!fortnightId || fortnightId <= 0}
                         aria-label="Más acciones de esta quincena"
                       >
-                        <MoreVertical className="h-4 w-4" aria-hidden />
+                        <MoreVertical className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </Button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
@@ -958,7 +982,7 @@ export default function FortnightColumn({
                     disabled={!fortnightId || fortnightId <= 0}
                     onSelect={() => setPayrollDialogOpen(true)}
                   >
-                    <Banknote className="h-4 w-4 shrink-0" aria-hidden />
+                    <Banknote className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
                     Recibir quincena
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -975,10 +999,9 @@ export default function FortnightColumn({
                     {isRefreshing || isRegenerating ? (
                       <Loader2
                         className="h-4 w-4 shrink-0 animate-spin"
-                        aria-hidden
-                      />
+                        aria-hidden data-icon="inline-start" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden data-icon="inline-start" />
                     )}
                     Regenerar desde plantillas
                   </DropdownMenuItem>
@@ -1082,7 +1105,7 @@ export default function FortnightColumn({
           if (!open) setEditingIncomeId(null);
           setOverrideError(null);
         }}
-        onSubmit={handleOverrideAmount}
+        onSave={handleOverrideAmount}
         defaultAmount={
           editingIncomeId != null ? editingIncomeAmount : tenemos
         }
@@ -1097,7 +1120,7 @@ export default function FortnightColumn({
           setAddExpenseDialogOpen(open);
           setAddExpenseError(null);
         }}
-        onSubmit={handleAddExpense}
+        onCreate={handleAddExpense}
         fortnightLabel={label}
         fortnightId={fortnightId}
         year={year}
@@ -1126,7 +1149,7 @@ export default function FortnightColumn({
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}
-        onSubmit={handlePlannerCardPaymentSubmit}
+        onConfirm={handlePlannerCardPaymentSubmit}
       />
     </>
   );

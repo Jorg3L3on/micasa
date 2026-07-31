@@ -28,6 +28,7 @@ import {
 import {
   AlertCircle,
   LayoutList,
+  Loader2,
   Pencil,
   PiggyBank,
   Repeat2,
@@ -51,6 +52,10 @@ export default function BudgetTemplatesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selected, setSelected] = useState<BudgetListItem | null>(null);
   const [nameFilter, setNameFilter] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingAllocations, setIsUpdatingAllocations] = useState(false);
+  const [reactivatingId, setReactivatingId] = useState<number | null>(null);
 
   const filteredTemplates = useMemo(() => {
     const query = nameFilter.trim().toLowerCase();
@@ -74,6 +79,7 @@ export default function BudgetTemplatesPage() {
 
   const handleCreate = async (step1: Step1Values, step2: Step2Values) => {
     try {
+      setIsCreating(true);
       setFormError(null);
       await createBudget(
         {
@@ -94,12 +100,15 @@ export default function BudgetTemplatesPage() {
       const message = err instanceof Error ? err.message : 'Error al crear plantilla';
       setFormError(message);
       throw err;
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleUpdateTemplate = async (values: Step1Values) => {
     if (!selected) return;
     try {
+      setIsUpdating(true);
       setFormError(null);
       await updateBudgetTemplate(selected.id, values, context);
       toast.success('Plantilla actualizada');
@@ -110,12 +119,15 @@ export default function BudgetTemplatesPage() {
       const message = err instanceof Error ? err.message : 'Error al actualizar plantilla';
       setFormError(message);
       throw err;
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleUpdateAllocations = async (allocations: Step2Values['allocations']) => {
     if (!selected) return;
     try {
+      setIsUpdatingAllocations(true);
       setFormError(null);
       await updateBudgetAllocations(selected.id, allocations, context);
       toast.success('Asignaciones actualizadas');
@@ -126,6 +138,8 @@ export default function BudgetTemplatesPage() {
       const message = err instanceof Error ? err.message : 'Error al actualizar asignaciones';
       setFormError(message);
       throw err;
+    } finally {
+      setIsUpdatingAllocations(false);
     }
   };
 
@@ -146,11 +160,14 @@ export default function BudgetTemplatesPage() {
   const handleReactivate = useCallback(async (tpl: BudgetListItem) => {
     try {
       setError(null);
+      setReactivatingId(tpl.id);
       await setBudgetActive(tpl.id, true, context);
       toast.success('Plantilla reactivada');
       await fetchTemplates();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al reactivar plantilla');
+    } finally {
+      setReactivatingId(null);
     }
   }, [context, fetchTemplates]);
 
@@ -168,8 +185,7 @@ export default function BudgetTemplatesPage() {
               <>
                 <Repeat2
                   className="h-3.5 w-3.5 shrink-0 text-violet-500"
-                  aria-hidden
-                />
+                  aria-hidden data-icon="inline-start" />
                 <span className="sr-only">Recurrente</span>
               </>
             )}
@@ -214,9 +230,15 @@ export default function BudgetTemplatesPage() {
                   size="icon"
                   className="size-11 sm:size-8"
                   onClick={() => handleReactivate(tpl)}
+                  disabled={reactivatingId === tpl.id}
                   aria-label={`Reactivar ${tpl.name}`}
+                  aria-busy={reactivatingId === tpl.id}
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  {reactivatingId === tpl.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" data-icon="inline-start" />
+                  )}
                 </Button>
               ) : (
                 <>
@@ -227,7 +249,7 @@ export default function BudgetTemplatesPage() {
                     onClick={() => { setSelected(tpl); setFormError(null); setEditDialogOpen(true); }}
                     aria-label={`Editar ${tpl.name}`}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" data-icon="inline-start" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -236,7 +258,7 @@ export default function BudgetTemplatesPage() {
                     onClick={() => { setSelected(tpl); setFormError(null); setAllocDialogOpen(true); }}
                     aria-label={`Ver asignaciones de ${tpl.name}`}
                   >
-                    <LayoutList className="h-4 w-4" />
+                    <LayoutList className="h-4 w-4" data-icon="inline-start" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -245,7 +267,7 @@ export default function BudgetTemplatesPage() {
                     onClick={() => { setSelected(tpl); setError(null); setDeleteDialogOpen(true); }}
                     aria-label={`Desactivar ${tpl.name}`}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
                   </Button>
                 </>
               )}
@@ -254,7 +276,7 @@ export default function BudgetTemplatesPage() {
         },
       },
     ],
-    [handleReactivate],
+    [handleReactivate, reactivatingId],
   );
 
   return (
@@ -273,12 +295,13 @@ export default function BudgetTemplatesPage() {
         </div>
         <Button
           className="h-11 w-full sm:h-9 sm:w-auto"
+          disabled={isCreating}
           onClick={() => {
             setFormError(null);
             setCreateDialogOpen(true);
           }}
         >
-          <PiggyBank className="mr-2 h-4 w-4" aria-hidden />
+          <PiggyBank data-icon="inline-start" className="h-4 w-4" aria-hidden />
           <span className="sm:hidden">Nueva</span>
           <span className="hidden sm:inline">Nueva plantilla</span>
         </Button>
@@ -286,7 +309,7 @@ export default function BudgetTemplatesPage() {
 
       {error && !deleteDialogOpen ? (
         <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" aria-hidden />
+          <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
           <div>
             <AlertTitle>No se pudo completar la acción</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
@@ -354,6 +377,7 @@ export default function BudgetTemplatesPage() {
                         setDeleteDialogOpen(true);
                       }}
                       onReactivate={handleReactivate}
+                      isReactivating={reactivatingId === template.id}
                     />
                   ))
                 )}
@@ -375,9 +399,16 @@ export default function BudgetTemplatesPage() {
       <BudgetFormDialog
         open={createDialogOpen}
         onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) setFormError(null); }}
-        onSubmit={handleCreate}
+        onCreate={handleCreate}
         error={formError && createDialogOpen ? formError : null}
+        isPending={isCreating}
+        disabled={isCreating}
       />
+      {isCreating ? (
+        <p className="sr-only" role="status" aria-live="polite">
+          Creando plantilla…
+        </p>
+      ) : null}
 
       {selected && (
         <>
@@ -388,8 +419,9 @@ export default function BudgetTemplatesPage() {
               if (!open) { setSelected(null); setFormError(null); }
             }}
             budget={selected}
-            onSubmit={handleUpdateTemplate}
+            onSave={handleUpdateTemplate}
             error={formError && editDialogOpen ? formError : null}
+            disabled={isUpdating}
           />
 
           <BudgetAllocationsDialog
@@ -399,8 +431,9 @@ export default function BudgetTemplatesPage() {
               if (!open) { setSelected(null); setFormError(null); }
             }}
             budget={selected}
-            onSubmit={handleUpdateAllocations}
+            onSave={handleUpdateAllocations}
             error={formError && allocDialogOpen ? formError : null}
+            disabled={isUpdatingAllocations}
           />
 
           <ConfirmDeleteDialog

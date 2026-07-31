@@ -167,18 +167,28 @@ export default function NewExpenseTemplatePage() {
   }
 
   return (
-    <ExpenseTemplateForm
-      form={form}
-      title="Nueva plantilla de gastos"
-      description="Configura una plantilla reutilizable para registrar gastos mas rapido."
-      submitLabel="Crear plantilla"
-      isSubmitting={isSubmitting}
-      categories={categories}
-      paymentMethods={paymentMethods}
-      cutoffSectionOpen={cutoffSectionOpen}
-      onCutoffSectionOpenChange={setCutoffSectionOpen}
-      onSubmit={handleSubmit}
-      cancelHref={`/expense-templates${queryString ? `?${queryString}` : ''}`}
-    />
+    <div className="space-y-6">
+      {Object.keys(form.formState.errors).length > 0 ? (
+        <div
+          className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          Revisa los campos marcados. Hay errores de validación en el formulario.
+        </div>
+      ) : null}
+      <ExpenseTemplateForm
+        form={form}
+        title="Nueva plantilla de gastos"
+        description="Configura una plantilla reutilizable para registrar gastos mas rapido."
+        submitLabel="Crear plantilla"
+        isSubmitting={isSubmitting}
+        categories={categories}
+        paymentMethods={paymentMethods}
+        cutoffSectionOpen={cutoffSectionOpen}
+        onCutoffSectionOpenChange={setCutoffSectionOpen}
+        onSave={handleSubmit}
+        cancelHref={`/expense-templates${queryString ? `?${queryString}` : ''}`}
+      />
+    </div>
   );
 }

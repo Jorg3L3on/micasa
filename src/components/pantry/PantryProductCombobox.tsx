@@ -78,7 +78,10 @@ export function PantryProductCombobox({
           placeholder={placeholder}
           className="h-11 text-base"
           autoComplete="off"
+          role="combobox"
+          aria-label="Buscar o agregar producto"
           aria-expanded={open}
+          aria-autocomplete="list"
         />
         <Button
           type="button"
@@ -92,8 +95,7 @@ export function PantryProductCombobox({
             className={cn(
               'h-4 w-4 transition-transform',
               open ? 'rotate-180' : '',
-            )}
-          />
+            )} data-icon="inline-end" />
         </Button>
       </div>
 
@@ -104,7 +106,7 @@ export function PantryProductCombobox({
         >
           {loading ? (
             <div className="flex items-center justify-center py-4 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-3 text-sm text-muted-foreground">
@@ -140,7 +142,7 @@ export function PantryProductCombobox({
                         )}
                       </div>
                       {selected ? (
-                        <Check className="h-4 w-4 text-primary" />
+                        <Check className="h-4 w-4 text-primary" data-icon="inline-start" />
                       ) : null}
                     </button>
                   </li>
@@ -159,7 +161,7 @@ export function PantryProductCombobox({
                   setOpen(false);
                 }}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4" data-icon="inline-start" />
                 Crear &ldquo;{value.text.trim()}&rdquo; en el catálogo
               </button>
             </div>

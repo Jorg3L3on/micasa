@@ -180,10 +180,21 @@ export default function EditExpenseTemplatePage() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        <div
+          className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+          role="alert"
+        >
           {error}
         </div>
       )}
+      {Object.keys(form.formState.errors).length > 0 ? (
+        <div
+          className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          Revisa los campos marcados. Hay errores de validación en el formulario.
+        </div>
+      ) : null}
       <ExpenseTemplateForm
         form={form}
         title="Editar plantilla de gastos"
@@ -194,7 +205,7 @@ export default function EditExpenseTemplatePage() {
         paymentMethods={paymentMethods}
         cutoffSectionOpen={cutoffSectionOpen}
         onCutoffSectionOpenChange={setCutoffSectionOpen}
-        onSubmit={handleSubmit}
+        onSave={handleSubmit}
         cancelHref={`/expense-templates${queryString ? `?${queryString}` : ''}`}
       />
     </div>

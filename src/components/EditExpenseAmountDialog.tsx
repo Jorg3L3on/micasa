@@ -39,7 +39,7 @@ import { WalletIdentity } from '@/components/wallets/WalletIdentity'
 type EditExpenseAmountDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: ExpenseAmountFormValues) => Promise<void>
+  onSave: (data: ExpenseAmountFormValues) => Promise<void>
   defaultAmount: number
   defaultWalletId?: number | null
   wallets?: WalletListItem[]
@@ -55,7 +55,7 @@ const NULL_WALLET_VALUE = '__none__'
 export default function EditExpenseAmountDialog({
   open,
   onOpenChange,
-  onSubmit,
+  onSave,
   defaultAmount,
   defaultWalletId,
   wallets = [],
@@ -83,7 +83,7 @@ export default function EditExpenseAmountDialog({
 
   const handleSubmit = async (data: ExpenseAmountFormValues) => {
     try {
-      await onSubmit(data)
+      await onSave(data)
     } catch {
       // Parent shows toast; close either way after the attempt.
     } finally {
@@ -205,10 +205,21 @@ export default function EditExpenseAmountDialog({
               />
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={form.formState.isSubmitting}
+              >
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                aria-busy={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

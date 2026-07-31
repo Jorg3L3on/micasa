@@ -249,7 +249,7 @@ export function ReceivePayrollButton({
 
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" data-icon="inline-start" />
           </div>
         ) : (
           <div className="space-y-4 py-1">
@@ -402,7 +402,7 @@ export function ReceivePayrollButton({
           >
             {submitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
                 Guardando…
               </>
             ) : (
@@ -439,7 +439,7 @@ export function ReceivePayrollTrigger(props: TriggerProps) {
         className="gap-1.5"
         onClick={() => setOpen(true)}
       >
-        <Banknote className="h-4 w-4" />
+        <Banknote className="h-4 w-4" data-icon="inline-start" />
         Recibir quincena
       </Button>
       <ReceivePayrollButton
