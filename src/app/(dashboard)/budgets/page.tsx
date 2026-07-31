@@ -898,7 +898,7 @@ export default function BudgetsPage() {
           setCreateDialogOpen(open);
           if (!open) setFormError(null);
         }}
-        onSubmit={handleCreate}
+        onCreate={handleCreate}
         error={formError && createDialogOpen ? formError : null}
       />
 
@@ -914,7 +914,7 @@ export default function BudgetsPage() {
               }
             }}
             budget={selectedBudget}
-            onSubmit={handleUpdateTemplate}
+            onSave={handleUpdateTemplate}
             error={formError && editDialogOpen ? formError : null}
           />
 
@@ -928,7 +928,7 @@ export default function BudgetsPage() {
               }
             }}
             budget={selectedBudget}
-            onSubmit={handleUpdateAllocations}
+            onSave={handleUpdateAllocations}
             error={formError && allocDialogOpen ? formError : null}
           />
 
