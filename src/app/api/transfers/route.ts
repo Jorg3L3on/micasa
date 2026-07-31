@@ -24,9 +24,6 @@ export async function GET(request: NextRequest) {
     const { ownerType, ownerId } = context;
 
     const { searchParams } = new URL(request.url);
-
-    const userIdParam = searchParams.get('user_id');
-    const houseIdParam = searchParams.get('house_id');
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
@@ -36,20 +33,6 @@ export async function GET(request: NextRequest) {
         ? { user_id: ownerId }
         : { house_id: ownerId }),
     };
-
-    if (userIdParam) {
-      const userId = Number(userIdParam);
-      if (!Number.isNaN(userId)) {
-        where.user_id = userId;
-      }
-    }
-
-    if (houseIdParam) {
-      const houseId = Number(houseIdParam);
-      if (!Number.isNaN(houseId)) {
-        where.house_id = houseId;
-      }
-    }
 
     if (fromParam || toParam) {
       where.created_at = {};

@@ -59,14 +59,6 @@ function MobileSidebarCloseOnRoute() {
   );
 }
 
-/** Mes calendario en UTC (misma fecha en Node SSR y en el navegador para el mismo instante). */
-function getCurrentMonthHrefUtc(): string {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  return `/monthly/${year}/${month}`;
-}
-
 export type AppSidebarNavUser = {
   name: string;
   email: string;

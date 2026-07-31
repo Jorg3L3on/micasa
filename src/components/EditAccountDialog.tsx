@@ -224,7 +224,6 @@ export default function EditAccountDialog({
               >
                 {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
               </Button>
-              <Button type="submit">Guardar</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -5,6 +5,11 @@ import { useTheme } from 'next-themes';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
+import {
+  getProviderCardStyle,
+  isProviderCardDarkSurface,
+  type ProviderCardScheme,
+} from '@/lib/provider-card-style';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, CreditCard, Landmark, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -208,7 +213,9 @@ const WalletBalanceStrip = ({
                         <span
                           className={cn(
                             'absolute inset-0 rounded-md',
+                            onDarkSurface
                               ? 'bg-white/88 dark:bg-white/92'
+                              : 'bg-card/95',
                           )}
                           aria-hidden
                         />
@@ -216,10 +223,12 @@ const WalletBalanceStrip = ({
                           providerIconKey={wallet.provider_icon_key}
                           className={cn(
                             'relative h-7 w-7 rounded-md shadow-sm ring-1',
+                            onDarkSurface
                               ? 'ring-white/45'
                               : 'ring-border/60',
                           )}
                           iconClassName="h-3.5 w-3.5"
+                          showTooltipLabel={false} data-icon="inline-start" />
                         {showDueReminder && (
                           <span
                             className={cn(
@@ -257,6 +266,7 @@ const WalletBalanceStrip = ({
                               'text-emerald-600 dark:text-emerald-300',
                             accent === 'neutral' && 'text-muted-foreground',
                           )}
+                          aria-hidden data-icon="inline-start" />
                         {showDueReminder && (
                           <span
                             className={cn(
@@ -274,6 +284,7 @@ const WalletBalanceStrip = ({
                       <p
                         className={cn(
                           'truncate text-[9.5px] font-semibold leading-tight',
+                          onDarkSurface
                             ? 'text-white/85'
                             : 'text-muted-foreground/90',
                         )}
@@ -284,8 +295,10 @@ const WalletBalanceStrip = ({
                         className={cn(
                           'font-mono text-[13px] font-black tabular-nums leading-none sm:text-sm',
                           effectiveAmount < 0
+                            ? onDarkSurface
                               ? 'text-red-100'
                               : 'text-destructive'
+                            : onDarkSurface
                               ? 'text-white'
                               : 'text-foreground',
                         )}
@@ -297,11 +310,13 @@ const WalletBalanceStrip = ({
                           <div
                             className={cn(
                               'relative h-1 w-10 overflow-hidden rounded-full sm:w-12',
+                              onDarkSurface ? 'bg-white/25' : 'bg-muted/50',
                             )}
                           >
                             <div
                               className={cn(
                                 'h-full rounded-full transition-all',
+                                onDarkSurface
                                   ? 'bg-white/85'
                                   : 'bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
                               )}
@@ -314,17 +329,22 @@ const WalletBalanceStrip = ({
                               className={cn(
                                 'whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tabular-nums',
                                 walletAlreadyPaid
+                                  ? onDarkSurface
                                     ? 'bg-emerald-500/25 text-emerald-50'
                                     : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
                                   : !isCurrentMonth
+                                    ? onDarkSurface
                                       ? 'text-white/75'
                                       : 'text-muted-foreground/70'
                                     : isDuePast
+                                      ? onDarkSurface
                                         ? 'text-red-100'
                                         : 'text-destructive'
                                       : isDueNear
+                                        ? onDarkSurface
                                           ? 'text-amber-100'
                                           : 'text-amber-600 dark:text-amber-400'
+                                        : onDarkSurface
                                           ? 'text-white/75'
                                           : 'text-muted-foreground/70',
                               )}
@@ -340,6 +360,12 @@ const WalletBalanceStrip = ({
 
                 const cardClasses = cn(
                   'group relative min-w-[136px] shrink-0 overflow-hidden rounded-xl border px-2 py-1.5 sm:min-w-[164px] sm:px-2.5 sm:py-2',
+                  'backdrop-blur-sm ring-1 ring-inset transition-all duration-300',
+                  onDarkSurface ? 'ring-white/5' : 'ring-black/5',
+                  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
+                  onDarkSurface
+                    ? 'before:via-white/20 dark:before:via-white/10'
+                    : 'before:via-black/10',
                   'after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.12)_48%,transparent_72%)] after:opacity-45 after:transition-opacity after:duration-300',
                   accent === 'violet' &&
                     'border-violet-500/30 bg-gradient-to-br from-violet-500/12 via-background to-violet-500/4 dark:from-violet-500/20 dark:via-card dark:to-violet-500/5',
@@ -347,10 +373,15 @@ const WalletBalanceStrip = ({
                     'border-blue-500/30 bg-gradient-to-br from-blue-500/12 via-background to-blue-500/4 dark:from-blue-500/20 dark:via-card dark:to-blue-500/5',
                   accent === 'emerald' &&
                     'border-emerald-500/30 bg-gradient-to-br from-emerald-500/12 via-background to-emerald-500/4 dark:from-emerald-500/20 dark:via-card dark:to-emerald-500/5',
+                  accent === 'neutral' &&
+                    'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
                   (isCreditType || isFunding) &&
                     cn(
                       'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
                       useProviderGradient &&
+                        (onDarkSurface
+                          ? 'border-white/25 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.9)] hover:border-white/40 hover:shadow-[0_16px_34px_-14px_rgba(15,23,42,0.95)] hover:after:opacity-70'
+                          : 'border-border/70 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.2)] hover:border-border hover:shadow-[0_12px_24px_-12px_rgba(15,23,42,0.22)] hover:after:opacity-70'),
                       !useProviderGradient &&
                         accent === 'violet' &&
                         'hover:border-violet-500/60 hover:shadow-violet-500/15',
@@ -377,6 +408,18 @@ const WalletBalanceStrip = ({
                   >
                     {useProviderGradient ? (
                       <>
+                        <span
+                          className={cn(
+                            'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
+                            onDarkSurface ? 'bg-white/8' : 'bg-white/70',
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
+                            onDarkSurface ? 'bg-black/20' : 'bg-black/5',
+                          )}
+                        />
                       </>
                     ) : null}
                     {cardContent}
@@ -400,6 +443,7 @@ const WalletBalanceStrip = ({
                         providerIconKey={wallet.provider_icon_key}
                         className="h-5 w-5 rounded-md shadow-sm ring-1 ring-border/50"
                         iconClassName="h-3 w-3"
+                        showTooltipLabel={false} data-icon="inline-start" />
                     ) : (
                       <span
                         className={cn(
@@ -448,7 +492,9 @@ const WalletBalanceStrip = ({
             }
           >
             {stripVisible ? (
+              <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
             ) : (
+              <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
             )}
           </Button>
         </TooltipTrigger>
