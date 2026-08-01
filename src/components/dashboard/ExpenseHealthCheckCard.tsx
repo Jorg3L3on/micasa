@@ -1,5 +1,4 @@
-'use client';
-
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Tooltip,
   TooltipContent,
@@ -7,7 +6,9 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
+import { Percent } from 'lucide-react';
 import type { DashboardData } from '@/types/dashboard';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 
 type ExpenseHealthCheckCardProps = {
@@ -23,87 +24,89 @@ export default function ExpenseHealthCheckCard({
   const isHighCommitment = percentCommitted >= 80;
 
   return (
-    <section
-      className="flex flex-col rounded-xl border border-border/60 bg-card p-6"
-      role="region"
-      aria-label="Salud de gastos"
-    >
-      <div className="mb-5 flex flex-col gap-0.5">
-        <h3 className="text-sm font-medium text-foreground">Salud de gastos</h3>
-        <p className="text-xs text-muted-foreground">
-          Compromiso, vencidos y mayor gasto del periodo
-        </p>
-      </div>
-
-      <TooltipProvider>
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs text-muted-foreground">
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Salud de gastos">
+      <CardHeader>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+            <Percent className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Salud de gastos
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <TooltipProvider>
+          <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Ingresos comprometidos
-            </p>
+            </span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <p
                   className={cn(
-                    'mt-1 cursor-help font-mono text-2xl font-medium tabular-nums',
-                    isHighCommitment
-                      ? 'text-red-600 dark:text-red-400'
-                      : 'text-foreground',
+                    'text-2xl font-bold font-mono tabular-nums mt-0.5 cursor-help',
+                    isHighCommitment ? 'text-destructive' : 'text-violet-600 dark:text-violet-400',
                   )}
                 >
                   {percentCommitted.toFixed(1)}%
                 </p>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-left">
-                Porcentaje del ingreso del periodo asignado a salidas de
-                efectivo o débito (incluye pagos a tarjeta del periodo).
+                Porcentaje del ingreso del periodo ya asignado a salidas de efectivo
+                o débito (incluye pagos a tarjeta registrados en el periodo). No
+                incluye solo cargos a la tarjeta sin pagar el estado de cuenta.
               </TooltipContent>
             </Tooltip>
           </div>
 
-          <div className="border-t border-border/60 pt-4">
-            <p className="text-xs text-muted-foreground">Total vencido</p>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="mt-1 cursor-help font-mono text-sm font-medium tabular-nums text-red-600 dark:text-red-400">
-                  {formatCurrency(totalOverdueAmount)}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent>
-                Monto total de gastos con fecha de pago vencida
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          {largestExpense && (
-            <div>
-              <p className="text-xs text-muted-foreground">Mayor gasto</p>
+          <div className="space-y-3 border-t border-border/60 pt-4">
+            <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total vencido
+              </span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="mt-1 cursor-help">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {largestExpense.description}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <CategoryLabel
-                        name={largestExpense.category}
-                        icon={largestExpense.categoryIcon}
-                      />
-                      <span>·</span>
-                      <span className="font-mono tabular-nums">
-                        {formatCurrency(largestExpense.amount)}
-                      </span>
-                    </p>
-                  </div>
+                  <p className="text-sm font-bold font-mono tabular-nums text-destructive mt-0.5 cursor-help">
+                    {formatCurrency(totalOverdueAmount)}
+                  </p>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Mayor gasto único en el periodo actual
+                  Monto total de gastos con fecha de pago vencida
                 </TooltipContent>
               </Tooltip>
             </div>
-          )}
-        </div>
-      </TooltipProvider>
-    </section>
+
+            {largestExpense && (
+              <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Mayor gasto
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-help mt-0.5">
+                      <p className="text-sm font-medium truncate">
+                        {largestExpense.description}
+                      </p>
+                      <p className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <CategoryLabel
+                          name={largestExpense.category}
+                          icon={largestExpense.categoryIcon}
+                        />
+                        <span className="text-muted-foreground/30">·</span>
+                        <span>{formatCurrency(largestExpense.amount)}</span>
+                      </p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Mayor gasto único en el periodo actual
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+        </TooltipProvider>
+      </CardContent>
+    </Card>
   );
 }

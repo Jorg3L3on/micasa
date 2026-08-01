@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
 
 const PROVIDER_ICON_BASE_COLORS: Record<string, string> = {
-  AMEX: '#016fd0',
   BANAMEX: '#dc2626',
   BBVA: '#2563eb',
   SANTANDER: '#e11d48',
@@ -10,7 +9,6 @@ const PROVIDER_ICON_BASE_COLORS: Record<string, string> = {
   LIVERPOOL: '#a855f7',
   MERCADO_PAGO: '#0ea5e9',
   MERCADO_LIBRE: '#eab308',
-  NU_BANK: '#820ad1',
   PAYPAL: '#6366f1',
   SEARS: '#4f46e5',
   GENERIC_BANK: '#3b82f6',
@@ -18,8 +16,6 @@ const PROVIDER_ICON_BASE_COLORS: Record<string, string> = {
 };
 
 const TYPE_FALLBACK_COLORS: Record<string, string> = {
-  CASH: '#14b8a6',
-  DEBIT_CARD: '#3b82f6',
   CREDIT_CARD: '#475569',
   DEPARTMENT_STORE_CARD: '#64748b',
 };
@@ -64,70 +60,14 @@ const getCardColor = (providerIconKey?: string | null, fallbackType?: string) =>
   return null;
 };
 
-/** Brand hex for charts, accents, etc. */
-export const getProviderBrandColor = (
-  providerIconKey?: string | null,
-  fallbackType?: string,
-): string | null => getCardColor(providerIconKey, fallbackType);
-
-/** Mix brand hex toward white for readable ink on dark surfaces. */
-const mixWithWhite = (hex: string, amount: number): string => {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
-  const mix = (channel: number) =>
-    Math.round(channel + (255 - channel) * amount);
-  const toHex = (channel: number) =>
-    mix(channel).toString(16).padStart(2, '0');
-  return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`;
-};
-
-export type WalletBrandCssVars = CSSProperties & {
-  '--wallet-brand': string;
-  '--wallet-brand-ink': string;
-  '--wallet-brand-ink-dark': string;
-  '--wallet-brand-hover-bg': string;
-  '--wallet-brand-hover-bg-dark': string;
-};
-
-/** CSS vars for brand-tinted hover/focus on wallet list card controls. */
-export const getWalletBrandCssVars = (
-  brandHex: string,
-): WalletBrandCssVars => ({
-  '--wallet-brand': brandHex,
-  '--wallet-brand-ink': brandHex,
-  '--wallet-brand-ink-dark': mixWithWhite(brandHex, 0.28),
-  // ~10% brand wash (light) / ~16% (dark) — matches Amex mock.
-  '--wallet-brand-hover-bg': rgba(brandHex, 0.1),
-  '--wallet-brand-hover-bg-dark': rgba(brandHex, 0.16),
-});
-
-/** Wash + brand ink (name link, text buttons, menu trigger). */
-export const WALLET_BRAND_HIT_CLASS =
-  'transition-colors duration-150 hover:bg-[var(--wallet-brand-hover-bg)] hover:text-[var(--wallet-brand-ink)] dark:hover:bg-[var(--wallet-brand-hover-bg-dark)] dark:hover:text-[var(--wallet-brand-ink-dark)] focus-visible:bg-[var(--wallet-brand-hover-bg)] focus-visible:text-[var(--wallet-brand-ink)] dark:focus-visible:bg-[var(--wallet-brand-hover-bg-dark)] dark:focus-visible:text-[var(--wallet-brand-ink-dark)] motion-reduce:transition-none';
-
-/**
- * Same as WALLET_BRAND_HIT_CLASS but beats Button ghost `hover:bg-accent`
- * (Tailwind conflict resolution is stylesheet order, not className order).
- */
-export const WALLET_BRAND_HIT_BUTTON_CLASS =
-  'transition-colors duration-150 hover:!bg-[var(--wallet-brand-hover-bg)] hover:!text-[var(--wallet-brand-ink)] dark:hover:!bg-[var(--wallet-brand-hover-bg-dark)] dark:hover:!text-[var(--wallet-brand-ink-dark)] focus-visible:!bg-[var(--wallet-brand-hover-bg)] focus-visible:!text-[var(--wallet-brand-ink)] dark:focus-visible:!bg-[var(--wallet-brand-hover-bg-dark)] dark:focus-visible:!text-[var(--wallet-brand-ink-dark)] motion-reduce:transition-none';
-
-/** Wash only — keep child text colors (e.g. balance amount stays ink). */
-export const WALLET_BRAND_HIT_WASH_CLASS =
-  'transition-colors duration-150 hover:bg-[var(--wallet-brand-hover-bg)] dark:hover:bg-[var(--wallet-brand-hover-bg-dark)] focus-visible:bg-[var(--wallet-brand-hover-bg)] dark:focus-visible:bg-[var(--wallet-brand-hover-bg-dark)] motion-reduce:transition-none';
-
-/** Brand ink for a child label when its group parent is hovered/focused. */
-export const WALLET_BRAND_HIT_LABEL_CLASS =
-  'group-hover:text-[var(--wallet-brand-ink)] group-focus-visible:text-[var(--wallet-brand-ink)] dark:group-hover:text-[var(--wallet-brand-ink-dark)] dark:group-focus-visible:text-[var(--wallet-brand-ink-dark)]';
-
-export type ProviderCardTone = 'subtle' | 'wow' | 'calm' | 'list';
+export type ProviderCardTone = 'subtle' | 'wow' | 'calm';
 export type ProviderCardScheme = 'light' | 'dark';
 
-/** Calm/list cards adapt to theme; wow/subtle stay dark plastic surfaces. */
+/** Calm cards adapt to theme; wow/subtle stay dark plastic surfaces. */
 export const isProviderCardDarkSurface = (
   tone: ProviderCardTone,
   scheme: ProviderCardScheme,
-): boolean => (tone !== 'calm' && tone !== 'list') || scheme === 'dark';
+): boolean => tone !== 'calm' || scheme === 'dark';
 
 export const getProviderCardStyle = (
   providerIconKey?: string | null,
@@ -137,16 +77,6 @@ export const getProviderCardStyle = (
 ): CSSProperties | undefined => {
   const baseColor = getCardColor(providerIconKey, fallbackType);
   if (!baseColor) return undefined;
-
-  // List tone: airy brand wash on bg-card — readable with default foreground text.
-  if (tone === 'list') {
-    return {
-      background: `linear-gradient(112deg, ${rgba(baseColor, 0.18)} 0%, ${rgba(baseColor, 0.06)} 40%, transparent 72%)`,
-      borderColor: rgba(baseColor, 0.28),
-      borderLeftWidth: '3px',
-      borderLeftColor: rgba(baseColor, 0.5),
-    };
-  }
 
   // Calm tone: shared surface with a subtle brand tint and left accent stripe.
   if (tone === 'calm') {

@@ -38,10 +38,10 @@ export default function DashboardBudgetSummaryCard({
 
   return (
     <section
-      className="flex min-h-0 flex-col rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
+      className="card-surface flex min-h-[320px] flex-col p-4 sm:p-5"
       aria-label="Presupuesto del periodo"
     >
-      <div className="mb-5 flex items-start justify-between gap-3">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
             <BarChart3

@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { Loader2, Plus, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -20,6 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { formatCurrency } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
@@ -410,115 +414,134 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <header className="min-w-0">
-          <h2 className="mb-0.5 text-base font-medium leading-tight">Gastos</h2>
-          <p className="text-sm text-muted-foreground">
+    <div className="space-y-4 pb-24">
+      <div
+        ref={stickyChromeRef}
+        className="sticky z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm"
+        style={{ top: stickyOffsets.shellTop }}
+        aria-label="Acciones de gastos"
+      >
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight">Gastos</h2>
+          <p className="text-xs text-muted-foreground">
             Gastos pagados por día en tu contexto actual.
           </p>
-        </header>
-        <div className="flex shrink-0 items-center gap-2">
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0 sm:hidden"
+                onClick={handleOpenCreate}
+                aria-label="Agregar gasto"
+              >
+                <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Agregar gasto</TooltipContent>
+          </Tooltip>
           <Button
             type="button"
-            variant="outline"
-            className="h-9 shrink-0 bg-white dark:bg-card"
+            className="hidden h-9 gap-1.5 rounded-xl sm:inline-flex"
             onClick={handleOpenCreate}
-            aria-label="Agregar gasto"
           >
-            <Plus className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Agregar gasto</span>
-            <span className="sm:hidden">Agregar</span>
+            <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
+            Agregar gasto
           </Button>
         </div>
       </div>
 
-      <div className="relative z-0">
-        <Card>
-          <CardContent className="py-4">
-            {isInitialLoading ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">
-                Cargando...
-              </div>
-            ) : items.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-16 text-center">
-                <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Coins className="size-7" aria-hidden />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-base font-medium text-balance">
-                    Aún no hay gastos
-                  </p>
-                  <p className="text-sm text-muted-foreground text-pretty">
-                    Registra el primero para verlo aquí.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                <RepeatChips
-                  items={items}
-                  onRepeat={setRepeatConfirmItem}
-                  onCustomize={handleCustomizeRepeat}
-                />
-                {groups.map((group) => (
-                  <section key={group.key} className="flex flex-col gap-2">
-                    <div
-                      className="sticky z-30 -mx-6 border-b border-border/60 bg-card px-6 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-sm"
-                      style={{ top: stickyOffsets.dayBandTop }}
-                    >
-                      {group.label}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {group.items.map((item) => (
-                        <SwipeableExpenseRow
-                          key={item.id}
-                          expense={item}
-                          pending={item.id < 0}
-                          isOpen={openRowId === item.id}
-                          onOpenChange={(open) => {
-                            setOpenRowId((current) => {
-                              if (open) return item.id;
-                              if (current === item.id) return null;
-                              return current;
-                            });
-                          }}
-                          onCardClick={
-                            item.id > 0
-                              ? () => {
-                                  setEditError(null);
-                                  setEditing({ item });
-                                }
-                              : undefined
-                          }
-                          onRequestDelete={setPendingDelete}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-
-                {loadError && (
-                  <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                    {loadError}
-                  </div>
-                )}
-
+      <div className="relative z-0 py-4">
+        {isInitialLoading ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            Cargando...
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Coins className="size-7" aria-hidden data-icon="inline-start" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-base font-medium">Aún no hay gastos</p>
+              <p className="text-sm text-muted-foreground">
+                Registra el primero para verlo aquí.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={handleOpenCreate}
+              className="h-9 gap-1.5 rounded-xl"
+            >
+              <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
+              Agregar gasto
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <RepeatChips
+              items={items}
+              onRepeat={setRepeatConfirmItem}
+              onCustomize={handleCustomizeRepeat}
+            />
+            {groups.map((group) => (
+              <section key={group.key} className="flex flex-col gap-2">
                 <div
-                  ref={sentinelRef}
-                  className="py-6 text-center text-xs text-muted-foreground"
-                  aria-live="polite"
+                  className="sticky z-30 -mx-4 border-b border-border/60 bg-background px-4 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-sm"
+                  style={{ top: stickyOffsets.dayBandTop }}
                 >
-                  {isLoadingMore
-                    ? 'Cargando más...'
-                    : nextCursor
-                      ? ' '
-                      : 'No hay más gastos'}
+                  {group.label}
                 </div>
+                <div className="flex flex-col gap-2">
+                  {group.items.map((item) => (
+                    <SwipeableExpenseRow
+                      key={item.id}
+                      expense={item}
+                      pending={item.id < 0}
+                      isOpen={openRowId === item.id}
+                      onOpenChange={(open) => {
+                        setOpenRowId((current) => {
+                          if (open) return item.id;
+                          if (current === item.id) return null;
+                          return current;
+                        });
+                      }}
+                      onCardClick={
+                        item.id > 0
+                          ? () => {
+                              setEditError(null);
+                              setEditing({ item });
+                            }
+                          : undefined
+                      }
+                      onRequestDelete={setPendingDelete}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+
+            {loadError && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {loadError}
               </div>
             )}
-          </CardContent>
-        </Card>
+
+            <div
+              ref={sentinelRef}
+              className="py-6 text-center text-xs text-muted-foreground"
+              aria-live="polite"
+            >
+              {isLoadingMore
+                ? 'Cargando más...'
+                : nextCursor
+                  ? ' '
+                  : 'No hay más gastos'}
+            </div>
+          </div>
+        )}
       </div>
 
       <AlertDialog
@@ -557,7 +580,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             >
               {isRepeatSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden data-icon="inline-start" />
                   Registrando…
                 </>
               ) : (

@@ -40,12 +40,12 @@ export default async function DashboardLayout({
             avatar: session.user.image ?? '',
           }}
         />
-        <SidebarInset className="min-w-0 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950">
-          <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-zinc-50 shadow-sm transition-[height] ease-linear dark:border-[#3E3E3A]/30 dark:bg-zinc-900 group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <SidebarInset className="min-w-0">
+          <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background shadow-sm transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <DashboardHeaderToolbarDynamic />
           </header>
-          <div className="mt-4 flex min-h-screen min-w-0 flex-1 flex-col gap-4 bg-transparent p-4 pt-0">
-            <div className="container-fluid mx-8">
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-background">
+            <div className="container mx-auto">
               <Suspense fallback={<DashboardLoading />}>{children}</Suspense>
             </div>
           </div>

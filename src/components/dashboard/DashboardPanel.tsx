@@ -3,28 +3,21 @@
 import { useMemo, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { DashboardData } from '@/types/dashboard';
+import StatCard from '@/components/dashboard/StatCard';
 import DashboardFundingNetCard from '@/components/dashboard/DashboardFundingNetCard';
-import DashboardCreditSummaryStrip from '@/components/dashboard/DashboardCreditSummaryStrip';
-import DashboardCommittedCashBar from '@/components/dashboard/DashboardCommittedCashBar';
-import DashboardCashflowCard from '@/components/dashboard/DashboardCashflowCard';
+import DashboardPeriodCategoryPie from '@/components/dashboard/DashboardPeriodCategoryPie';
 import DashboardBudgetSummaryCard from '@/components/dashboard/DashboardBudgetSummaryCard';
 import DashboardLoanSummaryCard from '@/components/dashboard/DashboardLoanSummaryCard';
 import AlertsWarningsCard from '@/components/dashboard/AlertsWarningsCard';
 import UpcomingObligationsCard from '@/components/dashboard/UpcomingObligationsCard';
 import MyCardsPanel from '@/components/dashboard/MyCardsPanel';
-import IncomeBreakdownCard from '@/components/dashboard/IncomeBreakdownCard';
-import ExpenseHealthCheckCard from '@/components/dashboard/ExpenseHealthCheckCard';
-import PeriodComparisonCard from '@/components/dashboard/PeriodComparisonCard';
-import LiquidityTeaserCard from '@/components/dashboard/LiquidityTeaserCard';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
-import {
-  DASHBOARD_PAIR_GRID_CLASS,
-  getPeriodLabel,
-} from '@/components/dashboard/constants';
+import { getPeriodLabel } from '@/components/dashboard/constants';
+import { getDashboardLoanStatDisplay } from '@/components/dashboard/dashboard-loan-stat-display';
 
 type DashboardPanelProps = {
   data: DashboardData;
@@ -51,9 +44,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   const periodLabel = getPeriodLabel(data.period);
   const panelTitle =
     selectedView === 'month' ? 'Resumen mensual' : 'Plan de quincena';
-
-  const showIncomeBreakdown =
-    context.type === 'house' && data.incomeBreakdown.byPerson.length >= 2;
+  const loanStat = getDashboardLoanStatDisplay(data);
 
   const replaceSearchParams = (mutator: (next: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -78,10 +69,9 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
   };
 
   return (
-    <div className="w-full space-y-6">
-      {/* 1. Period chrome */}
+    <div className="w-full space-y-5">
       <section
-        className="flex flex-col gap-4 rounded-xl bg-transparent px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+        className="card-surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
         aria-labelledby="dashboard-period-title"
         aria-describedby="dashboard-period-label"
       >
@@ -94,7 +84,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
           </h2>
           <p
             id="dashboard-period-label"
-            className="mt-1 text-sm text-muted-foreground"
+            className="mt-1 text-sm text-muted-foreground sm:text-xs"
           >
             {periodLabel}
           </p>
@@ -117,7 +107,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
             className={cn(
               'h-11 rounded-md px-4 text-sm transition-colors duration-200 motion-reduce:transition-none sm:h-8 sm:text-xs',
               selectedView === 'month'
-                ? 'bg-muted text-foreground hover:bg-muted dark:bg-input/40 dark:hover:bg-input/40'
+                ? 'bg-background text-foreground shadow-xs hover:bg-background dark:bg-input/60 dark:hover:bg-input/60'
                 : 'text-muted-foreground hover:text-foreground',
               isPending && 'opacity-70',
             )}
@@ -136,7 +126,7 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
             className={cn(
               'h-11 rounded-md px-4 text-sm transition-colors duration-200 motion-reduce:transition-none sm:h-8 sm:text-xs',
               selectedView === 'biweekly'
-                ? 'bg-muted text-foreground hover:bg-muted dark:bg-input/40 dark:hover:bg-input/40'
+                ? 'bg-background text-foreground shadow-xs hover:bg-background dark:bg-input/60 dark:hover:bg-input/60'
                 : 'text-muted-foreground hover:text-foreground',
               isPending && 'opacity-70',
             )}
@@ -148,94 +138,65 @@ export default function DashboardPanel({ data }: DashboardPanelProps) {
         </div>
       </section>
 
-      {/* 2. Total (no depende del periodo seleccionado) */}
-      <section className="space-y-4" aria-labelledby="dashboard-total-group-title">
-        <div className="space-y-1">
-          <h3
-            id="dashboard-total-group-title"
-            className="text-sm font-medium text-foreground"
-          >
-            Total
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Indicadores globales, independientes de mes o quincena.
-          </p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
+        <DashboardFundingNetCard
+          amount={data.fundingNetVsPendingExpense}
+          fundingWalletBalanceTotal={data.fundingWalletBalanceTotal}
+          pendingAmount={summary.totalUnpaid}
+          payrollDeductionAmount={data.planningPayrollLoanDeduction?.total ?? 0}
+          wallets={data.fundingWalletBreakdown}
+          className="sm:col-span-2"
+        />
+        <StatCard
+          title="Ingresos"
+          amount={summary.totalIncome}
+          iconKey="trending-up"
+          iconGradient="linear-gradient(135deg, #10b981 0%, #34d399 100%)"
+          subtitle="Del periodo"
+        />
+        <StatCard
+          title="Pendiente"
+          amount={summary.totalUnpaid}
+          iconKey="trending-down"
+          iconGradient="linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
+          subtitle="Por pagar"
+        />
+        <StatCard
+          title="Presupuesto libre"
+          amount={data.budgetSummary.available}
+          iconKey="wallet"
+          iconGradient="linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%)"
+          subtitle={`${data.budgetSummary.usedPercent}% usado`}
+        />
+        <StatCard
+          title="Préstamos"
+          amount={loanStat.amount}
+          iconKey="hand-coins"
+          iconGradient="linear-gradient(135deg, #eab308 0%, #facc15 100%)"
+          subtitle={loanStat.subtitle}
+        />
+      </div>
 
-        {/* 2.1 Liquidez base y cobertura */}
-        <div className={DASHBOARD_PAIR_GRID_CLASS}>
-          <DashboardFundingNetCard
-            amount={data.fundingNetVsPendingExpense}
-            fundingWalletBalanceTotal={data.fundingWalletBalanceTotal}
-            pendingAmount={summary.totalUnpaid}
-            payrollDeductionAmount={data.planningPayrollLoanDeduction?.total ?? 0}
-            wallets={data.fundingWalletBreakdown}
-          />
-          <LiquidityTeaserCard />
-        </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 [&>*]:min-w-0">
+        <DashboardBudgetSummaryCard
+          budgetSummary={data.budgetSummary}
+          ownerQueryString={ownerQueryString}
+        />
+        <DashboardLoanSummaryCard
+          data={data}
+          ownerQueryString={ownerQueryString}
+        />
+        <DashboardPeriodCategoryPie
+          period={data.period}
+          rows={data.periodCategoryBreakdown}
+        />
+      </div>
 
-        {/* 2.2 Crédito total */}
-        <div className={DASHBOARD_PAIR_GRID_CLASS}>
-          <DashboardCreditSummaryStrip
-            creditWalletDebtTotal={data.creditWalletDebtTotal}
-            creditWalletAvailableTotal={data.creditWalletAvailableTotal}
-          />
-          <MyCardsPanel />
-        </div>
-      </section>
+      <UpcomingObligationsCard data={data} />
 
-      {/* 3. Periodo (sí depende de mes/quincena) */}
-      <section className="space-y-4" aria-labelledby="dashboard-period-group-title">
-        <div className="space-y-1">
-          <h3
-            id="dashboard-period-group-title"
-            className="text-sm font-medium text-foreground"
-          >
-            Periodo
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Indicadores que cambian con la vista de mes o quincena.
-          </p>
-        </div>
-
-        {/* 3.1 Flujo del periodo + efectivo comprometido */}
-        <div className={DASHBOARD_PAIR_GRID_CLASS}>
-          <DashboardCashflowCard
-            totalIncome={summary.totalIncome}
-            totalPaid={summary.totalPaid}
-          />
-          <DashboardCommittedCashBar
-            availableVsCommitted={data.availableVsCommitted}
-          />
-        </div>
-
-        {/* 3.2 Presupuesto + próximos gastos */}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-          <DashboardBudgetSummaryCard
-            budgetSummary={data.budgetSummary}
-            ownerQueryString={ownerQueryString}
-          />
-          <UpcomingObligationsCard data={data} />
-        </div>
-
-        {/* 3.3 Salud + comparación */}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-          <ExpenseHealthCheckCard data={data} />
-          <PeriodComparisonCard data={data} />
-        </div>
-
-        {/* 3.4 Préstamos + desglose de ingresos */}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-          <DashboardLoanSummaryCard
-            data={data}
-            ownerQueryString={ownerQueryString}
-          />
-          {showIncomeBreakdown ? <IncomeBreakdownCard data={data} /> : null}
-        </div>
-      </section>
-
-      {/* 4. Alertas (condicional) */}
       {data.alerts.length > 0 ? <AlertsWarningsCard data={data} /> : null}
+
+      <MyCardsPanel />
     </div>
   );
 }

@@ -1,8 +1,8 @@
-'use client';
-
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowUpRight } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { DashboardData } from '@/types/dashboard';
+import { DASHBOARD_CARD_CLASS, DASHBOARD_METRIC_STRIP_CLASS } from './constants';
 
 type PeriodComparisonCardProps = {
   data: DashboardData;
@@ -24,77 +24,75 @@ export default function PeriodComparisonCard({
   const expenseDown = expenseDiff <= 0;
 
   return (
-    <section
-      className="flex flex-col rounded-xl border border-border/60 bg-card p-6"
-      role="region"
-      aria-label="Comparación de periodos"
-    >
-      <div className="mb-5 flex flex-col gap-0.5">
-        <h3 className="text-sm font-medium text-foreground">
-          Comparación de periodos
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Diferencias vs el periodo anterior
-        </p>
-      </div>
+    <Card className={DASHBOARD_CARD_CLASS} role="region" aria-label="Comparación de periodos">
+      <CardHeader>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
+            <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden data-icon="inline-start" />
+          </span>
+          <CardTitle className="text-sm font-semibold leading-none">
+            Comparación de periodos
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Ingresos vs anterior
+          </span>
+          <p
+            className={cn(
+              'text-2xl font-bold font-mono tabular-nums mt-0.5',
+              incomeUp ? 'text-blue-600 dark:text-blue-400' : 'text-destructive',
+            )}
+          >
+            {incomeDiff >= 0 ? '+' : ''}
+            {formatCurrency(incomeDiff)}
+          </p>
+        </div>
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Ingresos</p>
-            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-foreground">
+        <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4">
+          <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Ingresos actual
+            </span>
+            <p className="text-sm font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400 mt-0.5">
               {formatCurrency(currentIncome)}
             </p>
-            <div className="mt-1 flex items-center gap-1 text-xs">
-              {incomeUp ? (
-                <TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden />
-              ) : (
-                <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" aria-hidden />
-              )}
-              <span
-                className={cn(
-                  'font-mono tabular-nums',
-                  incomeUp
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400',
-                )}
-              >
-                {incomeDiff >= 0 ? '+' : ''}
-                {formatCurrency(incomeDiff)}
-              </span>
-            </div>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Gastos</p>
-            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-foreground">
+          <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Gastos actual
+            </span>
+            <p className="text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400 mt-0.5">
               {formatCurrency(currentExpense)}
             </p>
-            <div className="mt-1 flex items-center gap-1 text-xs">
-              {expenseDown ? (
-                <TrendingDown className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden />
-              ) : (
-                <TrendingUp className="h-3.5 w-3.5 text-red-600 dark:text-red-400" aria-hidden />
-              )}
-              <span
-                className={cn(
-                  'font-mono tabular-nums',
-                  expenseDown
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400',
-                )}
-              >
-                {expenseDiff >= 0 ? '+' : ''}
-                {formatCurrency(expenseDiff)}
-              </span>
-            </div>
           </div>
         </div>
 
-        <p className="border-t border-border/60 pt-3 text-xs text-muted-foreground">
-          Anterior: {formatCurrency(previousIncome)} ingresos,{' '}
-          {formatCurrency(previousExpense)} gastos
+        <div className={DASHBOARD_METRIC_STRIP_CLASS}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Gastos vs anterior
+          </span>
+          <p
+            className={cn(
+              'text-sm font-bold font-mono tabular-nums mt-0.5',
+              expenseDown ? 'text-green-600 dark:text-green-400' : 'text-destructive',
+            )}
+          >
+            {expenseDiff >= 0 ? '+' : ''}
+            {formatCurrency(expenseDiff)}
+          </p>
+        </div>
+
+        <p
+          className="text-[9px] text-muted-foreground border-t border-border/60 pt-3"
+          aria-label="Periodo anterior"
+        >
+          Anterior: Ingresos {formatCurrency(previousIncome)}, Gastos{' '}
+          {formatCurrency(previousExpense)}
         </p>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

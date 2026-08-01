@@ -47,14 +47,3 @@ export function getPeriodLabel({
 /** Grid class for dashboard tab content (responsive 1/2/3 columns). */
 export const DASHBOARD_GRID_CLASS =
   'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';
-
-/** Equal two-column row for paired dashboard cards (lg+). */
-export const DASHBOARD_PAIR_GRID_CLASS =
-  'grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0 lg:[&>*]:h-full';
-
-/** @deprecated Alias of DASHBOARD_PAIR_GRID_CLASS. */
-export const DASHBOARD_HERO_GRID_CLASS = DASHBOARD_PAIR_GRID_CLASS;
-
-/** @deprecated Prefer DashboardCashflowCard; kept for non-dashboard KPI grids. */
-export const DASHBOARD_KPI_GRID_CLASS =
-  'grid grid-cols-2 gap-4 lg:grid-cols-4 [&>*]:min-w-0';
