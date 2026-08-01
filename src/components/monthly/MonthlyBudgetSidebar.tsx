@@ -1,16 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { SlidersHorizontal } from 'lucide-react';
+import { PiggyBank, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getFortnightPeriodPosition } from '@/lib/fortnight-calendar';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
-import {
-  MONTHLY_BUDGET_CATEGORY_ACCENTS,
-  type MonthlyBudgetCategoryRow,
-  type MonthlyBudgetPanelResult,
+import type {
+  MonthlyBudgetCategoryRow,
+  MonthlyBudgetPanelResult,
 } from '@/types/monthly-budget-panel';
 
 type MonthlyBudgetSidebarProps = {
@@ -20,6 +19,40 @@ type MonthlyBudgetSidebarProps = {
   month: number;
   todayYmd: string;
 };
+
+const budgetShellClass = cn(
+  'relative overflow-hidden rounded-xl border border-sky-500/20 p-4 shadow-sm',
+  'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
+  'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
+  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
+  'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+);
+
+const BudgetSidebarHeader = ({
+  headingId,
+  subtitle,
+}: {
+  headingId?: string;
+  subtitle: string;
+}) => (
+  <div className="flex min-w-0 items-start gap-2.5">
+    <span
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10"
+      aria-hidden
+    >
+      <PiggyBank className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+    </span>
+    <div className="min-w-0">
+      <h2
+        id={headingId}
+        className="text-sm font-semibold leading-none text-foreground"
+      >
+        Presupuesto de la quincena
+      </h2>
+      <p className="mt-1 text-[10px] text-muted-foreground">{subtitle}</p>
+    </div>
+  </div>
+);
 
 export const MonthlyBudgetSidebar = ({
   panel,
@@ -52,11 +85,13 @@ export const MonthlyBudgetSidebar = ({
   if (totalBudget <= 0 && categories.length === 0) {
     return (
       <aside
-        className="rounded-xl border border-border/60 bg-card p-4 shadow-sm"
+        className={budgetShellClass}
         aria-label="Presupuesto de la quincena"
       >
-        <h2 className="text-sm font-semibold">Presupuesto de la quincena</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <BudgetSidebarHeader
+          subtitle={`Sin presupuesto activo en la ${periodLabel}`}
+        />
+        <p className="mt-3 text-sm text-muted-foreground">
           No hay presupuestos activos para la {periodLabel}. Crea uno en
           Presupuestos para ver el resumen aquí.
         </p>
@@ -69,16 +104,14 @@ export const MonthlyBudgetSidebar = ({
 
   return (
     <aside
-      className="space-y-5 rounded-xl border border-border/60 bg-card p-4 shadow-sm"
+      className={cn(budgetShellClass, 'space-y-5')}
       aria-label="Presupuesto de la quincena y categorías"
     >
       <section aria-labelledby="monthly-budget-heading">
-        <h2
-          id="monthly-budget-heading"
-          className="text-sm font-semibold text-foreground"
-        >
-          Presupuesto de la quincena
-        </h2>
+        <BudgetSidebarHeader
+          headingId="monthly-budget-heading"
+          subtitle="Gasto vs asignado en esta quincena"
+        />
         <div className="mt-3">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <p
@@ -142,16 +175,8 @@ export const MonthlyBudgetSidebar = ({
             Top categorías
           </h2>
           <ul className="mt-3 space-y-3">
-            {categories.map((cat, index) => (
-              <BudgetCategoryRow
-                key={cat.id}
-                category={cat}
-                accent={
-                  MONTHLY_BUDGET_CATEGORY_ACCENTS[
-                    index % MONTHLY_BUDGET_CATEGORY_ACCENTS.length
-                  ]
-                }
-              />
+            {categories.map((cat) => (
+              <BudgetCategoryRow key={cat.id} category={cat} />
             ))}
           </ul>
         </section>
@@ -172,10 +197,8 @@ export const MonthlyBudgetSidebar = ({
 
 function BudgetCategoryRow({
   category,
-  accent,
 }: {
   category: MonthlyBudgetCategoryRow;
-  accent: string;
 }) {
   const overspent = category.remaining < 0;
   const percent =
@@ -201,7 +224,7 @@ function BudgetCategoryRow({
         <div
           className={cn(
             'h-full rounded-full',
-            getCategoryProgressClassName(category.percentUsed, overspent, accent),
+            getCategoryProgressClassName(category.percentUsed, overspent),
           )}
           style={{ width: `${Math.min(100, percent)}%` }}
         />
@@ -279,16 +302,15 @@ function getProgressClassName(
   overspent: boolean,
 ): string {
   if (overspent || usedPercent >= 90) return 'bg-destructive';
-  if (usedPercent >= 75) return 'bg-amber-500';
-  return 'bg-emerald-500';
+  if (usedPercent >= 75) return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-sky-500 dark:bg-sky-400';
 }
 
 function getCategoryProgressClassName(
   percentUsed: number,
   overspent: boolean,
-  fallback: string,
 ): string {
   if (overspent || percentUsed >= 100) return 'bg-destructive';
-  if (percentUsed >= 85) return 'bg-amber-500';
-  return fallback;
+  if (percentUsed >= 85) return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-sky-500 dark:bg-sky-400';
 }

@@ -2,23 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
-import {
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
-  type SortingState,
-} from '@tanstack/react-table';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -37,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency, toDisplayAmount } from '@/lib/utils';
+import { formatCurrency, toDisplayAmount, cn } from '@/lib/utils';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   deleteTransaction,
@@ -48,8 +31,6 @@ import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import { DataTableColumnHeader } from '@/components/ui/data-table';
-import { cn } from '@/lib/utils';
 import { CategoryIcon } from '@/components/categories/CategoryIcon';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
@@ -75,13 +56,38 @@ const planningLoanPaymentBadgeLabel = (row: TransactionRow): string =>
     ? 'Deducción nómina'
     : 'Préstamo billetera';
 
-const planningLoanPaymentBadgeClass = (row: TransactionRow): string =>
-  row.loan_payment_source === 'PAYROLL_DEDUCTION'
-    ? 'border-violet-500/40 text-violet-800 dark:text-violet-300'
-    : 'border-amber-500/40 text-amber-800 dark:text-amber-300';
-
 const isPlanningDerivedExpenseRow = (row: TransactionRow): boolean =>
   isPlanningCardPaymentRow(row) || isPlanningLoanPaymentRow(row);
+
+/**
+ * Outer shell shared with Pagos tarjeta / Préstamos panels
+ * (`FortnightCardPaymentsPanel`, `FortnightLoanPaymentsPanel`).
+ */
+const expenseCardShellClass = ({
+  isPaid,
+  isCardCharge,
+  daysRemaining,
+  hasDue,
+}: {
+  isPaid: boolean;
+  isCardCharge: boolean;
+  daysRemaining: number | null;
+  hasDue: boolean;
+}): string => {
+  if (isPaid) {
+    return 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3';
+  }
+  if (isCardCharge) {
+    return 'border-violet-500/25 bg-gradient-to-br from-violet-500/8 via-card to-violet-500/3 dark:from-violet-500/14 dark:via-card/60 dark:to-violet-500/5';
+  }
+  if (hasDue && daysRemaining != null && daysRemaining < 0) {
+    return 'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5';
+  }
+  if (hasDue && daysRemaining != null && daysRemaining <= 7) {
+    return 'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4';
+  }
+  return 'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4';
+};
 
 type ExpenseWalletLabelProps = {
   expense: TransactionRow;
@@ -471,356 +477,10 @@ export default function ExpenseTable({
   );
   const cardGrandTotal = cardTotalPaid + cardTotalPending;
 
-  const columns = useMemo<ColumnDef<TransactionRow>[]>(
-    () => [
-      {
-        accessorKey: 'is_paid',
-        id: 'is_paid',
-        header: () => <span className="sr-only">Estado</span>,
-        cell: ({ row }) => {
-          const expense = row.original;
-          const isUpdating = updatingIds.has(expense.id);
-          if (expense.is_paid) {
-            return (
-              <div className="flex justify-center">
-                <CheckCircle2
-                  className={cn(
-                    'text-emerald-500 dark:text-emerald-400',
-                    isCompact ? 'h-4 w-4' : 'h-5 w-5',
-                  )} data-icon="inline-start" />
-              </div>
-            );
-          }
-          if (!isExpenseTransactionRow(expense)) {
-            return (
-              <div className="flex justify-center text-muted-foreground">
-                <span className={isCompact ? 'text-[10px]' : 'text-xs'}>—</span>
-              </div>
-            );
-          }
-          if (isPlanningCardPaymentRow(expense)) {
-            return (
-              <div className="flex justify-center">
-                <CheckCircle2
-                  className={cn(
-                    'text-green-600 dark:text-green-400',
-                    isCompact ? 'h-4 w-4' : 'h-5 w-5',
-                  )}
-                  aria-hidden data-icon="inline-start" />
-              </div>
-            );
-          }
-          if (isPlanningLoanPaymentRow(expense)) {
-            return (
-              <div className="flex justify-center text-muted-foreground">
-                <span
-                  className={isCompact ? 'text-[10px]' : 'text-xs'}
-                  title="Gestionar en Préstamos"
-                >
-                  —
-                </span>
-              </div>
-            );
-          }
-          return (
-            <div className="flex justify-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  isCompact ? 'h-7 w-7' : 'h-8 w-8',
-                  'text-muted-foreground/40 transition-colors hover:text-emerald-500 hover:bg-emerald-500/10',
-                )}
-                onClick={() => {
-                  setPayingExpense(expense);
-                  setPayDialogOpen(true);
-                }}
-                disabled={isUpdating}
-                aria-label="Marcar como pagado"
-              >
-                <CheckCircle2
-                  className={cn(
-                    isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4',
-                  )} data-icon="inline-start" />
-              </Button>
-            </div>
-          );
-        },
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'description',
-        header: () => (
-          <span className={cn('font-medium', isCompact ? 'text-[10px]' : 'text-xs')}>
-            Gasto
-          </span>
-        ),
-        cell: ({ row }) => {
-          const expense = row.original;
-          const { hasDue, dueDay, daysRemaining, showCountdown, badgeColor } =
-            getDueInfo(expense);
-          return (
-            <div
-              className={cn(
-                'flex flex-col gap-1',
-                isCompact ? 'min-w-[130px] sm:min-w-[160px]' : 'min-w-[150px] sm:min-w-[200px]',
-              )}
-            >
-              <span
-                className={cn(
-                  'inline-flex min-w-0 items-center gap-1.5',
-                  isCompact ? 'text-xs' : 'text-sm',
-                )}
-              >
-                <CategoryIcon
-                  icon={expense.categoryIcon}
-                  className={cn(
-                    expense.is_paid
-                      ? 'text-muted-foreground/70'
-                      : 'text-foreground/70',
-                  )}
-                  iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'} data-icon="inline-start" />
-                <span
-                  className={cn(
-                    'truncate',
-                    expense.is_paid
-                      ? 'font-medium text-muted-foreground line-through'
-                      : 'font-semibold text-foreground',
-                  )}
-                >
-                  {expense.description}
-                </span>
-              </span>
-              <div className="flex items-center gap-2 flex-wrap">
-                <ExpenseWalletLabel
-                  expense={expense}
-                  walletsById={walletsById}
-                  isCompact={isCompact}
-                />
-                {hasDue && (
-                  <Badge
-                    variant={expense.is_paid ? 'secondary' : badgeColor}
-                    className={cn(
-                      'text-[10px]',
-                      isCompact ? 'h-4 px-1.5' : 'h-5',
-                      expense.is_paid && 'opacity-60',
-                    )}
-                  >
-                    {expense.is_paid
-                      ? `Día ${dueDay}`
-                      : showCountdown && daysRemaining !== null && daysRemaining >= 0
-                        ? `Día ${dueDay} · en ${daysRemaining} día${daysRemaining !== 1 ? 's' : ''}`
-                        : `Día ${dueDay}`}
-                  </Badge>
-                )}
-                {isPlanningCardPaymentRow(expense) ? (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'border-emerald-500/40 text-emerald-800 dark:text-emerald-300',
-                      'text-[10px]',
-                      isCompact ? 'h-4 px-1.5' : 'h-5',
-                    )}
-                  >
-                    Pago TC
-                  </Badge>
-                ) : null}
-                {isPlanningLoanPaymentRow(expense) ? (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      planningLoanPaymentBadgeClass(expense),
-                      'text-[10px]',
-                      isCompact ? 'h-4 px-1.5' : 'h-5',
-                    )}
-                  >
-                    {planningLoanPaymentBadgeLabel(expense)}
-                  </Badge>
-                ) : null}
-                {isCardChargeExpenseRow(expense) ? (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'border-violet-500/40 text-violet-700 dark:text-violet-300',
-                      'text-[10px]',
-                      isCompact ? 'h-4 px-1.5' : 'h-5',
-                    )}
-                  >
-                    Tarjeta
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-          );
-        },
-        enableSorting: true,
-      },
-      {
-        id: 'amount',
-        accessorFn: (row) => toDisplayAmount(row.amount),
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title="Monto"
-            className={cn(
-              'text-right min-w-[90px] sm:min-w-[120px] font-medium',
-              isCompact ? 'text-[10px]' : 'text-xs',
-            )}
-          />
-        ),
-        cell: ({ row }) => (
-          <span
-            className={cn(
-              'text-right font-mono tabular-nums',
-              row.original.is_paid
-                ? cn('text-muted-foreground/60 line-through', isCompact ? 'text-xs' : 'text-sm')
-                : cn('font-bold text-foreground', isCompact ? 'text-xs' : 'text-sm'),
-            )}
-          >
-            {formatCurrency(toDisplayAmount(row.original.amount))}
-          </span>
-        ),
-        enableSorting: true,
-      },
-      {
-        id: 'actions',
-        header: () => <span className="sr-only">Acciones</span>,
-        cell: ({ row }) => {
-          const expense = row.original;
-          const isUpdating = updatingIds.has(expense.id);
-          if (!isExpenseTransactionRow(expense)) {
-            return (
-              <div className="flex justify-center text-muted-foreground">
-                <span className={isCompact ? 'text-[10px]' : 'text-xs'} aria-hidden>
-                  —
-                </span>
-              </div>
-            );
-          }
-          if (isPlanningDerivedExpenseRow(expense)) {
-            return (
-              <div className="flex justify-center text-muted-foreground">
-                <span
-                  className={isCompact ? 'text-[10px]' : 'text-xs'}
-                  title={
-                    isPlanningCardPaymentRow(expense)
-                      ? 'Registrado desde pagos de tarjeta'
-                      : 'Gestionar en Préstamos'
-                  }
-                >
-                  —
-                </span>
-              </div>
-            );
-          }
-          if (!dropdownMounted) {
-            return (
-              <div className="flex justify-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
-                  disabled={isUpdating}
-                  aria-label="Más opciones"
-                  aria-hidden
-                >
-                  <MoreVertical
-                    className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
-                    aria-hidden data-icon="inline-start" />
-                </Button>
-              </div>
-            );
-          }
-          return (
-            <div className="flex justify-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(isCompact ? 'h-7 w-7' : 'h-8 w-8')}
-                    disabled={isUpdating}
-                    aria-label={`Más opciones para ${expense.description || 'gasto'}`}
-                  >
-                    <MoreVertical
-                      className={cn(isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
-                      aria-hidden data-icon="inline-start" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleEditAmount(expense)}
-                    disabled={isUpdating}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
-                    Modificar gasto
-                  </DropdownMenuItem>
-                  {expense.is_paid ? (
-                    <DropdownMenuItem
-                      onClick={() => handlePaidToggle(expense, false)}
-                      disabled={isUpdating}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                      Deshacer pago
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setDeletingExpense(expense);
-                        setDeleteDialogOpen(true);
-                      }}
-                      disabled={isUpdating}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                      Eliminar
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          );
-        },
-        enableSorting: false,
-      },
-    ],
-    [
-      dropdownMounted,
-      updatingIds,
-      handleEditAmount,
-      handlePaidToggle,
-      getDueInfo,
-      setDeletingExpense,
-      setDeleteDialogOpen,
-      setPayingExpense,
-      setPayDialogOpen,
-      isCompact,
-      walletsById,
-    ]
-  );
-
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'is_paid', desc: false },
-    { id: 'amount', desc: true },
-  ]);
-
-  const table = useReactTable({
-    data: localExpenses,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getRowId: (row) =>
-      `${row.planning_row_kind ?? 'expense'}-${row.id}`,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
-
-  const sortedRows = table.getRowModel().rows;
-
-  const mobileTotalsPinned =
-    pinTotalsToBottom && sortedRows.length > 0 ? (
+  const totalsPinned =
+    pinTotalsToBottom && localExpenses.length > 0 ? (
       <div
-        className="shrink-0 border-t border-border/50 bg-background/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:shadow-[0_-8px_28px_-14px_rgba(0,0,0,0.65)]"
+        className="shrink-0 border-t border-border/50 bg-background/95 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:shadow-[0_-8px_28px_-14px_rgba(0,0,0,0.65)]"
         role="region"
         aria-label="Totales de efectivo y débito"
       >
@@ -828,7 +488,12 @@ export default function ExpenseTable({
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
             Total efectivo/débito
           </span>
-          <span className="font-mono text-base font-black tabular-nums text-foreground">
+          <span
+            className={cn(
+              'font-mono font-black tabular-nums text-foreground',
+              isCompact ? 'text-sm' : 'text-base',
+            )}
+          >
             {formatCurrency(total)}
           </span>
         </div>
@@ -842,47 +507,9 @@ export default function ExpenseTable({
                 No suman hasta pagar el estado de cuenta
               </span>
             </div>
-            <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
-              {formatCurrency(cardGrandTotal)}
-            </span>
-          </div>
-        ) : null}
-      </div>
-    ) : null;
-
-  const desktopTotalsPinned =
-    pinTotalsToBottom && sortedRows.length > 0 ? (
-      <div
-        className="shrink-0 border-t border-border/50 bg-background/95 px-0 pt-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 sm:rounded-b-xl"
-        role="region"
-        aria-label="Totales de efectivo y débito"
-      >
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-gradient-to-r from-muted/50 to-muted/30 px-3 py-2 dark:from-muted/30 dark:to-muted/10">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-            Total efectivo/débito
-          </span>
-          <span
-            className={cn(
-              'font-black font-mono tabular-nums',
-              isCompact ? 'text-sm' : 'text-base',
-            )}
-          >
-            {formatCurrency(total)}
-          </span>
-        </div>
-        {cardGrandTotal > 0 ? (
-          <div className="mt-1.5 flex items-center justify-between gap-3 rounded-lg border border-violet-500/20 bg-violet-50/20 px-3 py-2 dark:bg-violet-950/10">
-            <div className="min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
-                Cargos a tarjeta
-              </span>
-              <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground/60">
-                No suman al efectivo hasta pagar el estado de cuenta
-              </span>
-            </div>
             <span
               className={cn(
-                'font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300',
+                'font-mono font-bold tabular-nums text-violet-700 dark:text-violet-300',
                 isCompact ? 'text-xs' : 'text-sm',
               )}
             >
@@ -895,488 +522,307 @@ export default function ExpenseTable({
 
   return (
     <>
-      <Card
+      <div
         className={cn(
-          'overflow-hidden rounded-xl border-0 bg-transparent shadow-none sm:border sm:border-border/40 sm:bg-card sm:shadow-md',
+          'px-1 pb-1',
           pinTotalsToBottom && 'flex h-full min-h-0 flex-col',
         )}
+        role="region"
+        aria-label="Gastos de la quincena"
       >
-        <CardContent
+        <ul
+          role="list"
           className={cn(
-            'space-y-0 px-0 pb-0 pt-0 sm:pb-3',
-            pinTotalsToBottom && 'flex min-h-0 flex-1 flex-col pb-0 sm:pb-0',
+            'flex flex-col gap-1.5 [&>li]:shrink-0',
+            pinTotalsToBottom
+              ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 scrollbar-hide'
+              : isCompact
+                ? 'max-h-[min(380px,55vh)] overflow-y-auto pb-2'
+                : 'max-h-[380px] overflow-y-auto pb-2',
           )}
         >
-          {/* Mobile list (hidden on sm+) */}
-          <div
-            className={cn(
-              'sm:hidden',
-              pinTotalsToBottom && 'flex min-h-0 flex-1 flex-col',
-            )}
-          >
-          <ul
-            role="list"
-            className={cn(
-              // [&>li]:shrink-0 — rows must not flex-shrink inside the scroll region or they collapse when pinTotalsToBottom constrains height
-              'flex flex-col gap-1.5 px-2 pt-1 [&>li]:shrink-0',
-              pinTotalsToBottom
-                ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 scrollbar-hide'
-                : 'pb-2',
-            )}
-            aria-label="Gastos de la quincena"
-          >
-            {sortedRows.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
-                Sin gastos
-              </li>
-            ) : (
-              <>
-                {sortedRows.map((row) => {
-                  const e = row.original;
-                  const isUpdating = updatingIds.has(e.id);
-                  const isCardPay = isPlanningCardPaymentRow(e);
-                  const isLoanPay = isPlanningLoanPaymentRow(e);
-                  const isCardCharge = isCardChargeExpenseRow(e);
-                  const isIncomeRow = !isExpenseTransactionRow(e);
-                  const {
-                    hasDue,
-                    dueDay,
-                    daysRemaining,
-                    showCountdown,
-                    badgeColor,
-                  } = getDueInfo(e);
-                  return (
-                    <li
-                      key={`m-${e.planning_row_kind ?? 'expense'}-${e.id}`}
-                      className={cn(
-                        'group/row relative flex items-start gap-2.5 overflow-hidden rounded-xl border px-2.5 py-2.5 transition-all',
-                        // left accent stripe via border-l width
-                        'border-l-[3px]',
-                        // subtle top gloss
-                        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
-                        isCardCharge
-                          ? 'border-violet-500/15 border-l-violet-500/70 bg-gradient-to-br from-violet-500/8 via-card to-violet-500/3 dark:from-violet-500/14 dark:via-card/60 dark:to-violet-500/5'
-                          : e.is_paid
-                            ? 'border-emerald-500/15 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/4'
-                            : 'border-border/40 border-l-primary/45 bg-card/60 active:scale-[0.995] active:border-primary/40',
-                      )}
-                    >
-                      {/* Status / pay toggle */}
-                      <div className="shrink-0">
-                        {e.is_paid ? (
-                          <span
-                            className={cn(
-                              'inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 shadow-sm',
-                              isCardPay
-                                ? 'bg-green-500/15 ring-green-500/30 text-green-600 dark:text-green-400'
-                                : 'bg-emerald-500/15 ring-emerald-500/30 text-emerald-600 dark:text-emerald-400',
-                            )}
-                            aria-label="Pagado"
-                          >
-                            <CheckCircle2 className="h-5 w-5" data-icon="inline-start" />
-                          </span>
-                        ) : isIncomeRow || isCardPay || isLoanPay ? (
-                          <span
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-[11px] text-muted-foreground/50 ring-1 ring-border/40"
-                            aria-hidden
-                          >
-                            —
-                          </span>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              'h-8 w-8 rounded-full border border-dashed bg-transparent text-muted-foreground/40 transition-colors',
-                              'border-border/60 hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400',
-                            )}
-                            onClick={() => {
-                              setPayingExpense(e);
-                              setPayDialogOpen(true);
-                            }}
-                            disabled={isUpdating}
-                            aria-label={`Marcar ${e.description} como pagado`}
-                          >
-                            <CheckCircle2 className="h-4 w-4" data-icon="inline-start" />
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Body */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="inline-flex min-w-0 items-center gap-1.5 text-sm leading-tight">
-                            <CategoryIcon
-                              icon={e.categoryIcon}
-                              className={cn(
-                                e.is_paid
-                                  ? 'text-muted-foreground/70'
-                                  : 'text-foreground/70',
-                              )}
-                              iconClassName="h-4 w-4" data-icon="inline-start" />
-                            <span
-                              className={cn(
-                                'min-w-0 truncate',
-                                e.is_paid
-                                  ? 'font-medium text-muted-foreground/80 line-through'
-                                  : 'font-semibold text-foreground',
-                              )}
-                            >
-                              {e.description}
-                            </span>
-                          </span>
-                          <span
-                            className={cn(
-                              'shrink-0 font-mono tabular-nums text-sm leading-tight',
-                              e.is_paid
-                                ? 'text-muted-foreground/60 line-through'
-                                : isCardCharge
-                                  ? 'font-bold text-violet-700 dark:text-violet-300'
-                                  : 'font-bold text-foreground',
-                            )}
-                          >
-                            {formatCurrency(toDisplayAmount(e.amount))}
-                          </span>
-                        </div>
-                        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <ExpenseWalletLabel
-                            expense={e}
-                            walletsById={walletsById}
-                            isCompact={isCompact}
-                          />
-                          {hasDue && (
-                            <Badge
-                              variant={e.is_paid ? 'secondary' : badgeColor}
-                              className={cn(
-                                'h-4 rounded-full px-1.5 text-[10px] font-medium',
-                                e.is_paid && 'opacity-60',
-                              )}
-                            >
-                              {e.is_paid
-                                ? `Día ${dueDay}`
-                                : showCountdown &&
-                                    daysRemaining !== null &&
-                                    daysRemaining >= 0
-                                  ? `Día ${dueDay} · en ${daysRemaining}d`
-                                  : `Día ${dueDay}`}
-                            </Badge>
+          {localExpenses.length === 0 ? (
+            <li className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
+              Sin gastos
+            </li>
+          ) : (
+            <>
+              {localExpenses.map((e) => {
+                const isUpdating = updatingIds.has(e.id);
+                const isCardPay = isPlanningCardPaymentRow(e);
+                const isLoanPay = isPlanningLoanPaymentRow(e);
+                const isCardCharge = isCardChargeExpenseRow(e);
+                const isIncomeRow = !isExpenseTransactionRow(e);
+                const {
+                  hasDue,
+                  dueDay,
+                  daysRemaining,
+                  showCountdown,
+                  badgeColor,
+                } = getDueInfo(e);
+                return (
+                  <li
+                    key={`${e.planning_row_kind ?? 'expense'}-${e.id}`}
+                    className={cn(
+                      'group/row relative flex items-start gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
+                      'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+                      isCompact ? 'py-2.5' : 'py-3',
+                      expenseCardShellClass({
+                        isPaid: e.is_paid,
+                        isCardCharge,
+                        daysRemaining,
+                        hasDue,
+                      }),
+                    )}
+                  >
+                    {/* Status / pay toggle */}
+                    <div className="shrink-0">
+                      {e.is_paid ? (
+                        <span
+                          className={cn(
+                            'inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 shadow-sm',
+                            isCardPay
+                              ? 'bg-green-500/15 ring-green-500/30 text-green-600 dark:text-green-400'
+                              : 'bg-emerald-500/15 ring-emerald-500/30 text-emerald-600 dark:text-emerald-400',
                           )}
-                        </p>
-                        {(isCardPay || isLoanPay || isCardCharge) && (
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {isCardPay && (
-                              <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
-                                <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
-                                Pago TC
-                              </span>
-                            )}
-                            {isLoanPay && (
-                              <span
-                                className={cn(
-                                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
-                                  e.loan_payment_source === 'PAYROLL_DEDUCTION'
-                                    ? 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300'
-                                    : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    'h-1 w-1 rounded-full',
-                                    e.loan_payment_source === 'PAYROLL_DEDUCTION'
-                                      ? 'bg-violet-500 dark:bg-violet-400'
-                                      : 'bg-amber-500 dark:bg-amber-400',
-                                  )}
-                                  aria-hidden
-                                />
-                                {planningLoanPaymentBadgeLabel(e)}
-                              </span>
-                            )}
-                            {isCardCharge && (
-                              <span className="inline-flex h-4 items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300">
-                                <span className="h-1 w-1 rounded-full bg-violet-500 dark:bg-violet-400" aria-hidden />
-                                Tarjeta
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions menu */}
-                      <div className="-mr-1 shrink-0">
-                        {isIncomeRow || isCardPay || isLoanPay ? (
-                          <span
-                            className="inline-flex h-8 w-8 items-center justify-center text-xs text-muted-foreground/30"
-                            aria-hidden
-                          >
-                            —
-                          </span>
-                        ) : !dropdownMounted ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            disabled
-                            aria-label="Más acciones"
-                          >
-                            <MoreVertical className="h-4 w-4" aria-hidden data-icon="inline-start" />
-                          </Button>
-                        ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground/60 hover:text-foreground"
-                                disabled={isUpdating}
-                                aria-label={`Más acciones para ${e.description}`}
-                              >
-                                <MoreVertical className="h-4 w-4" data-icon="inline-start" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleEditAmount(e)}
-                                disabled={isUpdating}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
-                                Modificar gasto
-                              </DropdownMenuItem>
-                              {e.is_paid ? (
-                                <DropdownMenuItem
-                                  onClick={() => handlePaidToggle(e, false)}
-                                  disabled={isUpdating}
-                                >
-                                  <CheckCircle2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                                  Deshacer pago
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setDeletingExpense(e);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  disabled={isUpdating}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                                  Eliminar
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-                {!pinTotalsToBottom ? (
-                  <>
-                    <li className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/30 bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 px-3 py-2.5 shadow-sm dark:from-muted/40 dark:via-muted/20 dark:to-muted/5">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                        Total efectivo/débito
-                      </span>
-                      <span className="font-mono text-base font-black tabular-nums text-foreground">
-                        {formatCurrency(total)}
-                      </span>
-                    </li>
-                    {cardGrandTotal > 0 ? (
-                      <li className="flex items-center justify-between gap-2 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 via-violet-500/3 to-transparent px-3 py-2 dark:from-violet-500/14 dark:via-violet-500/5">
-                        <div className="flex min-w-0 flex-col">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/80">
-                            Cargos a tarjeta
-                          </span>
-                          <span className="text-[10px] text-muted-foreground/60">
-                            No suman hasta pagar el estado de cuenta
-                          </span>
-                        </div>
-                        <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
-                          {formatCurrency(cardGrandTotal)}
+                          aria-label="Pagado"
+                        >
+                          <CheckCircle2 className="h-5 w-5" data-icon="inline-start" />
                         </span>
-                      </li>
-                    ) : null}
-                  </>
-                ) : null}
-              </>
-            )}
-          </ul>
-          {mobileTotalsPinned}
-          </div>
-
-          {/* Desktop table (hidden below sm) */}
-          <div
-            className={cn(
-              'hidden sm:flex sm:min-h-0 sm:flex-col',
-              pinTotalsToBottom && 'min-h-0 flex-1',
-            )}
-          >
-          <div className="relative w-full shrink-0">
-            <Table className={isCompact ? 'text-xs' : undefined}>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="bg-muted/70 dark:bg-muted/45 hover:bg-muted/70">
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className={cn(
-                          'text-[10px] font-bold uppercase tracking-wider text-foreground/75',
-                          header.id === 'is_paid'
-                            ? 'w-9 text-center sm:w-12'
-                            : header.id === 'amount'
-                              ? 'text-right min-w-[90px] sm:min-w-[120px]'
-                              : header.id === 'actions'
-                                ? 'w-12 text-center sm:w-20'
-                                : isCompact
-                                  ? 'min-w-[130px] sm:min-w-[160px]'
-                                  : 'min-w-[150px] sm:min-w-[200px]',
-                          isCompact && 'h-8! py-1.5 px-1.5!',
-                        )}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-            </Table>
-          </div>
-          <div
-            className={cn(
-              'relative w-full overflow-y-auto',
-              pinTotalsToBottom
-                ? 'min-h-0 flex-1'
-                : isCompact
-                  ? 'max-h-[min(380px,55vh)]'
-                  : 'max-h-[380px]',
-            )}
-          >
-            <Table className={isCompact ? 'text-xs' : undefined}>
-              <TableBody>
-                {table.getRowModel().rows?.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className={cn(
-                        'text-center text-muted-foreground',
-                        isCompact ? 'py-6 text-xs' : 'py-8 text-sm',
+                      ) : isIncomeRow || isCardPay || isLoanPay ? (
+                        <span
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-[11px] text-muted-foreground/50 ring-1 ring-border/40"
+                          aria-hidden
+                        >
+                          —
+                        </span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'h-8 w-8 rounded-full border border-dashed bg-transparent text-muted-foreground/40 transition-colors',
+                            'border-border/60 hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400',
+                          )}
+                          onClick={() => {
+                            setPayingExpense(e);
+                            setPayDialogOpen(true);
+                          }}
+                          disabled={isUpdating}
+                          aria-label={`Marcar ${e.description} como pagado`}
+                        >
+                          <CheckCircle2 className="h-4 w-4" data-icon="inline-start" />
+                        </Button>
                       )}
-                    >
-                      Sin gastos
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  <>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={`${row.original.planning_row_kind ?? 'expense'}-${row.original.id}`}
-                        className={cn(
-                          'transition-colors group/row',
-                          row.original.is_paid
-                            ? 'bg-emerald-50/25 dark:bg-emerald-950/15 opacity-75 hover:opacity-90 hover:bg-emerald-50/35 dark:hover:bg-emerald-950/25'
-                            : 'hover:bg-primary/5 dark:hover:bg-primary/8',
+                    </div>
+
+                    {/* Body */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span
+                          className={cn(
+                            'inline-flex min-w-0 items-center gap-1.5 leading-tight',
+                            isCompact ? 'text-xs' : 'text-sm',
+                          )}
+                        >
+                          <CategoryIcon
+                            icon={e.categoryIcon}
+                            className={cn(
+                              e.is_paid
+                                ? 'text-muted-foreground/70'
+                                : 'text-foreground/70',
+                            )}
+                            iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
+                            data-icon="inline-start"
+                          />
+                          <span
+                            className={cn(
+                              'min-w-0 truncate',
+                              e.is_paid
+                                ? 'font-medium text-muted-foreground/80 line-through'
+                                : 'font-semibold text-foreground',
+                            )}
+                          >
+                            {e.description}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            'shrink-0 font-mono tabular-nums leading-tight',
+                            isCompact ? 'text-xs' : 'text-sm',
+                            e.is_paid
+                              ? 'text-muted-foreground/60 line-through'
+                              : isCardCharge
+                                ? 'font-bold text-violet-700 dark:text-violet-300'
+                                : 'font-bold text-foreground',
+                          )}
+                        >
+                          {formatCurrency(toDisplayAmount(e.amount))}
+                        </span>
+                      </div>
+                      <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <ExpenseWalletLabel
+                          expense={e}
+                          walletsById={walletsById}
+                          isCompact={isCompact}
+                        />
+                        {hasDue && (
+                          <Badge
+                            variant={e.is_paid ? 'secondary' : badgeColor}
+                            className={cn(
+                              'h-4 rounded-full px-1.5 text-[10px] font-medium',
+                              e.is_paid && 'opacity-60',
+                            )}
+                          >
+                            {e.is_paid
+                              ? `Día ${dueDay}`
+                              : showCountdown &&
+                                  daysRemaining !== null &&
+                                  daysRemaining >= 0
+                                ? `Día ${dueDay} · en ${daysRemaining}d`
+                                : `Día ${dueDay}`}
+                          </Badge>
                         )}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={cn(
-                              cell.column.id === 'is_paid' ||
-                                cell.column.id === 'actions'
-                                ? 'text-center'
-                                : cell.column.id === 'amount'
-                                  ? 'text-right'
-                                  : undefined,
-                              isCompact && 'p-1',
-                            )}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                    {!pinTotalsToBottom ? (
-                      <>
-                        <TableRow className="border-t-2 border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/10">
-                          <TableCell
-                            colSpan={2}
-                            className={cn(
-                              'text-right',
-                              isCompact ? 'py-2' : 'py-3',
-                            )}
-                          >
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                              Total efectivo/débito
+                      </p>
+                      {(isCardPay || isLoanPay || isCardCharge) && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {isCardPay && (
+                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
+                              <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
+                              Pago TC
                             </span>
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'text-right',
-                              isCompact ? 'py-2' : 'py-3',
-                            )}
-                          >
+                          )}
+                          {isLoanPay && (
                             <span
                               className={cn(
-                                'font-black font-mono tabular-nums',
-                                isCompact ? 'text-sm' : 'text-base',
-                              )}
-                            >
-                              {formatCurrency(total)}
-                            </span>
-                          </TableCell>
-                          <TableCell className={isCompact ? 'py-2' : 'py-3'} />
-                        </TableRow>
-                        {cardGrandTotal > 0 ? (
-                          <TableRow className="border-border/30 bg-violet-50/20 dark:bg-violet-950/10">
-                            <TableCell
-                              colSpan={2}
-                              className={cn(
-                                'text-right',
-                                isCompact ? 'py-1.5' : 'py-2',
-                              )}
-                            >
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/70 dark:text-violet-400/70">
-                                Cargos a tarjeta
-                              </span>
-                              <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground/60">
-                                No suman al efectivo hasta pagar el estado de cuenta
-                              </span>
-                            </TableCell>
-                            <TableCell
-                              className={cn(
-                                'text-right',
-                                isCompact ? 'py-1.5' : 'py-2',
+                                'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
+                                e.loan_payment_source === 'PAYROLL_DEDUCTION'
+                                  ? 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300'
+                                  : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
                               )}
                             >
                               <span
                                 className={cn(
-                                  'font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300',
-                                  isCompact ? 'text-xs' : 'text-sm',
+                                  'h-1 w-1 rounded-full',
+                                  e.loan_payment_source === 'PAYROLL_DEDUCTION'
+                                    ? 'bg-violet-500 dark:bg-violet-400'
+                                    : 'bg-amber-500 dark:bg-amber-400',
                                 )}
+                                aria-hidden
+                              />
+                              {planningLoanPaymentBadgeLabel(e)}
+                            </span>
+                          )}
+                          {isCardCharge && (
+                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300">
+                              <span className="h-1 w-1 rounded-full bg-violet-500 dark:bg-violet-400" aria-hidden />
+                              Tarjeta
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions menu */}
+                    <div className="-mr-1 shrink-0 self-center">
+                      {isIncomeRow || isCardPay || isLoanPay ? (
+                        <span
+                          className="inline-flex h-8 w-8 items-center justify-center text-xs text-muted-foreground/30"
+                          aria-hidden
+                        >
+                          —
+                        </span>
+                      ) : !dropdownMounted ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled
+                          aria-label="Más acciones"
+                        >
+                          <MoreVertical className="h-4 w-4" aria-hidden data-icon="inline-start" />
+                        </Button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground/60 hover:text-foreground"
+                              disabled={isUpdating}
+                              aria-label={`Más acciones para ${e.description}`}
+                            >
+                              <MoreVertical className="h-4 w-4" data-icon="inline-start" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleEditAmount(e)}
+                              disabled={isUpdating}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
+                              Modificar gasto
+                            </DropdownMenuItem>
+                            {e.is_paid ? (
+                              <DropdownMenuItem
+                                onClick={() => handlePaidToggle(e, false)}
+                                disabled={isUpdating}
                               >
-                                {formatCurrency(cardGrandTotal)}
-                              </span>
-                            </TableCell>
-                            <TableCell className={isCompact ? 'py-1.5' : 'py-2'} />
-                          </TableRow>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {desktopTotalsPinned}
-          </div>
-        </CardContent>
-      </Card>
+                                <CheckCircle2 className="mr-2 h-4 w-4" data-icon="inline-start" />
+                                Deshacer pago
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setDeletingExpense(e);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                disabled={isUpdating}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+              {!pinTotalsToBottom ? (
+                <>
+                  <li className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/30 bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 px-3 py-2.5 shadow-sm dark:from-muted/40 dark:via-muted/20 dark:to-muted/5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                      Total efectivo/débito
+                    </span>
+                    <span className="font-mono text-base font-black tabular-nums text-foreground">
+                      {formatCurrency(total)}
+                    </span>
+                  </li>
+                  {cardGrandTotal > 0 ? (
+                    <li className="flex items-center justify-between gap-2 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 via-violet-500/3 to-transparent px-3 py-2 dark:from-violet-500/14 dark:via-violet-500/5">
+                      <div className="flex min-w-0 flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600/80 dark:text-violet-400/80">
+                          Cargos a tarjeta
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/60">
+                          No suman hasta pagar el estado de cuenta
+                        </span>
+                      </div>
+                      <span className="font-mono text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
+                        {formatCurrency(cardGrandTotal)}
+                      </span>
+                    </li>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          )}
+        </ul>
+        {totalsPinned}
+      </div>
 
       {/* Edit Expense Dialog */}
       {editingExpense && (

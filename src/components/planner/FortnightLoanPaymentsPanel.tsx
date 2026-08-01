@@ -125,38 +125,56 @@ export default function FortnightLoanPaymentsPanel({
           const statusLabel = getStatusAriaLabel(item, visual, daysLeft);
           const Icon =
             item.paymentSource === 'PAYROLL_DEDUCTION' ? Landmark : HandCoins;
+          const isDueSoon = visual === 'pending' && daysLeft <= 7;
+          const isDueLater = visual === 'pending' && daysLeft > 7;
           return (
             <li
               key={item.id}
               className={cn(
                 'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
+                'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                 isCompact ? 'py-2.5' : 'py-3',
                 visual === 'overdue' &&
-                  'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3',
-                visual === 'pending' &&
-                  daysLeft <= 7 &&
-                  'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2',
-                visual === 'pending' &&
-                  daysLeft > 7 &&
-                  'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2',
+                  'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
+                isDueSoon &&
+                  'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
+                isDueLater &&
+                  'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4',
                 visual === 'paid' &&
-                  'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2',
-                visual === 'muted' && 'border-border/50 bg-card',
+                  'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
+                visual === 'muted' &&
+                  'border-border/50 bg-muted/20 opacity-80',
               )}
             >
               <span
                 className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
                   visual === 'paid'
-                    ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30 dark:text-emerald-300'
+                    ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
                     : visual === 'overdue'
-                      ? 'bg-destructive/10 text-destructive ring-destructive/30'
-                      : visual === 'pending' && daysLeft <= 7
-                        ? 'bg-amber-500/10 text-amber-600 ring-amber-500/30 dark:text-amber-300'
-                        : 'bg-sky-500/10 text-sky-600 ring-sky-500/30 dark:text-sky-300',
+                      ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
+                      : visual === 'muted'
+                        ? 'bg-muted/40 ring-border/40'
+                        : isDueSoon
+                          ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
+                          : 'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon
+                  className={cn(
+                    'h-4 w-4',
+                    visual === 'paid'
+                      ? 'text-emerald-600 dark:text-emerald-300'
+                      : visual === 'overdue'
+                        ? 'text-destructive'
+                        : visual === 'muted'
+                          ? 'text-muted-foreground'
+                          : isDueSoon
+                            ? 'text-amber-600 dark:text-amber-300'
+                            : 'text-blue-600 dark:text-blue-300',
+                  )}
+                  aria-hidden
+                />
               </span>
 
               <div className="min-w-0 flex-1">
@@ -166,6 +184,9 @@ export default function FortnightLoanPaymentsPanel({
                     className={cn(
                       'truncate font-semibold hover:underline',
                       isCompact ? 'text-xs' : 'text-sm',
+                      visual === 'paid' || visual === 'muted'
+                        ? 'text-muted-foreground'
+                        : 'text-foreground',
                     )}
                   >
                     {item.loanName}

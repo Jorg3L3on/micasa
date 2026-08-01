@@ -51,7 +51,15 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      <div className="mb-5 rounded-xl border border-border/60 bg-card px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3">
+      <div
+        className={cn(
+          'relative mb-5 overflow-hidden rounded-xl border border-sky-500/20 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3',
+          'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
+          'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
+          'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
+          'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+        )}
+      >
         <MonthlyChromeHeader
           year={year}
           month={month}

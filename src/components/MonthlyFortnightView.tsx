@@ -87,7 +87,7 @@ export default function MonthlyFortnightView({
 
   const walletStripSection =
     wallets.length > 0 ? (
-      <div className="mb-7 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm dark:bg-card/60">
+      <div className="mb-7 min-w-0">
         <WalletBalanceStrip
           wallets={wallets}
           paidWalletIds={paidWalletIds}

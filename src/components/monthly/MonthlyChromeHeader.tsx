@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Goal, Hourglass } from 'lucide-react';
+import { CalendarDays, Goal, Hourglass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -39,13 +39,15 @@ type MonthlyChromeHeaderProps = {
   showFortnightToggle?: boolean;
 };
 
+const accentEmphasisClass = 'font-medium text-sky-600 dark:text-sky-400';
+
 const fortnightSegmentClass = (active: boolean) =>
   cn(
-    'relative min-h-8 flex-1 cursor-pointer rounded-md px-2 py-1.5 text-xs font-semibold leading-none transition-colors md:flex-none md:px-2.5',
+    'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all md:flex-none md:px-2.5',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     active
-      ? 'bg-primary text-primary-foreground shadow-sm'
-      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground active:scale-[0.98]',
+      ? 'bg-gradient-to-br from-primary/90 to-primary/75 text-primary-foreground shadow-sm ring-1 ring-primary/30'
+      : 'text-foreground/70 hover:text-foreground/90 active:scale-[0.98]',
   );
 
 const ChromeDivider = ({ className }: { className?: string }) => (
@@ -88,10 +90,14 @@ export const MonthlyChromeHeader = ({
   const endLabel = formatDayMonthLabel(year, month, bounds.endDay);
 
   const fortnightToggle = !showFortnightToggle ? null : !prefsReady ? (
-    <Skeleton className="h-9 w-full rounded-lg md:w-[13.5rem]" aria-hidden />
+    <Skeleton className="h-9 w-full rounded-2xl md:w-[13.5rem]" aria-hidden />
   ) : (
     <div
-      className="flex w-full items-center gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5 shadow-sm dark:bg-muted/25 md:inline-flex md:w-auto"
+      className={cn(
+        'flex w-full items-center gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner md:inline-flex md:w-auto',
+        'bg-gradient-to-br from-muted/30 via-background to-muted/10',
+        'dark:from-muted/20 dark:via-card dark:to-muted/5',
+      )}
       role="group"
       aria-label="Quincena"
     >
@@ -142,11 +148,11 @@ export const MonthlyChromeHeader = ({
   const remainingLabel =
     position.kind === 'current' ? (
       position.remainingDays <= 1 ? (
-        <span className="font-medium text-primary">Último día</span>
+        <span className={accentEmphasisClass}>Último día</span>
       ) : (
         <span>
           Faltan{' '}
-          <span className="font-medium text-primary">
+          <span className={accentEmphasisClass}>
             {position.remainingDays} días
           </span>
         </span>
@@ -162,7 +168,7 @@ export const MonthlyChromeHeader = ({
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground sm:text-xs">
           <span className="min-w-0 truncate">
             Hoy es{' '}
-            <span className="font-medium text-primary">
+            <span className={accentEmphasisClass}>
               {formatDayMonthLabelFromYmd(todayYmd)}
             </span>
           </span>
@@ -184,7 +190,7 @@ export const MonthlyChromeHeader = ({
             aria-label={`Progreso de la quincena: ${position.elapsedPercent}%`}
           >
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-500"
+              className="h-full rounded-full bg-sky-500 transition-[width] duration-500 dark:bg-sky-400"
               style={{ width: `${position.elapsedPercent}%` }}
             />
           </div>
@@ -193,8 +199,7 @@ export const MonthlyChromeHeader = ({
           </span>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Termina el{' '}
-          <span className="font-medium text-primary">{endLabel}</span>
+          Termina el <span className={accentEmphasisClass}>{endLabel}</span>
         </p>
       </div>
     ) : (
@@ -243,9 +248,15 @@ export const MonthlyChromeHeader = ({
         <div className="shrink-0">{prevControl}</div>
 
         <div
-          className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-2.5 py-1.5 md:flex-none md:justify-start md:gap-1.5"
+          className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 dark:border-sky-500/20 dark:bg-sky-500/8 md:flex-none md:justify-start md:gap-2"
           aria-live="polite"
         >
+          <span
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10 sm:flex"
+            aria-hidden
+          >
+            <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+          </span>
           <div className="flex min-w-0 flex-col items-center gap-0.5 md:items-start">
             <div className="flex min-w-0 items-center gap-1">
               <MonthlyMonthPicker
@@ -260,11 +271,11 @@ export const MonthlyChromeHeader = ({
             </div>
             {isCurrentMonth ? (
               <span
-                className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300"
+                className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300"
                 aria-label="Mes actual"
               >
                 <span
-                  className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  className="h-1.5 w-1.5 rounded-full bg-sky-500 dark:bg-sky-400"
                   aria-hidden
                 />
                 Actual
