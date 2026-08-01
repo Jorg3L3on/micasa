@@ -11,17 +11,9 @@ import {
   type ProviderCardScheme,
 } from '@/lib/provider-card-style';
 import { formatCurrency, cn } from '@/lib/utils';
-import { ChevronDown, ChevronUp, CreditCard, Landmark, Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { CreditCard, Landmark, Wallet } from 'lucide-react';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-
-const WALLET_STRIP_VISIBLE_KEY = 'micasa.planificacion.walletStripVisible';
 
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
@@ -49,33 +41,6 @@ const WalletBalanceStrip = ({
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
-  const [stripVisible, setStripVisible] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      const raw = window.localStorage.getItem(WALLET_STRIP_VISIBLE_KEY);
-      if (raw === 'false') return false;
-      if (raw === 'true') return true;
-    } catch {
-      /* ignore */
-    }
-    return true;
-  });
-
-  const persistStripVisible = useCallback((visible: boolean) => {
-    try {
-      localStorage.setItem(WALLET_STRIP_VISIBLE_KEY, visible ? 'true' : 'false');
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const handleToggleStrip = useCallback(() => {
-    setStripVisible((prev) => {
-      const next = !prev;
-      persistStripVisible(next);
-      return next;
-    });
-  }, [persistStripVisible]);
 
   const getEffectiveAmount = (wallet: WalletListItem) =>
     balanceOverrides[wallet.id] ?? wallet.amount;
@@ -117,13 +82,12 @@ const WalletBalanceStrip = ({
   if (wallets.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-1 items-start gap-2">
-      {stripVisible ? (
-        <div
-          className="relative min-w-0 flex-1 pt-0.5"
-          role="region"
-          aria-label="Saldos de billeteras"
-        >
+    <>
+      <div
+        className="relative min-w-0 flex-1 pt-0.5"
+        role="region"
+        aria-label="Saldos de billeteras"
+      >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-linear-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-linear-to-l from-background to-transparent" />
           <div className="overflow-x-auto scrollbar-hide px-1">
@@ -428,80 +392,7 @@ const WalletBalanceStrip = ({
               })}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="min-w-0 flex-1 pt-0.5">
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex min-w-max items-center gap-2.5 py-0.5 pr-1">
-              {sortedWallets.map((wallet) => {
-                const isCreditType =
-                  wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD';
-                return (
-                  <div key={wallet.id} className="flex shrink-0 items-center gap-1.5">
-                    {wallet.provider_icon_key ? (
-                      <WalletProviderIcon
-                        providerIconKey={wallet.provider_icon_key}
-                        className="h-5 w-5 rounded-md shadow-sm ring-1 ring-border/50"
-                        iconClassName="h-3 w-3"
-                        showTooltipLabel={false} data-icon="inline-start" />
-                    ) : (
-                      <span
-                        className={cn(
-                          'h-1.5 w-1.5 shrink-0 rounded-full',
-                          isCreditType
-                            ? 'bg-violet-500/60'
-                            : wallet.type === 'DEBIT_CARD'
-                              ? 'bg-blue-500/60'
-                              : 'bg-muted-foreground/40',
-                        )}
-                        aria-hidden
-                      />
-                    )}
-                    <span className="max-w-[80px] truncate text-[10px] font-medium text-muted-foreground/80">
-                      {wallet.name}
-                    </span>
-                    <span
-                      className={cn(
-                        'font-mono text-[10px] font-semibold tabular-nums',
-                        wallet.amount < 0 ? 'text-destructive/80' : 'text-foreground/80',
-                      )}
-                    >
-                      {formatCurrency(getEffectiveAmount(wallet))}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/60"
-            onClick={handleToggleStrip}
-            aria-expanded={stripVisible}
-            aria-label={
-              stripVisible
-                ? 'Ocultar tarjetas de saldos de billeteras'
-                : 'Mostrar tarjetas de saldos de billeteras'
-            }
-          >
-            {stripVisible ? (
-              <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
-            ) : (
-              <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={4}>
-          Mostrar u ocultar saldos de billeteras
-        </TooltipContent>
-      </Tooltip>
+      </div>
 
       <WalletBalanceEditDialog
         wallet={selectedWallet}
@@ -517,7 +408,7 @@ const WalletBalanceStrip = ({
           onBalancesPersisted?.();
         }}
       />
-    </div>
+    </>
   );
 };
 

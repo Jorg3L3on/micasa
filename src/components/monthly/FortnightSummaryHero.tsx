@@ -1,6 +1,12 @@
 'use client';
 
+import { Info } from 'lucide-react';
 import { FortnightIncomeGauge } from '@/components/monthly/FortnightIncomeGauge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightSummaryHeroProps = {
@@ -20,6 +26,23 @@ type FortnightSummaryHeroProps = {
 const subBoxClass =
   'rounded-xl border border-border/50 bg-muted/25 px-3 py-2.5 dark:bg-muted/15';
 
+const metricHint = (text: string) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <button
+        type="button"
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
+        aria-label={text}
+      >
+        <Info className="h-3 w-3" aria-hidden data-icon="inline-end" />
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-[16rem] text-xs">
+      {text}
+    </TooltipContent>
+  </Tooltip>
+);
+
 export const FortnightSummaryHero = ({
   periodIncome,
   incomeRemainder,
@@ -29,6 +52,15 @@ export const FortnightSummaryHero = ({
   percentCommitted,
   showGauge,
 }: FortnightSummaryHeroProps) => {
+  const incomeRemainderHint =
+    payrollDeductionAmount > 0
+      ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
+      : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
+
+  const liquidityHint = fundingNetApplies
+    ? 'Saldo en efectivo y débito ahora, menos pendiente y nómina de esta quincena'
+    : 'Solo aplica a la quincena en curso o a la siguiente';
+
   const gauge = showGauge ? (
     <FortnightIncomeGauge
       percentCommitted={percentCommitted}
@@ -56,6 +88,7 @@ export const FortnightSummaryHero = ({
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Libre del ingreso
               </span>
+              {metricHint(incomeRemainderHint)}
             </div>
             <p
               className={cn(
@@ -66,11 +99,6 @@ export const FortnightSummaryHero = ({
               )}
             >
               {formatCurrency(incomeRemainder)}
-            </p>
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-              {payrollDeductionAmount > 0
-                ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
-                : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado'}
             </p>
           </div>
 
@@ -83,6 +111,7 @@ export const FortnightSummaryHero = ({
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Liquidez actual
               </span>
+              {metricHint(liquidityHint)}
             </div>
             <p
               className={cn(
@@ -95,11 +124,6 @@ export const FortnightSummaryHero = ({
               )}
             >
               {formatCurrency(fundingNetInAccounts)}
-            </p>
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-              {fundingNetApplies
-                ? 'Saldo en efectivo y débito ahora, menos pendiente y nómina de esta quincena'
-                : 'Solo aplica a la quincena en curso o a la siguiente'}
             </p>
           </div>
         </div>

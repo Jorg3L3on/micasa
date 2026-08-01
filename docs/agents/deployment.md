@@ -26,7 +26,7 @@ Keep **Production Branch = `main`**.
 
 ## Error monitoring (Sentry)
 
-Runtime init is env-gated (`NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN`). Without them the app runs normally and does not send events.
+Runtime init requires a DSN **and** `NODE_ENV=production` (`NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN`). Local `npm run dev` does not send events even if those vars are set in `.env.local`. Without a DSN the app runs normally and does not send events.
 
 After creating a Sentry project for MiCasa:
 

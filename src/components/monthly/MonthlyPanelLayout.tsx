@@ -4,9 +4,7 @@ import type { ReactNode } from 'react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
-import { MonthlyFortnightCategoryPie } from '@/components/monthly/MonthlyFortnightCategoryPie';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
-import type { TransactionRow } from '@/types/catalog';
 import { cn } from '@/lib/utils';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
@@ -17,12 +15,11 @@ type MonthlyPanelLayoutProps = {
   month: number;
   monthName: string;
   isCurrentMonth: boolean;
+  currentMonthHref: string;
   todayYmd: string;
   suggestedPeriod: FortnightPeriod;
   ownerQuery: string;
   budgetPanel: MonthlyBudgetPanelResult;
-  firstTransactions: TransactionRow[];
-  secondTransactions: TransactionRow[];
   firstLabel: string;
   secondLabel: string;
   prevControl: ReactNode;
@@ -36,12 +33,11 @@ export const MonthlyPanelLayout = ({
   month,
   monthName,
   isCurrentMonth,
+  currentMonthHref,
   todayYmd,
   suggestedPeriod,
   ownerQuery,
   budgetPanel,
-  firstTransactions,
-  secondTransactions,
   firstLabel,
   secondLabel,
   prevControl,
@@ -61,6 +57,7 @@ export const MonthlyPanelLayout = ({
           month={month}
           monthName={monthName}
           isCurrentMonth={isCurrentMonth}
+          currentMonthHref={currentMonthHref}
           firstLabel={firstLabel}
           secondLabel={secondLabel}
           prevControl={prevControl}
@@ -84,12 +81,6 @@ export const MonthlyPanelLayout = ({
             year={year}
             month={month}
             todayYmd={todayYmd}
-          />
-          <MonthlyFortnightCategoryPie
-            year={year}
-            month={month}
-            firstTransactions={firstTransactions}
-            secondTransactions={secondTransactions}
           />
         </div>
       </div>

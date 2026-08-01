@@ -1,12 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
 
 const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+const enabled = process.env.NODE_ENV === 'production';
 
-if (dsn) {
+if (dsn && enabled) {
   Sentry.init({
     dsn,
     sendDefaultPii: false,
-    tracesSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
+    tracesSampleRate: 0.1,
     includeLocalVariables: true,
   });
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { getIncomeCommitmentTone } from '@/components/monthly/fortnight-income-commitment';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightIncomeGaugeProps = {
@@ -12,6 +12,18 @@ type FortnightIncomeGaugeProps = {
 };
 
 const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
+
+const commitmentStrokeClass = (tone: 'ok' | 'warning' | 'danger') => {
+  if (tone === 'danger') return 'text-destructive';
+  if (tone === 'warning') return 'text-amber-500 dark:text-amber-400';
+  return 'text-emerald-500 dark:text-emerald-400';
+};
+
+const commitmentLabelClass = (tone: 'ok' | 'warning' | 'danger') => {
+  if (tone === 'danger') return 'text-destructive';
+  if (tone === 'warning') return 'text-amber-600 dark:text-amber-400';
+  return 'text-emerald-700 dark:text-emerald-300';
+};
 
 const GAUGE_CX = 60;
 const GAUGE_CY = 54;
@@ -30,6 +42,7 @@ const describeTopArc = (startDeg: number, endDeg: number) => {
   const start = pointOnArc(startDeg);
   const end = pointOnArc(endDeg);
   const delta = Math.abs(startDeg - endDeg);
+  if (delta < 0.01) return '';
   const largeArc = delta > 180 ? 1 : 0;
   const sweep = startDeg > endDeg ? 1 : 0;
   return `M ${start.x} ${start.y} A ${GAUGE_R} ${GAUGE_R} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
@@ -40,12 +53,16 @@ export const FortnightIncomeGauge = ({
   periodIncome,
   className,
 }: FortnightIncomeGaugeProps) => {
-  const gradientId = useId().replace(/:/g, '');
   const safePercent = clampPercent(Math.round(percentCommitted));
-  const trackPath = describeTopArc(180, 0);
-  const progressEnd = 180 - (safePercent / 100) * 180;
-  const progressPath =
-    safePercent > 0 ? describeTopArc(180, progressEnd) : '';
+  const tone = getIncomeCommitmentTone(safePercent);
+  const freePercent = 100 - safePercent;
+  /** Ángulo donde termina lo comprometido / empieza lo libre (180° → 0°). */
+  const freeStartDeg = 180 - (safePercent / 100) * 180;
+
+  const committedPath =
+    safePercent > 0 ? describeTopArc(180, freeStartDeg) : '';
+  const freePath =
+    freePercent > 0 ? describeTopArc(freeStartDeg, 0) : '';
 
   return (
     <div
@@ -55,39 +72,37 @@ export const FortnightIncomeGauge = ({
     >
       <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
         <svg viewBox="0 0 120 60" className="h-full w-full" aria-hidden>
-          <defs>
-            <linearGradient
-              id={gradientId}
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="0%"
-            >
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#8b5cf6" />
-            </linearGradient>
-          </defs>
-          <path
-            d={trackPath}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="10"
-            strokeLinecap="round"
-            className="text-muted-foreground/30"
-          />
-          {progressPath ? (
+          {freePath ? (
             <path
-              d={progressPath}
+              d={freePath}
               fill="none"
-              stroke={`url(#${gradientId})`}
+              stroke="currentColor"
               strokeWidth="10"
               strokeLinecap="round"
-              className="transition-[d] duration-500"
+              className="text-sky-500 transition-[d] duration-500 dark:text-sky-400"
+            />
+          ) : null}
+          {committedPath ? (
+            <path
+              d={committedPath}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="10"
+              strokeLinecap="round"
+              className={cn(
+                'transition-[d] duration-500',
+                commitmentStrokeClass(tone),
+              )}
             />
           ) : null}
         </svg>
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center pb-0.5 text-center">
-          <span className="font-mono text-xl font-bold tabular-nums leading-none text-foreground sm:text-2xl">
+          <span
+            className={cn(
+              'font-mono text-xl font-bold tabular-nums leading-none sm:text-2xl',
+              commitmentLabelClass(tone),
+            )}
+          >
             {safePercent}%
           </span>
           <span className="mt-0.5 text-[9px] font-medium text-muted-foreground sm:text-[10px]">
@@ -95,11 +110,13 @@ export const FortnightIncomeGauge = ({
           </span>
         </div>
       </div>
-      <p className="mt-1 max-w-[9rem] text-center text-[10px] text-muted-foreground">
-        <span className="font-mono font-semibold tabular-nums text-foreground/90">
+      <p className="mt-1.5 max-w-[11rem] text-center text-muted-foreground">
+        <span className="font-mono text-base font-bold tabular-nums text-foreground sm:text-lg">
           {formatCurrency(periodIncome)}
         </span>
-        <span className="block">ingresos del periodo</span>
+        <span className="mt-0.5 block text-[10px] font-medium sm:text-xs">
+          ingresos del periodo
+        </span>
       </p>
     </div>
   );

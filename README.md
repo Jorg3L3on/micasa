@@ -87,7 +87,7 @@ Optional:
 | --- | --- |
 | `MICASA_ADMIN_EMAILS` | Comma-separated emails granted `/admin` (plus `User.is_admin`) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Distributed rate limits in production; omit both for in-memory local limiting |
-| `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` | Sentry DSN (SDK inert when unset) |
+| `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` | Sentry DSN (active only in production) |
 | `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` | Source maps on Vercel builds |
 
 ## Scripts

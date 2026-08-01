@@ -70,6 +70,9 @@ export default async function MonthlyPage({
     .map(Number)
     .slice(0, 2) as [number, number];
   const isCurrentMonth = year === currentYear && month === currentMonth;
+  const currentMonthHref = `/monthly/${currentYear}/${currentMonth
+    .toString()
+    .padStart(2, '0')}${ownerQuery}`;
 
   let pageData;
   try {
@@ -255,12 +258,11 @@ export default async function MonthlyPage({
       month={month}
       monthName={monthName}
       isCurrentMonth={isCurrentMonth}
+      currentMonthHref={currentMonthHref}
       todayYmd={todayYmd}
       suggestedPeriod={suggestedPeriod}
       ownerQuery={ownerQuery}
       budgetPanel={budgetPanel}
-      firstTransactions={firstTransactions}
-      secondTransactions={secondTransactions}
       firstLabel={firstLabel}
       secondLabel={secondLabel}
       prevControl={

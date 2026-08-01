@@ -1,7 +1,15 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +20,8 @@ type MonthlyChromeHeaderProps = {
   month: number;
   monthName: string;
   isCurrentMonth: boolean;
+  /** Href for jumping back to the calendar current month; only used when not current. */
+  currentMonthHref: string;
   firstLabel: string;
   secondLabel: string;
   prevControl: ReactNode;
@@ -34,6 +44,7 @@ export const MonthlyChromeHeader = ({
   month,
   monthName,
   isCurrentMonth,
+  currentMonthHref,
   firstLabel,
   secondLabel,
   prevControl,
@@ -86,6 +97,27 @@ export const MonthlyChromeHeader = ({
     </div>
   );
 
+  const jumpToCurrent = !isCurrentMonth ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
+          asChild
+        >
+          <Link href={currentMonthHref} aria-label="Ir al mes actual">
+            <Calendar className="size-4 shrink-0" aria-hidden data-icon="inline-start" />
+            <span className="sr-only">Ir al mes actual</span>
+          </Link>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={4}>
+        Ir al mes actual
+      </TooltipContent>
+    </Tooltip>
+  ) : null;
+
   return (
     <div
       className="flex min-w-0 flex-col gap-2.5 sm:gap-0"
@@ -96,7 +128,7 @@ export const MonthlyChromeHeader = ({
         <div className="shrink-0">{prevControl}</div>
 
         <div
-          className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:justify-start sm:pl-1"
+          className="flex min-w-0 flex-1 items-center justify-center gap-1.5 sm:justify-start sm:gap-2 sm:pl-1"
           aria-live="polite"
         >
           <h1 className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">
@@ -114,7 +146,9 @@ export const MonthlyChromeHeader = ({
               />
               Actual
             </span>
-          ) : null}
+          ) : (
+            jumpToCurrent
+          )}
         </div>
 
         <div className="hidden shrink-0 sm:block">{fortnightToggle}</div>
