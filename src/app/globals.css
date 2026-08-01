@@ -2,6 +2,9 @@
 @import 'tw-animate-css';
 @import 'react-day-picker/style.css';
 
+/* Class-based dark mode for next-themes (Tailwind v4 defaults to prefers-color-scheme). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ==========================================================================
    Design System – Indigo-accented fintech palette
    Light: neutral base with indigo accent
