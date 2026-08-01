@@ -5,6 +5,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getFortnightPeriodPosition } from '@/lib/fortnight-calendar';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
   MONTHLY_BUDGET_CATEGORY_ACCENTS,
@@ -251,7 +252,7 @@ function getBudgetStatus({
     return { tone: 'destructive' };
   }
 
-  const position = getPeriodPosition(year, month, period, todayYmd);
+  const position = getFortnightPeriodPosition(year, month, period, todayYmd);
   if (position.kind === 'future' || position.kind === 'past') {
     return { tone: 'muted' };
   }
@@ -264,42 +265,6 @@ function getBudgetStatus({
   }
 
   return { tone: 'success' };
-}
-
-function getPeriodPosition(
-  year: number,
-  month: number,
-  period: 'FIRST' | 'SECOND',
-  todayYmd: string,
-):
-  | { kind: 'future' }
-  | { kind: 'past' }
-  | { kind: 'current'; elapsedPercent: number } {
-  const startDay = period === 'FIRST' ? 1 : 16;
-  const endDay = period === 'FIRST' ? 15 : getDaysInMonth(year, month);
-  const todayKey = Number(todayYmd.replaceAll('-', ''));
-  const startKey = toYmdKey(year, month, startDay);
-  const endKey = toYmdKey(year, month, endDay);
-
-  if (todayKey < startKey) return { kind: 'future' };
-  if (todayKey > endKey) return { kind: 'past' };
-
-  const todayDay = Number(todayYmd.slice(8, 10));
-  const totalDays = endDay - startDay + 1;
-  const elapsedDays = Math.min(Math.max(todayDay - startDay + 1, 1), totalDays);
-
-  return {
-    kind: 'current',
-    elapsedPercent: Math.round((elapsedDays / totalDays) * 100),
-  };
-}
-
-function getDaysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-
-function toYmdKey(year: number, month: number, day: number): number {
-  return year * 10_000 + month * 100 + day;
 }
 
 function getAmountToneClassName(tone: BudgetTone): string {

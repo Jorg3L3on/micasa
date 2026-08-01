@@ -125,3 +125,107 @@ export function getCurrentMonthlyPanelHref(asOf: Date = new Date()): string {
   const { year, month } = getCurrentCalendarFortnightRef(asOf);
   return `/monthly/${year}/${String(month).padStart(2, '0')}`;
 }
+
+const MONTH_NAMES_ES_LOWER = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+] as const;
+
+export type FortnightCalendarBounds = {
+  startDay: number;
+  endDay: number;
+  totalDays: number;
+};
+
+export type FortnightPeriodPosition =
+  | { kind: 'future' }
+  | { kind: 'past' }
+  | {
+      kind: 'current';
+      elapsedPercent: number;
+      elapsedDays: number;
+      remainingDays: number;
+    };
+
+/** Days in a civil calendar month (1–12), timezone-agnostic. */
+export function getDaysInCalendarMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+export function getFortnightCalendarBounds(
+  year: number,
+  month: number,
+  period: CalendarFortnightPeriod,
+): FortnightCalendarBounds {
+  const startDay = period === 'FIRST' ? 1 : 16;
+  const endDay = period === 'FIRST' ? 15 : getDaysInCalendarMonth(year, month);
+  return {
+    startDay,
+    endDay,
+    totalDays: endDay - startDay + 1,
+  };
+}
+
+function toYmdKey(year: number, month: number, day: number): number {
+  return year * 10_000 + month * 100 + day;
+}
+
+/**
+ * Where `todayYmd` (Mexico City `YYYY-MM-DD`) sits relative to a calendar fortnight.
+ * Used by monthly chrome progress and budget tone.
+ */
+export function getFortnightPeriodPosition(
+  year: number,
+  month: number,
+  period: CalendarFortnightPeriod,
+  todayYmd: string,
+): FortnightPeriodPosition {
+  const { startDay, endDay, totalDays } = getFortnightCalendarBounds(
+    year,
+    month,
+    period,
+  );
+  const todayKey = Number(todayYmd.replaceAll('-', ''));
+  const startKey = toYmdKey(year, month, startDay);
+  const endKey = toYmdKey(year, month, endDay);
+
+  if (todayKey < startKey) return { kind: 'future' };
+  if (todayKey > endKey) return { kind: 'past' };
+
+  const todayDay = Number(todayYmd.slice(8, 10));
+  const elapsedDays = Math.min(Math.max(todayDay - startDay + 1, 1), totalDays);
+  const remainingDays = Math.max(endDay - todayDay + 1, 0);
+
+  return {
+    kind: 'current',
+    elapsedPercent: Math.round((elapsedDays / totalDays) * 100),
+    elapsedDays,
+    remainingDays,
+  };
+}
+
+/** Spanish civil-day label without year, e.g. `10 de mayo`. */
+export function formatDayMonthLabel(
+  year: number,
+  month: number,
+  day: number,
+): string {
+  const monthName = MONTH_NAMES_ES_LOWER[month - 1] ?? '';
+  return `${day} de ${monthName}`;
+}
+
+/** Parse `YYYY-MM-DD` and format as `10 de mayo`. */
+export function formatDayMonthLabelFromYmd(ymd: string): string {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return formatDayMonthLabel(year, month, day);
+}

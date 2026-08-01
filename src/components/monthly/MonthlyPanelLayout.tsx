@@ -51,13 +51,15 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      <div className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4">
+      <div className="mb-5 rounded-xl border border-border/60 bg-card px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3">
         <MonthlyChromeHeader
           year={year}
           month={month}
           monthName={monthName}
           isCurrentMonth={isCurrentMonth}
           currentMonthHref={currentMonthHref}
+          todayYmd={todayYmd}
+          ownerQuery={ownerQuery}
           firstLabel={firstLabel}
           secondLabel={secondLabel}
           prevControl={prevControl}

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   compareCalendarFortnight,
+  formatDayMonthLabel,
   getCurrentCalendarFortnightRef,
   getCurrentMonthlyPanelHref,
+  getDaysInCalendarMonth,
+  getFortnightCalendarBounds,
+  getFortnightPeriodPosition,
   getNextCalendarFortnight,
   getFortnightPeriodForDay,
   getSuggestedFortnightPeriodForMonth,
@@ -125,5 +129,63 @@ describe('getCurrentCalendarFortnightRef', () => {
       month: 6,
       period: 'SECOND',
     });
+  });
+});
+
+describe('getFortnightCalendarBounds', () => {
+  it('returns 1–15 for FIRST', () => {
+    expect(getFortnightCalendarBounds(2025, 5, 'FIRST')).toEqual({
+      startDay: 1,
+      endDay: 15,
+      totalDays: 15,
+    });
+  });
+
+  it('returns 16–monthEnd for SECOND', () => {
+    expect(getFortnightCalendarBounds(2025, 5, 'SECOND')).toEqual({
+      startDay: 16,
+      endDay: 31,
+      totalDays: 16,
+    });
+    expect(getDaysInCalendarMonth(2025, 2)).toBe(28);
+    expect(getFortnightCalendarBounds(2025, 2, 'SECOND').endDay).toBe(28);
+  });
+});
+
+describe('getFortnightPeriodPosition', () => {
+  it('returns current with elapsed and remaining days', () => {
+    expect(
+      getFortnightPeriodPosition(2025, 5, 'FIRST', '2025-05-10'),
+    ).toEqual({
+      kind: 'current',
+      elapsedPercent: 67,
+      elapsedDays: 10,
+      remainingDays: 6,
+    });
+  });
+
+  it('returns past and future outside the fortnight', () => {
+    expect(
+      getFortnightPeriodPosition(2025, 5, 'FIRST', '2025-05-20'),
+    ).toEqual({ kind: 'past' });
+    expect(
+      getFortnightPeriodPosition(2025, 5, 'SECOND', '2025-05-10'),
+    ).toEqual({ kind: 'future' });
+  });
+
+  it('returns remainingDays 1 on the last day', () => {
+    expect(
+      getFortnightPeriodPosition(2025, 5, 'FIRST', '2025-05-15'),
+    ).toMatchObject({
+      kind: 'current',
+      remainingDays: 1,
+      elapsedPercent: 100,
+    });
+  });
+});
+
+describe('formatDayMonthLabel', () => {
+  it('formats Spanish day and month', () => {
+    expect(formatDayMonthLabel(2025, 5, 10)).toBe('10 de mayo');
   });
 });
