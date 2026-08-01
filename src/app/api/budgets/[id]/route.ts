@@ -33,7 +33,15 @@ export async function PATCH(
       error &&
       typeof error === 'object' &&
       'code' in error &&
-      ['P2025', 'ALLOC_EXCEEDS_BUDGET', 'CURRENT_FORTNIGHT_NOT_FOUND'].includes(
+      [
+        'P2025',
+        'ALLOC_EXCEEDS_BUDGET',
+        'ALLOC_NOT_EQUAL_BUDGET',
+        'EMPTY_ALLOCATION',
+        'CURRENT_FORTNIGHT_NOT_FOUND',
+        'OWNER_MISMATCH_WALLET',
+        'OWNER_MISMATCH_CATEGORY',
+      ].includes(
         (error as ErrorWithCode).code ?? '',
       )
     ) {

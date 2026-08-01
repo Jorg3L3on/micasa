@@ -15,12 +15,13 @@ const createIncomeSchema = z.object({
   received_at: dateStringSchema,
   transfer_from_user_id: z.number().int().positive().optional(),
   income_template_id: z.number().int().positive().optional().nullable(),
-  wallet_id: z.number().int().positive().optional().nullable(),
+  wallet_id: z.number().int().positive('La billetera es requerida'),
 });
 
 const updateIncomeAmountSchema = z.object({
   amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
-  wallet_id: z.number().int().positive().optional().nullable(),
+  /** Required when the income has no wallet yet; cannot be cleared once set. */
+  wallet_id: z.number().int().positive().optional(),
   force_wallet_credit: z.boolean().optional(),
 });
 
@@ -99,15 +100,23 @@ export async function PUT(request: NextRequest) {
     const newAmount = validated.amount;
     const oldWalletId = income.wallet_id;
     // Use wallet from request if explicitly provided, otherwise keep existing
-    const newWalletId = validated.wallet_id !== undefined ? validated.wallet_id : oldWalletId;
+    const newWalletId =
+      validated.wallet_id !== undefined ? validated.wallet_id : oldWalletId;
+
+    if (newWalletId == null) {
+      return NextResponse.json(
+        {
+          error:
+            'La billetera es requerida. Asigna una billetera de efectivo o débito a este ingreso.',
+        },
+        { status: 400 },
+      );
+    }
 
     const updated = await prisma.$transaction(async (tx) => {
       if (oldWalletId === null && newWalletId != null) {
         // First time assigning a wallet — credit the full amount
         await applyWalletAmountDelta(tx, newWalletId, newAmount);
-      } else if (oldWalletId != null && newWalletId === null) {
-        // Wallet removed — reverse the previous credit
-        await applyWalletAmountDelta(tx, oldWalletId, -oldAmount);
       } else if (oldWalletId != null && newWalletId != null) {
         if (oldWalletId === newWalletId) {
           if (validated.force_wallet_credit === true) {
@@ -125,7 +134,6 @@ export async function PUT(request: NextRequest) {
           await applyWalletAmountDelta(tx, newWalletId, newAmount);
         }
       }
-      // oldWalletId === null && newWalletId === null → nothing to do
 
       return tx.income.update({
         where: { id },
@@ -253,7 +261,7 @@ export async function POST(request: NextRequest) {
             : null,
         date: coerceToCalendarDate(validated.received_at),
         userWalletId: null,
-        houseWalletId: null,
+        houseWalletId: validated.wallet_id,
       });
 
       type TransferWithHouseIncome = {
@@ -283,7 +291,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const walletId = validated.wallet_id ?? null;
+    const walletId = validated.wallet_id;
 
     const created = await prisma.$transaction(async (tx) => {
       const income = await tx.income.create({
@@ -302,9 +310,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Credit the wallet
-      if (walletId != null) {
-        await applyWalletAmountDelta(tx, walletId, validated.amount);
-      }
+      await applyWalletAmountDelta(tx, walletId, validated.amount);
 
       return income;
     });

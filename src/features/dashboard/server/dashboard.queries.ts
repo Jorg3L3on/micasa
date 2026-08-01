@@ -153,3 +153,42 @@ export const fetchRecentLoanPayments = async (ownerFilter: OwnerFilter) =>
       loan: { select: { name: true, lender: true } },
     },
   });
+
+/** Whether adjacent calendar months have any fortnight for this owner. */
+export const fetchAdjacentMonthPresence = async (
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<{
+  prevYear: number;
+  prevMonth: number;
+  nextYear: number;
+  nextMonth: number;
+  hasPrevMonth: boolean;
+  hasNextMonth: boolean;
+}> => {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+
+  const [prevRow, nextRow] = await Promise.all([
+    prisma.fortnight.findFirst({
+      where: { ...ownerFilter, year: prevYear, month: prevMonth },
+      select: { id: true },
+    }),
+    prisma.fortnight.findFirst({
+      where: { ...ownerFilter, year: nextYear, month: nextMonth },
+      select: { id: true },
+    }),
+  ]);
+
+  return {
+    prevYear,
+    prevMonth,
+    nextYear,
+    nextMonth,
+    hasPrevMonth: prevRow != null,
+    hasNextMonth: nextRow != null,
+  };
+};

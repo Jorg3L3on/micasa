@@ -159,7 +159,7 @@ export type BudgetAllocationItem = {
   spent_amount?: number;
 };
 
-// Template definition returned by GET /api/budget-templates
+// Template definition returned by GET /api/budgets/templates
 export type BudgetListItem = {
   id: number;
   name: string;

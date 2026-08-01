@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { endOfCalendarDay, startOfCalendarDay } from '@/lib/calendar-dates';
-import { createBudget, deleteBudget } from './budget.service';
+import {
+  createBudget,
+  deleteBudget,
+  updateBudgetAllocations,
+  updateBudgetTemplate,
+} from './budget.service';
 
 const mocks = vi.hoisted(() => ({
   budget: {
@@ -162,5 +167,64 @@ describe('createBudget', () => {
         allocations: [{ wallet_id: 1, category_id: 2, amount: 500 }],
       }),
     ).rejects.toMatchObject({ code: 'CURRENT_FORTNIGHT_NOT_FOUND' });
+  });
+
+  it('rejects an allocation with a zero amount', async () => {
+    await expect(
+      createBudget('user', 1, {
+        name: 'Transporte',
+        allocated_amount: 500,
+        frequency: 'BIWEEKLY',
+        recurrent: true,
+        allocations: [
+          { wallet_id: 1, category_id: 2, amount: 500 },
+          { wallet_id: 2, category_id: 3, amount: 0 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'EMPTY_ALLOCATION' });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('budget updates', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects zero-amount allocations when updating allocations', async () => {
+    mocks.budget.findFirst.mockResolvedValue(budgetFixture);
+
+    await expect(
+      updateBudgetAllocations(10, ownerFilter, [
+        { wallet_id: 1, category_id: 2, amount: 500 },
+        { wallet_id: 2, category_id: 3, amount: 0 },
+      ]),
+    ).rejects.toMatchObject({ code: 'EMPTY_ALLOCATION' });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects a template update when an existing allocation has a zero amount', async () => {
+    mocks.budget.findFirst.mockResolvedValue({
+      ...budgetFixture,
+      allocations: [
+        { wallet_id: 1, category_id: 2, amount: 500 },
+        { wallet_id: 2, category_id: 3, amount: 0 },
+      ],
+    });
+
+    await expect(
+      updateBudgetTemplate(10, ownerFilter, {
+        name: 'Despensa actualizada',
+        allocated_amount: 500,
+        frequency: 'BIWEEKLY',
+        recurrent: true,
+        start_date: null,
+        end_date: null,
+      }),
+    ).rejects.toMatchObject({ code: 'EMPTY_ALLOCATION' });
+
+    expect(mocks.budget.update).not.toHaveBeenCalled();
   });
 });

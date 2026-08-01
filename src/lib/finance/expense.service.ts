@@ -236,6 +236,14 @@ export async function createExpenseInTransaction(
   const effectiveWalletId: number | null = walletId ?? null;
   let walletType: PaymentMethodType | null = null;
 
+  if (isPaid && effectiveWalletId == null) {
+    const error = new Error(
+      'La billetera es requerida para registrar un gasto como pagado',
+    ) as ExpenseServiceError;
+    error.code = 'EXPENSE_WALLET_REQUIRED';
+    throw error;
+  }
+
   if (effectiveWalletId) {
     const wallet = await tx.wallet.findUnique({
       where: { id: effectiveWalletId },
@@ -468,6 +476,14 @@ export async function updateExpense(input: UpdateExpenseInput) {
     const currentIsPaid = existing.is_paid;
     const newIsPaid = isPaid !== undefined ? isPaid : currentIsPaid;
 
+    if (newIsPaid && newWalletId == null) {
+      const error = new Error(
+        'La billetera es requerida para registrar un gasto como pagado',
+      ) as ExpenseServiceError;
+      error.code = 'EXPENSE_WALLET_REQUIRED';
+      throw error;
+    }
+
     const currentAmount = existing.amount;
     const newAmount = amount !== undefined ? amount : currentAmount;
 
@@ -602,6 +618,14 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
 
     const wasPaid = existing.is_paid;
     const willBePaid = paid;
+
+    if (willBePaid && existing.wallet_id == null) {
+      const error = new Error(
+        'Asigna una billetera antes de marcar el gasto como pagado',
+      ) as ExpenseServiceError;
+      error.code = 'EXPENSE_WALLET_REQUIRED';
+      throw error;
+    }
 
     if (
       existing.wallet_id != null &&

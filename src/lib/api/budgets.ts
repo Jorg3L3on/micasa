@@ -40,7 +40,13 @@ export async function fetchBudgetHistory(
 }
 
 export async function fetchBudgetTemplates(context?: FinanceContextType): Promise<BudgetListItem[]> {
-  return clientFetchFromApi<BudgetListItem[]>('/api/budget-templates', undefined, context);
+  return clientFetchFromApi<BudgetListItem[]>('/api/budgets/templates', undefined, context);
+}
+
+export async function fetchScheduledPeriods(
+  context?: FinanceContextType,
+): Promise<BudgetPeriodItem[]> {
+  return clientFetchFromApi<BudgetPeriodItem[]>('/api/budgets/scheduled', undefined, context);
 }
 
 export async function createBudget(
@@ -76,11 +82,12 @@ export async function updateBudgetTemplate(
 export async function setBudgetActive(
   id: number,
   active: boolean,
+  effectiveDate: string | null = null,
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi(`/api/budgets/${id}/active`, {
     method: 'PATCH',
-    body: JSON.stringify({ active }),
+    body: JSON.stringify({ active, effective_date: effectiveDate }),
   }, context);
 }
 

@@ -29,6 +29,7 @@ describe('calendar date schemas', () => {
         description: 'Despensa',
         amount: 100,
         is_paid: true,
+        wallet_id: 3,
         payment_date: '2026-06-05',
       }).payment_date,
     ).toBe('2026-06-05');

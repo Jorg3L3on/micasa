@@ -463,32 +463,36 @@ export const getDashboardData = async (
         const expenseObligations: DashboardUpcomingObligation[] =
           upcomingWithDue
             .filter((o) => !o.is_paid)
+            .slice(0, 5)
             .map((o) => ({ ...o, source: 'expense' as const }));
         const loanObligations: DashboardUpcomingObligation[] =
-          totalsPayload.loanPayCurrent.upcoming.map((payment) => ({
-            id: payment.id,
-            source: 'loan_payment' as const,
-            description: formatLoanPaymentLabel({
+          totalsPayload.loanPayCurrent.upcoming
+            .map((payment) => ({
+              id: payment.id,
+              source: 'loan_payment' as const,
+              description: formatLoanPaymentLabel({
+                loanName: payment.loanName,
+                lender: payment.lender,
+                paymentSource: payment.paymentSource,
+              }),
+              amount: payment.amount,
+              is_paid: false,
+              dueDate: payment.dueDate,
+              dueDay: Number(payment.dueDate.slice(8, 10)),
+              category: payment.lender,
+              categoryIcon: 'LANDMARK',
+              loanId: payment.loanId,
               loanName: payment.loanName,
               lender: payment.lender,
               paymentSource: payment.paymentSource,
-            }),
-            amount: payment.amount,
-            is_paid: false,
-            dueDate: payment.dueDate,
-            dueDay: Number(payment.dueDate.slice(8, 10)),
-            category: payment.lender,
-            categoryIcon: 'LANDMARK',
-            loanId: payment.loanId,
-            loanName: payment.loanName,
-            lender: payment.lender,
-            paymentSource: payment.paymentSource,
-            sourceWalletId: payment.sourceWalletId,
-          }));
+              sourceWalletId: payment.sourceWalletId,
+            }))
+            .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+            .slice(0, 3);
 
-        return [...expenseObligations, ...loanObligations]
-          .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-          .slice(0, 5);
+        return [...expenseObligations, ...loanObligations].sort((a, b) =>
+          a.dueDate.localeCompare(b.dueDate),
+        );
       },
     );
 

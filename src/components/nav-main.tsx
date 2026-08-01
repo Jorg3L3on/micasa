@@ -45,7 +45,7 @@ function NavMainMenu({
   queryString: string
 }) {
   const hrefWithParams = (url: string) =>
-    url === "#" ? "#" : `${url}${queryString ? `?${queryString}` : ""}`
+    url === "#" ? "#" : `${url}${queryString ? `?${queryString}` : ''}`
 
   return (
     <SidebarGroup>
@@ -112,11 +112,16 @@ function NavMainWithSearchParams({
   items: NavMainItem[]
 }) {
   const searchParams = useSearchParams()
+  const ownerParams = new URLSearchParams()
+  const ownerType = searchParams.get('ownerType')
+  const ownerId = searchParams.get('ownerId')
+  if (ownerType) ownerParams.set('ownerType', ownerType)
+  if (ownerId) ownerParams.set('ownerId', ownerId)
   return (
     <NavMainMenu
       groupLabel={groupLabel}
       items={items}
-      queryString={searchParams.toString()}
+      queryString={ownerParams.toString()}
     />
   )
 }

@@ -185,7 +185,7 @@ export function ReceivePayrollButton({
           const amount = entry.amount;
           if (!Number.isFinite(amount) || amount <= 0) return;
 
-          const entryWalletId = entry.walletId ? parseInt(entry.walletId, 10) : null;
+          const entryWalletId = parseInt(entry.walletId, 10);
 
           if (entry.existingIncome) {
             const existingAmount = Number(entry.existingIncome.amount);

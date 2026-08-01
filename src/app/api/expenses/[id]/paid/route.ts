@@ -93,6 +93,23 @@ export async function PATCH(
       error &&
       typeof error === 'object' &&
       'code' in error &&
+      error.code === 'EXPENSE_WALLET_REQUIRED'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Asigna una billetera antes de marcar el gasto como pagado',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
       error.code === 'EXPENSE_TRANSFER_LOCKED'
     ) {
       return NextResponse.json(

@@ -16,7 +16,10 @@ export const BUDGET_FREQUENCY_LABELS: Record<BudgetFrequency, string> = {
 export const allocationSchema = z.object({
   wallet_id: positiveIntSchema,
   category_id: positiveIntSchema,
-  amount: positiveAmountSchema,
+  amount: positiveAmountSchema.refine(
+    (amount) => amount > 0,
+    'El monto de cada asignación debe ser mayor a 0',
+  ),
 });
 
 export const step1Schema = z.object({
@@ -62,10 +65,10 @@ export const createBudgetSchema = z.object({
     }
   }
   const allocTotal = data.allocations.reduce((sum, a) => sum + Number(a.amount), 0);
-  if (allocTotal > Number(data.allocated_amount)) {
+  if (Math.abs(allocTotal - Number(data.allocated_amount)) > 0.01) {
     ctx.addIssue({
       path: ['allocations'],
-      message: 'La suma de asignaciones supera el presupuesto total',
+      message: 'La suma de asignaciones debe ser igual al presupuesto total',
       code: z.ZodIssueCode.custom,
     });
   }
@@ -79,6 +82,7 @@ export const updateBudgetSchema = step1Schema;
 
 export const setBudgetActiveSchema = z.object({
   active: z.boolean(),
+  effective_date: z.string().optional().nullable(),
 });
 
 export type AllocationInput = z.infer<typeof allocationSchema>;

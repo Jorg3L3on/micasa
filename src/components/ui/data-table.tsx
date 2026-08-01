@@ -45,7 +45,7 @@ export type DataTableProps<TData> = {
   filterPlaceholder?: string;
   pagination?: boolean;
   columnVisibility?: boolean;
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
   /** Renders in the toolbar row (e.g. "Add" button). Shown after filter and column visibility. */
   toolbarExtra?: React.ReactNode;
   /** Renders extra filter controls in the toolbar (e.g. category, type). Shown after the search input, before Columnas. */
@@ -257,7 +257,12 @@ export function DataTable<TData>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
+                  className={cn(
+                    'text-center',
+                    typeof emptyMessage === 'string'
+                      ? 'h-24 text-muted-foreground'
+                      : 'p-2 sm:p-4',
+                  )}
                 >
                   {emptyMessage}
                 </TableCell>

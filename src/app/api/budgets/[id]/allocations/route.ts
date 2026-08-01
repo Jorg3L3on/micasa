@@ -36,7 +36,13 @@ export async function PUT(
       if (code === 'P2025') {
         return NextResponse.json({ error: 'Presupuesto no encontrado' }, { status: 404 });
       }
-      if (code === 'ALLOC_EXCEEDS_BUDGET') {
+      if (
+        code === 'ALLOC_EXCEEDS_BUDGET' ||
+        code === 'ALLOC_NOT_EQUAL_BUDGET' ||
+        code === 'EMPTY_ALLOCATION' ||
+        code === 'OWNER_MISMATCH_WALLET' ||
+        code === 'OWNER_MISMATCH_CATEGORY'
+      ) {
         return NextResponse.json({ error: errorWithCode.message }, { status: 422 });
       }
     }

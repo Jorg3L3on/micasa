@@ -501,10 +501,40 @@ model BudgetPeriod {
 
   created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
-  budget Budget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+  budget   Budget                @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+  snapshot BudgetPeriodSnapshot?
 
   @@index([budget_id])
   @@index([start_date, end_date])
+}
+
+model BudgetPeriodSnapshot {
+  id           Int      @id @default(autoincrement())
+  budget_period_id Int  @unique
+  budget_name  String   @db.VarChar(25)
+  total_amount Decimal  @db.Decimal(10, 2)
+  created_at   DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  budget_period BudgetPeriod                    @relation(fields: [budget_period_id], references: [id], onDelete: Cascade)
+  allocations   BudgetPeriodSnapshotAllocation[]
+}
+
+model BudgetPeriodSnapshotAllocation {
+  id                Int     @id @default(autoincrement())
+  snapshot_id       Int
+  wallet_id         Int
+  wallet_name       String  @db.VarChar(100)
+  category_id       Int
+  category_name     String  @db.VarChar(100)
+  category_icon     String?
+  allocated_amount  Decimal @db.Decimal(10, 2)
+  created_at        DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  snapshot BudgetPeriodSnapshot @relation(fields: [snapshot_id], references: [id], onDelete: Cascade)
+
+  @@index([snapshot_id])
+  @@index([wallet_id])
+  @@index([category_id])
 }
 
 model BudgetAllocation {

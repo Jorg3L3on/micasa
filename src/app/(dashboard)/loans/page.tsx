@@ -976,7 +976,7 @@ export default function LoansPage() {
         ) : loans.length === 0 ? (
           <EmptyState
             message="No tienes préstamos registrados."
-            description="Crea un préstamo para ver sus pagos en el panel financiero."
+            description="Crea un préstamo para ver sus pagos en el inicio."
             action={{
               label: 'Crear préstamo',
               onClick: () => setDialogOpen(true),
@@ -1424,7 +1424,7 @@ export default function LoansPage() {
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
                     Opcional. Vincular una plantilla de ingreso mejora las
-                    etiquetas en Panel financiero y obligaciones próximas
+                    etiquetas en el inicio y obligaciones próximas
                     («Nómina: …»).
                   </p>
                   {formErrors.incomeTemplateId ? (
@@ -2036,7 +2036,7 @@ export default function LoansPage() {
                           {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' ? (
                             <p className="text-[11px] text-muted-foreground">
                               Opcional. Vincular una plantilla de ingreso mejora
-                              las etiquetas en Panel financiero y obligaciones
+                              las etiquetas en el inicio y obligaciones
                               próximas («Nómina: …»).
                             </p>
                           ) : null}
