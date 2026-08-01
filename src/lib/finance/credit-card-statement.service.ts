@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import {
   endOfCalendarDay,
   formatCalendarDate,
@@ -870,18 +871,15 @@ const installmentSeriesKey = (input: {
     input.total,
   ].join('|');
 
-async function sumProjectedStatementInstallmentsByWallet(
+/** Paid installment rows for a set of cards; fetched once and reused per statement window. */
+async function fetchPaidInstallmentExpenseRows(
   ownerFilter: OwnerFilter,
   cardIds: number[],
-  window: CreditCardStatementWindow,
-  cutoffDay: number,
-  dueDay: number,
-): Promise<Map<number, number>> {
+) {
   if (cardIds.length === 0) {
-    return new Map();
+    return [];
   }
-
-  const rows = await prisma.expense.findMany({
+  return prisma.expense.findMany({
     where: {
       ...ownerFilter,
       wallet_id: { in: cardIds },
@@ -899,7 +897,24 @@ async function sumProjectedStatementInstallmentsByWallet(
       credit_installment_total: true,
     },
   });
+}
 
+type PaidInstallmentExpenseRows = Awaited<
+  ReturnType<typeof fetchPaidInstallmentExpenseRows>
+>;
+
+function computeProjectedStatementInstallmentsByWallet(
+  rows: PaidInstallmentExpenseRows,
+  cardIds: number[],
+  window: CreditCardStatementWindow,
+  cutoffDay: number,
+  dueDay: number,
+): Map<number, number> {
+  if (cardIds.length === 0) {
+    return new Map();
+  }
+
+  const cardIdSet = new Set(cardIds);
   const targetEndYmd = toDateOnlyString(window.statementEnd);
   const actualTargetInstallments = new Set<string>();
   const latestSourceBySeries = new Map<
@@ -914,7 +929,11 @@ async function sumProjectedStatementInstallmentsByWallet(
   >();
 
   for (const row of rows) {
-    if (row.wallet_id == null || !isCreditInstallmentExpense(row)) {
+    if (
+      row.wallet_id == null ||
+      !cardIdSet.has(row.wallet_id) ||
+      !isCreditInstallmentExpense(row)
+    ) {
       continue;
     }
 
@@ -1053,42 +1072,14 @@ async function getDuePaymentsWithAsOf(
   const asOfYmdByWallet = new Map<number, string>();
   const windowByWallet = new Map<number, CreditCardStatementWindow>();
 
-  for (const group of groups.values()) {
-    const { asOf: groupAsOf, cards: cardsInGroup } = group;
-    const head = cardsInGroup[0];
-    const window = resolveCreditCardStatementWindow(
-      groupAsOf,
-      head.cutoff_day!,
-      head.due_day!,
-    );
-    const cardIds = cardsInGroup.map((c) => c.id);
-    const dueStr = toDateOnlyString(window.statementDueDate);
-    const cycleEndStr = toDateOnlyString(window.currentCycleEnd);
-    for (const id of cardIds) {
-      statementDueByWallet.set(id, dueStr);
-      currentCycleEndByWallet.set(id, cycleEndStr);
-      windowByWallet.set(id, window);
-    }
-
-    // Avoid large burst fan-out against Postgres while rendering monthly planner.
-    const purchases = await sumStatementPurchasesByWallet(cardIds, window, ownerFilter);
-    const payments = await sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter);
-
-    if (head.due_day! < head.cutoff_day!) {
-      const [cyclePurchases, cyclePayments] = await Promise.all([
-        sumCurrentCyclePurchasesByWallet(cardIds, window, ownerFilter),
-        sumCurrentCyclePaymentsByWallet(cardIds, window, ownerFilter),
-      ]);
-      for (const [id, value] of cyclePurchases) {
-        currentCyclePurchaseSums.set(id, value);
-      }
-      for (const [id, value] of cyclePayments) {
-        currentCyclePaymentSums.set(id, value);
-      }
-    }
-
-    const allImportsForGroup = await prisma.creditCardStatementImport.findMany({
-      where: { wallet_id: { in: cardIds } },
+  const dueCardIds = dueCards.map((c) => c.id);
+  // Shared inputs fetched once for every group: imports are filtered per wallet
+  // in resolveStatementImportForStatementWindow, and installment rows have no
+  // window dependence, so a superset fetch is exact.
+  const emptyInstallmentRows: PaidInstallmentExpenseRows = [];
+  const [allImports, installmentRows] = await Promise.all([
+    prisma.creditCardStatementImport.findMany({
+      where: { wallet_id: { in: dueCardIds } },
       orderBy: { created_at: 'desc' },
       select: {
         wallet_id: true,
@@ -1097,47 +1088,95 @@ async function getDuePaymentsWithAsOf(
         payment_due_date: true,
         created_at: true,
       },
-    });
+    }),
+    options?.includeProjectedInstallments
+      ? fetchPaidInstallmentExpenseRows(ownerFilter, dueCardIds)
+      : Promise.resolve(emptyInstallmentRows),
+  ]);
 
-    for (const wid of cardIds) {
-      const selectedImport = resolveStatementImportForStatementWindow(
-        allImportsForGroup,
-        wid,
-        window,
-      );
-      if (selectedImport != null) {
-        hasAlignedImportByWallet.set(wid, true);
-      }
-      if (selectedImport?.total_due != null) {
-        importedTotalByWallet.set(wid, Number(selectedImport.total_due));
-      }
-    }
-
-    if (options?.includeProjectedInstallments) {
-      const projected = await sumProjectedStatementInstallmentsByWallet(
-        ownerFilter,
-        cardIds,
-        window,
+  const emptySums = new Map<number, number>();
+  // Groups touch disjoint wallet ids, so concurrent map writes are safe. The
+  // planner-month computation is deduped per request (see
+  // getDuePaymentsForPlannerMonth), so this burst runs once per render and the
+  // pg pool caps concurrency.
+  await Promise.all(
+    [...groups.values()].map(async (group) => {
+      const { asOf: groupAsOf, cards: cardsInGroup } = group;
+      const head = cardsInGroup[0];
+      const window = resolveCreditCardStatementWindow(
+        groupAsOf,
         head.cutoff_day!,
         head.due_day!,
       );
-      for (const [id, value] of projected) {
-        if (!hasAlignedImportByWallet.get(id)) {
-          projectedInstallmentSums.set(id, value);
+      const cardIds = cardsInGroup.map((c) => c.id);
+      const dueStr = toDateOnlyString(window.statementDueDate);
+      const cycleEndStr = toDateOnlyString(window.currentCycleEnd);
+      for (const id of cardIds) {
+        statementDueByWallet.set(id, dueStr);
+        currentCycleEndByWallet.set(id, cycleEndStr);
+        windowByWallet.set(id, window);
+      }
+
+      const needsCycleSums = head.due_day! < head.cutoff_day!;
+      const [purchases, payments, cyclePurchases, cyclePayments] =
+        await Promise.all([
+          sumStatementPurchasesByWallet(cardIds, window, ownerFilter),
+          sumPaymentsAppliedToStatementByWallet(cardIds, window, ownerFilter),
+          needsCycleSums
+            ? sumCurrentCyclePurchasesByWallet(cardIds, window, ownerFilter)
+            : emptySums,
+          needsCycleSums
+            ? sumCurrentCyclePaymentsByWallet(cardIds, window, ownerFilter)
+            : emptySums,
+        ]);
+
+      for (const [id, value] of cyclePurchases) {
+        currentCyclePurchaseSums.set(id, value);
+      }
+      for (const [id, value] of cyclePayments) {
+        currentCyclePaymentSums.set(id, value);
+      }
+
+      for (const wid of cardIds) {
+        const selectedImport = resolveStatementImportForStatementWindow(
+          allImports,
+          wid,
+          window,
+        );
+        if (selectedImport != null) {
+          hasAlignedImportByWallet.set(wid, true);
+        }
+        if (selectedImport?.total_due != null) {
+          importedTotalByWallet.set(wid, Number(selectedImport.total_due));
         }
       }
-    }
 
-    for (const [id, value] of purchases) {
-      purchaseSums.set(id, value);
-    }
-    for (const [id, value] of payments) {
-      paymentSums.set(id, value);
-    }
-    for (const id of cardIds) {
-      asOfYmdByWallet.set(id, toDateOnlyString(groupAsOf));
-    }
-  }
+      if (options?.includeProjectedInstallments) {
+        const projected = computeProjectedStatementInstallmentsByWallet(
+          installmentRows,
+          cardIds,
+          window,
+          head.cutoff_day!,
+          head.due_day!,
+        );
+        for (const [id, value] of projected) {
+          if (!hasAlignedImportByWallet.get(id)) {
+            projectedInstallmentSums.set(id, value);
+          }
+        }
+      }
+
+      for (const [id, value] of purchases) {
+        purchaseSums.set(id, value);
+      }
+      for (const [id, value] of payments) {
+        paymentSums.set(id, value);
+      }
+      for (const id of cardIds) {
+        asOfYmdByWallet.set(id, toDateOnlyString(groupAsOf));
+      }
+    }),
+  );
 
   const items = dueCards.map((card) => {
     const lastStatementBalance = purchaseSums.get(card.id) ?? 0;
@@ -1199,20 +1238,21 @@ export async function getDuePaymentsForCurrentFortnight(
   const now = new Date();
   const currentDay = now.getDate();
   const isFirstFortnight = currentDay <= 15;
-  const items = await getDuePaymentsWithAsOf(
-    ownerFilter,
-    now,
-    isFirstFortnight
-      ? (dueDay) => dueDay >= 1 && dueDay <= 15
-      : (dueDay) => dueDay >= 16,
-  );
-  const fortnightId = await resolveFortnightIdForDate(ownerFilter, now);
+  const [items, fortnightId] = await Promise.all([
+    getDuePaymentsWithAsOf(
+      ownerFilter,
+      now,
+      isFirstFortnight
+        ? (dueDay) => dueDay >= 1 && dueDay <= 15
+        : (dueDay) => dueDay >= 16,
+    ),
+    resolveFortnightIdForDate(ownerFilter, now),
+  ]);
   await applyPlannerLayerToDueItems(items, fortnightId, ownerFilter);
   return items;
 }
 
-/** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
-export async function getDuePaymentsForPlannerMonth(
+async function getDuePaymentsForPlannerMonthImpl(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
@@ -1232,7 +1272,7 @@ export async function getDuePaymentsForPlannerMonth(
     isCalendarFortnightCurrent(year, month, 'SECOND') ||
     isCalendarFortnightNext(year, month, 'SECOND');
 
-  const [first, second] = await Promise.all([
+  const [first, second, fortnightFirst, fortnightSecond] = await Promise.all([
     getDuePaymentsWithAsOf(
       ownerFilter,
       asOfFirst,
@@ -1255,9 +1295,6 @@ export async function getDuePaymentsForPlannerMonth(
         allowOutstandingBalanceFallback: allowSecondDebtFallback,
       },
     ),
-  ]);
-
-  const [fortnightFirst, fortnightSecond] = await Promise.all([
     prisma.fortnight.findFirst({
       where: { ...ownerFilter, year, month, period: 'FIRST' },
       select: { id: true },
@@ -1277,6 +1314,44 @@ export async function getDuePaymentsForPlannerMonth(
     first: first.filter(hasPlannerRelevantCardActivity),
     second: second.filter(hasPlannerRelevantCardActivity),
   };
+}
+
+/**
+ * Request-scoped memo of the planner-month computation. The monthly panel invokes
+ * this (directly plus via report summaries) several times per render; `cache`
+ * dedupes those calls within one RSC/route request and is a passthrough outside
+ * React (tests, scripts). Keys are primitives because `cache` compares object
+ * arguments by reference.
+ */
+const getDuePaymentsForPlannerMonthCached = cache(
+  (
+    userId: number | null,
+    houseId: number | null,
+    year: number,
+    month: number,
+  ) =>
+    getDuePaymentsForPlannerMonthImpl(
+      userId != null
+        ? { user_id: userId, house_id: null }
+        : // OwnerFilter guarantees house_id is set when user_id is null.
+          { user_id: null, house_id: houseId as number },
+      year,
+      month,
+    ),
+);
+
+/** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
+export function getDuePaymentsForPlannerMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): ReturnType<typeof getDuePaymentsForPlannerMonthImpl> {
+  return getDuePaymentsForPlannerMonthCached(
+    ownerFilter.user_id ?? null,
+    ownerFilter.house_id ?? null,
+    year,
+    month,
+  );
 }
 
 /** Suma `nextDuePayment` de tarjetas con corte en la quincena (misma lógica que planificación / due-payments). */

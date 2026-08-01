@@ -3,10 +3,10 @@
 import type { ReactNode } from 'react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
+import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyFortnightCategoryPie } from '@/components/monthly/MonthlyFortnightCategoryPie';
-import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
-import type { TransactionRow, WalletListItem } from '@/types/catalog';
+import type { TransactionRow } from '@/types/catalog';
 import { cn } from '@/lib/utils';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
@@ -15,49 +15,58 @@ type MonthlyPanelLayoutProps = {
   ownerKey: string;
   year: number;
   month: number;
+  monthName: string;
+  isCurrentMonth: boolean;
   todayYmd: string;
   suggestedPeriod: FortnightPeriod;
   ownerQuery: string;
   budgetPanel: MonthlyBudgetPanelResult;
   firstTransactions: TransactionRow[];
   secondTransactions: TransactionRow[];
-  wallets: WalletListItem[];
-  monthHeader: ReactNode;
+  firstLabel: string;
+  secondLabel: string;
+  prevControl: ReactNode;
+  nextControl: ReactNode;
   children: ReactNode;
 };
 
-type MonthlyPanelContentProps = Omit<
-  MonthlyPanelLayoutProps,
-  'ownerKey' | 'suggestedPeriod'
->;
-
-const MonthlyPanelContent = ({
+export const MonthlyPanelLayout = ({
+  ownerKey,
   year,
   month,
+  monthName,
+  isCurrentMonth,
   todayYmd,
+  suggestedPeriod,
   ownerQuery,
   budgetPanel,
   firstTransactions,
   secondTransactions,
-  wallets,
-  monthHeader,
+  firstLabel,
+  secondLabel,
+  prevControl,
+  nextControl,
   children,
-}: MonthlyPanelContentProps) => {
+}: MonthlyPanelLayoutProps) => {
   return (
-    <>
-      <div
-        className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4"
-        role="group"
-        aria-label="Selector de mes"
-      >
-        {monthHeader}
+    <MonthlyPanelPreferencesProvider
+      ownerKey={ownerKey}
+      year={year}
+      month={month}
+      suggestedPeriod={suggestedPeriod}
+    >
+      <div className="mb-5 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4">
+        <MonthlyChromeHeader
+          year={year}
+          month={month}
+          monthName={monthName}
+          isCurrentMonth={isCurrentMonth}
+          firstLabel={firstLabel}
+          secondLabel={secondLabel}
+          prevControl={prevControl}
+          nextControl={nextControl}
+        />
       </div>
-
-      {wallets.length > 0 ? (
-        <div className="mb-6 min-w-0 xl:hidden">
-          <WalletBalanceStrip wallets={wallets} />
-        </div>
-      ) : null}
 
       <div
         className={cn(
@@ -65,15 +74,10 @@ const MonthlyPanelContent = ({
           'xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] xl:items-start',
         )}
       >
-        <div className="mx-auto w-full min-w-0 max-w-4xl xl:max-w-none">
+        <div className="mx-auto min-w-0 w-full max-w-4xl xl:max-w-none">
           {children}
         </div>
-        <div className="flex min-w-0 flex-col gap-3.5">
-          {wallets.length > 0 ? (
-            <div className="hidden min-w-0 xl:block">
-              <WalletBalanceStrip wallets={wallets} />
-            </div>
-          ) : null}
+        <div className="flex min-w-0 flex-col gap-5">
           <MonthlyBudgetSidebar
             panel={budgetPanel}
             ownerQuery={ownerQuery}
@@ -89,23 +93,6 @@ const MonthlyPanelContent = ({
           />
         </div>
       </div>
-    </>
-  );
-};
-
-export const MonthlyPanelLayout = ({
-  ownerKey,
-  suggestedPeriod,
-  ...contentProps
-}: MonthlyPanelLayoutProps) => {
-  return (
-    <MonthlyPanelPreferencesProvider
-      ownerKey={ownerKey}
-      year={contentProps.year}
-      month={contentProps.month}
-      suggestedPeriod={suggestedPeriod}
-    >
-      <MonthlyPanelContent {...contentProps} />
     </MonthlyPanelPreferencesProvider>
   );
 };

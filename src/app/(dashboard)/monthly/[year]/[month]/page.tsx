@@ -116,6 +116,7 @@ export default async function MonthlyPage({
     nextFirstInfo,
     nextSecondInfo,
     wallets,
+    duePayments,
     plannerDue,
     plannerLoanDue,
     firstTransactions,
@@ -152,7 +153,7 @@ export default async function MonthlyPage({
     return (
       <div className="space-y-5">
         <div
-          className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm"
+          className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4"
           role="group"
           aria-label="Selector de mes"
         >
@@ -164,11 +165,24 @@ export default async function MonthlyPage({
             prevHref={prevHref}
             prevMonthLabel={prevMonthLabel}
           />
-          <div className="min-w-0 flex-1 text-center">
-            <h1 className="truncate text-lg font-semibold leading-tight">
-              {monthName} {year}
-            </h1>
-            <p className="text-xs text-muted-foreground">Panel financiero mensual</p>
+          <div className="min-w-0 flex-1 text-center" aria-live="polite">
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              <h1 className="truncate text-lg font-semibold leading-tight tracking-tight sm:text-xl">
+                {monthName} {year}
+              </h1>
+              {isCurrentMonth ? (
+                <span
+                  className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300"
+                  aria-label="Mes actual"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                    aria-hidden
+                  />
+                  Actual
+                </span>
+              ) : null}
+            </div>
           </div>
           {hasNextMonth ? (
             <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
@@ -210,79 +224,75 @@ export default async function MonthlyPage({
     throw new Error('Resumen mensual incompleto');
   }
 
+  const dueWalletIds = duePayments.map((dp) => dp.walletId);
+  const [, , currentDay] = todayCalendarDate().split('-').map(Number);
+  const isFirstFortnight = currentDay <= 15;
   const suggestedPeriod = getSuggestedFortnightPeriodForMonth(year, month);
+  const paidWalletIds = isCurrentMonth
+    ? wallets
+        .filter((w) => {
+          if (w.type !== 'CREDIT_CARD' && w.type !== 'DEPARTMENT_STORE_CARD') {
+            return false;
+          }
+          if (w.due_day == null) return false;
+          const dueInFortnight = isFirstFortnight
+            ? w.due_day >= 1 && w.due_day <= 15
+            : w.due_day >= 16;
+          return dueInFortnight && !dueWalletIds.includes(w.id);
+        })
+        .map((w) => w.id)
+    : [];
 
   const cardDueFirst = plannerDue.first;
   const cardDueSecond = plannerDue.second;
   const loanDueFirst = plannerLoanDue.first;
   const loanDueSecond = plannerLoanDue.second;
 
-  const monthHeader = (
-    <>
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-        <div className="shrink-0">
-          <MonthlyHeader
-            year={year}
-            month={month}
-            monthName={monthName}
-            hasPrevMonth={hasPrevMonth}
-            prevHref={prevHref}
-            prevMonthLabel={prevMonthLabel}
-          />
-        </div>
-
-        <div className="min-w-0 flex-1 text-center" aria-live="polite">
-          <h1 className="truncate text-lg font-semibold leading-tight">
-            {monthName} {year}
-          </h1>
-          <div className="mt-0.5 flex items-center justify-center gap-1.5">
-            <p className="text-xs text-muted-foreground">
-              Panel financiero mensual
-            </p>
-            {isCurrentMonth ? (
-              <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
-                <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
-                Actual
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="shrink-0">
-          {hasNextMonth ? (
-            <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
-          ) : (
-            <CreateNextMonthButton
-              nextYear={nextYear}
-              nextMonth={nextMonth}
-              nextMonthLabel={nextMonthLabel}
-              canCreate={canCreateNextMonth}
-            />
-          )}
-        </div>
-      </div>
-    </>
-  );
-
   return (
     <MonthlyPanelLayout
       ownerKey={ownerKey}
       year={year}
       month={month}
+      monthName={monthName}
+      isCurrentMonth={isCurrentMonth}
       todayYmd={todayYmd}
       suggestedPeriod={suggestedPeriod}
       ownerQuery={ownerQuery}
       budgetPanel={budgetPanel}
       firstTransactions={firstTransactions}
       secondTransactions={secondTransactions}
-      wallets={wallets}
-      monthHeader={monthHeader}
+      firstLabel={firstLabel}
+      secondLabel={secondLabel}
+      prevControl={
+        <MonthlyHeader
+          year={year}
+          month={month}
+          monthName={monthName}
+          hasPrevMonth={hasPrevMonth}
+          prevHref={prevHref}
+          prevMonthLabel={prevMonthLabel}
+        />
+      }
+      nextControl={
+        hasNextMonth ? (
+          <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
+        ) : (
+          <CreateNextMonthButton
+            nextYear={nextYear}
+            nextMonth={nextMonth}
+            nextMonthLabel={nextMonthLabel}
+            canCreate={canCreateNextMonth}
+          />
+        )
+      }
     >
       <MonthlyFortnightView
         ownerKey={ownerKey}
         year={year}
         month={month}
         wallets={wallets}
+        paidWalletIds={paidWalletIds}
+        isCurrentMonth={isCurrentMonth}
         first={{
           label: firstLabel,
           transactions: firstTransactions,

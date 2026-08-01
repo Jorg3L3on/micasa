@@ -78,18 +78,16 @@ export const getProviderCardStyle = (
   const baseColor = getCardColor(providerIconKey, fallbackType);
   if (!baseColor) return undefined;
 
-  // Calm tone: shared surface with a subtle brand tint and left accent stripe.
+  // Calm tone: even brand wash (no left accent stripe / corner bloom).
   if (tone === 'calm') {
     if (scheme === 'light') {
       return {
         background: `
-          radial-gradient(125% 95% at 0% 0%, ${rgba(baseColor, 0.16)} 0%, transparent 52%),
-          radial-gradient(90% 80% at 100% 100%, ${rgba(baseColor, 0.07)} 0%, transparent 60%),
+          radial-gradient(120% 100% at 50% 0%, ${rgba(baseColor, 0.1)} 0%, transparent 58%),
           linear-gradient(155deg, #ffffff 0%, #f3f5f8 100%)
         `,
-        borderColor: rgba(baseColor, 0.3),
+        borderColor: rgba(baseColor, 0.28),
         boxShadow: `
-          inset 3px 0 0 ${rgba(baseColor, 0.82)},
           inset 0 1px 0 rgba(255, 255, 255, 0.95),
           0 1px 2px rgba(15, 23, 42, 0.04),
           0 10px 22px -14px rgba(15, 23, 42, 0.16)
@@ -99,13 +97,11 @@ export const getProviderCardStyle = (
 
     return {
       background: `
-        radial-gradient(125% 95% at 0% 0%, ${rgba(baseColor, 0.24)} 0%, transparent 52%),
-        radial-gradient(90% 80% at 100% 100%, ${rgba(baseColor, 0.1)} 0%, transparent 60%),
+        radial-gradient(120% 100% at 50% 0%, ${rgba(baseColor, 0.14)} 0%, transparent 58%),
         linear-gradient(155deg, #10141d 0%, #141a25 100%)
       `,
-      borderColor: rgba(baseColor, 0.26),
+      borderColor: rgba(baseColor, 0.24),
       boxShadow: `
-        inset 3px 0 0 ${rgba(baseColor, 0.8)},
         inset 0 1px 0 rgba(255, 255, 255, 0.06),
         0 10px 24px -16px rgba(0, 0, 0, 0.85)
       `,

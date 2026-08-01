@@ -6,7 +6,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -24,7 +23,8 @@ import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 /** Persist last category used for “registrar en quincena” (see ui-consistency / micasa.* keys). */
 const LAST_CATEGORY_STORAGE_KEY = 'micasa.creditCardPayment.lastCategoryId';
@@ -66,7 +66,7 @@ const CreditCardPaymentDialog = ({
   onConfirm,
 }: CreditCardPaymentDialogProps) => {
   const [sourceWalletId, setSourceWalletId] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(0);
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [note, setNote] = useState('');
   const [createFortnightExpense, setCreateFortnightExpense] = useState(true);
@@ -79,10 +79,10 @@ const CreditCardPaymentDialog = ({
     setSourceWalletId('');
     const suggested =
       nextDuePayment > 0
-        ? String(nextDuePayment)
+        ? nextDuePayment
         : outstandingBalance > 0
-          ? String(outstandingBalance)
-          : '';
+          ? outstandingBalance
+          : 0;
     setAmount(suggested);
     setPaidAt(todayCalendarDate());
     setNote('');
@@ -111,7 +111,7 @@ const CreditCardPaymentDialog = ({
     const capped = selectedSource
       ? Math.min(nextDuePayment, sourceBalance)
       : nextDuePayment;
-    setAmount(String(capped));
+    setAmount(capped);
   };
 
   const handlePayFull = () => {
@@ -119,7 +119,7 @@ const CreditCardPaymentDialog = ({
     const capped = selectedSource
       ? Math.min(outstandingBalance, sourceBalance)
       : outstandingBalance;
-    setAmount(String(capped));
+    setAmount(capped);
   };
 
   const submitPayment = async () => {
@@ -155,19 +155,16 @@ const CreditCardPaymentDialog = ({
   };
 
   const displayError = localError ?? error;
+  const selectedCategory = categoryOptions.find(
+    (cat) => String(cat.id) === categoryId,
+  );
   const isSubmitting = submitting;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Registrar pago</DialogTitle>
-          <DialogDescription>
-            Transfiere saldo desde efectivo o débito hacia esta tarjeta. El
-            mínimo sugerido sale de los movimientos registrados en MiCasa; tu
-            banco puede indicar otro importe. El pago no puede superar la deuda
-            que ves en la tarjeta aquí.
-          </DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -213,10 +210,23 @@ const CreditCardPaymentDialog = ({
               onValueChange={setSourceWalletId}
             >
               <SelectTrigger
-                className="w-full max-w-none"
+                className="h-11 w-full max-w-none"
                 aria-label="Selecciona la billetera origen"
               >
-                <SelectValue placeholder="Selecciona una billetera" />
+                <SelectValue placeholder="Selecciona una billetera">
+                  {selectedSource ? (
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <WalletIdentity
+                        name={selectedSource.name}
+                        providerIconKey={selectedSource.provider_icon_key}
+                        iconClassName="h-5 w-5 rounded-md"
+                      />
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {formatCurrency(selectedSource.amount ?? 0)}
+                      </span>
+                    </span>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {fundingWalletOptions.map((wallet) => (
@@ -242,13 +252,10 @@ const CreditCardPaymentDialog = ({
               <label className="text-sm font-medium" htmlFor="payment-amount">
                 Monto
               </label>
-              <Input
+              <CurrencyInput
                 id="payment-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={setAmount}
                 aria-label="Monto del pago"
               />
             </div>
@@ -300,15 +307,22 @@ const CreditCardPaymentDialog = ({
                 onValueChange={setCategoryId}
               >
                 <SelectTrigger
-                  className="w-full max-w-none"
+                  className="h-11 w-full max-w-none"
                   aria-label="Categoría para el gasto en la quincena"
                 >
-                  <SelectValue placeholder="Selecciona categoría" />
+                  <SelectValue placeholder="Selecciona categoría">
+                    {selectedCategory ? (
+                      <CategoryLabel
+                        name={selectedCategory.name}
+                        icon={selectedCategory.icon}
+                      />
+                    ) : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {categoryOptions.map((cat) => (
                     <SelectItem key={cat.id} value={String(cat.id)}>
-                      {formatCategoryLabel(cat.name, cat.icon)}
+                      <CategoryLabel name={cat.name} icon={cat.icon} />
                     </SelectItem>
                   ))}
                 </SelectContent>

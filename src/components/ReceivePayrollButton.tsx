@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -35,6 +35,7 @@ import {
   type IncomeTemplateDto,
 } from '@/lib/api/incomes';
 import type { WalletListItem } from '@/types/catalog';
+import { formatCurrency } from '@/lib/utils';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 type Props = {
@@ -50,7 +51,7 @@ type Props = {
 type TemplateEntry = {
   template: IncomeTemplateDto;
   existingIncome: FortnightIncomeDto | null;
-  amount: string;
+  amount: number;
   walletId: string;
   forceWalletCredit: boolean;
 };
@@ -116,10 +117,10 @@ export function ReceivePayrollButton({
               existingIncome: existing,
               amount:
                 existing != null
-                  ? String(existing.amount)
+                  ? Number(existing.amount) || 0
                   : t.suggestedAmount != null
-                    ? String(t.suggestedAmount)
-                    : '',
+                    ? Number(t.suggestedAmount) || 0
+                    : 0,
               walletId: entryWallet,
               forceWalletCredit: existing?.wallet_id != null,
             };
@@ -136,7 +137,7 @@ export function ReceivePayrollButton({
     void load();
   }, [open, fortnightId, period, context, onOpenChange]);
 
-  const handleAmountChange = (templateId: number, value: string) => {
+  const handleAmountChange = (templateId: number, value: number) => {
     setEntries((prev) =>
       prev.map((e) =>
         e.template.id === templateId ? { ...e, amount: value } : e,
@@ -163,13 +164,11 @@ export function ReceivePayrollButton({
   const handleSubmit = async () => {
     // Validate amounts and wallets
     for (const entry of entries) {
-      const raw = entry.amount.trim().replace(',', '.');
-      if (raw === '') continue;
-      const n = parseFloat(raw);
-      if (!Number.isFinite(n) || n < 0) {
+      if (!Number.isFinite(entry.amount) || entry.amount < 0) {
         toast.error(`Monto inválido en "${entry.template.name}"`);
         return;
       }
+      if (entry.amount <= 0) continue;
       if (!entry.walletId) {
         toast.error(`Selecciona una billetera para "${entry.template.name}"`);
         return;
@@ -183,9 +182,7 @@ export function ReceivePayrollButton({
 
       await Promise.all(
         entries.map(async (entry) => {
-          const raw = entry.amount.trim().replace(',', '.');
-          if (raw === '') return;
-          const amount = parseFloat(raw);
+          const amount = entry.amount;
           if (!Number.isFinite(amount) || amount <= 0) return;
 
           const entryWalletId = parseInt(entry.walletId, 10);
@@ -265,7 +262,11 @@ export function ReceivePayrollButton({
                 No hay plantillas de ingresos configuradas para esta quincena.
               </p>
             ) : (
-              entries.map((entry) => (
+              entries.map((entry) => {
+                const selectedWallet = wallets.find(
+                  (w) => String(w.id) === entry.walletId,
+                );
+                return (
                 <div
                   key={entry.template.id}
                   className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3"
@@ -293,21 +294,15 @@ export function ReceivePayrollButton({
                     >
                       Monto
                     </Label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-sm text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        id={`income-amount-${entry.template.id}`}
-                        type="text"
-                        inputMode="decimal"
-                        className="pl-7 font-mono"
-                        value={entry.amount}
-                        onChange={(e) =>
-                          handleAmountChange(entry.template.id, e.target.value)
-                        }
-                      />
-                    </div>
+                    <CurrencyInput
+                      id={`income-amount-${entry.template.id}`}
+                      value={entry.amount}
+                      onChange={(value) =>
+                        handleAmountChange(entry.template.id, value)
+                      }
+                      placeholder="0.00"
+                      aria-label={`Monto de ${entry.template.name}`}
+                    />
                   </div>
 
                   {/* Per-entry wallet */}
@@ -319,26 +314,40 @@ export function ReceivePayrollButton({
                       Depositar en
                     </Label>
                     <Select
-                      value={entry.walletId}
+                      value={entry.walletId || undefined}
                       onValueChange={(v) => handleWalletChange(entry.template.id, v)}
                     >
                       <SelectTrigger
                         id={`income-wallet-${entry.template.id}`}
-                        className="w-full"
-                       aria-label="Seleccionar opción">
-                        <SelectValue placeholder="Selecciona una billetera" />
+                        className="h-11 w-full max-w-none"
+                        aria-label={`Billetera para ${entry.template.name}`}
+                      >
+                        <SelectValue placeholder="Selecciona una billetera">
+                          {selectedWallet ? (
+                            <span className="flex w-full items-center justify-between gap-3">
+                              <WalletIdentity
+                                name={selectedWallet.name}
+                                providerIconKey={selectedWallet.provider_icon_key}
+                                iconClassName="h-5 w-5 rounded-md"
+                              />
+                              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                {formatCurrency(selectedWallet.amount ?? 0)}
+                              </span>
+                            </span>
+                          ) : null}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {wallets.map((w) => (
                           <SelectItem key={w.id} value={String(w.id)}>
-                            <span className="flex items-center gap-2">
+                            <span className="flex items-center justify-between gap-3">
                               <WalletIdentity
                                 name={w.name}
                                 providerIconKey={w.provider_icon_key}
                                 iconClassName="h-5 w-5 rounded-md"
                               />
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                                {w.type === 'CASH' ? 'Efectivo' : 'Débito'}
+                              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                {formatCurrency(w.amount ?? 0)}
                               </span>
                             </span>
                           </SelectItem>
@@ -373,7 +382,8 @@ export function ReceivePayrollButton({
                     </label>
                   ) : null}
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

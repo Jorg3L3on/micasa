@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
-import { BUDGET_FREQUENCY_LABELS } from '@/schemas/budget.schema';
 import {
   MONTHLY_BUDGET_CATEGORY_ACCENTS,
   type MonthlyBudgetCategoryRow,
   type MonthlyBudgetPanelResult,
-  type MonthlyBudgetScope,
 } from '@/types/monthly-budget-panel';
 
 type MonthlyBudgetSidebarProps = {
@@ -49,7 +47,6 @@ export const MonthlyBudgetSidebar = ({
     usedPercent: rawUsedPercent,
     overspent,
   });
-  const sourceLabel = getSourceLabel(scope);
 
   if (totalBudget <= 0 && categories.length === 0) {
     return (
@@ -81,41 +78,28 @@ export const MonthlyBudgetSidebar = ({
         >
           Presupuesto de la quincena
         </h2>
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <p
-                className={cn(
-                  'font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground',
-                  getAmountToneClassName(budgetStatus.tone),
-                )}
-              >
-                {formatCurrency(heroAmount)}
-              </p>
-              <span
-                className={cn(
-                  'text-[10px] font-semibold uppercase tracking-wider',
-                  overspent
-                    ? 'text-destructive'
-                    : 'text-emerald-600 dark:text-emerald-400',
-                )}
-              >
-                {heroLabel}
-              </span>
-            </div>
+        <div className="mt-3">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p
+              className={cn(
+                'font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground',
+                getAmountToneClassName(budgetStatus.tone),
+              )}
+            >
+              {formatCurrency(heroAmount)}
+            </p>
+            <span
+              className={cn(
+                'text-[10px] font-semibold uppercase tracking-wider',
+                overspent
+                  ? 'text-destructive'
+                  : 'text-emerald-600 dark:text-emerald-400',
+              )}
+            >
+              {heroLabel}
+            </span>
           </div>
-          <span
-            className={cn(
-              'inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[10px] font-semibold uppercase tracking-wider',
-              getStatusBadgeClassName(budgetStatus.tone),
-            )}
-          >
-            {budgetStatus.label}
-          </span>
         </div>
-        {sourceLabel ? (
-          <p className="mt-1 text-xs text-muted-foreground">{sourceLabel}</p>
-        ) : null}
         <div
           className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/50"
           role="progressbar"
@@ -177,11 +161,7 @@ export const MonthlyBudgetSidebar = ({
           href={`/budgets${ownerQuery}`}
           aria-label="Ver reporte completo de presupuesto de la quincena"
         >
-          <SlidersHorizontal
-            className="h-4 w-4 shrink-0"
-            aria-hidden
-            data-icon="inline-start"
-          />
+          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
           Ver reporte completo
         </Link>
       </Button>
@@ -249,7 +229,6 @@ function BudgetCategoryRow({
 type BudgetTone = 'success' | 'warning' | 'destructive' | 'muted';
 
 type BudgetStatus = {
-  label: string;
   tone: BudgetTone;
 };
 
@@ -269,28 +248,22 @@ function getBudgetStatus({
   overspent: boolean;
 }): BudgetStatus {
   if (overspent) {
-    return { label: 'Presupuesto excedido', tone: 'destructive' };
+    return { tone: 'destructive' };
   }
 
   const position = getPeriodPosition(year, month, period, todayYmd);
-  if (position.kind === 'future') {
-    return { label: 'Periodo por iniciar', tone: 'muted' };
-  }
-  if (position.kind === 'past') {
-    return { label: 'Periodo finalizado', tone: 'muted' };
+  if (position.kind === 'future' || position.kind === 'past') {
+    return { tone: 'muted' };
   }
 
   if (usedPercent >= 90) {
-    return { label: 'Margen crítico', tone: 'destructive' };
+    return { tone: 'destructive' };
   }
   if (usedPercent >= 75 || usedPercent > position.elapsedPercent + 15) {
-    return { label: 'Ritmo alto para la fecha', tone: 'warning' };
-  }
-  if (usedPercent < Math.max(0, position.elapsedPercent - 20)) {
-    return { label: 'Buen margen para la fecha', tone: 'success' };
+    return { tone: 'warning' };
   }
 
-  return { label: 'Vas dentro del ritmo', tone: 'success' };
+  return { tone: 'success' };
 }
 
 function getPeriodPosition(
@@ -336,19 +309,6 @@ function getAmountToneClassName(tone: BudgetTone): string {
   return 'text-emerald-600 dark:text-emerald-400';
 }
 
-function getStatusBadgeClassName(tone: BudgetTone): string {
-  if (tone === 'destructive') {
-    return 'border-destructive/40 bg-destructive/10 text-destructive';
-  }
-  if (tone === 'warning') {
-    return 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300';
-  }
-  if (tone === 'muted') {
-    return 'border-border/60 bg-muted/40 text-muted-foreground';
-  }
-  return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-}
-
 function getProgressClassName(
   usedPercent: number,
   overspent: boolean,
@@ -366,18 +326,4 @@ function getCategoryProgressClassName(
   if (overspent || percentUsed >= 100) return 'bg-destructive';
   if (percentUsed >= 85) return 'bg-amber-500';
   return fallback;
-}
-
-function getSourceLabel(scope: MonthlyBudgetScope): string | null {
-  if (scope.sources.length === 0) return null;
-  if (scope.sources.length === 1) {
-    const [source] = scope.sources;
-    const label = BUDGET_FREQUENCY_LABELS[source.frequency].toLowerCase();
-    return `Basado en presupuesto ${label}`;
-  }
-
-  const labels = scope.sources
-    .map((source) => BUDGET_FREQUENCY_LABELS[source.frequency].toLowerCase())
-    .join(', ');
-  return `Incluye presupuestos ${labels}`;
 }

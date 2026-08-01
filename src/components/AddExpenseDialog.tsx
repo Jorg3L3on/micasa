@@ -87,7 +87,6 @@ export default function AddExpenseDialog({
             key={`${year}-${month}-${period}-${resolvedDefaultDate}`}
             mode="create"
             defaults={{ date: resolvedDefaultDate }}
-            fortnightPeriod={period}
             onSave={handleSave}
             onCancel={() => onOpenChange(false)}
             error={error}

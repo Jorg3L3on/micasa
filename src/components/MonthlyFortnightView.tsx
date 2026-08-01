@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
+import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FortnightViewControls } from '@/components/monthly/FortnightViewControls';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import type {
   DuePaymentItem,
@@ -15,6 +15,8 @@ import type {
   WalletListItem,
 } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
+
+type FortnightPeriod = 'FIRST' | 'SECOND';
 
 type FortnightSummary = {
   totalIncome: number;
@@ -58,6 +60,8 @@ export type MonthlyFortnightViewProps = {
   first: FortnightBundle;
   second: FortnightBundle;
   wallets?: WalletListItem[];
+  paidWalletIds: number[];
+  isCurrentMonth: boolean;
 };
 
 export default function MonthlyFortnightView({
@@ -67,34 +71,42 @@ export default function MonthlyFortnightView({
   first,
   second,
   wallets = [],
+  paidWalletIds,
+  isCurrentMonth,
 }: MonthlyFortnightViewProps) {
-  const {
-    prefsReady,
-    period,
-    summaryVisible,
-    setPeriod,
-    setSummaryVisible,
-  } = useMonthlyPanelPreferences();
+  const { prefsReady, period } = useMonthlyPanelPreferences();
 
+  const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] =
+    useState(0);
   const activeBundle = period === 'FIRST' ? first : second;
   const preferenceScope = `${ownerKey}-${year}-${month}`;
 
-  const handleShowSummaryFromColumn = useCallback(() => {
-    setSummaryVisible(true);
-  }, [setSummaryVisible]);
+  const handleWalletBalancesPersisted = useCallback(() => {
+    setSummaryFundingRefreshNonce((n) => n + 1);
+  }, []);
+
+  const walletStripSection =
+    wallets.length > 0 ? (
+      <div className="mb-7 min-w-0 rounded-xl border border-border/40 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm dark:bg-card/60">
+        <WalletBalanceStrip
+          wallets={wallets}
+          paidWalletIds={paidWalletIds}
+          isCurrentMonth={isCurrentMonth}
+          onBalancesPersisted={handleWalletBalancesPersisted}
+        />
+      </div>
+    ) : null;
 
   if (!prefsReady) {
     return (
       <div className="space-y-4">
+        {walletStripSection}
         <div
           className="space-y-3"
           role="status"
           aria-busy="true"
           aria-label="Cargando preferencias de vista"
         >
-          <div className="flex justify-start sm:justify-end">
-            <Skeleton className="h-8 w-40 rounded-lg" />
-          </div>
           <div className="space-y-4">
             <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
             <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
@@ -106,16 +118,7 @@ export default function MonthlyFortnightView({
 
   return (
     <div className="space-y-4">
-      <FortnightViewControls
-        year={year}
-        month={month}
-        period={period}
-        firstLabel={first.label}
-        secondLabel={second.label}
-        summaryVisible={summaryVisible}
-        onPeriodChange={setPeriod}
-        onSummaryVisibleChange={setSummaryVisible}
-      />
+      {walletStripSection}
 
       <FortnightColumn
         key={`${ownerKey}-${year}-${month}-${period}`}
@@ -126,11 +129,10 @@ export default function MonthlyFortnightView({
         year={year}
         month={month}
         period={period}
-        showSummaryCard={summaryVisible}
-        onShowSummaryCard={handleShowSummaryFromColumn}
         cardDueItems={activeBundle.cardDueItems}
         loanDueItems={activeBundle.loanDueItems}
         wallets={wallets}
+        summaryFundingRefreshNonce={summaryFundingRefreshNonce}
         preferenceScope={preferenceScope}
         dualColumnLayout={false}
       />

@@ -14,6 +14,7 @@ import { getMonthlyPreferenceScope } from '@/lib/planner/monthly-page';
 const LAYOUT_STORAGE_KEY = 'micasa.planificacion.layout';
 /** Legacy key — period is no longer persisted so opening Panel financiero uses the current quincena. */
 const PERIOD_STORAGE_KEY = 'micasa.planificacion.period';
+/** Legacy key — summary visibility toggle was removed; summary is always shown. */
 const SUMMARY_VISIBLE_STORAGE_KEY = 'micasa.planificacion.summaryVisible';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
@@ -21,9 +22,7 @@ type FortnightPeriod = 'FIRST' | 'SECOND';
 type MonthlyPanelPreferencesValue = {
   prefsReady: boolean;
   period: FortnightPeriod;
-  summaryVisible: boolean;
   setPeriod: (period: FortnightPeriod) => void;
-  setSummaryVisible: (visible: boolean) => void;
 };
 
 const MonthlyPanelPreferencesContext =
@@ -40,6 +39,7 @@ const migrateStoredLayout = (scope: string) => {
     }
     // Drop stale period so a previous quincena choice cannot override the calendar default.
     localStorage.removeItem(storageKey(PERIOD_STORAGE_KEY, scope));
+    localStorage.removeItem(storageKey(SUMMARY_VISIBLE_STORAGE_KEY, scope));
   } catch {
     /* ignore */
   }
@@ -62,22 +62,12 @@ export const MonthlyPanelPreferencesProvider = ({
 }: MonthlyPanelPreferencesProviderProps) => {
   const [prefsReady, setPrefsReady] = useState(false);
   const [period, setPeriodState] = useState<FortnightPeriod>(suggestedPeriod);
-  const [summaryVisible, setSummaryVisibleState] = useState(true);
   const preferenceScope = getMonthlyPreferenceScope(ownerKey, year, month);
 
   useEffect(() => {
     migrateStoredLayout(preferenceScope);
     // Always open on the calendar-suggested quincena (current fortnight for the current month).
     setPeriodState(suggestedPeriod);
-    try {
-      const storedSummary = localStorage.getItem(
-        storageKey(SUMMARY_VISIBLE_STORAGE_KEY, preferenceScope),
-      );
-      if (storedSummary === 'true') setSummaryVisibleState(true);
-      if (storedSummary === 'false') setSummaryVisibleState(false);
-    } catch {
-      /* ignore */
-    }
     setPrefsReady(true);
   }, [preferenceScope, suggestedPeriod]);
 
@@ -85,30 +75,13 @@ export const MonthlyPanelPreferencesProvider = ({
     setPeriodState(value);
   }, []);
 
-  const setSummaryVisible = useCallback(
-    (visible: boolean) => {
-      setSummaryVisibleState(visible);
-      try {
-        localStorage.setItem(
-          storageKey(SUMMARY_VISIBLE_STORAGE_KEY, preferenceScope),
-          visible ? 'true' : 'false',
-        );
-      } catch {
-        /* ignore */
-      }
-    },
-    [preferenceScope],
-  );
-
   const value = useMemo(
     () => ({
       prefsReady,
       period,
-      summaryVisible,
       setPeriod,
-      setSummaryVisible,
     }),
-    [prefsReady, period, summaryVisible, setPeriod, setSummaryVisible],
+    [prefsReady, period, setPeriod],
   );
 
   return (

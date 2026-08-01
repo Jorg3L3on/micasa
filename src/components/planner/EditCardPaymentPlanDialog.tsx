@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import {
@@ -116,29 +116,13 @@ export const EditCardPaymentPlanDialog = ({
               name="plannedAmount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monto a pagar esta quincena (MXN)</FormLabel>
+                  <FormLabel>Monto a pagar</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max={outstandingBalance > 0 ? outstandingBalance : undefined}
-                      placeholder="0.01"
-                      {...field}
-                      value={
-                        typeof field.value === 'number' && !Number.isNaN(field.value)
-                          ? field.value
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        if (next === '') {
-                          field.onChange(NaN);
-                          return;
-                        }
-                        const parsed = Number.parseFloat(next);
-                        field.onChange(Number.isFinite(parsed) ? parsed : field.value);
-                      }}
+                    <CurrencyInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="0.00"
+                      aria-label="Monto a pagar"
                     />
                   </FormControl>
                   <FormMessage />

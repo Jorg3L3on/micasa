@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -42,9 +42,6 @@ type EditExpenseAmountDialogProps = {
   onSave: (data: ExpenseAmountFormValues) => Promise<void>
   defaultAmount: number
   defaultWalletId?: number | null
-  expenseDescription: string
-  expenseCategory?: string
-  fortnightLabel: string
   wallets?: WalletListItem[]
   isPaid?: boolean
   error?: string | null
@@ -61,9 +58,6 @@ export default function EditExpenseAmountDialog({
   onSave,
   defaultAmount,
   defaultWalletId,
-  expenseDescription,
-  expenseCategory = '',
-  fortnightLabel,
   wallets = [],
   isPaid = false,
   error,
@@ -109,22 +103,8 @@ export default function EditExpenseAmountDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Modificar gasto</DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-1">
-              <p>
-                Modificar &quot;{expenseDescription}&quot;
-                {expenseCategory ? (
-                  <>
-                    {' '}
-                    <span className="text-muted-foreground">(Categoría: {expenseCategory})</span>
-                  </>
-                ) : null}{' '}
-                para la quincena {fortnightLabel}.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Monto actual: {formatCurrency(initialAmount)}
-              </p>
-            </div>
+          <DialogDescription>
+            Monto actual: {formatCurrency(initialAmount)}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -139,28 +119,13 @@ export default function EditExpenseAmountDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monto (MXN)</FormLabel>
+                  <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                    <CurrencyInput
+                      value={field.value}
+                      onChange={field.onChange}
                       placeholder="0.00"
-                      {...field}
-                      value={
-                        typeof field.value === 'number' && !Number.isNaN(field.value)
-                          ? field.value
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const next = e.target.value
-                        if (next === '') {
-                          field.onChange(NaN)
-                          return
-                        }
-                        const parsed = Number.parseFloat(next)
-                        field.onChange(Number.isFinite(parsed) ? parsed : field.value)
-                      }}
+                      aria-label="Monto"
                     />
                   </FormControl>
                   <FormMessage />
@@ -171,44 +136,72 @@ export default function EditExpenseAmountDialog({
               <FormField
                 control={form.control}
                 name="wallet_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Método de pago</FormLabel>
-                    <Select
-                      disabled={isPaid}
-                      value={field.value != null ? String(field.value) : NULL_WALLET_VALUE}
-                      onValueChange={(val) => {
-                        field.onChange(val === NULL_WALLET_VALUE ? null : Number(val))
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger aria-label="Método de pago">
-                          <SelectValue placeholder="Sin cartera (efectivo)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={NULL_WALLET_VALUE}>
-                          Sin cartera (efectivo)
-                        </SelectItem>
-                        {wallets.map((w) => (
-                          <SelectItem key={w.id} value={String(w.id)}>
-                            <WalletIdentity
-                              name={w.name}
-                              providerIconKey={w.provider_icon_key}
-                              iconClassName="h-5 w-5 rounded-md"
-                            />
+                render={({ field }) => {
+                  const selectedWallet = wallets.find(
+                    (w) => w.id === Number(field.value),
+                  )
+                  return (
+                    <FormItem>
+                      <FormLabel>Método de pago</FormLabel>
+                      <Select
+                        disabled={isPaid}
+                        value={field.value != null ? String(field.value) : NULL_WALLET_VALUE}
+                        onValueChange={(val) => {
+                          field.onChange(val === NULL_WALLET_VALUE ? null : Number(val))
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className="h-11 w-full max-w-none"
+                            aria-label="Método de pago"
+                          >
+                            <SelectValue placeholder="Sin cartera (efectivo)">
+                              {selectedWallet ? (
+                                <span className="flex w-full items-center justify-between gap-3">
+                                  <WalletIdentity
+                                    name={selectedWallet.name}
+                                    providerIconKey={selectedWallet.provider_icon_key}
+                                    iconClassName="h-5 w-5 rounded-md"
+                                  />
+                                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                    {formatCurrency(selectedWallet.amount ?? 0)}
+                                  </span>
+                                </span>
+                              ) : (
+                                'Sin cartera (efectivo)'
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NULL_WALLET_VALUE}>
+                            Sin cartera (efectivo)
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isPaid && (
-                      <p className="text-xs text-muted-foreground">
-                        No se puede cambiar el método de pago de un gasto ya pagado.
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
+                          {wallets.map((w) => (
+                            <SelectItem key={w.id} value={String(w.id)}>
+                              <span className="flex items-center justify-between gap-3">
+                                <WalletIdentity
+                                  name={w.name}
+                                  providerIconKey={w.provider_icon_key}
+                                  iconClassName="h-5 w-5 rounded-md"
+                                />
+                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                  {formatCurrency(w.amount ?? 0)}
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isPaid && (
+                        <p className="text-xs text-muted-foreground">
+                          No se puede cambiar el método de pago de un gasto ya pagado.
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
             )}
             <DialogFooter>

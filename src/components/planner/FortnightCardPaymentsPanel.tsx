@@ -64,11 +64,31 @@ export const isPendingPlannerCardPayment = (
 ): boolean =>
   (status === 'por_pagar' || status === 'vencido') && amount > 0;
 
-const statusLabel = (s: PlannerCardPaymentStatus) => {
-  if (s === 'pagado') return 'Pagado';
-  if (s === 'vencido') return 'Vencido';
-  if (s === 'sin_cargo') return 'Sin cargo';
+const statusDotAriaLabel = (
+  status: PlannerCardPaymentStatus,
+  daysLeft: number,
+  showRelativeDueTiming: boolean,
+): string => {
+  if (status === 'pagado') return 'Pagado';
+  if (status === 'vencido') return 'Vencido';
+  if (status === 'sin_cargo') return 'Sin cargo';
+  if (!showRelativeDueTiming) return 'Por pagar';
+  if (daysLeft === 0) return 'Vence hoy';
+  if (daysLeft === 1) return 'Vence en 1 día';
+  if (daysLeft > 1) return `Vence en ${daysLeft} días`;
   return 'Por pagar';
+};
+
+const statusDotClass = (
+  status: PlannerCardPaymentStatus,
+  daysLeft: number,
+) => {
+  if (status === 'pagado') return 'bg-emerald-500 dark:bg-emerald-400';
+  if (status === 'vencido') return 'bg-destructive';
+  if (status === 'sin_cargo') return 'bg-muted-foreground/50';
+  // por_pagar: amber when close, blue when farther out
+  if (daysLeft <= 7) return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-blue-500 dark:bg-blue-400';
 };
 
 const displayPaidAmount = (item: DuePaymentItem, fortnightPaid: number) => {
@@ -248,27 +268,39 @@ const FortnightCardPaymentsPanel = ({
             const daysLabel = (() => {
               if (!showRelativeDueTiming) return null;
               if (status === 'pagado' || status === 'sin_cargo') return null;
-              if (daysLeft < 0) return 'vencido';
+              // Dot already signals overdue — don't repeat "vencido" in the subtitle.
+              if (status === 'vencido' || daysLeft < 0) return null;
               if (daysLeft === 0) return 'vence hoy';
               return `en ${daysLeft} día${daysLeft !== 1 ? 's' : ''}`;
             })();
+
+            const dotLabel = statusDotAriaLabel(
+              status,
+              daysLeft,
+              showRelativeDueTiming,
+            );
+            const isDueSoon =
+              status === 'por_pagar' && daysLeft <= 7;
+            const isDueLater =
+              status === 'por_pagar' && daysLeft > 7;
 
             return (
               <li
                 key={item.walletId}
                 className={cn(
                   'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
-                  'border-l-[3px]',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                   isCompact ? 'py-2.5' : 'py-3',
                   status === 'vencido' &&
-                    'border-destructive/25 border-l-destructive bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
-                  status === 'por_pagar' &&
-                    'border-amber-500/25 border-l-amber-500/70 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
+                    'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
+                  isDueSoon &&
+                    'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
+                  isDueLater &&
+                    'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4',
                   status === 'pagado' &&
-                    'border-emerald-500/20 border-l-emerald-500/60 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
+                    'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
                   status === 'sin_cargo' &&
-                    'border-border/50 border-l-border bg-muted/20 opacity-80',
+                    'border-border/50 bg-muted/20 opacity-80',
                 )}
               >
                 <span
@@ -280,7 +312,9 @@ const FortnightCardPaymentsPanel = ({
                         ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
                         : status === 'sin_cargo'
                           ? 'bg-muted/40 ring-border/40'
-                          : 'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
+                          : isDueSoon
+                            ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
+                            : 'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
                   )}
                 >
                   <Icon
@@ -292,9 +326,12 @@ const FortnightCardPaymentsPanel = ({
                           ? 'text-destructive'
                           : status === 'sin_cargo'
                             ? 'text-muted-foreground'
-                            : 'text-violet-600 dark:text-violet-300',
+                            : isDueSoon
+                              ? 'text-amber-600 dark:text-amber-300'
+                              : 'text-blue-600 dark:text-blue-300',
                     )}
-                    aria-hidden data-icon="inline-start" />
+                    aria-hidden
+                  />
                 </span>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -313,31 +350,13 @@ const FortnightCardPaymentsPanel = ({
                     </Link>
                     <span
                       className={cn(
-                        'inline-flex h-4 shrink-0 items-center gap-1 rounded-full border px-1.5 text-[9px] font-bold uppercase tracking-wider',
-                        status === 'vencido' &&
-                          'border-destructive/40 bg-destructive/10 text-destructive dark:border-destructive/50 dark:bg-destructive/15',
-                        status === 'por_pagar' &&
-                          'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
-                        status === 'pagado' &&
-                          'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300',
-                        status === 'sin_cargo' &&
-                          'border-border/50 bg-muted/40 text-muted-foreground',
+                        'h-2 w-2 shrink-0 rounded-full',
+                        statusDotClass(status, daysLeft),
                       )}
-                    >
-                      <span
-                        className={cn(
-                          'h-1 w-1 rounded-full',
-                          status === 'vencido' && 'bg-destructive',
-                          status === 'por_pagar' &&
-                            'bg-amber-500 dark:bg-amber-400',
-                          status === 'pagado' &&
-                            'bg-emerald-500 dark:bg-emerald-400',
-                          status === 'sin_cargo' && 'bg-muted-foreground/50',
-                        )}
-                        aria-hidden
-                      />
-                      {statusLabel(status)}
-                    </span>
+                      role="img"
+                      aria-label={dotLabel}
+                      title={dotLabel}
+                    />
                   </div>
                   <div className="flex flex-wrap items-baseline gap-1 text-[10px]">
                     <span
@@ -465,7 +484,7 @@ const FortnightCardPaymentsPanel = ({
                           onClick={() => handleOpenPlanDialog(item)}
                           aria-label={`Editar pago planeado: ${item.walletName}`}
                         >
-                          <Pencil className="size-3.5" aria-hidden data-icon="inline-start" />
+                          <Pencil className="size-3.5" aria-hidden />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={6}>
@@ -498,9 +517,10 @@ const FortnightCardPaymentsPanel = ({
                             {payingWalletId === item.walletId ? (
                               <Loader2
                                 className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden data-icon="inline-start" />
+                                aria-hidden
+                              />
                             ) : (
-                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
+                              <Banknote className="size-3.5" aria-hidden />
                             )}
                           </Button>
                         </span>

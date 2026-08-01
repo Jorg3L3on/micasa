@@ -31,8 +31,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
-      <DashboardTooltipProvider>
+    <DashboardTooltipProvider>
+      <SidebarProvider>
         <DashboardAppSidebarDynamic
           navUser={{
             name: session.user.name ?? 'Usuario',
@@ -50,7 +50,7 @@ export default async function DashboardLayout({
             </div>
           </div>
         </SidebarInset>
-      </DashboardTooltipProvider>
-    </SidebarProvider>
+      </SidebarProvider>
+    </DashboardTooltipProvider>
   );
 }
