@@ -347,6 +347,12 @@ export default function BudgetsPage() {
   }, [updateQuery]);
 
   const loadData = useCallback(async () => {
+    // Wait for finance context sync (default is user/0 before session + URL resolve).
+    // Matching loans/wallets: skip the unscoped fetch that races and paints an empty list.
+    if (context.type === 'user' && context.id === 0) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -386,7 +392,7 @@ export default function BudgetsPage() {
   }, [context, month, status, view]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const templateMap = useMemo(
