@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Banknote,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Coins,
@@ -84,7 +83,7 @@ export const WalletHeroZone = ({
 }) => {
   const tint = heroTintClass(wallet);
   return (
-    <div className="relative -mx-4 overflow-hidden px-4 pb-2 sm:-mx-0 sm:rounded-b-[1.75rem]">
+    <div className="relative -mx-4 overflow-hidden px-4 pb-4 sm:-mx-0 sm:rounded-b-xl sm:pb-5">
       <div
         className={cn(
           'pointer-events-none absolute inset-0 bg-linear-to-b to-transparent dark:to-background',
@@ -111,91 +110,31 @@ export const WalletHeroZone = ({
   );
 };
 
-type WalletWorkspaceSnap = 'peek' | 'half' | 'full';
-
-const WALLET_SNAP_MAX_HEIGHT: Record<WalletWorkspaceSnap, string> = {
-  peek: 'max-h-0',
-  half: 'max-h-[54vh]',
-  full: 'max-h-[calc(100vh-12rem)]',
-};
-
 type WalletPeriodWorkspaceShellProps = {
   chrome: ReactNode;
   children: ReactNode;
 };
 
+/** Period summary + tabs — calm card like Panel financiero (no mobile drawer). */
 export const WalletPeriodWorkspaceShell = ({
   chrome,
   children,
-}: WalletPeriodWorkspaceShellProps) => {
-  const [snap, setSnap] = useState<WalletWorkspaceSnap>('peek');
-
-  const handleCycleSnap = useCallback(() => {
-    setSnap((current) => {
-      if (current === 'peek') return 'half';
-      if (current === 'half') return 'full';
-      return 'peek';
-    });
-  }, []);
-
-  return (
-    <>
-      <div className="lg:hidden">
-        <div className="relative z-10 -mt-3 shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.12)] dark:shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.45)]">
-          <div className="flex flex-col overflow-hidden rounded-t-[1.75rem] border border-border/60 bg-card">
-            <button
-              type="button"
-              className="flex w-full shrink-0 flex-col items-center px-4 pt-3 pb-2"
-              onClick={handleCycleSnap}
-              aria-expanded={snap !== 'peek'}
-              aria-label={
-                snap === 'full'
-                  ? 'Contraer workspace de billetera'
-                  : 'Expandir workspace de billetera'
-              }
-            >
-              <span
-                className="mb-2 h-1 w-10 rounded-full bg-muted-foreground/25"
-                aria-hidden
-              />
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <ChevronUp
-                  className={cn(
-                    'h-3 w-3 transition-transform',
-                    snap === 'peek' && 'rotate-180',
-                  )}
-                  aria-hidden data-icon="inline-end" />
-                {snap === 'peek' ? 'Vista compacta' : snap === 'half' ? 'Medio' : 'Completo'}
-              </span>
-            </button>
-
-            <div className="sticky top-0 z-10 shrink-0 border-b border-border/50 bg-card px-4 pb-3">
-              {chrome}
-            </div>
-
-            <div
-              className={cn(
-                'overflow-y-auto px-4 pb-4 transition-[max-height] duration-300 ease-out',
-                WALLET_SNAP_MAX_HEIGHT[snap],
-              )}
-            >
-              {children}
-            </div>
-          </div>
-        </div>
+}: WalletPeriodWorkspaceShellProps) => (
+  <div className="mt-6 sm:mt-8">
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',
+        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
+        'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+      )}
+    >
+      <div className="relative space-y-4">
+        {chrome}
+        <div className="min-w-0">{children}</div>
       </div>
-
-      <div className="relative z-10 -mt-3 hidden lg:block">
-        <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-4 pb-4 shadow-sm">
-          <div className="sticky top-16 z-10 -mx-4 border-b border-border/50 bg-card px-4 pb-3 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
-            {chrome}
-          </div>
-          <div className="pt-4">{children}</div>
-        </div>
-      </div>
-    </>
-  );
-};
+    </div>
+  </div>
+);
 
 export const WalletDetailTabsList = ({ children }: { children: ReactNode }) => (
   <div className={creditCardSegmentedTabChromeClass}>

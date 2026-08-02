@@ -79,7 +79,7 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
 type WalletDetailTab = 'resumen' | 'movimientos' | 'compromisos';
 
 const WalletDetailSkeleton = () => (
-  <div className="space-y-0 pb-24 lg:pb-0">
+  <div className="space-y-6 pb-24 lg:pb-0">
     <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
       <div className="flex items-center justify-between">
         <Skeleton className="h-9 w-28" />
@@ -92,14 +92,13 @@ const WalletDetailSkeleton = () => (
         ))}
       </div>
     </div>
-    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-      <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full" />
-      <div className="grid grid-cols-3 gap-2">
-        {Array.from({ length: 3 }).map((_, i) => (
+    <div className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
         ))}
       </div>
-      <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
+      <Skeleton className="mt-4 h-48 w-full rounded-xl" />
     </div>
   </div>
 );
