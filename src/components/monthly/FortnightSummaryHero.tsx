@@ -29,12 +29,15 @@ type FortnightSummaryHeroProps = {
 const subBoxClass =
   'rounded-xl border border-border/50 bg-muted/25 px-3 py-2.5 dark:bg-muted/15';
 
+const metricLabelClass =
+  'min-w-0 flex-1 text-[10px] font-semibold uppercase leading-snug tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-wider';
+
 const metricHint = (text: string) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <button
         type="button"
-        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
+        className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
         aria-label={text}
       >
         <Info className="h-3 w-3" aria-hidden data-icon="inline-end" />
@@ -44,6 +47,41 @@ const metricHint = (text: string) => (
       {text}
     </TooltipContent>
   </Tooltip>
+);
+
+type MetricCardProps = {
+  label: string;
+  hint: string;
+  amount: number;
+  amountClassName: string;
+  dotClassName: string;
+};
+
+const MetricCard = ({
+  label,
+  hint,
+  amount,
+  amountClassName,
+  dotClassName,
+}: MetricCardProps) => (
+  <div className={subBoxClass}>
+    <div className="mb-1 flex items-start gap-1.5">
+      <span
+        className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', dotClassName)}
+        aria-hidden
+      />
+      <span className={metricLabelClass}>{label}</span>
+      {metricHint(hint)}
+    </div>
+    <p
+      className={cn(
+        'font-mono text-base font-bold tabular-nums sm:text-lg',
+        amountClassName,
+      )}
+    >
+      {formatCurrency(amount)}
+    </p>
+  </div>
 );
 
 export const FortnightSummaryHero = ({
@@ -110,78 +148,40 @@ export const FortnightSummaryHero = ({
                 : 'grid-cols-1',
           )}
         >
-          <div className={subBoxClass}>
-            <div className="mb-1 flex items-center justify-between gap-1.5">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-sky-500"
-                  aria-hidden
-                />
-                <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Libre del ingreso
-                </span>
-              </div>
-              {metricHint(incomeRemainderHint)}
-            </div>
-            <p
-              className={cn(
-                'font-mono text-base font-bold tabular-nums sm:text-lg',
-                incomeRemainder >= 0
-                  ? 'text-sky-700 dark:text-sky-300'
-                  : 'text-destructive',
-              )}
-            >
-              {formatCurrency(incomeRemainder)}
-            </p>
-          </div>
+          <MetricCard
+            label="Libre del ingreso"
+            hint={incomeRemainderHint}
+            amount={incomeRemainder}
+            dotClassName="bg-sky-500"
+            amountClassName={
+              incomeRemainder >= 0
+                ? 'text-sky-700 dark:text-sky-300'
+                : 'text-destructive'
+            }
+          />
 
           {fundingNetApplies ? (
-            <div className={subBoxClass}>
-              <div className="mb-1 flex items-center justify-between gap-1.5">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                    aria-hidden
-                  />
-                  <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Liquidez actual
-                  </span>
-                </div>
-                {metricHint(liquidityHint)}
-              </div>
-              <p
-                className={cn(
-                  'font-mono text-base font-bold tabular-nums sm:text-lg',
-                  fundingNetInAccounts < 0
-                    ? 'text-destructive'
-                    : 'text-emerald-700 dark:text-emerald-300',
-                )}
-              >
-                {formatCurrency(fundingNetInAccounts)}
-              </p>
-            </div>
+            <MetricCard
+              label="Liquidez actual"
+              hint={liquidityHint}
+              amount={fundingNetInAccounts}
+              dotClassName="bg-emerald-500"
+              amountClassName={
+                fundingNetInAccounts < 0
+                  ? 'text-destructive'
+                  : 'text-emerald-700 dark:text-emerald-300'
+              }
+            />
           ) : null}
 
           {showBudgetAvailable ? (
-            <div className={subBoxClass}>
-              <div className="mb-1 flex items-center justify-between gap-1.5">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full bg-violet-500"
-                    aria-hidden
-                  />
-                  <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Disponible del presupuesto
-                  </span>
-                </div>
-                {metricHint(
-                  'Resto del presupuesto de esta quincena (asignado menos gastado)',
-                )}
-              </div>
-              <p className="font-mono text-base font-bold tabular-nums text-violet-700 dark:text-violet-300 sm:text-lg">
-                {formatCurrency(budgetRemainingAmount)}
-              </p>
-            </div>
+            <MetricCard
+              label="Disponible del presupuesto"
+              hint="Resto del presupuesto de esta quincena (asignado menos gastado)"
+              amount={budgetRemainingAmount}
+              dotClassName="bg-violet-500"
+              amountClassName="text-violet-700 dark:text-violet-300"
+            />
           ) : null}
         </div>
       </div>
