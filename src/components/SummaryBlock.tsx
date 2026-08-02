@@ -26,7 +26,6 @@ import {
   Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
-import { getFortnightIncomeCommittedPercent } from '@/components/monthly/fortnight-income-commitment';
 import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
 import type {
   FundingWalletBreakdownItem,
@@ -158,11 +157,7 @@ export default function SummaryBlock({
     ? budgetRemaining
     : 0;
 
-  const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
-    tenemos,
-    pagado,
-    pendiente + payrollLoanDeduction + budgetRemaining,
-  );
+  const cashCommittedAmount = pagado + pendiente + payrollLoanDeduction;
   const showIncomeRing = tenemos > 0;
 
   const fundingWalletTypeLabel = (t: string) => {
@@ -252,7 +247,7 @@ export default function SummaryBlock({
           fundingNetApplies={billeterasVsPendienteAplica}
           payrollDeductionAmount={payrollLoanDeduction}
           budgetRemainingAmount={budgetRemaining}
-          percentCommitted={incomeCommittedPercent}
+          cashCommittedAmount={cashCommittedAmount}
           showGauge={showIncomeRing}
         />
 

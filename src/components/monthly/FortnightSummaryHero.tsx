@@ -21,7 +21,8 @@ type FortnightSummaryHeroProps = {
   payrollDeductionAmount?: number;
   /** Resto del presupuesto de la quincena incluido en incomeRemainder / liquidez. */
   budgetRemainingAmount?: number;
-  percentCommitted: number;
+  /** Pagado + pendiente + nómina (segmento del gauge distinto al presupuesto). */
+  cashCommittedAmount?: number;
   showGauge: boolean;
 };
 
@@ -52,7 +53,7 @@ export const FortnightSummaryHero = ({
   fundingNetApplies = true,
   payrollDeductionAmount = 0,
   budgetRemainingAmount = 0,
-  percentCommitted,
+  cashCommittedAmount = 0,
   showGauge,
 }: FortnightSummaryHeroProps) => {
   const incomeRemainderHint = (() => {
@@ -79,7 +80,8 @@ export const FortnightSummaryHero = ({
 
   const gauge = showGauge ? (
     <FortnightIncomeGauge
-      percentCommitted={percentCommitted}
+      cashCommitted={cashCommittedAmount}
+      budgetRemaining={budgetRemainingAmount}
       periodIncome={periodIncome}
       className="mx-auto shrink-0 lg:mx-0"
     />
