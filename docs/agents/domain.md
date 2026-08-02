@@ -36,7 +36,7 @@ npm test
 npm run build
 ```
 
-Full CI: `npm run ci` (dashboard UI validate + prisma generate + test + build).
+Full CI: `npm run ci` (metric-strip validate + prisma generate + test + build).
 
 ## Schema changes
 

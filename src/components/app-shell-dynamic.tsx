@@ -20,7 +20,7 @@ const AppSidebarClient = dynamic(
 );
 
 const HeaderToolbarClient = dynamic(
-  () => import('@/components/dashboard-header-toolbar'),
+  () => import('@/components/app-header-toolbar'),
   {
     ssr: false,
     loading: () => (
@@ -39,7 +39,7 @@ const HeaderToolbarClient = dynamic(
   },
 );
 
-export function DashboardAppSidebarDynamic({
+export function AppSidebarDynamic({
   navUser,
 }: {
   navUser: AppSidebarNavUser;
@@ -47,6 +47,6 @@ export function DashboardAppSidebarDynamic({
   return <AppSidebarClient navUser={navUser} />;
 }
 
-export function DashboardHeaderToolbarDynamic() {
+export function AppHeaderToolbarDynamic() {
   return <HeaderToolbarClient />;
 }

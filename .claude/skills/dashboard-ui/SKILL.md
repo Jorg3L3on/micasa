@@ -1,19 +1,19 @@
 ---
 name: dashboard-ui
-description: Canonical layout, components, spacing and color conventions for MiCasa dashboard pages (Next.js 16 App Router + Tailwind v4 + Radix/shadcn). Use when creating or redesigning any page under `src/app/(dashboard)/**`.
+description: Canonical layout, components, spacing and color conventions for MiCasa app pages (Next.js 16 App Router + Tailwind v4 + Radix/shadcn). Use when creating or redesigning any page under `src/app/(app)/**`.
 when_to_use:
-  - Creating a new dashboard page under `src/app/(dashboard)/`
-  - Redesigning or polishing an existing dashboard page
+  - Creating a new app page under `src/app/(app)/`
+  - Redesigning or polishing an existing app page
   - Adding a metric strip / KPI cards
   - Choosing between Card grid and DataTable for a list view
   - Picking icon gradients, spacing, or border tokens
 ---
 
-# MiCasa Dashboard UI
+# MiCasa App UI
 
-This skill encodes the conventions already established by the canonical pages: `dashboard/page.tsx`, `wallets/page.tsx`, `expenses/`, and `credit-cards/`. New pages should match this dialect; existing divergent pages should be aligned with it (not the other way around).
+This skill encodes the conventions already established by the canonical pages: `monthly/[year]/[month]/page.tsx`, `wallets/page.tsx`, `expenses/`, and `credit-cards/`. New pages should match this dialect; existing divergent pages should be aligned with it (not the other way around).
 
-The dashboard frame (sidebar, sticky header, container) is owned by `src/app/(dashboard)/layout.tsx`. **Pages render only their content** — do not re-wrap in another container or set their own background.
+The app frame (sidebar, sticky header, container) is owned by `src/app/(app)/layout.tsx`. **Pages render only their content** — do not re-wrap in another container or set their own background.
 
 ---
 
@@ -51,7 +51,7 @@ Right-aligned filters + primary action. Mirrors `wallets/page.tsx:451`:
 </div>
 ```
 
-Match `(dashboard)/layout.tsx`: the shell header is **`h-16`** (`4rem`). Sticky page chrome must use **`top-16`** (not `top-20`) so no scrolled content appears in the strip between the shell header and this bar. When the sidebar is **icon-collapsed**, the header becomes **`h-12`** — add **`group-has-data-[collapsible=icon]/sidebar-wrapper:top-12`** (same pattern as `wallets/page.tsx`). Prefer opaque **`bg-background`** (and optional `border-b`) over semi-transparent + blur for the same reason.
+Match `(app)/layout.tsx`: the shell header is **`h-16`** (`4rem`). Sticky page chrome must use **`top-16`** (not `top-20`) so no scrolled content appears in the strip between the shell header and this bar. When the sidebar is **icon-collapsed**, the header becomes **`h-12`** — add **`group-has-data-[collapsible=icon]/sidebar-wrapper:top-12`** (same pattern as `wallets/page.tsx`). Prefer opaque **`bg-background`** (and optional `border-b`) over semi-transparent + blur for the same reason.
 
 If the page has both a title and an action, use **justify-between** instead of justify-end so the title sits on the left.
 
@@ -76,10 +76,10 @@ Two flavors. Pick by purpose, not page.
 
 ### `<StatCard/>` — hero KPI
 
-Use for **money** values that anchor the page (balance, totals, period income/expense). One large currency, optional subtitle. Reference: `src/components/dashboard/StatCard.tsx`.
+Use for **money** values that anchor the page (balance, totals, period income/expense). One large currency, optional subtitle. Reference: `src/components/StatCard.tsx`.
 
 ```tsx
-import StatCard from '@/components/dashboard/StatCard';
+import StatCard from '@/components/StatCard';
 
 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
   <StatCard
@@ -97,13 +97,13 @@ import StatCard from '@/components/dashboard/StatCard';
 
 ### Metric strip (compact non-currency)
 
-Use for **counts, dates, or non-currency** values with a calm shell and colored left border. Prefer `DASHBOARD_METRIC_STRIP_CLASS` from `src/components/dashboard/constants.ts` plus a `border-l-*` accent (see fintech / UI consistency rules).
+Use for **counts, dates, or non-currency** values with a calm shell and colored left border. Prefer `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` plus a `border-l-*` accent (see fintech / UI consistency rules).
 
 ```tsx
-import { DASHBOARD_METRIC_STRIP_CLASS } from '@/components/dashboard/constants';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { cn } from '@/lib/utils';
 
-<div className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
+<div className={cn(METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
     Préstamos activos
   </span>
@@ -276,11 +276,11 @@ Inline semantic classes — keep these consistent so users recognize them:
 
 Read these files — they are the source of truth this skill summarizes:
 
-- Layout shell: `src/app/(dashboard)/layout.tsx`
-- Hero KPI: `src/components/dashboard/StatCard.tsx`
-- Metric strip constant: `src/components/dashboard/constants.ts`
+- Layout shell: `src/app/(app)/layout.tsx`
+- Hero KPI: `src/components/StatCard.tsx`
+- Metric strip constant: `src/components/ui/metric-strip.ts`
 - Empty state: `src/components/EmptyState.tsx`
-- Action-bar reference: `src/app/(dashboard)/wallets/page.tsx`
-- Metric-strip reference: `src/app/(dashboard)/dashboard/page.tsx`
-- Card-grid list reference: `src/app/(dashboard)/loans/page.tsx`
+- Action-bar reference: `src/app/(app)/wallets/page.tsx`
+- Metric-strip reference: `src/app/(app)/monthly/[year]/[month]/page.tsx`
+- Card-grid list reference: `src/app/(app)/loans/page.tsx`
 - Currency util: `formatCurrency` in `src/lib/utils.ts`

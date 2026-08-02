@@ -13,7 +13,7 @@ import {
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { formatCurrency } from '@/lib/utils';
-import type { MonthlySummaryItem } from '@/app/api/dashboard/monthly-summary/route';
+import type { MonthlySummaryItem } from '@/app/api/wallets/liquidity/monthly-summary/route';
 
 function formatYAxis(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -56,7 +56,7 @@ export default function MonthlyOverviewChart() {
     try {
       setLoading(true);
       const result = await clientFetchFromApi<MonthlySummaryItem[]>(
-        '/api/dashboard/monthly-summary',
+        '/api/wallets/liquidity/monthly-summary',
         undefined,
         context,
       );

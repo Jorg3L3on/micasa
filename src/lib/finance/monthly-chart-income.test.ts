@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveFortnightIncome, INCOME_OVERRIDE_SOURCE } from './monthly-dashboard-chart';
+import { effectiveFortnightIncome, INCOME_OVERRIDE_SOURCE } from './monthly-chart-income';
 
 describe('effectiveFortnightIncome', () => {
   it('sums regular rows when no override', () => {

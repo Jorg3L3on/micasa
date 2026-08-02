@@ -25,8 +25,8 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Dashboard metric strip rules
-        run: npm run validate:dashboard-ui
+      - name: Metric strip rules
+        run: npm run validate:metric-strips
 
       - name: Prisma import rules
         run: npm run validate:prisma-imports

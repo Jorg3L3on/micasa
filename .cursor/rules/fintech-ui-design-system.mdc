@@ -30,7 +30,7 @@ Use a **colored left border only** for metric strips—**no** tinted panel fill 
 <div className="rounded-lg border border-border/60 border-l-[3px] border-l-blue-500/50 bg-transparent px-2.5 py-2">
 ```
 
-For dashboard panels, prefer the shared constant `DASHBOARD_METRIC_STRIP_CLASS` from `src/components/dashboard/constants.ts` and add the matching `border-l-*` class.
+For metric panels, prefer the shared constant `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` and add the matching `border-l-*` class.
 
 Color mapping (left border + text/icon colors):
 - **Income / Bank**: blue (`blue-500`)

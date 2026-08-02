@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import { wherePlanningCashFlowExpenses } from '@/lib/finance/expense-planning-scope';
-import { effectiveFortnightIncome } from '@/lib/finance/monthly-dashboard-chart';
+import { effectiveFortnightIncome } from '@/lib/finance/monthly-chart-income';
 
 export type MonthlySummaryItem = {
   year: number;

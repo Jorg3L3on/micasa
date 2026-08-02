@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method. For by-category / by-payment-method, optional ?windowMonths=1-120 (rolling calendar months) when month/year/period are omitted. For by-category, optional ?planningCashFlow=true (same expense scope as dashboard planning KPIs).',
+          'Invalid report type. Use ?type=summary, ?type=by-category, or ?type=by-payment-method. For by-category / by-payment-method, optional ?windowMonths=1-120 (rolling calendar months) when month/year/period are omitted. For by-category, optional ?planningCashFlow=true (same expense scope as planning KPIs).',
       },
       { status: 400 },
     );

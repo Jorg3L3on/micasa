@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 /**
- * Fails if dashboard metric strips reintroduce tinted panel backgrounds.
- * Accent should be border-l-* only (+ icon pills); see fintech-ui-design-system.mdc
- * and DASHBOARD_METRIC_STRIP_CLASS in src/components/dashboard/constants.ts.
+ * Fails if metric strips that use METRIC_STRIP_CLASS reintroduce tinted panel
+ * backgrounds. Accent should be border-l-* only (+ icon pills); see
+ * fintech-ui-design-system.mdc and src/components/ui/metric-strip.ts.
  *
- * Run: npm run validate:dashboard-ui
+ * Run: npm run validate:metric-strips
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const DASHBOARD_DIR = join(ROOT, 'src', 'components', 'dashboard');
+const SRC = join(ROOT, 'src');
 
-/** Tinted fills that should not appear on metric strips / teaser shells in this folder. */
+/** Tinted fills that should not appear on metric strips / teaser shells. */
 const FORBIDDEN = [
   /bg-blue-500\/5\b/,
   /dark:bg-blue-500\/8\b/,
@@ -33,12 +33,13 @@ const FORBIDDEN = [
 ];
 
 const walkTsx = (dir) => {
+  if (!existsSync(dir)) return [];
   const out = [];
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) {
       out.push(...walkTsx(p));
-    } else if (name.endsWith('.tsx')) {
+    } else if (name.endsWith('.tsx') || name.endsWith('.ts')) {
       out.push(p);
     }
   }
@@ -47,7 +48,10 @@ const walkTsx = (dir) => {
 
 const main = () => {
   let failed = false;
-  const files = walkTsx(DASHBOARD_DIR);
+  const files = walkTsx(SRC).filter((file) => {
+    const text = readFileSync(file, 'utf8');
+    return text.includes('METRIC_STRIP_CLASS');
+  });
 
   for (const file of files) {
     const text = readFileSync(file, 'utf8');
@@ -66,13 +70,13 @@ const main = () => {
 
   if (failed) {
     console.error(
-      '\nUse DASHBOARD_METRIC_STRIP_CLASS for calm metric shells; keep icon pills with bg-*/10 only.',
+      '\nUse METRIC_STRIP_CLASS for calm metric shells; keep icon pills with bg-*/10 only.',
     );
     process.exit(1);
   }
 
   console.log(
-    `validate-dashboard-metric-strips: OK (${files.length} file(s) under dashboard/)`,
+    `validate-metric-strips: OK (${files.length} file(s) using METRIC_STRIP_CLASS)`,
   );
 };
 

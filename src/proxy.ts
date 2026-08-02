@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import { auth } from '@/lib/auth';
-import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+import { getAppHomeHref, getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { NextResponse } from 'next/server';
 
 /** Routes that must stay reachable without a session (landing + auth + legal). */
@@ -34,6 +34,21 @@ const proxy = auth((req) => {
     return Response.redirect(
       new URL(getCurrentMonthlyPanelHref(), req.nextUrl),
     );
+  }
+
+  // Legacy Inicio bookmarks → Panel financiero (preserve owner query).
+  if (
+    isLoggedIn &&
+    (pathname === '/dashboard' || pathname.startsWith('/dashboard/'))
+  ) {
+    const query = new URLSearchParams();
+    const ownerType = req.nextUrl.searchParams.get('ownerType');
+    const ownerId = req.nextUrl.searchParams.get('ownerId');
+    if (ownerType && ownerId) {
+      query.set('ownerType', ownerType);
+      query.set('ownerId', ownerId);
+    }
+    return Response.redirect(new URL(getAppHomeHref(query), req.nextUrl));
   }
 
   return NextResponse.next();

@@ -20,7 +20,7 @@ vi.mock('@/lib/finance/planning-credit-card-payments', () => ({
   })),
 }));
 vi.mock('@/lib/finance/credit-card-statement.service', () => ({
-  sumPlannerCardDueForDashboardScope: mockCardDue,
+  sumPlannerCardDueForPeriodScope: mockCardDue,
 }));
 vi.mock('@/lib/finance/loan.service', () => ({
   aggregateLoanPaymentsForFortnights: mockLoanAgg,

@@ -1,4 +1,4 @@
-/** Dashboard attention signals: highest credit usage + soonest statement due. */
+/** Attention signals: highest credit usage + soonest statement due. */
 
 export type WalletAttentionSource = {
   id: number;

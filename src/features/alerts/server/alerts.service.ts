@@ -5,7 +5,7 @@ import {
   aggregateOrphanCreditCardPaymentsForPlanning,
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
-import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-statement.service';
+import { sumPlannerCardDueForPeriodScope } from '@/lib/finance/credit-card-statement.service';
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
 import { partitionLoanPaymentsForPlanningTotals } from '@/lib/finance/planning-period-loan-totals';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
@@ -203,7 +203,6 @@ const buildAlerts = (input: {
 
 /**
  * Lean finance alerts for the header bell (current period only).
- * Replaces the former full `/api/dashboard` payload consumer path.
  */
 export const getAlerts = async (
   params: GetAlertsParams,
@@ -241,7 +240,7 @@ export const getAlerts = async (
         ownerFilter,
         paidAtRangeCurrent,
       ),
-      sumPlannerCardDueForDashboardScope(
+      sumPlannerCardDueForPeriodScope(
         ownerFilter,
         view,
         current.year,

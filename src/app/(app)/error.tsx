@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
-export default function DashboardError({
+export default function AppError({
   error,
   reset,
 }: {

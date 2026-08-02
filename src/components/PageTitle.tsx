@@ -55,7 +55,7 @@ function getPageTitle(
     return { title, breadcrumbs: [{ label: title }] };
   }
 
-  // Legacy /dashboard redirects away; treat as home while redirecting.
+  // Legacy /dashboard is redirected in middleware; treat as home if seen briefly.
   if (segments.length === 0 || segments[0] === 'dashboard') {
     return {
       title: 'Panel financiero',

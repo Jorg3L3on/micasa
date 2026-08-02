@@ -455,7 +455,7 @@ describe('aggregateLoanPaymentsForFortnights', () => {
     });
   });
 
-  it('does not add paid generated-expense loan payments to dashboard totals', async () => {
+  it('does not add paid generated-expense loan payments to planning totals', async () => {
     findManyLoanPayment.mockResolvedValueOnce([
       {
         id: 22,

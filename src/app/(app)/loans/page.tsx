@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import StatCard from '@/components/dashboard/StatCard';
+import StatCard from '@/components/StatCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

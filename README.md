@@ -100,7 +100,7 @@ Optional:
 | `npm test` | Vitest unit suite |
 | `npm run test:coverage` | Vitest with finance coverage floor |
 | `npm run test:isolation` | Cross-tenant isolation tests |
-| `npm run validate:dashboard-ui` | Dashboard metric-strip rules |
+| `npm run validate:metric-strips` | Metric-strip rules (no tinted fills) |
 | `npm run validate:prisma-imports` | Prisma import conventions |
 | `npm run validate:calendar-dates` | Calendar-date anti-patterns |
 | `npm run ci` | Full local CI (validators → generate → coverage → isolation → build) |

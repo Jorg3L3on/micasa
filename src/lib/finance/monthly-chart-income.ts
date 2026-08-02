@@ -1,7 +1,7 @@
 /**
- * Aggregation rules for `/api/dashboard/monthly-summary` — aligned with panel totals:
+ * Aggregation rules for `/api/wallets/liquidity/monthly-summary` — aligned with panel totals:
  * - Expenses: planning cash flow only (see `wherePlanningCashFlowExpenses`).
- * - Income: per fortnight, `source === '__OVERRIDE__'` replaces other rows (same as dashboard/reports).
+ * - Income: per fortnight, `source === '__OVERRIDE__'` replaces other rows (same as reports).
  */
 
 export const INCOME_OVERRIDE_SOURCE = '__OVERRIDE__';
