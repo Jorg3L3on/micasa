@@ -901,16 +901,16 @@ export async function aggregateLoanPaymentsForFortnights(
       };
     });
 
-  const shouldAddToDashboardTotals = (payment: LoanPlanningPayment) =>
+  const shouldAddToPlanningTotals = (payment: LoanPlanningPayment) =>
     payment.status === 'SCHEDULED' || payment.linkedExpenseId == null;
 
   const total = payments
-    .filter(shouldAddToDashboardTotals)
+    .filter(shouldAddToPlanningTotals)
     .reduce((sum, payment) => sum + payment.amount, 0);
   const paidTotal = payments
     .filter(
       (payment) =>
-        payment.status === 'PAID' && shouldAddToDashboardTotals(payment),
+        payment.status === 'PAID' && shouldAddToPlanningTotals(payment),
     )
     .reduce((sum, payment) => sum + payment.amount, 0);
   const upcoming = payments.filter((payment) => payment.status === 'SCHEDULED');

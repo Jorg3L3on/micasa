@@ -106,6 +106,7 @@ export const createWalletSchema = z.object({
   type: paymentMethodType,
   provider_icon_key: walletProviderIconKeySchema.optional(),
   active: z.boolean().default(true),
+  include_in_liquidity: z.boolean().default(true),
   cutoff_day: nullablePositiveInt,
   due_day: nullablePositiveInt,
   /** Solo en contexto casa: miembro atribuido (null = compartida). */
@@ -120,6 +121,7 @@ export const updateWalletSchema = z.object({
   type: paymentMethodType.optional(),
   provider_icon_key: walletProviderIconKeySchema.optional(),
   active: z.boolean().optional(),
+  include_in_liquidity: z.boolean().optional(),
   cutoff_day: nullablePositiveInt.optional(),
   due_day: nullablePositiveInt.optional(),
   assignee_user_id: z.number().int().positive().nullable().optional(),
@@ -148,6 +150,7 @@ export const walletSchema = z
     type: paymentMethodType,
     provider_icon_key: walletProviderIconKeySchema.default(null),
     active: z.boolean().default(true),
+    include_in_liquidity: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,
     assignee_user_id: z.number().int().positive().nullable().optional().default(null),

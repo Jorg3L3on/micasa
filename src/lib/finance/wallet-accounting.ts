@@ -21,6 +21,13 @@ export const isCreditWalletType = (type: PaymentMethodType) =>
 export const isFundingWalletType = (type: PaymentMethodType) =>
   FUNDING_WALLET_TYPES.has(type);
 
+/** Funding wallets that count toward Liquidez balance (efectivo + débito). */
+export const countsTowardLiquidity = (wallet: {
+  type: PaymentMethodType;
+  include_in_liquidity?: boolean | null;
+}) =>
+  isFundingWalletType(wallet.type) && wallet.include_in_liquidity !== false;
+
 export const getPaidExpenseWalletDelta = (
   walletType: PaymentMethodType,
   amount: number,

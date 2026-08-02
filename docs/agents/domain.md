@@ -23,7 +23,8 @@
 | **Expense** | Spend; installment (cuota) expenses follow statement cycle, not fortnight aggregates |
 | **Loan (Préstamo)** | First-class debt with schedule; not a wallet or expense template |
 | **Loan payment** | Scheduled installment; may link to `Expense` via `loan_payment_id` when paid from a funding wallet |
-| **Fortnight view** | `/fortnight/...` — primary money planning UI |
+| **Panel financiero** | `/monthly/...` — app home and primary money planning UI |
+| **Fortnight view** | `/fortnight/...` — single-fortnight detail (also reachable from Panel financiero) |
 
 Use these terms in issue titles and acceptance criteria.
 
@@ -35,7 +36,7 @@ npm test
 npm run build
 ```
 
-Full CI: `npm run ci` (dashboard UI validate + prisma generate + test + build).
+Full CI: `npm run ci` (metric-strip validate + prisma generate + test + build).
 
 ## Schema changes
 

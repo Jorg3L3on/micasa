@@ -406,6 +406,7 @@ export const getReportSummary = async (
     where: {
       ...ownerFilter,
       active: true,
+      include_in_liquidity: true,
       type: {
         in: [PaymentMethodType.CASH, PaymentMethodType.DEBIT_CARD],
       },

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { LandingPage } from '@/components/landing/landing-page';
 import { auth } from '@/lib/auth';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
 
 const landingDisplay = Syne({
@@ -54,7 +55,7 @@ export default async function Home() {
       redirect('/onboarding');
     }
 
-    redirect('/dashboard');
+    redirect(getAppHomeHref());
   }
 
   return (

@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Suspense } from 'react';
 import {
-  LayoutDashboard,
   FolderTree,
   Receipt,
   Calendar,
@@ -104,12 +103,6 @@ export function AppSidebar({
   ];
 
   const menuItems = [
-    {
-      title: 'Inicio',
-      url: '/dashboard',
-      icon: LayoutDashboard,
-      isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),
-    },
     {
       title: 'Panel financiero',
       url: getCurrentMonthlyPanelHref(),

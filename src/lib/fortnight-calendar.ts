@@ -126,6 +126,22 @@ export function getCurrentMonthlyPanelHref(asOf: Date = new Date()): string {
   return `/monthly/${year}/${String(month).padStart(2, '0')}`;
 }
 
+/**
+ * Post-login / “inicio” destination — Panel financiero for the current month.
+ * Optional `query` preserves owner context (`ownerType` / `ownerId`) or other params.
+ */
+export function getAppHomeHref(
+  query?: string | URLSearchParams | null,
+  asOf: Date = new Date(),
+): string {
+  const base = getCurrentMonthlyPanelHref(asOf);
+  if (!query) return base;
+  const qs =
+    typeof query === 'string' ? query.replace(/^\?/, '') : query.toString();
+  if (!qs) return base;
+  return `${base}?${qs}`;
+}
+
 const MONTH_NAMES_ES_LOWER = [
   'enero',
   'febrero',

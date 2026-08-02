@@ -52,6 +52,7 @@ export async function POST() {
     type: 'CASH',
     provider_icon_key: 'CASH_GENERIC',
     active: true,
+    include_in_liquidity: true,
     cutoff_day: null,
     due_day: null,
   });

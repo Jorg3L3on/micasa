@@ -18,7 +18,7 @@ npx prisma db seed   # Seed database
 npx prisma studio    # Open Prisma Studio
 
 # Utilities
-npm run validate:dashboard-ui       # Check dashboard metric strip consistency
+npm run validate:metric-strips      # Check metric strip consistency (no tinted fills)
 ```
 
 ## Architecture
@@ -54,24 +54,23 @@ The active context is managed client-side in `src/context/finance-context.tsx` a
 ```
 src/
   app/
-    (dashboard)/         # Protected UI pages; each page.tsx does server-side data fetch
+    (app)/               # Protected UI pages; each page.tsx does server-side data fetch
       budgets/           # Budget management
       categories/        # Expense/income categories
       credit-cards/      # Credit card tracking
-      dashboard/         # Main overview
       expense-templates/ # Recurring expense templates
       expenses/          # Expense entry & listing
       fortnight/         # Single fortnight detail view
       fortnights/        # Fortnight list
       house-users/       # Household member management
       income-templates/  # Recurring income templates
-      monthly/           # Monthly summary view
+      monthly/           # Panel financiero (app home / primary planning UI)
       loans/             # Loan tracking and schedules
       transactions/      # Transaction log
       wallets/           # Wallet management
     api/                 # REST API route handlers
-      account/ auth/ budgets/ categories/ credit-cards/
-      dashboard/ expense-templates/ expenses/ fortnights/
+      account/ auth/ alerts/ budgets/ categories/ credit-cards/
+      expense-templates/ expenses/ fortnights/
       house-users/ houses/ income-templates/ incomes/ loans/
       onboarding/ reports/ transactions/ transfers/ users/ wallets/
   components/            # React components; ui/ contains Radix UI primitives
@@ -160,10 +159,13 @@ BudgetFrequency:    DAILY | WEEKLY | BIWEEKLY | CUSTOM
 ```
 
 ### Loans
-`Loan` and `LoanPayment` track household debts with generated schedules (`loan-schedule.ts`, `loan.service.ts`). Wallet-paid installments can link to an `Expense` via `loan_payment_id`. Surfaces: `/loans`, fortnight planner panel, dashboard obligations, liquidity projection, transactions. API: `/api/loans`, `/api/loans/planner`, `/api/loans/payments/[id]`.
+`Loan` and `LoanPayment` track household debts with generated schedules (`loan-schedule.ts`, `loan.service.ts`). Wallet-paid installments can link to an `Expense` via `loan_payment_id`. Surfaces: `/loans`, Panel financiero (fortnight planner), liquidity projection, transactions. API: `/api/loans`, `/api/loans/planner`, `/api/loans/payments/[id]`.
 
 ### Liquidity Projection
-`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, **scheduled loan payments**, and wallet balances. Surfaced in the dashboard via `LiquidityTeaserCard` and the `/api/wallets/liquidity-projection` endpoint.
+`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, **scheduled loan payments**, and wallet balances. Surfaced via `/wallets/liquidity` and the `/api/wallets/liquidity-projection` endpoint.
+
+### App home
+Post-login home is **Panel financiero** (`/monthly/{year}/{month}` via `getAppHomeHref()` / `getCurrentMonthlyPanelHref()`). Legacy `/dashboard` bookmarks redirect in middleware. Header alerts use `GET /api/alerts`. Liquidity annual chart uses `GET /api/wallets/liquidity/monthly-summary`.
 
 ### Credit Card Statement Import
 Supports importing CSV/PDF statements from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, and **DiDi Card**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.
@@ -222,5 +224,5 @@ To re-seed: `npx prisma db seed` (destructive — clears all data first).
 - **Lint exits with code 1** due to pre-existing warnings/errors in the codebase (React hooks violations, unused vars). This is expected; do not treat lint failure as a blocker for CI unless you introduced new errors.
 - **Prisma client output** is `src/generated/prisma` (non-default). Always import from there or via `src/lib/prisma.ts`.
 - After schema changes, run `npx prisma generate` before starting the dev server.
-- The `npm run ci` script runs: `validate:dashboard-ui` → `validate:prisma-imports` → `validate:calendar-dates` → `prisma generate` → `vitest run --coverage` (≈70% floor on `src/lib/finance/**`) → isolation tests → `next build`.
+- The `npm run ci` script runs: `validate:metric-strips` → `validate:prisma-imports` → `validate:calendar-dates` → `prisma generate` → `vitest run --coverage` (≈70% floor on `src/lib/finance/**`) → isolation tests → `next build`.
 - The dev server uses `--webpack` mode by default (`npm run dev`). Turbopack mode is available via `npm run dev:turbo`.

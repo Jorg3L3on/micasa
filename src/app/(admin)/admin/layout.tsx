@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Shield } from 'lucide-react';
 import { auth } from '@/lib/auth';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { requireAdmin } from '@/lib/server/require-admin';
 
 export const metadata: Metadata = {
@@ -53,7 +54,7 @@ export default async function AdminLayout({
               {admin.email}
             </span>
             <Link
-              href="/dashboard"
+              href={getCurrentMonthlyPanelHref()}
               className="rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60 hover:text-foreground"
             >
               Volver a la app

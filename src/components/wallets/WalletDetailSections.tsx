@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Banknote,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Coins,
@@ -46,156 +45,43 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import type { WalletDetail } from '@/types/wallet-movements';
 
-const heroTintClass = (wallet?: WalletDetail) => {
-  if (!wallet) {
-    return {
-      wash: 'from-emerald-500/12 via-teal-500/5 dark:from-emerald-950/80 dark:via-teal-950/40',
-      orbA: 'bg-emerald-500/15 dark:bg-emerald-600/25',
-      orbB: 'bg-teal-500/10 dark:bg-blue-600/20',
-    };
-  }
-  if (wallet.amount < 0) {
-    return {
-      wash: 'from-rose-500/14 via-red-500/6 dark:from-rose-950/80 dark:via-red-950/40',
-      orbA: 'bg-rose-500/18 dark:bg-rose-600/28',
-      orbB: 'bg-red-500/10 dark:bg-orange-600/18',
-    };
-  }
-  if (wallet.type === 'CASH') {
-    return {
-      wash: 'from-emerald-500/12 via-teal-500/5 dark:from-emerald-950/80 dark:via-teal-950/40',
-      orbA: 'bg-emerald-500/15 dark:bg-emerald-600/25',
-      orbB: 'bg-teal-500/10 dark:bg-cyan-600/20',
-    };
-  }
-  return {
-    wash: 'from-blue-500/12 via-indigo-500/6 dark:from-blue-950/80 dark:via-indigo-950/40',
-    orbA: 'bg-blue-500/15 dark:bg-blue-600/25',
-    orbB: 'bg-indigo-500/10 dark:bg-violet-600/20',
-  };
-};
-
 export const WalletHeroZone = ({
-  wallet,
   children,
 }: {
+  /** Kept for call-site compatibility; hero no longer tints the page background. */
   wallet?: WalletDetail;
   children: ReactNode;
-}) => {
-  const tint = heroTintClass(wallet);
-  return (
-    <div className="relative -mx-4 overflow-hidden px-4 pb-2 sm:-mx-0 sm:rounded-b-[1.75rem]">
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 bg-linear-to-b to-transparent dark:to-background',
-          tint.wash,
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          'pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full blur-3xl',
-          tint.orbA,
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          'pointer-events-none absolute -right-20 top-8 h-48 w-48 rounded-full blur-3xl',
-          tint.orbB,
-        )}
-        aria-hidden
-      />
-      <div className="relative space-y-4">{children}</div>
-    </div>
-  );
-};
-
-type WalletWorkspaceSnap = 'peek' | 'half' | 'full';
-
-const WALLET_SNAP_MAX_HEIGHT: Record<WalletWorkspaceSnap, string> = {
-  peek: 'max-h-0',
-  half: 'max-h-[54vh]',
-  full: 'max-h-[calc(100vh-12rem)]',
-};
+}) => (
+  <div className="relative -mx-4 px-4 pb-2 sm:-mx-0 sm:pb-3">
+    <div className="relative flex flex-col gap-5 sm:gap-6">{children}</div>
+  </div>
+);
 
 type WalletPeriodWorkspaceShellProps = {
   chrome: ReactNode;
   children: ReactNode;
 };
 
+/** Period summary + tabs — calm card like Panel financiero (no mobile drawer). */
 export const WalletPeriodWorkspaceShell = ({
   chrome,
   children,
-}: WalletPeriodWorkspaceShellProps) => {
-  const [snap, setSnap] = useState<WalletWorkspaceSnap>('peek');
-
-  const handleCycleSnap = useCallback(() => {
-    setSnap((current) => {
-      if (current === 'peek') return 'half';
-      if (current === 'half') return 'full';
-      return 'peek';
-    });
-  }, []);
-
-  return (
-    <>
-      <div className="lg:hidden">
-        <div className="relative z-10 -mt-3 shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.12)] dark:shadow-[0_-10px_40px_-16px_rgba(0,0,0,0.45)]">
-          <div className="flex flex-col overflow-hidden rounded-t-[1.75rem] border border-border/60 bg-card">
-            <button
-              type="button"
-              className="flex w-full shrink-0 flex-col items-center px-4 pt-3 pb-2"
-              onClick={handleCycleSnap}
-              aria-expanded={snap !== 'peek'}
-              aria-label={
-                snap === 'full'
-                  ? 'Contraer workspace de billetera'
-                  : 'Expandir workspace de billetera'
-              }
-            >
-              <span
-                className="mb-2 h-1 w-10 rounded-full bg-muted-foreground/25"
-                aria-hidden
-              />
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <ChevronUp
-                  className={cn(
-                    'h-3 w-3 transition-transform',
-                    snap === 'peek' && 'rotate-180',
-                  )}
-                  aria-hidden data-icon="inline-end" />
-                {snap === 'peek' ? 'Vista compacta' : snap === 'half' ? 'Medio' : 'Completo'}
-              </span>
-            </button>
-
-            <div className="sticky top-0 z-10 shrink-0 border-b border-border/50 bg-card px-4 pb-3">
-              {chrome}
-            </div>
-
-            <div
-              className={cn(
-                'overflow-y-auto px-4 pb-4 transition-[max-height] duration-300 ease-out',
-                WALLET_SNAP_MAX_HEIGHT[snap],
-              )}
-            >
-              {children}
-            </div>
-          </div>
-        </div>
+}: WalletPeriodWorkspaceShellProps) => (
+  <div className="mt-0">
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',
+        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
+        'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+      )}
+    >
+      <div className="relative space-y-4">
+        {chrome}
+        <div className="min-w-0">{children}</div>
       </div>
-
-      <div className="relative z-10 -mt-3 hidden lg:block">
-        <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-4 pb-4 shadow-sm">
-          <div className="sticky top-16 z-10 -mx-4 border-b border-border/50 bg-card px-4 pb-3 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
-            {chrome}
-          </div>
-          <div className="pt-4">{children}</div>
-        </div>
-      </div>
-    </>
-  );
-};
+    </div>
+  </div>
+);
 
 export const WalletDetailTabsList = ({ children }: { children: ReactNode }) => (
   <div className={creditCardSegmentedTabChromeClass}>
@@ -223,7 +109,7 @@ type HeaderActionsProps = {
   canImport: boolean;
   onRegisterExpense: () => void;
   onRegisterIncome: () => void;
-  onAdjustBalance: () => void;
+  onEditWallet: () => void;
   onImport: () => void;
   onExportCsv: () => void;
 };
@@ -234,7 +120,7 @@ export const WalletDetailHeaderActions = ({
   canImport,
   onRegisterExpense,
   onRegisterIncome,
-  onAdjustBalance,
+  onEditWallet,
   onImport,
   onExportCsv,
 }: HeaderActionsProps) => (
@@ -272,9 +158,9 @@ export const WalletDetailHeaderActions = ({
             </DropdownMenuItem>
           </>
         ) : null}
-        <DropdownMenuItem onClick={onAdjustBalance} className="cursor-pointer">
+        <DropdownMenuItem onClick={onEditWallet} className="cursor-pointer">
           <Pencil className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Ajustar saldo
+          Editar billetera
         </DropdownMenuItem>
         {canImport ? (
           <DropdownMenuItem onClick={onImport} className="cursor-pointer">
@@ -307,15 +193,20 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
   const isNegative = wallet.amount < 0;
   const FallbackIcon = isCash ? Banknote : Landmark;
 
+  // Funding wallets only (CASH / DEBIT_CARD) land here — credit types open
+  // /credit-cards/[id], whose hero keeps the amount above límite + utilization
+  // chrome so it never sits flush against overflow-hidden.
   return (
     <div
-      className="relative mx-auto w-full max-w-md lg:max-w-lg"
+      className="relative mx-auto w-full max-w-sm"
       role="region"
       aria-label={`Billetera ${wallet.name}`}
     >
       <div
         className={cn(
-          'relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl border p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          // Grow with content (no fixed aspect-ratio): iOS Safari clips large
+          // mono balances when the amount is the last row inside overflow-hidden.
+          'relative w-full overflow-hidden rounded-2xl border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             (isCash
               ? 'border-emerald-500/40 bg-linear-to-br from-emerald-700 via-emerald-900 to-slate-950'
@@ -340,7 +231,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-rose-400/80 to-transparent" />
         ) : null}
 
-        <div className="relative flex h-full flex-col justify-between">
+        <div className="relative flex min-h-[10.75rem] flex-col justify-between gap-6 sm:min-h-[12rem]">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {wallet.provider_icon_key ? (
@@ -369,13 +260,14 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
             ) : null}
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
               Saldo disponible
             </p>
             <p
               className={cn(
-                'text-3xl font-bold font-mono tabular-nums tracking-tight sm:text-4xl',
+                // leading-snug: WebKit clips glyph ink at line-height:1 inside overflow-hidden
+                'break-words text-2xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-3xl',
                 isNegative && 'text-rose-200',
               )}
             >

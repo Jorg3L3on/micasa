@@ -370,6 +370,8 @@ model Wallet {
   cutoff_day                   Int?
   due_day                      Int?
   active                       Boolean           @default(true)
+  /// Si false, se excluye del saldo de liquidez (efectivo + débito). Solo aplica a CASH/DEBIT_CARD.
+  include_in_liquidity         Boolean           @default(true)
   last_paid_period             String?
 
   user_id  Int?

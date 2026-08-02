@@ -13,8 +13,11 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
   BookmarkIcon,
+  CreditCard,
+  List,
   MoreVertical,
   Pencil,
+  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import {
@@ -187,7 +190,7 @@ export const WalletListCard = ({
             type="button"
             onClick={handleCardActivate}
             className={cn(
-              'group relative flex aspect-[1.585/1] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015]',
+              'group relative flex min-h-[11.5rem] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015] sm:min-h-[12.5rem]',
               onDarkSurface
                 ? 'text-white ring-1 ring-inset ring-white/10 hover:shadow-[0_22px_44px_-18px_rgba(8,12,22,0.95)]'
                 : useProviderGradient
@@ -268,14 +271,22 @@ export const WalletListCard = ({
               </div>
             </div>
 
-            <div className="relative z-0 mt-auto flex items-end justify-between gap-3 pt-3">
+            <div
+              className={cn(
+                'relative z-0 mt-auto flex items-end justify-between gap-3 pt-3',
+                // Funding cards lack the credit utilization bar that buffers the
+                // bottom edge — keep extra padding so Saldo never clips on iOS.
+                isFunding && 'pb-1',
+              )}
+            >
               <div className="min-w-0">
                 <p className={cn('text-[10px] font-medium uppercase tracking-wider', mutedText)}>
                   {isCard ? 'Deuda' : 'Saldo'}
                 </p>
                 <p
                   className={cn(
-                    'mt-1 truncate font-mono text-2xl font-bold leading-none tabular-nums tracking-tight',
+                    // leading-snug: WebKit clips glyph ink when line-height is 1 inside overflow-hidden.
+                    'mt-1 break-words font-mono text-2xl font-bold leading-snug tabular-nums tracking-tight',
                     hasAlert
                       ? onDarkSurface
                         ? 'text-rose-300'
@@ -425,6 +436,7 @@ export const WalletListCard = ({
                   href={`/credit-cards/${wallet.id}${ownerQueryString}`}
                   className="cursor-pointer"
                 >
+                  <CreditCard className="mr-2 h-4 w-4" data-icon="inline-start" />
                   Ver estado de cuenta
                 </Link>
               </DropdownMenuItem>
@@ -435,6 +447,7 @@ export const WalletListCard = ({
                   href={`/wallets/${wallet.id}${ownerQueryString}`}
                   className="cursor-pointer"
                 >
+                  <List className="mr-2 h-4 w-4" data-icon="inline-start" />
                   Ver movimientos
                 </Link>
               </DropdownMenuItem>
@@ -444,6 +457,7 @@ export const WalletListCard = ({
               onClick={() => onOpenBalance(wallet)}
               className="cursor-pointer"
             >
+              <SlidersHorizontal className="mr-2 h-4 w-4" data-icon="inline-start" />
               Editar saldo
             </DropdownMenuItem>
             <DropdownMenuItem

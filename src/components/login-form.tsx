@@ -6,6 +6,7 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -47,7 +48,7 @@ export function LoginForm({
         return;
       }
 
-      router.push(`/dashboard${queryString ? `?${queryString}` : ''}`);
+      router.push(getAppHomeHref(queryString));
       router.refresh();
     } catch (e) {
       console.error(e);
