@@ -190,7 +190,7 @@ export const WalletListCard = ({
             type="button"
             onClick={handleCardActivate}
             className={cn(
-              'group relative flex aspect-[1.585/1] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015]',
+              'group relative flex min-h-[11.5rem] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015] sm:min-h-[12.5rem]',
               onDarkSurface
                 ? 'text-white ring-1 ring-inset ring-white/10 hover:shadow-[0_22px_44px_-18px_rgba(8,12,22,0.95)]'
                 : useProviderGradient
@@ -278,7 +278,8 @@ export const WalletListCard = ({
                 </p>
                 <p
                   className={cn(
-                    'mt-1 truncate font-mono text-2xl font-bold leading-none tabular-nums tracking-tight',
+                    // leading-tight: WebKit clips glyph ink when line-height is 1 inside overflow-hidden.
+                    'mt-1 break-words font-mono text-2xl font-bold leading-tight tabular-nums tracking-tight',
                     hasAlert
                       ? onDarkSurface
                         ? 'text-rose-300'

@@ -85,7 +85,7 @@ const WalletDetailSkeleton = () => (
         <Skeleton className="h-9 w-28" />
         <Skeleton className="h-9 w-9 rounded-lg" />
       </div>
-      <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-xs rounded-2xl sm:max-w-sm" />
+      <Skeleton className="mx-auto min-h-[10.75rem] w-full max-w-sm rounded-2xl sm:min-h-[12rem]" />
     </div>
     <div className="flex justify-center gap-6 py-7 sm:py-9">
       {Array.from({ length: 4 }).map((_, i) => (
