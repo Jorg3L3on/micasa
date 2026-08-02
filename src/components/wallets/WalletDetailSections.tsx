@@ -105,7 +105,7 @@ export const WalletHeroZone = ({
         )}
         aria-hidden
       />
-      <div className="relative flex flex-col gap-5 sm:gap-6">{children}</div>
+      <div className="relative flex flex-col gap-5 sm:gap-6 [&>*:nth-child(3)]:mt-3 sm:[&>*:nth-child(3)]:mt-4">{children}</div>
     </div>
   );
 };
@@ -381,7 +381,7 @@ export const WalletQuickActions = ({
 
   return (
     <div
-      className="mt-1 flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:mt-2 sm:justify-center sm:gap-6"
+      className="flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:justify-center sm:gap-6"
       role="group"
       aria-label="Acciones rápidas"
     >
