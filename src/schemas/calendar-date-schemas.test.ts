@@ -9,7 +9,6 @@ import {
   createLoanSchema,
   updateLoanPaymentSchema,
 } from './loan.schema';
-import { registerPantryReceiptExpenseBodySchema } from './pantry-receipt-expense.schema';
 
 describe('calendar date schemas', () => {
   it('accepts valid MiCasa calendar dates', () => {
@@ -52,7 +51,7 @@ describe('calendar date schemas', () => {
     ).toThrow();
   });
 
-  it('validates loan and pantry receipt expense date fields with the shared rule', () => {
+  it('validates loan date fields with the shared rule', () => {
     expect(
       createLoanSchema.parse({
         name: 'Nomina',
@@ -72,14 +71,6 @@ describe('calendar date schemas', () => {
       updateLoanPaymentSchema.parse({
         action: 'MARK_PAID',
         paidAt: '05/06/2026',
-      }),
-    ).toThrow();
-
-    expect(() =>
-      registerPantryReceiptExpenseBodySchema.parse({
-        categoryId: 1,
-        walletId: 2,
-        date: '2026-02-31',
       }),
     ).toThrow();
   });

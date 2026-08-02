@@ -19,7 +19,6 @@ npx prisma studio    # Open Prisma Studio
 
 # Utilities
 npm run validate:dashboard-ui       # Check dashboard metric strip consistency
-npm run backfill:pantry-products    # Populate pantry products from existing receipts
 ```
 
 ## Architecture
@@ -68,14 +67,13 @@ src/
       income-templates/  # Recurring income templates
       monthly/           # Monthly summary view
       loans/             # Loan tracking and schedules
-      pantry/            # Pantry / grocery tracking
       transactions/      # Transaction log
       wallets/           # Wallet management
     api/                 # REST API route handlers
       account/ auth/ budgets/ categories/ credit-cards/
       dashboard/ expense-templates/ expenses/ fortnights/
       house-users/ houses/ income-templates/ incomes/ loans/
-      onboarding/ pantry/ reports/ transactions/ transfers/ users/ wallets/
+      onboarding/ reports/ transactions/ transfers/ users/ wallets/
   components/            # React components; ui/ contains Radix UI primitives
   context/               # finance-context.tsx — active owner context (user vs house)
   lib/
@@ -103,10 +101,6 @@ src/
         parse-ca-efectivo-statement.ts
         rollback-statement-import.service.ts
         mercado-pago-statement-import.service.ts
-      pantry/                    # Server-side pantry processing
-        compute-pantry-insights.ts
-        parse-receipt-upload.ts
-        sync-pantry-products-from-lines.ts
   schemas/               # Zod schemas per domain (one file per resource)
   types/                 # TypeScript types/DTOs
   generated/prisma/      # Auto-generated Prisma client (do not edit)
@@ -120,8 +114,7 @@ prisma/
 **Auth & household:** `User`, `House`, `HouseMember`  
 **Planning:** `Fortnight`, `Category`, `Expense`, `ExpenseTemplate`, `Income`, `IncomeTemplate`, `Budget`, `BudgetPeriod`, `BudgetAllocation`, `Transfer`  
 **Wallets & cards:** `Wallet`, `CreditCardPayment`, `CreditCardStatementImport`  
-**Loans:** `Loan`, `LoanPayment`  
-**Pantry:** `PantryReceipt`, `PantryReceiptLine`, `PantryProduct`, `PantryShoppingCart`, `PantryShoppingCartItem`, `PantryShoppingCartActivity`
+**Loans:** `Loan`, `LoanPayment`
 
 ### Prisma Client
 Generated to `src/generated/prisma` (not the default location). Always use the singleton from `src/lib/prisma.ts` (`import prisma from '@/lib/prisma'`). The former duplicate `db.ts` was removed — auth and all services share this one extended client. After schema changes, run `npx prisma generate`.

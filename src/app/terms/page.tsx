@@ -43,8 +43,8 @@ export default function TermsPage() {
       <h2>1. El servicio</h2>
       <p>
         MiCasa es una herramienta de planificación financiera personal y del
-        hogar (quincenas, gastos, ingresos, billeteras, tarjetas, préstamos,
-        despensa y módulos relacionados). El producto puede estar en evolución;
+        hogar (quincenas, gastos, ingresos, billeteras, tarjetas, préstamos y
+        módulos relacionados). El producto puede estar en evolución;
         funciones pueden cambiar, pausarse o retirarse con aviso razonable
         cuando sea posible.
       </p>
@@ -97,9 +97,9 @@ export default function TermsPage() {
 
       <h2>5. Archivos e importaciones</h2>
       <p>
-        Si subes estados de cuenta, recibos u otros archivos, declaras que
-        tienes derecho a hacerlo y que el contenido es lícito. Eres responsable
-        de la exactitud de los datos importados; MiCasa puede interpretar mal o
+        Si subes estados de cuenta u otros archivos, declaras que tienes
+        derecho a hacerlo y que el contenido es lícito. Eres responsable de la
+        exactitud de los datos importados; MiCasa puede interpretar mal o
         incompletar extracciones automáticas. Revisa siempre los resultados
         antes de tomar decisiones.
       </p>

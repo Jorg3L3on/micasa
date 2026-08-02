@@ -18,9 +18,6 @@ async function main() {
    * CLEAN DATABASE (order respects FK constraints)
    * Default password for all users: temp1234
    */
-  await prisma.pantryReceiptLine.deleteMany();
-  await prisma.pantryReceipt.deleteMany();
-  await prisma.pantryProduct.deleteMany();
   await prisma.creditCardStatementImport.deleteMany();
   await prisma.creditCardPayment.deleteMany();
   await prisma.budgetPeriod.deleteMany();

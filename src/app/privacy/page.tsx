@@ -67,10 +67,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong className="text-foreground">Archivos que subes:</strong>{' '}
-          estados de cuenta (por ejemplo PDF/CSV de emisores soportados) y
-          recibos de despensa (imágenes o documentos), junto con el texto o
-          líneas que el sistema extrae de esos archivos para prestarte el
-          servicio.
+          estados de cuenta (por ejemplo PDF/CSV de emisores soportados), junto
+          con el texto o líneas que el sistema extrae de esos archivos para
+          prestarte el servicio.
         </li>
         <li>
           <strong className="text-foreground">Contexto de hogar:</strong> si
@@ -102,10 +101,10 @@ export default function PrivacyPage() {
         <li>
           Prestarte la planificación financiera por quincenas y los módulos
           relacionados (gastos, ingresos, billeteras, tarjetas, préstamos,
-          despensa, etc.).
+          etc.).
         </li>
         <li>
-          Procesar importaciones de estados de cuenta y recibos que tú subes.
+          Procesar importaciones de estados de cuenta que tú subes.
         </li>
         <li>
           Permitir la colaboración en hogares compartidos según roles

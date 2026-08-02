@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { getDashboardData } from '@/features/dashboard/server/dashboard.service';
 import CreateMonthCard from '@/components/CreateMonthCard';
 import type { DashboardData, PeriodView } from '@/types/dashboard';
@@ -40,17 +39,6 @@ async function loadDashboardData(
   }
 }
 
-function buildLegacyPantryRedirectUrl(params: {
-  ownerType?: string;
-  ownerId?: string;
-}): string {
-  const query = new URLSearchParams();
-  if (params.ownerType) query.set('ownerType', params.ownerType);
-  if (params.ownerId) query.set('ownerId', params.ownerId);
-  const qs = query.toString();
-  return qs ? `/pantry?${qs}` : '/pantry';
-}
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -59,16 +47,11 @@ export default async function DashboardPage({
     month?: string;
     year?: string;
     period?: string;
-    tab?: string;
     ownerType?: string;
     ownerId?: string;
   }>;
 }) {
   const params = await searchParams;
-
-  if (params.tab === 'despensa') {
-    redirect(buildLegacyPantryRedirectUrl(params));
-  }
 
   const dashboardData = await loadDashboardData(params);
 

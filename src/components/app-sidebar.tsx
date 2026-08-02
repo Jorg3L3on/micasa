@@ -11,7 +11,6 @@ import {
   HandCoins,
   Home,
   PiggyBank,
-  ShoppingBasket,
   Wallet,
 } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -166,32 +165,6 @@ export function AppSidebar({
         pathname.startsWith('/wallets/liquidity') ||
         pathname.startsWith('/house-users'),
       items: catalogItems,
-    },
-    {
-      title: 'Despensa',
-      url: '#',
-      icon: ShoppingBasket,
-      isActive:
-        pathname.startsWith('/pantry/receipts') ||
-        pathname.startsWith('/pantry/products') ||
-        pathname.startsWith('/pantry/shopping'),
-      items: [
-        {
-          title: 'Recibos',
-          url: '/pantry/receipts',
-          isActive: pathname.startsWith('/pantry/receipts'),
-        },
-        {
-          title: 'Productos',
-          url: '/pantry/products',
-          isActive: pathname.startsWith('/pantry/products'),
-        },
-        {
-          title: 'Lista de compras',
-          url: '/pantry/shopping',
-          isActive: pathname.startsWith('/pantry/shopping'),
-        },
-      ],
     },
   ];
 
