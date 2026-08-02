@@ -83,7 +83,7 @@ export const WalletHeroZone = ({
 }) => {
   const tint = heroTintClass(wallet);
   return (
-    <div className="relative -mx-4 overflow-hidden px-4 pb-4 sm:-mx-0 sm:rounded-b-xl sm:pb-5">
+    <div className="relative -mx-4 overflow-hidden px-4 pb-5 sm:-mx-0 sm:pb-6">
       <div
         className={cn(
           'pointer-events-none absolute inset-0 bg-linear-to-b to-transparent dark:to-background',
@@ -120,7 +120,7 @@ export const WalletPeriodWorkspaceShell = ({
   chrome,
   children,
 }: WalletPeriodWorkspaceShellProps) => (
-  <div className="mt-6 sm:mt-8">
+  <div className="mt-8 sm:mt-10">
     <div
       className={cn(
         'relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',
