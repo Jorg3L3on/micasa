@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Card,
@@ -160,22 +161,17 @@ export function ExpenseTemplateForm({
                     <FormItem>
                       <FormLabel>Monto por defecto (opcional)</FormLabel>
                       <FormControl>
-                        <Input
+                        <CurrencyInput
                           className={FIELD_CLASSNAME}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          placeholder="0.00 MXN"
-                          value={field.value ?? ''}
-                          onChange={(event) =>
-                            field.onChange(
-                              event.target.value
-                                ? Number.parseFloat(event.target.value)
-                                : null,
-                            )
+                          placeholder="0.00"
+                          value={field.value ?? 0}
+                          onChange={(val) =>
+                            field.onChange(val > 0 ? val : null)
                           }
                           onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          aria-label="Monto por defecto"
                         />
                       </FormControl>
                       <FormDescription className="text-xs">

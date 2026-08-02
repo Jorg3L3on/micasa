@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Select,
   SelectContent,
@@ -94,7 +95,7 @@ type ExpenseCardBodyProps = {
   categories: { id: string; name: string }[];
   wallets: { id: string; name: string }[];
   onNameChange: (name: string) => void;
-  onAmountChange: (value: string) => void;
+  onAmountChange: (value: number) => void;
   onCategoryChange: (categoryId: string) => void;
   onWalletChange: (walletId: string) => void;
   onRecurrenceChange: (frequency: 'NONE' | 'FIRST' | 'SECOND' | 'BOTH') => void;
@@ -163,24 +164,13 @@ function ExpenseCardBody({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`expense-amount-${expense.id}`}>Monto</Label>
-          <div className="flex items-center gap-2">
-            <span
-              className="text-muted-foreground w-9 shrink-0 text-xs"
-              aria-hidden
-            >
-              MXN
-            </span>
-            <Input
-              id={`expense-amount-${expense.id}`}
-              type="number"
-              min={0}
-              step={1}
-              value={expense.amount === 0 ? '' : expense.amount}
-              onChange={(e) => onAmountChange(e.target.value)}
-              placeholder="0"
-              className="min-w-0 flex-1"
-            />
-          </div>
+          <CurrencyInput
+            id={`expense-amount-${expense.id}`}
+            value={expense.amount}
+            onChange={onAmountChange}
+            placeholder="0.00"
+            aria-label="Monto del gasto"
+          />
         </div>
 
         <div className="space-y-1.5">
@@ -307,10 +297,9 @@ export default function StepExpenseTemplates() {
     );
   };
 
-  const handleAmountChange = (id: string, value: string) => {
-    const parsed = value === '' ? 0 : Number.parseFloat(value) || 0;
+  const handleAmountChange = (id: string, value: number) => {
     setExpenseTemplates((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, amount: parsed } : e)),
+      prev.map((e) => (e.id === id ? { ...e, amount: value } : e)),
     );
   };
 

@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useFinanceContext } from '@/context/finance-context';
@@ -294,26 +295,18 @@ export default function DashboardQuickExpenseDialog({
                 <FormItem>
                   <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder="0.00"
-                      {...field}
+                    <CurrencyInput
                       value={
                         typeof field.value === 'number' && !Number.isNaN(field.value)
                           ? field.value
-                          : ''
+                          : 0
                       }
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        if (next === '') {
-                          field.onChange(NaN);
-                          return;
-                        }
-                        const parsed = Number.parseFloat(next);
-                        field.onChange(Number.isFinite(parsed) ? parsed : field.value);
-                      }}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      placeholder="0.00"
+                      aria-label="Monto"
                     />
                   </FormControl>
                   <FormMessage />

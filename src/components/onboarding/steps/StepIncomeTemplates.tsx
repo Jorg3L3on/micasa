@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Select,
   SelectContent,
@@ -45,10 +46,9 @@ export default function StepIncomeTemplates() {
     );
   };
 
-  const handleAmountChange = (id: string, value: string) => {
-    const parsed = value === '' ? 0 : Number.parseFloat(value) || 0;
+  const handleAmountChange = (id: string, value: number) => {
     setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.map((i) => (i.id === id ? { ...i, amount: parsed } : i)),
+      prev.map((i) => (i.id === id ? { ...i, amount: value } : i)),
     );
   };
 
@@ -231,23 +231,15 @@ export default function StepIncomeTemplates() {
                     Aproximado por quincena; puedes ajustarlo despues.
                   </p>
                   <div className="flex items-center gap-2">
-                    <span
-                      className="text-muted-foreground w-9 shrink-0 text-xs"
-                      aria-hidden
-                    >
-                      MXN
-                    </span>
-                    <Input
+                    <CurrencyInput
                       id={`income-amount-${income.id}`}
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={income.amount === 0 ? '' : income.amount}
-                      onChange={(e) =>
-                        handleAmountChange(income.id, e.target.value)
+                      value={income.amount}
+                      onChange={(value) =>
+                        handleAmountChange(income.id, value)
                       }
-                      placeholder="0"
+                      placeholder="0.00"
                       className="min-w-0 flex-1"
+                      aria-label="Monto de referencia"
                     />
                   </div>
                 </div>

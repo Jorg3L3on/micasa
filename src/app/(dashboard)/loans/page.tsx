@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -1235,15 +1236,23 @@ export default function LoansPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-principal">Total</Label>
-                <Input
+                <CurrencyInput
                   id="loan-principal"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.principalAmount}
-                  onChange={(e) => setField('principalAmount', e.target.value)}
+                  value={Number(form.principalAmount) || 0}
+                  onChange={(val) =>
+                    setField(
+                      'principalAmount',
+                      val === 0 ? '' : String(val),
+                    )
+                  }
+                  placeholder="0.00"
+                  aria-label="Total del préstamo"
                   aria-invalid={Boolean(formErrors.principalAmount)}
-                  aria-describedby={formErrors.principalAmount ? 'loan-principal-error' : undefined}
+                  aria-describedby={
+                    formErrors.principalAmount
+                      ? 'loan-principal-error'
+                      : undefined
+                  }
                   className={cn(
                     formErrors.principalAmount &&
                       'border-destructive focus-visible:ring-destructive/30',
@@ -1258,15 +1267,20 @@ export default function LoansPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loan-payment">Cantidad del pago</Label>
-                <Input
+                <CurrencyInput
                   id="loan-payment"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.paymentAmount}
-                  onChange={(e) => setField('paymentAmount', e.target.value)}
+                  value={Number(form.paymentAmount) || 0}
+                  onChange={(val) =>
+                    setField('paymentAmount', val === 0 ? '' : String(val))
+                  }
+                  placeholder="0.00"
+                  aria-label="Cantidad del pago"
                   aria-invalid={Boolean(formErrors.paymentAmount)}
-                  aria-describedby={formErrors.paymentAmount ? 'loan-payment-error' : undefined}
+                  aria-describedby={
+                    formErrors.paymentAmount
+                      ? 'loan-payment-error'
+                      : undefined
+                  }
                   className={cn(
                     formErrors.paymentAmount &&
                       'border-destructive focus-visible:ring-destructive/30',

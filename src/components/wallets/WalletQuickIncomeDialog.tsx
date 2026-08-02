@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import type { FinanceContextType } from '@/types/finance-context';
@@ -131,16 +132,13 @@ const WalletQuickIncomeDialog = ({
             <Label htmlFor="wallet-income-amount" className="text-xs">
               Monto
             </Label>
-            <Input
+            <CurrencyInput
               id="wallet-income-amount"
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={Number(amount.replace(/[,\s]/g, '')) || 0}
+              onChange={(val) => setAmount(val === 0 ? '' : String(val))}
               disabled={submitting}
               placeholder="0.00"
+              aria-label="Monto"
             />
           </div>
           <div className="space-y-2">
