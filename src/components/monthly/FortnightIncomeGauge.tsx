@@ -157,19 +157,21 @@ export const FortnightIncomeGauge = ({
           className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
           aria-hidden
         >
-          <span className="flex items-center gap-1">
-            <span
-              className={cn(
-                'inline-block h-1.5 w-1.5 rounded-full',
-                tone === 'danger'
-                  ? 'bg-destructive'
-                  : tone === 'warning'
-                    ? 'bg-amber-500'
-                    : 'bg-emerald-500',
-              )}
-            />
-            <span className="text-[9px] text-muted-foreground">Compromiso</span>
-          </span>
+          {cashRatio > 0.0001 ? (
+            <span className="flex items-center gap-1">
+              <span
+                className={cn(
+                  'inline-block h-1.5 w-1.5 rounded-full',
+                  tone === 'danger'
+                    ? 'bg-destructive'
+                    : tone === 'warning'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500',
+                )}
+              />
+              <span className="text-[9px] text-muted-foreground">Compromiso</span>
+            </span>
+          ) : null}
           <span className="flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
             <span className="text-[9px] text-muted-foreground">Presupuesto</span>
