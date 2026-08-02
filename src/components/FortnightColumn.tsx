@@ -788,7 +788,7 @@ export default function FortnightColumn({
           planningPayrollLoanDeduction={
             summary.planningPayrollLoanDeduction ?? null
           }
-          planningBudgetTotal={summary.planningBudgetTotal ?? 0}
+          planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
           fundingWalletBalanceTotal={
             summary.fundingWalletBalanceTotal ?? 0
           }

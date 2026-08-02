@@ -14,10 +14,10 @@ describe('getFortnightIncomeCommittedPercent', () => {
     expect(getFortnightIncomeCommittedPercent(1_000, 800, 500)).toBe(130);
   });
 
-  it('includes presupuesto when folded into the pending argument', () => {
-    // pagado 10_000 + pendiente 5_000 + presupuesto 6_000 = 21_000 → 100%
-    expect(getFortnightIncomeCommittedPercent(21_000, 10_000, 5_000 + 6_000)).toBe(
-      100,
-    );
+  it('includes presupuesto restante when folded into the pending argument', () => {
+    // pagado 1_200 + restante 1_800 = sobre $3,000 → 14% de 21_000
+    expect(
+      getFortnightIncomeCommittedPercent(21_000, 1_200, 1_800),
+    ).toBe(14);
   });
 });

@@ -11,16 +11,16 @@ import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
-  /** Ingresos menos pagado, pendiente y presupuesto (vista planificación). */
+  /** Ingresos menos pagado, pendiente y resto de presupuesto (vista planificación). */
   incomeRemainder: number;
-  /** Saldos efectivo/débito menos pendiente, nómina y presupuesto de la quincena. */
+  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto. */
   fundingNetInAccounts: number;
   /** Si false, se oculta la tarjeta de liquidez (solo aplica a quincena actual o siguiente). */
   fundingNetApplies?: boolean;
   /** Deducciones de nómina pendientes incluidas en incomeRemainder. */
   payrollDeductionAmount?: number;
-  /** Presupuesto efectivo de la quincena incluido en incomeRemainder / liquidez. */
-  budgetTotalAmount?: number;
+  /** Resto del presupuesto de la quincena incluido en incomeRemainder / liquidez. */
+  budgetRemainingAmount?: number;
   percentCommitted: number;
   showGauge: boolean;
 };
@@ -51,14 +51,14 @@ export const FortnightSummaryHero = ({
   fundingNetInAccounts,
   fundingNetApplies = true,
   payrollDeductionAmount = 0,
-  budgetTotalAmount = 0,
+  budgetRemainingAmount = 0,
   percentCommitted,
   showGauge,
 }: FortnightSummaryHeroProps) => {
   const incomeRemainderHint = (() => {
     const parts = ['lo pagado', 'lo pendiente planeado'];
     if (payrollDeductionAmount > 0) parts.push('las deducciones de nómina');
-    if (budgetTotalAmount > 0) parts.push('el presupuesto');
+    if (budgetRemainingAmount > 0) parts.push('el presupuesto restante');
     if (parts.length === 2) {
       return 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
     }
@@ -69,7 +69,7 @@ export const FortnightSummaryHero = ({
   const liquidityHint = (() => {
     const parts = ['pendiente'];
     if (payrollDeductionAmount > 0) parts.push('nómina');
-    if (budgetTotalAmount > 0) parts.push('presupuesto');
+    if (budgetRemainingAmount > 0) parts.push('presupuesto restante');
     if (parts.length === 1) {
       return 'Saldo en efectivo y débito ahora, menos pendiente de esta quincena';
     }

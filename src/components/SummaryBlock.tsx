@@ -51,7 +51,7 @@ export type IncomeItemBySource = {
 
 type SummaryBlockProps = {
   tenemos: number;
-  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente − presupuesto`. */
+  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente − resto de presupuesto`. */
   libre: number;
   pagado: number;
   pendiente: number;
@@ -76,11 +76,11 @@ type SummaryBlockProps = {
   planningWalletLoanDue?: PlannerWalletLoanDueSummary | null;
   /** Deducciones de nómina pendientes; reducen el ingreso disponible de la quincena. */
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
-  /** Presupuesto efectivo de la quincena (total del sobre); suma al compromiso. */
-  planningBudgetTotal?: number;
+  /** Resto del presupuesto de la quincena (total − spent); suma al compromiso. */
+  planningBudgetRemaining?: number;
   /** Saldos activos Efectivo + Débito (API resumen). */
   fundingWalletBalanceTotal?: number;
-  /** Saldos efectivo/débito menos pendiente, nómina y presupuesto del período (API resumen). */
+  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto (API resumen). */
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
@@ -105,7 +105,7 @@ export default function SummaryBlock({
   planningCardStatementDue = null,
   planningWalletLoanDue = null,
   planningPayrollLoanDeduction = null,
-  planningBudgetTotal = 0,
+  planningBudgetRemaining = 0,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -125,13 +125,14 @@ export default function SummaryBlock({
     userIncome.some((fi) => fi.userIncome && fi.userIncome.length > 0);
 
   const payrollLoanDeduction = planningPayrollLoanDeduction?.total ?? 0;
-  const budgetTotal = planningBudgetTotal > 0 ? planningBudgetTotal : 0;
+  const budgetRemaining =
+    planningBudgetRemaining > 0 ? planningBudgetRemaining : 0;
 
-  /** Compromiso: efectivo/débito + deducciones de nómina + presupuesto del sobre. */
+  /** Compromiso: efectivo/débito + deducciones de nómina + resto del presupuesto. */
   const comprometidoEfectivo =
-    pagado + pendiente + payrollLoanDeduction + budgetTotal;
+    pagado + pendiente + payrollLoanDeduction + budgetRemaining;
 
-  /** Ingreso menos pagado, pendiente, nómina y presupuesto (mismo criterio que el API). */
+  /** Ingreso menos pagado, pendiente, nómina y resto de presupuesto (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
   /**
@@ -154,13 +155,13 @@ export default function SummaryBlock({
     ? pendiente
     : 0;
   const displayBudgetFundingRow = billeterasVsPendienteAplica
-    ? budgetTotal
+    ? budgetRemaining
     : 0;
 
   const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
     tenemos,
     pagado,
-    pendiente + payrollLoanDeduction + budgetTotal,
+    pendiente + payrollLoanDeduction + budgetRemaining,
   );
   const showIncomeRing = tenemos > 0;
 
@@ -250,7 +251,7 @@ export default function SummaryBlock({
           fundingNetInAccounts={displayFundingNet}
           fundingNetApplies={billeterasVsPendienteAplica}
           payrollDeductionAmount={payrollLoanDeduction}
-          budgetTotalAmount={budgetTotal}
+          budgetRemainingAmount={budgetRemaining}
           percentCommitted={incomeCommittedPercent}
           showGauge={showIncomeRing}
         />
@@ -361,11 +362,11 @@ export default function SummaryBlock({
               </p>
             ) : null}
 
-            {budgetTotal > 0 ? (
+            {budgetRemaining > 0 ? (
               <p className="text-[10px] leading-snug text-muted-foreground">
-                Incluye {formatCurrency(budgetTotal)} de presupuesto de la
-                quincena (total del sobre); cuenta como compromiso del ingreso
-                junto con lo pagado y lo pendiente.
+                Incluye {formatCurrency(budgetRemaining)} de presupuesto
+                restante de la quincena (lo aún no gastado del sobre); lo ya
+                gastado entra en Pagado.
               </p>
             ) : null}
 
@@ -488,7 +489,7 @@ export default function SummaryBlock({
                 {displayBudgetFundingRow > 0 ? (
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
-                      Menos presupuesto de la quincena
+                      Menos presupuesto restante de la quincena
                     </span>
                     <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                       −{formatCurrency(displayBudgetFundingRow)}

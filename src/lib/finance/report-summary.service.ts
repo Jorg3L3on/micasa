@@ -19,7 +19,7 @@ import {
   buildExpenseWhereForFortnightScope,
   parseFortnightPeriod,
 } from '@/lib/finance/report-helpers';
-import { getFortnightPlanningBudgetTotal } from '@/lib/finance/monthly-budget-panel.service';
+import { getFortnightPlanningBudgetRemaining } from '@/lib/finance/monthly-budget-panel.service';
 
 export type ReportSummaryResult = {
   totalIncome: number;
@@ -63,10 +63,10 @@ export type ReportSummaryResult = {
   /** Deducciones de nómina pendientes (pestaña Préstamos); reducen el ingreso disponible. */
   planningPayrollLoanDeduction?: { total: number; count: number } | null;
   /**
-   * Presupuesto efectivo de la quincena (total del sobre, no el resto).
-   * Cuenta como compromiso en gauge / libre / liquidez (planificación).
+   * Resto del presupuesto de la quincena (total − spent).
+   * Cuenta como compromiso en gauge / libre / liquidez sin duplicar lo ya en Pagado.
    */
-  planningBudgetTotal?: number;
+  planningBudgetRemaining?: number;
 };
 
 export type GetReportSummaryParams = {
@@ -257,14 +257,14 @@ export const getReportSummary = async (
   const monthNum =
     month != null && month !== '' ? Number.parseInt(month, 10) : NaN;
   const parsedPeriod = parseFortnightPeriod(period);
-  let planningBudgetTotal = 0;
+  let planningBudgetRemaining = 0;
   if (
     excludeCreditInstallment &&
     Number.isFinite(yearNum) &&
     Number.isFinite(monthNum) &&
     parsedPeriod
   ) {
-    planningBudgetTotal = await getFortnightPlanningBudgetTotal(
+    planningBudgetRemaining = await getFortnightPlanningBudgetRemaining(
       ownerFilter,
       yearNum,
       monthNum,
@@ -276,7 +276,7 @@ export const getReportSummary = async (
     totalIncome -
     planningPayrollLoanDeductionTotal -
     totalExpense -
-    planningBudgetTotal;
+    planningBudgetRemaining;
 
   const cardTotal = excludeCreditInstallment
     ? cardExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
@@ -432,7 +432,7 @@ export const getReportSummary = async (
     fundingWalletBalanceTotal -
     totalUnpaid -
     planningPayrollLoanDeductionTotal -
-    planningBudgetTotal;
+    planningBudgetRemaining;
 
   return {
     totalIncome,
@@ -450,7 +450,7 @@ export const getReportSummary = async (
           planningExpenseCount,
           planningPaidExpenseCount,
           planningUnpaidExpenseCount,
-          planningBudgetTotal,
+          planningBudgetRemaining,
           cardCharges:
             cardTotal > 0 || cardExpenseCount > 0
               ? {

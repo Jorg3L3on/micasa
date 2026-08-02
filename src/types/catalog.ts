@@ -112,8 +112,8 @@ export type ReportsSummaryFundingFields = {
   fundingWalletBalanceTotal: number;
   fundingNetVsPendingExpense: number;
   fundingWalletBreakdown: FundingWalletBreakdownItem[];
-  /** Presupuesto efectivo de la quincena (total del sobre) incluido en el neto cuando aplica. */
-  planningBudgetTotal?: number;
+  /** Resto del presupuesto de la quincena (total − spent) incluido en el neto cuando aplica. */
+  planningBudgetRemaining?: number;
 };
 
 export type ExpenseTemplateListItem = {

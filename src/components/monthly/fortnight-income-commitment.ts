@@ -1,4 +1,4 @@
-/** % del ingreso de la quincena ya comprometido (pagado + pendiente [+ nómina] [+ presupuesto]). */
+/** % del ingreso de la quincena ya comprometido (pagado + pendiente [+ nómina] [+ presupuesto restante]). */
 export const getFortnightIncomeCommittedPercent = (
   periodIncome: number,
   paid: number,

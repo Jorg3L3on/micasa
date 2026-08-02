@@ -79,45 +79,18 @@ export async function getMonthlyBudgetPanel(
 }
 
 /**
- * Presupuesto efectivo (pro-rateado) de una quincena — solo el monto total
- * asignado, sin gasto. Usado por el resumen de planificación como compromiso
- * completo del sobre (igual que otros pendientes: se cuenta el total, no el resto).
+ * Resto del presupuesto de la quincena (`available` = total − spent).
+ * Se suma al compromiso del resumen sin recontar lo ya reflejado en Pagado:
+ * p. ej. sobre $3,000 con $1,200 gastados → cuenta $1,800 (total efectivo $3,000).
  */
-export async function getFortnightPlanningBudgetTotal(
+export async function getFortnightPlanningBudgetRemaining(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
 ): Promise<number> {
-  await ensureBudgetPeriodsForMonth(ownerFilter, year, month);
-
-  const bounds = getCalendarFortnightBoundsForMonth(year, month);
-  const scope = period === 'FIRST' ? bounds.first : bounds.second;
-
-  const periods = await prisma.budgetPeriod.findMany({
-    where: {
-      start_date: { lte: scope.end_date },
-      end_date: { gte: scope.start_date },
-      budget: { ...ownerFilter, active: true },
-    },
-    select: {
-      start_date: true,
-      end_date: true,
-      budget: { select: { total_amount: true } },
-    },
-  });
-
-  let totalBudget = 0;
-  for (const periodRow of periods) {
-    const overlap = getPeriodOverlap(periodRow, scope);
-    if (!overlap) continue;
-    totalBudget += computeEffectiveAllocated(
-      Number(periodRow.budget.total_amount),
-      periodRow,
-      overlap,
-    );
-  }
-  return totalBudget;
+  const panel = await getMonthlyBudgetPanel(ownerFilter, year, month);
+  return period === 'FIRST' ? panel.first.available : panel.second.available;
 }
 
 function emptyScope(): MonthlyBudgetScope {
