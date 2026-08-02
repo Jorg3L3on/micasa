@@ -400,49 +400,23 @@ export default function SummaryBlock({
             ) : null}
 
             {/* Desglose billeteras vs pendiente (mismo criterio que la tarjeta héroe) */}
+            {billeterasVsPendienteAplica ? (
             <div
-              className={cn(
-                'rounded-xl border px-3 py-2.5',
-                billeterasVsPendienteAplica
-                  ? 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 to-transparent dark:from-emerald-500/10 dark:to-transparent'
-                  : 'border-border/50 bg-gradient-to-br from-muted/20 to-transparent text-muted-foreground dark:from-muted/15',
-              )}
+              className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 to-transparent px-3 py-2.5 dark:from-emerald-500/10 dark:to-transparent"
               role="region"
               aria-label="Desglose de billeteras frente al pendiente de la quincena"
             >
-              <h4
-                className={cn(
-                  'mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider',
-                  billeterasVsPendienteAplica
-                    ? 'text-emerald-700/90 dark:text-emerald-400/90'
-                    : 'text-muted-foreground',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1',
-                    billeterasVsPendienteAplica
-                      ? 'bg-emerald-500/15 ring-emerald-500/25'
-                      : 'bg-muted/50 ring-border/50',
-                  )}
-                >
+              <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700/90 dark:text-emerald-400/90">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 ring-1 ring-emerald-500/25">
                   <Banknote
-                    className={cn(
-                      'h-3 w-3',
-                      billeterasVsPendienteAplica
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-muted-foreground',
-                    )}
-                    aria-hidden data-icon="inline-start" />
+                    className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                 </span>
                 Desglose de billeteras vs pendiente
               </h4>
-              {!billeterasVsPendienteAplica ? (
-                <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-                  Solo aplica a la quincena en curso o a la siguiente. Aquí se
-                  muestran $0,00.
-                </p>
-              ) : fundingWalletBreakdown.length > 0 ? (
+              {fundingWalletBreakdown.length > 0 ? (
                 <div className="space-y-1">
                   {fundingWalletBreakdown.map((w) => (
                     <div
@@ -466,27 +440,13 @@ export default function SummaryBlock({
                   No hay billeteras activas de efectivo o débito.
                 </p>
               )}
-              <Separator
-                className={cn(
-                  'my-2',
-                  billeterasVsPendienteAplica
-                    ? 'bg-emerald-500/15'
-                    : 'bg-border/50',
-                )}
-              />
+              <Separator className="my-2 bg-emerald-500/15" />
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-muted-foreground">
                     Total billeteras (efectivo + débito)
                   </span>
-                  <span
-                    className={cn(
-                      'font-mono font-semibold tabular-nums',
-                      billeterasVsPendienteAplica
-                        ? 'text-foreground'
-                        : 'text-muted-foreground',
-                    )}
-                  >
+                  <span className="font-mono font-semibold tabular-nums text-foreground">
                     {formatCurrency(displayFundingWalletTotal)}
                   </span>
                 </div>
@@ -494,14 +454,7 @@ export default function SummaryBlock({
                   <span className="text-muted-foreground">
                     Menos pendiente de la quincena (no pagado)
                   </span>
-                  <span
-                    className={cn(
-                      'font-mono font-semibold tabular-nums',
-                      billeterasVsPendienteAplica
-                        ? 'text-amber-700 dark:text-amber-400'
-                        : 'text-muted-foreground',
-                    )}
-                  >
+                  <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                     −{formatCurrency(displayPendienteFundingRow)}
                   </span>
                 </div>
@@ -510,43 +463,21 @@ export default function SummaryBlock({
                     <span className="text-muted-foreground">
                       Menos deducciones de nómina (préstamos)
                     </span>
-                    <span
-                      className={cn(
-                        'font-mono font-semibold tabular-nums',
-                        billeterasVsPendienteAplica
-                          ? 'text-amber-700 dark:text-amber-400'
-                          : 'text-muted-foreground',
-                      )}
-                    >
+                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                       −{formatCurrency(payrollLoanDeduction)}
                     </span>
                   </div>
                 ) : null}
-                <div
-                  className={cn(
-                    'flex items-center justify-between gap-2 border-t pt-2 text-xs font-semibold',
-                    billeterasVsPendienteAplica
-                      ? 'border-emerald-500/20'
-                      : 'border-border/50',
-                  )}
-                >
-                  <span
-                    className={
-                      billeterasVsPendienteAplica
-                        ? 'text-emerald-800 dark:text-emerald-300'
-                        : 'text-muted-foreground'
-                    }
-                  >
+                <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-2 text-xs font-semibold">
+                  <span className="text-emerald-800 dark:text-emerald-300">
                     = Billeteras vs pendiente
                   </span>
                   <span
                     className={cn(
                       'font-mono tabular-nums',
-                      billeterasVsPendienteAplica
-                        ? displayFundingNet >= 0
-                          ? 'text-emerald-700 dark:text-emerald-300'
-                          : 'text-destructive'
-                        : 'text-muted-foreground',
+                      displayFundingNet >= 0
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-destructive',
                     )}
                   >
                     {formatCurrency(displayFundingNet)}
@@ -554,6 +485,7 @@ export default function SummaryBlock({
                 </div>
               </div>
             </div>
+            ) : null}
 
             {/* Income breakdown */}
             {(incomeItems.length > 0 || hasUserIncome) && (

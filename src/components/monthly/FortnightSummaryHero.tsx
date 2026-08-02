@@ -15,7 +15,7 @@ type FortnightSummaryHeroProps = {
   incomeRemainder: number;
   /** Saldos efectivo/débito menos pendiente de la quincena. */
   fundingNetInAccounts: number;
-  /** Si false, el neto en cuentas no aplica a esta quincena (muestra 0). */
+  /** Si false, se oculta la tarjeta de liquidez (solo aplica a quincena actual o siguiente). */
   fundingNetApplies?: boolean;
   /** Deducciones de nómina pendientes incluidas en incomeRemainder. */
   payrollDeductionAmount?: number;
@@ -57,9 +57,8 @@ export const FortnightSummaryHero = ({
       ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
       : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
 
-  const liquidityHint = fundingNetApplies
-    ? 'Saldo en efectivo y débito ahora, menos pendiente y nómina de esta quincena'
-    : 'Solo aplica a la quincena en curso o a la siguiente';
+  const liquidityHint =
+    'Saldo en efectivo y débito ahora, menos pendiente y nómina de esta quincena';
 
   const gauge = showGauge ? (
     <FortnightIncomeGauge
@@ -78,7 +77,12 @@ export const FortnightSummaryHero = ({
           <div className="hidden shrink-0 lg:block">{gauge}</div>
         ) : null}
 
-        <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:gap-3">
+        <div
+          className={cn(
+            'grid min-w-0 flex-1 gap-2 sm:gap-3',
+            fundingNetApplies ? 'grid-cols-2' : 'grid-cols-1',
+          )}
+        >
           <div className={subBoxClass}>
             <div className="mb-1 flex items-center gap-1.5">
               <span
@@ -102,30 +106,30 @@ export const FortnightSummaryHero = ({
             </p>
           </div>
 
-          <div className={subBoxClass}>
-            <div className="mb-1 flex items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                aria-hidden
-              />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Liquidez actual
-              </span>
-              {metricHint(liquidityHint)}
-            </div>
-            <p
-              className={cn(
-                'font-mono text-base font-bold tabular-nums sm:text-lg',
-                !fundingNetApplies && 'text-muted-foreground',
-                fundingNetApplies &&
-                  (fundingNetInAccounts < 0
+          {fundingNetApplies ? (
+            <div className={subBoxClass}>
+              <div className="mb-1 flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                  aria-hidden
+                />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Liquidez actual
+                </span>
+                {metricHint(liquidityHint)}
+              </div>
+              <p
+                className={cn(
+                  'font-mono text-base font-bold tabular-nums sm:text-lg',
+                  fundingNetInAccounts < 0
                     ? 'text-destructive'
-                    : 'text-emerald-700 dark:text-emerald-300'),
-              )}
-            >
-              {formatCurrency(fundingNetInAccounts)}
-            </p>
-          </div>
+                    : 'text-emerald-700 dark:text-emerald-300',
+                )}
+              >
+                {formatCurrency(fundingNetInAccounts)}
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

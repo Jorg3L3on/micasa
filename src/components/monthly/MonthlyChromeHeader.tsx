@@ -34,8 +34,11 @@ type MonthlyChromeHeaderProps = {
   firstLabel: string;
   secondLabel: string;
   prevControl: ReactNode;
-  nextControl: ReactNode;
-  /** When false, hide fortnight toggle (e.g. month not created yet). */
+  /** Chevron next when the next month already exists. */
+  nextNavControl?: ReactNode;
+  /** Compact “Crear mes” CTA when the next month can be created. */
+  createNextControl?: ReactNode;
+  /** When false, hide fortnight toggle and progress (e.g. month not created yet). */
   showFortnightToggle?: boolean;
 };
 
@@ -71,7 +74,8 @@ export const MonthlyChromeHeader = ({
   firstLabel,
   secondLabel,
   prevControl,
-  nextControl,
+  nextNavControl = null,
+  createNextControl = null,
   showFortnightToggle = true,
 }: MonthlyChromeHeaderProps) => {
   const { prefsReady, period, setPeriod } = useMonthlyPanelPreferences();
@@ -237,78 +241,95 @@ export const MonthlyChromeHeader = ({
       </div>
     );
 
+  const desktopNextSlot =
+    nextNavControl || createNextControl ? (
+      <div className="hidden shrink-0 items-center gap-2 md:flex">
+        {nextNavControl}
+        {createNextControl}
+      </div>
+    ) : null;
+
   return (
     <div
       className="flex min-w-0 flex-col gap-2.5 md:flex-row md:items-center md:gap-0"
       role="group"
       aria-label="Selector de mes y quincena"
     >
-      {/* Month row: prev · month module · next (mobile / tablet) */}
-      <div className="flex min-w-0 items-center gap-1">
-        <div className="shrink-0">{prevControl}</div>
+      {/* Month row: prev · month module · next nav (mobile / tablet) */}
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="shrink-0">{prevControl}</div>
 
-        <div
-          className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 dark:border-sky-500/20 dark:bg-sky-500/8 md:flex-none md:justify-start md:gap-2"
-          aria-live="polite"
-        >
-          <span
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10 sm:flex"
-            aria-hidden
+          <div
+            className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 dark:border-sky-500/20 dark:bg-sky-500/8 md:flex-none md:justify-start md:gap-2"
+            aria-live="polite"
           >
-            <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-300" />
-          </span>
-          <div className="flex min-w-0 flex-col items-center gap-0.5 md:items-start">
-            <div className="flex min-w-0 items-center gap-1">
-              <MonthlyMonthPicker
-                year={year}
-                month={month}
-                monthName={monthName}
-                ownerQuery={ownerQuery}
-                currentYear={currentYear}
-                currentMonth={currentMonth}
-              />
-              {jumpToCurrent}
-            </div>
-            {isCurrentMonth ? (
-              <span
-                className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300"
-                aria-label="Mes actual"
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full bg-sky-500 dark:bg-sky-400"
-                  aria-hidden
+            <span
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10 sm:flex"
+              aria-hidden
+            >
+              <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+            </span>
+            <div className="flex min-w-0 flex-col items-center gap-0.5 md:items-start">
+              <div className="flex min-w-0 items-center gap-1">
+                <MonthlyMonthPicker
+                  year={year}
+                  month={month}
+                  monthName={monthName}
+                  ownerQuery={ownerQuery}
+                  currentYear={currentYear}
+                  currentMonth={currentMonth}
                 />
-                Actual
-              </span>
-            ) : null}
+                {jumpToCurrent}
+              </div>
+              {isCurrentMonth ? (
+                <span
+                  className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300"
+                  aria-label="Mes actual"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-sky-500 dark:bg-sky-400"
+                    aria-hidden
+                  />
+                  Actual
+                </span>
+              ) : null}
+            </div>
           </div>
+
+          {nextNavControl ? (
+            <div className="shrink-0 md:hidden">{nextNavControl}</div>
+          ) : null}
         </div>
 
-        <div className="shrink-0 md:hidden">{nextControl}</div>
+        {/* Create CTA on its own mobile row so it never covers Goal / picker */}
+        {createNextControl ? (
+          <div className="flex justify-end md:hidden">{createNextControl}</div>
+        ) : null}
       </div>
 
-      <div
-        className="h-px w-full bg-border/50 md:hidden"
-        aria-hidden
-      />
+      {showFortnightToggle ? (
+        <>
+          <div className="h-px w-full bg-border/50 md:hidden" aria-hidden />
 
-      <ChromeDivider className="mx-2" />
+          <ChromeDivider className="mx-2" />
 
-      {/* Progress */}
-      <div className="min-w-0 md:flex-1">{progressCenter}</div>
+          {/* Progress */}
+          <div className="min-w-0 md:flex-1">{progressCenter}</div>
 
-      <div
-        className="h-px w-full bg-border/50 md:hidden"
-        aria-hidden
-      />
+          <div className="h-px w-full bg-border/50 md:hidden" aria-hidden />
 
-      <ChromeDivider className="mx-2" />
+          <ChromeDivider className="mx-2" />
 
-      {/* Toggle + next (desktop) */}
-      <div className="flex w-full shrink-0 items-center gap-2 md:w-auto md:justify-end">
-        {showFortnightToggle ? fortnightToggle : null}
-        <div className="hidden shrink-0 md:block">{nextControl}</div>
-      </div>
+          {/* Toggle + next (desktop) */}
+          <div className="flex w-full shrink-0 items-center gap-2 md:w-auto md:justify-end">
+            {fortnightToggle}
+            {desktopNextSlot}
+          </div>
+        </>
+      ) : (
+        desktopNextSlot
+      )}
     </div>
   );
 };

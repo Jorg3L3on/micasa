@@ -23,7 +23,8 @@ type MonthlyPanelLayoutProps = {
   firstLabel: string;
   secondLabel: string;
   prevControl: ReactNode;
-  nextControl: ReactNode;
+  nextNavControl?: ReactNode;
+  createNextControl?: ReactNode;
   children: ReactNode;
 };
 
@@ -41,7 +42,8 @@ export const MonthlyPanelLayout = ({
   firstLabel,
   secondLabel,
   prevControl,
-  nextControl,
+  nextNavControl = null,
+  createNextControl = null,
   children,
 }: MonthlyPanelLayoutProps) => {
   return (
@@ -71,7 +73,8 @@ export const MonthlyPanelLayout = ({
           firstLabel={firstLabel}
           secondLabel={secondLabel}
           prevControl={prevControl}
-          nextControl={nextControl}
+          nextNavControl={nextNavControl}
+          createNextControl={createNextControl}
         />
       </div>
 

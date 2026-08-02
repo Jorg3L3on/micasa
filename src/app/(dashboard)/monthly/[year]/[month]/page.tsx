@@ -6,11 +6,14 @@ import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
+import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
+import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getSuggestedFortnightPeriodForMonth } from '@/lib/fortnight-calendar';
 import { parseMonthlyRouteParams } from '@/lib/planner/monthly-page';
+import { cn } from '@/lib/utils';
 
 function getMonthName(month: number): string {
   const months = [
@@ -28,6 +31,16 @@ function getMonthName(month: number): string {
     'Diciembre',
   ];
   return months[month - 1] || '';
+}
+
+/** Month label; omit year when it matches the calendar current year. */
+function formatMonthLabel(
+  month: number,
+  year: number,
+  currentYear: number,
+): string {
+  const name = getMonthName(month);
+  return year === currentYear ? name : `${name} ${year}`;
 }
 
 export default async function MonthlyPage({
@@ -132,8 +145,9 @@ export default async function MonthlyPage({
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
   const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null;
 
-  const prevMonthLabel = `${getMonthName(prevMonth)} ${prevYear}`;
-  const nextMonthLabel = `${getMonthName(nextMonth)} ${nextYear}`;
+  const prevMonthLabel = formatMonthLabel(prevMonth, prevYear, currentYear);
+  const nextMonthLabel = formatMonthLabel(nextMonth, nextYear, currentYear);
+  const viewedMonthLabel = formatMonthLabel(month, year, currentYear);
 
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null;
   const canCreateNextMonth =
@@ -151,52 +165,74 @@ export default async function MonthlyPage({
   const monthIsMissing = firstFortnightInfo === null || secondFortnightInfo === null;
 
   const ownerKey = `${ownerContext.ownerType}-${ownerContext.ownerId}`;
+  const suggestedPeriod = getSuggestedFortnightPeriodForMonth(year, month);
+
+  const prevControl = (
+    <MonthlyHeader
+      year={year}
+      month={month}
+      monthName={monthName}
+      hasPrevMonth={hasPrevMonth}
+      prevHref={prevHref}
+      prevMonthLabel={prevMonthLabel}
+    />
+  );
+
+  const nextNavControl = hasNextMonth ? (
+    <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
+  ) : null;
+
+  const createNextControl =
+    !hasNextMonth && canCreateNextMonth ? (
+      <CreateNextMonthButton
+        nextYear={nextYear}
+        nextMonth={nextMonth}
+        nextMonthLabel={nextMonthLabel}
+        canCreate={canCreateNextMonth}
+      />
+    ) : null;
 
   if (monthIsMissing) {
     return (
       <div className="space-y-5">
-        <div
-          className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4"
-          role="group"
-          aria-label="Selector de mes"
+        <MonthlyPanelPreferencesProvider
+          ownerKey={ownerKey}
+          year={year}
+          month={month}
+          suggestedPeriod={suggestedPeriod}
         >
-          <MonthlyHeader
-            year={year}
-            month={month}
-            monthName={monthName}
-            hasPrevMonth={hasPrevMonth}
-            prevHref={prevHref}
-            prevMonthLabel={prevMonthLabel}
-          />
-          <div className="min-w-0 flex-1 text-center" aria-live="polite">
-            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-              <h1 className="truncate text-lg font-semibold leading-tight tracking-tight sm:text-xl">
-                {monthName} {year}
-              </h1>
-              {isCurrentMonth ? (
-                <span
-                  className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300"
-                  aria-label="Mes actual"
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
-                    aria-hidden
-                  />
-                  Actual
-                </span>
-              ) : null}
-            </div>
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-xl border border-sky-500/20 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3',
+              'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
+              'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
+              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
+              'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+            )}
+          >
+            <MonthlyChromeHeader
+              year={year}
+              month={month}
+              monthName={monthName}
+              isCurrentMonth={isCurrentMonth}
+              currentMonthHref={currentMonthHref}
+              todayYmd={todayYmd}
+              ownerQuery={ownerQuery}
+              firstLabel={firstLabel}
+              secondLabel={secondLabel}
+              prevControl={prevControl}
+              nextNavControl={nextNavControl}
+              createNextControl={createNextControl}
+              showFortnightToggle={false}
+            />
           </div>
-          {hasNextMonth ? (
-            <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
-          ) : null}
-        </div>
+        </MonthlyPanelPreferencesProvider>
 
         <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold leading-tight">
-                Falta crear la planificación de {monthName} {year}
+                Falta crear la planificación de {viewedMonthLabel}
               </h2>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Este mes no tiene las dos quincenas necesarias. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta para evitar datos incompletos.
@@ -205,7 +241,7 @@ export default async function MonthlyPage({
             <CreatePlanningMonthButton
               year={year}
               month={month}
-              monthLabel={`${monthName} ${year}`}
+              monthLabel={viewedMonthLabel}
               canCreate
               variant="hero"
             />
@@ -230,7 +266,6 @@ export default async function MonthlyPage({
   const dueWalletIds = duePayments.map((dp) => dp.walletId);
   const [, , currentDay] = todayCalendarDate().split('-').map(Number);
   const isFirstFortnight = currentDay <= 15;
-  const suggestedPeriod = getSuggestedFortnightPeriodForMonth(year, month);
   const paidWalletIds = isCurrentMonth
     ? wallets
         .filter((w) => {
@@ -265,28 +300,9 @@ export default async function MonthlyPage({
       budgetPanel={budgetPanel}
       firstLabel={firstLabel}
       secondLabel={secondLabel}
-      prevControl={
-        <MonthlyHeader
-          year={year}
-          month={month}
-          monthName={monthName}
-          hasPrevMonth={hasPrevMonth}
-          prevHref={prevHref}
-          prevMonthLabel={prevMonthLabel}
-        />
-      }
-      nextControl={
-        hasNextMonth ? (
-          <MonthlyNavNextLink href={nextHref} label={nextMonthLabel} />
-        ) : (
-          <CreateNextMonthButton
-            nextYear={nextYear}
-            nextMonth={nextMonth}
-            nextMonthLabel={nextMonthLabel}
-            canCreate={canCreateNextMonth}
-          />
-        )
-      }
+      prevControl={prevControl}
+      nextNavControl={nextNavControl}
+      createNextControl={createNextControl}
     >
       <MonthlyFortnightView
         ownerKey={ownerKey}

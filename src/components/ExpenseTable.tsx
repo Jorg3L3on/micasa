@@ -564,7 +564,7 @@ export default function ExpenseTable({
                   <li
                     key={`${e.planning_row_kind ?? 'expense'}-${e.id}`}
                     className={cn(
-                      'group/row relative flex items-start gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
+                      'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
                       'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                       isCompact ? 'py-2.5' : 'py-3',
                       expenseCardShellClass({
@@ -618,48 +618,33 @@ export default function ExpenseTable({
 
                     {/* Body */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <span
+                      <span
+                        className={cn(
+                          'inline-flex min-w-0 items-center gap-1.5 leading-tight',
+                          isCompact ? 'text-xs' : 'text-sm',
+                        )}
+                      >
+                        <CategoryIcon
+                          icon={e.categoryIcon}
                           className={cn(
-                            'inline-flex min-w-0 items-center gap-1.5 leading-tight',
-                            isCompact ? 'text-xs' : 'text-sm',
-                          )}
-                        >
-                          <CategoryIcon
-                            icon={e.categoryIcon}
-                            className={cn(
-                              e.is_paid
-                                ? 'text-muted-foreground/70'
-                                : 'text-foreground/70',
-                            )}
-                            iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
-                            data-icon="inline-start"
-                          />
-                          <span
-                            className={cn(
-                              'min-w-0 truncate',
-                              e.is_paid
-                                ? 'font-medium text-muted-foreground/80 line-through'
-                                : 'font-semibold text-foreground',
-                            )}
-                          >
-                            {e.description}
-                          </span>
-                        </span>
-                        <span
-                          className={cn(
-                            'shrink-0 font-mono tabular-nums leading-tight',
-                            isCompact ? 'text-xs' : 'text-sm',
                             e.is_paid
-                              ? 'text-muted-foreground/60 line-through'
-                              : isCardCharge
-                                ? 'font-bold text-violet-700 dark:text-violet-300'
-                                : 'font-bold text-foreground',
+                              ? 'text-muted-foreground/70'
+                              : 'text-foreground/70',
+                          )}
+                          iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
+                          data-icon="inline-start"
+                        />
+                        <span
+                          className={cn(
+                            'min-w-0 truncate',
+                            e.is_paid
+                              ? 'font-medium text-muted-foreground/80 line-through'
+                              : 'font-semibold text-foreground',
                           )}
                         >
-                          {formatCurrency(toDisplayAmount(e.amount))}
+                          {e.description}
                         </span>
-                      </div>
+                      </span>
                       <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                         <ExpenseWalletLabel
                           expense={e}
@@ -723,8 +708,23 @@ export default function ExpenseTable({
                       )}
                     </div>
 
+                    {/* Amount — vertically centered with the card */}
+                    <span
+                      className={cn(
+                        'shrink-0 font-mono tabular-nums leading-tight',
+                        isCompact ? 'text-xs' : 'text-sm',
+                        e.is_paid
+                          ? 'text-muted-foreground/60 line-through'
+                          : isCardCharge
+                            ? 'font-bold text-violet-700 dark:text-violet-300'
+                            : 'font-bold text-foreground',
+                      )}
+                    >
+                      {formatCurrency(toDisplayAmount(e.amount))}
+                    </span>
+
                     {/* Actions menu */}
-                    <div className="-mr-1 shrink-0 self-center">
+                    <div className="-mr-1 shrink-0">
                       {isIncomeRow || isCardPay || isLoanPay ? (
                         <span
                           className="inline-flex h-8 w-8 items-center justify-center text-xs text-muted-foreground/30"

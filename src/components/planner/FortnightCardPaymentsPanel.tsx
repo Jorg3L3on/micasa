@@ -233,10 +233,6 @@ const FortnightCardPaymentsPanel = ({
         aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
         className="px-1 pb-1"
       >
-        <p className="mb-2 px-2 text-[10px] font-medium leading-snug text-muted-foreground/70">
-          Toca el lápiz para fijar cuánto pagarás esta quincena. El sugerido viene
-          del estado de cuenta; la deuda total no cambia.
-        </p>
         <ul role="list" className="flex flex-col gap-1.5">
           {rows.map((item) => {
             const status = getPlannerCardPaymentStatus(item);

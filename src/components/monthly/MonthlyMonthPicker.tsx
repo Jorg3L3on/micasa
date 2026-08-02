@@ -93,8 +93,10 @@ export const MonthlyMonthPicker = ({
           aria-label={`Elegir mes: ${monthName} ${year}`}
         >
           <span className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">
-            {monthName}{' '}
-            <span className="font-medium text-muted-foreground">{year}</span>
+            {monthName}
+            {year !== currentYear ? (
+              <span className="font-medium text-muted-foreground"> {year}</span>
+            ) : null}
           </span>
           <ChevronDown
             className="size-4 shrink-0 text-muted-foreground"
