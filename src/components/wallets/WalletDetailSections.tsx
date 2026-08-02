@@ -83,7 +83,7 @@ export const WalletHeroZone = ({
 }) => {
   const tint = heroTintClass(wallet);
   return (
-    <div className="relative -mx-4 overflow-hidden px-4 pb-5 sm:-mx-0 sm:pb-6">
+    <div className="relative -mx-4 overflow-hidden px-4 pb-2 sm:-mx-0 sm:pb-3">
       <div
         className={cn(
           'pointer-events-none absolute inset-0 bg-linear-to-b',
@@ -105,7 +105,7 @@ export const WalletHeroZone = ({
         )}
         aria-hidden
       />
-      <div className="relative flex flex-col gap-5 sm:gap-6 [&>*:nth-child(3)]:mt-3 sm:[&>*:nth-child(3)]:mt-4">{children}</div>
+      <div className="relative flex flex-col gap-5 sm:gap-6">{children}</div>
     </div>
   );
 };
@@ -120,7 +120,7 @@ export const WalletPeriodWorkspaceShell = ({
   chrome,
   children,
 }: WalletPeriodWorkspaceShellProps) => (
-  <div className="mt-8 sm:mt-10">
+  <div className="mt-0">
     <div
       className={cn(
         'relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',

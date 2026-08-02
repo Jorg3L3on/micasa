@@ -79,18 +79,18 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
 type WalletDetailTab = 'resumen' | 'movimientos' | 'compromisos';
 
 const WalletDetailSkeleton = () => (
-  <div className="space-y-6 pb-24 lg:pb-0">
-    <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
+  <div className="space-y-0 pb-24 lg:pb-0">
+    <div className="relative -mx-4 space-y-5 px-4 pb-2 sm:-mx-0 sm:pb-3">
       <div className="flex items-center justify-between">
         <Skeleton className="h-9 w-28" />
         <Skeleton className="h-9 w-9 rounded-lg" />
       </div>
       <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-xs rounded-2xl sm:max-w-sm" />
-      <div className="flex justify-center gap-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-14 rounded-full" />
-        ))}
-      </div>
+    </div>
+    <div className="flex justify-center gap-6 py-7 sm:py-9">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-14 w-14 rounded-full" />
+      ))}
     </div>
     <div className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -428,7 +428,9 @@ export default function WalletDetailPage() {
         />
 
         <WalletVisualHero wallet={wallet} />
+      </WalletHeroZone>
 
+      <div className="py-7 sm:py-9" role="presentation">
         <WalletQuickActions
           canImport={canImport}
           onRegisterExpense={handleOpenExpense}
@@ -436,7 +438,7 @@ export default function WalletDetailPage() {
           onImport={() => setImportOpen(true)}
           onAdjustBalance={() => setBalanceOpen(true)}
         />
-      </WalletHeroZone>
+      </div>
 
       <Tabs
         value={activeTab}
