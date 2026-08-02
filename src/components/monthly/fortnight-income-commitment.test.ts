@@ -13,4 +13,11 @@ describe('getFortnightIncomeCommittedPercent', () => {
   it('can exceed 100 when committed surpasses income', () => {
     expect(getFortnightIncomeCommittedPercent(1_000, 800, 500)).toBe(130);
   });
+
+  it('includes presupuesto when folded into the pending argument', () => {
+    // pagado 10_000 + pendiente 5_000 + presupuesto 6_000 = 21_000 → 100%
+    expect(getFortnightIncomeCommittedPercent(21_000, 10_000, 5_000 + 6_000)).toBe(
+      100,
+    );
+  });
 });

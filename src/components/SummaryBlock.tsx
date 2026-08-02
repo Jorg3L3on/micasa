@@ -51,7 +51,7 @@ export type IncomeItemBySource = {
 
 type SummaryBlockProps = {
   tenemos: number;
-  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente`. */
+  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente − presupuesto`. */
   libre: number;
   pagado: number;
   pendiente: number;
@@ -76,9 +76,11 @@ type SummaryBlockProps = {
   planningWalletLoanDue?: PlannerWalletLoanDueSummary | null;
   /** Deducciones de nómina pendientes; reducen el ingreso disponible de la quincena. */
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
+  /** Presupuesto efectivo de la quincena (total del sobre); suma al compromiso. */
+  planningBudgetTotal?: number;
   /** Saldos activos Efectivo + Débito (API resumen). */
   fundingWalletBalanceTotal?: number;
-  /** Saldos efectivo/débito menos solo lo pendiente (no pagado) del período (API resumen). */
+  /** Saldos efectivo/débito menos pendiente, nómina y presupuesto del período (API resumen). */
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
@@ -103,6 +105,7 @@ export default function SummaryBlock({
   planningCardStatementDue = null,
   planningWalletLoanDue = null,
   planningPayrollLoanDeduction = null,
+  planningBudgetTotal = 0,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -122,11 +125,13 @@ export default function SummaryBlock({
     userIncome.some((fi) => fi.userIncome && fi.userIncome.length > 0);
 
   const payrollLoanDeduction = planningPayrollLoanDeduction?.total ?? 0;
+  const budgetTotal = planningBudgetTotal > 0 ? planningBudgetTotal : 0;
 
-  /** Compromiso: efectivo/débito + deducciones de nómina pendientes. */
-  const comprometidoEfectivo = pagado + pendiente + payrollLoanDeduction;
+  /** Compromiso: efectivo/débito + deducciones de nómina + presupuesto del sobre. */
+  const comprometidoEfectivo =
+    pagado + pendiente + payrollLoanDeduction + budgetTotal;
 
-  /** Ingreso menos pagado, pendiente y deducciones de nómina (mismo criterio que el API). */
+  /** Ingreso menos pagado, pendiente, nómina y presupuesto (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
   /**
@@ -148,11 +153,14 @@ export default function SummaryBlock({
   const displayPendienteFundingRow = billeterasVsPendienteAplica
     ? pendiente
     : 0;
+  const displayBudgetFundingRow = billeterasVsPendienteAplica
+    ? budgetTotal
+    : 0;
 
   const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
     tenemos,
     pagado,
-    pendiente + payrollLoanDeduction,
+    pendiente + payrollLoanDeduction + budgetTotal,
   );
   const showIncomeRing = tenemos > 0;
 
@@ -242,6 +250,7 @@ export default function SummaryBlock({
           fundingNetInAccounts={displayFundingNet}
           fundingNetApplies={billeterasVsPendienteAplica}
           payrollDeductionAmount={payrollLoanDeduction}
+          budgetTotalAmount={budgetTotal}
           percentCommitted={incomeCommittedPercent}
           showGauge={showIncomeRing}
         />
@@ -349,6 +358,14 @@ export default function SummaryBlock({
                 {planningPayrollLoanDeduction.count} deducción
                 {planningPayrollLoanDeduction.count !== 1 ? 'es' : ''} de nómina
                 (préstamos); reduce el ingreso disponible sin salida de billetera.
+              </p>
+            ) : null}
+
+            {budgetTotal > 0 ? (
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                Incluye {formatCurrency(budgetTotal)} de presupuesto de la
+                quincena (total del sobre); cuenta como compromiso del ingreso
+                junto con lo pagado y lo pendiente.
               </p>
             ) : null}
 
@@ -465,6 +482,16 @@ export default function SummaryBlock({
                     </span>
                     <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                       −{formatCurrency(payrollLoanDeduction)}
+                    </span>
+                  </div>
+                ) : null}
+                {displayBudgetFundingRow > 0 ? (
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Menos presupuesto de la quincena
+                    </span>
+                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                      −{formatCurrency(displayBudgetFundingRow)}
                     </span>
                   </div>
                 ) : null}

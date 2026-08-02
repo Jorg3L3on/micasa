@@ -16,6 +16,7 @@ const buildPlannerBalance = (input: {
   cardDue: number;
   walletLoanDue: number;
   payrollDeduction: number;
+  budgetTotal?: number;
 }) => {
   const withCards = mergePlanningCardTotalsIntoExpenseSummary(
     {
@@ -35,14 +36,20 @@ const buildPlannerBalance = (input: {
       : null,
   );
 
+  const budgetTotal = input.budgetTotal ?? 0;
   const balance =
-    input.income - input.payrollDeduction - withLoans.totalExpense;
-  const fundingNet = 5000 - withLoans.totalUnpaid - input.payrollDeduction;
+    input.income -
+    input.payrollDeduction -
+    withLoans.totalExpense -
+    budgetTotal;
+  const fundingNet =
+    5000 - withLoans.totalUnpaid - input.payrollDeduction - budgetTotal;
   const libreFromIncome =
     input.income -
     withLoans.totalPaid -
     withLoans.totalUnpaid -
-    input.payrollDeduction;
+    input.payrollDeduction -
+    budgetTotal;
 
   return { withLoans, balance, fundingNet, libreFromIncome };
 };
@@ -96,6 +103,22 @@ describe('planning loan surface parity', () => {
     expect(result.balance).toBe(16907.27);
     expect(result.libreFromIncome).toBe(16907.27);
     expect(result.fundingNet).toBe(907.27);
+  });
+
+  it('subtracts the full fortnight budget envelope from libre and liquidez', () => {
+    const result = buildPlannerBalance({
+      income: 21_000,
+      baseExpense: 1_000,
+      basePaid: 600,
+      cardDue: 0,
+      walletLoanDue: 0,
+      payrollDeduction: 0,
+      budgetTotal: 3_000,
+    });
+
+    expect(result.balance).toBe(17_000);
+    expect(result.libreFromIncome).toBe(17_000);
+    expect(result.fundingNet).toBe(1_600);
   });
 
   it('does not double-count paid wallet loans that already have a linked expense', () => {
