@@ -12,11 +12,12 @@ import {
 } from '@/components/ui/breadcrumb';
 import Link from 'next/link';
 import { useFinanceContext } from '@/context/finance-context';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 
 const buildOwnerSuffix = (context: FinanceContextType): string => {
   if (context.type === 'user' && context.id === 0) return '';
-  return `?ownerType=${context.type}&ownerId=${context.id}`;
+  return `ownerType=${context.type}&ownerId=${context.id}`;
 };
 
 function getPageTitle(
@@ -26,18 +27,44 @@ function getPageTitle(
   title: string;
   breadcrumbs: Array<{ label: string; href?: string }>;
 } {
-  const qs = buildOwnerSuffix(context);
+  const ownerQs = buildOwnerSuffix(context);
+  const qs = ownerQs ? `?${ownerQs}` : '';
+  const homeHref = getAppHomeHref(ownerQs);
   const segments = pathname.split('/').filter(Boolean);
 
+  // Panel financiero is the product home — no parent crumb.
+  if (segments[0] === 'monthly' && segments[1] && segments[2]) {
+    const year = parseInt(segments[1], 10);
+    const month = parseInt(segments[2], 10);
+    const months = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+    const monthName = months[month - 1] || '';
+    const title = `${monthName} ${year}`;
+    return { title, breadcrumbs: [{ label: title }] };
+  }
+
+  // Legacy /dashboard redirects away; treat as home while redirecting.
   if (segments.length === 0 || segments[0] === 'dashboard') {
     return {
-      title: 'Inicio',
-      breadcrumbs: [{ label: 'Inicio' }],
+      title: 'Panel financiero',
+      breadcrumbs: [{ label: 'Panel financiero' }],
     };
   }
 
   const breadcrumbs: Array<{ label: string; href?: string }> = [
-    { label: 'Inicio', href: `/dashboard${qs}` },
+    { label: 'Panel financiero', href: homeHref },
   ];
 
   // Handle expense-templates
@@ -72,30 +99,6 @@ function getPageTitle(
       return { title: 'Editar plantilla', breadcrumbs };
     }
     return { title: 'Plantillas de ingresos', breadcrumbs };
-  }
-
-  // Handle monthly pages
-  if (segments[0] === 'monthly' && segments[1] && segments[2]) {
-    const year = parseInt(segments[1], 10);
-    const month = parseInt(segments[2], 10);
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    const monthName = months[month - 1] || '';
-    const title = `${monthName} ${year}`;
-    breadcrumbs.push({ label: title });
-    return { title, breadcrumbs };
   }
 
   // Handle fortnight pages

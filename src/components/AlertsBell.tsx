@@ -14,6 +14,7 @@ import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import type { FinanceContextType } from '@/types/finance-context';
 import { useClientMounted } from '@/hooks/use-client-mounted';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 
 const STORAGE_KEY_BASE = 'micasa-alerts-seen';
 const DISMISSED_STORAGE_KEY_BASE = 'micasa-alerts-dismissed';
@@ -110,7 +111,7 @@ function buildAlertHref(
     return query ? `${alert.target.path}?${query}` : alert.target.path;
   }
   const ownerQs = buildOwnerQuery(context).toString();
-  return ownerQs ? `/dashboard?${ownerQs}` : '/dashboard';
+  return getAppHomeHref(ownerQs);
 }
 
 export function AlertsBell() {

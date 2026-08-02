@@ -1,70 +1,26 @@
-import type { Metadata } from 'next';
-import { getDashboardData } from '@/features/dashboard/server/dashboard.service';
-import CreateMonthCard from '@/components/CreateMonthCard';
-import type { DashboardData, PeriodView } from '@/types/dashboard';
-import DashboardPanel from '@/components/dashboard/DashboardPanel';
-import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context';
+import { redirect } from 'next/navigation';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 
-export const metadata: Metadata = {
-  title: 'Inicio | MiCasa',
-  description: 'Resumen de ingresos, gastos y balance por categoría.',
-};
-
-async function loadDashboardData(
-  searchParams: {
-    view?: string;
-    month?: string;
-    year?: string;
-    period?: string;
-    ownerType?: string;
-    ownerId?: string;
-  },
-): Promise<DashboardData | null> {
-  try {
-    const ctx = await getOwnerContextFromPageSearchParams(searchParams);
-    if ('error' in ctx) {
-      return null;
-    }
-
-    return await getDashboardData({
-      ownerFilter: ctx.ownerFilter,
-      view: (searchParams.view as PeriodView | undefined) ?? 'biweekly',
-      month: searchParams.month ?? null,
-      year: searchParams.year ?? null,
-      period: (searchParams.period as 'FIRST' | 'SECOND' | undefined) ?? null,
-    });
-  } catch (error) {
-    console.error('Error loading dashboard:', error);
-    return null;
-  }
-}
-
-export default async function DashboardPage({
+/**
+ * Legacy Inicio (`/dashboard`) — redirects to Panel financiero (current month).
+ * Keeps owner context query params for bookmarks and old deep links.
+ */
+export default async function DashboardRedirectPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    view?: string;
-    month?: string;
-    year?: string;
-    period?: string;
     ownerType?: string;
     ownerId?: string;
+    [key: string]: string | undefined;
   }>;
 }) {
   const params = await searchParams;
+  const query = new URLSearchParams();
 
-  const dashboardData = await loadDashboardData(params);
-
-  if (!dashboardData) {
-    return (
-      <div className="space-y-6">
-        <p className="text-destructive">
-          No se pudo cargar el panel. Revisa la conexión e intenta de nuevo.
-        </p>
-        <CreateMonthCard />
-      </div>
-    );
+  if (params.ownerType && params.ownerId) {
+    query.set('ownerType', params.ownerType);
+    query.set('ownerId', params.ownerId);
   }
 
-  return <DashboardPanel data={dashboardData} />;
+  redirect(getAppHomeHref(query));
 }

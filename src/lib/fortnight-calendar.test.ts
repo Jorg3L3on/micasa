@@ -3,6 +3,7 @@ import {
   compareCalendarFortnight,
   formatDayMonthLabel,
   getCurrentCalendarFortnightRef,
+  getAppHomeHref,
   getCurrentMonthlyPanelHref,
   getDaysInCalendarMonth,
   getFortnightCalendarBounds,
@@ -109,6 +110,32 @@ describe('getCurrentMonthlyPanelHref', () => {
     expect(getCurrentMonthlyPanelHref(mxNoon('2026-01-05'))).toBe(
       '/monthly/2026/01',
     );
+  });
+});
+
+describe('getAppHomeHref', () => {
+  const mxNoon = (ymd: string) => new Date(`${ymd}T18:00:00.000Z`);
+
+  it('matches the current monthly panel without a query', () => {
+    expect(getAppHomeHref(null, mxNoon('2026-08-02'))).toBe('/monthly/2026/08');
+  });
+
+  it('appends owner query params', () => {
+    expect(
+      getAppHomeHref('ownerType=house&ownerId=3', mxNoon('2026-08-02')),
+    ).toBe('/monthly/2026/08?ownerType=house&ownerId=3');
+  });
+
+  it('accepts URLSearchParams and strips a leading ?', () => {
+    expect(
+      getAppHomeHref('?ownerType=user&ownerId=1', mxNoon('2026-01-10')),
+    ).toBe('/monthly/2026/01?ownerType=user&ownerId=1');
+    expect(
+      getAppHomeHref(
+        new URLSearchParams({ ownerType: 'user', ownerId: '1' }),
+        mxNoon('2026-01-10'),
+      ),
+    ).toBe('/monthly/2026/01?ownerType=user&ownerId=1');
   });
 });
 

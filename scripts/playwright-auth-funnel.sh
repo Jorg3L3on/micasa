@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E: register → onboarding step 1 → complete onboarding → dashboard.
+# E2E: register → onboarding step 1 → complete onboarding → Panel financiero.
 # Requires: PostgreSQL, npm run dev, playwright-cli (CODEX_HOME/skills/playwright).
 # Run: bash scripts/playwright-auth-funnel.sh
 set -euo pipefail
@@ -73,10 +73,10 @@ for (let i = 0; i < comboboxCount; i += 1) {
 await continueButton().click();
 await page.getByRole('button', { name: /Finalizar/i }).click();
 
-await page.waitForURL(/\\/dashboard/, { timeout: 60000 });
+await page.waitForURL(/\\/monthly\\/\\d{4}\\/\\d{2}/, { timeout: 60000 });
 
 await page.screenshot({
-  path: 'output/playwright/auth-funnel-dashboard.png',
+  path: 'output/playwright/auth-funnel-panel-financiero.png',
   fullPage: true,
 });
 

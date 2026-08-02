@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import { auth } from '@/lib/auth';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { NextResponse } from 'next/server';
 
 /** Routes that must stay reachable without a session (landing + auth + legal). */
@@ -22,13 +23,17 @@ const proxy = auth((req) => {
 
   if (
     !isLoggedIn &&
-    (pathname.startsWith('/dashboard') || pathname.startsWith('/admin'))
+    (pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/monthly') ||
+      pathname.startsWith('/admin'))
   ) {
     return Response.redirect(new URL('/login', req.nextUrl));
   }
 
   if (isLoggedIn && (pathname === '/login' || pathname === '/register')) {
-    return Response.redirect(new URL('/dashboard', req.nextUrl));
+    return Response.redirect(
+      new URL(getCurrentMonthlyPanelHref(), req.nextUrl),
+    );
   }
 
   return NextResponse.next();

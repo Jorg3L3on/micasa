@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 
 type RedirectTasksPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -22,6 +23,5 @@ export default async function RedirectTasksPage({
     }
   }
 
-  const queryString = query.toString();
-  redirect(queryString ? `/dashboard?${queryString}` : '/dashboard');
+  redirect(getAppHomeHref(query));
 }
