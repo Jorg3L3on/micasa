@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CategoryIcon } from '@/components/categories/CategoryIcon';
 import { useOnboarding } from '@/components/onboarding/OnboardingContext';
 import { resolveOnboardingCategoryIcon } from '@/lib/category-icons';
+import { createClientId } from '@/lib/polyfills';
 import { cn } from '@/lib/utils';
 
 export default function StepCategories() {
@@ -64,7 +65,7 @@ export default function StepCategories() {
 
   const handleAdd = () => {
     const newCategory = {
-      id: crypto.randomUUID(),
+      id: createClientId(),
       name: 'Nueva categoría',
       icon: null as string | null,
     };

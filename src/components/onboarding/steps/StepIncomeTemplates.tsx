@@ -17,6 +17,7 @@ import {
   useOnboarding,
   type IncomeTemplateDraft,
 } from '@/components/onboarding/OnboardingContext';
+import { createClientId } from '@/lib/polyfills';
 import { cn } from '@/lib/utils';
 
 export default function StepIncomeTemplates() {
@@ -97,7 +98,7 @@ export default function StepIncomeTemplates() {
     setIncomeTemplates((prev: IncomeTemplateDraft[]) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: createClientId(),
         name: 'Nuevo ingreso',
         amount: 0,
         walletId: '',

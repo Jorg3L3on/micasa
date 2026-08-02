@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { createClientId } from '@/lib/polyfills';
 
 export type WalletDraft = {
   id: string;
@@ -89,19 +90,16 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isStepLoading, setStepLoading] = useState(false);
   const [canProceed, setCanProceed] = useState(true);
-  const [wallets, setWallets] = useState<WalletDraft[]>([
-    { id: crypto.randomUUID(), name: '', type: 'CASH', providerIconKey: 'CASH_GENERIC' },
-    { id: crypto.randomUUID(), name: '', type: 'BANK', providerIconKey: null },
-  ]);
+  const [wallets, setWallets] = useState<WalletDraft[]>([]);
   const [categories, setCategories] = useState<CategoryDraft[]>([
-    { id: crypto.randomUUID(), name: 'Comida', icon: 'UTENSILS' },
-    { id: crypto.randomUUID(), name: 'Transporte', icon: 'CAR' },
-    { id: crypto.randomUUID(), name: 'Vivienda', icon: 'HOME' },
+    { id: createClientId(), name: 'Comida', icon: 'UTENSILS' },
+    { id: createClientId(), name: 'Transporte', icon: 'CAR' },
+    { id: createClientId(), name: 'Vivienda', icon: 'HOME' },
   ]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
     [
       {
-        id: crypto.randomUUID(),
+        id: createClientId(),
         name: 'Sueldo',
         amount: 0,
         walletId: '',
@@ -113,28 +111,7 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   );
   const [expenseTemplates, setExpenseTemplates] = useState<
     ExpenseTemplateDraft[]
-  >([
-    {
-      id: crypto.randomUUID(),
-      name: 'Renta',
-      amount: 0,
-      categoryId: '',
-      walletId: '',
-      isRecurring: true,
-      appliesFirstFortnight: true,
-      appliesSecondFortnight: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Internet',
-      amount: 0,
-      categoryId: '',
-      walletId: '',
-      isRecurring: true,
-      appliesFirstFortnight: true,
-      appliesSecondFortnight: true,
-    },
-  ]);
+  >([]);
   const [startDate, setStartDate] = useState<string | null>(getCurrentMonthFirstDayIso);
 
   const goNext = useCallback(() => {

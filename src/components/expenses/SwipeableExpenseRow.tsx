@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, type MouseEvent } from 'react';
 import { motion, useAnimation, type PanInfo } from 'framer-motion';
-import { Trash2 } from 'lucide-react';
 import ExpenseCard from '@/components/expenses/ExpenseCard';
+import {
+  SwipeDeleteAction,
+  SWIPE_DELETE_ACTION_WIDTH,
+} from '@/components/ui/swipe-delete-action';
 import type { ExpenseFeedItem } from '@/types/expenses-feed';
 
-const ACTION_WIDTH = 80;
+const ACTION_WIDTH = SWIPE_DELETE_ACTION_WIDTH;
 const OPEN_THRESHOLD = 40;
 
 type SwipeableExpenseRowProps = {
@@ -110,16 +113,10 @@ export default function SwipeableExpenseRow({
         className="absolute inset-0 z-0 flex justify-end"
         aria-hidden={!isOpen}
       >
-        <div className="relative flex h-full w-20 shrink-0 items-center justify-center bg-muted/40 dark:bg-muted/25">
-          <button
-            type="button"
-            onClick={handleDeleteClick}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Eliminar gasto"
-          >
-            <Trash2 className="size-5 shrink-0" aria-hidden data-icon="inline-start" />
-          </button>
-        </div>
+        <SwipeDeleteAction
+          onClick={handleDeleteClick}
+          ariaLabel="Eliminar gasto"
+        />
       </div>
       <motion.div
         className="relative z-[1]"
