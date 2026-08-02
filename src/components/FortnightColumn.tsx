@@ -857,13 +857,12 @@ export default function FortnightColumn({
           onValueChange={handleColumnTabChange}
           className="w-full min-w-0"
         >
-          <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-2 sm:p-1.5">
+          <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-1.5 sm:p-1.5">
             <TabsList
               variant="line"
               className={cn(
-                'h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 sm:gap-1',
-                compactTabs &&
-                  'w-full overflow-x-auto scrollbar-hide [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0',
+                'h-auto min-w-0 flex-1 justify-start gap-0.5 overflow-x-auto rounded-none bg-transparent p-0 scrollbar-hide sm:gap-1',
+                '[&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0',
                 '[&_[data-slot=tabs-trigger]]:rounded-full',
                 '[&_[data-slot=tabs-trigger]]:transition-all',
                 '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
@@ -882,18 +881,18 @@ export default function FortnightColumn({
               <TabsTrigger
                 value="expenses"
                 className={cn(
-                  'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
+                  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
+                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
                 )}
                 aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
               >
-                <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
+                <span className={cn('inline-flex items-center gap-1 sm:gap-1.5 xl:gap-2', compactTabs && 'gap-1')}>
                   Gastos
                   <Badge
                     variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
                     className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
-                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px] xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-[11px]',
+                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] xl:h-4 xl:min-w-4 xl:px-1 xl:text-[10px]',
                       columnTab === 'expenses' && unpaidExpenseCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -906,21 +905,21 @@ export default function FortnightColumn({
               <TabsTrigger
                 value="cards"
                 className={cn(
-                  'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
+                  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
+                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
                 )}
                 aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
               >
-                <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
-                  <span className={compactTabs ? 'inline' : 'sm:hidden'}>Tarjeta</span>
-                  <span className={compactTabs ? 'hidden' : 'hidden sm:inline'}>Pagos tarjeta</span>
+                <span className={cn('inline-flex items-center gap-1 sm:gap-1.5 xl:gap-2', compactTabs && 'gap-1')}>
+                  <span className={compactTabs ? 'inline' : 'xl:hidden'}>Tarjeta</span>
+                  <span className={compactTabs ? 'hidden' : 'hidden xl:inline'}>Pagos tarjeta</span>
                   <Badge
                     variant={
                       pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                     }
                     className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
-                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px] xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-[11px]',
+                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] xl:h-4 xl:min-w-4 xl:px-1 xl:text-[10px]',
                       columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -933,20 +932,21 @@ export default function FortnightColumn({
               <TabsTrigger
                 value="loans"
                 className={cn(
-                  'min-h-9 px-2.5 py-1.5 text-xs font-semibold sm:min-h-0 sm:px-3.5 sm:py-2 sm:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs',
+                  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
+                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
                 )}
                 aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >
-                <span className={cn('inline-flex items-center gap-1.5 sm:gap-2', compactTabs && 'gap-1')}>
-                  {compactTabs ? 'Prest.' : 'Préstamos'}
+                <span className={cn('inline-flex items-center gap-1 sm:gap-1.5 xl:gap-2', compactTabs && 'gap-1')}>
+                  <span className={compactTabs ? 'inline' : 'xl:hidden'}>Prest.</span>
+                  <span className={compactTabs ? 'hidden' : 'hidden xl:inline'}>Préstamos</span>
                   <Badge
                     variant={
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
                     }
                     className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-5 sm:min-w-5.5 sm:px-1.5 sm:text-[11px]',
-                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px]',
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px] xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-[11px]',
+                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] xl:h-4 xl:min-w-4 xl:px-1 xl:text-[10px]',
                       columnTab === 'loans' && pendingLoanPaymentsCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -957,7 +957,7 @@ export default function FortnightColumn({
                 </span>
               </TabsTrigger>
             </TabsList>
-            <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 sm:pl-1">
+            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 sm:pl-0.5">
               <DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1028,8 +1028,8 @@ export default function FortnightColumn({
                     onClick={() => setAddExpenseDialogOpen(true)}
                     disabled={!fortnightId || fortnightId <= 0}
                     className={cn(
-                      'h-9 w-9 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8 sm:w-auto sm:px-3',
-                      compactTabs && 'sm:w-9 sm:px-0',
+                      'h-9 w-9 shrink-0 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8',
+                      !compactTabs && 'xl:w-auto xl:px-3',
                     )}
                     aria-label="Agregar gasto a esta quincena"
                     title={
@@ -1039,13 +1039,13 @@ export default function FortnightColumn({
                     }
                   >
                     <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                    <span className={cn('hidden sm:inline', compactTabs && 'sm:hidden')}>
+                    <span className={cn('hidden', !compactTabs && 'xl:inline')}>
                       Agregar gasto
                     </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={4}>
-                  Atajo: tecla A
+                  Agregar gasto · A
                 </TooltipContent>
               </Tooltip>
               <DropdownMenu>
