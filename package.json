@@ -12,7 +12,6 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
-    "backfill:pantry-products": "tsx --tsconfig tsconfig.json scripts/backfill-pantry-products-from-receipts.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
     "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",

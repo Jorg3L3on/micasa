@@ -161,8 +161,7 @@ export function NavMain({
   items: NavMainItem[]
 }) {
   const mounted = useClientMounted()
-  const skeletonRows =
-    groupLabel === "Despensa" ? 5 : Math.max(7, items.length + 2)
+  const skeletonRows = Math.max(7, items.length + 2)
 
   if (!mounted) {
     return (

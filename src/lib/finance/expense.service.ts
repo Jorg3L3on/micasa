@@ -183,7 +183,7 @@ export async function listExpensesByOwner(
   });
 }
 
-/** Creates expense + wallet delta inside an existing transaction (e.g. pantry receipt import). */
+/** Creates expense + wallet delta inside an existing transaction (e.g. loan payment). */
 export async function createExpenseInTransaction(
   tx: Prisma.TransactionClient,
   input: CreateExpenseInput,

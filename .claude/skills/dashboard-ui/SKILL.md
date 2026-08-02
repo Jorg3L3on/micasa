@@ -11,7 +11,7 @@ when_to_use:
 
 # MiCasa Dashboard UI
 
-This skill encodes the conventions already established by the canonical pages: `dashboard/page.tsx`, `wallets/page.tsx`, `expenses/`, `credit-cards/`, and the pantry receipts page. New pages should match this dialect; existing divergent pages should be aligned with it (not the other way around).
+This skill encodes the conventions already established by the canonical pages: `dashboard/page.tsx`, `wallets/page.tsx`, `expenses/`, and `credit-cards/`. New pages should match this dialect; existing divergent pages should be aligned with it (not the other way around).
 
 The dashboard frame (sidebar, sticky header, container) is owned by `src/app/(dashboard)/layout.tsx`. **Pages render only their content** — do not re-wrap in another container or set their own background.
 
@@ -57,11 +57,11 @@ If the page has both a title and an action, use **justify-between** instead of j
 
 ### Page title pattern
 
-Inline title + subtitle, not the legacy `<PageHeader/>` with `text-3xl`. The newer convention (used in pantry, receipts, dashboard cards) is:
+Inline title + subtitle, not the legacy `<PageHeader/>` with `text-3xl`. The newer convention (used in wallets, loans, dashboard cards) is:
 
 ```tsx
 <div>
-  <h2 className="text-lg font-semibold leading-tight">Listas de compras</h2>
+  <h2 className="text-lg font-semibold leading-tight">Billeteras</h2>
   <p className="text-xs text-muted-foreground">Subtítulo breve.</p>
 </div>
 ```
@@ -95,18 +95,21 @@ import StatCard from '@/components/dashboard/StatCard';
 
 `StatCard` already wraps `formatCurrency`. Available `iconKey` values: `wallet`, `trending-up`, `trending-down`, `circle-dollar`. Add new keys to `ICON_MAP` rather than passing arbitrary icons.
 
-### `<PantryMetricTile/>` — compact tile
+### Metric strip (compact non-currency)
 
-Use for **counts, dates, or non-currency** values where you want a smaller footprint and an uppercase micro-label. Reference: `src/components/pantry/PantryMetricTile.tsx`.
+Use for **counts, dates, or non-currency** values with a calm shell and colored left border. Prefer `DASHBOARD_METRIC_STRIP_CLASS` from `src/components/dashboard/constants.ts` plus a `border-l-*` accent (see fintech / UI consistency rules).
 
 ```tsx
-import { PantryMetricTile } from '@/components/pantry/PantryMetricTile';
-import { ListChecks } from 'lucide-react';
+import { DASHBOARD_METRIC_STRIP_CLASS } from '@/components/dashboard/constants';
+import { cn } from '@/lib/utils';
 
-<PantryMetricTile icon={ListChecks} label="Carritos en curso" value="3" accent="sky" />
+<div className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
+  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    Préstamos activos
+  </span>
+  <span className="text-sm font-bold font-mono tabular-nums">3</span>
+</div>
 ```
-
-Available `accent` keys: `violet`, `blue`, `emerald`, `amber`, `sky`, `slate`.
 
 ### Icon gradient palette
 
@@ -118,7 +121,7 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 | Emerald | `135deg, #10b981 → #34d399` | Income, success |
 | Violet | `135deg, #8b5cf6 → #a78bfa` | Expenses, receipts |
 | Yellow | `135deg, #eab308 → #facc15` | Available, in-progress |
-| Sky | `135deg, #0ea5e9 → #38bdf8` | Shopping, planning |
+| Sky | `135deg, #0ea5e9 → #38bdf8` | Planning |
 | Blue | `135deg, #3b82f6 → #60a5fa` | Debit, generic |
 | Slate | `135deg, #64748b → #94a3b8` | Neutral / archived |
 | Rose | `135deg, #f43f5e → #fb7185` | Destructive / canceled |
@@ -130,10 +133,10 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 | Choose | When |
 |---|---|
 | **`<Card>` + `<DataTable>`** (`wallets`, `expenses`) | Tabular numeric data, sortable columns, ≥ 4 attributes per row |
-| **Card grid / list** (`pantry/shopping`) | Heterogeneous items with status pills, primary/secondary actions, mobile-first browsing |
+| **Card grid / list** (`loans`, credit-card import history) | Heterogeneous items with status pills, primary/secondary actions, mobile-first browsing |
 | **Single `<Card>`** | A form, settings panel, or single-record detail |
 
-Don't switch a domain from one to the other without a reason: `pantry/shopping` stays a card grid because each cart has status, totals, and "open" affordances that read better as a card than a row.
+Don't switch a domain from one to the other without a reason: keep card grids when each item has status, totals, and "open" affordances that read better as a card than a row.
 
 ---
 
@@ -143,9 +146,9 @@ Use `<EmptyState/>` (`src/components/EmptyState.tsx`) — never roll your own. C
 
 ```tsx
 <EmptyState
-  message="No tienes carritos en este filtro."
-  description="Crea una lista para planear tu próxima compra."
-  action={{ label: 'Nuevo carrito', onClick: () => setCreateOpen(true) }}
+  message="No tienes préstamos activos."
+  description="Registra un préstamo para seguir el calendario de pagos."
+  action={{ label: 'Nuevo préstamo', onClick: () => setCreateOpen(true) }}
 />
 ```
 
@@ -157,7 +160,7 @@ For a table that's loaded but filtered to zero, use the table's built-in `emptyM
 
 | Pattern | Use |
 |---|---|
-| `<Sheet side="bottom">` with `rounded-t-2xl` | Mobile-friendly create/edit forms (`CreateCartSheet`) |
+| `<Sheet side="bottom">` with `rounded-t-2xl` | Mobile-friendly create/edit forms |
 | `<Dialog>` | Confirmations, short modal forms |
 | `<ConfirmDeleteDialog>` | Always for delete confirmations — never a custom dialog |
 | `<Collapsible>` | Optional/advanced fields inside a form |
@@ -263,7 +266,7 @@ Inline semantic classes — keep these consistent so users recognize them:
 ## Accessibility checklist (for any new page)
 
 - Every icon-only button has `aria-label`.
-- Filter rows use `role="tablist"` / `role="tab"` + `aria-selected` (see `PantryShoppingListView`).
+- Filter rows use `role="tablist"` / `role="tab"` + `aria-selected` when presenting segmented filters.
 - Status badges include the status word as text, not just color.
 - Page section regions have `aria-label` if they're not framed by a heading.
 
@@ -275,9 +278,9 @@ Read these files — they are the source of truth this skill summarizes:
 
 - Layout shell: `src/app/(dashboard)/layout.tsx`
 - Hero KPI: `src/components/dashboard/StatCard.tsx`
-- Compact tile: `src/components/pantry/PantryMetricTile.tsx`
+- Metric strip constant: `src/components/dashboard/constants.ts`
 - Empty state: `src/components/EmptyState.tsx`
 - Action-bar reference: `src/app/(dashboard)/wallets/page.tsx`
 - Metric-strip reference: `src/app/(dashboard)/dashboard/page.tsx`
-- Card-grid list reference: `src/components/pantry/PantryShoppingListView.tsx`
+- Card-grid list reference: `src/app/(dashboard)/loans/page.tsx`
 - Currency util: `formatCurrency` in `src/lib/utils.ts`

@@ -29,7 +29,6 @@ Most budgeting apps treat the month as one block. MiCasa uses **quincenas** as t
 - **Wallets & transfers** — cash, debit, credit, and department-store cards; house assignees
 - **Credit cards** — statement cycles, planned payments per fortnight, reconciliation; imports from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, **DiDi Card**, and **Liverpool** (with rollback)
 - **Loans (préstamos)** — schedules, wallet or payroll sources, expense linking, planner + liquidity
-- **Pantry** — receipt upload, product catalog, shopping carts, expense ↔ receipt linking
 - **Onboarding** — first-run setup after registration
 - **Admin** — gated `/admin` shell (`User.is_admin` and/or `MICASA_ADMIN_EMAILS`)
 
@@ -106,7 +105,6 @@ Optional:
 | `npm run validate:calendar-dates` | Calendar-date anti-patterns |
 | `npm run ci` | Full local CI (validators → generate → coverage → isolation → build) |
 | `npm run repair:card-payments` | Repair card payment inconsistencies |
-| `npm run backfill:pantry-products` | Backfill pantry products from receipts |
 | `npm run backfill:fortnightly-loan-payments` | Realign fortnightly loan payments |
 
 ## Architecture
@@ -124,7 +122,7 @@ Important paths:
 src/app/            # App Router pages + API route handlers
 src/components/     # UI (landing, dashboard, planner, …)
 src/lib/finance/    # Domain services (expenses, cards, loans, liquidity, …)
-src/lib/server/     # Owner context, statement parsers, pantry, admin
+src/lib/server/     # Owner context, statement parsers, admin
 src/schemas/        # Zod schemas per resource
 prisma/             # schema (~26 models), migrations, seed
 ```

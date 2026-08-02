@@ -133,43 +133,6 @@ function getPageTitle(
     return { title, breadcrumbs };
   }
 
-  if (segments[0] === 'pantry') {
-    breadcrumbs.push({
-      label: 'Despensa',
-      href: `/pantry/receipts${qs}`,
-    });
-    if (segments[1] === 'shopping') {
-      breadcrumbs.push({
-        label: 'Lista de compras',
-        href: `/pantry/shopping${qs}`,
-      });
-      if (segments[2] && /^\d+$/.test(segments[2])) {
-        breadcrumbs.push({ label: `Lista #${segments[2]}` });
-        return { title: 'Detalle de lista de compras', breadcrumbs };
-      }
-      return { title: 'Lista de compras', breadcrumbs };
-    }
-    if (segments[1] === 'receipts') {
-      breadcrumbs.push({
-        label: 'Recibos',
-        href: `/pantry/receipts${qs}`,
-      });
-      if (segments[2] && /^\d+$/.test(segments[2])) {
-        breadcrumbs.push({ label: `Recibo #${segments[2]}` });
-        return { title: 'Detalle del recibo', breadcrumbs };
-      }
-      return { title: 'Recibos', breadcrumbs };
-    }
-    if (segments[1] === 'products') {
-      breadcrumbs.push({
-        label: 'Productos',
-        href: `/pantry/products${qs}`,
-      });
-      return { title: 'Productos de despensa', breadcrumbs };
-    }
-    return { title: 'Despensa', breadcrumbs };
-  }
-
   if (segments[0] === 'wallets') {
     breadcrumbs.push({ label: 'Billeteras', href: `/wallets${qs}` });
     if (segments[1] === 'liquidity') {
@@ -209,7 +172,6 @@ function getPageTitle(
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',
     categories: 'Categorías',
-    pantry: 'Despensa',
     expenses: 'Gastos',
   };
 

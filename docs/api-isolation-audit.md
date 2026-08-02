@@ -28,7 +28,7 @@ Isolation is application-layer only (`getOwnerContext` + `ownerFilter` / equival
 ## Legend
 
 - **getOwnerContext:** route calls `getOwnerContext(request)` and early-returns on error
-- **By-id ownership:** lookups/mutations use `ownerFilter`, `*ForOwner`, or pantry `pantryReceiptOwnerWhere` / cart owner where
+- **By-id ownership:** lookups/mutations use `ownerFilter` or `*ForOwner`
 - **Status:** `ok` | `gap` | `n/a`
 
 ## Inventory
@@ -84,23 +84,6 @@ Isolation is application-layer only (`getOwnerContext` + `ownerFilter` / equival
 | `/api/monthly/[year]/[month]/budget-panel` | GET | yes | ownerFilter | ok | |
 | `/api/onboarding` | POST | no | session user | n/a | |
 | `/api/onboarding/complete` | POST | no | session user | n/a | |
-| `/api/pantry/insights` | GET | yes | owner where | ok | |
-| `/api/pantry/products` | GET, POST | yes | owner where | ok | |
-| `/api/pantry/products/[id]` | PATCH, DELETE | yes | owner where | ok | |
-| `/api/pantry/receipts` | GET, POST | yes | pantryReceiptOwnerWhere | ok | |
-| `/api/pantry/receipts/[id]` | GET, PATCH, DELETE | yes | pantryReceiptOwnerWhere | ok | |
-| `/api/pantry/receipts/[id]/expense` | POST | yes | owner where | ok | |
-| `/api/pantry/receipts/[id]/file` | GET | yes | owner where | ok | |
-| `/api/pantry/receipts/[id]/reconcile` | POST | yes | owner where | ok | |
-| `/api/pantry/shopping-carts` | GET, POST | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]` | GET, PATCH, DELETE | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/activity` | GET | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/check-all` | PATCH | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/items` | POST | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/items/[itemId]` | PATCH, DELETE | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/items/bulk` | POST | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/items/check-all` | PATCH | yes | owner where | ok | |
-| `/api/pantry/shopping-carts/[id]/status` | PATCH | yes | owner where | ok | |
 | `/api/reports` | GET | yes | ownerFilter | ok | |
 | `/api/transactions` | GET, POST, PUT, DELETE | yes | findFirst + ownerFilter; service `ownerFilter` | ok | |
 | `/api/transfers` | GET, POST | yes | ownerFilter | ok | |
@@ -121,8 +104,7 @@ Vitest suite under `src/test/isolation/` (`npm run test:isolation`):
 3. Fortnights  
 4. Loans  
 5. Budgets  
-6. Pantry  
-7. Credit cards  
+6. Credit cards  
 
 Plus `getOwnerContext` house non-member → `403`.
 
