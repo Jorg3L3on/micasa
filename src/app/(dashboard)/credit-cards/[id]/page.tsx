@@ -767,6 +767,7 @@ const CreditCardDetailPageContent = () => {
           type: card.type as PaymentMethodType,
           provider_icon_key: card.provider_icon_key ?? null,
           active: card.active,
+          include_in_liquidity: card.include_in_liquidity ?? true,
           cutoff_day: card.cutoff_day,
           due_day: card.due_day,
           assignee_user_id: card.assignee_user_id ?? null,

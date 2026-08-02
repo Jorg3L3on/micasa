@@ -126,6 +126,56 @@ describe('getLiquidityProjection', () => {
     expect(findManyStatementImport).not.toHaveBeenCalled();
   });
 
+  it('excludes funding wallets that are not include_in_liquidity', async () => {
+    setupWalletMock(
+      [
+        fundingRow,
+        {
+          id: 11,
+          name: 'Ahorro',
+          type: PaymentMethodType.CASH,
+          amount: '1000',
+        },
+      ],
+      [],
+    );
+    // Simulate Prisma filter: only wallets with include_in_liquidity true are returned.
+    findManyWallet.mockImplementation(
+      async (args: {
+        where: {
+          type?: { in: string[] };
+          include_in_liquidity?: boolean;
+        };
+      }) => {
+        const types = args.where?.type?.in ?? [];
+        if (
+          types.includes(PaymentMethodType.CREDIT_CARD) ||
+          types.includes(PaymentMethodType.DEPARTMENT_STORE_CARD)
+        ) {
+          return [];
+        }
+        expect(args.where.include_in_liquidity).toBe(true);
+        return [fundingRow];
+      },
+    );
+    findManyExpense.mockResolvedValue([]);
+    const until = new Date(Date.UTC(2026, 8, 1));
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until,
+      includeUnpaidExpenses: false,
+    });
+    expect(result.summary.funding_total).toBe(500);
+    expect(result.funding_wallets).toEqual([
+      {
+        id: 10,
+        name: 'Efectivo',
+        type: PaymentMethodType.CASH,
+        balance: 500,
+      },
+    ]);
+  });
+
   it('loads ledger once and builds CC milestone from purchases in closed statement', async () => {
     setupWalletMock([fundingRow], [visaRow]);
     queryRaw

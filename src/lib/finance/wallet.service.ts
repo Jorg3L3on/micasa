@@ -6,7 +6,16 @@ import type {
   UpdateWalletInput,
 } from '@/schemas/wallet.schema';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
+import { isCreditWalletType, isFundingWalletType } from '@/lib/finance/wallet-accounting';
+
+const resolveIncludeInLiquidity = (
+  type: PaymentMethodType | string,
+  includeInLiquidity?: boolean,
+): boolean => {
+  if (isCreditWalletType(type as PaymentMethodType)) return true;
+  if (!isFundingWalletType(type as PaymentMethodType)) return true;
+  return includeInLiquidity !== false;
+};
 import { resolveWalletAssignee } from '@/lib/server/wallets/resolve-wallet-assignee';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
 import type { WalletListItem } from '@/types/catalog';
@@ -26,6 +35,7 @@ const mapWalletRowToListDto = (
     temporary_credit_limit_as_of?: Date | null;
     type: string;
     active: boolean;
+    include_in_liquidity: boolean;
     cutoff_day: number | null;
     due_day: number | null;
     assignee_user_id: number | null;
@@ -48,6 +58,7 @@ const mapWalletRowToListDto = (
         : w.temporary_credit_limit_as_of.toISOString(),
     type: w.type,
     active: w.active,
+    include_in_liquidity: w.include_in_liquidity,
     cutoff_day: w.cutoff_day,
     due_day: w.due_day,
     spent_amount: spent,
@@ -162,6 +173,10 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
       type: data.type,
       provider_icon_key: data.provider_icon_key ?? null,
       active: data.active,
+      include_in_liquidity: resolveIncludeInLiquidity(
+        data.type,
+        data.include_in_liquidity,
+      ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
       user_id: defaultUser.id,
@@ -190,6 +205,10 @@ export async function createWalletForUser(
       type: data.type,
       provider_icon_key: data.provider_icon_key ?? null,
       active: data.active,
+      include_in_liquidity: resolveIncludeInLiquidity(
+        data.type,
+        data.include_in_liquidity,
+      ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
       user_id: userId,
@@ -223,6 +242,10 @@ export async function createWalletForOwner(
       type: data.type,
       provider_icon_key: data.provider_icon_key ?? null,
       active: data.active,
+      include_in_liquidity: resolveIncludeInLiquidity(
+        data.type,
+        data.include_in_liquidity,
+      ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
       user_id: ownerType === 'user' ? ownerId : null,
@@ -261,10 +284,18 @@ export async function updateWalletMetadataForOwner(
     assignee_user_id = await resolveWalletAssignee(ownerType, ownerId, assigneePatch);
   }
 
+  const effectiveType = (data.type ?? existing.type) as PaymentMethodType;
   const prismaData: Record<string, unknown> = {
     ...rest,
     ...(assigneePatch !== undefined ? { assignee_user_id } : {}),
   };
+
+  if (data.include_in_liquidity !== undefined || data.type !== undefined) {
+    prismaData.include_in_liquidity = resolveIncludeInLiquidity(
+      effectiveType,
+      data.include_in_liquidity ?? existing.include_in_liquidity,
+    );
+  }
 
   if (data.temporary_credit_limit !== undefined) {
     if (data.temporary_credit_limit == null) {

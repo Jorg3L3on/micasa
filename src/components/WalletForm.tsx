@@ -116,6 +116,7 @@ const buildWalletFormDefaults = (
   type: defaultValues?.type ?? 'CASH',
   provider_icon_key: defaultValues?.provider_icon_key ?? null,
   active: defaultValues?.active ?? true,
+  include_in_liquidity: defaultValues?.include_in_liquidity ?? true,
   cutoff_day: toNumericOrNull(defaultValues?.cutoff_day),
   due_day: toNumericOrNull(defaultValues?.due_day),
   assignee_user_id: defaultValues?.assignee_user_id ?? null,
@@ -247,6 +248,32 @@ export default function WalletForm({
                 )}
               />
             </div>
+
+            {!isCreditType && (
+              <FormField
+                control={form.control}
+                name="include_in_liquidity"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1 rounded-lg border border-border/60 px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          aria-label="Incluir en liquidez"
+                        />
+                      </FormControl>
+                      <FormLabel className="mt-0! text-xs font-medium cursor-pointer">
+                        Incluir en liquidez
+                      </FormLabel>
+                    </div>
+                    <p className="pl-6 text-[10px] text-muted-foreground">
+                      Cuenta en el saldo de Liquidez (efectivo + débito)
+                    </p>
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

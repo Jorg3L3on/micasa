@@ -218,6 +218,7 @@ export type WalletListItem = {
   temporary_credit_limit_as_of?: string | null;
   type: string;
   active: boolean;
+  include_in_liquidity: boolean;
   cutoff_day: number | null;
   due_day: number | null;
   spent_amount: number;

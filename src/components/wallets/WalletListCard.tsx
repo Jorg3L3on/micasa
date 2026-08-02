@@ -13,8 +13,11 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
   BookmarkIcon,
+  CreditCard,
+  List,
   MoreVertical,
   Pencil,
+  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import {
@@ -425,6 +428,7 @@ export const WalletListCard = ({
                   href={`/credit-cards/${wallet.id}${ownerQueryString}`}
                   className="cursor-pointer"
                 >
+                  <CreditCard className="mr-2 h-4 w-4" data-icon="inline-start" />
                   Ver estado de cuenta
                 </Link>
               </DropdownMenuItem>
@@ -435,6 +439,7 @@ export const WalletListCard = ({
                   href={`/wallets/${wallet.id}${ownerQueryString}`}
                   className="cursor-pointer"
                 >
+                  <List className="mr-2 h-4 w-4" data-icon="inline-start" />
                   Ver movimientos
                 </Link>
               </DropdownMenuItem>
@@ -444,6 +449,7 @@ export const WalletListCard = ({
               onClick={() => onOpenBalance(wallet)}
               className="cursor-pointer"
             >
+              <SlidersHorizontal className="mr-2 h-4 w-4" data-icon="inline-start" />
               Editar saldo
             </DropdownMenuItem>
             <DropdownMenuItem
