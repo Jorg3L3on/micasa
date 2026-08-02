@@ -16,6 +16,7 @@ const buildPlannerBalance = (input: {
   cardDue: number;
   walletLoanDue: number;
   payrollDeduction: number;
+  budgetRemaining?: number;
 }) => {
   const withCards = mergePlanningCardTotalsIntoExpenseSummary(
     {
@@ -35,14 +36,20 @@ const buildPlannerBalance = (input: {
       : null,
   );
 
+  const budgetRemaining = input.budgetRemaining ?? 0;
   const balance =
-    input.income - input.payrollDeduction - withLoans.totalExpense;
-  const fundingNet = 5000 - withLoans.totalUnpaid - input.payrollDeduction;
+    input.income -
+    input.payrollDeduction -
+    withLoans.totalExpense -
+    budgetRemaining;
+  const fundingNet =
+    5000 - withLoans.totalUnpaid - input.payrollDeduction - budgetRemaining;
   const libreFromIncome =
     input.income -
     withLoans.totalPaid -
     withLoans.totalUnpaid -
-    input.payrollDeduction;
+    input.payrollDeduction -
+    budgetRemaining;
 
   return { withLoans, balance, fundingNet, libreFromIncome };
 };
@@ -96,6 +103,24 @@ describe('planning loan surface parity', () => {
     expect(result.balance).toBe(16907.27);
     expect(result.libreFromIncome).toBe(16907.27);
     expect(result.fundingNet).toBe(907.27);
+  });
+
+  it('subtracts only remaining budget so the envelope is not double-counted with Pagado', () => {
+    // Sobre $3,000 con $1,200 ya en pagado → resto $1,800; compromiso efectivo del sobre = $3,000.
+    const result = buildPlannerBalance({
+      income: 21_000,
+      baseExpense: 1_200,
+      basePaid: 1_200,
+      cardDue: 0,
+      walletLoanDue: 0,
+      payrollDeduction: 0,
+      budgetRemaining: 1_800,
+    });
+
+    expect(result.balance).toBe(18_000);
+    expect(result.libreFromIncome).toBe(18_000);
+    // wallets 5000 − unpaid 0 − remaining 1800
+    expect(result.fundingNet).toBe(3_200);
   });
 
   it('does not double-count paid wallet loans that already have a linked expense', () => {

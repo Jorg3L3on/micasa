@@ -1,17 +1,20 @@
 'use client';
 
-import { getIncomeCommitmentTone } from '@/components/monthly/fortnight-income-commitment';
+import {
+  getFortnightIncomeGaugeSegments,
+  getIncomeCommitmentTone,
+} from '@/components/monthly/fortnight-income-commitment';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightIncomeGaugeProps = {
-  /** Porcentaje del ingreso ya comprometido (pagado + pendiente). */
-  percentCommitted: number;
+  /** Pagado + pendiente + nómina (compromiso de efectivo). */
+  cashCommitted: number;
+  /** Resto del presupuesto de la quincena (segmento aparte). */
+  budgetRemaining?: number;
   /** Ingresos del periodo (base del 100 %). */
   periodIncome: number;
   className?: string;
 };
-
-const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
 
 const commitmentStrokeClass = (tone: 'ok' | 'warning' | 'danger') => {
   if (tone === 'danger') return 'text-destructive';
@@ -24,6 +27,10 @@ const commitmentLabelClass = (tone: 'ok' | 'warning' | 'danger') => {
   if (tone === 'warning') return 'text-amber-600 dark:text-amber-400';
   return 'text-emerald-700 dark:text-emerald-300';
 };
+
+/** Presupuesto restante: violet (sky ya es “libre” en este gauge). */
+const BUDGET_STROKE_CLASS = 'text-violet-500 dark:text-violet-400';
+const FREE_STROKE_CLASS = 'text-sky-500 dark:text-sky-400';
 
 const GAUGE_CX = 60;
 const GAUGE_CY = 54;
@@ -48,27 +55,44 @@ const describeTopArc = (startDeg: number, endDeg: number) => {
   return `M ${start.x} ${start.y} A ${GAUGE_R} ${GAUGE_R} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
 };
 
+const ratioToDegSpan = (ratio: number) => ratio * 180;
+
 export const FortnightIncomeGauge = ({
-  percentCommitted,
+  cashCommitted,
+  budgetRemaining = 0,
   periodIncome,
   className,
 }: FortnightIncomeGaugeProps) => {
-  const safePercent = clampPercent(Math.round(percentCommitted));
-  const tone = getIncomeCommitmentTone(safePercent);
-  const freePercent = 100 - safePercent;
-  /** Ángulo donde termina lo comprometido / empieza lo libre (180° → 0°). */
-  const freeStartDeg = 180 - (safePercent / 100) * 180;
+  const segments = getFortnightIncomeGaugeSegments(
+    periodIncome,
+    cashCommitted,
+    budgetRemaining,
+  );
+  const { cashRatio, budgetRatio, freeRatio, totalCommittedPercent } = segments;
+  const tone = getIncomeCommitmentTone(totalCommittedPercent);
 
-  const committedPath =
-    safePercent > 0 ? describeTopArc(180, freeStartDeg) : '';
+  // Left → right: efectivo comprometido → presupuesto → libre
+  const cashEndDeg = 180 - ratioToDegSpan(cashRatio);
+  const budgetEndDeg = cashEndDeg - ratioToDegSpan(budgetRatio);
+
+  const cashPath =
+    cashRatio > 0.0001 ? describeTopArc(180, cashEndDeg) : '';
+  const budgetPath =
+    budgetRatio > 0.0001 ? describeTopArc(cashEndDeg, budgetEndDeg) : '';
   const freePath =
-    freePercent > 0 ? describeTopArc(freeStartDeg, 0) : '';
+    freeRatio > 0.0001 ? describeTopArc(budgetEndDeg, 0) : '';
+
+  const showBudgetLegend = budgetRatio > 0.0001;
 
   return (
     <div
       className={cn('flex shrink-0 flex-col items-center', className)}
       role="img"
-      aria-label={`${safePercent}% del ingreso de la quincena ya comprometido; ingresos ${formatCurrency(periodIncome)}`}
+      aria-label={
+        showBudgetLegend
+          ? `${totalCommittedPercent}% del ingreso comprometido (${formatCurrency(cashCommitted)} en pagado/pendiente/nómina, ${formatCurrency(budgetRemaining)} en presupuesto restante); ingresos ${formatCurrency(periodIncome)}`
+          : `${totalCommittedPercent}% del ingreso de la quincena ya comprometido; ingresos ${formatCurrency(periodIncome)}`
+      }
     >
       <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
         <svg viewBox="0 0 120 60" className="h-full w-full" aria-hidden>
@@ -79,12 +103,22 @@ export const FortnightIncomeGauge = ({
               stroke="currentColor"
               strokeWidth="10"
               strokeLinecap="round"
-              className="text-sky-500 transition-[d] duration-500 dark:text-sky-400"
+              className={cn('transition-[d] duration-500', FREE_STROKE_CLASS)}
             />
           ) : null}
-          {committedPath ? (
+          {budgetPath ? (
             <path
-              d={committedPath}
+              d={budgetPath}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="10"
+              strokeLinecap="round"
+              className={cn('transition-[d] duration-500', BUDGET_STROKE_CLASS)}
+            />
+          ) : null}
+          {cashPath ? (
+            <path
+              d={cashPath}
               fill="none"
               stroke="currentColor"
               strokeWidth="10"
@@ -103,7 +137,7 @@ export const FortnightIncomeGauge = ({
               commitmentLabelClass(tone),
             )}
           >
-            {safePercent}%
+            {totalCommittedPercent}%
           </span>
           <span className="mt-0.5 text-[9px] font-medium text-muted-foreground sm:text-[10px]">
             del ingreso
@@ -118,6 +152,38 @@ export const FortnightIncomeGauge = ({
           ingresos del periodo
         </span>
       </p>
+      {showBudgetLegend ? (
+        <div
+          className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
+          aria-hidden
+        >
+          {cashRatio > 0.0001 ? (
+            <span className="flex items-center gap-1">
+              <span
+                className={cn(
+                  'inline-block h-1.5 w-1.5 rounded-full',
+                  tone === 'danger'
+                    ? 'bg-destructive'
+                    : tone === 'warning'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500',
+                )}
+              />
+              <span className="text-[9px] text-muted-foreground">Compromiso</span>
+            </span>
+          ) : null}
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
+            <span className="text-[9px] text-muted-foreground">Presupuesto</span>
+          </span>
+          {freeRatio > 0.0001 ? (
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+              <span className="text-[9px] text-muted-foreground">Libre</span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 };

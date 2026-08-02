@@ -26,7 +26,6 @@ import {
   Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
-import { getFortnightIncomeCommittedPercent } from '@/components/monthly/fortnight-income-commitment';
 import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
 import type {
   FundingWalletBreakdownItem,
@@ -51,7 +50,7 @@ export type IncomeItemBySource = {
 
 type SummaryBlockProps = {
   tenemos: number;
-  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente`. */
+  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente − resto de presupuesto`. */
   libre: number;
   pagado: number;
   pendiente: number;
@@ -76,9 +75,11 @@ type SummaryBlockProps = {
   planningWalletLoanDue?: PlannerWalletLoanDueSummary | null;
   /** Deducciones de nómina pendientes; reducen el ingreso disponible de la quincena. */
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
+  /** Resto del presupuesto de la quincena (total − spent); suma al compromiso. */
+  planningBudgetRemaining?: number;
   /** Saldos activos Efectivo + Débito (API resumen). */
   fundingWalletBalanceTotal?: number;
-  /** Saldos efectivo/débito menos solo lo pendiente (no pagado) del período (API resumen). */
+  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto (API resumen). */
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
@@ -103,6 +104,7 @@ export default function SummaryBlock({
   planningCardStatementDue = null,
   planningWalletLoanDue = null,
   planningPayrollLoanDeduction = null,
+  planningBudgetRemaining = 0,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -122,11 +124,14 @@ export default function SummaryBlock({
     userIncome.some((fi) => fi.userIncome && fi.userIncome.length > 0);
 
   const payrollLoanDeduction = planningPayrollLoanDeduction?.total ?? 0;
+  const budgetRemaining =
+    planningBudgetRemaining > 0 ? planningBudgetRemaining : 0;
 
-  /** Compromiso: efectivo/débito + deducciones de nómina pendientes. */
-  const comprometidoEfectivo = pagado + pendiente + payrollLoanDeduction;
+  /** Compromiso: efectivo/débito + deducciones de nómina + resto del presupuesto. */
+  const comprometidoEfectivo =
+    pagado + pendiente + payrollLoanDeduction + budgetRemaining;
 
-  /** Ingreso menos pagado, pendiente y deducciones de nómina (mismo criterio que el API). */
+  /** Ingreso menos pagado, pendiente, nómina y resto de presupuesto (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
 
   /**
@@ -148,12 +153,11 @@ export default function SummaryBlock({
   const displayPendienteFundingRow = billeterasVsPendienteAplica
     ? pendiente
     : 0;
+  const displayBudgetFundingRow = billeterasVsPendienteAplica
+    ? budgetRemaining
+    : 0;
 
-  const incomeCommittedPercent = getFortnightIncomeCommittedPercent(
-    tenemos,
-    pagado,
-    pendiente + payrollLoanDeduction,
-  );
+  const cashCommittedAmount = pagado + pendiente + payrollLoanDeduction;
   const showIncomeRing = tenemos > 0;
 
   const fundingWalletTypeLabel = (t: string) => {
@@ -182,9 +186,12 @@ export default function SummaryBlock({
   return (
     <Card
       className={cn(
-        'relative gap-0 overflow-hidden rounded-2xl border-violet-500/20 py-0 shadow-lg',
-        'bg-gradient-to-br from-violet-500/12 via-card to-primary/5',
-        'ring-1 ring-violet-500/10 dark:from-violet-500/18 dark:via-card dark:to-primary/8 dark:ring-violet-500/15',
+        // Match month strip + Presupuesto shell (not card-surface solid bg-card).
+        'relative gap-0 overflow-hidden rounded-xl border border-sky-500/20 bg-transparent py-0 shadow-sm',
+        'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
+        'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
+        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
+        'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
       )}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
@@ -193,10 +200,10 @@ export default function SummaryBlock({
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-violet-500/20 shadow-sm ring-1 ring-primary/25"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10"
               aria-hidden
             >
-              <BarChart3 className="h-4 w-4 text-primary" data-icon="inline-start" />
+              <BarChart3 className="h-4 w-4 text-sky-600 dark:text-sky-300" data-icon="inline-start" />
             </span>
             <div className="min-w-0 space-y-0.5">
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
@@ -215,7 +222,7 @@ export default function SummaryBlock({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-sky-500/10 hover:text-sky-700 dark:hover:text-sky-300"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded
@@ -242,7 +249,8 @@ export default function SummaryBlock({
           fundingNetInAccounts={displayFundingNet}
           fundingNetApplies={billeterasVsPendienteAplica}
           payrollDeductionAmount={payrollLoanDeduction}
-          percentCommitted={incomeCommittedPercent}
+          budgetRemainingAmount={budgetRemaining}
+          cashCommittedAmount={cashCommittedAmount}
           showGauge={showIncomeRing}
         />
 
@@ -349,6 +357,14 @@ export default function SummaryBlock({
                 {planningPayrollLoanDeduction.count} deducción
                 {planningPayrollLoanDeduction.count !== 1 ? 'es' : ''} de nómina
                 (préstamos); reduce el ingreso disponible sin salida de billetera.
+              </p>
+            ) : null}
+
+            {budgetRemaining > 0 ? (
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                Incluye {formatCurrency(budgetRemaining)} de presupuesto
+                restante de la quincena (lo aún no gastado del sobre); lo ya
+                gastado entra en Pagado.
               </p>
             ) : null}
 
@@ -465,6 +481,16 @@ export default function SummaryBlock({
                     </span>
                     <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                       −{formatCurrency(payrollLoanDeduction)}
+                    </span>
+                  </div>
+                ) : null}
+                {displayBudgetFundingRow > 0 ? (
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Menos presupuesto restante de la quincena
+                    </span>
+                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                      −{formatCurrency(displayBudgetFundingRow)}
                     </span>
                   </div>
                 ) : null}

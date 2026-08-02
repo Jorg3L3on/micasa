@@ -201,6 +201,7 @@ export default async function FortnightPage({
           planningPayrollLoanDeduction={
             summary.planningPayrollLoanDeduction ?? null
           }
+          planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
           fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
           fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
           fundingWalletBreakdown={summary.fundingWalletBreakdown}

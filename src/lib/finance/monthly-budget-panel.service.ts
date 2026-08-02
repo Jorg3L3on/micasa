@@ -78,6 +78,21 @@ export async function getMonthlyBudgetPanel(
   return { first, second };
 }
 
+/**
+ * Resto del presupuesto de la quincena (`available` = total − spent).
+ * Se suma al compromiso del resumen sin recontar lo ya reflejado en Pagado:
+ * p. ej. sobre $3,000 con $1,200 gastados → cuenta $1,800 (total efectivo $3,000).
+ */
+export async function getFortnightPlanningBudgetRemaining(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): Promise<number> {
+  const panel = await getMonthlyBudgetPanel(ownerFilter, year, month);
+  return period === 'FIRST' ? panel.first.available : panel.second.available;
+}
+
 function emptyScope(): MonthlyBudgetScope {
   return {
     totalBudget: 0,

@@ -11,15 +11,18 @@ import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
-  /** Ingresos menos pagado y pendiente (vista planificación). */
+  /** Ingresos menos pagado, pendiente y resto de presupuesto (vista planificación). */
   incomeRemainder: number;
-  /** Saldos efectivo/débito menos pendiente de la quincena. */
+  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto. */
   fundingNetInAccounts: number;
   /** Si false, se oculta la tarjeta de liquidez (solo aplica a quincena actual o siguiente). */
   fundingNetApplies?: boolean;
   /** Deducciones de nómina pendientes incluidas en incomeRemainder. */
   payrollDeductionAmount?: number;
-  percentCommitted: number;
+  /** Resto del presupuesto de la quincena incluido en incomeRemainder / liquidez. */
+  budgetRemainingAmount?: number;
+  /** Pagado + pendiente + nómina (segmento del gauge distinto al presupuesto). */
+  cashCommittedAmount?: number;
   showGauge: boolean;
 };
 
@@ -49,20 +52,36 @@ export const FortnightSummaryHero = ({
   fundingNetInAccounts,
   fundingNetApplies = true,
   payrollDeductionAmount = 0,
-  percentCommitted,
+  budgetRemainingAmount = 0,
+  cashCommittedAmount = 0,
   showGauge,
 }: FortnightSummaryHeroProps) => {
-  const incomeRemainderHint =
-    payrollDeductionAmount > 0
-      ? 'Ingresos menos lo pagado, lo pendiente planeado y las deducciones de nómina de esta quincena'
-      : 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
+  const incomeRemainderHint = (() => {
+    const parts = ['lo pagado', 'lo pendiente planeado'];
+    if (payrollDeductionAmount > 0) parts.push('las deducciones de nómina');
+    if (budgetRemainingAmount > 0) parts.push('el presupuesto restante');
+    if (parts.length === 2) {
+      return 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
+    }
+    const last = parts.pop()!;
+    return `Ingresos menos ${parts.join(', ')} y ${last} de esta quincena`;
+  })();
 
-  const liquidityHint =
-    'Saldo en efectivo y débito ahora, menos pendiente y nómina de esta quincena';
+  const liquidityHint = (() => {
+    const parts = ['pendiente'];
+    if (payrollDeductionAmount > 0) parts.push('nómina');
+    if (budgetRemainingAmount > 0) parts.push('presupuesto restante');
+    if (parts.length === 1) {
+      return 'Saldo en efectivo y débito ahora, menos pendiente de esta quincena';
+    }
+    const last = parts.pop()!;
+    return `Saldo en efectivo y débito ahora, menos ${parts.join(', ')} y ${last} de esta quincena`;
+  })();
 
   const gauge = showGauge ? (
     <FortnightIncomeGauge
-      percentCommitted={percentCommitted}
+      cashCommitted={cashCommittedAmount}
+      budgetRemaining={budgetRemainingAmount}
       periodIncome={periodIncome}
       className="mx-auto shrink-0 lg:mx-0"
     />
