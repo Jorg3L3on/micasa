@@ -26,6 +26,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -33,7 +35,26 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Banknote, Loader2, MoreVertical, Plus, RefreshCw } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Banknote,
+  Loader2,
+  MoreVertical,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  PLANNER_LIST_SORT_FIELD_LABELS,
+  nextPlannerListSortPreference,
+  plannerListSortDisplayLabel,
+  readPlannerListSortPreference,
+  sortExpenseListRows,
+  writePlannerListSortPreference,
+  type PlannerListSortDir,
+  type PlannerListSortMode,
+} from '@/lib/finance/planner-list-sort';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
@@ -67,6 +88,7 @@ import type {
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type { WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
+import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import { cn } from '@/lib/utils';
 
 /** Altura del panel con scroll (gastos / tarjeta / préstamos). Móvil usa dvh por la barra del navegador. */
@@ -128,6 +150,8 @@ type FortnightColumnProps = {
   preferenceScope?: string;
   /** Narrow column when both fortnights are shown side by side. */
   dualColumnLayout?: boolean;
+  budgetPanel?: MonthlyBudgetPanelResult | null;
+  budgetOwnerQuery?: string;
 };
 
 export default function FortnightColumn({
@@ -145,6 +169,8 @@ export default function FortnightColumn({
   summaryFundingRefreshNonce,
   preferenceScope = 'default',
   dualColumnLayout = false,
+  budgetPanel = null,
+  budgetOwnerQuery = '',
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -170,6 +196,9 @@ export default function FortnightColumn({
   const [columnTab, setColumnTab] = useState<'expenses' | 'cards' | 'loans'>(
     'expenses',
   );
+  const [listSortMode, setListSortMode] =
+    useState<PlannerListSortMode>('amount');
+  const [listSortDir, setListSortDir] = useState<PlannerListSortDir>('desc');
 
   const [plannerPaymentDialogOpen, setPlannerPaymentDialogOpen] =
     useState(false);
@@ -258,6 +287,12 @@ export default function FortnightColumn({
     }
   }, [period, preferenceScope]);
 
+  useEffect(() => {
+    const preference = readPlannerListSortPreference();
+    setListSortMode(preference.mode);
+    setListSortDir(preference.dir);
+  }, []);
+
   const handleColumnTabChange = useCallback((value: string) => {
     if (value !== 'expenses' && value !== 'cards' && value !== 'loans') return;
     setColumnTab(value);
@@ -267,6 +302,19 @@ export default function FortnightColumn({
       /* ignore */
     }
   }, [period, preferenceScope]);
+
+  const handleListSortClick = useCallback(
+    (nextMode: PlannerListSortMode) => {
+      const next = nextPlannerListSortPreference(
+        { mode: listSortMode, dir: listSortDir },
+        nextMode,
+      );
+      setListSortMode(next.mode);
+      setListSortDir(next.dir);
+      writePlannerListSortPreference(next);
+    },
+    [listSortDir, listSortMode],
+  );
 
   // Atajo: tecla "A" abre agregar gasto (solo pestaña Gastos); ignorar si hay diálogo abierto o el foco está en un campo editable.
   useEffect(() => {
@@ -716,16 +764,8 @@ export default function FortnightColumn({
       : undefined;
 
   const sortedTransactions = useMemo(
-    () =>
-      [...transactions].sort((a, b) => {
-        if (a.is_paid !== b.is_paid) {
-          return a.is_paid ? 1 : -1;
-        }
-        const amountA = Number(a.amount);
-        const amountB = Number(b.amount);
-        return amountB - amountA;
-      }),
-    [transactions],
+    () => sortExpenseListRows(transactions, listSortMode, listSortDir),
+    [transactions, listSortMode, listSortDir],
   );
 
   const unpaidExpenseCount = useMemo(
@@ -795,7 +835,19 @@ export default function FortnightColumn({
           fundingNetVsPendingExpense={
             summary.fundingNetVsPendingExpense ?? 0
           }
-          fundingWalletBreakdown={summary.fundingWalletBreakdown ?? []}
+          fundingWalletBreakdown={(summary.fundingWalletBreakdown ?? []).map(
+            (item) => {
+              const wallet = wallets.find((w) => w.id === item.id);
+              return {
+                ...item,
+                provider_icon_key:
+                  item.provider_icon_key ?? wallet?.provider_icon_key ?? null,
+                assignee: item.assignee ?? wallet?.assignee ?? null,
+              };
+            },
+          )}
+          budgetPanel={budgetPanel}
+          budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
           onEditIncome={handleOpenOverrideDialog}
           onEditIncomeSource={handleOpenEditIncomeSource}
         />
@@ -906,6 +958,68 @@ export default function FortnightColumn({
               </TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 sm:pl-1">
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
+                        aria-label={`Ordenar: ${plannerListSortDisplayLabel(listSortMode, listSortDir)}`}
+                      >
+                        <ArrowUpDown className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    Ordenar ·{' '}
+                    {plannerListSortDisplayLabel(listSortMode, listSortDir)}
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="min-w-44">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    {columnTab === 'cards'
+                      ? 'Ordenar tarjetas'
+                      : columnTab === 'loans'
+                        ? 'Ordenar préstamos'
+                        : 'Ordenar gastos'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {(
+                    Object.keys(
+                      PLANNER_LIST_SORT_FIELD_LABELS,
+                    ) as PlannerListSortMode[]
+                  ).map((mode) => {
+                    const isActive = listSortMode === mode;
+                    return (
+                      <DropdownMenuItem
+                        key={mode}
+                        className="gap-2"
+                        onSelect={() => handleListSortClick(mode)}
+                      >
+                        {isActive ? (
+                          listSortDir === 'desc' ? (
+                            <ArrowDown
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                              aria-hidden
+                            />
+                          ) : (
+                            <ArrowUp
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                              aria-hidden
+                            />
+                          )
+                        ) : (
+                          <span className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+                        )}
+                        {PLANNER_LIST_SORT_FIELD_LABELS[mode]}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1016,6 +1130,8 @@ export default function FortnightColumn({
                   density={tableDensity}
                   wallets={wallets}
                   pinTotalsToBottom
+                  sortMode={listSortMode}
+                  sortDir={listSortDir}
                 />
               )}
             </div>
@@ -1037,6 +1153,8 @@ export default function FortnightColumn({
                 plannerMonth={month}
                 plannerPeriod={period}
                 isCompact={tableDensity === 'compact'}
+                sortMode={listSortMode}
+                sortDir={listSortDir}
                 onPayCard={
                   context.id !== 0 ? handlePlannerOpenPayCard : undefined
                 }
@@ -1058,6 +1176,8 @@ export default function FortnightColumn({
                 ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
                 isCompact={tableDensity === 'compact'}
+                sortMode={listSortMode}
+                sortDir={listSortDir}
               />
             </div>
           </TabsContent>

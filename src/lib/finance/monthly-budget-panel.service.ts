@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
+  MonthlyBudgetAllocationRow,
   MonthlyBudgetPanelResult,
   MonthlyBudgetScope,
 } from '@/types/monthly-budget-panel';
@@ -23,12 +24,35 @@ type BudgetPanelPeriod = Prisma.BudgetPeriodGetPayload<{
         allocations: {
           include: {
             category: { select: { id: true; name: true; icon: true } };
+            wallet: {
+              select: {
+                id: true;
+                name: true;
+                provider_icon_key: true;
+                assignee: { select: { id: true; name: true } };
+              };
+            };
           };
         };
       };
     };
   };
 }>;
+
+type AllocationAgg = {
+  categoryId: number;
+  categoryName: string;
+  categoryIcon: string | null;
+  walletId: number;
+  walletName: string;
+  walletProviderIconKey: string | null;
+  walletAssignee: { id: number; name: string } | null;
+  budgeted: number;
+  spent: number;
+};
+
+const allocationKey = (walletId: number, categoryId: number) =>
+  `${walletId}:${categoryId}`;
 
 /**
  * Presupuesto efectivo por quincena para el sidebar del panel financiero.
@@ -58,6 +82,14 @@ export async function getMonthlyBudgetPanel(
           allocations: {
             include: {
               category: { select: { id: true, name: true, icon: true } },
+              wallet: {
+                select: {
+                  id: true,
+                  name: true,
+                  provider_icon_key: true,
+                  assignee: { select: { id: true, name: true } },
+                },
+              },
             },
           },
         },
@@ -98,7 +130,7 @@ function emptyScope(): MonthlyBudgetScope {
     totalBudget: 0,
     spent: 0,
     available: 0,
-    categories: [],
+    allocations: [],
     sources: [],
   };
 }
@@ -114,10 +146,7 @@ async function buildBudgetScope(
     MonthlyBudgetScope['sources'][number]['frequency'],
     number
   >();
-  const categoryTotals = new Map<
-    number,
-    { name: string; icon: string | null; budgeted: number; spent: number }
-  >();
+  const allocationTotals = new Map<string, AllocationAgg>();
 
   // Prefetch spend queries concurrently; merge below stays in period order so
   // totals accumulate exactly as before.
@@ -138,6 +167,32 @@ async function buildBudgetScope(
       );
     }),
   );
+
+  const upsertAllocation = (
+    key: string,
+    seed: Omit<AllocationAgg, 'budgeted' | 'spent'> & {
+      budgeted?: number;
+      spent?: number;
+    },
+  ) => {
+    const prev = allocationTotals.get(key);
+    if (prev) {
+      prev.budgeted += seed.budgeted ?? 0;
+      prev.spent += seed.spent ?? 0;
+      return;
+    }
+    allocationTotals.set(key, {
+      categoryId: seed.categoryId,
+      categoryName: seed.categoryName,
+      categoryIcon: seed.categoryIcon,
+      walletId: seed.walletId,
+      walletName: seed.walletName,
+      walletProviderIconKey: seed.walletProviderIconKey,
+      walletAssignee: seed.walletAssignee,
+      budgeted: seed.budgeted ?? 0,
+      spent: seed.spent ?? 0,
+    });
+  };
 
   for (const [index, period] of periods.entries()) {
     const overlap = overlaps[index];
@@ -163,19 +218,21 @@ async function buildBudgetScope(
         period,
         overlap,
       );
-      const catId = allocation.category_id;
-      const meta = allocation.category;
-      const prev = categoryTotals.get(catId);
-      if (prev) {
-        prev.budgeted += budgeted;
-      } else {
-        categoryTotals.set(catId, {
-          name: meta.name,
-          icon: meta.icon ?? null,
-          budgeted,
-          spent: 0,
-        });
-      }
+      upsertAllocation(allocationKey(allocation.wallet_id, allocation.category_id), {
+        categoryId: allocation.category_id,
+        categoryName: allocation.category.name,
+        categoryIcon: allocation.category.icon ?? null,
+        walletId: allocation.wallet_id,
+        walletName: allocation.wallet.name,
+        walletProviderIconKey: allocation.wallet.provider_icon_key ?? null,
+        walletAssignee: allocation.wallet.assignee
+          ? {
+              id: allocation.wallet.assignee.id,
+              name: allocation.wallet.assignee.name,
+            }
+          : null,
+        budgeted,
+      });
     }
 
     const spend = spends[index];
@@ -183,52 +240,61 @@ async function buildBudgetScope(
 
     totalSpent += spend.total_spent;
 
-    for (const [index, allocation] of budget.allocations.entries()) {
-      const amount = spend.by_allocation[index]?.spent_amount ?? 0;
+    for (const [allocIndex, allocation] of budget.allocations.entries()) {
+      const amount = spend.by_allocation[allocIndex]?.spent_amount ?? 0;
       if (amount <= 0) continue;
-      const catId = allocation.category_id;
-      const meta = allocation.category;
-      const prev = categoryTotals.get(catId);
-      if (prev) {
-        prev.spent += amount;
-      } else {
-        categoryTotals.set(catId, {
-          name: meta.name,
-          icon: meta.icon ?? null,
-          budgeted: 0,
-          spent: amount,
-        });
-      }
+      upsertAllocation(allocationKey(allocation.wallet_id, allocation.category_id), {
+        categoryId: allocation.category_id,
+        categoryName: allocation.category.name,
+        categoryIcon: allocation.category.icon ?? null,
+        walletId: allocation.wallet_id,
+        walletName: allocation.wallet.name,
+        walletProviderIconKey: allocation.wallet.provider_icon_key ?? null,
+        walletAssignee: allocation.wallet.assignee
+          ? {
+              id: allocation.wallet.assignee.id,
+              name: allocation.wallet.assignee.name,
+            }
+          : null,
+        spent: amount,
+      });
     }
   }
 
   const available = Math.max(0, totalBudget - totalSpent);
 
-  const categories = Array.from(categoryTotals.entries())
-    .filter(([, row]) => row.spent > 0)
-    .map(([id, row]) => {
+  const allocations: MonthlyBudgetAllocationRow[] = Array.from(
+    allocationTotals.values(),
+  )
+    .map((row) => {
       const remaining = row.budgeted - row.spent;
       return {
-        id,
-        name: row.name,
-        icon: row.icon,
+        categoryId: row.categoryId,
+        categoryName: row.categoryName,
+        categoryIcon: row.categoryIcon,
+        walletId: row.walletId,
+        walletName: row.walletName,
+        walletProviderIconKey: row.walletProviderIconKey,
+        walletAssignee: row.walletAssignee,
         budgeted: row.budgeted,
         spent: row.spent,
         remaining,
         percentUsed:
           row.budgeted > 0 ? Math.round((row.spent / row.budgeted) * 100) : 0,
-        percentOfBudget:
-          totalBudget > 0 ? Math.round((row.spent / totalBudget) * 100) : 0,
       };
     })
-    .sort((a, b) => b.percentUsed - a.percentUsed || b.spent - a.spent)
-    .slice(0, 6);
+    .sort(
+      (a, b) =>
+        b.budgeted - a.budgeted ||
+        a.categoryName.localeCompare(b.categoryName, 'es') ||
+        a.walletName.localeCompare(b.walletName, 'es'),
+    );
 
   return {
     totalBudget,
     spent: totalSpent,
     available,
-    categories,
+    allocations,
     sources: Array.from(sourceTotals.entries())
       .map(([frequency, sourceTotal]) => ({
         frequency,

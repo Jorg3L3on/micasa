@@ -87,13 +87,10 @@ export const MonthlyPanelLayout = ({
         <div className="mx-auto min-w-0 w-full max-w-4xl xl:max-w-none">
           {children}
         </div>
-        <div className="flex min-w-0 flex-col gap-5">
+        <div className="hidden min-w-0 flex-col gap-5 xl:flex">
           <MonthlyBudgetSidebar
             panel={budgetPanel}
             ownerQuery={ownerQuery}
-            year={year}
-            month={month}
-            todayYmd={todayYmd}
           />
         </div>
       </div>

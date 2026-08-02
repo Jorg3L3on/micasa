@@ -105,6 +105,8 @@ export type FundingWalletBreakdownItem = {
   amount: number;
   /** `PaymentMethodType`, ej. CASH | DEBIT_CARD */
   type: string;
+  provider_icon_key?: string | null;
+  assignee?: { id: number; name: string } | null;
 };
 
 /** Respuesta de GET /api/reports?type=summary: saldos activos Efectivo+Débito y neto vs solo lo pendiente (no pagado) del período. */

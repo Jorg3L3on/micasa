@@ -4,20 +4,20 @@ import Link from 'next/link';
 import { PiggyBank, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { FortnightBudgetProgress } from '@/components/monthly/FortnightBudgetProgress';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import { cn, formatCurrency } from '@/lib/utils';
-import { getFortnightPeriodPosition } from '@/lib/fortnight-calendar';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import type {
-  MonthlyBudgetCategoryRow,
+  MonthlyBudgetAllocationRow,
   MonthlyBudgetPanelResult,
 } from '@/types/monthly-budget-panel';
 
 type MonthlyBudgetSidebarProps = {
   panel: MonthlyBudgetPanelResult;
   ownerQuery: string;
-  year: number;
-  month: number;
-  todayYmd: string;
+  className?: string;
 };
 
 const budgetShellClass = cn(
@@ -57,35 +57,18 @@ const BudgetSidebarHeader = ({
 export const MonthlyBudgetSidebar = ({
   panel,
   ownerQuery,
-  year,
-  month,
-  todayYmd,
+  className,
 }: MonthlyBudgetSidebarProps) => {
   const { period } = useMonthlyPanelPreferences();
   const scope = period === 'FIRST' ? panel.first : panel.second;
-  const { totalBudget, spent, categories } = scope;
+  const { totalBudget, allocations } = scope;
   const periodLabel =
     period === 'FIRST' ? 'primera quincena' : 'segunda quincena';
-  const rawUsedPercent =
-    totalBudget > 0 ? Math.round((spent / totalBudget) * 100) : 0;
-  const usedPercent = Math.min(100, Math.max(0, rawUsedPercent));
-  const remaining = totalBudget - spent;
-  const overspent = remaining < 0;
-  const heroAmount = overspent ? Math.abs(remaining) : remaining;
-  const heroLabel = overspent ? 'excedido' : 'disponible';
-  const budgetStatus = getBudgetStatus({
-    year,
-    month,
-    period,
-    todayYmd,
-    usedPercent: rawUsedPercent,
-    overspent,
-  });
 
-  if (totalBudget <= 0 && categories.length === 0) {
+  if (totalBudget <= 0 && allocations.length === 0) {
     return (
       <aside
-        className={budgetShellClass}
+        className={cn(budgetShellClass, className)}
         aria-label="Presupuesto de la quincena"
       >
         <BudgetSidebarHeader
@@ -104,83 +87,38 @@ export const MonthlyBudgetSidebar = ({
 
   return (
     <aside
-      className={cn(budgetShellClass, 'space-y-5')}
-      aria-label="Presupuesto de la quincena y categorías"
+      className={cn(budgetShellClass, 'space-y-5', className)}
+      aria-label="Presupuesto de la quincena y asignaciones"
     >
-      <section aria-labelledby="monthly-budget-heading">
-        <BudgetSidebarHeader
-          headingId="monthly-budget-heading"
-          subtitle="Gasto vs asignado en esta quincena"
-        />
-        <div className="mt-3">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p
-              className={cn(
-                'font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground',
-                getAmountToneClassName(budgetStatus.tone),
-              )}
-            >
-              {formatCurrency(heroAmount)}
-            </p>
-            <span
-              className={cn(
-                'text-[10px] font-semibold uppercase tracking-wider',
-                overspent
-                  ? 'text-destructive'
-                  : 'text-emerald-600 dark:text-emerald-400',
-              )}
-            >
-              {heroLabel}
-            </span>
-          </div>
-        </div>
-        <div
-          className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/50"
-          role="progressbar"
-          aria-valuenow={usedPercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`${rawUsedPercent}% del presupuesto usado`}
-        >
-          <div
-            className={cn(
-              'h-full rounded-full transition-[width] duration-500',
-              getProgressClassName(rawUsedPercent, overspent),
-            )}
-            style={{ width: `${usedPercent}%` }}
-          />
-        </div>
-        <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-          <span>
-            <span className="font-mono font-semibold tabular-nums text-foreground">
-              {formatCurrency(spent)}
-            </span>{' '}
-            usado de{' '}
-            <span className="font-mono font-semibold tabular-nums text-foreground">
-              {formatCurrency(totalBudget)}
-            </span>
-          </span>
-          <span className="font-mono font-semibold tabular-nums text-foreground">
-            {rawUsedPercent}% usado
-          </span>
-        </div>
-      </section>
+      <BudgetSidebarHeader
+        headingId="monthly-budget-heading"
+        subtitle="Categorías y billeteras asignadas"
+      />
 
-      {categories.length > 0 ? (
-        <section aria-labelledby="top-categories-heading">
-          <h2
-            id="top-categories-heading"
-            className="text-sm font-semibold text-foreground"
-          >
-            Top categorías
+      <FortnightBudgetProgress
+        totalBudget={totalBudget}
+        spent={scope.spent}
+      />
+
+      {allocations.length > 0 ? (
+        <section aria-labelledby="budget-allocations-heading">
+          <h2 id="budget-allocations-heading" className="sr-only">
+            Asignaciones por categoría y billetera
           </h2>
-          <ul className="mt-3 space-y-3">
-            {categories.map((cat) => (
-              <BudgetCategoryRow key={cat.id} category={cat} />
+          <ul className="space-y-2.5" role="list">
+            {allocations.map((row) => (
+              <BudgetAllocationRow
+                key={`${row.walletId}-${row.categoryId}`}
+                allocation={row}
+              />
             ))}
           </ul>
         </section>
-      ) : null}
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No hay asignaciones de presupuesto en la {periodLabel}.
+        </p>
+      )}
 
       <Button variant="outline" className="w-full gap-2" asChild>
         <Link
@@ -195,45 +133,68 @@ export const MonthlyBudgetSidebar = ({
   );
 };
 
-function BudgetCategoryRow({
-  category,
+function BudgetAllocationRow({
+  allocation,
 }: {
-  category: MonthlyBudgetCategoryRow;
+  allocation: MonthlyBudgetAllocationRow;
 }) {
-  const overspent = category.remaining < 0;
-  const percent =
-    category.budgeted > 0 ? category.percentUsed : category.percentOfBudget;
+  const overspent = allocation.remaining < 0;
+  const barPercent = Math.min(100, Math.max(0, allocation.percentUsed));
   const remainingLabel = overspent
-    ? `${formatCurrency(Math.abs(category.remaining))} excedido`
-    : `${formatCurrency(category.remaining)} restante`;
+    ? `${formatCurrency(Math.abs(allocation.remaining))} excedido`
+    : `${formatCurrency(allocation.remaining)} restante`;
 
   return (
-    <li className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <CategoryLabel
-          name={category.name}
-          icon={category.icon}
-          className="min-w-0 text-sm"
-          iconClassName="h-4 w-4"
-        />
-        <p className="shrink-0 font-mono text-xs font-bold tabular-nums">
-          {formatCurrency(category.spent)}
+    <li className="space-y-1.5 rounded-lg border border-border/40 bg-card/40 px-2.5 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <CategoryLabel
+            name={allocation.categoryName}
+            icon={allocation.categoryIcon}
+            className="min-w-0 text-sm"
+            iconClassName="h-4 w-4"
+          />
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+            <WalletProviderIcon
+              providerIconKey={allocation.walletProviderIconKey}
+              className="h-4 w-4 border-border/40"
+              iconClassName="h-2.5 w-2.5"
+              showTooltipLabel={false}
+            />
+            <p className="truncate text-[10px] text-muted-foreground">
+              {allocation.walletName}
+            </p>
+            {allocation.walletAssignee ? (
+              <AssigneeAvatar
+                name={allocation.walletAssignee.name}
+                size="sm"
+                className="size-4 text-[8px]"
+              />
+            ) : null}
+          </div>
+        </div>
+        <p className="shrink-0 font-mono text-xs font-bold tabular-nums text-foreground">
+          {formatCurrency(allocation.spent)}
         </p>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted/40">
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-muted/40"
+        role="progressbar"
+        aria-valuenow={barPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${allocation.percentUsed}% del presupuesto de ${allocation.categoryName}`}
+      >
         <div
-          className={cn(
-            'h-full rounded-full',
-            getCategoryProgressClassName(category.percentUsed, overspent),
-          )}
-          style={{ width: `${Math.min(100, percent)}%` }}
+          className="h-full rounded-full bg-violet-500 dark:bg-violet-400"
+          style={{ width: `${barPercent}%` }}
         />
       </div>
       <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
         <span>
-          {category.budgeted > 0
-            ? `${category.percentUsed}% de su presupuesto`
-            : `${category.percentOfBudget}% del total`}
+          {allocation.budgeted > 0
+            ? `${allocation.percentUsed}% de su presupuesto`
+            : 'Sin monto asignado'}
         </span>
         <span
           className={cn(
@@ -248,69 +209,4 @@ function BudgetCategoryRow({
       </div>
     </li>
   );
-}
-
-type BudgetTone = 'success' | 'warning' | 'destructive' | 'muted';
-
-type BudgetStatus = {
-  tone: BudgetTone;
-};
-
-function getBudgetStatus({
-  year,
-  month,
-  period,
-  todayYmd,
-  usedPercent,
-  overspent,
-}: {
-  year: number;
-  month: number;
-  period: 'FIRST' | 'SECOND';
-  todayYmd: string;
-  usedPercent: number;
-  overspent: boolean;
-}): BudgetStatus {
-  if (overspent) {
-    return { tone: 'destructive' };
-  }
-
-  const position = getFortnightPeriodPosition(year, month, period, todayYmd);
-  if (position.kind === 'future' || position.kind === 'past') {
-    return { tone: 'muted' };
-  }
-
-  if (usedPercent >= 90) {
-    return { tone: 'destructive' };
-  }
-  if (usedPercent >= 75 || usedPercent > position.elapsedPercent + 15) {
-    return { tone: 'warning' };
-  }
-
-  return { tone: 'success' };
-}
-
-function getAmountToneClassName(tone: BudgetTone): string {
-  if (tone === 'destructive') return 'text-destructive';
-  if (tone === 'warning') return 'text-amber-600 dark:text-amber-400';
-  if (tone === 'muted') return 'text-foreground';
-  return 'text-emerald-600 dark:text-emerald-400';
-}
-
-function getProgressClassName(
-  usedPercent: number,
-  overspent: boolean,
-): string {
-  if (overspent || usedPercent >= 90) return 'bg-destructive';
-  if (usedPercent >= 75) return 'bg-amber-500 dark:bg-amber-400';
-  return 'bg-sky-500 dark:bg-sky-400';
-}
-
-function getCategoryProgressClassName(
-  percentUsed: number,
-  overspent: boolean,
-): string {
-  if (overspent || percentUsed >= 100) return 'bg-destructive';
-  if (percentUsed >= 85) return 'bg-amber-500 dark:bg-amber-400';
-  return 'bg-sky-500 dark:bg-sky-400';
 }

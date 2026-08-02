@@ -36,6 +36,11 @@ import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 import type { TransactionRow, WalletListItem } from '@/types/catalog';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
+import {
+  sortExpenseListRows,
+  type PlannerListSortDir,
+  type PlannerListSortMode,
+} from '@/lib/finance/planner-list-sort';
 
 /** Rows from combined transaction feeds use income ids that are not expense ids. */
 const isExpenseTransactionRow = (row: TransactionRow) => row.type !== 'income';
@@ -167,6 +172,9 @@ type ExpenseTableProps = {
   wallets?: WalletListItem[];
   /** When true (planificación por quincena), totals stay fixed under the list scroll area */
   pinTotalsToBottom?: boolean;
+  /** How to order rows when syncing from props (default: mayor monto). */
+  sortMode?: PlannerListSortMode;
+  sortDir?: PlannerListSortDir;
 };
 
 export default function ExpenseTable({
@@ -179,6 +187,8 @@ export default function ExpenseTable({
   density = 'comfortable',
   wallets = [],
   pinTotalsToBottom = false,
+  sortMode = 'amount',
+  sortDir = 'desc',
 }: ExpenseTableProps) {
   const isCompact = density === 'compact';
   const { context } = useFinanceContext();
@@ -200,18 +210,10 @@ export default function ExpenseTable({
     [wallets],
   );
 
-  // Sync local state with props when expenses change
+  // Sync local state with props when expenses / sort mode change
   useEffect(() => {
-    const sorted = [...expenses].sort((a, b) => {
-      if (a.is_paid !== b.is_paid) {
-        return a.is_paid ? 1 : -1;
-      }
-      const amountA = toDisplayAmount(a.amount);
-      const amountB = toDisplayAmount(b.amount);
-      return amountB - amountA;
-    });
-    setLocalExpenses(sorted);
-  }, [expenses]);
+    setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
+  }, [expenses, sortMode, sortDir]);
 
   const handlePaidToggle = useCallback(async (expense: TransactionRow, newPaidStatus: boolean) => {
     if (isPlanningDerivedExpenseRow(expense)) {
@@ -234,7 +236,7 @@ export default function ExpenseTable({
     const updatedExpenses = localExpenses.map((e) =>
       e.id === expenseId ? { ...e, is_paid: newPaidStatus } : e,
     );
-    setLocalExpenses(updatedExpenses);
+    setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
 
     try {
       await updateExpensePaidStatus(expenseId, newPaidStatus, context);
@@ -247,7 +249,7 @@ export default function ExpenseTable({
           : 'Gasto marcado como no pagado.',
       );
     } catch (error) {
-      setLocalExpenses(expenses);
+      setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
       const { userMessage, logToConsole } = getApiErrorFeedback(
         error,
         'Error al actualizar el estado de pago. Por favor, intenta de nuevo.',
@@ -263,7 +265,7 @@ export default function ExpenseTable({
         return next;
       });
     }
-  }, [context, expenses, localExpenses, onExpenseUpdate]);
+  }, [context, expenses, localExpenses, onExpenseUpdate, sortMode, sortDir]);
 
   const handleEditAmount = useCallback((expense: TransactionRow) => {
     if (isPlanningDerivedExpenseRow(expense)) return;
@@ -297,7 +299,7 @@ export default function ExpenseTable({
           }
         : e,
     );
-    setLocalExpenses(updatedExpenses);
+    setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
 
     try {
       setEditError(null);

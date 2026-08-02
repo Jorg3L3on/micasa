@@ -26,7 +26,12 @@ import {
   Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
+import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
+import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
+import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import type {
   FundingWalletBreakdownItem,
   PlannerCardChargesSummary,
@@ -35,6 +40,7 @@ import type {
   PlannerPayrollLoanDeductionSummary,
   PlannerWalletLoanDueSummary,
 } from '@/types/catalog';
+import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
@@ -83,6 +89,9 @@ type SummaryBlockProps = {
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
+  /** Presupuesto de la quincena — mostrado en el desglose en móvil. */
+  budgetPanel?: MonthlyBudgetPanelResult | null;
+  budgetOwnerQuery?: string;
   onEditIncome?: () => void;
   onEditIncomeSource?: (id: number, amount: number) => void;
 };
@@ -108,6 +117,8 @@ export default function SummaryBlock({
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
+  budgetPanel = null,
+  budgetOwnerQuery = '',
   onEditIncome,
   onEditIncomeSource,
 }: SummaryBlockProps) {
@@ -415,6 +426,88 @@ export default function SummaryBlock({
               </div>
             ) : null}
 
+            {/* Income breakdown */}
+            {(incomeItems.length > 0 || hasUserIncome) && (
+              <div
+                className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/6 to-transparent px-3 py-2.5 dark:from-blue-500/10 dark:to-transparent"
+                role="region"
+                aria-label="Desglose de ingresos"
+              >
+                <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700/90 dark:text-blue-400/90">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/15 ring-1 ring-blue-500/25">
+                    <Wallet
+                      className="h-3 w-3 text-blue-600 dark:text-blue-400"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                  </span>
+                  Desglose de ingresos
+                </h4>
+                {incomeItems.length > 0 ? (
+                  <div className="space-y-1">
+                    {incomeItems.map((item) => {
+                      const label =
+                        item.source === '__OVERRIDE__'
+                          ? 'Ingreso manual'
+                          : item.templateName || item.source || 'Ingreso';
+                      const displayLabel = item.userName
+                        ? `${item.userName}: ${label}`
+                        : label;
+                      return (
+                        <div
+                          key={item.id}
+                          className="group -mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                        >
+                          <span className="min-w-0 truncate text-xs text-foreground/90">
+                            {displayLabel}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <span className="text-xs font-semibold font-mono tabular-nums text-foreground">
+                              {formatCurrency(item.amount)}
+                            </span>
+                            {onEditIncomeSource && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() =>
+                                  onEditIncomeSource(item.id, item.amount)
+                                }
+                                aria-label={`Modificar ${displayLabel}`}
+                                tabIndex={0}
+                              >
+                                <Pencil className="h-3 w-3" data-icon="inline-start" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {userIncome?.map((periodIncome) => (
+                      <div key={periodIncome.fortnightId} className="space-y-1">
+                        {periodIncome.userIncome.map((userInc) => (
+                          <div
+                            key={userInc.userId}
+                            className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                          >
+                            <span className="truncate text-xs text-foreground/90">
+                              {userInc.userName}
+                            </span>
+                            <span className="shrink-0 text-xs font-semibold font-mono tabular-nums text-foreground">
+                              {formatCurrency(userInc.income)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Desglose billeteras vs pendiente (mismo criterio que la tarjeta héroe) */}
             {billeterasVsPendienteAplica ? (
             <div
@@ -434,22 +527,56 @@ export default function SummaryBlock({
               </h4>
               {fundingWalletBreakdown.length > 0 ? (
                 <div className="space-y-1">
-                  {fundingWalletBreakdown.map((w) => (
+                  {fundingWalletBreakdown.map((w) => {
+                    const provider = getWalletProviderOption(w.provider_icon_key);
+                    const showProviderLogo = Boolean(provider?.logoPath);
+
+                    return (
                     <div
                       key={w.id}
                       className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted/40"
                     >
-                      <span className="min-w-0 truncate text-muted-foreground">
-                        <span className="text-foreground/90">{w.name}</span>
-                        <span className="ml-1.5 text-[10px] text-muted-foreground/80">
-                          ({fundingWalletTypeLabel(w.type)})
+                      <span className="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
+                        {showProviderLogo ? (
+                          <WalletProviderIcon
+                            providerIconKey={w.provider_icon_key}
+                            className="h-4 w-4 border-border/40"
+                            iconClassName="h-2.5 w-2.5"
+                            showTooltipLabel={false}
+                          />
+                        ) : (
+                          <span
+                            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted/70"
+                            aria-hidden
+                          >
+                            <WalletPaymentMethodTypeIcon
+                              type={w.type}
+                              className="h-2.5 w-2.5"
+                            />
+                          </span>
+                        )}
+                        <span className="flex min-w-0 items-center gap-1.5 truncate">
+                          <span className="truncate text-foreground/90">
+                            {w.name}
+                          </span>
+                          {w.assignee ? (
+                            <AssigneeAvatar
+                              name={w.assignee.name}
+                              size="sm"
+                              className="size-5 text-[9px]"
+                            />
+                          ) : null}
+                          <span className="shrink-0 text-[10px] text-muted-foreground/80">
+                            ({fundingWalletTypeLabel(w.type)})
+                          </span>
                         </span>
                       </span>
                       <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
                         {formatCurrency(w.amount)}
                       </span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
@@ -513,76 +640,16 @@ export default function SummaryBlock({
             </div>
             ) : null}
 
-            {/* Income breakdown */}
-            {(incomeItems.length > 0 || hasUserIncome) && (
-              <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 dark:bg-muted/10">
-                <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Desglose de ingresos
-                </h4>
-                {incomeItems.length > 0 ? (
-                  <div className="space-y-1">
-                    {incomeItems.map((item) => {
-                      const label =
-                        item.source === '__OVERRIDE__'
-                          ? 'Ingreso manual'
-                          : item.templateName || item.source || 'Ingreso';
-                      const displayLabel = item.userName
-                        ? `${item.userName}: ${label}`
-                        : label;
-                      return (
-                        <div
-                          key={item.id}
-                          className="group -mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
-                        >
-                          <span className="min-w-0 truncate text-xs text-muted-foreground">
-                            {displayLabel}
-                          </span>
-                          <div className="flex shrink-0 items-center gap-1">
-                            <span className="text-xs font-semibold font-mono tabular-nums">
-                              {formatCurrency(item.amount)}
-                            </span>
-                            {onEditIncomeSource && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                                onClick={() =>
-                                  onEditIncomeSource(item.id, item.amount)
-                                }
-                                aria-label={`Modificar ${displayLabel}`}
-                                tabIndex={0}
-                              >
-                                <Pencil className="h-3 w-3" data-icon="inline-start" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {userIncome?.map((periodIncome) => (
-                      <div key={periodIncome.fortnightId} className="space-y-1">
-                        {periodIncome.userIncome.map((userInc) => (
-                          <div
-                            key={userInc.userId}
-                            className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
-                          >
-                            <span className="truncate text-xs text-muted-foreground">
-                              {userInc.userName}
-                            </span>
-                            <span className="shrink-0 text-xs font-semibold font-mono tabular-nums">
-                              {formatCurrency(userInc.income)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {budgetPanel != null ? (
+              <>
+                <Separator className="bg-border/50 xl:hidden" />
+                <MonthlyBudgetSidebar
+                  panel={budgetPanel}
+                  ownerQuery={budgetOwnerQuery}
+                  className="xl:hidden"
+                />
+              </>
+            ) : null}
           </>
         )}
       </CardContent>

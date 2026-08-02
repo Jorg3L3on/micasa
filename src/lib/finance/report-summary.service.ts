@@ -34,6 +34,7 @@ export type ReportSummaryResult = {
     name: string;
     amount: number;
     type: PaymentMethodType;
+    provider_icon_key: string | null;
   }>;
   userIncome: Array<{
     fortnightId: number;
@@ -416,6 +417,7 @@ export const getReportSummary = async (
       name: true,
       amount: true,
       type: true,
+      provider_icon_key: true,
     },
     orderBy: [{ type: 'asc' }, { name: 'asc' }],
   });
@@ -424,6 +426,7 @@ export const getReportSummary = async (
     name: w.name,
     amount: Number(w.amount),
     type: w.type,
+    provider_icon_key: w.provider_icon_key,
   }));
   const fundingWalletBalanceTotal = fundingWalletBreakdown.reduce(
     (s, w) => s + w.amount,

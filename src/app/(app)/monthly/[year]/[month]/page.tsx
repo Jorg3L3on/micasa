@@ -333,6 +333,8 @@ export default async function MonthlyPage({
         wallets={wallets}
         paidWalletIds={paidWalletIds}
         isCurrentMonth={isCurrentMonth}
+        budgetPanel={budgetPanel}
+        budgetOwnerQuery={ownerQuery}
         first={{
           label: firstLabel,
           transactions: firstTransactions,

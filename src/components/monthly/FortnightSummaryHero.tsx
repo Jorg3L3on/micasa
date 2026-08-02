@@ -87,6 +87,10 @@ export const FortnightSummaryHero = ({
     />
   ) : null;
 
+  const showBudgetAvailable = budgetRemainingAmount > 0;
+  const metricCount =
+    1 + (fundingNetApplies ? 1 : 0) + (showBudgetAvailable ? 1 : 0);
+
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
       {gauge ? <div className="flex justify-center lg:hidden">{gauge}</div> : null}
@@ -99,18 +103,24 @@ export const FortnightSummaryHero = ({
         <div
           className={cn(
             'grid min-w-0 flex-1 gap-2 sm:gap-3',
-            fundingNetApplies ? 'grid-cols-2' : 'grid-cols-1',
+            metricCount >= 3
+              ? 'grid-cols-2 sm:grid-cols-3'
+              : metricCount === 2
+                ? 'grid-cols-2'
+                : 'grid-cols-1',
           )}
         >
           <div className={subBoxClass}>
-            <div className="mb-1 flex items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full bg-sky-500"
-                aria-hidden
-              />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Libre del ingreso
-              </span>
+            <div className="mb-1 flex items-center justify-between gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-sky-500"
+                  aria-hidden
+                />
+                <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Libre del ingreso
+                </span>
+              </div>
               {metricHint(incomeRemainderHint)}
             </div>
             <p
@@ -127,14 +137,16 @@ export const FortnightSummaryHero = ({
 
           {fundingNetApplies ? (
             <div className={subBoxClass}>
-              <div className="mb-1 flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                  aria-hidden
-                />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Liquidez actual
-                </span>
+              <div className="mb-1 flex items-center justify-between gap-1.5">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                    aria-hidden
+                  />
+                  <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Liquidez actual
+                  </span>
+                </div>
                 {metricHint(liquidityHint)}
               </div>
               <p
@@ -146,6 +158,28 @@ export const FortnightSummaryHero = ({
                 )}
               >
                 {formatCurrency(fundingNetInAccounts)}
+              </p>
+            </div>
+          ) : null}
+
+          {showBudgetAvailable ? (
+            <div className={subBoxClass}>
+              <div className="mb-1 flex items-center justify-between gap-1.5">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full bg-violet-500"
+                    aria-hidden
+                  />
+                  <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Disponible del presupuesto
+                  </span>
+                </div>
+                {metricHint(
+                  'Resto del presupuesto de esta quincena (asignado menos gastado)',
+                )}
+              </div>
+              <p className="font-mono text-base font-bold tabular-nums text-violet-700 dark:text-violet-300 sm:text-lg">
+                {formatCurrency(budgetRemainingAmount)}
               </p>
             </div>
           ) : null}

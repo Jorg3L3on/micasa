@@ -7,12 +7,19 @@ import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
+import {
+  sortLoanDuePaymentRows,
+  type PlannerListSortDir,
+  type PlannerListSortMode,
+} from '@/lib/finance/planner-list-sort';
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
   ownerQueryString: string;
   fortnightLabel: string;
   isCompact?: boolean;
+  sortMode?: PlannerListSortMode;
+  sortDir?: PlannerListSortDir;
 };
 
 type VisualStatus = 'paid' | 'overdue' | 'pending' | 'muted';
@@ -25,32 +32,6 @@ const getDaysLeft = (dueDateYmd: string, todayYmd: string): number => {
   const due = Date.UTC(dy, dm - 1, dd);
   const today = Date.UTC(ty, tm - 1, td);
   return Math.round((due - today) / 86_400_000);
-};
-
-const getStatusAriaLabel = (
-  item: LoanDuePaymentItem,
-  visual: VisualStatus,
-  daysLeft: number,
-): string => {
-  if (visual === 'paid') return 'Pagado';
-  if (visual === 'overdue') return 'Vencido';
-  if (visual === 'muted') {
-    if (item.status === 'SKIPPED') return 'Omitido';
-    if (item.status === 'CANCELLED') return 'Cancelado';
-    return 'Sin estado';
-  }
-  if (daysLeft === 0) return 'Vence hoy';
-  if (daysLeft === 1) return 'Vence en 1 día';
-  return `Vence en ${daysLeft} días`;
-};
-
-const statusDotClass = (visual: VisualStatus, daysLeft: number) => {
-  if (visual === 'paid') return 'bg-emerald-500 dark:bg-emerald-400';
-  if (visual === 'overdue') return 'bg-destructive';
-  if (visual === 'muted') return 'bg-muted-foreground/50';
-  // Pending: amber when close, blue when farther out.
-  if (daysLeft <= 7) return 'bg-amber-500 dark:bg-amber-400';
-  return 'bg-blue-500 dark:bg-blue-400';
 };
 
 const getVisualStatus = (
@@ -68,24 +49,14 @@ export default function FortnightLoanPaymentsPanel({
   ownerQueryString,
   fortnightLabel,
   isCompact = false,
+  sortMode = 'amount',
+  sortDir = 'desc',
 }: FortnightLoanPaymentsPanelProps) {
   const todayYmd = useHydrationSafeTodayYmd();
 
   const rows = useMemo(
-    () =>
-      [...items].sort((a, b) => {
-        const statusOrder = (item: LoanDuePaymentItem) => {
-          const visual = getVisualStatus(item, todayYmd);
-          if (visual === 'overdue') return 0;
-          if (visual === 'pending') return 1;
-          if (visual === 'paid') return 2;
-          return 3;
-        };
-        const byStatus = statusOrder(a) - statusOrder(b);
-        if (byStatus !== 0) return byStatus;
-        return a.dueDate.localeCompare(b.dueDate);
-      }),
-    [items, todayYmd],
+    () => sortLoanDuePaymentRows(items, sortMode, sortDir, todayYmd),
+    [items, sortMode, sortDir, todayYmd],
   );
 
   const loanHref = (item: LoanDuePaymentItem) =>
@@ -122,7 +93,6 @@ export default function FortnightLoanPaymentsPanel({
         {rows.map((item) => {
           const visual = getVisualStatus(item, todayYmd);
           const daysLeft = getDaysLeft(item.dueDate, todayYmd);
-          const statusLabel = getStatusAriaLabel(item, visual, daysLeft);
           const Icon =
             item.paymentSource === 'PAYROLL_DEDUCTION' ? Landmark : HandCoins;
           const isDueSoon = visual === 'pending' && daysLeft <= 7;
@@ -178,29 +148,18 @@ export default function FortnightLoanPaymentsPanel({
               </span>
 
               <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Link
-                    href={loanHref(item)}
-                    className={cn(
-                      'truncate font-semibold hover:underline',
-                      isCompact ? 'text-xs' : 'text-sm',
-                      visual === 'paid' || visual === 'muted'
-                        ? 'text-muted-foreground'
-                        : 'text-foreground',
-                    )}
-                  >
-                    {item.loanName}
-                  </Link>
-                  <span
-                    className={cn(
-                      'h-2 w-2 shrink-0 rounded-full',
-                      statusDotClass(visual, daysLeft),
-                    )}
-                    role="img"
-                    aria-label={statusLabel}
-                    title={statusLabel}
-                  />
-                </div>
+                <Link
+                  href={loanHref(item)}
+                  className={cn(
+                    'block min-w-0 truncate font-semibold hover:underline',
+                    isCompact ? 'text-xs' : 'text-sm',
+                    visual === 'paid' || visual === 'muted'
+                      ? 'text-muted-foreground'
+                      : 'text-foreground',
+                  )}
+                >
+                  {item.loanName}
+                </Link>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                   <span>{item.lender}</span>
                   <span className="text-muted-foreground/30">·</span>

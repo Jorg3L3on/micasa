@@ -18,7 +18,11 @@ import {
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
-import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-statement-obligation';
+import {
+  sortCardDuePaymentRows,
+  type PlannerListSortDir,
+  type PlannerListSortMode,
+} from '@/lib/finance/planner-list-sort';
 import {
   clearFortnightCardPaymentPlan,
   upsertFortnightCardPaymentPlan,
@@ -64,33 +68,6 @@ export const isPendingPlannerCardPayment = (
 ): boolean =>
   (status === 'por_pagar' || status === 'vencido') && amount > 0;
 
-const statusDotAriaLabel = (
-  status: PlannerCardPaymentStatus,
-  daysLeft: number,
-  showRelativeDueTiming: boolean,
-): string => {
-  if (status === 'pagado') return 'Pagado';
-  if (status === 'vencido') return 'Vencido';
-  if (status === 'sin_cargo') return 'Sin cargo';
-  if (!showRelativeDueTiming) return 'Por pagar';
-  if (daysLeft === 0) return 'Vence hoy';
-  if (daysLeft === 1) return 'Vence en 1 día';
-  if (daysLeft > 1) return `Vence en ${daysLeft} días`;
-  return 'Por pagar';
-};
-
-const statusDotClass = (
-  status: PlannerCardPaymentStatus,
-  daysLeft: number,
-) => {
-  if (status === 'pagado') return 'bg-emerald-500 dark:bg-emerald-400';
-  if (status === 'vencido') return 'bg-destructive';
-  if (status === 'sin_cargo') return 'bg-muted-foreground/50';
-  // por_pagar: amber when close, blue when farther out
-  if (daysLeft <= 7) return 'bg-amber-500 dark:bg-amber-400';
-  return 'bg-blue-500 dark:bg-blue-400';
-};
-
 const displayPaidAmount = (item: DuePaymentItem, fortnightPaid: number) => {
   if (fortnightPaid > 0) return fortnightPaid;
   if ((item.paymentsAppliedToStatement ?? 0) > 0) {
@@ -110,6 +87,8 @@ type FortnightCardPaymentsPanelProps = {
   plannerMonth: number;
   plannerPeriod: 'FIRST' | 'SECOND';
   isCompact?: boolean;
+  sortMode?: PlannerListSortMode;
+  sortDir?: PlannerListSortDir;
   onPayCard?: (item: DuePaymentItem) => void;
   onPlanUpdated?: () => void | Promise<void>;
   /** Mientras se cargan billeteras/categorías para el diálogo de pago */
@@ -125,6 +104,8 @@ const FortnightCardPaymentsPanel = ({
   plannerMonth,
   plannerPeriod,
   isCompact = false,
+  sortMode = 'amount',
+  sortDir = 'desc',
   onPayCard,
   payingWalletId = null,
   onPlanUpdated,
@@ -139,24 +120,8 @@ const FortnightCardPaymentsPanel = ({
   const [planError, setPlanError] = useState<string | null>(null);
 
   const rows = useMemo(
-    () =>
-      [...items].sort((a, b) => {
-        const sa = getPlannerCardPaymentStatus(a);
-        const sb = getPlannerCardPaymentStatus(b);
-        const order = (s: PlannerCardPaymentStatus) =>
-          s === 'vencido'
-            ? 0
-            : s === 'por_pagar'
-              ? 1
-              : s === 'pagado'
-                ? 2
-                : 3;
-        if (order(sa) !== order(sb)) return order(sa) - order(sb);
-        return (
-          getEffectiveCardPaymentAmount(b) - getEffectiveCardPaymentAmount(a)
-        );
-      }),
-    [items],
+    () => sortCardDuePaymentRows(items, sortMode, sortDir),
+    [items, sortMode, sortDir],
   );
 
   const handleOpenPlanDialog = (item: DuePaymentItem) => {
@@ -242,21 +207,12 @@ const FortnightCardPaymentsPanel = ({
             const paidDisplayAmount = displayPaidAmount(item, fortnightPaid);
             const hasCustomPlan =
               item.plannedPayment != null && item.plannedPayment > 0;
-            const isStalePlan = item.isStaleFullyCoveredPlan === true;
-            const estimateHint = formatCardObligationAmountSourceHint(
-              item.obligationAmountSource,
-              item.isEstimate,
-            );
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const displayDueDateStr =
               item.visibleDueDate ?? item.statementDueDate;
             const displayDueDate = formatDate(displayDueDateStr);
             const daysLeft = getDaysLeft(displayDueDateStr, todayYmd);
-            const statementMismatch =
-              status === 'pagado' &&
-              fortnightPaid > 0 &&
-              item.paymentsAppliedToStatement === 0;
             const dateColor = showRelativeDueTiming
               ? daysLeftColor(daysLeft, status)
               : 'text-muted-foreground';
@@ -264,17 +220,12 @@ const FortnightCardPaymentsPanel = ({
             const daysLabel = (() => {
               if (!showRelativeDueTiming) return null;
               if (status === 'pagado' || status === 'sin_cargo') return null;
-              // Dot already signals overdue — don't repeat "vencido" in the subtitle.
+              // Row accent already signals overdue — don't repeat "vencido" in the subtitle.
               if (status === 'vencido' || daysLeft < 0) return null;
               if (daysLeft === 0) return 'vence hoy';
               return `en ${daysLeft} día${daysLeft !== 1 ? 's' : ''}`;
             })();
 
-            const dotLabel = statusDotAriaLabel(
-              status,
-              daysLeft,
-              showRelativeDueTiming,
-            );
             const isDueSoon =
               status === 'por_pagar' && daysLeft <= 7;
             const isDueLater =
@@ -331,29 +282,18 @@ const FortnightCardPaymentsPanel = ({
                 </span>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <Link
-                      href={href}
-                      className={cn(
-                        'min-w-0 truncate font-semibold hover:underline',
-                        isCompact ? 'text-xs' : 'text-sm',
-                        status === 'pagado' || status === 'sin_cargo'
-                          ? 'text-muted-foreground'
-                          : 'text-foreground',
-                      )}
-                    >
-                      {item.walletName}
-                    </Link>
-                    <span
-                      className={cn(
-                        'h-2 w-2 shrink-0 rounded-full',
-                        statusDotClass(status, daysLeft),
-                      )}
-                      role="img"
-                      aria-label={dotLabel}
-                      title={dotLabel}
-                    />
-                  </div>
+                  <Link
+                    href={href}
+                    className={cn(
+                      'min-w-0 truncate font-semibold hover:underline',
+                      isCompact ? 'text-xs' : 'text-sm',
+                      status === 'pagado' || status === 'sin_cargo'
+                        ? 'text-muted-foreground'
+                        : 'text-foreground',
+                    )}
+                  >
+                    {item.walletName}
+                  </Link>
                   <div className="flex flex-wrap items-baseline gap-1 text-[10px]">
                     <span
                       className={cn('font-medium tabular-nums', dateColor)}
@@ -386,30 +326,6 @@ const FortnightCardPaymentsPanel = ({
                         <span className="text-muted-foreground/30">·</span>
                         <span className="text-muted-foreground/60">
                           Sugerido {formatCurrency(item.nextDuePayment)}
-                        </span>
-                      </>
-                    ) : null}
-                    {estimateHint && isPendingPlannerCardPayment(status, effectiveAmount) ? (
-                      <>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="text-muted-foreground/60">
-                          {estimateHint}
-                        </span>
-                      </>
-                    ) : null}
-                    {isStalePlan ? (
-                      <>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="font-medium text-amber-700 dark:text-amber-300">
-                          Plan cubierto — límpialo
-                        </span>
-                      </>
-                    ) : null}
-                    {statementMismatch ? (
-                      <>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="text-muted-foreground/60">
-                          Pago en quincena; el banco aplica al corte
                         </span>
                       </>
                     ) : null}

@@ -15,6 +15,7 @@ import type {
   WalletListItem,
 } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
+import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
@@ -62,6 +63,8 @@ export type MonthlyFortnightViewProps = {
   wallets?: WalletListItem[];
   paidWalletIds: number[];
   isCurrentMonth: boolean;
+  budgetPanel?: MonthlyBudgetPanelResult | null;
+  budgetOwnerQuery?: string;
 };
 
 export default function MonthlyFortnightView({
@@ -73,6 +76,8 @@ export default function MonthlyFortnightView({
   wallets = [],
   paidWalletIds,
   isCurrentMonth,
+  budgetPanel = null,
+  budgetOwnerQuery = '',
 }: MonthlyFortnightViewProps) {
   const { prefsReady, period } = useMonthlyPanelPreferences();
 
@@ -135,6 +140,8 @@ export default function MonthlyFortnightView({
         summaryFundingRefreshNonce={summaryFundingRefreshNonce}
         preferenceScope={preferenceScope}
         dualColumnLayout={false}
+        budgetPanel={budgetPanel}
+        budgetOwnerQuery={budgetOwnerQuery}
       />
     </div>
   );

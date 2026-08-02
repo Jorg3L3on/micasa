@@ -42,6 +42,7 @@ function periodFixture(overrides: {
   categoryId?: number;
   categoryName?: string;
   walletId?: number;
+  walletName?: string;
 }) {
   const {
     id = 1,
@@ -53,6 +54,7 @@ function periodFixture(overrides: {
     categoryId = 5,
     categoryName = 'Despensa',
     walletId = 2,
+    walletName = 'BBVA',
   } = overrides;
 
   return {
@@ -71,6 +73,12 @@ function periodFixture(overrides: {
           category_id: categoryId,
           amount: total,
           category: { id: categoryId, name: categoryName, icon: 'shopping-cart' },
+          wallet: {
+            id: walletId,
+            name: walletName,
+            provider_icon_key: null,
+            assignee: null,
+          },
         },
       ],
     },
@@ -134,7 +142,7 @@ describe('getMonthlyBudgetPanel', () => {
     );
   });
 
-  it('aggregates spend into top categories for the fortnight scope', async () => {
+  it('aggregates spend into allocations for the fortnight scope', async () => {
     mocks.budgetPeriodFindMany.mockResolvedValue([
       periodFixture({
         id: 1,
@@ -144,6 +152,7 @@ describe('getMonthlyBudgetPanel', () => {
         total: 1000,
         categoryId: 5,
         categoryName: 'Despensa',
+        walletName: 'BBVA',
       }),
       periodFixture({
         id: 2,
@@ -155,6 +164,7 @@ describe('getMonthlyBudgetPanel', () => {
         categoryId: 8,
         categoryName: 'Transporte',
         walletId: 3,
+        walletName: 'Efectivo',
       }),
     ]);
     mocks.computePeriodSpendByAllocations
@@ -165,11 +175,14 @@ describe('getMonthlyBudgetPanel', () => {
 
     expect(panel.first.totalBudget).toBe(1500);
     expect(panel.first.spent).toBe(550);
-    expect(panel.first.categories).toHaveLength(2);
-    expect(panel.first.categories[0]).toMatchObject({
-      id: 5,
-      name: 'Despensa',
+    expect(panel.first.allocations).toHaveLength(2);
+    expect(panel.first.allocations[0]).toMatchObject({
+      categoryId: 5,
+      categoryName: 'Despensa',
+      walletId: 2,
+      walletName: 'BBVA',
       spent: 400,
+      budgeted: 1000,
       percentUsed: 40,
     });
     expect(panel.first.sources).toEqual(

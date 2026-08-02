@@ -1,12 +1,15 @@
-export type MonthlyBudgetCategoryRow = {
-  id: number;
-  name: string;
-  icon: string | null;
+export type MonthlyBudgetAllocationRow = {
+  categoryId: number;
+  categoryName: string;
+  categoryIcon: string | null;
+  walletId: number;
+  walletName: string;
+  walletProviderIconKey: string | null;
+  walletAssignee: { id: number; name: string } | null;
   budgeted: number;
   spent: number;
   remaining: number;
   percentUsed: number;
-  percentOfBudget: number;
 };
 
 export type MonthlyBudgetSourceSummary = {
@@ -18,7 +21,7 @@ export type MonthlyBudgetScope = {
   totalBudget: number;
   spent: number;
   available: number;
-  categories: MonthlyBudgetCategoryRow[];
+  allocations: MonthlyBudgetAllocationRow[];
   sources: MonthlyBudgetSourceSummary[];
 };
 
