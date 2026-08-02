@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Select,
   SelectContent,
@@ -342,13 +343,13 @@ const CreditCardQuickPurchaseDialog = ({
                   <label className="text-sm font-medium" htmlFor="qp-amount">
                     Monto
                   </label>
-                  <Input
+                  <CurrencyInput
                     id="qp-amount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    value={Number(amount) || 0}
+                    onChange={(val) =>
+                      setAmount(val === 0 ? '' : String(val))
+                    }
+                    placeholder="0.00"
                     aria-label="Monto de la compra"
                   />
                 </div>

@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 
 const DETAIL_BALANCE_INPUT_ID = 'wallet-detail-balance-input';
@@ -136,15 +136,13 @@ export default function WalletBalanceDialog({
           <Label htmlFor={DETAIL_BALANCE_INPUT_ID} className="text-xs">
             {isCredit ? 'Nueva deuda (utilizada)' : 'Nuevo saldo'}
           </Label>
-          <Input
+          <CurrencyInput
             id={DETAIL_BALANCE_INPUT_ID}
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
-            value={balanceInput}
-            onChange={(event) => setBalanceInput(event.target.value)}
+            value={Number(balanceInput.replace(/[,\s]/g, '')) || 0}
+            onChange={(val) => setBalanceInput(val === 0 ? '' : String(val))}
+            placeholder="0.00"
             disabled={savingBalance}
+            aria-label={isCredit ? 'Nueva deuda utilizada' : 'Nuevo saldo'}
           />
         </div>
 

@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -298,18 +299,14 @@ export default function DashboardQuickIncomeDialog({
                 <FormItem>
                   <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                    <CurrencyInput
+                      value={field.value || 0}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
                       placeholder="0.00"
-                      {...field}
-                      value={field.value || ''}
-                      onChange={(event) =>
-                        field.onChange(
-                          parseFloat(event.target.value) || 0,
-                        )
-                      }
+                      aria-label="Monto"
                     />
                   </FormControl>
                   <FormMessage />

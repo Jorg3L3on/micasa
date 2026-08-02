@@ -15,6 +15,7 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -254,21 +255,17 @@ export default function EditIncomeTemplatePage() {
                     <FormItem>
                       <FormLabel>Monto sugerido (opcional)</FormLabel>
                       <FormControl>
-                        <Input
+                        <CurrencyInput
                           className={FIELD_CLASSNAME}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00 MXN"
-                          value={field.value ?? ''}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value
-                                ? parseFloat(e.target.value)
-                                : null,
-                            )
+                          placeholder="0.00"
+                          value={field.value ?? 0}
+                          onChange={(val) =>
+                            field.onChange(val > 0 ? val : null)
                           }
                           onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          aria-label="Monto sugerido"
                         />
                       </FormControl>
                       <FormMessage />

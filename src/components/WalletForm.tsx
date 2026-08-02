@@ -29,6 +29,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -369,25 +370,16 @@ export default function WalletForm({
                         {isCreditType ? 'Saldo actual' : 'Monto'}
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                            $
-                          </span>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className="pl-7 font-mono tabular-nums"
-                            value={numericValue}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === ''
-                                  ? ''
-                                  : Number(e.target.value),
-                              )
-                            }
-                          />
-                        </div>
+                        <CurrencyInput
+                          className="font-mono tabular-nums"
+                          value={numericValue === '' ? 0 : numericValue}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          placeholder="0.00"
+                          aria-label={isCreditType ? 'Saldo actual' : 'Monto'}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -414,29 +406,22 @@ export default function WalletForm({
                     <FormItem>
                       <FormLabel>Línea de crédito</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                            $
-                          </span>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className="pl-7 font-mono tabular-nums"
-                            value={
-                              field.value == null || field.value === ''
-                                ? ''
-                                : Number(field.value)
-                            }
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === ''
-                                  ? null
-                                  : Number(e.target.value),
-                              )
-                            }
-                          />
-                        </div>
+                        <CurrencyInput
+                          className="font-mono tabular-nums"
+                          value={
+                            field.value == null || field.value === ''
+                              ? 0
+                              : Number(field.value)
+                          }
+                          onChange={(val) =>
+                            field.onChange(val === 0 ? null : val)
+                          }
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          placeholder="0.00"
+                          aria-label="Línea de crédito"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -450,30 +435,22 @@ export default function WalletForm({
                     <FormItem>
                       <FormLabel>Límite temporal (opcional)</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                            $
-                          </span>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className="pl-7 font-mono tabular-nums"
-                            aria-label="Límite temporal promocional"
-                            value={
-                              field.value == null || field.value === ''
-                                ? ''
-                                : Number(field.value)
-                            }
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === ''
-                                  ? null
-                                  : Number(e.target.value),
-                              )
-                            }
-                          />
-                        </div>
+                        <CurrencyInput
+                          className="font-mono tabular-nums"
+                          aria-label="Límite temporal promocional"
+                          value={
+                            field.value == null || field.value === ''
+                              ? 0
+                              : Number(field.value)
+                          }
+                          onChange={(val) =>
+                            field.onChange(val === 0 ? null : val)
+                          }
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          placeholder="0.00"
+                        />
                       </FormControl>
                       <p className="text-[10px] text-muted-foreground pl-0.5">
                         Promoción por encima de tu línea (p. ej. DiDi). Dejar vacío quita el tope extra. También se puede actualizar al importar el estado de cuenta.
