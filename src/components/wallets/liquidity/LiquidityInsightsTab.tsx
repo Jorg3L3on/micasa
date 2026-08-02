@@ -113,7 +113,12 @@ export function LiquidityInsightsTab() {
     for (const w of wallets) {
       if (!w.active) continue;
       const amt = Number(w.amount);
-      if (w.type === 'CASH' || w.type === 'DEBIT_CARD') funding += amt;
+      if (
+        (w.type === 'CASH' || w.type === 'DEBIT_CARD') &&
+        w.include_in_liquidity !== false
+      ) {
+        funding += amt;
+      }
       if (w.type === 'CREDIT_CARD' || w.type === 'DEPARTMENT_STORE_CARD') credit += amt;
     }
     return { fundingTotal: funding, creditUsedTotal: credit };
