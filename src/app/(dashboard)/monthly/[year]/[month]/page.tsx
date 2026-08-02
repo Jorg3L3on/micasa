@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { AlertTriangle } from 'lucide-react';
 import { getMonthlyPageData } from '@/features/monthly/server/monthly.service';
 import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context';
@@ -41,6 +42,27 @@ function formatMonthLabel(
 ): string {
   const name = getMonthName(month);
   return year === currentYear ? name : `${name} ${year}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ year: string; month: string }>;
+}): Promise<Metadata> {
+  const { year: yearParam, month: monthParam } = await params;
+  const parsedParams = parseMonthlyRouteParams(yearParam, monthParam);
+  if (!parsedParams.ok) {
+    return {
+      title: 'Panel financiero | MiCasa',
+      description: 'Planifica ingresos y gastos por quincena.',
+    };
+  }
+  const { year, month } = parsedParams.value;
+  const monthName = getMonthName(month);
+  return {
+    title: `${monthName} ${year} | MiCasa`,
+    description: 'Panel financiero: planifica ingresos y gastos por quincena.',
+  };
 }
 
 export default async function MonthlyPage({

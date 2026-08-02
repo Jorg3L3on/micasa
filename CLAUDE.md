@@ -58,14 +58,14 @@ src/
       budgets/           # Budget management
       categories/        # Expense/income categories
       credit-cards/      # Credit card tracking
-      dashboard/         # Main overview
+      dashboard/         # Legacy redirect → Panel financiero (current month)
       expense-templates/ # Recurring expense templates
       expenses/          # Expense entry & listing
       fortnight/         # Single fortnight detail view
       fortnights/        # Fortnight list
       house-users/       # Household member management
       income-templates/  # Recurring income templates
-      monthly/           # Monthly summary view
+      monthly/           # Panel financiero (app home / primary planning UI)
       loans/             # Loan tracking and schedules
       transactions/      # Transaction log
       wallets/           # Wallet management
@@ -160,10 +160,13 @@ BudgetFrequency:    DAILY | WEEKLY | BIWEEKLY | CUSTOM
 ```
 
 ### Loans
-`Loan` and `LoanPayment` track household debts with generated schedules (`loan-schedule.ts`, `loan.service.ts`). Wallet-paid installments can link to an `Expense` via `loan_payment_id`. Surfaces: `/loans`, fortnight planner panel, dashboard obligations, liquidity projection, transactions. API: `/api/loans`, `/api/loans/planner`, `/api/loans/payments/[id]`.
+`Loan` and `LoanPayment` track household debts with generated schedules (`loan-schedule.ts`, `loan.service.ts`). Wallet-paid installments can link to an `Expense` via `loan_payment_id`. Surfaces: `/loans`, Panel financiero (fortnight planner), liquidity projection, transactions. API: `/api/loans`, `/api/loans/planner`, `/api/loans/payments/[id]`.
 
 ### Liquidity Projection
-`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, **scheduled loan payments**, and wallet balances. Surfaced in the dashboard via `LiquidityTeaserCard` and the `/api/wallets/liquidity-projection` endpoint.
+`src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, **scheduled loan payments**, and wallet balances. Surfaced via `/wallets/liquidity` and the `/api/wallets/liquidity-projection` endpoint.
+
+### App home
+Post-login home is **Panel financiero** (`/monthly/{year}/{month}` via `getAppHomeHref()` / `getCurrentMonthlyPanelHref()`). Legacy `/dashboard` (Inicio) redirects there. `GET /api/dashboard` remains for the header AlertsBell.
 
 ### Credit Card Statement Import
 Supports importing CSV/PDF statements from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, and **DiDi Card**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.
