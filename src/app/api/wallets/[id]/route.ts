@@ -44,6 +44,9 @@ export async function GET(
           : Number(wallet.temporary_credit_limit),
       active: wallet.active,
       include_in_liquidity: wallet.include_in_liquidity,
+      cutoff_day: wallet.cutoff_day,
+      due_day: wallet.due_day,
+      assignee_user_id: wallet.assignee_user_id ?? null,
     };
     return NextResponse.json(response, { status: 200 });
   } catch (error) {

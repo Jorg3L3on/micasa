@@ -24,6 +24,9 @@ export type WalletDetail = {
   temporary_credit_limit: number | null;
   active: boolean;
   include_in_liquidity: boolean;
+  cutoff_day: number | null;
+  due_day: number | null;
+  assignee_user_id: number | null;
 };
 
 export type WalletMovementsResponse = {

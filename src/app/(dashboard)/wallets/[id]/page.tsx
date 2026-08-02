@@ -7,17 +7,19 @@ import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
+import WalletForm from '@/components/WalletForm';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
 import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
+import type { WalletFormValues } from '@/schemas/wallet.schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
-import { getCreditCardPaymentPlan, createCreditCardPayment } from '@/lib/api/credit-cards';
-import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import { getCreditCardPaymentPlan, createCreditCardPayment, updateCreditCard } from '@/lib/api/credit-cards';
+import { getPaymentMethodOptions, updateWallet } from '@/lib/api/wallets';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
@@ -26,11 +28,13 @@ import {
   estimateWalletRunwayDays,
 } from '@/lib/finance/wallet-period-analytics';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
 import type {
   WalletDetail,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
 import type { CreditCardPaymentPlanView, CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import type { PaymentMethodType } from '@/domain/payment-method';
 import {
   WalletDetailHeaderActions,
   WalletDetailTabsList,
@@ -81,7 +85,7 @@ const WalletDetailSkeleton = () => (
         <Skeleton className="h-9 w-28" />
         <Skeleton className="h-9 w-9 rounded-lg" />
       </div>
-      <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-md rounded-2xl" />
+      <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-xs rounded-2xl sm:max-w-sm" />
       <div className="flex justify-center gap-6">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-14 w-14 rounded-full" />
@@ -123,6 +127,8 @@ export default function WalletDetailPage() {
   });
   const [importOpen, setImportOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expenseError, setExpenseError] = useState<string | null>(null);
   const [incomeOpen, setIncomeOpen] = useState(false);
@@ -347,6 +353,30 @@ export default function WalletDetailPage() {
     setExpenseOpen(true);
   }, []);
 
+  const handleEditWallet = useCallback(
+    async (formData: WalletFormValues) => {
+      if (!wallet) return;
+      try {
+        setEditError(null);
+        if (isCreditWallet) {
+          await updateCreditCard(walletId, formData, context);
+          toast.success('Tarjeta actualizada');
+        } else {
+          await updateWallet(walletId, formData, context);
+          toast.success('Billetera actualizada');
+        }
+        setEditOpen(false);
+        await loadData();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Error al actualizar';
+        setEditError(message);
+        throw err;
+      }
+    },
+    [context, isCreditWallet, loadData, wallet, walletId],
+  );
+
   const rangeLabel = useMemo(() => {
     const { year, monthIdx } = parseYearMonth(range.from);
     return `${MONTH_LABEL[monthIdx]} ${year}`;
@@ -390,7 +420,10 @@ export default function WalletDetailPage() {
           canImport={canImport}
           onRegisterExpense={handleOpenExpense}
           onRegisterIncome={() => setIncomeOpen(true)}
-          onAdjustBalance={() => setBalanceOpen(true)}
+          onEditWallet={() => {
+            setEditError(null);
+            setEditOpen(true);
+          }}
           onImport={() => setImportOpen(true)}
           onExportCsv={handleExportCsv}
         />
@@ -547,6 +580,36 @@ export default function WalletDetailPage() {
         onSuccess={loadData}
         variant={isCreditWallet ? 'credit' : 'funding'}
         creditLimit={wallet.credit_limit}
+      />
+
+      <WalletForm
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditError(null);
+        }}
+        onSave={handleEditWallet}
+        mode="edit"
+        showAmountField={!isCreditWallet}
+        allowedTypes={
+          isCreditWallet
+            ? ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']
+            : ['CASH', 'DEBIT_CARD']
+        }
+        defaultValues={{
+          name: wallet.name,
+          amount: wallet.amount ?? 0,
+          credit_limit: wallet.credit_limit ?? null,
+          temporary_credit_limit: wallet.temporary_credit_limit ?? null,
+          type: wallet.type as PaymentMethodType,
+          provider_icon_key: parseWalletProviderIconKey(wallet.provider_icon_key),
+          active: wallet.active,
+          include_in_liquidity: wallet.include_in_liquidity ?? true,
+          cutoff_day: wallet.cutoff_day,
+          due_day: wallet.due_day,
+          assignee_user_id: wallet.assignee_user_id ?? null,
+        }}
+        error={editError && editOpen ? editError : null}
       />
 
       {isCreditWallet ? (

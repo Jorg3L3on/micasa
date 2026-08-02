@@ -223,7 +223,7 @@ type HeaderActionsProps = {
   canImport: boolean;
   onRegisterExpense: () => void;
   onRegisterIncome: () => void;
-  onAdjustBalance: () => void;
+  onEditWallet: () => void;
   onImport: () => void;
   onExportCsv: () => void;
 };
@@ -234,7 +234,7 @@ export const WalletDetailHeaderActions = ({
   canImport,
   onRegisterExpense,
   onRegisterIncome,
-  onAdjustBalance,
+  onEditWallet,
   onImport,
   onExportCsv,
 }: HeaderActionsProps) => (
@@ -272,9 +272,9 @@ export const WalletDetailHeaderActions = ({
             </DropdownMenuItem>
           </>
         ) : null}
-        <DropdownMenuItem onClick={onAdjustBalance} className="cursor-pointer">
+        <DropdownMenuItem onClick={onEditWallet} className="cursor-pointer">
           <Pencil className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Ajustar saldo
+          Editar billetera
         </DropdownMenuItem>
         {canImport ? (
           <DropdownMenuItem onClick={onImport} className="cursor-pointer">
@@ -309,13 +309,13 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
 
   return (
     <div
-      className="relative mx-auto w-full max-w-md lg:max-w-lg"
+      className="relative mx-auto w-full max-w-xs sm:max-w-sm"
       role="region"
       aria-label={`Billetera ${wallet.name}`}
     >
       <div
         className={cn(
-          'relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl border p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          'relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl border p-3.5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-4',
           !cardStyle &&
             (isCash
               ? 'border-emerald-500/40 bg-linear-to-br from-emerald-700 via-emerald-900 to-slate-950'
@@ -369,13 +369,13 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
             ) : null}
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1 pb-0.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
               Saldo disponible
             </p>
             <p
               className={cn(
-                'text-3xl font-bold font-mono tabular-nums tracking-tight sm:text-4xl',
+                'text-2xl font-bold font-mono tabular-nums leading-none tracking-tight sm:text-3xl',
                 isNegative && 'text-rose-200',
               )}
             >
