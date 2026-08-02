@@ -48,29 +48,29 @@ import type { WalletDetail } from '@/types/wallet-movements';
 const heroTintClass = (wallet?: WalletDetail) => {
   if (!wallet) {
     return {
-      wash: 'from-emerald-500/12 via-teal-500/5 dark:from-emerald-950/80 dark:via-teal-950/40',
-      orbA: 'bg-emerald-500/15 dark:bg-emerald-600/25',
-      orbB: 'bg-teal-500/10 dark:bg-blue-600/20',
+      wash: 'from-emerald-500/8 via-emerald-500/3 to-transparent dark:from-emerald-500/10 dark:via-emerald-500/4 dark:to-transparent',
+      orbA: 'bg-emerald-500/10 dark:bg-emerald-500/12',
+      orbB: 'bg-teal-500/6 dark:bg-teal-500/10',
     };
   }
   if (wallet.amount < 0) {
     return {
-      wash: 'from-rose-500/14 via-red-500/6 dark:from-rose-950/80 dark:via-red-950/40',
-      orbA: 'bg-rose-500/18 dark:bg-rose-600/28',
-      orbB: 'bg-red-500/10 dark:bg-orange-600/18',
+      wash: 'from-rose-500/8 via-rose-500/3 to-transparent dark:from-rose-500/12 dark:via-rose-500/4 dark:to-transparent',
+      orbA: 'bg-rose-500/10 dark:bg-rose-500/14',
+      orbB: 'bg-orange-500/6 dark:bg-orange-500/10',
     };
   }
   if (wallet.type === 'CASH') {
     return {
-      wash: 'from-emerald-500/12 via-teal-500/5 dark:from-emerald-950/80 dark:via-teal-950/40',
-      orbA: 'bg-emerald-500/15 dark:bg-emerald-600/25',
-      orbB: 'bg-teal-500/10 dark:bg-cyan-600/20',
+      wash: 'from-emerald-500/8 via-emerald-500/3 to-transparent dark:from-emerald-500/10 dark:via-emerald-500/4 dark:to-transparent',
+      orbA: 'bg-emerald-500/10 dark:bg-emerald-500/12',
+      orbB: 'bg-teal-500/6 dark:bg-teal-500/10',
     };
   }
   return {
-    wash: 'from-blue-500/12 via-indigo-500/6 dark:from-blue-950/80 dark:via-indigo-950/40',
-    orbA: 'bg-blue-500/15 dark:bg-blue-600/25',
-    orbB: 'bg-indigo-500/10 dark:bg-violet-600/20',
+    wash: 'from-blue-500/8 via-blue-500/3 to-transparent dark:from-blue-500/10 dark:via-indigo-500/4 dark:to-transparent',
+    orbA: 'bg-blue-500/10 dark:bg-blue-500/12',
+    orbB: 'bg-indigo-500/6 dark:bg-indigo-500/10',
   };
 };
 
@@ -86,26 +86,26 @@ export const WalletHeroZone = ({
     <div className="relative -mx-4 overflow-hidden px-4 pb-5 sm:-mx-0 sm:pb-6">
       <div
         className={cn(
-          'pointer-events-none absolute inset-0 bg-linear-to-b to-transparent dark:to-background',
+          'pointer-events-none absolute inset-0 bg-linear-to-b',
           tint.wash,
         )}
         aria-hidden
       />
       <div
         className={cn(
-          'pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full blur-3xl',
+          'pointer-events-none absolute -left-28 -top-28 h-72 w-72 rounded-full blur-3xl',
           tint.orbA,
         )}
         aria-hidden
       />
       <div
         className={cn(
-          'pointer-events-none absolute -right-20 top-8 h-48 w-48 rounded-full blur-3xl',
+          'pointer-events-none absolute -right-24 top-12 h-56 w-56 rounded-full blur-3xl',
           tint.orbB,
         )}
         aria-hidden
       />
-      <div className="relative space-y-4">{children}</div>
+      <div className="relative flex flex-col gap-5 sm:gap-6">{children}</div>
     </div>
   );
 };
@@ -381,7 +381,7 @@ export const WalletQuickActions = ({
 
   return (
     <div
-      className="flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:justify-center sm:gap-6"
+      className="mt-1 flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:mt-2 sm:justify-center sm:gap-6"
       role="group"
       aria-label="Acciones rápidas"
     >
