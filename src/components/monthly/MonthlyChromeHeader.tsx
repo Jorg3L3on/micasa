@@ -46,7 +46,7 @@ const accentEmphasisClass = 'font-medium text-sky-600 dark:text-sky-400';
 
 const fortnightSegmentClass = (active: boolean) =>
   cn(
-    'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all md:flex-none md:px-2.5',
+    'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all @min-[42rem]:flex-none @min-[42rem]:px-2.5',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     active
       ? 'bg-gradient-to-br from-primary/90 to-primary/75 text-primary-foreground shadow-sm ring-1 ring-primary/30'
@@ -56,7 +56,7 @@ const fortnightSegmentClass = (active: boolean) =>
 const ChromeDivider = ({ className }: { className?: string }) => (
   <div
     className={cn(
-      'hidden h-10 w-px shrink-0 bg-border/60 md:block',
+      'hidden h-10 w-px shrink-0 bg-border/60 @min-[42rem]:block',
       className,
     )}
     aria-hidden
@@ -94,11 +94,14 @@ export const MonthlyChromeHeader = ({
   const endLabel = formatDayMonthLabel(year, month, bounds.endDay);
 
   const fortnightToggle = !showFortnightToggle ? null : !prefsReady ? (
-    <Skeleton className="h-9 w-full rounded-2xl md:w-[13.5rem]" aria-hidden />
+    <Skeleton
+      className="h-9 w-full rounded-2xl @min-[42rem]:w-[13.5rem]"
+      aria-hidden
+    />
   ) : (
     <div
       className={cn(
-        'flex w-full items-center gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner md:inline-flex md:w-auto',
+        'flex w-full items-center gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:inline-flex @min-[42rem]:w-auto',
         'bg-gradient-to-br from-muted/30 via-background to-muted/10',
         'dark:from-muted/20 dark:via-card dark:to-muted/5',
       )}
@@ -166,11 +169,11 @@ export const MonthlyChromeHeader = ({
   const progressCenter =
     position.kind === 'current' ? (
       <div
-        className="flex min-w-0 flex-1 flex-col gap-1 md:gap-1.5 md:px-3"
+        className="flex min-w-0 flex-col gap-1 @min-[42rem]:flex-1 @min-[42rem]:gap-1.5 @min-[42rem]:px-3"
         aria-live="polite"
       >
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground sm:text-xs">
-          <span className="min-w-0 truncate">
+          <span>
             Hoy es{' '}
             <span className={accentEmphasisClass}>
               {formatDayMonthLabelFromYmd(todayYmd)}
@@ -179,7 +182,7 @@ export const MonthlyChromeHeader = ({
           <span className="text-border/80" aria-hidden>
             ·
           </span>
-          <span className="inline-flex min-w-0 items-center gap-1">
+          <span className="inline-flex items-center gap-1">
             <Hourglass className="size-3 shrink-0 opacity-70" aria-hidden />
             {remainingLabel}
           </span>
@@ -208,7 +211,7 @@ export const MonthlyChromeHeader = ({
       </div>
     ) : (
       <div
-        className="flex min-w-0 flex-1 flex-col justify-center gap-1 md:gap-1.5 md:px-3"
+        className="flex min-w-0 flex-col justify-center gap-1 @min-[42rem]:flex-1 @min-[42rem]:gap-1.5 @min-[42rem]:px-3"
         aria-live="polite"
       >
         <p className="text-[11px] text-muted-foreground sm:text-xs">
@@ -222,7 +225,7 @@ export const MonthlyChromeHeader = ({
           )}
         </p>
         <div
-          className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40 md:max-w-xs"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40 @min-[42rem]:max-w-xs"
           role="progressbar"
           aria-valuenow={position.kind === 'past' ? 100 : 0}
           aria-valuemin={0}
@@ -243,7 +246,7 @@ export const MonthlyChromeHeader = ({
 
   const desktopNextSlot =
     nextNavControl || createNextControl ? (
-      <div className="hidden shrink-0 items-center gap-2 md:flex">
+      <div className="hidden shrink-0 items-center gap-2 @min-[42rem]:flex">
         {nextNavControl}
         {createNextControl}
       </div>
@@ -251,17 +254,17 @@ export const MonthlyChromeHeader = ({
 
   return (
     <div
-      className="flex min-w-0 flex-col gap-2.5 md:flex-row md:items-center md:gap-0"
+      className="flex min-w-0 flex-col gap-2.5 @min-[42rem]:flex-row @min-[42rem]:items-center @min-[42rem]:gap-0"
       role="group"
       aria-label="Selector de mes y quincena"
     >
-      {/* Month row: prev · month module · next nav (mobile / tablet) */}
+      {/* Month row: prev · month module · next nav (narrow containers) */}
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex min-w-0 items-center gap-1">
           <div className="shrink-0">{prevControl}</div>
 
           <div
-            className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 dark:border-sky-500/20 dark:bg-sky-500/8 md:flex-none md:justify-start md:gap-2"
+            className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 dark:border-sky-500/20 dark:bg-sky-500/8 @min-[42rem]:flex-none @min-[42rem]:justify-start"
             aria-live="polite"
           >
             <span
@@ -270,7 +273,7 @@ export const MonthlyChromeHeader = ({
             >
               <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-300" />
             </span>
-            <div className="flex min-w-0 flex-col items-center gap-0.5 md:items-start">
+            <div className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
               <div className="flex min-w-0 items-center gap-1">
                 <MonthlyMonthPicker
                   year={year}
@@ -298,31 +301,39 @@ export const MonthlyChromeHeader = ({
           </div>
 
           {nextNavControl ? (
-            <div className="shrink-0 md:hidden">{nextNavControl}</div>
+            <div className="shrink-0 @min-[42rem]:hidden">{nextNavControl}</div>
           ) : null}
         </div>
 
-        {/* Create CTA on its own mobile row so it never covers Goal / picker */}
+        {/* Create CTA on its own narrow-container row so it never covers Goal / picker */}
         {createNextControl ? (
-          <div className="flex justify-end md:hidden">{createNextControl}</div>
+          <div className="flex justify-end @min-[42rem]:hidden">
+            {createNextControl}
+          </div>
         ) : null}
       </div>
 
       {showFortnightToggle ? (
         <>
-          <div className="h-px w-full bg-border/50 md:hidden" aria-hidden />
+          <div
+            className="h-px w-full bg-border/50 @min-[42rem]:hidden"
+            aria-hidden
+          />
 
           <ChromeDivider className="mx-2" />
 
           {/* Progress */}
-          <div className="min-w-0 md:flex-1">{progressCenter}</div>
+          <div className="min-w-0 @min-[42rem]:flex-1">{progressCenter}</div>
 
-          <div className="h-px w-full bg-border/50 md:hidden" aria-hidden />
+          <div
+            className="h-px w-full bg-border/50 @min-[42rem]:hidden"
+            aria-hidden
+          />
 
           <ChromeDivider className="mx-2" />
 
-          {/* Toggle + next (desktop) */}
-          <div className="flex w-full shrink-0 items-center gap-2 md:w-auto md:justify-end">
+          {/* Toggle + next (wide containers) */}
+          <div className="flex w-full shrink-0 items-center gap-2 @min-[42rem]:w-auto @min-[42rem]:justify-end">
             {fortnightToggle}
             {desktopNextSlot}
           </div>

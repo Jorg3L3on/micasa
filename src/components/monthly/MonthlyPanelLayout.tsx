@@ -55,7 +55,7 @@ export const MonthlyPanelLayout = ({
     >
       <div
         className={cn(
-          'relative mb-5 overflow-hidden rounded-xl border border-sky-500/20 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3',
+          '@container relative mb-5 overflow-hidden rounded-xl border border-sky-500/20 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3',
           'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
           'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
           'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
