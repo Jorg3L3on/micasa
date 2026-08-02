@@ -58,7 +58,7 @@ export const FortnightSummaryHero = ({
   const incomeRemainderHint = (() => {
     const parts = ['lo pagado', 'lo pendiente planeado'];
     if (payrollDeductionAmount > 0) parts.push('las deducciones de nómina');
-    if (budgetTotalAmount > 0) parts.push('el presupuesto de la quincena');
+    if (budgetTotalAmount > 0) parts.push('el presupuesto');
     if (parts.length === 2) {
       return 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
     }
