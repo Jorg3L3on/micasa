@@ -39,6 +39,7 @@ import type {
 } from '@/types/catalog';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import { CreditCardInstallmentProjectionBlock } from '@/components/credit-cards/CreditCardInstallmentProjectionBlock';
+import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
 
 const defaultUntilYmdUtc = (): string => {
   const d = new Date();
@@ -216,6 +217,9 @@ export function LiquidityProjectionTab() {
             Vista mensual de ingresos esperados, deudas y efectivo restante para tomar decisiones.
           </p>
         </div>
+        <div className="shrink-0 self-start sm:self-center">
+          <LiquidityFundingWalletsMenu onChanged={() => void load()} />
+        </div>
       </div>
 
       {error && (
@@ -249,7 +253,7 @@ export function LiquidityProjectionTab() {
                 {formatCurrency(data.summary.funding_total)}
               </p>
               <p className="mt-0.5 text-[9px] text-muted-foreground">
-                Efectivo + débito
+                Efectivo + débito incluidos
               </p>
             </div>
 

@@ -23,6 +23,7 @@ export type WalletDetail = {
   credit_limit: number | null;
   temporary_credit_limit: number | null;
   active: boolean;
+  include_in_liquidity: boolean;
 };
 
 export type WalletMovementsResponse = {

@@ -115,6 +115,7 @@ export const fetchDashboardWalletSnapshot = async (ownerFilter: OwnerFilter) =>
       credit_limit: true,
       temporary_credit_limit: true,
       type: true,
+      include_in_liquidity: true,
     },
   });
 

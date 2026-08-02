@@ -117,6 +117,21 @@ export async function updateWalletStatus(id: number, status: boolean) {
   });
 }
 
+export async function updateWalletLiquidityInclusion(
+  id: number,
+  includeInLiquidity: boolean,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(
+    `/api/wallets?id=${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ include_in_liquidity: includeInLiquidity }),
+    },
+    context,
+  );
+}
+
 export async function deleteWallet(
   id: number,
   context?: FinanceContextType,

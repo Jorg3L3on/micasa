@@ -51,6 +51,7 @@ const mapWalletToCreditCardDto = (
     temporary_credit_limit_as_of?: Date | null;
     type: string;
     active: boolean;
+    include_in_liquidity: boolean;
     cutoff_day: number | null;
     due_day: number | null;
     assignee_user_id: number | null;
@@ -84,6 +85,7 @@ const mapWalletToCreditCardDto = (
     }),
     type: wallet.type,
     active: wallet.active,
+    include_in_liquidity: wallet.include_in_liquidity,
     cutoff_day: wallet.cutoff_day,
     due_day: wallet.due_day,
     spent_amount: spent,

@@ -82,6 +82,7 @@ export async function GET(
           ? null
           : Number(wallet.temporary_credit_limit),
       active: wallet.active,
+      include_in_liquidity: wallet.include_in_liquidity,
     };
 
     const response: WalletMovementsResponse = {

@@ -1,5 +1,41 @@
 import { describe, expect, it } from 'vitest';
-import { getWalletAvailableCredit } from '@/lib/finance/wallet-accounting';
+import { PaymentMethodType } from '@/generated/prisma/client';
+import {
+  countsTowardLiquidity,
+  getWalletAvailableCredit,
+} from '@/lib/finance/wallet-accounting';
+
+describe('countsTowardLiquidity', () => {
+  it('includes funding wallets by default', () => {
+    expect(
+      countsTowardLiquidity({ type: PaymentMethodType.CASH }),
+    ).toBe(true);
+    expect(
+      countsTowardLiquidity({
+        type: PaymentMethodType.DEBIT_CARD,
+        include_in_liquidity: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('excludes funding wallets when include_in_liquidity is false', () => {
+    expect(
+      countsTowardLiquidity({
+        type: PaymentMethodType.CASH,
+        include_in_liquidity: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('never counts credit wallets toward liquidity', () => {
+    expect(
+      countsTowardLiquidity({
+        type: PaymentMethodType.CREDIT_CARD,
+        include_in_liquidity: true,
+      }),
+    ).toBe(false);
+  });
+});
 
 describe('getWalletAvailableCredit', () => {
   it('returns null when there is no credit limit', () => {

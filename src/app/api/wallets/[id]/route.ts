@@ -43,6 +43,7 @@ export async function GET(
           ? null
           : Number(wallet.temporary_credit_limit),
       active: wallet.active,
+      include_in_liquidity: wallet.include_in_liquidity,
     };
     return NextResponse.json(response, { status: 200 });
   } catch (error) {

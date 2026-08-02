@@ -10,7 +10,7 @@ import { sumPlannerCardDueForDashboardScope } from '@/lib/finance/credit-card-st
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
 import { formatLoanPaymentLabel } from '@/lib/finance/planning-loan-payments';
 import { partitionLoanPaymentsForPlanningTotals } from '@/lib/finance/planning-period-loan-totals';
-import { getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
+import { countsTowardLiquidity, getEffectiveCreditLimit } from '@/lib/finance/wallet-accounting';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
 import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
 import { measure } from './dashboard.performance';
@@ -252,15 +252,12 @@ export const getDashboardData = async (
       }> = [];
       for (const w of dashboardWalletSnapshot) {
         const amt = Number(w.amount);
-        if (
-          w.type === PaymentMethodType.CASH ||
-          w.type === PaymentMethodType.DEBIT_CARD
-        ) {
+        if (countsTowardLiquidity(w)) {
           fundingWalletBalanceTotal += amt;
           fundingWalletBreakdown.push({
             id: w.id,
             name: w.name,
-            type: w.type,
+            type: w.type as 'CASH' | 'DEBIT_CARD',
             amount: amt,
           });
         }
