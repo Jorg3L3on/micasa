@@ -193,6 +193,9 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
   const isNegative = wallet.amount < 0;
   const FallbackIcon = isCash ? Banknote : Landmark;
 
+  // Funding wallets only (CASH / DEBIT_CARD) land here — credit types open
+  // /credit-cards/[id], whose hero keeps the amount above límite + utilization
+  // chrome so it never sits flush against overflow-hidden.
   return (
     <div
       className="relative mx-auto w-full max-w-sm"
@@ -201,9 +204,9 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
     >
       <div
         className={cn(
-          // No fixed aspect-ratio: iOS Safari + overflow-hidden clips large mono amounts
-          // (especially with Dynamic Type). Height grows with content instead.
-          'relative w-full overflow-hidden rounded-2xl border p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          // Grow with content (no fixed aspect-ratio): iOS Safari clips large
+          // mono balances when the amount is the last row inside overflow-hidden.
+          'relative w-full overflow-hidden rounded-2xl border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             (isCash
               ? 'border-emerald-500/40 bg-linear-to-br from-emerald-700 via-emerald-900 to-slate-950'
@@ -263,8 +266,8 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
             </p>
             <p
               className={cn(
-                // leading-tight (not leading-none): WebKit clips glyph ink at line-height:1
-                'break-words text-2xl font-bold font-mono tabular-nums leading-tight tracking-tight sm:text-3xl',
+                // leading-snug: WebKit clips glyph ink at line-height:1 inside overflow-hidden
+                'break-words text-2xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-3xl',
                 isNegative && 'text-rose-200',
               )}
             >

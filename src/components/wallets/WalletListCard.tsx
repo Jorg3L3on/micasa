@@ -271,15 +271,22 @@ export const WalletListCard = ({
               </div>
             </div>
 
-            <div className="relative z-0 mt-auto flex items-end justify-between gap-3 pt-3">
+            <div
+              className={cn(
+                'relative z-0 mt-auto flex items-end justify-between gap-3 pt-3',
+                // Funding cards lack the credit utilization bar that buffers the
+                // bottom edge — keep extra padding so Saldo never clips on iOS.
+                isFunding && 'pb-1',
+              )}
+            >
               <div className="min-w-0">
                 <p className={cn('text-[10px] font-medium uppercase tracking-wider', mutedText)}>
                   {isCard ? 'Deuda' : 'Saldo'}
                 </p>
                 <p
                   className={cn(
-                    // leading-tight: WebKit clips glyph ink when line-height is 1 inside overflow-hidden.
-                    'mt-1 break-words font-mono text-2xl font-bold leading-tight tabular-nums tracking-tight',
+                    // leading-snug: WebKit clips glyph ink when line-height is 1 inside overflow-hidden.
+                    'mt-1 break-words font-mono text-2xl font-bold leading-snug tabular-nums tracking-tight',
                     hasAlert
                       ? onDarkSurface
                         ? 'text-rose-300'
