@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 
 export default function CreateWallet() {
   const [loading, setLoading] = useState(false);
@@ -15,7 +16,7 @@ export default function CreateWallet() {
     try {
       const res = await fetch('/api/onboarding', { method: 'POST' });
       if (res.ok) {
-        router.push(`/dashboard${queryString ? `?${queryString}` : ''}`);
+        router.push(getAppHomeHref(queryString));
         return;
       }
       toast.error('No se pudo crear la billetera');

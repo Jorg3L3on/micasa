@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 
 export default function NotFound() {
   return (
@@ -13,7 +14,7 @@ export default function NotFound() {
             ruta ya no exista.
           </p>
           <Button asChild variant="outline">
-            <Link href="/dashboard">Volver al inicio</Link>
+            <Link href={getCurrentMonthlyPanelHref()}>Volver al inicio</Link>
           </Button>
         </CardContent>
       </Card>

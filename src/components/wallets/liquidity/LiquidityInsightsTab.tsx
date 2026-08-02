@@ -15,8 +15,8 @@ import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import MonthlyOverviewChart from '@/components/dashboard/MonthlyOverviewChart';
-import { DASHBOARD_METRIC_STRIP_CLASS } from '@/components/dashboard/constants';
+import MonthlyOverviewChart from '@/components/wallets/liquidity/MonthlyOverviewChart';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import type { WalletListItem } from '@/types/catalog';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
@@ -32,7 +32,7 @@ type CategoryReportRow = {
   total: number;
 };
 
-const sortWalletsLikeDashboard = (wallets: WalletListItem[]): WalletListItem[] => {
+const sortWalletsByType = (wallets: WalletListItem[]): WalletListItem[] => {
   return [...wallets]
     .filter((wallet) => CARD_TYPES.includes(wallet.type as (typeof CARD_TYPES)[number]) && wallet.active)
     .sort((a, b) => {
@@ -105,7 +105,7 @@ export function LiquidityInsightsTab() {
     void load();
   }, [load]);
 
-  const sortedCards = useMemo(() => sortWalletsLikeDashboard(wallets), [wallets]);
+  const sortedCards = useMemo(() => sortWalletsByType(wallets), [wallets]);
 
   const { fundingTotal, creditUsedTotal } = useMemo(() => {
     let funding = 0;
@@ -153,7 +153,7 @@ export function LiquidityInsightsTab() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div
-          className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-emerald-500/50')}
+          className={cn(METRIC_STRIP_CLASS, 'border-l-emerald-500/50')}
           role="region"
           aria-label="Liquidez en efectivo y débito"
         >
@@ -170,7 +170,7 @@ export function LiquidityInsightsTab() {
           </p>
         </div>
         <div
-          className={cn(DASHBOARD_METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
+          className={cn(METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
           role="region"
           aria-label="Saldo usado en tarjetas de crédito"
         >

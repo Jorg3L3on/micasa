@@ -58,7 +58,7 @@ export const buildExpenseWhereForFortnightScope = async (
   return where;
 };
 
-/** Same rolling calendar window as dashboard monthly-summary (oldest month first). */
+/** Same rolling calendar window as liquidity monthly-summary (oldest month first). */
 export const fortnightIdsForRollingCalendarMonths = async (
   ownerFilter: OwnerFilter,
   windowMonths: number,

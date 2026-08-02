@@ -18,6 +18,7 @@ import StepIncomeTemplates from '@/components/onboarding/steps/StepIncomeTemplat
 import StepExpenseTemplates from '@/components/onboarding/steps/StepExpenseTemplates';
 import StepFortnights from '@/components/onboarding/steps/StepFortnights';
 import { AnimatePresence, motion } from 'framer-motion';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import type {
   CategoryDraft,
   ExpenseTemplateDraft,
@@ -112,7 +113,7 @@ function OnboardingWizardContent() {
       });
 
       if (response.ok) {
-        router.push('/dashboard');
+        router.push(getAppHomeHref());
         return;
       }
 

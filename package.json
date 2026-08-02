@@ -14,10 +14,10 @@
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
-    "validate:dashboard-ui": "node scripts/validate-dashboard-metric-strips.mjs",
+    "validate:metric-strips": "node scripts/validate-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
-    "ci": "npm run validate:dashboard-ui && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run build"
+    "ci": "npm run validate:metric-strips && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -1390,7 +1390,7 @@ export async function sumPlannerCardDueForMonth(
   return { total, cardCount: withDue.length };
 }
 
-export async function sumPlannerCardDueForDashboardScope(
+export async function sumPlannerCardDueForPeriodScope(
   ownerFilter: OwnerFilter,
   view: 'month' | 'biweekly',
   year: number,

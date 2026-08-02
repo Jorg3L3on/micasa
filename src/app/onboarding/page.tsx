@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 
@@ -17,7 +18,7 @@ export default async function OnboardingPage() {
     });
 
     if (user?.onboarding_completed) {
-      redirect('/dashboard');
+      redirect(getAppHomeHref());
     }
   }
 
