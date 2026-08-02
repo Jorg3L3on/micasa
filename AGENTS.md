@@ -166,7 +166,7 @@ BudgetFrequency:    DAILY | WEEKLY | BIWEEKLY | CUSTOM
 `src/lib/finance/liquidity-projection*.ts` projects cash flow 180 days forward (configurable via `DEFAULT_PROJECTION_HORIZON_DAYS`). It accounts for recurring expenses, credit card statement cycles, **scheduled loan payments**, and wallet balances. Surfaced via `/wallets/liquidity` and the `/api/wallets/liquidity-projection` endpoint.
 
 ### App home
-Post-login home is **Panel financiero** (`/monthly/{year}/{month}` via `getAppHomeHref()` / `getCurrentMonthlyPanelHref()`). Legacy `/dashboard` (Inicio) redirects there. `GET /api/dashboard` remains for the header AlertsBell.
+Post-login home is **Panel financiero** (`/monthly/{year}/{month}` via `getAppHomeHref()` / `getCurrentMonthlyPanelHref()`). Legacy `/dashboard` (Inicio) redirects there. Header alerts use `GET /api/alerts` (lean current-period alerts). `GET /api/dashboard/monthly-summary` remains for liquidity charts.
 
 ### Credit Card Statement Import
 Supports importing CSV/PDF statements from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, and **DiDi Card**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.

@@ -1,7 +1,7 @@
-import { getDashboardData } from '@/features/dashboard/server/dashboard.service';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import type { PeriodView } from '@/types/dashboard';
+import { getAlerts } from '@/features/alerts/server/alerts.service';
+import type { PeriodView } from '@/features/alerts/server/alerts.types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const yearParam = searchParams.get('year');
     const periodParam = searchParams.get('period') as 'FIRST' | 'SECOND' | null;
 
-    const data = await getDashboardData({
+    const data = await getAlerts({
       ownerFilter,
       view,
       month: monthParam,
@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('Dashboard API error:', error);
+    console.error('Alerts API error:', error);
     return NextResponse.json(
-      { error: 'Failed to load dashboard data' },
+      { error: 'Failed to load alerts' },
       { status: 500 },
     );
   }

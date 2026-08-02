@@ -46,7 +46,7 @@ type AlertItem = {
   fingerprint?: string;
 };
 
-type DashboardAlertsResponse = {
+type AlertsResponse = {
   period: { year: number; month: number; period: string };
   alerts: AlertItem[];
 };
@@ -117,7 +117,7 @@ function buildAlertHref(
 export function AlertsBell() {
   const mounted = useClientMounted();
   const { context } = useFinanceContext();
-  const [data, setData] = useState<DashboardAlertsResponse | null>(null);
+  const [data, setData] = useState<AlertsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
@@ -131,8 +131,8 @@ export function AlertsBell() {
     setLoading(true);
     setError(null);
     try {
-      const res = await clientFetchFromApi<DashboardAlertsResponse>(
-        '/api/dashboard',
+      const res = await clientFetchFromApi<AlertsResponse>(
+        '/api/alerts',
         undefined,
         context,
       );
