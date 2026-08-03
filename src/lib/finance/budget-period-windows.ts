@@ -2,6 +2,7 @@ import {
   addCalendarDays,
   endOfCalendarDay,
   formatCalendarDate,
+  parseCalendarDate,
   startOfCalendarDay,
 } from '@/lib/calendar-dates';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
@@ -12,18 +13,11 @@ export function readWallClockYmd(date: Date): string {
   return formatCalendarDate(date);
 }
 
-function clipWindowToFortnight(window: DateRange, fortnight: DateRange): DateRange {
-  return {
-    start_date:
-      window.start_date > fortnight.start_date ? window.start_date : fortnight.start_date,
-    end_date: window.end_date < fortnight.end_date ? window.end_date : fortnight.end_date,
-  };
-}
-
 function calendarDayRange(ymd: string): DateRange {
+  const day = parseCalendarDate(ymd);
   return {
-    start_date: startOfCalendarDay(ymd),
-    end_date: endOfCalendarDay(ymd),
+    start_date: day,
+    end_date: day,
   };
 }
 
@@ -54,9 +48,10 @@ export function calendarWeeksOverlappingRange(
   while (weekStart <= endYmd) {
     const weekEnd = addCalendarDays(weekStart, 6);
     if (weekEnd >= startYmd) {
+      // Store as UTC noon so PG `timestamp` round-trips keep civil days stable.
       windows.push({
-        start_date: startOfCalendarDay(weekStart),
-        end_date: endOfCalendarDay(weekEnd),
+        start_date: parseCalendarDate(weekStart),
+        end_date: parseCalendarDate(weekEnd),
       });
     }
     weekStart = addCalendarDays(weekStart, 7);
@@ -67,7 +62,12 @@ export function calendarWeeksOverlappingRange(
 
 /**
  * Period windows for recurrent roll-forward inside one fortnight row.
- * DAILY → one period per civil day; WEEKLY → calendar weeks; BIWEEKLY → full fortnight.
+ * DAILY → one period per civil day; WEEKLY → full Sun–Sat weeks (not clipped);
+ * BIWEEKLY → full fortnight.
+ *
+ * WEEKLY periods are stored as full calendar weeks so panel day-proration uses
+ * a 7-day denominator. Clipping stubs to the fortnight made ratio=1 and, with
+ * timezone-unsafe encodings, produced 8-day “weeks” that bled across quincenas.
  */
 export function computeBudgetPeriodWindowsForFortnight(
   frequency: BudgetFrequency,
@@ -81,9 +81,7 @@ export function computeBudgetPeriodWindowsForFortnight(
       return enumerateCalendarDays(fnStartYmd, fnEndYmd).map(calendarDayRange);
 
     case 'WEEKLY':
-      return calendarWeeksOverlappingRange(fnStartYmd, fnEndYmd)
-        .map((window) => clipWindowToFortnight(window, fortnight))
-        .filter((window) => window.start_date <= window.end_date);
+      return calendarWeeksOverlappingRange(fnStartYmd, fnEndYmd);
 
     case 'BIWEEKLY':
       return [
@@ -116,5 +114,74 @@ export function getCalendarFortnightBoundsForMonth(
       start_date: startOfCalendarDay(`${year}-${monthStr}-16`),
       end_date: endOfCalendarDay(`${year}-${monthStr}-${lastDayStr}`),
     },
+  };
+}
+
+/**
+ * Canonical civil-day bounds for one fortnight, stored as UTC noon
+ * (`parseCalendarDate`) so PostgreSQL `timestamp` round-trips keep the same
+ * Mexico City calendar day. Prefer this for Fortnight / BudgetPeriod rows.
+ * Use `getCalendarFortnightBoundsForMonth` for inclusive query scopes.
+ */
+export function getCanonicalFortnightBounds(
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): DateRange {
+  const monthStr = String(month).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const lastDayStr = String(lastDay).padStart(2, '0');
+
+  if (period === 'FIRST') {
+    return {
+      start_date: parseCalendarDate(`${year}-${monthStr}-01`),
+      end_date: parseCalendarDate(`${year}-${monthStr}-15`),
+    };
+  }
+
+  return {
+    start_date: parseCalendarDate(`${year}-${monthStr}-16`),
+    end_date: parseCalendarDate(`${year}-${monthStr}-${lastDayStr}`),
+  };
+}
+
+/** True when period civil days match the window (ignores time-of-day encoding). */
+export function periodMatchesCalendarWindow(
+  period: DateRange,
+  window: DateRange,
+): boolean {
+  return (
+    readWallClockYmd(period.start_date) === readWallClockYmd(window.start_date) &&
+    readWallClockYmd(period.end_date) === readWallClockYmd(window.end_date)
+  );
+}
+
+/**
+ * Snap a WEEKLY period onto the Sun–Sat week that contains its end day.
+ * Fixes 8-day artifacts from timezone-unsafe startOf/endOf encodings and
+ * clipped stubs so day-proration uses a 7-day denominator.
+ */
+export function canonicalizeWeeklyPeriod(period: DateRange): DateRange {
+  const endYmd = readWallClockYmd(period.end_date);
+  const weekStart = calendarWeekStartYmd(endYmd);
+  const weekEnd = addCalendarDays(weekStart, 6);
+  return {
+    start_date: parseCalendarDate(weekStart),
+    end_date: parseCalendarDate(weekEnd),
+  };
+}
+
+/** Rewrite a single civil day with UTC-noon encoding (DAILY periods). */
+export function canonicalizeDailyPeriod(period: DateRange): DateRange {
+  const ymd = readWallClockYmd(period.start_date);
+  const day = parseCalendarDate(ymd);
+  return { start_date: day, end_date: day };
+}
+
+/** Rewrite an arbitrary range's endpoints with UTC-noon encoding (CUSTOM). */
+export function canonicalizeCustomPeriod(period: DateRange): DateRange {
+  return {
+    start_date: parseCalendarDate(readWallClockYmd(period.start_date)),
+    end_date: parseCalendarDate(readWallClockYmd(period.end_date)),
   };
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { endOfCalendarDay, startOfCalendarDay } from '@/lib/calendar-dates';
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import {
   createBudget,
   deleteBudget,
@@ -92,10 +92,17 @@ describe('createBudget', () => {
     mocks.generatePeriodsOnCreate.mockResolvedValue(1);
   });
 
-  it('uses the current fortnight dates for BIWEEKLY budgets', async () => {
+  it('uses canonical calendar fortnight bounds for BIWEEKLY budgets', async () => {
     const currentFortnight = {
-      start_date: new Date('2026-06-01T12:00:00.000Z'),
-      end_date: new Date('2026-06-15T12:00:00.000Z'),
+      start_date: new Date('2026-06-01T00:00:00.000Z'), // legacy off-by-one encoding
+      end_date: new Date('2026-06-14T00:00:00.000Z'),
+      year: 2026,
+      month: 6,
+      period: 'FIRST' as const,
+    };
+    const expectedBounds = {
+      start_date: parseCalendarDate('2026-06-01'),
+      end_date: parseCalendarDate('2026-06-15'),
     };
     mocks.fortnight.findFirst.mockResolvedValue(currentFortnight);
     mocks.budget.create.mockResolvedValue({ ...budgetFixture, id: 11 });
@@ -110,18 +117,15 @@ describe('createBudget', () => {
 
     expect(mocks.budget.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        start_date: currentFortnight.start_date,
-        end_date: currentFortnight.end_date,
+        start_date: expectedBounds.start_date,
+        end_date: expectedBounds.end_date,
       }),
     });
 
     expect(mocks.generatePeriodsOnCreate).toHaveBeenCalledWith(
       11,
       'BIWEEKLY',
-      {
-        start_date: currentFortnight.start_date,
-        end_date: currentFortnight.end_date,
-      },
+      expectedBounds,
       ownerFilter,
       { recurrent: true },
     );
@@ -145,8 +149,8 @@ describe('createBudget', () => {
       12,
       'DAILY',
       {
-        start_date: startOfCalendarDay('2026-06-04'),
-        end_date: endOfCalendarDay('2026-06-04'),
+        start_date: parseCalendarDate('2026-06-04'),
+        end_date: parseCalendarDate('2026-06-04'),
       },
       ownerFilter,
       { recurrent: true },

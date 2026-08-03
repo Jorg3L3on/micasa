@@ -10,7 +10,7 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
+import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import {
   BookmarkIcon,
   CreditCard,
@@ -27,7 +27,6 @@ import {
 import {
   getProviderCardStyle,
   isProviderCardDarkSurface,
-  type ProviderCardScheme,
 } from '@/lib/provider-card-style';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -84,10 +83,8 @@ export const WalletListCard = ({
   onOpenBalance,
 }: WalletListCardProps) => {
   const router = useRouter();
-  const { resolvedTheme } = useTheme();
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheme: ProviderCardScheme =
-    resolvedTheme === 'light' ? 'light' : 'dark';
+  const scheme = useProviderCardScheme();
 
   const isCard = isCreditType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';

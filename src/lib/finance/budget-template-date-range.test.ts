@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endOfCalendarDay, startOfCalendarDay } from '@/lib/calendar-dates';
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { computeBudgetTemplateDateRange } from './budget-template-date-range';
 
 const mxNoon = (ymd: string) => new Date(`${ymd}T18:00:00.000Z`);
@@ -11,8 +11,9 @@ describe('computeBudgetTemplateDateRange', () => {
       now: mxNoon('2026-06-04'),
     });
 
-    expect(range.start_date).toEqual(startOfCalendarDay('2026-06-04'));
-    expect(range.end_date).toEqual(endOfCalendarDay('2026-06-04'));
+    const day = parseCalendarDate('2026-06-04');
+    expect(range.start_date).toEqual(day);
+    expect(range.end_date).toEqual(day);
   });
 
   it('uses the Sunday to Saturday calendar week for WEEKLY budgets', () => {
@@ -21,8 +22,8 @@ describe('computeBudgetTemplateDateRange', () => {
       now: mxNoon('2026-06-04'),
     });
 
-    expect(range.start_date).toEqual(startOfCalendarDay('2026-05-31'));
-    expect(range.end_date).toEqual(endOfCalendarDay('2026-06-06'));
+    expect(range.start_date).toEqual(parseCalendarDate('2026-05-31'));
+    expect(range.end_date).toEqual(parseCalendarDate('2026-06-06'));
   });
 
   it('keeps Sunday as the start of the current week', () => {
@@ -31,8 +32,8 @@ describe('computeBudgetTemplateDateRange', () => {
       now: mxNoon('2026-06-07'),
     });
 
-    expect(range.start_date).toEqual(startOfCalendarDay('2026-06-07'));
-    expect(range.end_date).toEqual(endOfCalendarDay('2026-06-13'));
+    expect(range.start_date).toEqual(parseCalendarDate('2026-06-07'));
+    expect(range.end_date).toEqual(parseCalendarDate('2026-06-13'));
   });
 
   it('uses the current Fortnight row for BIWEEKLY budgets', () => {
@@ -49,14 +50,14 @@ describe('computeBudgetTemplateDateRange', () => {
     ).toEqual(currentFortnight);
   });
 
-  it('preserves CUSTOM form dates without calendar normalization', () => {
+  it('uses parseCalendarDate for CUSTOM YYYY-MM-DD form dates', () => {
     const range = computeBudgetTemplateDateRange({
       frequency: 'CUSTOM',
       customStartDate: '2026-06-04',
       customEndDate: '2026-06-10',
     });
 
-    expect(range.start_date).toEqual(new Date('2026-06-04'));
-    expect(range.end_date).toEqual(new Date('2026-06-10'));
+    expect(range.start_date).toEqual(parseCalendarDate('2026-06-04'));
+    expect(range.end_date).toEqual(parseCalendarDate('2026-06-10'));
   });
 });

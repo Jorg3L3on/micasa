@@ -1,15 +1,14 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useTheme } from 'next-themes';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import {
   getProviderCardStyle,
   isProviderCardDarkSurface,
-  type ProviderCardScheme,
 } from '@/lib/provider-card-style';
+import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CreditCard, Landmark, Wallet } from 'lucide-react';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
@@ -31,9 +30,7 @@ const WalletBalanceStrip = ({
   onBalancesPersisted,
 }: WalletBalanceStripProps) => {
   const { context } = useFinanceContext();
-  const { resolvedTheme } = useTheme();
-  const scheme: ProviderCardScheme =
-    resolvedTheme === 'light' ? 'light' : 'dark';
+  const scheme = useProviderCardScheme();
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
   const [balanceOverrides, setBalanceOverrides] = useState<Record<number, number>>({});
   const ownerQueryString = useMemo(() => {

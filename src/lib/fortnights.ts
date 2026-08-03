@@ -1,6 +1,7 @@
-import { parseCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { FortnightPeriod, Prisma } from '@/generated/prisma/client';
+import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 
 type ResolveFortnightOwner =
   | { ownerType: 'user'; ownerId: number }
@@ -35,30 +36,34 @@ export const resolveOrCreateFortnight = async (
     where,
   });
 
-  if (existing) {
-    return existing;
-  }
-
-  const startDay = period === 'FIRST' ? 1 : 16;
-  const endDay =
-    period === 'FIRST'
-      ? 15
-      : new Date(year, month, 0).getDate(); // last day of month
-
-  const monthPadded = String(month).padStart(2, '0');
-  const startYmd = `${year}-${monthPadded}-${String(startDay).padStart(2, '0')}`;
-  const endYmd = `${year}-${monthPadded}-${String(endDay).padStart(2, '0')}`;
-
+  const bounds = getCanonicalFortnightBounds(year, month, period);
   const defaultLabel =
     period === 'FIRST'
       ? `Primera quincena - ${month}/${year}`
       : `Segunda quincena - ${month}/${year}`;
 
+  if (existing) {
+    const startYmd = formatCalendarDate(existing.start_date);
+    const endYmd = formatCalendarDate(existing.end_date);
+    const expectedStart = formatCalendarDate(bounds.start_date);
+    const expectedEnd = formatCalendarDate(bounds.end_date);
+    if (startYmd !== expectedStart || endYmd !== expectedEnd) {
+      return client.fortnight.update({
+        where: { id: existing.id },
+        data: {
+          start_date: bounds.start_date,
+          end_date: bounds.end_date,
+        },
+      });
+    }
+    return existing;
+  }
+
   return client.fortnight.create({
     data: {
       label: label ?? defaultLabel,
-      start_date: parseCalendarDate(startYmd),
-      end_date: parseCalendarDate(endYmd),
+      start_date: bounds.start_date,
+      end_date: bounds.end_date,
       month,
       year,
       period,

@@ -1,10 +1,13 @@
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import {
+  isValidCalendarDateString,
+} from '@/lib/calendar-dates';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 import { resolveOnboardingCategoryIcon } from '@/lib/category-icons';
 import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
+import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 
 type WalletPayload = {
   id: string;
@@ -73,50 +76,30 @@ function normalizeProviderIconKey(
     : null;
 }
 
-function generateFortnights(startDate: Date, count: number): GeneratedFortnight[] {
+function generateFortnights(startYmd: string, count: number): GeneratedFortnight[] {
+  if (!isValidCalendarDateString(startYmd)) return [];
+
   const result: GeneratedFortnight[] = [];
+  const [baseYear, baseMonth] = startYmd.split('-').map(Number);
 
-  const baseYear = startDate.getFullYear();
-  const baseMonthIndex = startDate.getMonth();
-
-  // count is number of fortnights; two per month
+  // count is number of fortnights; two per month (1–15 and 16–end)
   for (let i = 0; i < count; i++) {
     const monthOffset = Math.floor(i / 2);
-    const periodIndex = i % 2; // 0 = FIRST, 1 = SECOND
+    const period: FortnightPeriod = i % 2 === 0 ? 'FIRST' : 'SECOND';
 
-    const monthDate = new Date(baseYear, baseMonthIndex + monthOffset, 1);
-    const year = monthDate.getFullYear();
-    const monthIndex = monthDate.getMonth(); // 0-based
-
-    let start: Date;
-    let end: Date;
-    let period: FortnightPeriod;
-
-    if (periodIndex === 0) {
-      // 1–14 of the month
-      start = new Date(year, monthIndex, 1);
-      end = new Date(year, monthIndex, 14);
-      period = 'FIRST';
-    } else {
-      // 15–end of the month
-      start = new Date(year, monthIndex, 15);
-      end = new Date(year, monthIndex + 1, 0); // last day of month
-      period = 'SECOND';
-    }
-
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
-
-    const label =
-      period === 'FIRST'
-        ? `Primera quincena - ${monthIndex + 1}/${year}`
-        : `Segunda quincena - ${monthIndex + 1}/${year}`;
+    const absoluteMonth = baseMonth + monthOffset;
+    const year = baseYear + Math.floor((absoluteMonth - 1) / 12);
+    const month = ((absoluteMonth - 1) % 12) + 1;
+    const bounds = getCanonicalFortnightBounds(year, month, period);
 
     result.push({
-      startDate: start,
-      endDate: end,
-      label,
-      month: monthIndex + 1,
+      startDate: bounds.start_date,
+      endDate: bounds.end_date,
+      label:
+        period === 'FIRST'
+          ? `Primera quincena - ${month}/${year}`
+          : `Segunda quincena - ${month}/${year}`,
+      month,
       year,
       period,
     });
@@ -168,15 +151,16 @@ export async function POST(request: Request) {
       );
     }
 
-    let parsedStartDate: Date | null = null;
+    let startYmd: string | null = null;
     if (typeof payload.startDate === 'string' && payload.startDate.trim() !== '') {
-      parsedStartDate = parseCalendarDate(payload.startDate.trim());
-      if (Number.isNaN(parsedStartDate.getTime())) {
+      const trimmed = payload.startDate.trim();
+      if (!isValidCalendarDateString(trimmed)) {
         return NextResponse.json(
           { success: false, message: 'Fecha de inicio inválida' },
           { status: 400 },
         );
       }
+      startYmd = trimmed;
     }
 
     await prisma.$transaction(async (tx) => {
@@ -263,8 +247,8 @@ export async function POST(request: Request) {
       }
 
       // 5. Fortnights (first 4 cycles) — only if we have a valid start date
-      if (parsedStartDate) {
-        const generatedFortnights = generateFortnights(parsedStartDate, 4);
+      if (startYmd) {
+        const generatedFortnights = generateFortnights(startYmd, 4);
 
         if (generatedFortnights.length > 0) {
           await tx.fortnight.createMany({

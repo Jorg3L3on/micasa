@@ -44,7 +44,7 @@ export default async function AppLayout({
           <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background shadow-sm transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <AppHeaderToolbarDynamic />
           </header>
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen min-w-0 bg-background">
+          <div className="flex flex-1 flex-col gap-4 p-6 min-h-screen min-w-0 bg-background">
             <div className="container mx-auto">
               <Suspense fallback={<AppLoading />}>{children}</Suspense>
             </div>

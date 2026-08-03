@@ -192,4 +192,141 @@ describe('getMonthlyBudgetPanel', () => {
       ]),
     );
   });
+
+  it('counts a BIWEEKLY $2000 budget once when periods match calendar quincenas', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({
+        id: 1,
+        budgetId: 1,
+        start: '2026-08-01',
+        end: '2026-08-15',
+        total: 2000,
+        frequency: 'BIWEEKLY',
+        categoryName: 'Comida',
+        walletId: 2,
+        walletName: 'Efectivo',
+      }),
+      periodFixture({
+        id: 2,
+        budgetId: 1,
+        start: '2026-08-16',
+        end: '2026-08-31',
+        total: 2000,
+        frequency: 'BIWEEKLY',
+        categoryName: 'Comida',
+        walletId: 2,
+        walletName: 'Efectivo',
+      }),
+    ]);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 8);
+
+    expect(panel.first.totalBudget).toBe(2000);
+    expect(panel.second.totalBudget).toBe(2000);
+  });
+
+  it('does not inflate totalBudget when one budget has multiple category allocations', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      {
+        id: 1,
+        budget_id: 20,
+        start_date: startOfCalendarDay('2026-08-01'),
+        end_date: endOfCalendarDay('2026-08-15'),
+        budget: {
+          id: 20,
+          total_amount: 3000,
+          frequency: 'BIWEEKLY',
+          allocations: [
+            {
+              id: 1,
+              wallet_id: 2,
+              category_id: 5,
+              amount: 1000,
+              category: { id: 5, name: 'Comida', icon: null },
+              wallet: {
+                id: 2,
+                name: 'Efectivo',
+                provider_icon_key: null,
+                assignee: null,
+              },
+            },
+            {
+              id: 2,
+              wallet_id: 1,
+              category_id: 8,
+              amount: 2000,
+              category: { id: 8, name: 'Transporte', icon: null },
+              wallet: {
+                id: 1,
+                name: 'Nómina',
+                provider_icon_key: null,
+                assignee: null,
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    mocks.computePeriodSpendByAllocations.mockResolvedValue({
+      total_spent: 0,
+      by_allocation: [{ spent_amount: 0 }, { spent_amount: 0 }],
+    });
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 8);
+
+    expect(panel.first.totalBudget).toBe(3000);
+    expect(panel.first.allocations).toHaveLength(2);
+    expect(panel.first.allocations.map((a) => a.budgeted).sort()).toEqual([
+      1000, 2000,
+    ]);
+  });
+
+  it('prorates a CUSTOM range that partially overlaps the first quincena', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({
+        id: 1,
+        budgetId: 30,
+        start: '2026-08-10',
+        end: '2026-08-20',
+        total: 1100,
+        frequency: 'CUSTOM',
+        categoryName: 'Viaje',
+      }),
+    ]);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 8);
+
+    // Aug 10–15 = 6 of 11 days → 1100 * 6/11
+    expect(panel.first.totalBudget).toBeCloseTo(600, 5);
+    // Aug 16–20 = 5 of 11 days → 1100 * 5/11
+    expect(panel.second.totalBudget).toBeCloseTo(500, 5);
+  });
+
+  it('counts each DAILY period fully when it lies inside the quincena', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({
+        id: 1,
+        budgetId: 40,
+        start: '2026-08-02',
+        end: '2026-08-02',
+        total: 50,
+        frequency: 'DAILY',
+        categoryName: 'Café',
+      }),
+      periodFixture({
+        id: 2,
+        budgetId: 40,
+        start: '2026-08-03',
+        end: '2026-08-03',
+        total: 50,
+        frequency: 'DAILY',
+        categoryName: 'Café',
+      }),
+    ]);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 8);
+
+    expect(panel.first.totalBudget).toBe(100);
+    expect(panel.first.allocations[0]?.budgeted).toBe(100);
+  });
 });

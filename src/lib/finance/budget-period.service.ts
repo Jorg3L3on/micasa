@@ -16,6 +16,13 @@ import {
 import {
   computeBudgetPeriodWindowsForFortnight,
   getCalendarFortnightBoundsForMonth,
+  getCanonicalFortnightBounds,
+  periodMatchesCalendarWindow,
+  canonicalizeWeeklyPeriod,
+  canonicalizeDailyPeriod,
+  canonicalizeCustomPeriod,
+  calendarWeeksOverlappingRange,
+  readWallClockYmd,
 } from '@/lib/finance/budget-period-windows';
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
@@ -126,7 +133,12 @@ export async function generatePeriodsOnCreate(
     return total;
   }
 
-  const windows = computeBudgetPeriodWindowsForFortnight(frequency, nextFortnight);
+  const windowSource = getCanonicalFortnightBounds(
+    nextFortnight.year,
+    nextFortnight.month,
+    nextFortnight.period,
+  );
+  const windows = computeBudgetPeriodWindowsForFortnight(frequency, windowSource);
   total += await insertPeriods(budgetId, windows);
   return total;
 }
@@ -145,21 +157,251 @@ export async function generatePeriodsForMonth(
 
   const fortnights = await prisma.fortnight.findMany({
     where: { ...ownerFilter, year, month },
+    select: { period: true, start_date: true, end_date: true },
   });
 
   let total = 0;
   for (const budget of budgets) {
     if (budget.frequency === 'CUSTOM') continue;
     for (const fortnight of fortnights) {
+      // Prefer year/month/period → canonical civil bounds so legacy Fortnight
+      // timestamps cannot poison WEEKLY/DAILY/BIWEEKLY window generation.
+      const windowSource = getCanonicalFortnightBounds(
+        year,
+        month,
+        fortnight.period,
+      );
       const windows = computeBudgetPeriodWindowsForFortnight(
         budget.frequency as BudgetFrequency,
-        fortnight,
+        windowSource,
       );
       total += await insertPeriods(budget.id, windows);
     }
   }
 
   return { total };
+}
+
+/**
+ * Aligns Fortnight rows and BIWEEKLY budget periods for a month to canonical
+ * calendar bounds so Panel financiero day-proration cannot inflate totals.
+ */
+async function reconcileBiweeklyCalendarAlignment(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<void> {
+  const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
+  const fortnights = await prisma.fortnight.findMany({
+    where: { ...ownerFilter, year, month },
+    select: { id: true, period: true, start_date: true, end_date: true },
+  });
+
+  for (const fortnight of fortnights) {
+    const bounds = getCanonicalFortnightBounds(year, month, fortnight.period);
+    if (!periodMatchesCalendarWindow(fortnight, bounds)) {
+      await prisma.fortnight.update({
+        where: { id: fortnight.id },
+        data: {
+          start_date: bounds.start_date,
+          end_date: bounds.end_date,
+        },
+      });
+    }
+  }
+
+  if (fortnights.length === 0) return;
+
+  const expectedWindows = fortnights.map((f) =>
+    getCanonicalFortnightBounds(year, month, f.period),
+  );
+
+  const budgets = await prisma.budget.findMany({
+    where: { ...ownerFilter, active: true, frequency: 'BIWEEKLY' },
+    select: { id: true },
+  });
+  if (budgets.length === 0) return;
+
+  const monthStart = first.start_date;
+  const monthEnd = second.end_date;
+
+  for (const budget of budgets) {
+    const periods = await prisma.budgetPeriod.findMany({
+      where: {
+        budget_id: budget.id,
+        start_date: { lte: monthEnd },
+        end_date: { gte: monthStart },
+      },
+      select: { id: true, start_date: true, end_date: true },
+      orderBy: { start_date: 'asc' },
+    });
+
+    const allAligned =
+      periods.length === expectedWindows.length &&
+      expectedWindows.every((window) =>
+        periods.some((period) => periodMatchesCalendarWindow(period, window)),
+      );
+
+    if (allAligned) continue;
+
+    if (periods.length > 0) {
+      await prisma.budgetPeriod.deleteMany({
+        where: { id: { in: periods.map((p) => p.id) } },
+      });
+    }
+
+    await insertPeriods(budget.id, expectedWindows);
+
+    // Keep template window on the current calendar fortnight when it falls in this month.
+    const today = todayCalendarDate();
+    const [ty, tm, td] = today.split('-').map(Number);
+    if (ty === year && tm === month) {
+      const bounds = getCanonicalFortnightBounds(
+        year,
+        month,
+        td <= 15 ? 'FIRST' : 'SECOND',
+      );
+      await prisma.budget.update({
+        where: { id: budget.id },
+        data: {
+          start_date: bounds.start_date,
+          end_date: bounds.end_date,
+        },
+      });
+    }
+  }
+}
+
+/**
+ * Rewrites WEEKLY periods onto stable Sun–Sat UTC-noon weeks and drops
+ * duplicates so quincena proration cannot pick up an extra day from an
+ * 8-day timezone artifact (e.g. $150 + $18.75 = $168.75).
+ */
+async function reconcileWeeklyCalendarAlignment(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<void> {
+  const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
+  const monthStart = first.start_date;
+  const monthEnd = second.end_date;
+
+  const budgets = await prisma.budget.findMany({
+    where: { ...ownerFilter, active: true, frequency: 'WEEKLY' },
+    select: { id: true },
+  });
+  if (budgets.length === 0) return;
+
+  for (const budget of budgets) {
+    const periods = await prisma.budgetPeriod.findMany({
+      where: {
+        budget_id: budget.id,
+        start_date: { lte: monthEnd },
+        end_date: { gte: monthStart },
+      },
+      select: { id: true, start_date: true, end_date: true },
+      orderBy: { start_date: 'asc' },
+    });
+    if (periods.length === 0) continue;
+
+    const seenWeeks = new Set<string>();
+    const toDelete: number[] = [];
+
+    for (const period of periods) {
+      const canonical = canonicalizeWeeklyPeriod(period);
+      const key = `${readWallClockYmd(canonical.start_date)}_${readWallClockYmd(canonical.end_date)}`;
+      if (seenWeeks.has(key)) {
+        toDelete.push(period.id);
+        continue;
+      }
+      seenWeeks.add(key);
+
+      if (!periodMatchesCalendarWindow(period, canonical)) {
+        await prisma.budgetPeriod.update({
+          where: { id: period.id },
+          data: {
+            start_date: canonical.start_date,
+            end_date: canonical.end_date,
+          },
+        });
+      }
+    }
+
+    if (toDelete.length > 0) {
+      await prisma.budgetPeriod.deleteMany({
+        where: { id: { in: toDelete } },
+      });
+    }
+
+    // Align template window to the current calendar week when viewing this month.
+    const today = todayCalendarDate();
+    const [ty, tm] = today.split('-').map(Number);
+    if (ty === year && tm === month) {
+      const [week] = calendarWeeksOverlappingRange(today, today);
+      if (week) {
+        await prisma.budget.update({
+          where: { id: budget.id },
+          data: {
+            start_date: week.start_date,
+            end_date: week.end_date,
+          },
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Rewrites DAILY / CUSTOM period endpoints onto UTC-noon civil days so
+ * PostgreSQL `timestamp` round-trips cannot shift the calendar day used by
+ * Panel financiero proration.
+ */
+async function reconcileFixedRangeCalendarAlignment(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+  frequency: 'DAILY' | 'CUSTOM',
+): Promise<void> {
+  const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
+  const monthStart = first.start_date;
+  const monthEnd = second.end_date;
+
+  const budgets = await prisma.budget.findMany({
+    where: { ...ownerFilter, active: true, frequency },
+    select: { id: true },
+  });
+  if (budgets.length === 0) return;
+
+  const canonicalize =
+    frequency === 'DAILY' ? canonicalizeDailyPeriod : canonicalizeCustomPeriod;
+
+  for (const budget of budgets) {
+    const periods = await prisma.budgetPeriod.findMany({
+      where: {
+        budget_id: budget.id,
+        start_date: { lte: monthEnd },
+        end_date: { gte: monthStart },
+      },
+      select: { id: true, start_date: true, end_date: true },
+    });
+
+    for (const period of periods) {
+      const canonical = canonicalize(period);
+      if (
+        period.start_date.getTime() === canonical.start_date.getTime() &&
+        period.end_date.getTime() === canonical.end_date.getTime()
+      ) {
+        continue;
+      }
+      await prisma.budgetPeriod.update({
+        where: { id: period.id },
+        data: {
+          start_date: canonical.start_date,
+          end_date: canonical.end_date,
+        },
+      });
+    }
+  }
 }
 
 /** Creates missing periods for a month when fortnights exist but no periods overlap yet. */
@@ -181,7 +423,14 @@ export async function ensureBudgetPeriodsForMonth(
       },
     }),
   ]);
-  if (fortnightCount === 0 || activeRecurrentCount === 0) return;
+  if (fortnightCount === 0) return;
+
+  await reconcileBiweeklyCalendarAlignment(ownerFilter, year, month);
+  await reconcileWeeklyCalendarAlignment(ownerFilter, year, month);
+  await reconcileFixedRangeCalendarAlignment(ownerFilter, year, month, 'DAILY');
+  await reconcileFixedRangeCalendarAlignment(ownerFilter, year, month, 'CUSTOM');
+
+  if (activeRecurrentCount === 0) return;
 
   const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
   const monthStart = first.start_date;
@@ -199,20 +448,34 @@ export async function ensureBudgetPeriodsForMonth(
   await generatePeriodsForMonth(year, month, ownerFilter);
 }
 
-/** Drops future periods and regenerates from the updated template window. */
+/**
+ * After a template schedule/amount change: drop future periods and any period
+ * that still covers "today", then regenerate from the new template window.
+ *
+ * Deleting only `start_date > today` left the old current window in place when
+ * CUSTOM (or other) date ranges changed — e.g. 1–30 ago and 1–31 ago both
+ * containing today → duplicate cards in Presupuestos and double-count in Panel.
+ */
 export async function syncBudgetPeriodsAfterTemplateUpdate(
   budgetId: number,
   frequency: BudgetFrequency,
   budgetDateRange: DateRange | null,
   ownerFilter: OwnerFilter,
-  options: { recurrent: boolean },
+  options: { recurrent: boolean; now?: Date },
 ): Promise<void> {
-  const todayEnd = endOfCalendarDay(todayCalendarDate());
+  const asOf = options.now ?? new Date();
+  const { start_date: todayStart, end_date: todayEnd } = activeDayBounds(asOf);
 
   await prisma.budgetPeriod.deleteMany({
     where: {
       budget_id: budgetId,
-      start_date: { gt: todayEnd },
+      OR: [
+        { start_date: { gt: todayEnd } },
+        {
+          start_date: { lte: todayEnd },
+          end_date: { gte: todayStart },
+        },
+      ],
     },
   });
 
@@ -223,7 +486,7 @@ export async function syncBudgetPeriodsAfterTemplateUpdate(
     frequency,
     budgetDateRange,
     ownerFilter,
-    { recurrent: options.recurrent },
+    { recurrent: options.recurrent, now: asOf },
   );
 }
 

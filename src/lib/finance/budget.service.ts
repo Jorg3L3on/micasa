@@ -6,19 +6,19 @@ import {
   refreshFuturePeriodSnapshots,
   syncBudgetPeriodsAfterTemplateUpdate,
 } from '@/lib/finance/budget-period.service';
-import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import {
   addCalendarDays,
-  endOfCalendarDay,
   formatCalendarDate,
-  startOfCalendarDay,
+  parseCalendarDate,
 } from '@/lib/calendar-dates';
+import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { computeBudgetTemplateDateRange } from '@/lib/finance/budget-template-date-range';
+import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 
 async function resolveCurrentFortnight(ownerFilter: OwnerFilter) {
   return prisma.fortnight.findFirst({
     where: { ...ownerFilter, ...getCurrentCalendarFortnightRef() },
-    select: { start_date: true, end_date: true },
+    select: { start_date: true, end_date: true, year: true, month: true, period: true },
   });
 }
 
@@ -40,9 +40,20 @@ async function resolveBudgetDateRange(
     );
   }
 
+  // Prefer year/month/period → canonical calendar bounds so off-by-one
+  // Fortnight timestamps (e.g. legacy onboarding) cannot poison the template.
+  const biweeklyRange =
+    frequency === 'BIWEEKLY' && currentFortnight
+      ? getCanonicalFortnightBounds(
+          currentFortnight.year,
+          currentFortnight.month,
+          currentFortnight.period,
+        )
+      : currentFortnight;
+
   return computeBudgetTemplateDateRange({
     frequency,
-    currentFortnight,
+    currentFortnight: biweeklyRange,
     customStartDate,
     customEndDate,
   });
@@ -307,28 +318,23 @@ export async function setBudgetActive(
   let budgetDateRange = await resolveBudgetDateRange(frequency, ownerFilter);
   if (effectiveDate) {
     if (frequency === 'DAILY') {
-      budgetDateRange = {
-        start_date: startOfCalendarDay(effectiveDate),
-        end_date: endOfCalendarDay(effectiveDate),
-      };
+      const day = parseCalendarDate(effectiveDate);
+      budgetDateRange = { start_date: day, end_date: day };
     } else if (frequency === 'WEEKLY') {
       const [year, month, day] = effectiveDate.split('-').map(Number);
       const weekday = new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay();
       const weekStart = addCalendarDays(effectiveDate, -weekday);
       const weekEnd = addCalendarDays(weekStart, 6);
       budgetDateRange = {
-        start_date: startOfCalendarDay(weekStart),
-        end_date: endOfCalendarDay(weekEnd),
+        start_date: parseCalendarDate(weekStart),
+        end_date: parseCalendarDate(weekEnd),
       };
     } else if (frequency === 'BIWEEKLY') {
-      const effectiveDay = startOfCalendarDay(effectiveDate);
+      const [year, month, day] = effectiveDate.split('-').map(Number);
+      const period = day <= 15 ? 'FIRST' : 'SECOND';
       const fortnight = await prisma.fortnight.findFirst({
-        where: {
-          ...ownerFilter,
-          start_date: { lte: effectiveDay },
-          end_date: { gte: effectiveDay },
-        },
-        select: { start_date: true, end_date: true },
+        where: { ...ownerFilter, year, month, period },
+        select: { id: true },
       });
       if (!fortnight) {
         throw Object.assign(
@@ -336,10 +342,7 @@ export async function setBudgetActive(
           { code: 'CURRENT_FORTNIGHT_NOT_FOUND' },
         );
       }
-      budgetDateRange = {
-        start_date: fortnight.start_date,
-        end_date: fortnight.end_date,
-      };
+      budgetDateRange = getCanonicalFortnightBounds(year, month, period);
     }
   }
 

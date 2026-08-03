@@ -1,7 +1,7 @@
 import {
   addCalendarDays,
-  endOfCalendarDay,
-  startOfCalendarDay,
+  isValidCalendarDateString,
+  parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
@@ -16,6 +16,17 @@ type BudgetTemplateDateRangeInput = {
   customEndDate?: string | null;
 };
 
+function parseOptionalCalendarDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (isValidCalendarDateString(trimmed)) {
+    return parseCalendarDate(trimmed);
+  }
+  // Legacy ISO / datetime form values — keep prior behavior.
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function computeBudgetTemplateDateRange({
   frequency,
   now = new Date(),
@@ -25,8 +36,8 @@ export function computeBudgetTemplateDateRange({
 }: BudgetTemplateDateRangeInput): { start_date: Date | null; end_date: Date | null } {
   if (frequency === 'CUSTOM') {
     return {
-      start_date: customStartDate ? new Date(customStartDate) : null,
-      end_date: customEndDate ? new Date(customEndDate) : null,
+      start_date: parseOptionalCalendarDate(customStartDate),
+      end_date: parseOptionalCalendarDate(customEndDate),
     };
   }
 
@@ -43,9 +54,10 @@ export function computeBudgetTemplateDateRange({
   const today = todayCalendarDate(now);
 
   if (frequency === 'DAILY') {
+    const day = parseCalendarDate(today);
     return {
-      start_date: startOfCalendarDay(today),
-      end_date: endOfCalendarDay(today),
+      start_date: day,
+      end_date: day,
     };
   }
 
@@ -57,7 +69,7 @@ export function computeBudgetTemplateDateRange({
   const weekEnd = addCalendarDays(weekStart, 6);
 
   return {
-    start_date: startOfCalendarDay(weekStart),
-    end_date: endOfCalendarDay(weekEnd),
+    start_date: parseCalendarDate(weekStart),
+    end_date: parseCalendarDate(weekEnd),
   };
 }

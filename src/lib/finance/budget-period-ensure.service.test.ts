@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { endOfCalendarDay, startOfCalendarDay } from '@/lib/calendar-dates';
+import { endOfCalendarDay, parseCalendarDate, startOfCalendarDay } from '@/lib/calendar-dates';
 import { ensureBudgetPeriodsForMonth } from './budget-period.service';
 
 const mocks = vi.hoisted(() => ({
@@ -8,18 +8,34 @@ const mocks = vi.hoisted(() => ({
   budgetPeriodCount: vi.fn(),
   budgetFindMany: vi.fn(),
   fortnightFindMany: vi.fn(),
+  fortnightUpdate: vi.fn(),
+  budgetPeriodFindMany: vi.fn(),
+  budgetPeriodDeleteMany: vi.fn(),
   budgetPeriodFindFirst: vi.fn(),
   budgetPeriodCreate: vi.fn(),
+  budgetPeriodUpdate: vi.fn(),
+  budgetUpdate: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
-    fortnight: { count: mocks.fortnightCount, findMany: mocks.fortnightFindMany },
-    budget: { count: mocks.budgetCount, findMany: mocks.budgetFindMany },
+    fortnight: {
+      count: mocks.fortnightCount,
+      findMany: mocks.fortnightFindMany,
+      update: mocks.fortnightUpdate,
+    },
+    budget: {
+      count: mocks.budgetCount,
+      findMany: mocks.budgetFindMany,
+      update: mocks.budgetUpdate,
+    },
     budgetPeriod: {
       count: mocks.budgetPeriodCount,
+      findMany: mocks.budgetPeriodFindMany,
       findFirst: mocks.budgetPeriodFindFirst,
       create: mocks.budgetPeriodCreate,
+      deleteMany: mocks.budgetPeriodDeleteMany,
+      update: mocks.budgetPeriodUpdate,
     },
   },
 }));
@@ -31,6 +47,13 @@ describe('ensureBudgetPeriodsForMonth', () => {
     vi.clearAllMocks();
     mocks.budgetPeriodFindFirst.mockResolvedValue(null);
     mocks.budgetPeriodCreate.mockResolvedValue({ id: 1 });
+    mocks.fortnightFindMany.mockResolvedValue([]);
+    mocks.budgetFindMany.mockResolvedValue([]);
+    mocks.budgetPeriodFindMany.mockResolvedValue([]);
+    mocks.fortnightUpdate.mockResolvedValue({});
+    mocks.budgetPeriodDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.budgetPeriodUpdate.mockResolvedValue({});
+    mocks.budgetUpdate.mockResolvedValue({});
   });
 
   it('does nothing when fortnights are missing for the month', async () => {
@@ -47,17 +70,41 @@ describe('ensureBudgetPeriodsForMonth', () => {
     mocks.fortnightCount.mockResolvedValue(2);
     mocks.budgetCount.mockResolvedValue(1);
     mocks.budgetPeriodCount.mockResolvedValue(0);
-    mocks.budgetFindMany.mockResolvedValue([{ id: 10, frequency: 'WEEKLY' }]);
-    mocks.fortnightFindMany.mockResolvedValue([
-      {
-        start_date: startOfCalendarDay('2026-06-01'),
-        end_date: endOfCalendarDay('2026-06-15'),
-      },
-      {
-        start_date: startOfCalendarDay('2026-06-16'),
-        end_date: endOfCalendarDay('2026-06-30'),
-      },
-    ]);
+    // reconcile pass
+    mocks.fortnightFindMany
+      .mockResolvedValueOnce([
+        {
+          id: 1,
+          period: 'FIRST',
+          start_date: startOfCalendarDay('2026-06-01'),
+          end_date: endOfCalendarDay('2026-06-15'),
+        },
+        {
+          id: 2,
+          period: 'SECOND',
+          start_date: startOfCalendarDay('2026-06-16'),
+          end_date: endOfCalendarDay('2026-06-30'),
+        },
+      ])
+      // generatePeriodsForMonth pass
+      .mockResolvedValueOnce([
+        {
+          period: 'FIRST',
+          start_date: startOfCalendarDay('2026-06-01'),
+          end_date: endOfCalendarDay('2026-06-15'),
+        },
+        {
+          period: 'SECOND',
+          start_date: startOfCalendarDay('2026-06-16'),
+          end_date: endOfCalendarDay('2026-06-30'),
+        },
+      ]);
+    mocks.budgetFindMany
+      .mockResolvedValueOnce([]) // reconcile BIWEEKLY
+      .mockResolvedValueOnce([]) // reconcile WEEKLY
+      .mockResolvedValueOnce([]) // reconcile DAILY
+      .mockResolvedValueOnce([]) // reconcile CUSTOM
+      .mockResolvedValueOnce([{ id: 10, frequency: 'WEEKLY' }]);
 
     await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 6);
 
@@ -68,10 +115,111 @@ describe('ensureBudgetPeriodsForMonth', () => {
     mocks.fortnightCount.mockResolvedValue(2);
     mocks.budgetCount.mockResolvedValue(1);
     mocks.budgetPeriodCount.mockResolvedValue(4);
+    mocks.fortnightFindMany.mockResolvedValue([
+      {
+        id: 1,
+        period: 'FIRST',
+        start_date: startOfCalendarDay('2026-06-01'),
+        end_date: endOfCalendarDay('2026-06-15'),
+      },
+      {
+        id: 2,
+        period: 'SECOND',
+        start_date: startOfCalendarDay('2026-06-16'),
+        end_date: endOfCalendarDay('2026-06-30'),
+      },
+    ]);
 
     await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 6);
 
-    expect(mocks.budgetFindMany).not.toHaveBeenCalled();
+    expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
+  });
+
+  it('realigns misaligned BIWEEKLY periods to calendar quincenas', async () => {
+    mocks.fortnightCount.mockResolvedValue(2);
+    mocks.budgetCount.mockResolvedValue(1);
+    mocks.budgetPeriodCount.mockResolvedValue(2);
+    mocks.fortnightFindMany.mockResolvedValue([
+      {
+        id: 1,
+        period: 'FIRST',
+        // Legacy onboarding: civil days shifted / wrong range
+        start_date: new Date('2026-08-01T00:00:00.000Z'),
+        end_date: new Date('2026-08-14T00:00:00.000Z'),
+      },
+      {
+        id: 2,
+        period: 'SECOND',
+        start_date: new Date('2026-08-15T00:00:00.000Z'),
+        end_date: new Date('2026-08-31T00:00:00.000Z'),
+      },
+    ]);
+    mocks.budgetFindMany
+      .mockResolvedValueOnce([{ id: 10 }]) // BIWEEKLY
+      .mockResolvedValueOnce([]) // WEEKLY
+      .mockResolvedValueOnce([]) // DAILY
+      .mockResolvedValueOnce([]); // CUSTOM
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      {
+        id: 101,
+        start_date: new Date('2026-07-31T18:00:00.000Z'),
+        end_date: new Date('2026-08-13T18:00:00.000Z'),
+      },
+      {
+        id: 102,
+        start_date: new Date('2026-08-14T18:00:00.000Z'),
+        end_date: new Date('2026-08-30T18:00:00.000Z'),
+      },
+    ]);
+
+    await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 8);
+
+    expect(mocks.fortnightUpdate).toHaveBeenCalled();
+    expect(mocks.budgetPeriodDeleteMany).toHaveBeenCalledWith({
+      where: { id: { in: [101, 102] } },
+    });
+    expect(mocks.budgetPeriodCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it('canonicalizes misaligned WEEKLY periods that bleed across quincenas', async () => {
+    mocks.fortnightCount.mockResolvedValue(2);
+    mocks.budgetCount.mockResolvedValue(1);
+    mocks.budgetPeriodCount.mockResolvedValue(2);
+    mocks.fortnightFindMany.mockResolvedValue([
+      {
+        id: 1,
+        period: 'FIRST',
+        start_date: parseCalendarDate('2026-08-01'),
+        end_date: parseCalendarDate('2026-08-15'),
+      },
+      {
+        id: 2,
+        period: 'SECOND',
+        start_date: parseCalendarDate('2026-08-16'),
+        end_date: parseCalendarDate('2026-08-31'),
+      },
+    ]);
+    mocks.budgetFindMany
+      .mockResolvedValueOnce([]) // BIWEEKLY
+      .mockResolvedValueOnce([{ id: 4 }]) // WEEKLY
+      .mockResolvedValueOnce([]) // DAILY
+      .mockResolvedValueOnce([]); // CUSTOM
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      {
+        id: 88,
+        start_date: new Date('2026-08-02T00:00:00.000Z'),
+        end_date: new Date('2026-08-08T23:59:59.999Z'),
+      },
+      {
+        id: 89,
+        start_date: new Date('2026-08-16T00:00:00.000Z'),
+        end_date: new Date('2026-08-22T23:59:59.999Z'),
+      },
+    ]);
+
+    await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 8);
+
+    expect(mocks.budgetPeriodUpdate).toHaveBeenCalled();
     expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
   });
 });
