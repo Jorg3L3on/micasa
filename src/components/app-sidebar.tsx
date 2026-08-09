@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { Suspense } from 'react';
 import {
+  ChartLine,
+  ClipboardList,
   FolderTree,
   Receipt,
   Calendar,
@@ -10,6 +12,8 @@ import {
   HandCoins,
   Home,
   PiggyBank,
+  TrendingUp,
+  Users,
   Wallet,
 } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -70,38 +74,6 @@ export function AppSidebar({
   const pathname = usePathname();
   const { context } = useFinanceContext();
 
-  const catalogItems = [
-    {
-      title: 'Plantillas de gastos',
-      url: '/expense-templates',
-      isActive: pathname.startsWith('/expense-templates'),
-    },
-    {
-      title: 'Plantillas de ingresos',
-      url: '/income-templates',
-      isActive: pathname.startsWith('/income-templates'),
-    },
-    {
-      title: 'Categorías',
-      url: '/categories',
-      isActive: pathname.startsWith('/categories'),
-    },
-    {
-      title: 'Liquidez y análisis',
-      url: '/wallets/liquidity',
-      isActive: pathname.startsWith('/wallets/liquidity'),
-    },
-    ...(context.type === 'house'
-      ? [
-          {
-            title: 'Usuarios de la casa',
-            url: '/house-users',
-            isActive: pathname.startsWith('/house-users'),
-          },
-        ]
-      : []),
-  ];
-
   const menuItems = [
     {
       title: 'Panel financiero',
@@ -146,19 +118,41 @@ export function AppSidebar({
     },
   ];
 
-  const generalItems = [
+  const catalogItems = [
     {
-      title: 'Catálogos',
-      url: '#',
+      title: 'Categorías',
+      url: '/categories',
       icon: FolderTree,
-      isActive:
-        pathname.startsWith('/expense-templates') ||
-        pathname.startsWith('/income-templates') ||
-        pathname.startsWith('/categories') ||
-        pathname.startsWith('/wallets/liquidity') ||
-        pathname.startsWith('/house-users'),
-      items: catalogItems,
+      isActive: pathname.startsWith('/categories'),
     },
+    {
+      title: 'Gastos programados',
+      url: '/expense-templates',
+      icon: ClipboardList,
+      isActive: pathname.startsWith('/expense-templates'),
+    },
+    {
+      title: 'Ingresos programados',
+      url: '/income-templates',
+      icon: TrendingUp,
+      isActive: pathname.startsWith('/income-templates'),
+    },
+    {
+      title: 'Liquidez y análisis',
+      url: '/wallets/liquidity',
+      icon: ChartLine,
+      isActive: pathname.startsWith('/wallets/liquidity'),
+    },
+    ...(context.type === 'house'
+      ? [
+          {
+            title: 'Usuarios de la casa',
+            url: '/house-users',
+            icon: Users,
+            isActive: pathname.startsWith('/house-users'),
+          },
+        ]
+      : []),
   ];
 
   const teams = [
@@ -178,7 +172,7 @@ export function AppSidebar({
         </SidebarHeader>
         <SidebarContent>
           <NavMain groupLabel="Menú" items={menuItems} />
-          <NavMain groupLabel="General" items={generalItems} />
+          <NavMain groupLabel="Catálogos" items={catalogItems} />
         </SidebarContent>
         <SidebarFooter>
           <NavUser user={navUser} />

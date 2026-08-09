@@ -14,6 +14,7 @@
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
+    "seed:categories": "tsx --tsconfig tsconfig.json scripts/seed-categories.ts",
     "validate:metric-strips": "node scripts/validate-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
