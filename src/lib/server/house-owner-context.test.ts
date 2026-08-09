@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   authMock,
+  findUniqueUser,
   findFirstHouseMember,
   findManyWallet,
   groupByExpense,
@@ -9,6 +10,7 @@ const {
   findManyExpense,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
+  findUniqueUser: vi.fn(),
   findFirstHouseMember: vi.fn(),
   findManyWallet: vi.fn(),
   groupByExpense: vi.fn(),
@@ -22,6 +24,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    user: { findUnique: findUniqueUser },
     houseMember: { findFirst: findFirstHouseMember },
     wallet: { findMany: findManyWallet },
     expense: { findMany: findManyExpense, groupBy: groupByExpense },
@@ -38,10 +41,23 @@ describe('getOwnerContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: '10' } });
+    findUniqueUser.mockResolvedValue({ id: 10 });
   });
 
   it('returns 401 when unauthenticated', async () => {
     authMock.mockResolvedValue(null);
+    const result = await getOwnerContext(
+      new Request('http://localhost/api/wallets'),
+    );
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error.status).toBe(401);
+    }
+    expect(findUniqueUser).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when session user no longer exists', async () => {
+    findUniqueUser.mockResolvedValue(null);
     const result = await getOwnerContext(
       new Request('http://localhost/api/wallets'),
     );
@@ -55,6 +71,10 @@ describe('getOwnerContext', () => {
     const result = await getOwnerContext(
       new Request('http://localhost/api/wallets'),
     );
+    expect(findUniqueUser).toHaveBeenCalledWith({
+      where: { id: 10 },
+      select: { id: true },
+    });
     expect(result).toEqual({
       userId: 10,
       ownerType: 'user',

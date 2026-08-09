@@ -85,6 +85,14 @@ describe('POST /api/auth/register', () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  const categoryTxStub = () => ({
+    count: vi.fn(async () => 0),
+    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+      id: 1,
+      ...data,
+    })),
+  });
+
   it('normalizes email before uniqueness check and persistence', async () => {
     findUniqueUser.mockResolvedValue(null);
     transaction.mockImplementation(async (callback) =>
@@ -102,6 +110,7 @@ describe('POST /api/auth/register', () => {
         houseMember: {
           create: vi.fn(async () => ({})),
         },
+        category: categoryTxStub(),
       }),
     );
 
@@ -147,6 +156,7 @@ describe('POST /api/auth/register', () => {
         houseMember: {
           create: vi.fn(async () => ({})),
         },
+        category: categoryTxStub(),
       }),
     );
 
