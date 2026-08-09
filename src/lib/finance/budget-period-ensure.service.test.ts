@@ -181,6 +181,65 @@ describe('ensureBudgetPeriodsForMonth', () => {
     expect(mocks.budgetPeriodCreate).toHaveBeenCalledTimes(2);
   });
 
+  it('dedupes duplicate BIWEEKLY periods for the same quincena without delete-all', async () => {
+    mocks.fortnightCount.mockResolvedValue(2);
+    mocks.budgetCount.mockResolvedValue(1);
+    mocks.budgetPeriodCount.mockResolvedValue(4);
+    mocks.fortnightFindMany.mockResolvedValue([
+      {
+        id: 1,
+        period: 'FIRST',
+        start_date: parseCalendarDate('2026-08-01'),
+        end_date: parseCalendarDate('2026-08-15'),
+      },
+      {
+        id: 2,
+        period: 'SECOND',
+        start_date: parseCalendarDate('2026-08-16'),
+        end_date: parseCalendarDate('2026-08-31'),
+      },
+    ]);
+    mocks.budgetFindMany
+      .mockResolvedValueOnce([{ id: 10 }]) // BIWEEKLY
+      .mockResolvedValueOnce([]) // WEEKLY
+      .mockResolvedValueOnce([]) // DAILY
+      .mockResolvedValueOnce([]); // CUSTOM
+    const first = {
+      start_date: parseCalendarDate('2026-08-01'),
+      end_date: parseCalendarDate('2026-08-15'),
+    };
+    const second = {
+      start_date: parseCalendarDate('2026-08-16'),
+      end_date: parseCalendarDate('2026-08-31'),
+    };
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      { id: 201, ...first },
+      { id: 202, ...first },
+      { id: 203, ...second },
+      { id: 204, ...second },
+    ]);
+    mocks.budgetPeriodFindFirst.mockImplementation(async (args?: {
+      where?: { start_date?: Date; end_date?: Date };
+    }) => {
+      const start = args?.where?.start_date?.getTime();
+      const end = args?.where?.end_date?.getTime();
+      if (start === first.start_date.getTime() && end === first.end_date.getTime()) {
+        return { id: 201 };
+      }
+      if (start === second.start_date.getTime() && end === second.end_date.getTime()) {
+        return { id: 203 };
+      }
+      return null;
+    });
+
+    await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 8);
+
+    expect(mocks.budgetPeriodDeleteMany).toHaveBeenCalledWith({
+      where: { id: { in: [202, 204] } },
+    });
+    expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
+  });
+
   it('canonicalizes misaligned WEEKLY periods that bleed across quincenas', async () => {
     mocks.fortnightCount.mockResolvedValue(2);
     mocks.budgetCount.mockResolvedValue(1);

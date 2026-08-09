@@ -27,18 +27,65 @@ import {
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
 
-async function syncPeriodSnapshot(periodId: number, budgetId: number): Promise<void> {
-  if (
-    !prisma.budget ||
-    typeof prisma.budget.findUnique !== 'function' ||
-    !prisma.budgetPeriodSnapshot ||
-    typeof prisma.budgetPeriodSnapshot.upsert !== 'function' ||
-    !prisma.budgetPeriodSnapshotAllocation ||
-    typeof prisma.budgetPeriodSnapshotAllocation.createMany !== 'function'
-  ) {
-    return;
-  }
-  const budget = await prisma.budget.findUnique({
+/** Coalesce concurrent ensureBudgetPeriodsForMonth calls in the same process. */
+const ensureBudgetPeriodsInflight = new Map<string, Promise<void>>();
+
+function isPrismaForeignKeyError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error != null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'P2003'
+  );
+}
+
+type SnapshotBudget = {
+  name: string;
+  total_amount: unknown;
+  allocations: Array<{
+    wallet: { id: number; name: string };
+    category: { id: number; name: string; icon: string | null };
+    amount: unknown;
+  }>;
+};
+
+type SnapshotTx = {
+  budgetPeriod: {
+    findUnique: (args: {
+      where: { id: number };
+      select: { id: true };
+    }) => Promise<{ id: number } | null>;
+  };
+  budgetPeriodSnapshot: {
+    upsert: (args: {
+      where: { budget_period_id: number };
+      update: { budget_name: string; total_amount: unknown };
+      create: {
+        budget_period_id: number;
+        budget_name: string;
+        total_amount: unknown;
+      };
+    }) => Promise<{ id: number }>;
+  };
+  budgetPeriodSnapshotAllocation: {
+    deleteMany: (args: { where: { snapshot_id: number } }) => Promise<unknown>;
+    createMany: (args: {
+      data: Array<{
+        snapshot_id: number;
+        wallet_id: number;
+        wallet_name: string;
+        category_id: number;
+        category_name: string;
+        category_icon: string | null;
+        allocated_amount: unknown;
+      }>;
+    }) => Promise<unknown>;
+  };
+};
+
+async function loadBudgetForSnapshot(budgetId: number): Promise<SnapshotBudget | null> {
+  if (!prisma.budget || typeof prisma.budget.findUnique !== 'function') return null;
+  return prisma.budget.findUnique({
     where: { id: budgetId },
     include: {
       allocations: {
@@ -49,53 +96,108 @@ async function syncPeriodSnapshot(periodId: number, budgetId: number): Promise<v
       },
     },
   });
+}
+
+async function writePeriodSnapshot(
+  tx: SnapshotTx,
+  periodId: number,
+  budget: SnapshotBudget,
+): Promise<void> {
+  const periodExists = await tx.budgetPeriod.findUnique({
+    where: { id: periodId },
+    select: { id: true },
+  });
+  if (!periodExists) return;
+
+  const snapshot = await tx.budgetPeriodSnapshot.upsert({
+    where: { budget_period_id: periodId },
+    update: {
+      budget_name: budget.name,
+      total_amount: budget.total_amount,
+    },
+    create: {
+      budget_period_id: periodId,
+      budget_name: budget.name,
+      total_amount: budget.total_amount,
+    },
+  });
+  await tx.budgetPeriodSnapshotAllocation.deleteMany({
+    where: { snapshot_id: snapshot.id },
+  });
+  if (budget.allocations.length > 0) {
+    await tx.budgetPeriodSnapshotAllocation.createMany({
+      data: budget.allocations.map((allocation) => ({
+        snapshot_id: snapshot.id,
+        wallet_id: allocation.wallet.id,
+        wallet_name: allocation.wallet.name,
+        category_id: allocation.category.id,
+        category_name: allocation.category.name,
+        category_icon: allocation.category.icon ?? null,
+        allocated_amount: allocation.amount,
+      })),
+    });
+  }
+}
+
+async function syncPeriodSnapshot(periodId: number, budgetId: number): Promise<void> {
+  if (
+    !prisma.budgetPeriodSnapshot ||
+    typeof prisma.budgetPeriodSnapshot.upsert !== 'function' ||
+    !prisma.budgetPeriodSnapshotAllocation ||
+    typeof prisma.budgetPeriodSnapshotAllocation.createMany !== 'function'
+  ) {
+    return;
+  }
+  const budget = await loadBudgetForSnapshot(budgetId);
   if (!budget) return;
 
-  await prisma.$transaction(async (tx) => {
-    const snapshot = await tx.budgetPeriodSnapshot.upsert({
-      where: { budget_period_id: periodId },
-      update: {
-        budget_name: budget.name,
-        total_amount: budget.total_amount,
-      },
-      create: {
-        budget_period_id: periodId,
-        budget_name: budget.name,
-        total_amount: budget.total_amount,
-      },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await writePeriodSnapshot(tx as unknown as SnapshotTx, periodId, budget);
     });
-    await tx.budgetPeriodSnapshotAllocation.deleteMany({
-      where: { snapshot_id: snapshot.id },
-    });
-    if (budget.allocations.length > 0) {
-      await tx.budgetPeriodSnapshotAllocation.createMany({
-        data: budget.allocations.map((allocation) => ({
-          snapshot_id: snapshot.id,
-          wallet_id: allocation.wallet.id,
-          wallet_name: allocation.wallet.name,
-          category_id: allocation.category.id,
-          category_name: allocation.category.name,
-          category_icon: allocation.category.icon ?? null,
-          allocated_amount: allocation.amount,
-        })),
-      });
-    }
-  });
+  } catch (error) {
+    // Concurrent reconcile may delete the period between create and snapshot.
+    if (isPrismaForeignKeyError(error)) return;
+    throw error;
+  }
 }
 
 async function insertPeriods(budgetId: number, windows: DateRange[]): Promise<number> {
   let created = 0;
+  const canSnapshot =
+    typeof prisma.$transaction === 'function' &&
+    prisma.budgetPeriodSnapshot &&
+    typeof prisma.budgetPeriodSnapshot.upsert === 'function';
+  const budget = canSnapshot ? await loadBudgetForSnapshot(budgetId) : null;
+
   for (const w of windows) {
     const existing = await prisma.budgetPeriod.findFirst({
       where: { budget_id: budgetId, start_date: w.start_date, end_date: w.end_date },
       select: { id: true },
     });
     if (existing) continue;
-    const period = await prisma.budgetPeriod.create({
-      data: { budget_id: budgetId, start_date: w.start_date, end_date: w.end_date },
-    });
-    await syncPeriodSnapshot(period.id, budgetId);
-    created++;
+
+    if (!canSnapshot || !budget) {
+      await prisma.budgetPeriod.create({
+        data: { budget_id: budgetId, start_date: w.start_date, end_date: w.end_date },
+      });
+      created++;
+      continue;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const period = await tx.budgetPeriod.create({
+          data: { budget_id: budgetId, start_date: w.start_date, end_date: w.end_date },
+        });
+        await writePeriodSnapshot(tx as unknown as SnapshotTx, period.id, budget);
+      });
+      created++;
+    } catch (error) {
+      // Another request may have created/deleted the same window mid-flight.
+      if (isPrismaForeignKeyError(error)) continue;
+      throw error;
+    }
   }
   return created;
 }
@@ -185,6 +287,9 @@ export async function generatePeriodsForMonth(
 /**
  * Aligns Fortnight rows and BIWEEKLY budget periods for a month to canonical
  * calendar bounds so Panel financiero day-proration cannot inflate totals.
+ *
+ * Prefer update-in-place + dedupe over delete-all/recreate so concurrent monthly
+ * panel loads (budget panel + both report summaries) cannot race snapshot FKs.
  */
 async function reconcileBiweeklyCalendarAlignment(
   ownerFilter: OwnerFilter,
@@ -236,17 +341,48 @@ async function reconcileBiweeklyCalendarAlignment(
       orderBy: { start_date: 'asc' },
     });
 
-    const allAligned =
-      periods.length === expectedWindows.length &&
-      expectedWindows.every((window) =>
-        periods.some((period) => periodMatchesCalendarWindow(period, window)),
-      );
+    const keepIds = new Set<number>();
+    const toDelete: number[] = [];
 
-    if (allAligned) continue;
+    for (const window of expectedWindows) {
+      const matching = periods
+        .filter((period) => periodMatchesCalendarWindow(period, window))
+        .sort((a, b) => a.id - b.id);
 
-    if (periods.length > 0) {
+      if (matching.length === 0) continue;
+
+      const [keeper, ...duplicates] = matching;
+      keepIds.add(keeper.id);
+
+      if (
+        keeper.start_date.getTime() !== window.start_date.getTime() ||
+        keeper.end_date.getTime() !== window.end_date.getTime()
+      ) {
+        await prisma.budgetPeriod.update({
+          where: { id: keeper.id },
+          data: {
+            start_date: window.start_date,
+            end_date: window.end_date,
+          },
+        });
+      }
+
+      for (const duplicate of duplicates) {
+        toDelete.push(duplicate.id);
+      }
+    }
+
+    for (const period of periods) {
+      if (keepIds.has(period.id)) continue;
+      if (expectedWindows.some((window) => periodMatchesCalendarWindow(period, window))) {
+        continue;
+      }
+      toDelete.push(period.id);
+    }
+
+    if (toDelete.length > 0) {
       await prisma.budgetPeriod.deleteMany({
-        where: { id: { in: periods.map((p) => p.id) } },
+        where: { id: { in: toDelete } },
       });
     }
 
@@ -410,42 +546,53 @@ export async function ensureBudgetPeriodsForMonth(
   year: number,
   month: number,
 ): Promise<void> {
-  const [fortnightCount, activeRecurrentCount] = await Promise.all([
-    prisma.fortnight.count({
-      where: { ...ownerFilter, year, month },
-    }),
-    prisma.budget.count({
+  const key = `${ownerFilter.user_id ?? 'n'}:${ownerFilter.house_id ?? 'n'}:${year}-${month}`;
+  const inflight = ensureBudgetPeriodsInflight.get(key);
+  if (inflight) return inflight;
+
+  const run = (async () => {
+    const [fortnightCount, activeRecurrentCount] = await Promise.all([
+      prisma.fortnight.count({
+        where: { ...ownerFilter, year, month },
+      }),
+      prisma.budget.count({
+        where: {
+          ...ownerFilter,
+          active: true,
+          recurrent: true,
+          frequency: { not: 'CUSTOM' },
+        },
+      }),
+    ]);
+    if (fortnightCount === 0) return;
+
+    await reconcileBiweeklyCalendarAlignment(ownerFilter, year, month);
+    await reconcileWeeklyCalendarAlignment(ownerFilter, year, month);
+    await reconcileFixedRangeCalendarAlignment(ownerFilter, year, month, 'DAILY');
+    await reconcileFixedRangeCalendarAlignment(ownerFilter, year, month, 'CUSTOM');
+
+    if (activeRecurrentCount === 0) return;
+
+    const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
+    const monthStart = first.start_date;
+    const monthEnd = second.end_date;
+
+    const overlappingPeriodCount = await prisma.budgetPeriod.count({
       where: {
-        ...ownerFilter,
-        active: true,
-        recurrent: true,
-        frequency: { not: 'CUSTOM' },
+        start_date: { lte: monthEnd },
+        end_date: { gte: monthStart },
+        budget: { ...ownerFilter, active: true },
       },
-    }),
-  ]);
-  if (fortnightCount === 0) return;
+    });
+    if (overlappingPeriodCount > 0) return;
 
-  await reconcileBiweeklyCalendarAlignment(ownerFilter, year, month);
-  await reconcileWeeklyCalendarAlignment(ownerFilter, year, month);
-  await reconcileFixedRangeCalendarAlignment(ownerFilter, year, month, 'DAILY');
-  await reconcileFixedRangeCalendarAlignment(ownerFilter, year, month, 'CUSTOM');
-
-  if (activeRecurrentCount === 0) return;
-
-  const { first, second } = getCalendarFortnightBoundsForMonth(year, month);
-  const monthStart = first.start_date;
-  const monthEnd = second.end_date;
-
-  const overlappingPeriodCount = await prisma.budgetPeriod.count({
-    where: {
-      start_date: { lte: monthEnd },
-      end_date: { gte: monthStart },
-      budget: { ...ownerFilter, active: true },
-    },
+    await generatePeriodsForMonth(year, month, ownerFilter);
+  })().finally(() => {
+    ensureBudgetPeriodsInflight.delete(key);
   });
-  if (overlappingPeriodCount > 0) return;
 
-  await generatePeriodsForMonth(year, month, ownerFilter);
+  ensureBudgetPeriodsInflight.set(key, run);
+  return run;
 }
 
 /**

@@ -5,6 +5,7 @@ import {
 } from '@/lib/finance/credit-card-statement.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
+import { ensureBudgetPeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
 import { listWalletsByOwner } from '@/lib/finance/wallet.service';
@@ -102,6 +103,12 @@ export const getMonthlyPageData = async (
         ),
       };
     }
+
+    // Run once before parallel panel/report work — those paths also call ensure,
+    // and single-flight coalesces them, but doing it first avoids wasted races.
+    await measure('monthly.budget-periods', () =>
+      ensureBudgetPeriodsForMonth(ownerFilter, year, month),
+    );
 
     const firstFortnightIds = [firstFortnightInfo.id];
     const secondFortnightIds = [secondFortnightInfo.id];
