@@ -27,6 +27,11 @@ import {
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
+import {
+  MONTHLY_ICON_PILL_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
@@ -188,7 +193,7 @@ export default function SummaryBlock({
           <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[14rem] text-xs">
+      <TooltipContent side="top" className="max-w-[14rem] text-sm">
         {text}
       </TooltipContent>
     </Tooltip>
@@ -197,12 +202,8 @@ export default function SummaryBlock({
   return (
     <Card
       className={cn(
-        // Match month strip + Presupuesto shell (not card-surface solid bg-card).
-        'relative gap-0 overflow-hidden rounded-xl border border-sky-500/20 bg-transparent py-0 shadow-sm',
-        'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
-        'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
-        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
-        'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+        MONTHLY_PANEL_SHELL_CLASS,
+        'gap-0 py-0',
       )}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
@@ -210,18 +211,15 @@ export default function SummaryBlock({
       <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
-            <span
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10"
-              aria-hidden
-            >
-              <BarChart3 className="h-4 w-4 text-sky-600 dark:text-sky-300" data-icon="inline-start" />
+            <span className={cn('mt-0.5', MONTHLY_ICON_PILL_CLASS)} aria-hidden>
+              <BarChart3 className="h-4 w-4 text-primary" data-icon="inline-start" />
             </span>
             <div className="min-w-0 space-y-0.5">
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
                 {headerMeta?.title ?? 'Resumen de la quincena'}
               </CardTitle>
               {headerMeta?.dateRange ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {headerMeta.dateRange}
                 </p>
               ) : null}
@@ -233,7 +231,7 @@ export default function SummaryBlock({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-sky-500/10 hover:text-sky-700 dark:hover:text-sky-300"
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded
@@ -271,13 +269,13 @@ export default function SummaryBlock({
             {/* Three metric cards */}
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {/* Ingresos */}
-              <div className="relative rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/8 to-blue-500/3 px-2 py-2 dark:from-blue-500/12 dark:to-blue-500/5 sm:px-3 sm:py-3">
+              <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-blue-500/50 px-2 py-2 sm:px-3 sm:py-3')}>
                 <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
                   <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20 sm:h-6 sm:w-6">
                       <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                     </span>
-                    <span className="truncate text-[9px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 sm:text-[10px]">
+                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 sm:text-[10px]">
                       Ingresos
                     </span>
                   </div>
@@ -298,7 +296,7 @@ export default function SummaryBlock({
                   {formatCurrency(tenemos)}
                 </p>
                 {(hasUserIncome || incomeItems.length > 0) && (
-                  <p className="mt-0.5 text-[9px] text-muted-foreground sm:text-[10px]">
+                  <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[10px]">
                     {incomeItems.length > 0
                       ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
                       : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
@@ -307,19 +305,19 @@ export default function SummaryBlock({
               </div>
 
               {/* Pagado */}
-              <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-2 py-2 dark:from-emerald-500/12 dark:to-emerald-500/5 sm:px-3 sm:py-3">
+              <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50 px-2 py-2 sm:px-3 sm:py-3')}>
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20 sm:h-6 sm:w-6">
                     <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                   </span>
-                  <span className="truncate text-[9px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 sm:text-[10px]">
+                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 sm:text-[10px]">
                     Pagado
                   </span>
                 </div>
                 <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(pagado)}
                 </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground sm:text-[10px]">
+                <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[10px]">
                   {expenseCount > 0
                     ? `${paidExpenseCount}/${expenseCount}`
                     : '—'}
@@ -327,19 +325,19 @@ export default function SummaryBlock({
               </div>
 
               {/* Pendiente */}
-              <div className="relative rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 px-2 py-2 dark:from-amber-500/12 dark:to-amber-500/5 sm:px-3 sm:py-3">
+              <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-amber-500/50 px-2 py-2 sm:px-3 sm:py-3')}>
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20 sm:h-6 sm:w-6">
                     <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
                   </span>
-                  <span className="truncate text-[9px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 sm:text-[10px]">
+                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 sm:text-[10px]">
                     Pendiente
                   </span>
                 </div>
                 <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(pendiente)}
                 </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground sm:text-[10px]">
+                <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[10px]">
                   {expenseCount > 0
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}
@@ -392,8 +390,8 @@ export default function SummaryBlock({
             {cardCharges != null && cardCharges.total > 0 ? (
               <div
                 className={cn(
-                  'rounded-xl border border-violet-500/20',
-                  'bg-gradient-to-br from-violet-500/8 to-violet-500/3 px-3 py-3 dark:from-violet-500/12 dark:to-violet-500/5',
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px] border-l-violet-500/50 px-3 py-3',
                 )}
                 role="region"
                 aria-label="Cargos con tarjeta en esta quincena"
@@ -429,7 +427,7 @@ export default function SummaryBlock({
             {/* Income breakdown */}
             {(incomeItems.length > 0 || hasUserIncome) && (
               <div
-                className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/6 to-transparent px-3 py-2.5 dark:from-blue-500/10 dark:to-transparent"
+                className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-blue-500/50 px-3 py-2.5')}
                 role="region"
                 aria-label="Desglose de ingresos"
               >
@@ -458,11 +456,11 @@ export default function SummaryBlock({
                           key={item.id}
                           className="group -mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
                         >
-                          <span className="min-w-0 truncate text-xs text-foreground/90">
+                          <span className="min-w-0 truncate text-sm text-foreground/90">
                             {displayLabel}
                           </span>
                           <div className="flex shrink-0 items-center gap-1">
-                            <span className="text-xs font-semibold font-mono tabular-nums text-foreground">
+                            <span className="text-sm font-semibold font-mono tabular-nums text-foreground">
                               {formatCurrency(item.amount)}
                             </span>
                             {onEditIncomeSource && (
@@ -493,10 +491,10 @@ export default function SummaryBlock({
                             key={userInc.userId}
                             className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
                           >
-                            <span className="truncate text-xs text-foreground/90">
+                            <span className="truncate text-sm text-foreground/90">
                               {userInc.userName}
                             </span>
-                            <span className="shrink-0 text-xs font-semibold font-mono tabular-nums text-foreground">
+                            <span className="shrink-0 text-sm font-semibold font-mono tabular-nums text-foreground">
                               {formatCurrency(userInc.income)}
                             </span>
                           </div>
@@ -511,7 +509,7 @@ export default function SummaryBlock({
             {/* Desglose billeteras vs pendiente (mismo criterio que la tarjeta héroe) */}
             {billeterasVsPendienteAplica ? (
             <div
-              className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 to-transparent px-3 py-2.5 dark:from-emerald-500/10 dark:to-transparent"
+              className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50 px-3 py-2.5')}
               role="region"
               aria-label="Desglose de billeteras frente al pendiente de la quincena"
             >
@@ -563,7 +561,7 @@ export default function SummaryBlock({
                             <AssigneeAvatar
                               name={w.assignee.name}
                               size="sm"
-                              className="size-5 text-[9px]"
+                              className="size-5 text-[10px]"
                             />
                           ) : null}
                           <span className="shrink-0 text-[10px] text-muted-foreground/80">
@@ -579,7 +577,7 @@ export default function SummaryBlock({
                   })}
                 </div>
               ) : (
-                <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+                <p className="mb-2 text-[10px] leading-snug text-muted-foreground">
                   No hay billeteras activas de efectivo o débito.
                 </p>
               )}

@@ -19,6 +19,7 @@ When adding or changing screens, align with **`fintech-ui-design-system.mdc`** (
 - **Several related toggles** (layout, visibility, filters): prefer **one trigger** opening a **menu** (`DropdownMenu` with radio + checkbox items) over multiple side-by-side segmented button groups—unless the product explicitly needs always-visible one-tap toggles.
 - **Tertiary / view controls**: use **`Button variant="ghost"`** (compact `h-8`–`h-9`) with icon + short label; reserve **`outline` + `rounded-xl` + shadow** for stronger CTAs (e.g. create next month).
 - **Icon-only controls**: always **`aria-label`** and usually **`Tooltip`** with Spanish copy matching existing patterns.
+- **Binary preferences**: use shared **`Toggle` / `ToggleField`** (`src/components/ui/toggle.tsx`) — Quincena Blue (`bg-primary`) ON, neutral glass OFF; `layout="row" | "stack"`. Checkbox only for multi-select. See `DESIGN.md` and `boolean-toggle.mdc`.
 - **Destructive list/card delete**: **Viewport Delete Rule** — `md+` quiet trash (no swipe); below `md` swipe only (hide trash). See `DESIGN.md` and `docs/agents/destructive-list-actions.md`.
 
 ## Surfaces and color
