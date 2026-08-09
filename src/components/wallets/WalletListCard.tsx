@@ -1,35 +1,28 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  type MouseEvent,
-  type PointerEvent,
-} from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import {
   BookmarkIcon,
-  CreditCard,
-  List,
   MoreVertical,
   Pencil,
-  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
+  isCreditOrStoreCardWalletType,
 } from '@/domain/payment-method';
+import type { WalletBalanceMetrics } from '@/lib/finance/wallet-balance-evolution';
 import {
+  getProviderBrandColor,
   getProviderCardStyle,
-  isProviderCardDarkSurface,
+  getWalletBrandCssVars,
+  WALLET_BRAND_HIT_BUTTON_CLASS,
 } from '@/lib/provider-card-style';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,12 +38,14 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { AssigneeWithName } from '@/components/assignee/AssigneeAvatar';
-
-const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
-
-const isCreditType = (type: string) =>
-  CREDIT_TYPES.includes(type as PaymentMethodType);
+import { WalletAmountTrendIndicator } from '@/components/wallets/WalletAmountTrendIndicator';
+import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
+import {
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
 
 const getEffectiveCreditLimit = ({
   credit_limit,
@@ -65,11 +60,11 @@ const getEffectiveCreditLimit = ({
   return Math.max(credit_limit, temporary_credit_limit);
 };
 
-const DOUBLE_CLICK_MS = 250;
-
 type WalletListCardProps = {
   wallet: WalletListItem;
   ownerQueryString: string;
+  metrics?: WalletBalanceMetrics | null;
+  metricsLoading?: boolean;
   onEdit: (wallet: WalletListItem) => void;
   onDelete: (wallet: WalletListItem) => void;
   onOpenBalance: (wallet: WalletListItem) => void;
@@ -78,25 +73,34 @@ type WalletListCardProps = {
 export const WalletListCard = ({
   wallet,
   ownerQueryString,
+  metrics,
+  metricsLoading = false,
   onEdit,
   onDelete,
   onOpenBalance,
 }: WalletListCardProps) => {
-  const router = useRouter();
-  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheme = useProviderCardScheme();
-
-  const isCard = isCreditType(wallet.type);
+  const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
 
   const providerCardStyle = useMemo(
-    () => getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'calm', scheme),
-    [scheme, wallet.provider_icon_key, wallet.type],
+    () => getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'list'),
+    [wallet.provider_icon_key, wallet.type],
   );
-  const useProviderGradient = Boolean(providerCardStyle);
-  const onDarkSurface =
-    useProviderGradient && isProviderCardDarkSurface('calm', scheme);
+  const hasBrandTint = Boolean(providerCardStyle);
+  const brandColor = useMemo(
+    () =>
+      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? '#6366f1',
+    [wallet.provider_icon_key, wallet.type],
+  );
+  const brandCssVars = useMemo(
+    () => getWalletBrandCssVars(brandColor),
+    [brandColor],
+  );
+  const cardStyle = useMemo(
+    () => ({ ...providerCardStyle, ...brandCssVars }),
+    [providerCardStyle, brandCssVars],
+  );
 
   const fallbackAccent = isCard
     ? 'neutral'
@@ -107,19 +111,12 @@ export const WalletListCard = ({
         : 'neutral';
 
   const fallbackShellClass = cn(
-    'border backdrop-blur-sm ring-1 ring-inset ring-black/5 transition-all duration-300 dark:ring-white/5',
-    'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-linear-to-r before:from-transparent before:via-black/10 before:to-transparent dark:before:via-white/10',
+    'border bg-card',
     fallbackAccent === 'blue' &&
-      'border-blue-500/30 bg-linear-to-br from-blue-500/14 via-background to-blue-500/4 dark:from-blue-500/25 dark:via-card dark:to-blue-500/8',
+      'border-blue-500/35 dark:border-blue-500/40',
     fallbackAccent === 'emerald' &&
-      'border-emerald-500/30 bg-linear-to-br from-emerald-500/14 via-background to-emerald-500/4 dark:from-emerald-500/25 dark:via-card dark:to-emerald-500/8',
-    fallbackAccent === 'neutral' &&
-      'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
-    'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
-    fallbackAccent === 'blue' && 'hover:border-blue-500/60 hover:shadow-blue-500/15',
-    fallbackAccent === 'emerald' &&
-      'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
-    fallbackAccent === 'neutral' && 'hover:border-border',
+      'border-emerald-500/35 dark:border-emerald-500/40',
+    fallbackAccent === 'neutral' && 'border-border/60',
   );
 
   const detailHref = useMemo(
@@ -128,32 +125,6 @@ export const WalletListCard = ({
         ? `/credit-cards/${wallet.id}${ownerQueryString}`
         : `/wallets/${wallet.id}${ownerQueryString}`,
     [isCard, wallet.id, ownerQueryString],
-  );
-
-  const handleStopOverlayPointer = useCallback((event: MouseEvent | PointerEvent) => {
-    event.stopPropagation();
-  }, []);
-
-  const handleCardActivate = useCallback(() => {
-    if (clickTimerRef.current !== null) {
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-      onOpenBalance(wallet);
-      return;
-    }
-    clickTimerRef.current = setTimeout(() => {
-      clickTimerRef.current = null;
-      router.push(detailHref);
-    }, DOUBLE_CLICK_MS);
-  }, [detailHref, onOpenBalance, router, wallet]);
-
-  useEffect(
-    () => () => {
-      if (clickTimerRef.current !== null) {
-        clearTimeout(clickTimerRef.current);
-      }
-    },
-    [],
   );
 
   const effectiveLimit =
@@ -169,311 +140,231 @@ export const WalletListCard = ({
 
   const isNegativeBalance = isFunding && amountNumber < 0;
   const isOverLimit = isCard && effectiveLimit > 0 && amountNumber > effectiveLimit;
-  const isNearLimit =
-    isCard && effectiveLimit > 0 && !isOverLimit && usagePercent >= 80;
   const hasAlert = isNegativeBalance || isOverLimit;
 
-  const mutedText = onDarkSurface ? 'text-white/55' : 'text-muted-foreground';
-  const softText = onDarkSurface ? 'text-white/80' : 'text-foreground/80';
+  const displayBalance = metrics?.current_balance ?? amountNumber;
+  const previousBalance = metrics?.previous_balance ?? displayBalance;
+  const diff = metrics?.diff ?? 0;
+  const trendIsPositive = isCard ? diff <= 0 : diff >= 0;
+
+  const sparklineData = metrics?.history ?? [];
+
+  const subtitleParts = useMemo(() => {
+    const parts: string[] = [typeLabel];
+    if (isCard) {
+      if (effectiveLimit > 0) {
+        parts.push(`Línea ${formatCurrency(effectiveLimit)}`);
+        parts.push(
+          isOverLimit ? 'Excedido' : `${usagePercent.toFixed(0)}% usado`,
+        );
+      } else {
+        parts.push('Sin línea');
+      }
+      if (wallet.due_day != null) {
+        parts.push(`Paga ${wallet.due_day}`);
+      }
+    } else {
+      parts.push(wallet.assignee?.name ?? 'Sin titular');
+    }
+    return parts;
+  }, [
+    typeLabel,
+    isCard,
+    effectiveLimit,
+    usagePercent,
+    isOverLimit,
+    wallet.due_day,
+    wallet.assignee?.name,
+  ]);
+
+  const articleLabel = hasAlert
+    ? `${wallet.name}, ${isOverLimit ? 'límite excedido' : 'saldo negativo'}`
+    : !wallet.active
+      ? `${wallet.name}, inactiva`
+      : wallet.name;
 
   return (
     <article
-      className={cn('relative', !wallet.active && 'opacity-70 saturate-75')}
-      aria-label={wallet.name}
+      className={cn('h-full w-full', !wallet.active && 'opacity-80')}
+      aria-label={articleLabel}
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={handleCardActivate}
-            className={cn(
-              'group relative flex min-h-[11.5rem] w-full flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:scale-[1.015] sm:min-h-[12.5rem]',
-              onDarkSurface
-                ? 'text-white ring-1 ring-inset ring-white/10 hover:shadow-[0_22px_44px_-18px_rgba(8,12,22,0.95)]'
-                : useProviderGradient
-                  ? 'text-foreground ring-1 ring-inset ring-black/5 hover:shadow-[0_18px_36px_-18px_rgba(15,23,42,0.28)]'
-                  : fallbackShellClass,
-              hasAlert && 'ring-1 ring-inset ring-rose-400/55',
-            )}
-            style={providerCardStyle}
-            aria-label={`Abrir ${wallet.name} (doble toque para editar saldo)`}
-          >
-            {useProviderGradient ? (
-              <>
-                <span
-                  className={cn(
-                    'pointer-events-none absolute -right-12 -bottom-16 h-44 w-44 rounded-full border',
-                    onDarkSurface ? 'border-white/8' : 'border-black/5',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'pointer-events-none absolute -right-4 -bottom-8 h-44 w-44 rounded-full border',
-                    onDarkSurface ? 'border-white/5' : 'border-black/4',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'pointer-events-none absolute -left-12 -top-12 h-32 w-32 rounded-full blur-2xl',
-                    onDarkSurface ? 'bg-white/8' : 'bg-white/70',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent to-transparent',
-                    onDarkSurface ? 'via-white/25' : 'via-black/10',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-linear-to-r from-transparent to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100',
-                    onDarkSurface ? 'via-white/14' : 'via-black/6',
-                  )}
-                />
-              </>
-            ) : null}
-
-            {hasAlert ? (
-              <span
-                className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1 bg-rose-500"
-                aria-hidden
-              />
-            ) : null}
-
-            <div className="relative z-0 flex items-start gap-3 pr-9">
-              <WalletProviderIcon
-                providerIconKey={wallet.provider_icon_key}
-                className={cn(
-                  'h-9 w-9 shrink-0 rounded-xl shadow-sm ring-1',
-                  onDarkSurface
-                    ? 'border border-white/25 bg-white/15 ring-white/10'
-                    : 'border border-border/70 bg-card ring-border/50',
-                )}
-                iconClassName="h-5 w-5"
-                showTooltipLabel={false} data-icon="inline-start" />
+      <Card
+        className={cn(
+          'h-full w-full overflow-hidden border bg-card py-0 shadow-sm transition-shadow duration-200 hover:shadow-md motion-reduce:transition-none',
+          !hasBrandTint && fallbackShellClass,
+          hasAlert && 'border-rose-500/50 ring-1 ring-inset ring-rose-500/25',
+        )}
+        style={cardStyle}
+      >
+        <CardContent className="flex h-full flex-col gap-4 p-4">
+          <div className="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    'truncate text-sm font-semibold leading-tight',
-                    onDarkSurface ? 'text-white' : 'text-foreground',
-                    !wallet.active && !onDarkSurface && 'text-muted-foreground',
-                    !wallet.active && onDarkSurface && 'text-white/60',
-                  )}
-                >
-                  {wallet.name}
-                </p>
-                <p className={cn('mt-0.5 truncate text-[11px]', mutedText)}>
-                  {typeLabel}
-                </p>
+                <div className="flex items-start gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <WalletProviderIcon
+                      providerIconKey={wallet.provider_icon_key}
+                      className="h-8 w-8 shrink-0 rounded-lg border border-border/60 bg-card shadow-sm ring-1 ring-border/60"
+                      iconClassName="h-4 w-4"
+                      showTooltipLabel={false}
+                    />
+                    <div className="min-w-0">
+                      <h3
+                        className={cn(
+                          'truncate text-sm font-semibold leading-tight text-foreground',
+                          !wallet.active && 'text-muted-foreground',
+                        )}
+                      >
+                        {wallet.name}
+                      </h3>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {subtitleParts.join(' · ')}
+                      </p>
+                    </div>
+                  </div>
+                  {!wallet.active ? (
+                    <Badge
+                      variant="outline"
+                      className="h-6 shrink-0 gap-0.5 px-1.5 text-[10px]"
+                    >
+                      <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+                      Inactivo
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 flex-col items-start sm:items-end">
+                <div className="-ml-2 rounded-md px-2 py-1 text-left sm:-mr-2 sm:ml-0">
+                  <p
+                    className={cn(
+                      'font-mono text-2xl font-semibold tabular-nums tracking-tight',
+                      hasAlert ? 'text-destructive' : 'text-foreground',
+                    )}
+                  >
+                    {formatCurrency(displayBalance)}
+                  </p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {isCard ? 'Deuda' : 'Saldo'}
+                  </p>
+                </div>
+                {metricsLoading ? (
+                  <div className="mt-1 h-5 w-36 animate-pulse rounded bg-muted/70" />
+                ) : metrics ? (
+                  <WalletAmountTrendIndicator
+                    diff={diff}
+                    isPositive={trendIsPositive}
+                    previousAmount={previousBalance}
+                    currentAmount={displayBalance}
+                    className="mt-1"
+                  />
+                ) : null}
               </div>
             </div>
 
             <div
-              className={cn(
-                'relative z-0 mt-auto flex items-end justify-between gap-3 pt-3',
-                // Funding cards lack the credit utilization bar that buffers the
-                // bottom edge — keep extra padding so Saldo never clips on iOS.
-                isFunding && 'pb-1',
-              )}
+              className="h-[100px] w-full md:h-16"
+              aria-hidden={sparklineData.length === 0 && !metricsLoading}
             >
-              <div className="min-w-0">
-                <p className={cn('text-[10px] font-medium uppercase tracking-wider', mutedText)}>
-                  {isCard ? 'Deuda' : 'Saldo'}
-                </p>
-                <p
-                  className={cn(
-                    // leading-snug: WebKit clips glyph ink when line-height is 1 inside overflow-hidden.
-                    'mt-1 break-words font-mono text-2xl font-bold leading-snug tabular-nums tracking-tight',
-                    hasAlert
-                      ? onDarkSurface
-                        ? 'text-rose-300'
-                        : 'text-destructive'
-                      : onDarkSurface
-                        ? 'text-white'
-                        : 'text-foreground',
-                  )}
-                >
-                  {formatCurrency(wallet.amount)}
-                </p>
-                <div className="mt-2.5 min-w-0">
-                  {wallet.assignee ? (
-                    <AssigneeWithName
-                      name={wallet.assignee.name}
-                      size="sm"
-                      nameClassName={cn('truncate text-[11px] font-medium', softText)}
+              {metricsLoading ? (
+                <div className="h-full w-full animate-pulse rounded-lg bg-muted/50" />
+              ) : sparklineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={sparklineData}>
+                    <RechartsTooltip
+                      cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const point = payload[0].payload as {
+                          date: string;
+                          value: number;
+                        };
+                        return (
+                          <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm shadow-xl">
+                            <p className="mb-1 text-muted-foreground">{point.date}</p>
+                            <p className="font-mono font-medium tabular-nums text-foreground">
+                              {formatCurrency(point.value)}
+                            </p>
+                          </div>
+                        );
+                      }}
                     />
-                  ) : (
-                    <span className={cn('text-[11px] font-medium', softText)}>
-                      Titular
-                    </span>
-                  )}
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={brandColor}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/20 text-xs text-muted-foreground">
+                  Sin historial de movimientos
                 </div>
-              </div>
-
-              <div className="shrink-0 text-right">
-                {isCard ? (
-                  effectiveLimit > 0 ? (
-                    <>
-                      <p className={cn('text-[10px] uppercase tracking-wider', mutedText)}>
-                        Línea
-                      </p>
-                      <p
-                        className={cn(
-                          'mt-1 font-mono text-sm font-semibold tabular-nums',
-                          onDarkSurface ? 'text-white/90' : 'text-foreground',
-                        )}
-                      >
-                        {formatCurrency(effectiveLimit)}
-                      </p>
-                      <p
-                        className={cn(
-                          'mt-0.5 text-[10px] font-medium tabular-nums',
-                          isOverLimit
-                            ? onDarkSurface
-                              ? 'text-rose-300'
-                              : 'text-destructive'
-                            : isNearLimit
-                              ? onDarkSurface
-                                ? 'text-amber-300'
-                                : 'text-amber-600'
-                              : mutedText,
-                        )}
-                      >
-                        {isOverLimit ? 'Excedido' : `${usagePercent.toFixed(0)}% usado`}
-                      </p>
-                    </>
-                  ) : (
-                    <p className={cn('text-[11px] font-medium', softText)}>Sin línea</p>
-                  )
-                ) : null}
-                {isCard && wallet.due_day != null ? (
-                  <span
-                    className={cn(
-                      'mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold tabular-nums',
-                      onDarkSurface
-                        ? 'bg-white/12 text-white/85 ring-1 ring-inset ring-white/10'
-                        : 'bg-muted/60 text-muted-foreground ring-1 ring-inset ring-border/60',
-                    )}
-                  >
-                    Paga {wallet.due_day}
-                  </span>
-                ) : null}
-              </div>
+              )}
             </div>
 
-            {isCard && effectiveLimit > 0 ? (
-              <div
-                className={cn(
-                  'pointer-events-none absolute inset-x-0 bottom-0 z-0 h-1',
-                  onDarkSurface ? 'bg-black/15' : 'bg-muted/50',
-                )}
-                aria-hidden
+            <div className="mt-auto flex items-center gap-2">
+              <WalletPaymentMethodTypeIcon type={wallet.type} />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn('h-8', WALLET_BRAND_HIT_BUTTON_CLASS)}
+                onClick={() => onOpenBalance(wallet)}
               >
-                <div
-                  className={cn(
-                    'h-full transition-all duration-500',
-                    isOverLimit
-                      ? 'bg-rose-400'
-                      : isNearLimit
-                        ? 'bg-amber-400'
-                        : onDarkSurface
-                          ? 'bg-white/80'
-                          : 'bg-linear-to-r from-emerald-500 to-emerald-400',
-                  )}
-                  style={{ width: `${isOverLimit ? 100 : usagePercent}%` }}
-                />
-              </div>
-            ) : null}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={6}>
-          Toca para abrir · doble toque para editar saldo
-        </TooltipContent>
-      </Tooltip>
-
-      <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
-        {!wallet.active ? (
-          onDarkSurface ? (
-            <span className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full border border-white/20 bg-black/25 px-1.5 text-[9px] font-medium text-white/80 backdrop-blur-sm">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden data-icon="inline-start" />
-              Inactivo
-            </span>
-          ) : (
-            <Badge variant="outline" className="h-5 shrink-0 gap-0.5 px-1.5 text-[9px]">
-              <BookmarkIcon className="h-2.5 w-2.5" aria-hidden data-icon="inline-start" />
-              Inactivo
-            </Badge>
-          )
-        ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'h-7 w-7 shrink-0 rounded-full',
-                onDarkSurface
-                  ? 'text-white/75 hover:bg-white/15 hover:text-white'
-                  : useProviderGradient
-                    ? 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                    : '',
-              )}
-              aria-label={`Más opciones para ${wallet.name}`}
-              onPointerDown={handleStopOverlayPointer}
-              onClick={handleStopOverlayPointer}
-            >
-              <MoreVertical className="h-3.5 w-3.5" data-icon="inline-start" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            {isCard ? (
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/credit-cards/${wallet.id}${ownerQueryString}`}
-                  className="cursor-pointer"
+                Editar saldo
+              </Button>
+              <Link href={detailHref} className="ml-auto">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn('h-8', WALLET_BRAND_HIT_BUTTON_CLASS)}
                 >
-                  <CreditCard className="mr-2 h-4 w-4" data-icon="inline-start" />
-                  Ver estado de cuenta
-                </Link>
-              </DropdownMenuItem>
-            ) : null}
-            {isFunding ? (
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/wallets/${wallet.id}${ownerQueryString}`}
-                  className="cursor-pointer"
-                >
-                  <List className="mr-2 h-4 w-4" data-icon="inline-start" />
-                  Ver movimientos
-                </Link>
-              </DropdownMenuItem>
-            ) : null}
-            {isCard || isFunding ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem
-              onClick={() => onOpenBalance(wallet)}
-              className="cursor-pointer"
-            >
-              <SlidersHorizontal className="mr-2 h-4 w-4" data-icon="inline-start" />
-              Editar saldo
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onEdit(wallet)}
-              className="cursor-pointer"
-            >
-              <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(wallet)}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-              Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                  Detalles →
+                </Button>
+              </Link>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className={cn('shrink-0', WALLET_BRAND_HIT_BUTTON_CLASS)}
+                        aria-label={`Más opciones para ${wallet.name}`}
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    Más opciones
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    onClick={() => onEdit(wallet)}
+                    className="cursor-pointer"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDelete(wallet)}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+        </CardContent>
+      </Card>
     </article>
   );
 };

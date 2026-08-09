@@ -40,8 +40,10 @@ import { createCreditCard, updateCreditCard } from '@/lib/api/credit-cards';
 import {
   createWallet,
   deleteWallet,
+  getWalletMetrics,
   updateWallet,
 } from '@/lib/api/wallets';
+import type { WalletBalanceMetrics } from '@/lib/finance/wallet-balance-evolution';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_OPTIONS,
@@ -379,7 +381,11 @@ const compareWallets = (
 export default function WalletsPage() {
   const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
+  const [walletMetrics, setWalletMetrics] = useState<
+    Record<string, WalletBalanceMetrics>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [metricsLoading, setMetricsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -791,9 +797,22 @@ export default function WalletsPage() {
     }
   }, [context]);
 
+  const fetchWalletMetrics = useCallback(async () => {
+    try {
+      setMetricsLoading(true);
+      const data = await getWalletMetrics(context);
+      setWalletMetrics(data.by_wallet_id);
+    } catch {
+      setWalletMetrics({});
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [context]);
+
   useEffect(() => {
-    fetchWallets();
-  }, [fetchWallets]);
+    void fetchWallets();
+    void fetchWalletMetrics();
+  }, [fetchWallets, fetchWalletMetrics]);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
@@ -820,6 +839,7 @@ export default function WalletsPage() {
         toast.success('Billetera creada');
       }
       await fetchWallets();
+      await fetchWalletMetrics();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
@@ -841,6 +861,7 @@ export default function WalletsPage() {
         toast.success('Billetera actualizada');
       }
       await fetchWallets();
+      await fetchWalletMetrics();
       setEditDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
@@ -858,6 +879,7 @@ export default function WalletsPage() {
       await deleteWallet(selectedWallet.id, context);
       toast.success('Eliminada');
       await fetchWallets();
+      await fetchWalletMetrics();
       setDeleteDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
@@ -895,7 +917,7 @@ export default function WalletsPage() {
   return (
     <div className="space-y-4 pb-24">
       <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
         aria-label="Acciones de billeteras"
       >
         <div className="min-w-0">
@@ -1452,6 +1474,8 @@ export default function WalletsPage() {
                       <WalletListCard
                         wallet={wallet}
                         ownerQueryString={ownerQueryString}
+                        metrics={walletMetrics[String(wallet.id)] ?? null}
+                        metricsLoading={metricsLoading}
                         onEdit={openEditDialog}
                         onDelete={openDeleteDialog}
                         onOpenBalance={setBalanceWallet}
@@ -1500,6 +1524,7 @@ export default function WalletsPage() {
           setBalanceWallet((prev) =>
             prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
           );
+          void fetchWalletMetrics();
         }}
       />
 

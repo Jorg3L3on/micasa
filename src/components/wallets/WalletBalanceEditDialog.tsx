@@ -1,12 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { formatCurrency } from '@/lib/utils';
+import {
+  type PaymentMethodType,
+  PAYMENT_METHOD_LABELS,
+} from '@/domain/payment-method';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -32,6 +37,12 @@ export type WalletBalanceEditDialogProps = {
 const isCreditType = (type: string) =>
   type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
 
+type MetaRow = {
+  label: string;
+  value: string;
+  mono?: boolean;
+};
+
 export const WalletBalanceEditDialog = ({
   wallet,
   ownerQueryString = '',
@@ -53,9 +64,10 @@ export const WalletBalanceEditDialog = ({
   const handleClose = useCallback(
     (open: boolean) => {
       if (open) return;
+      if (savingBalance) return;
       onOpenChange(false);
     },
-    [onOpenChange],
+    [onOpenChange, savingBalance],
   );
 
   const handleSaveBalance = useCallback(async () => {
@@ -87,7 +99,6 @@ export const WalletBalanceEditDialog = ({
       toast.error(
         error instanceof Error ? error.message : 'No se pudo actualizar el saldo',
       );
-      onOpenChange(false);
     } finally {
       setSavingBalance(false);
     }
@@ -103,124 +114,158 @@ export const WalletBalanceEditDialog = ({
 
   const detailLabel = isCredit ? 'Ir a página de tarjeta' : 'Ir a página de billetera';
 
+  const metaRows = useMemo((): MetaRow[] => {
+    if (!wallet) return [];
+
+    if (isCredit) {
+      const rows: MetaRow[] = [
+        {
+          label: 'Límite',
+          value:
+            wallet.credit_limit != null
+              ? formatCurrency(wallet.credit_limit)
+              : '—',
+          mono: true,
+        },
+        {
+          label: 'Disponible',
+          value:
+            wallet.credit_limit != null
+              ? formatCurrency(
+                  Math.max(
+                    0,
+                    Number(wallet.credit_limit) - Number(wallet.amount),
+                  ),
+                )
+              : '—',
+          mono: true,
+        },
+      ];
+      if (wallet.due_day != null) {
+        rows.push({ label: 'Fecha pago', value: `Día ${wallet.due_day}` });
+      }
+      if (wallet.assignee) {
+        rows.push({ label: 'Asignada a', value: wallet.assignee.name });
+      }
+      return rows;
+    }
+
+    const rows: MetaRow[] = [
+      {
+        label: 'Tipo',
+        value:
+          PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType] ??
+          wallet.type,
+      },
+      {
+        label: 'Estado',
+        value: wallet.active ? 'Activa' : 'Inactiva',
+      },
+    ];
+    if (wallet.cutoff_day != null) {
+      rows.push({ label: 'Corte', value: `Día ${wallet.cutoff_day}` });
+    }
+    if (wallet.assignee) {
+      rows.push({ label: 'Asignada a', value: wallet.assignee.name });
+    }
+    return rows;
+  }, [wallet, isCredit]);
+
   return (
     <Dialog open={Boolean(wallet)} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="gap-5 border-border/60 p-5 shadow-md sm:max-w-md sm:p-6">
         {wallet ? (
           <>
-            <DialogHeader>
-              <div className="flex items-start gap-3">
+            <DialogHeader className="space-y-3 text-left">
+              <div className="flex items-start gap-3 pr-6">
                 <WalletProviderIcon
                   providerIconKey={wallet.provider_icon_key}
-                  className="h-9 w-9 shrink-0 rounded-lg border border-border/60 shadow-sm"
+                  className="h-10 w-10 shrink-0 rounded-xl border border-border/60 bg-card"
                   iconClassName="h-5 w-5"
-                  showTooltipLabel={false} data-icon="inline-start" />
+                  showTooltipLabel={false}
+                />
                 <div className="min-w-0 space-y-1">
-                  <DialogTitle className="truncate text-left text-base">
+                  <DialogTitle className="truncate text-left text-base font-semibold leading-tight tracking-tight sm:text-lg">
                     {wallet.name}
                   </DialogTitle>
-                  <DialogDescription className="text-left text-xs">
-                    Ajusta el saldo actual y revisa datos clave.
+                  <DialogDescription className="text-left text-sm text-muted-foreground">
+                    Ajusta el saldo registrado en esta billetera.
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Saldo actual
-                  </p>
-                  <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                    {formatCurrency(wallet.amount)}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {isCredit ? 'Límite' : 'Tipo'}
-                  </p>
-                  <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                    {isCredit
-                      ? wallet.credit_limit != null
-                        ? formatCurrency(wallet.credit_limit)
-                        : '—'
-                      : wallet.type === 'CASH'
-                        ? 'Efectivo'
-                        : 'Débito'}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {isCredit ? 'Disponible' : 'Corte'}
-                  </p>
-                  <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                    {isCredit
-                      ? wallet.credit_limit != null
-                        ? formatCurrency(
-                            Math.max(
-                              0,
-                              Number(wallet.credit_limit) - Number(wallet.amount),
-                            ),
-                          )
-                        : '—'
-                      : wallet.cutoff_day != null
-                        ? `Día ${wallet.cutoff_day}`
-                        : '—'}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {isCredit ? 'Fecha pago' : 'Estado'}
-                  </p>
-                  <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                    {isCredit
-                      ? wallet.due_day != null
-                        ? `Día ${wallet.due_day}`
-                        : '—'
-                      : wallet.active
-                        ? 'Activa'
-                        : 'Inactiva'}
-                  </p>
-                </div>
-                {wallet.assignee ? (
-                  <div className="col-span-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Asignada a
-                    </p>
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {wallet.assignee.name}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor={BALANCE_INPUT_ID} className="text-xs">
-                  Saldo actual
-                </Label>
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label htmlFor={BALANCE_INPUT_ID} className="text-sm">
+                    Nuevo saldo
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Ahora{' '}
+                    <span className="font-mono tabular-nums text-foreground/80">
+                      {formatCurrency(wallet.amount)}
+                    </span>
+                  </p>
+                </div>
                 <CurrencyInput
                   id={BALANCE_INPUT_ID}
                   value={balanceInput}
                   onChange={setBalanceInput}
                   placeholder="0.00"
                   disabled={savingBalance}
-                  aria-label="Saldo actual"
+                  aria-label="Nuevo saldo"
+                  className="h-11 text-base"
                 />
               </div>
+
+              {metaRows.length > 0 ? (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border/60 pt-3">
+                  {metaRows.map((row) => (
+                    <div key={row.label} className="min-w-0 space-y-0.5">
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {row.label}
+                      </dt>
+                      <dd
+                        className={cn(
+                          'truncate text-sm text-foreground',
+                          row.mono && 'font-mono font-semibold tabular-nums',
+                        )}
+                      >
+                        {row.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
             </div>
 
-            <DialogFooter className="gap-2 sm:justify-between">
-              <Button variant="outline" asChild>
+            <DialogFooter className="gap-2 border-t border-border/60 pt-4 sm:justify-between">
+              <Button
+                variant="ghost"
+                className="h-9 px-2 text-muted-foreground"
+                asChild
+              >
                 <Link href={detailHref}>{detailLabel}</Link>
               </Button>
               <Button
                 type="button"
-                onClick={handleSaveBalance}
+                onClick={() => void handleSaveBalance()}
                 disabled={savingBalance}
-                className="rounded-xl"
+                className="h-9 min-w-[8.5rem] rounded-xl"
               >
-                {savingBalance ? 'Guardando…' : 'Guardar saldo'}
+                {savingBalance ? (
+                  <>
+                    <Loader2
+                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                    Guardando…
+                  </>
+                ) : (
+                  'Guardar saldo'
+                )}
               </Button>
             </DialogFooter>
           </>
