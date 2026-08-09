@@ -5,8 +5,9 @@ import {
   requestFor,
 } from '@/test/isolation/helpers';
 
-const { authMock, findFirstHouseMember } = vi.hoisted(() => ({
+const { authMock, findUniqueUser, findFirstHouseMember } = vi.hoisted(() => ({
   authMock: vi.fn(),
+  findUniqueUser: vi.fn(),
   findFirstHouseMember: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    user: { findUnique: findUniqueUser },
     houseMember: { findFirst: findFirstHouseMember },
   },
 }));
@@ -26,6 +28,7 @@ describe('isolation: getOwnerContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: String(USER_B) } });
+    findUniqueUser.mockResolvedValue({ id: USER_B });
   });
 
   it('returns 403 when User B requests User A house context without membership', async () => {
