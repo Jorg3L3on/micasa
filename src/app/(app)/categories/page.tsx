@@ -205,7 +205,7 @@ export default function CategoriesPage() {
   return (
     <>
       <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
         aria-label="Categorías"
       >
         <div className="min-w-0">

@@ -417,7 +417,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
     <div className="space-y-4 pb-24">
       <div
         ref={stickyChromeRef}
-        className="sticky z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background px-4 py-2 shadow-sm"
+        className="sticky z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2"
         style={{ top: stickyOffsets.shellTop }}
         aria-label="Acciones de gastos"
       >

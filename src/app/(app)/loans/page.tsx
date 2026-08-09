@@ -861,7 +861,7 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-5">
-      <div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
+      <div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
         <div>
           <h2 className="text-lg font-semibold leading-tight">Préstamos</h2>
           <p className="text-xs text-muted-foreground">
