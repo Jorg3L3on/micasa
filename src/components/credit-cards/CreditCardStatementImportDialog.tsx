@@ -33,7 +33,7 @@ import type {
   CategoryOption,
   CreditCardStatementImportListItem,
 } from '@/types/catalog';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategorySelectGroups } from '@/components/categories/CategoryGroupedSelect';
 
 type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO' | 'DIDI_CARD' | 'LIVERPOOL';
 
@@ -302,11 +302,7 @@ const CreditCardStatementImportDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__default__">Predeterminada</SelectItem>
-                  {categoryOptions.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {formatCategoryLabel(c.name, c.icon)}
-                    </SelectItem>
-                  ))}
+                  <CategorySelectGroups categories={categoryOptions} />
                 </SelectContent>
               </Select>
             </div>

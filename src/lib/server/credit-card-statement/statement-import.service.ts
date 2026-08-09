@@ -166,7 +166,11 @@ async function resolveCategory(
 ): Promise<number> {
   if (preferredCategoryId != null) {
     const found = await prisma.category.findFirst({
-      where: { id: preferredCategoryId, ...categoryOwnerWhere(ownerType, ownerId) },
+      where: {
+        id: preferredCategoryId,
+        active: true,
+        ...categoryOwnerWhere(ownerType, ownerId),
+      },
     });
     if (found) return found.id;
   }
@@ -174,6 +178,7 @@ async function resolveCategory(
   const tarjeta = await prisma.category.findFirst({
     where: {
       ...categoryOwnerWhere(ownerType, ownerId),
+      active: true,
       name: { equals: 'Tarjeta de crédito', mode: 'insensitive' },
     },
     orderBy: { id: 'asc' },
@@ -181,7 +186,7 @@ async function resolveCategory(
   if (tarjeta) return tarjeta.id;
 
   const anyCat = await prisma.category.findFirst({
-    where: categoryOwnerWhere(ownerType, ownerId),
+    where: { ...categoryOwnerWhere(ownerType, ownerId), active: true },
     orderBy: { id: 'asc' },
   });
   if (anyCat) return anyCat.id;
@@ -189,6 +194,7 @@ async function resolveCategory(
   const created = await prisma.category.create({
     data: {
       name: `Importación (${providerLabel})`,
+      active: true,
       ...(ownerType === 'user'
         ? { user_id: ownerId, house_id: null }
         : { user_id: null, house_id: ownerId }),

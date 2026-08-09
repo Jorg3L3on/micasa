@@ -23,7 +23,7 @@ import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { CurrencyInput } from '@/components/ui/currency-input';
 
 /** Persist last category used for “registrar en quincena” (see ui-consistency / micasa.* keys). */
@@ -155,9 +155,6 @@ const CreditCardPaymentDialog = ({
   };
 
   const displayError = localError ?? error;
-  const selectedCategory = categoryOptions.find(
-    (cat) => String(cat.id) === categoryId,
-  );
   const isSubmitting = submitting;
 
   return (
@@ -291,7 +288,7 @@ const CreditCardPaymentDialog = ({
               </Label>
               <p
                 id="create-fortnight-expense-desc"
-                className="text-[11px] text-muted-foreground leading-snug"
+                className="text-xs text-muted-foreground leading-snug"
               >
                 Crea un gasto pagado desde la billetera origen en la quincena de
                 la fecha de pago (para tu planificación mensual).
@@ -302,31 +299,14 @@ const CreditCardPaymentDialog = ({
           {createFortnightExpense ? (
             <div className="space-y-2">
               <span className="text-sm font-medium">Categoría del gasto</span>
-              <Select
-                value={categoryId || undefined}
-                onValueChange={setCategoryId}
-              >
-                <SelectTrigger
-                  className="h-11 w-full max-w-none"
-                  aria-label="Categoría para el gasto en la quincena"
-                >
-                  <SelectValue placeholder="Selecciona categoría">
-                    {selectedCategory ? (
-                      <CategoryLabel
-                        name={selectedCategory.name}
-                        icon={selectedCategory.icon}
-                      />
-                    ) : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map((cat) => (
-                    <SelectItem key={cat.id} value={String(cat.id)}>
-                      <CategoryLabel name={cat.name} icon={cat.icon} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryGroupedSelect
+                categories={categoryOptions}
+                value={categoryId ? Number(categoryId) : undefined}
+                onValueChange={(id) => setCategoryId(String(id))}
+                placeholder="Selecciona categoría"
+                ariaLabel="Categoría para el gasto en la quincena"
+                triggerClassName="h-11 w-full max-w-none"
+              />
             </div>
           ) : null}
 

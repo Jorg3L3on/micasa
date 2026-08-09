@@ -27,7 +27,7 @@ import { createCreditCardPurchase } from '@/lib/api/credit-cards';
 import { Skeleton } from '@/components/ui/skeleton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 
 type FortnightCatalogItem = {
   id: number;
@@ -309,21 +309,15 @@ const CreditCardQuickPurchaseDialog = ({
 
               <div className="space-y-2">
                 <span className="text-sm font-medium">Categoría</span>
-                <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-                  <SelectTrigger
-                    className="w-full max-w-none"
-                    aria-label="Categoría del gasto"
-                  >
-                    <SelectValue placeholder="Selecciona categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {formatCategoryLabel(c.name, c.icon)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategoryGroupedSelect
+                  categories={categories}
+                  value={categoryId ? Number(categoryId) : undefined}
+                  onValueChange={(id) => setCategoryId(String(id))}
+                  includeCategoryId={categoryId ? Number(categoryId) : null}
+                  triggerClassName="w-full max-w-none"
+                  placeholder="Selecciona categoría"
+                  ariaLabel="Categoría del gasto"
+                />
               </div>
 
               <div className="space-y-2">

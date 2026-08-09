@@ -31,7 +31,12 @@ export function CategoryLabel({
   if (!name) return empty;
 
   return (
-    <span className={cn('inline-flex min-w-0 items-center gap-1.5', className)}>
+    <span
+      className={cn(
+        'inline-flex min-w-0 max-w-full items-center gap-1.5',
+        className,
+      )}
+    >
       {icon ? (
         <CategoryIcon icon={icon} iconClassName={iconClassName} />
       ) : null}

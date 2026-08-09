@@ -33,7 +33,7 @@ import type {
   CategoryOption,
   CreditCardStatementImportListItem,
 } from '@/types/catalog';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategorySelectGroups } from '@/components/categories/CategoryGroupedSelect';
 
 const IMPORT_LIST_SCROLL_CLASS =
   'max-h-[min(16rem,40vh)] overflow-y-auto scrollbar-hide pr-0.5';
@@ -188,11 +188,7 @@ const CreditCardMercadoPagoImportDialog = ({
                   <SelectItem value="__default__">
                     Predeterminada (Tarjeta de crédito o primera)
                   </SelectItem>
-                  {categoryOptions.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {formatCategoryLabel(c.name, c.icon)}
-                    </SelectItem>
-                  ))}
+                  <CategorySelectGroups categories={categoryOptions} />
                 </SelectContent>
               </Select>
             </div>

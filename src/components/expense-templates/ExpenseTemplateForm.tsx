@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 import type { ExpenseTemplateFormValues } from '@/schemas/expense-template.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { BoundedDayFieldInput } from '@/components/expense-templates/bounded-day-input';
 
 type ExpenseTemplateFormProps = {
@@ -127,26 +127,17 @@ export function ExpenseTemplateForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Categoria</FormLabel>
-                      <Select
-                        value={field.value > 0 ? String(field.value) : ''}
-                        onValueChange={(value) => field.onChange(Number(value))}
-                      >
-                        <FormControl>
-                          <SelectTrigger
-                            className={FIELD_CLASSNAME}
-                            aria-label="Seleccionar categoria"
-                          >
-                            <SelectValue placeholder="Selecciona una categoria" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={String(category.id)}>
-                              {formatCategoryLabel(category.name, category.icon)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <CategoryGroupedSelect
+                        categories={categories}
+                        value={field.value > 0 ? field.value : undefined}
+                        onValueChange={field.onChange}
+                        includeCategoryId={
+                          field.value > 0 ? field.value : null
+                        }
+                        triggerClassName={FIELD_CLASSNAME}
+                        placeholder="Selecciona una categoria"
+                        ariaLabel="Seleccionar categoria"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

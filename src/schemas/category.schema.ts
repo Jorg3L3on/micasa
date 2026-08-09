@@ -32,12 +32,14 @@ export const createCategorySchema = z.object({
         });
       }
     }),
+  parentId: z.number().int().positive().nullable().optional(),
 });
 
 export const updateCategorySchema = z.object({
   name: requiredStringSchema.optional(),
   description: optionalStringSchema,
   icon: z.string().optional(),
+  active: z.boolean().optional(),
 });
 
 export const createCategoryFormSchema = (existingIcon: string | null = null) =>
@@ -45,6 +47,7 @@ export const createCategoryFormSchema = (existingIcon: string | null = null) =>
     name: z.string().min(1, 'Nombre es requerido'),
     description: z.string().optional(),
     icon: categoryIconSchema(existingIcon),
+    parentId: z.number().int().positive().nullable().optional(),
   });
 
 export const categorySchema = createCategoryFormSchema();

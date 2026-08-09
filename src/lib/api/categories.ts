@@ -4,7 +4,12 @@ import type { FinanceContextType } from '@/types/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 export async function createCategory(
-  data: { name: string; description?: string; icon?: string },
+  data: {
+    name: string;
+    description?: string;
+    icon?: string;
+    parentId?: number | null;
+  },
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi(
@@ -19,7 +24,12 @@ export async function createCategory(
 
 export async function updateCategory(
   id: number,
-  data: { name?: string; description?: string; icon?: string },
+  data: {
+    name?: string;
+    description?: string;
+    icon?: string;
+    active?: boolean;
+  },
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi(

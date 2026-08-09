@@ -35,7 +35,7 @@ import type {
 } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
-import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 
 export type ExpenseFormProps = {
@@ -315,47 +315,20 @@ export default function ExpenseForm({
         <FormField
           control={form.control}
           name="categoryId"
-          render={({ field }) => {
-            const selectedCategory = categories.find(
-              (c) => c.id === Number(field.value),
-            );
-            return (
-              <FormItem>
-                <FormLabel>Categoría</FormLabel>
-                <Select
-                  value={field.value ? String(field.value) : undefined}
-                  onValueChange={(value) =>
-                    field.onChange(parseInt(value, 10))
-                  }
-                  disabled={loading}
-                >
-                  <FormControl>
-                    <SelectTrigger
-                      className="h-11 w-full max-w-none"
-                      aria-label="Categoría"
-                    >
-                      <SelectValue placeholder="Selecciona una categoría">
-                        {selectedCategory ? (
-                          <CategoryLabel
-                            name={selectedCategory.name}
-                            icon={selectedCategory.icon}
-                          />
-                        ) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        <CategoryLabel name={c.name} icon={c.icon} />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Categoría</FormLabel>
+              <CategoryGroupedSelect
+                categories={categories}
+                value={field.value ? Number(field.value) : undefined}
+                onValueChange={field.onChange}
+                disabled={loading}
+                includeCategoryId={field.value ? Number(field.value) : null}
+                triggerClassName="h-11 w-full max-w-none"
+              />
+              <FormMessage />
+            </FormItem>
+          )}
         />
         <FormField
           control={form.control}

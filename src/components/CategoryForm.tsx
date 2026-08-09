@@ -28,6 +28,14 @@ import {
   createCategoryFormSchema,
   CategoryFormValues,
 } from '@/schemas/category.schema';
+import type { CategoryOption } from '@/types/catalog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type CategoryFormProps = {
   open: boolean;
@@ -36,6 +44,7 @@ type CategoryFormProps = {
   defaultValues?: CategoryFormValues;
   mode: 'create' | 'edit';
   error?: string | null;
+  parentOptions?: CategoryOption[];
 };
 
 export default function CategoryForm({
@@ -45,6 +54,7 @@ export default function CategoryForm({
   defaultValues,
   mode,
   error,
+  parentOptions = [],
 }: CategoryFormProps) {
   const existingIcon = defaultValues?.icon ?? null;
   const formSchema = useMemo(
@@ -58,6 +68,7 @@ export default function CategoryForm({
       name: '',
       description: '',
       icon: '',
+      parentId: null,
     },
   });
 
@@ -69,6 +80,7 @@ export default function CategoryForm({
         name: '',
         description: '',
         icon: '',
+        parentId: null,
       });
     }
   }, [open, defaultValues, form]);
@@ -104,8 +116,8 @@ export default function CategoryForm({
           </DialogTitle>
           <DialogDescription>
             {mode === 'create'
-              ? 'Crea una nueva categoría para tus transacciones.'
-              : 'Actualiza la información de la categoría.'}
+              ? 'Puedes crear una categoría raíz o una subcategoría bajo un padre existente.'
+              : 'Actualiza el nombre, ícono o descripción. El padre no se puede cambiar al editar.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form} key={`${mode}-${existingIcon ?? 'new'}-${open}`}>
@@ -118,6 +130,45 @@ export default function CategoryForm({
                 {error}
               </div>
             )}
+            {mode === 'create' && parentOptions.length > 0 ? (
+              <FormField
+                control={form.control}
+                name="parentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría padre (opcional)</FormLabel>
+                    <Select
+                      value={
+                        field.value != null ? String(field.value) : 'none'
+                      }
+                      onValueChange={(v) =>
+                        field.onChange(v === 'none' ? null : parseInt(v, 10))
+                      }
+                    >
+                      <FormControl>
+                        <SelectTrigger aria-label="Categoría padre">
+                          <SelectValue placeholder="Sin padre (categoría raíz)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          Sin padre (categoría raíz)
+                        </SelectItem>
+                        {parentOptions.map((parent) => (
+                          <SelectItem key={parent.id} value={String(parent.id)}>
+                            <CategoryLabel
+                              name={parent.name}
+                              icon={parent.icon}
+                            />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
             <FormField
               control={form.control}
               name="name"

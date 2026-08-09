@@ -8,10 +8,24 @@ import {
   HouseRole,
 } from '@/generated/prisma/client';
 import { hash } from 'bcryptjs';
+import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
+
+async function requireCategory(
+  owner: { user_id: number } | { house_id: number },
+  name: string,
+) {
+  const category = await prisma.category.findFirst({
+    where: { ...owner, name },
+  });
+  if (!category) {
+    throw new Error(`Seed category not found: ${name}`);
+  }
+  return category;
+}
 
 async function main() {
   /**
@@ -66,32 +80,41 @@ async function main() {
   });
 
   // ─────────────────────────────────────────────
-  // CATEGORIES
+  // CATEGORIES (default catalog cloned per owner)
   // ─────────────────────────────────────────────
+  await seedDefaultCategoriesForOwner(prisma, { userId: carmen.id });
+  await seedDefaultCategoriesForOwner(prisma, { userId: jorge.id });
+  await seedDefaultCategoriesForOwner(prisma, { houseId: leonSolorzano.id });
+  await seedDefaultCategoriesForOwner(prisma, { houseId: casaJorge.id });
 
-  // Carmen personal
-  const catCarmenComida      = await prisma.category.create({ data: { name: 'Comida',     icon: '🍽️', user_id: carmen.id } });
-  const catCarmenTransporte  = await prisma.category.create({ data: { name: 'Transporte', icon: '🚗', user_id: carmen.id } });
-  const catCarmenVivienda    = await prisma.category.create({ data: { name: 'Vivienda',   icon: '🏠', user_id: carmen.id } });
-
-  // Jorge personal
-  const catJorgeComida       = await prisma.category.create({ data: { name: 'Comida',     icon: '🍽️', user_id: jorge.id } });
-  const catJorgeTransporte   = await prisma.category.create({ data: { name: 'Transporte', icon: '🚗', user_id: jorge.id } });
-  const catJorgeVivienda     = await prisma.category.create({ data: { name: 'Vivienda',   icon: '🏠', user_id: jorge.id } });
-
-  // Leon Solorzano house
-  const catCasa              = await prisma.category.create({ data: { name: 'Casa',                  icon: '🏠', house_id: leonSolorzano.id } });
-  const catSuscripciones     = await prisma.category.create({ data: { name: 'Suscripciones',         icon: '🔁', house_id: leonSolorzano.id } });
-  const catTarjetaCredito    = await prisma.category.create({ data: { name: 'Tarjeta de credito',    icon: '💳', house_id: leonSolorzano.id } });
-  const catTarjetaDep        = await prisma.category.create({ data: { name: 'Tarjeta departamental', icon: '💳', house_id: leonSolorzano.id } });
-  const catComidaHouse       = await prisma.category.create({ data: { name: 'Comida',                icon: '🍽️', house_id: leonSolorzano.id } });
-  const catSalidas           = await prisma.category.create({ data: { name: 'Salidas',               icon: '🎬', house_id: leonSolorzano.id } });
-  const catEntretenimiento   = await prisma.category.create({ data: { name: 'Entretenimiento',       icon: '🎬', house_id: leonSolorzano.id } });
-  const catMedicamentos      = await prisma.category.create({ data: { name: 'Medicamentos',          icon: '💊', house_id: leonSolorzano.id } });
-  const catTransporteHouse   = await prisma.category.create({ data: { name: 'Trnasporte',            icon: '🚗', house_id: leonSolorzano.id } });
-  const catInversiones       = await prisma.category.create({ data: { name: 'Inversiones',           icon: '📈', house_id: leonSolorzano.id } });
-  const catApoyosFamiliares  = await prisma.category.create({ data: { name: 'Apoyos familiares',     icon: '🤝', house_id: leonSolorzano.id } });
-  const catPrestamos         = await prisma.category.create({ data: { name: 'Prestamos',             icon: '🏦', house_id: leonSolorzano.id } });
+  const catJorgeVivienda = await requireCategory({ user_id: jorge.id }, 'Vivienda');
+  const catCasa = await requireCategory({ house_id: leonSolorzano.id }, 'Vivienda');
+  const catTarjetaCredito = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Tarjeta de crédito',
+  );
+  const catTarjetaDep = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Tarjeta departamental',
+  );
+  const catComidaHouse = await requireCategory({ house_id: leonSolorzano.id }, 'Comida');
+  const catEntretenimiento = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Entretenimiento',
+  );
+  const catMedicamentos = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Farmacia',
+  );
+  const catTransporteHouse = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Transporte',
+  );
+  const catPrestamos = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Préstamos',
+  );
+  const catSpotify = await requireCategory({ house_id: leonSolorzano.id }, 'Spotify');
 
   // ─────────────────────────────────────────────
   // WALLETS
@@ -360,7 +383,7 @@ async function main() {
       name: 'Spotify', suggested_amount: 189, is_recurring: true,
       applies_first_fortnight: true, applies_second_fortnight: false,
       due_day: 30, cutoff_day: 1, due_day_first_fortnight: 30,
-      category_id: catEntretenimiento.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
+      category_id: catSpotify.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
     },
   });
   const etSky = await prisma.expenseTemplate.create({
@@ -599,7 +622,7 @@ async function main() {
       { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Carne',           amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
       { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',      amount: 1179.43, is_paid: true,  due_day: 7,  category_id: catCasa.id,           wallet_id: walletDidiCard.id,  expense_template_id: etAttJorgeFirst.id },
       { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Sky',             amount: 269,     is_paid: true,  due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSky.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: true,  due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
+      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: true,  due_day: 30, category_id: catSpotify.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
       { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Concerta',        amount: 2400,    is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etConcerta.id },
       { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Lamotriglina',    amount: 160,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletBanamex.id,   expense_template_id: etLamotriglina.id },
       { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,    is_paid: true,  due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
@@ -633,7 +656,7 @@ async function main() {
       { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Liverpool Jorge',  amount: 1,      is_paid: false, due_day: 12, category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etLiverpoolJorge.id },
       { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',      amount: 1160,    is_paid: false, due_day: 7,  category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeFirst.id },
       { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Sky',             amount: 269,     is_paid: false, due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSky.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: false, due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
+      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: false, due_day: 30, category_id: catSpotify.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
       { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'C&A efectivo',    amount: 928,     is_paid: false, due_day: 10, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCnAEfectivo.id },
       { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'C&A departamental', amount: 250,   is_paid: false, due_day: 3,  category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etCnADepartamental.id },
       { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Concerta',        amount: 2400,    is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etConcerta.id },
@@ -671,7 +694,7 @@ async function main() {
       { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Liverpool Jorge',  amount: 1,      is_paid: false, due_day: 12, category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etLiverpoolJorge.id },
       { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',      amount: 1160,    is_paid: false, due_day: 7,  category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeFirst.id },
       { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Sky',             amount: 269,     is_paid: false, due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSky.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: false, due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
+      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: false, due_day: 30, category_id: catSpotify.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
       { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'C&A efectivo',    amount: 928,     is_paid: false, due_day: 10, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCnAEfectivo.id },
       { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'C&A departamental', amount: 250,   is_paid: false, due_day: 3,  category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etCnADepartamental.id },
       { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Concerta',        amount: 2400,    is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etConcerta.id },
@@ -697,11 +720,6 @@ async function main() {
       { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Didi card',      amount: 1500,    is_paid: false, due_day: 18, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etDidiCard.id },
     ],
   });
-
-  // suppress unused variable warnings for categories not yet used in expenses
-  void catCarmenComida; void catCarmenTransporte; void catCarmenVivienda;
-  void catJorgeComida; void catJorgeTransporte;
-  void catSuscripciones; void catSalidas; void catInversiones; void catApoyosFamiliares;
 
   console.log('✅ Database seeded with real data');
 }

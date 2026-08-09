@@ -17,12 +17,6 @@ export type WalletDraft = {
   providerIconKey: string | null;
 };
 
-export type CategoryDraft = {
-  id: string;
-  name: string;
-  icon?: string | null;
-};
-
 export type IncomeTemplateDraft = {
   id: string;
   name: string;
@@ -37,6 +31,7 @@ export type ExpenseTemplateDraft = {
   id: string;
   name: string;
   amount: number;
+  /** Persisted category id (stringified number from API). */
   categoryId: string;
   walletId: string;
   isRecurring: boolean;
@@ -57,8 +52,6 @@ type OnboardingContextValue = {
   setCanProceed: (value: boolean) => void;
   wallets: WalletDraft[];
   setWallets: React.Dispatch<React.SetStateAction<WalletDraft[]>>;
-  categories: CategoryDraft[];
-  setCategories: React.Dispatch<React.SetStateAction<CategoryDraft[]>>;
   incomeTemplates: IncomeTemplateDraft[];
   setIncomeTemplates: React.Dispatch<
     React.SetStateAction<IncomeTemplateDraft[]>
@@ -73,7 +66,8 @@ type OnboardingContextValue = {
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-const TOTAL_STEPS = 6;
+/** Welcome → Wallets → Income → Expenses → Fortnights (categories are seeded at register). */
+const TOTAL_STEPS = 5;
 
 const getCurrentMonthFirstDayIso = (): string => {
   const now = new Date();
@@ -91,11 +85,6 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   const [isStepLoading, setStepLoading] = useState(false);
   const [canProceed, setCanProceed] = useState(true);
   const [wallets, setWallets] = useState<WalletDraft[]>([]);
-  const [categories, setCategories] = useState<CategoryDraft[]>([
-    { id: createClientId(), name: 'Comida', icon: 'UTENSILS' },
-    { id: createClientId(), name: 'Transporte', icon: 'CAR' },
-    { id: createClientId(), name: 'Vivienda', icon: 'HOME' },
-  ]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
     [
       {
@@ -112,7 +101,9 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   const [expenseTemplates, setExpenseTemplates] = useState<
     ExpenseTemplateDraft[]
   >([]);
-  const [startDate, setStartDate] = useState<string | null>(getCurrentMonthFirstDayIso);
+  const [startDate, setStartDate] = useState<string | null>(
+    getCurrentMonthFirstDayIso,
+  );
 
   const goNext = useCallback(() => {
     setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
@@ -136,8 +127,6 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       setCanProceed,
       wallets,
       setWallets,
-      categories,
-      setCategories,
       incomeTemplates,
       setIncomeTemplates,
       expenseTemplates,
@@ -152,7 +141,6 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       isStepLoading,
       canProceed,
       wallets,
-      categories,
       incomeTemplates,
       expenseTemplates,
       startDate,

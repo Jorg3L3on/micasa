@@ -7,6 +7,7 @@ import {
   registerSchema,
 } from '@/schemas/auth.schema';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
+import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, 'auth:register');
@@ -63,6 +64,9 @@ export async function POST(request: NextRequest) {
           role: HouseRole.OWNER,
         },
       });
+
+      await seedDefaultCategoriesForOwner(tx, { userId: u.id });
+      await seedDefaultCategoriesForOwner(tx, { houseId: h.id });
 
       return { user: u, house: h };
     });

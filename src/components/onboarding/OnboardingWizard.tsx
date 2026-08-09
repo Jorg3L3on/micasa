@@ -13,14 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import StepWelcome from '@/components/onboarding/steps/StepWelcome';
 import StepWallets from '@/components/onboarding/steps/StepWallets';
-import StepCategories from '@/components/onboarding/steps/StepCategories';
 import StepIncomeTemplates from '@/components/onboarding/steps/StepIncomeTemplates';
 import StepExpenseTemplates from '@/components/onboarding/steps/StepExpenseTemplates';
 import StepFortnights from '@/components/onboarding/steps/StepFortnights';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import type {
-  CategoryDraft,
   ExpenseTemplateDraft,
   IncomeTemplateDraft,
   WalletDraft,
@@ -29,7 +27,6 @@ import type {
 const steps = [
   StepWelcome,
   StepWallets,
-  StepCategories,
   StepIncomeTemplates,
   StepExpenseTemplates,
   StepFortnights,
@@ -38,10 +35,9 @@ const steps = [
 const stepTitles: Record<number, string> = {
   0: 'Bienvenido a MiCasa',
   1: 'Billeteras',
-  2: 'Categorías',
-  3: 'Plantillas de ingresos',
-  4: 'Plantillas de gastos',
-  5: 'Quincenas',
+  2: 'Plantillas de ingresos',
+  3: 'Plantillas de gastos',
+  4: 'Quincenas',
 };
 
 const stepDescriptions: Record<number, string> = {
@@ -50,7 +46,6 @@ const stepDescriptions: Record<number, string> = {
   2: '',
   3: '',
   4: '',
-  5: '',
 };
 
 const stepContentVariants = {
@@ -92,13 +87,11 @@ function OnboardingWizardContent() {
 
       const onboardingPayload: {
         wallets: WalletDraft[];
-        categories: CategoryDraft[];
         incomeTemplates: IncomeTemplateDraft[];
         expenseTemplates: ExpenseTemplateDraft[];
         startDate: string | null;
       } = {
         wallets: onboarding.wallets ?? [],
-        categories: onboarding.categories ?? [],
         incomeTemplates: onboarding.incomeTemplates ?? [],
         expenseTemplates: onboarding.expenseTemplates ?? [],
         startDate,

@@ -3,7 +3,6 @@
 import { useEffect, useMemo } from 'react';
 import {
   useOnboarding,
-  type CategoryDraft,
   type ExpenseTemplateDraft,
   type IncomeTemplateDraft,
   type WalletDraft,
@@ -26,9 +25,10 @@ export default function StepFinish({ setCanProceed }: Props) {
     setCanProceed ?? onboarding.setCanProceed;
 
   const wallets: WalletDraft[] = onboarding.wallets ?? [];
-  const categories: CategoryDraft[] = onboarding.categories ?? [];
-  const incomeTemplates: IncomeTemplateDraft[] = onboarding.incomeTemplates ?? [];
-  const expenseTemplates: ExpenseTemplateDraft[] = onboarding.expenseTemplates ?? [];
+  const incomeTemplates: IncomeTemplateDraft[] =
+    onboarding.incomeTemplates ?? [];
+  const expenseTemplates: ExpenseTemplateDraft[] =
+    onboarding.expenseTemplates ?? [];
   const rawStartDate = onboarding.startDate;
 
   const startDate: Date | null = useMemo(() => {
@@ -50,9 +50,9 @@ export default function StepFinish({ setCanProceed }: Props) {
         </h3>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Tu espacio financiero ya está configurado. Hemos preparado tus
-          billeteras, categorías e ingresos y gastos recurrentes. Tus finanzas
-          se organizarán en ciclos de 14 días para que puedas ver claramente tu
-          dinero disponible en cada periodo.
+          billeteras, categorías por defecto e ingresos y gastos recurrentes.
+          Tus finanzas se organizarán por quincenas para que puedas ver
+          claramente tu dinero disponible en cada periodo.
         </p>
       </div>
 
@@ -62,7 +62,11 @@ export default function StepFinish({ setCanProceed }: Props) {
           <h4 className="text-muted-foreground text-sm font-semibold">
             Inicio del panel financiero
           </h4>
-          <p className="text-sm">{startDate ? dateFormatter.format(startDate) : 'Sin fecha de inicio definida'}</p>
+          <p className="text-sm">
+            {startDate
+              ? dateFormatter.format(startDate)
+              : 'Sin fecha de inicio definida'}
+          </p>
         </section>
 
         <section className="space-y-2 rounded-lg border p-4">
@@ -80,25 +84,6 @@ export default function StepFinish({ setCanProceed }: Props) {
           ) : (
             <p className="text-muted-foreground text-sm">
               No se configuraron billeteras.
-            </p>
-          )}
-        </section>
-
-        <section className="space-y-2 rounded-lg border p-4">
-          <h4 className="text-muted-foreground text-sm font-semibold">
-            Categorías
-          </h4>
-          {categories.length ? (
-            <ul role="list" className="space-y-1 text-sm">
-              {categories.map((category, index) => (
-                <li key={index} role="listitem">
-                  {category.name ?? 'Sin nombre'}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              No se configuraron categorías.
             </p>
           )}
         </section>
@@ -142,7 +127,6 @@ export default function StepFinish({ setCanProceed }: Props) {
         </section>
       </div>
 
-      {/* Optional microcopy shown while finishing onboarding */}
       {onboarding.isStepLoading && (
         <p className="text-muted-foreground text-xs">
           Preparando tu espacio financiero...

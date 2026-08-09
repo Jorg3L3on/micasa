@@ -7,18 +7,40 @@ import {
   createCategorySchema,
   updateCategorySchema,
 } from '@/schemas/category.schema';
+import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
+import {
+  activateCategory,
+  assertCategoryDeletable,
+  assertValidParentForCreate,
+  categoryOwnerWhere,
+  CategoryServiceError,
+  deactivateCategoryTree,
+  findDuplicateCategoryName,
+} from '@/lib/finance/category.service';
 
-/** Build Category where clause from owner context (Category has user_id/house_id). */
-function categoryOwnerWhere(ownerType: 'user' | 'house', ownerId: number) {
-  return ownerType === 'user'
-    ? { user_id: ownerId, house_id: null as number | null }
-    : { user_id: null as number | null, house_id: ownerId };
+function serializeCategory(category: {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  active: boolean;
+  sort_order: number;
+  parent_id: number | null;
+}) {
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description ?? undefined,
+    icon: category.icon,
+    active: category.active,
+    sortOrder: category.sort_order,
+    parentId: category.parent_id,
+  };
 }
 
 /**
  * GET /categories?ownerType=user|house&ownerId=number
- * Returns only categories that belong to this owner (Category.user_id or Category.house_id).
- * Fallback: missing/invalid params use session user.
+ * Lazy-seeds defaults when the owner has zero categories.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -26,12 +48,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if ('error' in context) return context.error;
     const { ownerType, ownerId } = context;
 
-    const categories = await prisma.category.findMany({
-      where: categoryOwnerWhere(ownerType, ownerId),
-      orderBy: { name: 'asc' },
+    await prisma.$transaction(async (tx) => {
+      return seedDefaultCategoriesForOwner(
+        tx,
+        ownerType === 'user' ? { userId: ownerId } : { houseId: ownerId },
+      );
     });
 
-    return NextResponse.json(categories, { status: 200 });
+    const categories = await prisma.category.findMany({
+      where: categoryOwnerWhere(ownerType, ownerId),
+      orderBy: [{ parent_id: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
+    });
+
+    return NextResponse.json(categories.map(serializeCategory), {
+      status: 200,
+    });
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
@@ -41,7 +72,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-/** POST /categories – create category for this owner. Sets user_id or house_id from context. */
+/** POST /categories – create category (optional parentId for one-level child). */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const context = await getOwnerContext(request);
@@ -55,12 +86,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: iconResult.message }, { status: 400 });
     }
 
-    const existingSameName = await prisma.category.findFirst({
-      where: {
-        ...categoryOwnerWhere(ownerType, ownerId),
-        name: validatedData.name,
-      },
-    });
+    const parentId = validatedData.parentId ?? null;
+    await assertValidParentForCreate(prisma, ownerType, ownerId, parentId);
+
+    const existingSameName = await findDuplicateCategoryName(
+      prisma,
+      ownerType,
+      ownerId,
+      validatedData.name,
+    );
     if (existingSameName) {
       return NextResponse.json(
         { error: 'Ya existe una categoría con este nombre' },
@@ -68,19 +102,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    const siblingCount = await prisma.category.count({
+      where: {
+        ...categoryOwnerWhere(ownerType, ownerId),
+        parent_id: parentId,
+      },
+    });
+
     const category = await prisma.category.create({
       data: {
         name: validatedData.name,
         description: validatedData.description || null,
         icon: iconResult.value,
+        active: true,
+        sort_order: siblingCount,
+        parent_id: parentId,
         ...(ownerType === 'user'
           ? { user_id: ownerId, house_id: null }
           : { user_id: null, house_id: ownerId }),
       },
     });
 
-    return NextResponse.json(category, { status: 201 });
+    return NextResponse.json(serializeCategory(category), { status: 201 });
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Error de validación', details: error.issues },
@@ -97,7 +147,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 /**
- * PUT /categories?id= – update only if category belongs to this owner (Category.user_id/house_id).
+ * PUT /categories?id= – update name/icon/description/active.
+ * Deactivating a root cascades active=false to children.
+ * Reactivating does not reactivate children.
  */
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
@@ -137,19 +189,39 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     }
 
     if (validatedData.name && validatedData.name !== existing.name) {
-      const duplicateName = await prisma.category.findFirst({
-        where: {
-          ...categoryOwnerWhere(ownerType, ownerId),
-          name: validatedData.name,
-          id: { not: categoryId },
-        },
-      });
+      const duplicateName = await findDuplicateCategoryName(
+        prisma,
+        ownerType,
+        ownerId,
+        validatedData.name,
+        categoryId,
+      );
       if (duplicateName) {
         return NextResponse.json(
           { error: 'Ya existe una categoría con este nombre' },
           { status: 409 },
         );
       }
+    }
+
+    if (validatedData.active === false && existing.active) {
+      const category = await deactivateCategoryTree(
+        prisma,
+        categoryId,
+        ownerType,
+        ownerId,
+      );
+      return NextResponse.json(serializeCategory(category), { status: 200 });
+    }
+
+    if (validatedData.active === true && !existing.active) {
+      const category = await activateCategory(
+        prisma,
+        categoryId,
+        ownerType,
+        ownerId,
+      );
+      return NextResponse.json(serializeCategory(category), { status: 200 });
     }
 
     const updateData: {
@@ -172,8 +244,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       data: updateData,
     });
 
-    return NextResponse.json(category, { status: 200 });
+    return NextResponse.json(serializeCategory(category), { status: 200 });
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Error de validación', details: error.issues },
@@ -202,8 +280,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 }
 
 /**
- * DELETE /categories?id= – only if category belongs to this owner.
- * If any expense for this owner uses this category → 409. Otherwise delete.
+ * DELETE /categories?id= – blocked when children or financial deps exist.
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
@@ -232,23 +309,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const relatedExpenses = await prisma.expense.findFirst({
-      where: {
-        category_id: categoryId,
-        ...(ownerType === 'user'
-          ? { user_id: ownerId, house_id: null }
-          : { user_id: null, house_id: ownerId }),
-      },
-    });
-
-    if (relatedExpenses) {
-      return NextResponse.json(
-        {
-          error: 'La categoría tiene gastos asociados y no puede eliminarse',
-        },
-        { status: 409 },
-      );
-    }
+    await assertCategoryDeletable(prisma, categoryId, ownerType, ownerId);
 
     await prisma.category.delete({
       where: { id: categoryId },
@@ -259,6 +320,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (
       error &&
       typeof error === 'object' &&

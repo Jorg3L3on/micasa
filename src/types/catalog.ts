@@ -9,6 +9,9 @@ export type CategoryOption = {
   name: string;
   description?: string;
   icon?: string | null;
+  active?: boolean;
+  sortOrder?: number;
+  parentId?: number | null;
 };
 
 export type PaymentMethodOption = {

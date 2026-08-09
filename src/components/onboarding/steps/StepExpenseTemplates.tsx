@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,10 @@ import { SwipeableOnboardingCard } from '@/components/onboarding/SwipeableOnboar
 import { createClientId } from '@/lib/polyfills';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import type { CategoryOption } from '@/types/catalog';
+import { isSelectableInPicker } from '@/lib/finance/category-hierarchy';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 
 /** Delete only when more templates exist than the continue minimum (2). */
 const MIN_WITHOUT_DELETE = 2;
@@ -92,7 +96,7 @@ function frequencyFromExpense(
 type ExpenseCardBodyProps = {
   expense: ExpenseTemplateDraft;
   canDelete: boolean;
-  categories: { id: string; name: string }[];
+  categories: CategoryOption[];
   wallets: { id: string; name: string }[];
   onNameChange: (name: string) => void;
   onAmountChange: (value: number) => void;
@@ -175,26 +179,19 @@ function ExpenseCardBody({
 
         <div className="space-y-1.5">
           <Label htmlFor={`expense-category-${expense.id}`}>Categoría</Label>
-          <Select
-            value={expense.categoryId || undefined}
-            onValueChange={onCategoryChange}
-          >
-            <SelectTrigger
-              id={`expense-category-${expense.id}`}
-              className="w-full"
-              size="default"
-              aria-label="Categoría del gasto"
-            >
-              <SelectValue placeholder="Elige una categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CategoryGroupedSelect
+            categories={categories}
+            value={
+              expense.categoryId
+                ? Number.parseInt(expense.categoryId, 10)
+                : undefined
+            }
+            onValueChange={(id) => onCategoryChange(String(id))}
+            placeholder="Elige una categoría"
+            ariaLabel="Categoría del gasto"
+            triggerId={`expense-category-${expense.id}`}
+            triggerClassName="h-9 w-full max-w-none"
+          />
         </div>
 
         <div className="space-y-1.5">
@@ -257,11 +254,59 @@ export default function StepExpenseTemplates() {
     setCanProceed,
     expenseTemplates,
     setExpenseTemplates,
-    categories,
     wallets,
   } = useOnboarding();
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setCategoriesLoading(true);
+        setCategoriesError(null);
+        const data = await clientFetchFromApi<CategoryOption[]>(
+          '/api/categories',
+        );
+        if (!cancelled) setCategories(data);
+      } catch (err) {
+        if (!cancelled) {
+          setCategoriesError(
+            err instanceof Error
+              ? err.message
+              : 'No se pudieron cargar las categorías',
+          );
+        }
+      } finally {
+        if (!cancelled) setCategoriesLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectableCategories = useMemo(() => {
+    const rows = categories.map((c) => ({
+      id: c.id,
+      parent_id: c.parentId ?? null,
+      active: c.active ?? true,
+    }));
+    return categories.filter((c) =>
+      isSelectableInPicker(
+        {
+          id: c.id,
+          parent_id: c.parentId ?? null,
+          active: c.active ?? true,
+        },
+        rows,
+      ),
+    );
+  }, [categories]);
 
   const hasMinimumRows = expenseTemplates.length >= 2;
   const hasValidTemplates =
@@ -279,7 +324,12 @@ export default function StepExpenseTemplates() {
         hasName && hasAmount && hasCategory && hasWallet && hasValidRecurrence
       );
     });
-  const canContinue = hasMinimumRows && hasValidTemplates;
+  const canContinue =
+    hasMinimumRows &&
+    hasValidTemplates &&
+    !categoriesLoading &&
+    !categoriesError &&
+    selectableCategories.length > 0;
   const canDelete = expenseTemplates.length > MIN_WITHOUT_DELETE;
   const swipeEnabled = canDelete && isMobile;
 
@@ -360,6 +410,21 @@ export default function StepExpenseTemplates() {
           ajustarlas después en Gastos.
         </p>
       </div>
+
+      {categoriesError ? (
+        <div
+          className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          {categoriesError}. Recarga la página para reintentar.
+        </div>
+      ) : null}
+
+      {categoriesLoading ? (
+        <p className="text-muted-foreground text-sm" role="status">
+          Cargando categorías…
+        </p>
+      ) : null}
 
       {expenseTemplates.length === 0 ? (
         <div

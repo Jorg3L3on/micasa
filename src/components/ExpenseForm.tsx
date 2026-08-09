@@ -21,7 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { expenseSchema, ExpenseFormValues } from '@/schemas/expense.schema';
@@ -133,23 +133,14 @@ export default function ExpenseForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoría</FormLabel>
-                  <FormControl>
-                    <select
-                      value={field.value?.toString() || ''}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                        field.onChange(parseInt(e.target.value, 10))
-                      }
-                      onBlur={field.onBlur}
-                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">Selecciona una categoría</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {formatCategoryLabel(cat.name, cat.icon)}
-                        </option>
-                      ))}
-                    </select>
-                  </FormControl>
+                  <CategoryGroupedSelect
+                    categories={categories}
+                    value={field.value ? Number(field.value) : undefined}
+                    onValueChange={field.onChange}
+                    includeCategoryId={
+                      field.value ? Number(field.value) : null
+                    }
+                  />
                   <FormMessage />
                 </FormItem>
               )}

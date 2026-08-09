@@ -133,4 +133,31 @@ describe('computePeriodSpendByAllocations', () => {
     expect(result).toEqual({ total_spent: 0, by_allocation: [] });
     expect(groupBy).not.toHaveBeenCalled();
   });
+
+  it('rolls up child category spend into a parent allocation', async () => {
+    const groupBy = vi.fn().mockResolvedValue([
+      { wallet_id: 1, category_id: 10, _sum: { amount: 50 } },
+      { wallet_id: 1, category_id: 11, _sum: { amount: 70 } },
+    ]);
+    const findMany = vi.fn().mockResolvedValue([
+      { id: 11, parent_id: 10 },
+    ]);
+    const db = {
+      expense: { groupBy },
+      category: { findMany },
+    } as unknown as Parameters<typeof computePeriodSpendByAllocations>[0];
+
+    const result = await computePeriodSpendByAllocations(
+      db,
+      [{ wallet_id: 1, category_id: 10, amount: 500 }],
+      window,
+      ownerFilter,
+    );
+
+    expect(result.total_spent).toBe(120);
+    expect(result.by_allocation).toEqual([{ spent_amount: 120 }]);
+    expect(groupBy.mock.calls[0][0].where.category_id).toEqual({
+      in: [10, 11],
+    });
+  });
 });

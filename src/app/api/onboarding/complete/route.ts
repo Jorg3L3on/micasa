@@ -5,21 +5,15 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
-import { resolveOnboardingCategoryIcon } from '@/lib/category-icons';
 import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
+import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
 type WalletPayload = {
   id: string;
   name: string;
   type?: 'CASH' | 'BANK' | 'CREDIT';
   providerIconKey?: string | null;
-};
-
-type CategoryPayload = {
-  id: string;
-  name: string;
-  icon?: string | null;
 };
 
 type IncomeTemplatePayload = {
@@ -45,7 +39,7 @@ type ExpenseTemplatePayload = {
 
 type OnboardingPayload = {
   wallets: WalletPayload[];
-  categories: CategoryPayload[];
+  categories?: unknown;
   incomeTemplates: IncomeTemplatePayload[];
   expenseTemplates: ExpenseTemplatePayload[];
   // Temporarily optional until the frontend wiring is complete.
@@ -141,7 +135,6 @@ export async function POST(request: Request) {
     if (
       !payload ||
       !Array.isArray(payload.wallets) ||
-      !Array.isArray(payload.categories) ||
       !Array.isArray(payload.incomeTemplates) ||
       !Array.isArray(payload.expenseTemplates)
     ) {
@@ -166,7 +159,15 @@ export async function POST(request: Request) {
     await prisma.$transaction(async (tx) => {
       // Maps from client-side IDs (UUIDs) to database IDs (ints)
       const walletIdMap = new Map<string, number>();
-      const categoryIdMap = new Map<string, number>();
+
+      // Ensure default categories exist (register seeds them; backfill for older signups).
+      await seedDefaultCategoriesForOwner(tx, { userId });
+
+      const userCategories = await tx.category.findMany({
+        where: { user_id: userId, house_id: null },
+        select: { id: true },
+      });
+      const validCategoryIds = new Set(userCategories.map((c) => c.id));
 
       // 1. Wallets
       for (const wallet of payload.wallets) {
@@ -194,20 +195,7 @@ export async function POST(request: Request) {
         walletIdMap.set(wallet.id, created.id);
       }
 
-      // 2. Categories
-      for (const category of payload.categories) {
-        const created = await tx.category.create({
-          data: {
-            name: category.name,
-            icon: resolveOnboardingCategoryIcon(category.name, category.icon),
-            user_id: userId,
-            house_id: null,
-          },
-        });
-        categoryIdMap.set(category.id, created.id);
-      }
-
-      // 3. Income templates
+      // 2. Income templates
       if (payload.incomeTemplates.length > 0) {
         await tx.incomeTemplate.createMany({
           data: payload.incomeTemplates.map((income) => ({
@@ -223,26 +211,34 @@ export async function POST(request: Request) {
         });
       }
 
-      // 4. Expense templates
+      // 3. Expense templates (categoryId is the seeded DB id as string)
       if (payload.expenseTemplates.length > 0) {
         await tx.expenseTemplate.createMany({
-          data: payload.expenseTemplates.map((expense) => ({
-            name: expense.name,
-            suggested_amount: expense.amount,
-            is_recurring: !!expense.isRecurring,
-            applies_first_fortnight: !!expense.appliesFirstFortnight,
-            applies_second_fortnight: !!expense.appliesSecondFortnight,
-            is_subscription: false,
-            due_day: null,
-            due_day_first_fortnight: null,
-            due_day_second_fortnight: null,
-            cutoff_day: null,
-            active: true,
-            user_id: userId,
-            house_id: null,
-            category_id: categoryIdMap.get(expense.categoryId) ?? null,
-            wallet_id: walletIdMap.get(expense.walletId) ?? null,
-          })),
+          data: payload.expenseTemplates.map((expense) => {
+            const parsedCategoryId = Number(expense.categoryId);
+            const categoryId =
+              Number.isFinite(parsedCategoryId) &&
+              validCategoryIds.has(parsedCategoryId)
+                ? parsedCategoryId
+                : null;
+            return {
+              name: expense.name,
+              suggested_amount: expense.amount,
+              is_recurring: !!expense.isRecurring,
+              applies_first_fortnight: !!expense.appliesFirstFortnight,
+              applies_second_fortnight: !!expense.appliesSecondFortnight,
+              is_subscription: false,
+              due_day: null,
+              due_day_first_fortnight: null,
+              due_day_second_fortnight: null,
+              cutoff_day: null,
+              active: true,
+              user_id: userId,
+              house_id: null,
+              category_id: categoryId,
+              wallet_id: walletIdMap.get(expense.walletId) ?? null,
+            };
+          }),
         });
       }
 

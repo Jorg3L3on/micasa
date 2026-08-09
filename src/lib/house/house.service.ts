@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { HouseRole } from '@/generated/prisma/client';
 import type { HouseSummary } from '@/types/house';
+import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
 export const createHouse = async (
   userId: number,
@@ -21,6 +22,8 @@ export const createHouse = async (
         role: HouseRole.OWNER,
       },
     });
+
+    await seedDefaultCategoriesForOwner(tx, { houseId: house.id });
 
     return house;
   });

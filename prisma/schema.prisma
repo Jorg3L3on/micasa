@@ -170,6 +170,9 @@ model Category {
   name        String
   description String?
   icon        String?
+  active      Boolean @default(true)
+  sort_order  Int     @default(0)
+  parent_id   Int?
 
   user_id  Int?
   house_id Int?
@@ -179,12 +182,17 @@ model Category {
   // Relationships
   user               User?              @relation(fields: [user_id], references: [id])
   house              House?             @relation(fields: [house_id], references: [id])
+  parent             Category?          @relation("CategoryHierarchy", fields: [parent_id], references: [id], onDelete: Restrict)
+  children           Category[]         @relation("CategoryHierarchy")
   expenses           Expense[]
   expense_templates  ExpenseTemplate[]
   budget_allocations BudgetAllocation[]
 
   @@index([user_id])
   @@index([house_id])
+  @@index([parent_id])
+  @@index([user_id, parent_id])
+  @@index([house_id, parent_id])
 }
 
 model ExpenseTemplate {

@@ -66,6 +66,20 @@ export async function getOwnerContext(
     };
   }
 
+  // Stale JWT after db seed / user delete: session id may not exist in User.
+  const sessionUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!sessionUser) {
+    return {
+      error: NextResponse.json(
+        { error: 'Sesión inválida. Vuelve a iniciar sesión.' },
+        { status: 401 },
+      ),
+    };
+  }
+
   const { searchParams } = new URL(request.url);
   let ownerType = searchParams.get('ownerType') ?? 'user';
   let ownerId = Number(searchParams.get('ownerId'));

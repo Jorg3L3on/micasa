@@ -37,7 +37,7 @@ import type { BudgetListItem, CategoryOption, WalletListItem } from '@/types/cat
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 
 type Props = {
   open: boolean;
@@ -315,26 +315,17 @@ export default function BudgetAllocationsDialog({
                       render={({ field: f }) => (
                         <FormItem className="col-span-2 min-w-0 sm:col-span-1">
                           <FormLabel className="text-xs">Categoría</FormLabel>
-                          <Select
-                            onValueChange={(v) => f.onChange(Number(v))}
-                            value={f.value ? String(f.value) : ''}
-                          >
-                            <FormControl>
-                              <SelectTrigger
-                                className="h-11 w-full text-sm sm:h-8 sm:text-xs"
-                                aria-label={`Categoría de la asignación ${index + 1}`}
-                              >
-                                <SelectValue placeholder="Categoría" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {categories.map((c) => (
-                                <SelectItem key={c.id} value={String(c.id)}>
-                                  {formatCategoryLabel(c.name, c.icon)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <CategoryGroupedSelect
+                            categories={categories}
+                            value={f.value ? Number(f.value) : undefined}
+                            onValueChange={f.onChange}
+                            includeCategoryId={
+                              f.value ? Number(f.value) : null
+                            }
+                            triggerClassName="h-11 w-full text-sm sm:h-8 sm:text-xs"
+                            placeholder="Categoría"
+                            ariaLabel={`Categoría de la asignación ${index + 1}`}
+                          />
                           <FormMessage className="text-[10px]" />
                         </FormItem>
                       )}

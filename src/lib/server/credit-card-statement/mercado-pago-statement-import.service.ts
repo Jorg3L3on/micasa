@@ -55,6 +55,7 @@ export async function resolveStatementImportCategoryId(
     const found = await prisma.category.findFirst({
       where: {
         id: preferredCategoryId,
+        active: true,
         ...categoryOwnerWhere(ownerType, ownerId),
       },
     });
@@ -66,6 +67,7 @@ export async function resolveStatementImportCategoryId(
   const tarjeta = await prisma.category.findFirst({
     where: {
       ...categoryOwnerWhere(ownerType, ownerId),
+      active: true,
       name: { equals: 'Tarjeta de crédito', mode: 'insensitive' },
     },
     orderBy: { id: 'asc' },
@@ -75,7 +77,7 @@ export async function resolveStatementImportCategoryId(
   }
 
   const anyCat = await prisma.category.findFirst({
-    where: categoryOwnerWhere(ownerType, ownerId),
+    where: { ...categoryOwnerWhere(ownerType, ownerId), active: true },
     orderBy: { id: 'asc' },
   });
   if (anyCat) {
@@ -85,6 +87,7 @@ export async function resolveStatementImportCategoryId(
   const created = await prisma.category.create({
     data: {
       name: 'Importación (Mercado Pago)',
+      active: true,
       ...(ownerType === 'user'
         ? { user_id: ownerId, house_id: null }
         : { user_id: null, house_id: ownerId }),
