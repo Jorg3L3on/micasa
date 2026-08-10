@@ -60,13 +60,23 @@ export const WalletAmountTrendIndicator = ({
       : null;
 
   const content = (
-    <div className={cn('flex items-center gap-1 whitespace-nowrap text-sm', className)}>
-      <span className={cn('font-mono text-xs font-medium tabular-nums', amountColorClass)}>
+    <div
+      className={cn(
+        'flex max-w-full min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-sm',
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          'shrink-0 font-mono text-xs font-medium tabular-nums',
+          amountColorClass,
+        )}
+      >
         {diff >= 0 ? '+' : '−'}
         {formatCurrency(Math.abs(diff))}
       </span>
-      <span className={labelColorClass}>{label}</span>
-      <Icon className={cn('h-4 w-4', iconColorClass)} aria-hidden />
+      <span className={cn('min-w-0 truncate', labelColorClass)}>{label}</span>
+      <Icon className={cn('h-4 w-4 shrink-0', iconColorClass)} aria-hidden />
     </div>
   );
 
@@ -74,7 +84,7 @@ export const WalletAmountTrendIndicator = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="cursor-default">{content}</div>
+          <div className="max-w-full min-w-0 cursor-default">{content}</div>
         </TooltipTrigger>
         <TooltipContent side="bottom">
           {percentageChange >= 0 ? '+' : ''}

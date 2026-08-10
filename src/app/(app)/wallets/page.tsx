@@ -972,8 +972,8 @@ export default function WalletsPage() {
         </div>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="min-w-0 overflow-hidden">
+        <CardContent className="min-w-0 px-3 pt-6 sm:px-6">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
               Cargando...
@@ -1466,11 +1466,11 @@ export default function WalletsPage() {
                 </p>
               ) : (
                 <ul
-                  className="grid list-none gap-3 p-0 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
+                  className="grid list-none grid-cols-1 gap-3 p-0 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
                   role="list"
                 >
                   {displayWallets.map((wallet) => (
-                    <li key={wallet.id}>
+                    <li key={wallet.id} className="min-w-0">
                       <WalletListCard
                         wallet={wallet}
                         ownerQueryString={ownerQueryString}
