@@ -109,6 +109,46 @@ describe('listActivePeriods', () => {
       ownerFilter,
     );
   });
+
+  it('includes the covering-today period of a deactivated recurrent template', async () => {
+    const asOf = startOfCalendarDay('2026-06-10');
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      {
+        id: 50,
+        start_date: startOfCalendarDay('2026-06-01'),
+        end_date: endOfCalendarDay('2026-06-15'),
+        budget: {
+          id: 10,
+          name: 'Despensa',
+          frequency: 'BIWEEKLY',
+          total_amount: 500,
+          active: false,
+          recurrent: true,
+          allocations: [allocationRow],
+        },
+      },
+    ]);
+
+    const rows = await listActivePeriods(ownerFilter, asOf);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      period_id: 50,
+      budget_id: 10,
+      active: false,
+      recurrent: true,
+    });
+    expect(mocks.budgetPeriodFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { budget: { ...ownerFilter, active: true } },
+            { budget: { ...ownerFilter, active: false, recurrent: true } },
+          ],
+        }),
+      }),
+    );
+  });
 });
 
 describe('listHistoryPeriods', () => {
@@ -149,6 +189,7 @@ describe('generatePeriodsForMonth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.budgetPeriodFindFirst.mockResolvedValue(null);
+    mocks.budgetPeriodFindMany.mockResolvedValue([]);
     mocks.budgetPeriodCreate.mockResolvedValue({ id: 1 });
   });
 
@@ -184,6 +225,44 @@ describe('generatePeriodsForMonth', () => {
         end_date: endOfCalendarDay('2026-06-15'),
       },
     ]);
+
+    const result = await generatePeriodsForMonth(2026, 6, ownerFilter);
+
+    expect(result.total).toBe(0);
+    expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
+  });
+
+  it('skips insert when a period already covers the same civil days with different timestamps', async () => {
+    mocks.budgetFindMany.mockResolvedValue([{ id: 10, frequency: 'BIWEEKLY' }]);
+    mocks.fortnightFindMany.mockResolvedValue([
+      {
+        period: 'FIRST',
+        start_date: startOfCalendarDay('2026-06-01'),
+        end_date: endOfCalendarDay('2026-06-15'),
+      },
+      {
+        period: 'SECOND',
+        start_date: startOfCalendarDay('2026-06-16'),
+        end_date: endOfCalendarDay('2026-06-30'),
+      },
+    ]);
+    // MX-midnight encoding (06:00Z) — not equal to canonical UTC noon windows.
+    mocks.budgetPeriodFindMany.mockImplementation(async ({ where }) => {
+      const budgetId = where?.budget_id;
+      if (budgetId !== 10) return [];
+      return [
+        {
+          id: 106,
+          start_date: new Date('2026-06-01T06:00:00.000Z'),
+          end_date: new Date('2026-06-15T06:00:00.000Z'),
+        },
+        {
+          id: 107,
+          start_date: new Date('2026-06-16T06:00:00.000Z'),
+          end_date: new Date('2026-06-30T06:00:00.000Z'),
+        },
+      ];
+    });
 
     const result = await generatePeriodsForMonth(2026, 6, ownerFilter);
 

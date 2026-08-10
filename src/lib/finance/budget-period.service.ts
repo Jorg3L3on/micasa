@@ -171,10 +171,23 @@ async function insertPeriods(budgetId: number, windows: DateRange[]): Promise<nu
   const budget = canSnapshot ? await loadBudgetForSnapshot(budgetId) : null;
 
   for (const w of windows) {
-    const existing = await prisma.budgetPeriod.findFirst({
-      where: { budget_id: budgetId, start_date: w.start_date, end_date: w.end_date },
-      select: { id: true },
+    // Match by civil days, not exact timestamps. PG `timestamp` round-trips can
+    // turn UTC-noon (canonical) into MX-midnight (06:00Z); exact equality then
+    // misses the keeper and reconcile+insert creates perpetual duplicates.
+    const startYmd = readWallClockYmd(w.start_date);
+    const endYmd = readWallClockYmd(w.end_date);
+    const candidates = await prisma.budgetPeriod.findMany({
+      where: {
+        budget_id: budgetId,
+        start_date: { lte: endOfCalendarDay(endYmd) },
+        end_date: { gte: startOfCalendarDay(startYmd) },
+      },
+      select: { id: true, start_date: true, end_date: true },
+      orderBy: { id: 'asc' },
     });
+    const existing = candidates.find((period) =>
+      periodMatchesCalendarWindow(period, w),
+    );
     if (existing) continue;
 
     if (!canSnapshot || !budget) {
@@ -379,7 +392,6 @@ async function reconcileBiweeklyCalendarAlignment(
       }
       toDelete.push(period.id);
     }
-
     if (toDelete.length > 0) {
       await prisma.budgetPeriod.deleteMany({
         where: { id: { in: toDelete } },
@@ -653,6 +665,24 @@ export async function refreshFuturePeriodSnapshots(
   await Promise.all(periods.map((period) => syncPeriodSnapshot(period.id, budgetId)));
 }
 
+/** Drop periods that start after today (used when deactivating a template). */
+export async function deleteFuturePeriods(
+  budgetId: number,
+  asOf: Date = new Date(),
+): Promise<number> {
+  if (!prisma.budgetPeriod || typeof prisma.budgetPeriod.deleteMany !== 'function') {
+    return 0;
+  }
+  const todayEnd = endOfCalendarDay(todayCalendarDate(asOf));
+  const result = await prisma.budgetPeriod.deleteMany({
+    where: {
+      budget_id: budgetId,
+      start_date: { gt: todayEnd },
+    },
+  });
+  return result.count;
+}
+
 export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
   const todayYmd = formatCalendarDate(asOf);
   const year = Number(todayYmd.slice(0, 4));
@@ -661,11 +691,16 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
 
   const { start_date: todayStart, end_date: todayEnd } = activeDayBounds(asOf);
 
+  // Covering-today windows stay visible after a recurrent template is deactivated
+  // (current quincena continues; only future periods are cancelled).
   const periods = await prisma.budgetPeriod.findMany({
     where: {
       start_date: { lte: todayEnd },
       end_date: { gte: todayStart },
-      budget: { ...ownerFilter, active: true },
+      OR: [
+        { budget: { ...ownerFilter, active: true } },
+        { budget: { ...ownerFilter, active: false, recurrent: true } },
+      ],
     },
     include: {
       budget: {

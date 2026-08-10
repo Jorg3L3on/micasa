@@ -509,7 +509,7 @@ export default function BudgetsPage() {
       await deleteBudget(selectedBudget.id, context);
       toast.success(
         selectedBudget.recurrent
-          ? 'Plantilla desactivada, se detendrán periodos futuros.'
+          ? 'Plantilla desactivada. El periodo actual sigue; no se generarán más.'
           : 'Presupuesto cancelado.',
       );
       setDeleteDialogOpen(false);
@@ -948,7 +948,7 @@ export default function BudgetsPage() {
             title={selectedBudget.recurrent ? 'Desactivar plantilla' : 'Cancelar presupuesto'}
             description={
               selectedBudget.recurrent
-                ? 'Conservarás el historial y se detendrán periodos futuros.'
+                ? 'El periodo actual se mantiene en Activos. Se cancelan periodos futuros y se conserva el historial.'
                 : 'El presupuesto dejará de aparecer en activos y quedará en el historial.'
             }
             itemName={selectedBudget.name}

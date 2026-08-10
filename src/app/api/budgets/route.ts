@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = createBudgetSchema.parse(body);
-
     const budget = await createBudget(ownerType, ownerId, data);
     return NextResponse.json(budget, { status: 201 });
   } catch (error) {

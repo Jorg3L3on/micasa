@@ -5,6 +5,7 @@ import {
   generatePeriodsOnCreate,
   refreshFuturePeriodSnapshots,
   syncBudgetPeriodsAfterTemplateUpdate,
+  deleteFuturePeriods,
 } from '@/lib/finance/budget-period.service';
 import {
   addCalendarDays,
@@ -308,10 +309,12 @@ export async function setBudgetActive(
   }
 
   if (!active) {
-    return prisma.budget.update({
+    const updated = await prisma.budget.update({
       where: { id: budgetId },
       data: { active: false },
     });
+    await deleteFuturePeriods(budgetId);
+    return updated;
   }
 
   const frequency = budget.frequency as CreateBudgetInput['frequency'];
@@ -411,4 +414,6 @@ export async function deleteBudget(budgetId: number, ownerFilter: OwnerFilter) {
     where: { id: budgetId },
     data: { active: false },
   });
+  // Keep the covering-today period; cancel anything that starts after today.
+  await deleteFuturePeriods(budgetId);
 }

@@ -14,6 +14,11 @@ import {
 } from '@/lib/finance/budget-period-spend';
 import { getCalendarFortnightBoundsForMonth } from '@/lib/finance/budget-period-windows';
 import { ensureBudgetPeriodsForMonth } from '@/lib/finance/budget-period.service';
+import {
+  endOfCalendarDay,
+  startOfCalendarDay,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 
 export type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
@@ -69,12 +74,24 @@ export async function getMonthlyBudgetPanel(
     getCalendarFortnightBoundsForMonth(year, month);
   const monthStart = firstFortnight.start_date;
   const monthEnd = secondFortnight.end_date;
+  const todayYmd = todayCalendarDate();
+  const todayStart = startOfCalendarDay(todayYmd);
+  const todayEnd = endOfCalendarDay(todayYmd);
 
+  // Active templates contribute all overlapping periods. Deactivated recurrent
+  // templates keep only the period that still covers today (current quincena).
   const periods = await prisma.budgetPeriod.findMany({
     where: {
       start_date: { lte: monthEnd },
       end_date: { gte: monthStart },
-      budget: { ...ownerFilter, active: true },
+      OR: [
+        { budget: { ...ownerFilter, active: true } },
+        {
+          budget: { ...ownerFilter, active: false, recurrent: true },
+          start_date: { lte: todayEnd },
+          end_date: { gte: todayStart },
+        },
+      ],
     },
     include: {
       budget: {

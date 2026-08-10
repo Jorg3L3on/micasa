@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   generatePeriodsOnCreate: vi.fn(),
   syncBudgetPeriodsAfterTemplateUpdate: vi.fn(),
+  deleteFuturePeriods: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -37,6 +38,8 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/finance/budget-period.service', () => ({
   generatePeriodsOnCreate: mocks.generatePeriodsOnCreate,
   syncBudgetPeriodsAfterTemplateUpdate: mocks.syncBudgetPeriodsAfterTemplateUpdate,
+  deleteFuturePeriods: mocks.deleteFuturePeriods,
+  refreshFuturePeriodSnapshots: vi.fn(),
 }));
 
 const ownerFilter = { user_id: 1, house_id: null };
@@ -57,9 +60,10 @@ describe('deleteBudget', () => {
     vi.clearAllMocks();
   });
 
-  it('soft-deactivates the budget when it exists', async () => {
+  it('soft-deactivates the budget and cancels future periods', async () => {
     mocks.budget.findFirst.mockResolvedValue(budgetFixture);
     mocks.budget.update.mockResolvedValue({ ...budgetFixture, active: false });
+    mocks.deleteFuturePeriods.mockResolvedValue(2);
 
     await deleteBudget(10, ownerFilter);
 
@@ -67,6 +71,7 @@ describe('deleteBudget', () => {
       where: { id: 10 },
       data: { active: false },
     });
+    expect(mocks.deleteFuturePeriods).toHaveBeenCalledWith(10);
     expect(mocks.budget.delete).not.toHaveBeenCalled();
   });
 
