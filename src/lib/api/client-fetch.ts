@@ -39,6 +39,29 @@ export function buildOwnerQuery(
   });
 }
 
+/**
+ * Inverse of `buildOwnerQuery` for `?ownerType=&ownerId=` (or without `?`).
+ * Returns undefined when the query is empty or invalid.
+ */
+export function parseOwnerQuery(
+  ownerQuery: string | null | undefined,
+): FinanceContextType | undefined {
+  if (!ownerQuery) return undefined;
+  const raw = ownerQuery.startsWith('?') ? ownerQuery.slice(1) : ownerQuery;
+  if (!raw) return undefined;
+  const params = new URLSearchParams(raw);
+  const ownerType = params.get('ownerType');
+  const ownerId = Number(params.get('ownerId'));
+  if (
+    (ownerType === 'user' || ownerType === 'house') &&
+    Number.isFinite(ownerId) &&
+    ownerId > 0
+  ) {
+    return { type: ownerType, id: ownerId };
+  }
+  return undefined;
+}
+
 export function getClientApiBaseUrl(): string {
   if (typeof window === 'undefined') {
     return '';

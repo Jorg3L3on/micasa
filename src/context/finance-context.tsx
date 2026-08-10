@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   Suspense,
+  type Context,
   type ReactNode,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -36,7 +37,20 @@ function persist(context: FinanceContextType, userId: number): void {
   );
 }
 
-const FinanceContext = createContext<FinanceContextValue | null>(null);
+/**
+ * Pin the context object on globalThis so layout and page client chunks share
+ * one instance. Duplicate module evaluations otherwise make useFinanceContext()
+ * see null even when FinanceProvider is mounted (Panel financiero chrome).
+ */
+const FinanceContext: Context<FinanceContextValue | null> = (() => {
+  const g = globalThis as typeof globalThis & {
+    __MICASA_FINANCE_CONTEXT__?: Context<FinanceContextValue | null>;
+  };
+  if (!g.__MICASA_FINANCE_CONTEXT__) {
+    g.__MICASA_FINANCE_CONTEXT__ = createContext<FinanceContextValue | null>(null);
+  }
+  return g.__MICASA_FINANCE_CONTEXT__;
+})();
 
 const DEFAULT_CONTEXT: FinanceContextType = { type: 'user', id: 0 };
 

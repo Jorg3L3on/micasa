@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useFinanceContext } from '@/context/finance-context';
+import { parseOwnerQuery } from '@/lib/api/client-fetch';
 import { getCreatedMonths } from '@/lib/api/fortnights';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +47,9 @@ export const MonthlyMonthPicker = ({
   currentMonth,
 }: MonthlyMonthPickerProps) => {
   const router = useRouter();
-  const { context } = useFinanceContext();
+  // Prefer the page's owner query over FinanceProvider — avoids SSR crashes when
+  // this chrome renders before/outside the provider tree.
+  const ownerContext = parseOwnerQuery(ownerQuery);
   const [open, setOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(year);
   /** `null` while unknown / fetch failed — hide planning dots. */
@@ -60,7 +62,7 @@ export const MonthlyMonthPicker = ({
 
     setPickerYear(year);
     setLoadingMonths(true);
-    void getCreatedMonths(context)
+    void getCreatedMonths(ownerContext)
       .then((list) => {
         setCreatedKeys(
           new Set(list.map((entry) => `${entry.year}-${entry.month}`)),

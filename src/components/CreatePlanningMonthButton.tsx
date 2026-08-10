@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { CalendarPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useFinanceContext } from '@/context/finance-context';
+import { parseOwnerQuery } from '@/lib/api/client-fetch';
 import { createMonthFortnights } from '@/lib/api/fortnights';
 
 type CreatePlanningMonthButtonProps = {
@@ -24,17 +24,17 @@ export default function CreatePlanningMonthButton({
   canCreate,
   variant = 'compact',
 }: CreatePlanningMonthButtonProps) {
-  const { context } = useFinanceContext();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
+  const ownerContext = parseOwnerQuery(queryString);
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreate = async () => {
     if (!canCreate || submitting) return;
     try {
       setSubmitting(true);
-      const result = await createMonthFortnights(year, month, context);
+      const result = await createMonthFortnights(year, month, ownerContext);
       const totalExp = result.expensesCreated?.total ?? 0;
       const totalInc = result.incomeCreated?.total ?? 0;
       const parts: string[] = [];
