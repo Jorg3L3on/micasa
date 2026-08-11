@@ -183,7 +183,7 @@ const WalletTransferDialog = ({
               </span>
               <div className="min-w-0 space-y-1.5">
                 <DialogTitle className="text-left text-base">
-                  Transferir dinero
+                  Transferir saldo
                 </DialogTitle>
                 <DialogDescription className="text-left text-xs leading-relaxed">
                   Mueve saldo entre efectivo y débito del mismo contexto. No

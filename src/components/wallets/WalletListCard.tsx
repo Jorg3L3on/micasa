@@ -5,9 +5,11 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   ArrowLeftRight,
+  ArrowRight,
   BookmarkIcon,
   MoreVertical,
   Pencil,
+  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import {
@@ -200,7 +202,7 @@ export const WalletListCard = ({
 
   return (
     <article
-      className={cn('h-full w-full min-w-0 max-w-full', !wallet.active && 'opacity-80')}
+      className={cn('@container h-full w-full min-w-0 max-w-full', !wallet.active && 'opacity-80')}
       aria-label={articleLabel}
     >
       <Card
@@ -342,49 +344,99 @@ export const WalletListCard = ({
             </div>
           </div>
 
-          <div className="mt-auto flex min-w-0 flex-wrap items-center gap-1 sm:gap-2">
-            <WalletPaymentMethodTypeIcon
-              type={wallet.type}
-              className="shrink-0"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn('h-8 shrink-0 px-2 sm:px-3', WALLET_BRAND_HIT_BUTTON_CLASS)}
-              onClick={() => onOpenBalance(wallet)}
-            >
-              Editar saldo
-            </Button>
-            <Link href={detailHref} className="ml-auto shrink-0">
+          <div className="mt-auto flex min-w-0 items-center gap-1">
+            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+              <WalletPaymentMethodTypeIcon
+                type={wallet.type}
+                className="shrink-0"
+              />
+              {/* Icons when the card itself is narrow (grid columns), not viewport sm */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      'shrink-0 @[22rem]:hidden',
+                      WALLET_BRAND_HIT_BUTTON_CLASS,
+                    )}
+                    onClick={() => onOpenBalance(wallet)}
+                    aria-label="Editar saldo"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={4}>
+                  Editar saldo
+                </TooltipContent>
+              </Tooltip>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={cn('h-8 px-2 sm:px-3', WALLET_BRAND_HIT_BUTTON_CLASS)}
+                className={cn(
+                  'hidden h-8 shrink px-3 @[22rem]:inline-flex',
+                  WALLET_BRAND_HIT_BUTTON_CLASS,
+                )}
+                onClick={() => onOpenBalance(wallet)}
               >
-                Detalles →
+                Editar saldo
               </Button>
-            </Link>
-            <DropdownMenu>
+            </div>
+            <div className="flex shrink-0 items-center gap-0.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className={cn('shrink-0', WALLET_BRAND_HIT_BUTTON_CLASS)}
-                      aria-label={`Más opciones para ${wallet.name}`}
-                    >
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      'shrink-0 @[22rem]:hidden',
+                      WALLET_BRAND_HIT_BUTTON_CLASS,
+                    )}
+                  >
+                    <Link href={detailHref} aria-label="Ver detalles">
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    </Link>
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={4}>
-                  Más opciones
+                  Detalles
                 </TooltipContent>
               </Tooltip>
+              <Link
+                href={detailHref}
+                className="hidden shrink-0 @[22rem]:inline-flex"
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn('h-8 px-3', WALLET_BRAND_HIT_BUTTON_CLASS)}
+                >
+                  Detalles →
+                </Button>
+              </Link>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className={cn('shrink-0', WALLET_BRAND_HIT_BUTTON_CLASS)}
+                        aria-label={`Más opciones para ${wallet.name}`}
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    Más opciones
+                  </TooltipContent>
+                </Tooltip>
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem
                   onClick={() => onEdit(wallet)}
@@ -399,7 +451,7 @@ export const WalletListCard = ({
                     className="cursor-pointer"
                   >
                     <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Transferir dinero
+                    Transferir saldo
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuSeparator />
@@ -411,7 +463,8 @@ export const WalletListCard = ({
                   Eliminar
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            </div>
           </div>
         </CardContent>
       </Card>

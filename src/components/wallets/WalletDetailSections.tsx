@@ -340,7 +340,7 @@ export const WalletQuickActions = ({
           {
             key: 'transfer',
             label: 'Transferir',
-            ariaLabel: 'Transferir dinero',
+            ariaLabel: 'Transferir saldo',
             icon: ArrowLeftRight,
             onClick: onTransfer,
           },
