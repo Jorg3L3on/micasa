@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
+  ArrowLeftRight,
   BookmarkIcon,
   MoreVertical,
   Pencil,
@@ -66,6 +68,7 @@ type WalletListCardProps = {
   metrics?: WalletBalanceMetrics | null;
   metricsLoading?: boolean;
   onEdit: (wallet: WalletListItem) => void;
+  onTransfer?: (wallet: WalletListItem) => void;
   onDelete: (wallet: WalletListItem) => void;
   onOpenBalance: (wallet: WalletListItem) => void;
 };
@@ -76,9 +79,11 @@ export const WalletListCard = ({
   metrics,
   metricsLoading = false,
   onEdit,
+  onTransfer,
   onDelete,
   onOpenBalance,
 }: WalletListCardProps) => {
+  const sparklineRef = useRef<HTMLDivElement>(null);
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
@@ -147,7 +152,17 @@ export const WalletListCard = ({
   const diff = metrics?.diff ?? 0;
   const trendIsPositive = isCard ? diff <= 0 : diff >= 0;
 
-  const sparklineData = metrics?.history ?? [];
+  const sparklineData = useMemo(() => {
+    if (metrics?.history && metrics.history.length > 0) {
+      return metrics.history;
+    }
+    // Keep a flat chart when metrics are missing/empty — never replace with copy.
+    const value = displayBalance;
+    return [
+      { date: '', as_of: '', value },
+      { date: '', as_of: '', value },
+    ];
+  }, [metrics?.history, displayBalance]);
 
   const subtitleParts = useMemo(() => {
     const parts: string[] = [typeLabel];
@@ -259,29 +274,57 @@ export const WalletListCard = ({
             </div>
 
             <div
-              className="relative h-14 w-full min-w-0 overflow-hidden sm:h-16"
-              aria-hidden={sparklineData.length === 0 && !metricsLoading}
+              ref={sparklineRef}
+              className="relative z-10 h-14 w-full min-w-0 sm:h-16"
+              aria-hidden
             >
               {metricsLoading ? (
                 <div className="h-full w-full animate-pulse rounded-lg bg-muted/50" />
-              ) : sparklineData.length > 0 ? (
+              ) : (
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <LineChart data={sparklineData}>
+                  <LineChart
+                    data={sparklineData}
+                    margin={{ top: 4, right: 2, left: 2, bottom: 4 }}
+                  >
                     <RechartsTooltip
                       cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ outline: 'none', pointerEvents: 'none' }}
+                      content={({ active, payload, coordinate }) => {
+                        if (
+                          !active ||
+                          !payload?.length ||
+                          coordinate?.x == null ||
+                          coordinate?.y == null ||
+                          typeof document === 'undefined'
+                        ) {
+                          return null;
+                        }
+                        const rect = sparklineRef.current?.getBoundingClientRect();
+                        if (!rect) return null;
                         const point = payload[0].payload as {
                           date: string;
                           value: number;
                         };
-                        return (
-                          <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm shadow-xl">
-                            <p className="mb-1 text-muted-foreground">{point.date}</p>
+                        const left = rect.left + coordinate.x;
+                        const top = rect.top + coordinate.y;
+                        return createPortal(
+                          <div
+                            className="pointer-events-none fixed z-50 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
+                            style={{
+                              left,
+                              top,
+                              transform: 'translate(-50%, calc(-100% - 8px))',
+                            }}
+                          >
+                            {point.date ? (
+                              <p className="mb-0.5 text-muted-foreground">{point.date}</p>
+                            ) : null}
                             <p className="font-mono font-medium tabular-nums text-foreground">
                               {formatCurrency(point.value)}
                             </p>
-                          </div>
+                          </div>,
+                          document.body,
                         );
                       }}
                     />
@@ -295,10 +338,6 @@ export const WalletListCard = ({
                     />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/20 px-2 text-center text-xs text-muted-foreground">
-                  Sin historial de movimientos
-                </div>
               )}
             </div>
           </div>
@@ -354,6 +393,15 @@ export const WalletListCard = ({
                   <Pencil className="mr-2 h-4 w-4" />
                   Editar
                 </DropdownMenuItem>
+                {isFunding && onTransfer ? (
+                  <DropdownMenuItem
+                    onClick={() => onTransfer(wallet)}
+                    className="cursor-pointer"
+                  >
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+                    Transferir dinero
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDelete(wallet)}

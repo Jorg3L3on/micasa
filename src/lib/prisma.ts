@@ -5,6 +5,8 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
 const LOCAL_TIMESTAMP_WRITES = Symbol.for('micasa.localTimestampWrites')
+/** Bump when adding models so long-lived `npm run dev` drops a stale singleton. */
+const PRISMA_CLIENT_GENERATION = 2
 
 type TaggedPrismaClient = PrismaClient & {
   [LOCAL_TIMESTAMP_WRITES]?: true
@@ -33,14 +35,33 @@ function createPrismaClient(): PrismaClient {
   return prisma
 }
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: TaggedPrismaClient | undefined
+function isCurrentPrismaClient(
+  client: TaggedPrismaClient | undefined,
+): client is TaggedPrismaClient {
+  if (!client?.[LOCAL_TIMESTAMP_WRITES]) return false
+  // Guard against HMR keeping a client generated before a new model existed.
+  const delegate = (
+    client as TaggedPrismaClient & {
+      walletTransfer?: { findMany?: unknown }
+    }
+  ).walletTransfer
+  return typeof delegate?.findMany === 'function'
 }
 
-const prisma = globalForPrisma.prisma?.[LOCAL_TIMESTAMP_WRITES]
-  ? globalForPrisma.prisma
-  : createPrismaClient()
+const globalForPrisma = globalThis as unknown as {
+  prisma: TaggedPrismaClient | undefined
+  prismaGeneration?: number
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+const prisma =
+  isCurrentPrismaClient(globalForPrisma.prisma) &&
+  globalForPrisma.prismaGeneration === PRISMA_CLIENT_GENERATION
+    ? globalForPrisma.prisma
+    : createPrismaClient()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma
+  globalForPrisma.prismaGeneration = PRISMA_CLIENT_GENERATION
+}
 
 export default prisma

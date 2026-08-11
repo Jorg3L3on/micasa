@@ -140,3 +140,40 @@ export async function deleteWallet(
     method: 'DELETE',
   }, context);
 }
+
+export type CreateWalletTransferPayload = {
+  from_wallet_id: number;
+  to_wallet_id: number;
+  amount: number;
+  fee_amount?: number;
+  note?: string | null;
+  transferred_at: string;
+  exclude_from_report?: boolean;
+};
+
+export type CreateWalletTransferResponse = {
+  id: number;
+  amount: number;
+  fee_amount: number;
+  from_wallet_id: number;
+  to_wallet_id: number;
+  note: string | null;
+  transferred_at: string;
+  exclude_from_report: boolean;
+  from_wallet_amount: number;
+  to_wallet_amount: number;
+};
+
+export async function createWalletTransfer(
+  data: CreateWalletTransferPayload,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreateWalletTransferResponse>(
+    '/api/wallets/transfers',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}

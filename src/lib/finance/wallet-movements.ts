@@ -109,6 +109,80 @@ export const mapCardPaymentToWalletMovement = (
   return null;
 };
 
+type WalletTransferMovementSource = {
+  id: number;
+  amount: unknown;
+  fee_amount: unknown;
+  transferred_at: Date;
+  note: string | null;
+  from_wallet_id: number;
+  to_wallet_id: number;
+  from_wallet: { name: string };
+  to_wallet: { name: string };
+};
+
+const emptyFortnightFields = {
+  fortnightYear: null,
+  fortnightMonth: null,
+  fortnightPeriod: null,
+} as const;
+
+export const mapWalletTransferToMovements = (
+  transfer: WalletTransferMovementSource,
+  walletId: number,
+): WalletMovement[] => {
+  const amount = toNumber(transfer.amount);
+  const feeAmount = toNumber(transfer.fee_amount);
+  const date = toISODate(transfer.transferred_at);
+  const noteSuffix = transfer.note?.trim()
+    ? `: ${transfer.note.trim()}`
+    : '';
+  const items: WalletMovement[] = [];
+
+  if (transfer.from_wallet_id === walletId) {
+    items.push({
+      id: transfer.id,
+      kind: 'wallet_transfer',
+      date,
+      description: `Transferencia a ${transfer.to_wallet.name}${noteSuffix}`,
+      amount,
+      direction: 'out',
+      category: 'Transferencia',
+      categoryIcon: null,
+      ...emptyFortnightFields,
+    });
+    if (feeAmount > 0) {
+      items.push({
+        id: transfer.id,
+        kind: 'wallet_transfer_fee',
+        date,
+        description: `Comisión de transferencia${noteSuffix}`,
+        amount: feeAmount,
+        direction: 'out',
+        category: 'Comisión',
+        categoryIcon: null,
+        ...emptyFortnightFields,
+      });
+    }
+  }
+
+  if (transfer.to_wallet_id === walletId) {
+    items.push({
+      id: transfer.id,
+      kind: 'wallet_transfer',
+      date,
+      description: `Transferencia desde ${transfer.from_wallet.name}${noteSuffix}`,
+      amount,
+      direction: 'in',
+      category: 'Transferencia',
+      categoryIcon: null,
+      ...emptyFortnightFields,
+    });
+  }
+
+  return items;
+};
+
 export async function listWalletMovements(
   walletId: number,
   ownerFilter: OwnerFilter,
@@ -117,7 +191,7 @@ export async function listWalletMovements(
 ): Promise<WalletMovement[]> {
   const { fromDate, toDate } = buildRange(from, to);
 
-  const [expenses, incomes, cardPayments] = await Promise.all([
+  const [expenses, incomes, cardPayments, walletTransfers] = await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -159,6 +233,17 @@ export async function listWalletMovements(
       include: {
         credit_card_wallet: { select: { name: true } },
         source_wallet: { select: { name: true } },
+      },
+    }),
+    prisma.walletTransfer.findMany({
+      where: {
+        ...ownerFilter,
+        OR: [{ from_wallet_id: walletId }, { to_wallet_id: walletId }],
+        transferred_at: { gte: fromDate, lte: toDate },
+      },
+      include: {
+        from_wallet: { select: { name: true } },
+        to_wallet: { select: { name: true } },
       },
     }),
   ]);
@@ -212,9 +297,14 @@ export async function listWalletMovements(
     }
   }
 
+  for (const transfer of walletTransfers) {
+    items.push(...mapWalletTransferToMovements(transfer, walletId));
+  }
+
   items.sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-    return b.id - a.id;
+    if (a.id !== b.id) return b.id - a.id;
+    return a.kind.localeCompare(b.kind);
   });
 
   return items;

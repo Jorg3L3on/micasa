@@ -1,4 +1,9 @@
-export type WalletMovementKind = 'expense' | 'income' | 'card_payment';
+export type WalletMovementKind =
+  | 'expense'
+  | 'income'
+  | 'card_payment'
+  | 'wallet_transfer'
+  | 'wallet_transfer_fee';
 
 export type WalletMovement = {
   id: number;

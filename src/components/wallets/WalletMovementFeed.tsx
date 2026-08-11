@@ -43,10 +43,17 @@ const sortMovements = (
       ? [...items]
       : kindFilter === 'expense'
         ? items.filter(
-            (i) => i.kind === 'expense' || (i.kind === 'card_payment' && i.direction === 'out'),
+            (i) =>
+              i.kind === 'expense' ||
+              i.kind === 'wallet_transfer_fee' ||
+              ((i.kind === 'card_payment' || i.kind === 'wallet_transfer') &&
+                i.direction === 'out'),
           )
         : items.filter(
-            (i) => i.kind === 'income' || (i.kind === 'card_payment' && i.direction === 'in'),
+            (i) =>
+              i.kind === 'income' ||
+              ((i.kind === 'card_payment' || i.kind === 'wallet_transfer') &&
+                i.direction === 'in'),
           );
   if (q) {
     rows = rows.filter(
@@ -243,7 +250,7 @@ export const WalletMovementsFeed = ({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{m.description}</p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                           {m.category ? (
                             <>
                               <CategoryLabel name={m.category} icon={m.categoryIcon} />
@@ -253,15 +260,19 @@ export const WalletMovementsFeed = ({
                           <span>
                             {m.kind === 'card_payment'
                               ? 'Pago tarjeta'
-                              : isIn
-                                ? 'Ingreso'
-                                : 'Egreso'}
+                              : m.kind === 'wallet_transfer'
+                                ? 'Transferencia'
+                                : m.kind === 'wallet_transfer_fee'
+                                  ? 'Comisión'
+                                  : isIn
+                                    ? 'Ingreso'
+                                    : 'Egreso'}
                           </span>
                         </p>
                         {fortnightLink ? (
                           <Link
                             href={fortnightLink}
-                            className="mt-1 inline-block text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                            className="mt-1 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
                           >
                             Ver en quincena
                           </Link>

@@ -6,6 +6,7 @@ import { Plus, Wallet as WalletIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
+import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import WalletForm from '@/components/WalletForm';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
@@ -126,6 +127,10 @@ export default function WalletDetailPage() {
   });
   const [importOpen, setImportOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferWallets, setTransferWallets] = useState<
+    { id: number; name: string; type: string; amount: number; active: boolean }[]
+  >([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [expenseOpen, setExpenseOpen] = useState(false);
@@ -222,6 +227,18 @@ export default function WalletDetailPage() {
         setPaymentPlanItems([]);
         setPaymentSources([]);
         setCategoryOptions([]);
+        const list = await clientFetchFromApi<
+          { id: number; name: string; type: string; amount: number | string; active: boolean }[]
+        >('/api/wallets', undefined, context);
+        setTransferWallets(
+          list.map((w) => ({
+            id: w.id,
+            name: w.name,
+            type: w.type,
+            amount: Number(w.amount) || 0,
+            active: w.active,
+          })),
+        );
       }
     } catch (err) {
       setError(
@@ -433,10 +450,12 @@ export default function WalletDetailPage() {
       <div className="py-7 sm:py-9" role="presentation">
         <WalletQuickActions
           canImport={canImport}
+          canTransfer={canImport}
           onRegisterExpense={handleOpenExpense}
           onRegisterIncome={() => setIncomeOpen(true)}
           onImport={() => setImportOpen(true)}
           onAdjustBalance={() => setBalanceOpen(true)}
+          onTransfer={() => setTransferOpen(true)}
         />
       </div>
 
@@ -582,6 +601,17 @@ export default function WalletDetailPage() {
         variant={isCreditWallet ? 'credit' : 'funding'}
         creditLimit={wallet.credit_limit}
       />
+
+      {!isCreditWallet ? (
+        <WalletTransferDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          wallets={transferWallets}
+          defaultFromWalletId={wallet.id}
+          context={context}
+          onSuccess={loadData}
+        />
+      ) : null}
 
       <WalletForm
         open={editOpen}

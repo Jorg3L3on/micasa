@@ -75,6 +75,7 @@ import {
 import type { WalletListItem } from '@/types/catalog';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
+import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { cn } from '@/lib/utils';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -394,6 +395,7 @@ export default function WalletsPage() {
     null,
   );
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
+  const [transferWallet, setTransferWallet] = useState<WalletListItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -908,6 +910,10 @@ export default function WalletsPage() {
     setSelectedWallet(wallet);
     setDeleteDialogOpen(true);
     setError(null);
+  }, []);
+
+  const openTransferDialog = useCallback((wallet: WalletListItem) => {
+    setTransferWallet(wallet);
   }, []);
 
   const handleToggleSortDir = useCallback(() => {
@@ -1477,6 +1483,7 @@ export default function WalletsPage() {
                         metrics={walletMetrics[String(wallet.id)] ?? null}
                         metricsLoading={metricsLoading}
                         onEdit={openEditDialog}
+                        onTransfer={openTransferDialog}
                         onDelete={openDeleteDialog}
                         onOpenBalance={setBalanceWallet}
                       />
@@ -1524,6 +1531,26 @@ export default function WalletsPage() {
           setBalanceWallet((prev) =>
             prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
           );
+          void fetchWalletMetrics();
+        }}
+      />
+
+      <WalletTransferDialog
+        open={transferWallet != null}
+        onOpenChange={(open) => {
+          if (!open) setTransferWallet(null);
+        }}
+        wallets={wallets.map((w) => ({
+          id: w.id,
+          name: w.name,
+          type: w.type,
+          amount: Number(w.amount) || 0,
+          active: w.active,
+        }))}
+        defaultFromWalletId={transferWallet?.id ?? null}
+        context={context}
+        onSuccess={async () => {
+          await fetchWallets();
           void fetchWalletMetrics();
         }}
       />

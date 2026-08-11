@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, type ReactNode } from 'react';
 import {
   ArrowDownLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   Banknote,
   ChevronLeft,
@@ -254,7 +255,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
               </div>
             </div>
             {!wallet.active ? (
-              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider opacity-80">
+              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider opacity-80">
                 Inactiva
               </span>
             ) : null}
@@ -274,7 +275,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
               {formatCurrency(wallet.amount)}
             </p>
             {isNegative ? (
-              <p className="text-[11px] font-medium text-rose-200/90">
+              <p className="text-xs font-medium text-rose-200/90">
                 Saldo en rojo — revisa movimientos del periodo
               </p>
             ) : null}
@@ -287,18 +288,22 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
 
 type QuickActionsProps = {
   canImport: boolean;
+  canTransfer?: boolean;
   onRegisterExpense: () => void;
   onRegisterIncome: () => void;
   onImport: () => void;
   onAdjustBalance: () => void;
+  onTransfer?: () => void;
 };
 
 export const WalletQuickActions = ({
   canImport,
+  canTransfer = false,
   onRegisterExpense,
   onRegisterIncome,
   onImport,
   onAdjustBalance,
+  onTransfer,
 }: QuickActionsProps) => {
   const actions = [
     ...(canImport
@@ -330,6 +335,17 @@ export const WalletQuickActions = ({
       icon: SlidersHorizontal,
       onClick: onAdjustBalance,
     },
+    ...(canTransfer && onTransfer
+      ? [
+          {
+            key: 'transfer',
+            label: 'Transferir',
+            ariaLabel: 'Transferir dinero',
+            icon: ArrowLeftRight,
+            onClick: onTransfer,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -349,7 +365,7 @@ export const WalletQuickActions = ({
           <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/15 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/8">
             <Icon className="h-5 w-5 text-foreground dark:text-white" aria-hidden data-icon="inline-start" />
           </span>
-          <span className="max-w-[4.5rem] text-center text-[11px] font-medium leading-tight text-muted-foreground">
+          <span className="max-w-[4.5rem] text-center text-xs font-medium leading-tight text-muted-foreground">
             {label}
           </span>
         </button>
@@ -456,7 +472,7 @@ export const WalletPeriodSummary = ({
           <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {isCurrentMonth ? 'Mes actual' : 'Periodo'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">{rangeLabel}</p>

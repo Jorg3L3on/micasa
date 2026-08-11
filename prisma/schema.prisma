@@ -101,6 +101,7 @@ model User {
   creditCardPayments CreditCardPayment[]
   budgets            Budget[]
   loans              Loan[]
+  walletTransfers    WalletTransfer[]
 
   credit_card_statement_imports_created CreditCardStatementImport[] @relation("CreditCardStatementImportCreatedBy")
   credit_card_statement_imports_owned   CreditCardStatementImport[] @relation("CreditCardStatementImportUserOwner")
@@ -348,6 +349,7 @@ model House {
   creditCardPayments            CreditCardPayment[]
   budgets                       Budget[]
   credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
+  walletTransfers               WalletTransfer[]
 }
 
 model HouseMember {
@@ -406,6 +408,8 @@ model Wallet {
   credit_card_statement_imports CreditCardStatementImport[]
   credit_card_payment_plans     CreditCardPaymentPlan[]
   budgetAllocations             BudgetAllocation[]
+  wallet_transfers_from         WalletTransfer[]            @relation("WalletTransferFrom")
+  wallet_transfers_to           WalletTransfer[]            @relation("WalletTransferTo")
 
   @@index([user_id])
   @@index([house_id])
@@ -552,6 +556,32 @@ model Transfer {
   @@index([user_id])
   @@index([house_id])
   @@index([created_at])
+}
+
+/// Same-owner wallet↔wallet reallocation (CASH/DEBIT). No Expense/Income rows.
+model WalletTransfer {
+  id                   Int      @id @default(autoincrement())
+  amount               Decimal  @db.Decimal(10, 2)
+  fee_amount           Decimal  @default(0) @db.Decimal(10, 2)
+  from_wallet_id       Int
+  to_wallet_id         Int
+  note                 String?
+  transferred_at       DateTime @db.Timestamp(3)
+  exclude_from_report  Boolean  @default(true)
+  user_id              Int?
+  house_id             Int?
+  created_at           DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  from_wallet Wallet @relation("WalletTransferFrom", fields: [from_wallet_id], references: [id])
+  to_wallet   Wallet @relation("WalletTransferTo", fields: [to_wallet_id], references: [id])
+  user        User?  @relation(fields: [user_id], references: [id])
+  house       House? @relation(fields: [house_id], references: [id])
+
+  @@index([from_wallet_id])
+  @@index([to_wallet_id])
+  @@index([user_id])
+  @@index([house_id])
+  @@index([transferred_at])
 }
 
 model CreditCardPayment {
