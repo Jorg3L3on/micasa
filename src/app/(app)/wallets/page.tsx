@@ -129,7 +129,9 @@ const STATUS_FILTER_CHIPS: { value: StatusFilterValue; label: string }[] = [
 
 const TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
   { value: TYPE_FILTER_ALL, label: 'Todos' },
-  ...PAYMENT_METHOD_OPTIONS.map(({ value, label }) => ({ value, label })),
+  ...PAYMENT_METHOD_OPTIONS.filter(({ value }) => value !== 'GOAL').map(
+    ({ value, label }) => ({ value, label }),
+  ),
 ];
 
 const BALANCE_FILTER_CHIPS: { value: BalanceFilterValue; label: string }[] = [
@@ -259,6 +261,7 @@ const walletMatchesKindFilter = (
   w: WalletListItem,
   kindFilter: KindFilterValue,
 ): boolean => {
+  if (w.type === 'GOAL') return false;
   if (kindFilter === 'all') return true;
   if (kindFilter === 'funding') {
     return w.type === 'CASH' || w.type === 'DEBIT_CARD';
@@ -830,6 +833,8 @@ export default function WalletsPage() {
         include_in_liquidity: data.include_in_liquidity ?? true,
         cutoff_day: data.cutoff_day || null,
         due_day: data.due_day || null,
+        goal_amount: data.goal_amount ?? null,
+        goal_due_date: data.goal_due_date ?? null,
         assignee_user_id: data.assignee_user_id ?? null,
       };
 
@@ -1515,6 +1520,7 @@ export default function WalletsPage() {
         }}
         onSave={handleCreate}
         mode="create"
+        allowedTypes={['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}
         error={formError && createDialogOpen ? formError : null}
       />
 
@@ -1580,8 +1586,11 @@ export default function WalletsPage() {
               include_in_liquidity: selectedWallet.include_in_liquidity ?? true,
               cutoff_day: selectedWallet.cutoff_day,
               due_day: selectedWallet.due_day,
+              goal_amount: null,
+              goal_due_date: null,
               assignee_user_id: selectedWallet.assignee_user_id ?? null,
             }}
+            allowedTypes={['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}
             error={formError && editDialogOpen ? formError : null}
           />
 

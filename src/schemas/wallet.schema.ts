@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  dateStringSchema,
   nullablePositiveInt,
   nonNegativeAmountSchema,
   positiveAmountSchema,
@@ -23,18 +24,72 @@ const nullableCreditLimitSchema = z.preprocess(
   nonNegativeAmountSchema.nullable(),
 );
 
-const applyWalletBusinessRules = (
-  data: {
-    type: (typeof PAYMENT_METHODS)[number];
-    cutoff_day: number | null;
-    due_day: number | null;
-    credit_limit?: number | null;
-    temporary_credit_limit?: number | null;
+const nullableGoalAmountSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === '' || value === null) return null;
+    return Number(value);
   },
+  positiveAmountSchema.nullable(),
+);
+
+const nullableGoalDueDateSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === '' || value === null) return null;
+    return value;
+  },
+  dateStringSchema.nullable(),
+);
+
+type WalletRuleShape = {
+  type: (typeof PAYMENT_METHODS)[number];
+  cutoff_day: number | null;
+  due_day: number | null;
+  credit_limit?: number | null;
+  temporary_credit_limit?: number | null;
+  goal_amount?: number | null;
+  goal_due_date?: string | null;
+  include_in_liquidity?: boolean;
+};
+
+const applyWalletBusinessRules = (
+  data: WalletRuleShape,
   ctx: z.RefinementCtx,
 ) => {
   const isCard =
     data.type === 'CREDIT_CARD' || data.type === 'DEPARTMENT_STORE_CARD';
+  const isGoal = data.type === 'GOAL';
+
+  if (isGoal) {
+    if (data.goal_amount == null || data.goal_amount <= 0) {
+      ctx.addIssue({
+        path: ['goal_amount'],
+        message: 'El monto objetivo es obligatorio para metas',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+    if (!data.goal_due_date) {
+      ctx.addIssue({
+        path: ['goal_due_date'],
+        message: 'La fecha límite es obligatoria para metas',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+  } else {
+    if (data.goal_amount != null) {
+      ctx.addIssue({
+        path: ['goal_amount'],
+        message: 'El monto objetivo solo aplica para metas',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+    if (data.goal_due_date != null) {
+      ctx.addIssue({
+        path: ['goal_due_date'],
+        message: 'La fecha límite solo aplica para metas',
+        code: z.ZodIssueCode.custom,
+      });
+    }
+  }
 
   if (isCard) {
     if (data.credit_limit == null || data.credit_limit <= 0) {
@@ -98,48 +153,61 @@ const applyWalletBusinessRules = (
 };
 
 // Wallet Schemas
-export const createWalletSchema = z.object({
-  name: requiredStringSchema,
-  amount: positiveAmountSchema.default(0),
-  credit_limit: nullableCreditLimitSchema.optional(),
-  temporary_credit_limit: nullableCreditLimitSchema.optional(),
-  type: paymentMethodType,
-  provider_icon_key: walletProviderIconKeySchema.optional(),
-  active: z.boolean().default(true),
-  include_in_liquidity: z.boolean().default(true),
-  cutoff_day: nullablePositiveInt,
-  due_day: nullablePositiveInt,
-  /** Solo en contexto casa: miembro atribuido (null = compartida). */
-  assignee_user_id: z.number().int().positive().nullable().optional(),
-}).superRefine(applyWalletBusinessRules);
+export const createWalletSchema = z
+  .object({
+    name: requiredStringSchema,
+    amount: positiveAmountSchema.default(0),
+    credit_limit: nullableCreditLimitSchema.optional(),
+    temporary_credit_limit: nullableCreditLimitSchema.optional(),
+    type: paymentMethodType,
+    provider_icon_key: walletProviderIconKeySchema.optional(),
+    active: z.boolean().default(true),
+    include_in_liquidity: z.boolean().default(true),
+    cutoff_day: nullablePositiveInt,
+    due_day: nullablePositiveInt,
+    goal_amount: nullableGoalAmountSchema.optional(),
+    goal_due_date: nullableGoalDueDateSchema.optional(),
+    /** Solo en contexto casa: miembro atribuido (null = compartida). */
+    assignee_user_id: z.number().int().positive().nullable().optional(),
+  })
+  .superRefine(applyWalletBusinessRules);
 
-export const updateWalletSchema = z.object({
-  name: requiredStringSchema.optional(),
-  amount: nonNegativeAmountSchema.optional(),
-  credit_limit: nullableCreditLimitSchema.optional(),
-  temporary_credit_limit: nullableCreditLimitSchema.optional(),
-  type: paymentMethodType.optional(),
-  provider_icon_key: walletProviderIconKeySchema.optional(),
-  active: z.boolean().optional(),
-  include_in_liquidity: z.boolean().optional(),
-  cutoff_day: nullablePositiveInt.optional(),
-  due_day: nullablePositiveInt.optional(),
-  assignee_user_id: z.number().int().positive().nullable().optional(),
-}).superRefine((data, ctx) => {
-  const type = data.type;
-  if (!type) return;
+export const updateWalletSchema = z
+  .object({
+    name: requiredStringSchema.optional(),
+    amount: nonNegativeAmountSchema.optional(),
+    credit_limit: nullableCreditLimitSchema.optional(),
+    temporary_credit_limit: nullableCreditLimitSchema.optional(),
+    type: paymentMethodType.optional(),
+    provider_icon_key: walletProviderIconKeySchema.optional(),
+    active: z.boolean().optional(),
+    include_in_liquidity: z.boolean().optional(),
+    cutoff_day: nullablePositiveInt.optional(),
+    due_day: nullablePositiveInt.optional(),
+    goal_amount: nullableGoalAmountSchema.optional(),
+    goal_due_date: nullableGoalDueDateSchema.optional(),
+    assignee_user_id: z.number().int().positive().nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const type = data.type;
+    if (!type) {
+      return;
+    }
 
-  applyWalletBusinessRules(
-    {
-      type,
-      cutoff_day: data.cutoff_day ?? null,
-      due_day: data.due_day ?? null,
-      credit_limit: data.credit_limit ?? null,
-      temporary_credit_limit: data.temporary_credit_limit ?? null,
-    },
-    ctx,
-  );
-});
+    applyWalletBusinessRules(
+      {
+        type,
+        cutoff_day: data.cutoff_day ?? null,
+        due_day: data.due_day ?? null,
+        credit_limit: data.credit_limit ?? null,
+        temporary_credit_limit: data.temporary_credit_limit ?? null,
+        goal_amount: data.goal_amount ?? null,
+        goal_due_date: data.goal_due_date ?? null,
+        include_in_liquidity: data.include_in_liquidity,
+      },
+      ctx,
+    );
+  });
 
 export const walletSchema = z
   .object({
@@ -153,9 +221,10 @@ export const walletSchema = z
     include_in_liquidity: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,
+    goal_amount: nullableGoalAmountSchema.default(null),
+    goal_due_date: nullableGoalDueDateSchema.default(null),
     assignee_user_id: z.number().int().positive().nullable().optional().default(null),
   })
-
   .superRefine(applyWalletBusinessRules);
 
 export type WalletFormInput = z.input<typeof walletSchema>;

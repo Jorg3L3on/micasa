@@ -31,6 +31,9 @@ export type WalletDetail = {
   include_in_liquidity: boolean;
   cutoff_day: number | null;
   due_day: number | null;
+  goal_amount: number | null;
+  goal_due_date: string | null;
+  created_at: string | null;
   assignee_user_id: number | null;
 };
 

@@ -35,6 +35,7 @@ import {
 import { ToggleField } from '@/components/ui/toggle';
 import { createWalletTransfer } from '@/lib/api/wallets';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import { isGoalWalletType, isTransferableWalletType } from '@/domain/payment-method';
 import { formatCurrency } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 
@@ -56,8 +57,6 @@ export type WalletTransferDialogProps = {
   onSuccess: () => Promise<void> | void;
 };
 
-const isFunding = (type: string) => type === 'CASH' || type === 'DEBIT_CARD';
-
 const WalletTransferDialog = ({
   open,
   onOpenChange,
@@ -67,7 +66,8 @@ const WalletTransferDialog = ({
   onSuccess,
 }: WalletTransferDialogProps) => {
   const fundingWallets = useMemo(
-    () => wallets.filter((w) => w.active && isFunding(w.type)),
+    () =>
+      wallets.filter((w) => w.active && isTransferableWalletType(w.type)),
     [wallets],
   );
 
@@ -111,6 +111,8 @@ const WalletTransferDialog = ({
   const sourceDebit = parsedAmount + parsedFee;
   const wouldGoNegative =
     fromWallet != null && fromWallet.amount < sourceDebit && sourceDebit > 0;
+  const fromIsGoal = fromWallet != null && isGoalWalletType(fromWallet.type);
+  const goalExceedsSaved = fromIsGoal && wouldGoNegative;
 
   const submitTransfer = async () => {
     if (!fromWalletId || !toWalletId) {
@@ -127,6 +129,12 @@ const WalletTransferDialog = ({
     }
     if (addFee && (!Number.isFinite(parsedFee) || parsedFee < 0)) {
       toast.error('Ingresa una comisión válida');
+      return;
+    }
+    if (goalExceedsSaved && fromWallet) {
+      toast.error(
+        `En una meta no puedes transferir más de lo ahorrado (${formatCurrency(fromWallet.amount)})`,
+      );
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -162,6 +170,12 @@ const WalletTransferDialog = ({
   };
 
   const handleSubmitClick = () => {
+    if (goalExceedsSaved && fromWallet) {
+      toast.error(
+        `En una meta no puedes transferir más de lo ahorrado (${formatCurrency(fromWallet.amount)})`,
+      );
+      return;
+    }
     if (wouldGoNegative) {
       setConfirmNegativeOpen(true);
       return;
@@ -212,6 +226,19 @@ const WalletTransferDialog = ({
                   placeholder="0.00"
                   aria-label="Monto a transferir"
                 />
+                {fromIsGoal && fromWallet ? (
+                  <p className="text-xs text-muted-foreground">
+                    Máximo ahorrado:{' '}
+                    <span className="font-mono tabular-nums text-foreground">
+                      {formatCurrency(fromWallet.amount)}
+                    </span>
+                  </p>
+                ) : null}
+                {goalExceedsSaved ? (
+                  <p className="text-xs text-destructive" role="alert">
+                    El monto no puede ser mayor al ahorro de la meta.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">

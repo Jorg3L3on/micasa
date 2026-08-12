@@ -5,6 +5,7 @@ import {
   CreditCard,
   Landmark,
   ShoppingBag,
+  Target,
   type LucideIcon,
 } from 'lucide-react';
 import type { PaymentMethodType } from '@/domain/payment-method';
@@ -21,6 +22,7 @@ const TYPE_ICON: Record<PaymentMethodType, LucideIcon> = {
   DEBIT_CARD: Landmark,
   CREDIT_CARD: CreditCard,
   DEPARTMENT_STORE_CARD: ShoppingBag,
+  GOAL: Target,
 };
 
 export const WalletPaymentMethodTypeIcon = ({

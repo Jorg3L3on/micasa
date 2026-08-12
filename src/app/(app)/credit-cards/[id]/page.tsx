@@ -770,6 +770,8 @@ const CreditCardDetailPageContent = () => {
           include_in_liquidity: card.include_in_liquidity ?? true,
           cutoff_day: card.cutoff_day,
           due_day: card.due_day,
+          goal_amount: null,
+          goal_due_date: null,
           assignee_user_id: card.assignee_user_id ?? null,
         }}
         error={

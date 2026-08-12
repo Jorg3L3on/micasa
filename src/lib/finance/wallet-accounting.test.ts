@@ -35,6 +35,15 @@ describe('countsTowardLiquidity', () => {
       }),
     ).toBe(false);
   });
+
+  it('never counts GOAL wallets toward liquidity', () => {
+    expect(
+      countsTowardLiquidity({
+        type: PaymentMethodType.GOAL,
+        include_in_liquidity: true,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('getWalletAvailableCredit', () => {

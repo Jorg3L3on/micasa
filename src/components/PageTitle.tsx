@@ -145,6 +145,15 @@ function getPageTitle(
     return { title: 'Billeteras', breadcrumbs };
   }
 
+  if (segments[0] === 'metas') {
+    breadcrumbs.push({ label: 'Metas', href: `/metas${qs}` });
+    if (segments[1]) {
+      breadcrumbs.push({ label: 'Detalle' });
+      return { title: 'Meta', breadcrumbs };
+    }
+    return { title: 'Metas', breadcrumbs };
+  }
+
   if (segments[0] === 'credit-cards') {
     breadcrumbs.push({ label: 'Billeteras', href: `/wallets${qs}` });
     breadcrumbs.push({ label: 'Estado de cuenta' });

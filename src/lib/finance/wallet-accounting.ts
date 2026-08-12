@@ -15,11 +15,32 @@ export const FUNDING_WALLET_TYPES = new Set<PaymentMethodType>([
   PaymentMethodType.DEBIT_CARD,
 ]);
 
+export const GOAL_WALLET_TYPES = new Set<PaymentMethodType>([
+  PaymentMethodType.GOAL,
+]);
+
+/** Wallets that can participate in wallet↔wallet Transferir dinero. */
+export const TRANSFERABLE_WALLET_TYPES = new Set<PaymentMethodType>([
+  PaymentMethodType.CASH,
+  PaymentMethodType.DEBIT_CARD,
+  PaymentMethodType.GOAL,
+]);
+
 export const isCreditWalletType = (type: PaymentMethodType) =>
   CREDIT_WALLET_TYPES.has(type);
 
 export const isFundingWalletType = (type: PaymentMethodType) =>
   FUNDING_WALLET_TYPES.has(type);
+
+export const isGoalWalletType = (type: PaymentMethodType) =>
+  GOAL_WALLET_TYPES.has(type);
+
+export const isTransferableWalletType = (type: PaymentMethodType) =>
+  TRANSFERABLE_WALLET_TYPES.has(type);
+
+/** Cash-like outflow wallets: funding + goals (not credit). */
+export const isSpendableCashWalletType = (type: PaymentMethodType) =>
+  isFundingWalletType(type) || isGoalWalletType(type);
 
 /** Funding wallets that count toward Liquidez balance (efectivo + débito). */
 export const countsTowardLiquidity = (wallet: {
@@ -78,7 +99,7 @@ export const assertPaidChargeAllowedForWallet = (
     }
     return;
   }
-  if (isFundingWalletType(wallet.type) && balance < chargeAmount) {
+  if (isSpendableCashWalletType(wallet.type) && balance < chargeAmount) {
     const error = new Error(
       'Saldo insuficiente en la billetera',
     ) as Error & { code?: string };

@@ -88,6 +88,10 @@ export const WalletListCard = ({
   const sparklineRef = useRef<HTMLDivElement>(null);
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
+  const canTransfer =
+    wallet.type === 'CASH' ||
+    wallet.type === 'DEBIT_CARD' ||
+    wallet.type === 'GOAL';
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
 
   const providerCardStyle = useMemo(
@@ -445,7 +449,7 @@ export const WalletListCard = ({
                   <Pencil className="mr-2 h-4 w-4" />
                   Editar
                 </DropdownMenuItem>
-                {isFunding && onTransfer ? (
+                {canTransfer && onTransfer ? (
                   <DropdownMenuItem
                     onClick={() => onTransfer(wallet)}
                     className="cursor-pointer"

@@ -3,7 +3,8 @@ import prisma from '@/lib/prisma';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import {
   applyWalletAmountDelta,
-  isFundingWalletType,
+  isGoalWalletType,
+  isTransferableWalletType,
   toWalletAmountNumber,
 } from '@/lib/finance/wallet-accounting';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -78,9 +79,12 @@ export async function createWalletTransferForOwner(
       );
     }
 
-    if (!isFundingWalletType(fromWallet.type) || !isFundingWalletType(toWallet.type)) {
+    if (
+      !isTransferableWalletType(fromWallet.type) ||
+      !isTransferableWalletType(toWallet.type)
+    ) {
       throw codedError(
-        'Solo se puede transferir entre efectivo y débito',
+        'Solo se puede transferir entre efectivo, débito y metas',
         'INVALID_WALLET_TYPE',
       );
     }
@@ -90,6 +94,17 @@ export async function createWalletTransferForOwner(
         'Ambas billeteras deben estar activas',
         'INACTIVE_WALLET',
       );
+    }
+
+    const sourceDebit = input.amount + feeAmount;
+    if (isGoalWalletType(fromWallet.type)) {
+      const saved = toWalletAmountNumber(fromWallet);
+      if (sourceDebit > saved) {
+        throw codedError(
+          'En una meta no puedes transferir más de lo ahorrado',
+          'GOAL_INSUFFICIENT_BALANCE',
+        );
+      }
     }
 
     const transferredAt = parseCalendarDate(input.transferred_at);

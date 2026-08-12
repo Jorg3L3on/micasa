@@ -9,6 +9,7 @@ import {
   Receipt,
   Calendar,
   Coins,
+  Goal,
   HandCoins,
   Home,
   PiggyBank,
@@ -90,6 +91,12 @@ export function AppSidebar({
         (pathname.startsWith('/wallets/') &&
           !pathname.startsWith('/wallets/liquidity')) ||
         pathname.startsWith('/credit-cards'),
+    },
+    {
+      title: 'Metas',
+      url: '/metas',
+      icon: Goal,
+      isActive: pathname === '/metas' || pathname.startsWith('/metas/'),
     },
     {
       title: 'Gastos',

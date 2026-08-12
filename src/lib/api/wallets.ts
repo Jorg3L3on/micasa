@@ -110,11 +110,19 @@ export async function updateWallet(
   }, context);
 }
 
-export async function updateWalletStatus(id: number, status: boolean) {
-  return clientFetchFromApi(`/api/wallets?id=${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ active: status }),
-  });
+export async function updateWalletStatus(
+  id: number,
+  status: boolean,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(
+    `/api/wallets?id=${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ active: status }),
+    },
+    context,
+  );
 }
 
 export async function updateWalletLiquidityInclusion(

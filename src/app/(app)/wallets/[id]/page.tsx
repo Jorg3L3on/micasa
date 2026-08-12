@@ -205,6 +205,11 @@ export default function WalletDetailPage() {
       ]);
       setWallet(detail);
       setData(movements);
+      if (detail.type === 'GOAL') {
+        const qs = searchParams.toString();
+        router.replace(`/metas/${walletId}${qs ? `?${qs}` : ''}`);
+        return;
+      }
       if (
         detail.type === 'CREDIT_CARD' ||
         detail.type === 'DEPARTMENT_STORE_CARD'
@@ -247,7 +252,7 @@ export default function WalletDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [context, walletId, range.from, range.to]);
+  }, [context, walletId, range.from, range.to, router, searchParams]);
 
   useEffect(() => {
     loadData();
@@ -638,6 +643,8 @@ export default function WalletDetailPage() {
           include_in_liquidity: wallet.include_in_liquidity ?? true,
           cutoff_day: wallet.cutoff_day,
           due_day: wallet.due_day,
+          goal_amount: wallet.goal_amount ?? null,
+          goal_due_date: wallet.goal_due_date ?? null,
           assignee_user_id: wallet.assignee_user_id ?? null,
         }}
         error={editError && editOpen ? editError : null}

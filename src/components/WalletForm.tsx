@@ -10,6 +10,7 @@ import {
   CreditCard,
   Store,
   CalendarDays,
+  Target,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,6 +83,12 @@ const TYPE_META: Record<WalletFormValues['type'], TypeMeta> = {
     accent: 'text-amber-600 dark:text-amber-400',
     iconBg: 'bg-amber-500/10 dark:bg-amber-500/15',
   },
+  GOAL: {
+    label: 'Meta',
+    icon: Target,
+    accent: 'text-blue-600 dark:text-blue-400',
+    iconBg: 'bg-blue-600/10 dark:bg-blue-500/15',
+  },
 };
 
 type WalletFormProps = {
@@ -120,6 +127,8 @@ const buildWalletFormDefaults = (
   include_in_liquidity: defaultValues?.include_in_liquidity ?? true,
   cutoff_day: toNumericOrNull(defaultValues?.cutoff_day),
   due_day: toNumericOrNull(defaultValues?.due_day),
+  goal_amount: toNumericOrNull(defaultValues?.goal_amount),
+  goal_due_date: defaultValues?.goal_due_date ?? null,
   assignee_user_id: defaultValues?.assignee_user_id ?? null,
 });
 
@@ -174,10 +183,27 @@ export default function WalletForm({
 
   const isCreditType =
     type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
+  const isGoalType = type === 'GOAL';
+  const lockType = typeOptions.length === 1;
 
   const currentMeta = TYPE_META[type] ?? TYPE_META.CASH;
   const HeaderIcon = currentMeta.icon;
   const isSubmitting = form.formState.isSubmitting;
+
+  const dialogTitle = isGoalType
+    ? mode === 'create'
+      ? 'Nueva meta'
+      : 'Editar meta'
+    : mode === 'create'
+      ? 'Nueva billetera'
+      : 'Editar billetera';
+  const dialogDescription = isGoalType
+    ? mode === 'create'
+      ? 'Define nombre, monto objetivo y fecha límite.'
+      : 'Actualiza los datos de esta meta.'
+    : mode === 'create'
+      ? 'Define nombre, tipo y saldo inicial.'
+      : 'Actualiza los datos de esta billetera.';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -198,12 +224,10 @@ export default function WalletForm({
             </span>
             <div className="min-w-0 space-y-1">
               <DialogTitle className="text-left text-base font-semibold leading-tight tracking-tight sm:text-lg">
-                {mode === 'create' ? 'Nueva billetera' : 'Editar billetera'}
+                {dialogTitle}
               </DialogTitle>
               <DialogDescription className="text-left text-sm text-muted-foreground">
-                {mode === 'create'
-                  ? 'Define nombre, tipo y saldo inicial.'
-                  : 'Actualiza los datos de esta billetera.'}
+                {dialogDescription}
               </DialogDescription>
             </div>
           </div>
@@ -228,7 +252,14 @@ export default function WalletForm({
               </div>
             ) : null}
 
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:grid-cols-[minmax(0,4fr)_minmax(4.5rem,1fr)]">
+            <div
+              className={cn(
+                'grid items-start gap-3',
+                isGoalType
+                  ? 'grid-cols-1'
+                  : 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,4fr)_minmax(4.5rem,1fr)]',
+              )}
+            >
               <FormField
                 control={form.control}
                 name="name"
@@ -237,7 +268,11 @@ export default function WalletForm({
                     <FormLabel>Nombre</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ej. Banorte, Efectivo…"
+                        placeholder={
+                          isGoalType
+                            ? 'Ej. Viaje, Auto, TV…'
+                            : 'Ej. Banorte, Efectivo…'
+                        }
                         className="h-10"
                         {...field}
                       />
@@ -247,74 +282,80 @@ export default function WalletForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="active"
-                render={({ field }) => (
-                  <FormItem className="space-y-0 pt-0.5">
-                    <ToggleField
-                      layout="stack"
-                      label="Estado"
-                      checked={Boolean(field.value)}
-                      onCheckedChange={field.onChange}
-                      aria-label="Billetera activa"
-                    />
-                  </FormItem>
-                )}
-              />
+              {!isGoalType ? (
+                <FormField
+                  control={form.control}
+                  name="active"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0 pt-0.5">
+                      <ToggleField
+                        layout="stack"
+                        label="Estado"
+                        checked={Boolean(field.value)}
+                        onCheckedChange={field.onChange}
+                        aria-label="Billetera activa"
+                      />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </div>
 
+            {!isGoalType || !lockType ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem className="min-w-0">
-                    <FormLabel>Tipo de billetera</FormLabel>
-                    <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger
-                          className="h-10 w-full"
-                          aria-label="Tipo de billetera"
-                        >
-                          <SelectValue placeholder="Selecciona un tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {typeOptions.map((value) => {
-                            const meta = TYPE_META[value];
-                            const Icon = meta.icon;
-                            return (
-                              <SelectItem key={value} value={value}>
-                                <span className="flex items-center gap-2">
-                                  <span
-                                    className={cn(
-                                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
-                                      meta.iconBg,
-                                    )}
-                                  >
-                                    <Icon
-                                      className={cn('h-3 w-3', meta.accent)}
-                                      data-icon="inline-start"
-                                    />
+              {!lockType ? (
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem className="min-w-0">
+                      <FormLabel>Tipo de billetera</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger
+                            className="h-10 w-full"
+                            aria-label="Tipo de billetera"
+                          >
+                            <SelectValue placeholder="Selecciona un tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {typeOptions.map((value) => {
+                              const meta = TYPE_META[value];
+                              const Icon = meta.icon;
+                              return (
+                                <SelectItem key={value} value={value}>
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className={cn(
+                                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
+                                        meta.iconBg,
+                                      )}
+                                    >
+                                      <Icon
+                                        className={cn('h-3 w-3', meta.accent)}
+                                        data-icon="inline-start"
+                                      />
+                                    </span>
+                                    {meta.label}
                                   </span>
-                                  {meta.label}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
 
+              {!isGoalType ? (
               <FormField
                 control={form.control}
                 name="provider_icon_key"
                 render={({ field }) => (
-                  <FormItem className="min-w-0">
+                  <FormItem className={cn('min-w-0', lockType && 'sm:col-span-2')}>
                     <FormLabel>Empresa o banco</FormLabel>
                     <FormControl>
                       <Select
@@ -354,9 +395,11 @@ export default function WalletForm({
                   </FormItem>
                 )}
               />
+              ) : null}
             </div>
+            ) : null}
 
-            {showAmountField ? (
+            {showAmountField && !isGoalType ? (
               <FormField
                 control={form.control}
                 name="amount"
@@ -394,7 +437,68 @@ export default function WalletForm({
               />
             ) : null}
 
-            {!isCreditType ? (
+            {isGoalType ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <FormField
+                  control={form.control}
+                  name="goal_amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monto objetivo</FormLabel>
+                      <FormControl>
+                        <CurrencyInput
+                          className="h-10 font-mono tabular-nums"
+                          value={
+                            field.value == null || field.value === ''
+                              ? 0
+                              : Number(field.value)
+                          }
+                          onChange={(val) =>
+                            field.onChange(val === 0 ? null : val)
+                          }
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          placeholder="0.00"
+                          aria-label="Monto objetivo"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="goal_due_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha límite</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          className="h-10"
+                          value={
+                            typeof field.value === 'string' ? field.value : ''
+                          }
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === '' ? null : e.target.value,
+                            )
+                          }
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          aria-label="Fecha límite de la meta"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : null}
+
+            {!isCreditType && !isGoalType ? (
               <FormField
                 control={form.control}
                 name="include_in_liquidity"
@@ -615,7 +719,7 @@ export default function WalletForm({
                     {mode === 'create' ? 'Creando…' : 'Guardando…'}
                   </>
                 ) : mode === 'create' ? (
-                  'Crear billetera'
+                  isGoalType ? 'Crear meta' : 'Crear billetera'
                 ) : (
                   'Guardar cambios'
                 )}

@@ -16,6 +16,7 @@ enum PaymentMethodType {
   DEBIT_CARD
   CREDIT_CARD
   DEPARTMENT_STORE_CARD
+  GOAL
 }
 
 enum FortnightPeriod {
@@ -383,6 +384,11 @@ model Wallet {
   /// Si false, se excluye del saldo de liquidez (efectivo + débito). Solo aplica a CASH/DEBIT_CARD.
   include_in_liquidity         Boolean           @default(true)
   last_paid_period             String?
+
+  /// Meta (GOAL): monto objetivo a alcanzar.
+  goal_amount                  Decimal?          @db.Decimal(10, 2)
+  /// Meta (GOAL): fecha límite (día civil).
+  goal_due_date                DateTime?
 
   user_id  Int?
   house_id Int?

@@ -5,7 +5,10 @@ import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
-import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
+import {
+  applyWalletAmountDelta,
+  isSpendableCashWalletType,
+} from '@/lib/finance/wallet-accounting';
 import { dateStringSchema } from '@/schemas/common.schema';
 
 const bodySchema = z.object({
@@ -41,11 +44,11 @@ export async function POST(
         { status: 404 },
       );
     }
-    if (wallet.type !== 'CASH' && wallet.type !== 'DEBIT_CARD') {
+    if (!isSpendableCashWalletType(wallet.type)) {
       return NextResponse.json(
         {
           error:
-            'Los ingresos en esta vista solo aplican a efectivo y débito.',
+            'Los ingresos en esta vista solo aplican a efectivo, débito y metas.',
         },
         { status: 400 },
       );

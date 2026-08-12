@@ -1,20 +1,39 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
+import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import type {
   CreateWalletInput,
   UpdateWalletInput,
 } from '@/schemas/wallet.schema';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import { isCreditWalletType, isFundingWalletType } from '@/lib/finance/wallet-accounting';
+import { isCreditWalletType, isFundingWalletType, isGoalWalletType } from '@/lib/finance/wallet-accounting';
 
 const resolveIncludeInLiquidity = (
   type: PaymentMethodType | string,
   includeInLiquidity?: boolean,
 ): boolean => {
+  if (isGoalWalletType(type as PaymentMethodType)) return false;
   if (isCreditWalletType(type as PaymentMethodType)) return true;
   if (!isFundingWalletType(type as PaymentMethodType)) return true;
   return includeInLiquidity !== false;
+};
+
+const resolveGoalFields = (
+  type: PaymentMethodType | string,
+  goalAmount?: number | null,
+  goalDueDate?: string | null,
+) => {
+  if (!isGoalWalletType(type as PaymentMethodType)) {
+    return { goal_amount: null, goal_due_date: null };
+  }
+  return {
+    goal_amount: goalAmount ?? null,
+    goal_due_date:
+      goalDueDate == null || goalDueDate === ''
+        ? null
+        : parseCalendarDate(goalDueDate),
+  };
 };
 import { resolveWalletAssignee } from '@/lib/server/wallets/resolve-wallet-assignee';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
@@ -38,6 +57,9 @@ const mapWalletRowToListDto = (
     include_in_liquidity: boolean;
     cutoff_day: number | null;
     due_day: number | null;
+    goal_amount?: unknown;
+    goal_due_date?: Date | null;
+    created_at?: Date;
     assignee_user_id: number | null;
     assignee: { id: number; name: string } | null;
   },
@@ -61,6 +83,10 @@ const mapWalletRowToListDto = (
     include_in_liquidity: w.include_in_liquidity,
     cutoff_day: w.cutoff_day,
     due_day: w.due_day,
+    goal_amount: w.goal_amount == null ? null : Number(w.goal_amount),
+    goal_due_date:
+      w.goal_due_date == null ? null : formatCalendarDate(w.goal_due_date),
+    created_at: w.created_at ? w.created_at.toISOString() : null,
     spent_amount: spent,
     remaining_amount: amountNum - spent,
     assignee_user_id: w.assignee_user_id ?? null,
@@ -179,6 +205,7 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
       ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
+      ...resolveGoalFields(data.type, data.goal_amount, data.goal_due_date),
       user_id: defaultUser.id,
       house_id: null,
       assignee_user_id,
@@ -211,6 +238,7 @@ export async function createWalletForUser(
       ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
+      ...resolveGoalFields(data.type, data.goal_amount, data.goal_due_date),
       user_id: userId,
       house_id: null,
       assignee_user_id,
@@ -229,14 +257,20 @@ export async function createWalletForOwner(
     data.assignee_user_id,
   );
 
+  const isGoal = isGoalWalletType(data.type);
+
   return prisma.wallet.create({
     data: {
       name: data.name,
       amount: data.amount,
-      credit_limit: data.credit_limit,
-      temporary_credit_limit: data.temporary_credit_limit ?? null,
+      credit_limit: isGoal ? null : data.credit_limit,
+      temporary_credit_limit: isGoal
+        ? null
+        : (data.temporary_credit_limit ?? null),
       temporary_credit_limit_as_of:
-        data.temporary_credit_limit != null && data.temporary_credit_limit > 0
+        !isGoal &&
+        data.temporary_credit_limit != null &&
+        data.temporary_credit_limit > 0
           ? new Date()
           : null,
       type: data.type,
@@ -246,8 +280,9 @@ export async function createWalletForOwner(
         data.type,
         data.include_in_liquidity,
       ),
-      cutoff_day: data.cutoff_day,
-      due_day: data.due_day,
+      cutoff_day: isGoal ? null : data.cutoff_day,
+      due_day: isGoal ? null : data.due_day,
+      ...resolveGoalFields(data.type, data.goal_amount, data.goal_due_date),
       user_id: ownerType === 'user' ? ownerId : null,
       house_id: ownerType === 'house' ? ownerId : null,
       assignee_user_id,
@@ -285,10 +320,37 @@ export async function updateWalletMetadataForOwner(
   }
 
   const effectiveType = (data.type ?? existing.type) as PaymentMethodType;
+  const {
+    goal_amount: goalAmountPatch,
+    goal_due_date: goalDueDatePatch,
+    ...restWithoutGoals
+  } = rest;
   const prismaData: Record<string, unknown> = {
-    ...rest,
+    ...restWithoutGoals,
     ...(assigneePatch !== undefined ? { assignee_user_id } : {}),
   };
+
+  if (
+    data.type !== undefined ||
+    goalAmountPatch !== undefined ||
+    goalDueDatePatch !== undefined
+  ) {
+    const goals = resolveGoalFields(
+      effectiveType,
+      goalAmountPatch !== undefined
+        ? goalAmountPatch
+        : existing.goal_amount == null
+          ? null
+          : Number(existing.goal_amount),
+      goalDueDatePatch !== undefined
+        ? goalDueDatePatch
+        : existing.goal_due_date == null
+          ? null
+          : formatCalendarDate(existing.goal_due_date),
+    );
+    prismaData.goal_amount = goals.goal_amount;
+    prismaData.goal_due_date = goals.goal_due_date;
+  }
 
   if (data.include_in_liquidity !== undefined || data.type !== undefined) {
     prismaData.include_in_liquidity = resolveIncludeInLiquidity(

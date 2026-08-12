@@ -13,6 +13,7 @@ import {
   getPaidExpenseWalletDelta,
   isCreditWalletType,
   isFundingWalletType,
+  isSpendableCashWalletType,
 } from '@/lib/finance/wallet-accounting';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -532,7 +533,7 @@ export async function updateExpense(input: UpdateExpenseInput) {
           error.code = 'CREDIT_LIMIT_EXCEEDED';
           throw error;
         }
-      } else if (isFundingWalletType(w.type) && projected < 0) {
+      } else if (isSpendableCashWalletType(w.type) && projected < 0) {
         const error = new Error(
           'Saldo insuficiente en la billetera',
         ) as ExpenseServiceError;

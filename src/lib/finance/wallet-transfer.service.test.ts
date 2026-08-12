@@ -57,6 +57,16 @@ const creditWallet = {
   house_id: null,
 };
 
+const goalWallet = {
+  id: 40,
+  name: 'Viaje',
+  type: PaymentMethodType.GOAL,
+  amount: 3000,
+  active: true,
+  user_id: 1,
+  house_id: null,
+};
+
 describe('createWalletTransferSchema', () => {
   it('accepts a valid transfer and defaults fee/exclude', () => {
     const parsed = createWalletTransferSchema.parse({
@@ -243,6 +253,55 @@ describe('createWalletTransferForOwner', () => {
         note: null,
       }),
     ).rejects.toMatchObject({ code: 'INVALID_WALLET_TYPE' });
+  });
+
+  it('allows GOAL ↔ CASH transfers', async () => {
+    txWalletFindMany.mockResolvedValue([goalWallet, cashWallet]);
+    txWalletTransferCreate.mockResolvedValue({
+      id: 3,
+      amount: 500,
+      fee_amount: 0,
+      from_wallet_id: 40,
+      to_wallet_id: 10,
+      note: null,
+      exclude_from_report: true,
+    });
+    txWalletFindUniqueOrThrow
+      .mockResolvedValueOnce({ ...goalWallet, amount: 2500 })
+      .mockResolvedValueOnce({ ...cashWallet, amount: 5500 });
+
+    await expect(
+      createWalletTransferForOwner(ownerFilter, {
+        from_wallet_id: 40,
+        to_wallet_id: 10,
+        amount: 500,
+        fee_amount: 0,
+        transferred_at: '2026-08-10',
+        exclude_from_report: true,
+        note: null,
+      }),
+    ).resolves.toMatchObject({
+      from_wallet_amount: 2500,
+      to_wallet_amount: 5500,
+    });
+  });
+
+  it('rejects GOAL transfers that exceed saved balance', async () => {
+    txWalletFindMany.mockResolvedValue([goalWallet, cashWallet]);
+
+    await expect(
+      createWalletTransferForOwner(ownerFilter, {
+        from_wallet_id: 40,
+        to_wallet_id: 10,
+        amount: 2500,
+        fee_amount: 600,
+        transferred_at: '2026-08-10',
+        exclude_from_report: true,
+        note: null,
+      }),
+    ).rejects.toMatchObject({ code: 'GOAL_INSUFFICIENT_BALANCE' });
+
+    expect(txWalletTransferCreate).not.toHaveBeenCalled();
   });
 
   it('rejects when a wallet is missing from owner scope', async () => {

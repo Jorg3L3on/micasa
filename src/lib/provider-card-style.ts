@@ -22,6 +22,7 @@ const TYPE_FALLBACK_COLORS: Record<string, string> = {
   DEBIT_CARD: '#3b82f6',
   CREDIT_CARD: '#475569',
   DEPARTMENT_STORE_CARD: '#64748b',
+  GOAL: '#2563eb',
 };
 
 const hexToRgb = (hex: string) => {
@@ -129,6 +130,14 @@ export const isProviderCardDarkSurface = (
   scheme: ProviderCardScheme,
 ): boolean => tone !== 'calm' || scheme === 'dark';
 
+/** List tone: airy brand wash on bg-card — readable with default foreground text. */
+export const getListToneCardStyle = (baseColor: string): CSSProperties => ({
+  background: `linear-gradient(112deg, ${rgba(baseColor, 0.18)} 0%, ${rgba(baseColor, 0.06)} 40%, transparent 72%)`,
+  borderColor: rgba(baseColor, 0.28),
+  borderLeftWidth: '3px',
+  borderLeftColor: rgba(baseColor, 0.5),
+});
+
 export const getProviderCardStyle = (
   providerIconKey?: string | null,
   fallbackType?: string,
@@ -138,14 +147,8 @@ export const getProviderCardStyle = (
   const baseColor = getCardColor(providerIconKey, fallbackType);
   if (!baseColor) return undefined;
 
-  // List tone: airy brand wash on bg-card — readable with default foreground text.
   if (tone === 'list') {
-    return {
-      background: `linear-gradient(112deg, ${rgba(baseColor, 0.18)} 0%, ${rgba(baseColor, 0.06)} 40%, transparent 72%)`,
-      borderColor: rgba(baseColor, 0.28),
-      borderLeftWidth: '3px',
-      borderLeftColor: rgba(baseColor, 0.5),
-    };
+    return getListToneCardStyle(baseColor);
   }
 
   // Calm tone: even brand wash (no left accent stripe / corner bloom).

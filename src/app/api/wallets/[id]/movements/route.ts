@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { formatCalendarDate } from '@/lib/calendar-dates';
 import {
   computeMovementTotals,
   listWalletMovements,
@@ -85,6 +86,12 @@ export async function GET(
       include_in_liquidity: wallet.include_in_liquidity,
       cutoff_day: wallet.cutoff_day,
       due_day: wallet.due_day,
+      goal_amount: wallet.goal_amount == null ? null : Number(wallet.goal_amount),
+      goal_due_date:
+        wallet.goal_due_date == null
+          ? null
+          : formatCalendarDate(wallet.goal_due_date),
+      created_at: wallet.created_at.toISOString(),
       assignee_user_id: wallet.assignee_user_id ?? null,
     };
 

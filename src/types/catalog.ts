@@ -42,7 +42,8 @@ export type ExpenseWalletType =
   | 'CASH'
   | 'DEBIT_CARD'
   | 'CREDIT_CARD'
-  | 'DEPARTMENT_STORE_CARD';
+  | 'DEPARTMENT_STORE_CARD'
+  | 'GOAL';
 
 /** Gasto normal vs filas derivadas de planificación (no editables como gasto). */
 export type PlanningExpenseRowKind =
@@ -228,6 +229,9 @@ export type WalletListItem = {
   include_in_liquidity: boolean;
   cutoff_day: number | null;
   due_day: number | null;
+  goal_amount?: number | null;
+  goal_due_date?: string | null;
+  created_at?: string | null;
   spent_amount: number;
   remaining_amount: number;
   /** Solo billeteras de casa: miembro atribuido; null = compartida. */
