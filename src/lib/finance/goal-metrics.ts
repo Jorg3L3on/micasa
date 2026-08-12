@@ -148,7 +148,7 @@ export function computeGoalMetrics(input: GoalMetricsInput): GoalMetrics {
 /** True when the saved balance has not yet reached the goal amount. */
 export function isGoalIncomplete(input: {
   amount: number;
-  goal_amount: number | null | undefined;
+  goal_amount?: number | null;
 }): boolean {
   const goalAmount = Math.max(0, Number(input.goal_amount ?? 0));
   if (goalAmount <= 0) return true;
@@ -162,14 +162,14 @@ export function isGoalIncomplete(input: {
 export function compareActiveGoals(
   a: {
     amount: number;
-    goal_amount: number | null | undefined;
-    goal_due_date: string | Date | null | undefined;
+    goal_amount?: number | null;
+    goal_due_date?: string | Date | null;
     name?: string | null;
   },
   b: {
     amount: number;
-    goal_amount: number | null | undefined;
-    goal_due_date: string | Date | null | undefined;
+    goal_amount?: number | null;
+    goal_due_date?: string | Date | null;
     name?: string | null;
   },
 ): number {
