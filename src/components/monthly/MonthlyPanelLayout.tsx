@@ -1,9 +1,14 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useSession } from 'next-auth/react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
+import {
+  MONTHLY_CHROME_PADDING_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import { cn } from '@/lib/utils';
 
@@ -46,6 +51,9 @@ export const MonthlyPanelLayout = ({
   createNextControl = null,
   children,
 }: MonthlyPanelLayoutProps) => {
+  const { data: session } = useSession();
+  const firstName = session?.user?.name?.trim().split(/\s+/)[0];
+
   return (
     <MonthlyPanelPreferencesProvider
       ownerKey={ownerKey}
@@ -53,15 +61,16 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      <div
-        className={cn(
-          '@container relative mb-5 overflow-hidden rounded-xl border border-sky-500/20 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3',
-          'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
-          'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
-          'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
-          'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
-        )}
-      >
+      {firstName ? (
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground">Hola, {firstName}</p>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Bienvenido de nuevo
+          </h1>
+        </div>
+      ) : null}
+
+      <div className={cn('@container', MONTHLY_PANEL_SHELL_CLASS, MONTHLY_CHROME_PADDING_CLASS, 'mb-5')}>
         <MonthlyChromeHeader
           year={year}
           month={month}

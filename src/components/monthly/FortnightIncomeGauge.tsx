@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import {
   getFortnightIncomeGaugeSegments,
   getIncomeCommitmentTone,
@@ -30,7 +31,6 @@ const commitmentLabelClass = (tone: 'ok' | 'warning' | 'danger') => {
 
 /** Presupuesto restante: violet (sky ya es “libre” en este gauge). */
 const BUDGET_STROKE_CLASS = 'text-violet-500 dark:text-violet-400';
-const FREE_STROKE_CLASS = 'text-sky-500 dark:text-sky-400';
 
 const GAUGE_CX = 60;
 const GAUGE_CY = 54;
@@ -63,6 +63,7 @@ export const FortnightIncomeGauge = ({
   periodIncome,
   className,
 }: FortnightIncomeGaugeProps) => {
+  const freeGradientId = `fortnightFree-${useId().replace(/:/g, '')}`;
   const segments = getFortnightIncomeGaugeSegments(
     periodIncome,
     cashCommitted,
@@ -96,14 +97,20 @@ export const FortnightIncomeGauge = ({
     >
       <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
         <svg viewBox="0 0 120 60" className="h-full w-full" aria-hidden>
+          <defs>
+            <linearGradient id={freeGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#3a37fc" />
+              <stop offset="100%" stopColor="#ee477a" />
+            </linearGradient>
+          </defs>
           {freePath ? (
             <path
               d={freePath}
               fill="none"
-              stroke="currentColor"
+              stroke={`url(#${freeGradientId})`}
               strokeWidth="10"
               strokeLinecap="round"
-              className={cn('transition-[d] duration-500', FREE_STROKE_CLASS)}
+              className="transition-[d] duration-500"
             />
           ) : null}
           {budgetPath ? (
@@ -178,7 +185,7 @@ export const FortnightIncomeGauge = ({
           </span>
           {freeRatio > 0.0001 ? (
             <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a]" />
               <span className="text-[9px] text-muted-foreground">Libre</span>
             </span>
           ) : null}

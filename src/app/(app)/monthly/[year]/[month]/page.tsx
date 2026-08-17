@@ -15,6 +15,10 @@ import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getSuggestedFortnightPeriodForMonth } from '@/lib/fortnight-calendar';
 import { parseMonthlyRouteParams } from '@/lib/planner/monthly-page';
 import { cn } from '@/lib/utils';
+import {
+  MONTHLY_CHROME_PADDING_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 
 function getMonthName(month: number): string {
   const months = [
@@ -225,11 +229,9 @@ export default async function MonthlyPage({
         >
           <div
             className={cn(
-              'relative overflow-hidden rounded-xl border border-sky-500/20 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3',
-              'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
-              'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
-              'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
-              'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+              '@container',
+              MONTHLY_PANEL_SHELL_CLASS,
+              MONTHLY_CHROME_PADDING_CLASS,
             )}
           >
             <MonthlyChromeHeader
@@ -250,7 +252,7 @@ export default async function MonthlyPage({
           </div>
         </MonthlyPanelPreferencesProvider>
 
-        <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-5')}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold leading-tight">

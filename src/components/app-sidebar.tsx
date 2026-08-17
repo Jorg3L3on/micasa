@@ -22,6 +22,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { TeamSwitcher } from '@/components/team-switcher';
 import { NavUser } from '@/components/nav-user';
 import { NavMain } from '@/components/nav-main';
+import { MicasaMark } from '@/components/brand/micasa-mark';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   Sidebar,
@@ -174,7 +175,13 @@ export function AppSidebar({
     <>
       <MobileSidebarCloseOnRoute />
       <Sidebar collapsible="icon" {...props}>
-        <SidebarHeader>
+        <SidebarHeader className="gap-3">
+          <div className="flex items-center gap-2 px-2 pt-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <MicasaMark className="h-6 w-auto" />
+            <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+              MiCasa
+            </span>
+          </div>
           <TeamSwitcher teams={teams} />
         </SidebarHeader>
         <SidebarContent>
