@@ -85,7 +85,7 @@ export const ProductMock = ({
     return (
       <div
         className={cn(
-          'overflow-hidden border-y border-white/10 bg-[#121212] text-left shadow-[0_40px_120px_-48px_rgba(15,23,42,0.55)]',
+          'overflow-hidden rounded-[1.15rem] border border-white/10 bg-[#0d1327] text-left shadow-[0_40px_120px_-48px_rgba(58,55,252,0.45)]',
           className
         )}
         role="img"
@@ -93,7 +93,7 @@ export const ProductMock = ({
       >
         <div
           aria-hidden
-          className="h-px w-full bg-linear-to-r from-transparent via-[#2E8DF5]/70 to-transparent"
+          className="h-px w-full bg-linear-to-r from-transparent via-[#911efe]/80 to-transparent"
         />
         <AppChrome
           title="Quincena · 1–15 jul 2026"
@@ -237,7 +237,7 @@ export const ProductMock = ({
     return (
       <div
         className={cn(
-          'overflow-hidden rounded-xl border border-[#0b1220]/10 bg-[#121212] text-left shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)]',
+          'overflow-hidden rounded-xl border border-white/10 bg-[#0d1327] text-left shadow-[0_24px_60px_-36px_rgba(58,55,252,0.4)]',
           className
         )}
         role="img"
@@ -281,7 +281,7 @@ export const ProductMock = ({
     return (
       <div
         className={cn(
-          'overflow-hidden rounded-xl border border-[#0b1220]/10 bg-[#121212] text-left shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)]',
+          'overflow-hidden rounded-xl border border-white/10 bg-[#0d1327] text-left shadow-[0_24px_60px_-36px_rgba(58,55,252,0.4)]',
           className
         )}
         role="img"
@@ -366,7 +366,7 @@ export const ProductMock = ({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-xl border border-[#0b1220]/10 bg-[#121212] text-left',
+        'overflow-hidden rounded-xl border border-white/10 bg-[#0d1327] text-left',
         className
       )}
       role="img"

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DM_Sans, Syne } from 'next/font/google';
+import { Manrope, Nunito } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { LandingPage } from '@/components/landing/landing-page';
@@ -7,13 +7,13 @@ import { auth } from '@/lib/auth';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
 
-const landingDisplay = Syne({
+const landingDisplay = Manrope({
   subsets: ['latin'],
   variable: '--font-landing-display',
   display: 'swap',
 });
 
-const landingSans = DM_Sans({
+const landingSans = Nunito({
   subsets: ['latin'],
   variable: '--font-landing-sans',
   display: 'swap',

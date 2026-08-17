@@ -18,8 +18,12 @@ export const LiquidityChart = () => {
       <svg viewBox="0 0 320 112" className="absolute inset-0 h-full w-full">
         <defs>
           <linearGradient id="landingLiqFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2E8DF5" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#2E8DF5" stopOpacity="0" />
+            <stop offset="0%" stopColor="#911efe" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#3a37fc" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="landingLiqStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#3a37fc" />
+            <stop offset="100%" stopColor="#ee477a" />
           </linearGradient>
         </defs>
 
@@ -46,7 +50,7 @@ export const LiquidityChart = () => {
         <motion.path
           d={LINE_PATH}
           fill="none"
-          stroke="#2E8DF5"
+          stroke="url(#landingLiqStroke)"
           strokeWidth="2.75"
           strokeLinecap="round"
           initial={reduceMotion ? false : { pathLength: 0 }}

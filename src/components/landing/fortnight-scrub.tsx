@@ -105,7 +105,7 @@ export const FortnightScrub = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 h-[160vh] border-t border-[#0b1220]/8 md:h-[180vh]"
+      className="relative z-10 h-[160vh] border-t border-white/[0.06] md:h-[180vh]"
       aria-labelledby="quincena-scrub-heading"
     >
       {/*
@@ -115,16 +115,16 @@ export const FortnightScrub = () => {
       <div className="sticky top-[3.75rem] flex h-[calc(100svh-3.75rem)] items-center overflow-hidden">
         <div className="mx-auto w-full max-w-6xl px-5 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#911efe]">
               El ritmo MiCasa
             </p>
             <h2
               id="quincena-scrub-heading"
-              className="mt-2 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:mt-3 sm:text-4xl md:text-[2.6rem]"
+              className="mt-2 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] text-white sm:mt-3 sm:text-4xl md:text-[2.6rem]"
             >
               Desliza el mes: dos quincenas, una claridad
             </h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:mt-3 sm:text-base">
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/50 sm:mt-3 sm:text-base">
               Sigue bajando — el balance y los gastos cruzan del 1–15 al 16–fin.
             </p>
           </div>
@@ -132,26 +132,26 @@ export const FortnightScrub = () => {
           <div className="mt-4 flex items-center gap-3 sm:mt-5" aria-hidden>
             <motion.span
               style={{ opacity: firstOpacity }}
-              className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
+              className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-white"
             >
               {FIRST.label}
             </motion.span>
-            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-[#0b1220]/10">
+            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
               <motion.div
-                className="absolute inset-y-0 left-0 rounded-full bg-[#2E8DF5]"
+                className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a]"
                 style={{ width: trackWidth }}
               />
             </div>
             <motion.span
               style={{ opacity: secondOpacity }}
-              className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-[#0b1220]"
+              className="font-[family-name:var(--font-landing-display)] text-sm font-semibold text-white"
             >
               {SECOND.label}
             </motion.span>
           </div>
 
           <div
-            className="mt-4 overflow-hidden border border-[#0b1220]/10 bg-[#0e1118] text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.55)]"
+            className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-[#0d1327] text-white shadow-[0_24px_80px_-40px_rgba(58,55,252,0.55)]"
             role="img"
             aria-label="Comparación animada entre primera y segunda quincena"
             data-scrub-panel
