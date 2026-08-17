@@ -185,6 +185,10 @@ MICASA_ADMIN_EMAILS # Optional comma-separated emails for /admin (plus User.is_a
 
 PRD → issues → PR workflow: [docs/agents/workflow.md](docs/agents/workflow.md).
 
+### Design system
+
+Visual contract (Orion dark, no third-party mockups): [`DESIGN.md`](DESIGN.md). App page anatomy: [`.claude/skills/dashboard-ui/SKILL.md`](.claude/skills/dashboard-ui/SKILL.md). Cursor rules: `.cursor/rules/ui-consistency.mdc` (always) and `.cursor/rules/fintech-ui-design-system.mdc` (UI globs).
+
 ### Issue tracker
 
 GitHub Issues on **Jorg3L3on/micasa** via `gh`. See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).

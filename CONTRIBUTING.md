@@ -10,7 +10,7 @@ npx prisma migrate dev
 npm run dev
 ```
 
-Architecture: [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md).
+Architecture: [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md). UI: [DESIGN.md](DESIGN.md).
 
 ## Workflow with AI
 
@@ -39,7 +39,7 @@ Or full CI: `npm run ci`
 
 - Branch: `feat/<issue>-slug` for slices, or `feat/<feature-slug>` integration branch per [docs/agents/deployment.md](docs/agents/deployment.md)
 - PR body: `Closes #<issue>`, `Part of #<parent>` when applicable
-- Prisma: include migration + `npx prisma generate` when schema changes
+- **UI PRs:** match [DESIGN.md](DESIGN.md). Capture README screenshots from this app; do not commit third-party mockups.
 
 ## Security
 

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # UI consistency (MiCasa)
 
-When adding or changing screens, align with **`fintech-ui-design-system.mdc`** (same `.cursor/rules/` folder) for **tokens** (typography for money, icon pills, table footers, dark mode). This rule adds **layout and control hierarchy** so the app feels cohesive, not “panel of buttons.”
+When adding or changing screens, align with **`DESIGN.md`** (repo root) and **`fintech-ui-design-system.mdc`** for **tokens** (Orion navy, orange CTAs, glass, money type, icon pills). This rule adds **layout and control hierarchy** so the app feels cohesive, not “panel of buttons.” Do not commit third-party mockups — encode the look in tokens, shared classes, and live screenshots of this app.
 
 ## Page structure
 
@@ -19,12 +19,12 @@ When adding or changing screens, align with **`fintech-ui-design-system.mdc`** (
 - **Several related toggles** (layout, visibility, filters): prefer **one trigger** opening a **menu** (`DropdownMenu` with radio + checkbox items) over multiple side-by-side segmented button groups—unless the product explicitly needs always-visible one-tap toggles.
 - **Tertiary / view controls**: use **`Button variant="ghost"`** (compact `h-8`–`h-9`) with icon + short label; reserve **`outline` + `rounded-xl` + shadow** for stronger CTAs (e.g. create next month).
 - **Icon-only controls**: always **`aria-label`** and usually **`Tooltip`** with Spanish copy matching existing patterns.
-- **Binary preferences**: use shared **`Toggle` / `ToggleField`** (`src/components/ui/toggle.tsx`) — Quincena Blue (`bg-primary`) ON, neutral glass OFF; `layout="row" | "stack"`. Checkbox only for multi-select. See `DESIGN.md` and `boolean-toggle.mdc`.
-- **Destructive list/card delete**: **Viewport Delete Rule** — `md+` quiet trash (no swipe); below `md` swipe only (hide trash). See `DESIGN.md` and `docs/agents/destructive-list-actions.md`.
+- **Binary preferences**: use shared **`Toggle` / `ToggleField`** (`src/components/ui/toggle.tsx`) — electric blue (`bg-primary`) ON, neutral glass OFF; `layout="row" | "stack"`. Checkbox only for multi-select. See `DESIGN.md`.
+- **Destructive list/card delete**: **Viewport Delete Rule** — `md+` quiet trash (no swipe); below `md` swipe only (hide trash). See `DESIGN.md`.
 
 ## Surfaces and color
 
-- **Default to calm shells**: `border border-border/60`, `bg-card` (or transparent) for list tiles and summary panels. Use **accent on the icon pill** and/or a **colored left border** (`border-l-[3px] border-l-*-500/50`) when you need type identity—avoid full **tinted panel backgrounds** unless the fintech rule calls for a specific metric emphasis.
+- **Default to calm shells**: `border border-border/60`, `bg-card` (or transparent) for list tiles and summary panels. Planner-grade panels reuse **`MONTHLY_PANEL_SHELL_CLASS`** (glass in dark). Use **accent on the icon pill** and/or a **colored left border** (`border-l-[3px] border-l-*-500/50`) when you need type identity—avoid full **tinted panel backgrounds** unless the fintech rule calls for a specific metric emphasis.
 - **Metric strips** (e.g. liquidity insights, loans KPIs): use `METRIC_STRIP_CLASS` + a `border-l-*` accent; no `bg-*-500/5` fills on those strips. Enforced in GitHub Actions (`.github/workflows/ci.yml`) and locally via `npm run validate:metric-strips` or `npm run ci`.
 - **Scrollable horizontal cards** (wallets, chips): keep **edge fades** and **`shrink-0`** items per the fintech rule; collapse toggles get tooltips.
 
@@ -34,7 +34,7 @@ When adding or changing screens, align with **`fintech-ui-design-system.mdc`** (
 
 ## Checklist before shipping UI
 
-1. Does this screen match **fintech** typography and money formatting?
+1. Does this screen match **`DESIGN.md`** (navy glass, orange primary CTA, money type)?
 2. Is there **at most one** dominant button per section?
 3. Are **rare** actions in a **menu**, not the main bar?
 4. Is **chrome** separated from **content** and not overcrowded?

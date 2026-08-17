@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Fintech UI Design System
 
+Canonical tokens, glass recipes, and landing-vs-app rules: **`DESIGN.md`**. Dark default is Orion navy (`#060914`), electric blue primary (`#3a37fc`), orange gradient CTAs (`#FF5733` → `#FF2E00`). Do not commit third-party mockup images.
+
 When building or updating UI components, follow this premium fintech design language consistently.
 
 ## Card Headers
@@ -102,8 +104,15 @@ For horizontally scrollable content (e.g. wallet cards), use:
 ## Card Shells
 
 - Use `overflow-hidden border-border/60` on all Card components
-- Hero sections get subtle background decoration: `pointer-events-none absolute` blurred circles
+- Dark glass (planner, summaries): reuse `MONTHLY_PANEL_SHELL_CLASS` (`src/components/monthly/monthly-panel-shell.ts`) — `dark:border-white/[0.08] dark:bg-[#0d1327]/80 dark:backdrop-blur-xl` plus the blue glow shadow. Do not invent a second glass recipe.
+- Hero sections get subtle background decoration: `pointer-events-none absolute` blurred circles (`AppAtmosphere` / `LandingAtmosphere` already own page-level orbs)
 - Expandable sections use hover rows: `rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40`
+
+## CTAs
+
+- **Dark in-app primary:** default `<Button>` (orange gradient). `--primary` stays electric blue for selection, icon pills, toggles, and focus rings.
+- **Landing primary:** pill `rounded-full` + `.landing-cta`. One orange control per block.
+- Featured / Pro marketing border: `.landing-pro-border` (`#FF4D00` → `#8A2BE2`).
 
 ## General Principles
 

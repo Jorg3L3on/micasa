@@ -185,6 +185,10 @@ MICASA_ADMIN_EMAILS # Optional comma-separated emails for /admin (plus User.is_a
 
 Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/workflow.md](docs/agents/workflow.md). Canonical agent file: [CLAUDE.md](CLAUDE.md#agent-skills).
 
+### Design system
+
+[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`.
+
 ## Cursor Cloud specific instructions
 
 ### Services overview

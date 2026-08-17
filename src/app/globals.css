@@ -6,9 +6,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ==========================================================================
-   Design System – Indigo-accented fintech palette
-   Light: neutral base with indigo accent
-   Dark: deep blue-black with indigo primary
+   Design system — see DESIGN.md
+   Light: cool grey canvas, indigo accent (hotkey fallback)
+   Dark (default): Orion navy canvas, electric blue primary, orange CTAs
+   Marketing landing tokens are scoped under .landing-root (below)
    ========================================================================== */
 
 :root {
