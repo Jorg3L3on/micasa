@@ -1,10 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useSession } from 'next-auth/react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
+import { MonthlyWelcome } from '@/components/monthly/MonthlyWelcome';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
@@ -51,9 +51,6 @@ export const MonthlyPanelLayout = ({
   createNextControl = null,
   children,
 }: MonthlyPanelLayoutProps) => {
-  const { data: session } = useSession();
-  const firstName = session?.user?.name?.trim().split(/\s+/)[0];
-
   return (
     <MonthlyPanelPreferencesProvider
       ownerKey={ownerKey}
@@ -61,14 +58,7 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      {firstName ? (
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground">Hola, {firstName}</p>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Bienvenido de nuevo
-          </h1>
-        </div>
-      ) : null}
+      <MonthlyWelcome />
 
       <div className={cn('@container', MONTHLY_PANEL_SHELL_CLASS, MONTHLY_CHROME_PADDING_CLASS, 'mb-5')}>
         <MonthlyChromeHeader
