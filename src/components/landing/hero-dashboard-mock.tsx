@@ -170,7 +170,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
             <div>
               <p className="text-xs text-white/45">Hola, Jorge</p>
               <p className="font-[family-name:var(--font-landing-display)] text-lg font-semibold tracking-tight text-white sm:text-xl">
-                Welcome Back
+                Bienvenido de nuevo
               </p>
             </div>
             <p className="text-[11px] text-white/40">Quincena · 1–15 jul 2026</p>
@@ -247,7 +247,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-white/50">
-                      Linked Card
+                      Disponible
                     </p>
                     <p className="mt-0.5 font-mono text-[11px] text-white/45">4928 **** 0012</p>
                   </div>
@@ -261,7 +261,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40">Earnings</p>
+                  <p className="text-[10px] uppercase tracking-wider text-white/40">Hoy</p>
                   <EarningsGauge gradientId={gaugeGradientId} />
                   <p className="mt-1 text-center font-mono text-sm font-bold tabular-nums text-white">
                     $3,370
