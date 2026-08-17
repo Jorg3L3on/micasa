@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import Link from 'next/link';
 import {
   motion,
@@ -11,13 +11,33 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Menu, Play, Star, X } from 'lucide-react';
 
 import { MicasaMark } from '@/components/brand/micasa-mark';
 import { FortnightScrub } from '@/components/landing/fortnight-scrub';
+import { HeroDashboardMock } from '@/components/landing/hero-dashboard-mock';
 import { LandingAtmosphere } from '@/components/landing/landing-atmosphere';
+import { LandingPricing } from '@/components/landing/landing-pricing';
+import { LandingLink, Reveal } from '@/components/landing/landing-ui';
 import { ProductMock } from '@/components/landing/product-mocks';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import { cn } from '@/lib/utils';
+
+const NAV = [
+  { href: '#inicio', label: 'Inicio' },
+  { href: '#producto', label: 'Producto' },
+  { href: '#quincena', label: 'Cómo funciona' },
+  { href: '#precios', label: 'Precios' },
+] as const;
+
+const HEADLINE_WORDS = ['Controla', 'tu', 'quincena', 'en', 'tiempo', 'real'];
+
+const PROOF = [
+  'Hecho para quincenas mexicanas',
+  'Personal o casa compartida',
+  'Tarjetas, préstamos y proyección',
+] as const;
 
 const STEPS = [
   {
@@ -37,96 +57,44 @@ const STEPS = [
   },
 ] as const;
 
-const HEADLINE_WORDS = ['Tu', 'quincena,', 'clara', 'de', 'punta', 'a', 'punta.'];
-
-const PROOF = [
-  'Hecho para quincenas mexicanas',
-  'Personal o casa compartida',
-  'Tarjetas, préstamos y proyección',
+const INTEGRATIONS = [
+  'BBVA',
+  'BANAMEX',
+  'SANTANDER',
+  'MERCADO_PAGO',
+  'DIDI',
+  'NU_BANK',
+  'LIVERPOOL',
+  'PAYPAL',
+  'AMEX',
+  'CA',
 ] as const;
 
-const MagneticLink = ({
-  children,
-  className,
-  href,
-  variant = 'primary',
-}: {
-  children: ReactNode;
-  className?: string;
-  href: string;
-  variant?: 'primary' | 'secondary';
-}) => {
-  const reduceMotion = useReducedMotion();
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 280, damping: 18, mass: 0.35 });
-  const springY = useSpring(y, { stiffness: 280, damping: 18, mass: 0.35 });
-
-  const handlePointerMove = (event: PointerEvent<HTMLAnchorElement>) => {
-    if (reduceMotion) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    x.set((event.clientX - rect.left - rect.width / 2) * 0.28);
-    y.set((event.clientY - rect.top - rect.height / 2) * 0.28);
-  };
-
-  const handlePointerLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  return (
-    <motion.div style={{ x: springX, y: springY }} className="inline-flex w-full sm:w-auto">
-      <Link
-        href={href}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
-        className={cn(
-          'inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-7 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E8DF5]/50 sm:w-auto',
-          variant === 'primary' && 'bg-[#0b1220] text-white hover:bg-[#152038]',
-          variant === 'secondary' &&
-            'border border-[#0b1220]/15 bg-white/55 text-[#0b1220] backdrop-blur-sm hover:border-[#0b1220]/25 hover:bg-white/85',
-          className
-        )}
-      >
-        {children}
-      </Link>
-    </motion.div>
-  );
-};
-
-const Reveal = ({
-  children,
-  className,
-  delay = 0,
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}) => {
-  const reduceMotion = useReducedMotion();
-
-  return (
-    <motion.div
-      className={className}
-      initial={reduceMotion ? false : { opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-10% 0px' }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-};
+const BOTTOM_FEATURES = [
+  {
+    title: 'Flujo inteligente',
+    body: 'El radar de la quincena: ingresos, cortes y préstamos en un solo mapa.',
+  },
+  {
+    title: 'Insights automáticos',
+    body: 'Valle de liquidez, mínimo de tarjeta y metas sin armar hojas a mano.',
+  },
+  {
+    title: 'Visibilidad total',
+    body: 'Personal o casa: el mismo panel, el mismo ritmo, sin sorpresas de corte.',
+  },
+] as const;
 
 export const LandingPage = () => {
   const reduceMotion = useReducedMotion();
   const heroRef = useRef<HTMLElement>(null);
-  const spotlightX = useMotionValue(50);
+  const spotlightX = useMotionValue(72);
   const spotlightY = useMotionValue(28);
   const smoothSpotX = useSpring(spotlightX, { stiffness: 60, damping: 20 });
   const smoothSpotY = useSpring(spotlightY, { stiffness: 60, damping: 20 });
-  const spotlight = useMotionTemplate`radial-gradient(520px circle at ${smoothSpotX}% ${smoothSpotY}%, rgba(46,141,245,0.16), transparent 58%)`;
+  const spotlight = useMotionTemplate`radial-gradient(520px circle at ${smoothSpotX}% ${smoothSpotY}%, rgba(145,30,254,0.18), transparent 58%)`;
   const [headerSolid, setHeaderSolid] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -140,22 +108,9 @@ export const LandingPage = () => {
     });
   }, [scrollY]);
 
-  const productY = useTransform(
-    scrollYProgress,
-    [0, 1],
-    reduceMotion ? [0, 0] : [0, 80]
-  );
-  const productScale = useTransform(
-    scrollYProgress,
-    [0, 1],
-    reduceMotion ? [1, 1] : [1, 1.03]
-  );
-  const productRotate = useTransform(
-    scrollYProgress,
-    [0, 1],
-    reduceMotion ? [0, 0] : [1.1, -0.6]
-  );
-  const productTransform = useMotionTemplate`translate3d(0, ${productY}px, 0) scale(${productScale}) rotateX(${productRotate}deg)`;
+  const productY = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [0, 48]);
+  const productRotate = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [1.4, -0.4]);
+  const productTransform = useMotionTemplate`translate3d(0, ${productY}px, 0) rotateX(${productRotate}deg)`;
 
   const handleHeroPointerMove = (event: PointerEvent<HTMLElement>) => {
     if (reduceMotion) return;
@@ -164,67 +119,109 @@ export const LandingPage = () => {
     spotlightY.set(((event.clientY - rect.top) / rect.height) * 100);
   };
 
+  const handleToggleMenu = () => {
+    setMenuOpen((open) => !open);
+  };
+
   return (
     <div
       className={cn(
-        // overflow-x-clip: hide hero bleed without creating a scrollport
-        // (overflow-x-hidden breaks position:sticky for the fortnight scrub).
-        'relative min-h-svh overflow-x-clip bg-[#eef3f8] text-[#0b1220]',
+        'landing-root relative min-h-svh overflow-x-clip scroll-smooth bg-[#060914] text-white',
         'font-[family-name:var(--font-landing-sans)]'
       )}
     >
       <LandingAtmosphere />
 
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.03] mix-blend-multiply"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        }}
-      />
-
       <header
         className={cn(
           'sticky top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-300',
           headerSolid
-            ? 'border-b border-[#0b1220]/8 bg-[#eef3f8]/80 backdrop-blur-xl'
+            ? 'border-b border-white/8 bg-[#060914]/80 backdrop-blur-xl'
             : 'border-b border-transparent bg-transparent'
         )}
       >
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-6 md:px-8">
           <Link
-            href="/"
-            className="inline-flex items-center gap-2.5 text-[#0b1220] transition-opacity hover:opacity-80"
+            href="#inicio"
+            className="inline-flex items-center gap-2.5 text-white transition-opacity hover:opacity-80"
             aria-label="MiCasa inicio"
           >
-            <MicasaMark className="h-7 w-auto sm:h-8" data-icon="inline-start" />
+            <MicasaMark className="h-7 w-auto sm:h-8" />
             <span className="font-[family-name:var(--font-landing-display)] text-base font-semibold tracking-tight sm:text-lg">
               MiCasa
             </span>
           </Link>
-          <nav className="flex items-center gap-1.5 sm:gap-3" aria-label="Acceso">
+
+          <nav className="hidden items-center gap-6 lg:flex" aria-label="Secciones">
+            {NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm text-white/60 transition-colors hover:text-white"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="inline-flex h-9 items-center rounded-md px-2.5 text-sm font-medium text-[#0b1220]/70 transition-colors hover:bg-[#0b1220]/5 hover:text-[#0b1220] sm:px-3"
+              className="hidden h-10 items-center rounded-full px-3 text-sm font-medium text-white/70 transition-colors hover:text-white sm:inline-flex"
             >
               Iniciar sesión
             </Link>
             <Link
               href="/register"
-              className="inline-flex h-9 items-center rounded-md bg-[#0b1220] px-3 text-sm font-medium text-white transition-colors hover:bg-[#152038] sm:px-4"
+              className="landing-cta inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(255,87,51,0.8)] hover:brightness-110"
             >
-              Crear cuenta
+              Empezar
             </Link>
-          </nav>
+            <button
+              type="button"
+              className="inline-flex size-10 items-center justify-center rounded-full border border-white/10 text-white lg:hidden"
+              aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={menuOpen}
+              onClick={handleToggleMenu}
+            >
+              {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
+            </button>
+          </div>
         </div>
+
+        {menuOpen ? (
+          <nav
+            className="border-t border-white/8 bg-[#060914]/95 px-5 py-4 backdrop-blur-xl lg:hidden"
+            aria-label="Secciones móviles"
+          >
+            <ul className="flex flex-col gap-3">
+              {NAV.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="block py-1 text-sm text-white/75"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/login" className="block py-1 text-sm text-white/75">
+                  Iniciar sesión
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        ) : null}
       </header>
 
       <main>
         <section
+          id="inicio"
           ref={heroRef}
           onPointerMove={handleHeroPointerMove}
-          className="relative z-10 flex min-h-[calc(100svh-3.75rem)] flex-col"
+          className="relative z-10 scroll-mt-20 overflow-hidden pb-16 pt-10 sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16"
         >
           <motion.div
             aria-hidden
@@ -232,7 +229,7 @@ export const LandingPage = () => {
             style={{ background: spotlight }}
           />
 
-          <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-6 pt-4 sm:justify-center sm:px-6 sm:pb-8 sm:pt-6 md:px-8 md:pb-10">
+          <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-12 px-5 sm:px-6 md:px-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10">
             <motion.div
               initial="hidden"
               animate="show"
@@ -241,39 +238,15 @@ export const LandingPage = () => {
                   transition: { staggerChildren: reduceMotion ? 0 : 0.07 },
                 },
               }}
-              className="relative max-w-3xl"
+              className="relative max-w-xl"
             >
-              <motion.p
-                variants={{
-                  hidden: { opacity: 0, y: reduceMotion ? 0 : 24 },
-                  show: { opacity: 1, y: 0 },
-                }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                className="font-[family-name:var(--font-landing-display)] text-[clamp(3.25rem,12vw,8rem)] font-bold leading-[0.9] tracking-[-0.045em] text-[#0b1220]"
-              >
-                <motion.span
-                  className="inline-block bg-[linear-gradient(115deg,#0b1220_10%,#2E8DF5_50%,#0891b2_90%)] bg-[length:220%_100%] bg-clip-text text-transparent"
-                  animate={
-                    reduceMotion
-                      ? undefined
-                      : { backgroundPositionX: ['0%', '100%', '0%'] }
-                  }
-                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
-                >
-                  MiCasa
-                </motion.span>
-              </motion.p>
-
-              <h1 className="mt-5 max-w-2xl text-balance font-[family-name:var(--font-landing-display)] text-[clamp(1.65rem,4.4vw,3.25rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[#0b1220] sm:mt-7">
+              <h1 className="text-balance font-[family-name:var(--font-landing-display)] text-[clamp(2.4rem,6vw,4.35rem)] font-bold leading-[1.05] tracking-[-0.04em] text-white">
                 {HEADLINE_WORDS.map((word, index) => (
                   <motion.span
                     key={`${word}-${index}`}
                     className="mr-[0.28em] inline-block last:mr-0"
                     variants={{
-                      hidden: {
-                        opacity: 0,
-                        y: reduceMotion ? 0 : 18,
-                      },
+                      hidden: { opacity: 0, y: reduceMotion ? 0 : 18 },
                       show: { opacity: 1, y: 0 },
                     }}
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -289,10 +262,10 @@ export const LandingPage = () => {
                   show: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-4 max-w-lg text-pretty text-[0.95rem] leading-relaxed text-[#0b1220]/58 sm:mt-5 sm:text-lg"
+                className="mt-5 max-w-md text-pretty text-base leading-relaxed text-white/55 sm:text-lg"
               >
-                Organiza ingresos, gastos y obligaciones al ritmo real de cobrar y
-                pagar en México: dos quincenas, un plan.
+                Plataforma unificada para ingresos, gastos, tarjetas y liquidez —
+                al ritmo real de cobrar y pagar en México.
               </motion.p>
 
               <motion.div
@@ -301,62 +274,52 @@ export const LandingPage = () => {
                   show: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-7 flex w-full flex-col gap-3 sm:mt-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
+                className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
               >
-                <MagneticLink href="/register" variant="primary">
-                  Empezar gratis
-                  <ArrowRight className="size-4" aria-hidden data-icon="inline-start" />
-                </MagneticLink>
-                <MagneticLink href="/login" variant="secondary">
-                  Ya tengo cuenta
-                </MagneticLink>
+                <LandingLink href="/register" variant="primary">
+                  Empezar ahora
+                  <ArrowRight className="size-4" aria-hidden />
+                </LandingLink>
+                <LandingLink href="#producto" variant="ghost">
+                  <Play className="size-4" aria-hidden />
+                  Ver producto
+                </LandingLink>
               </motion.div>
 
               <motion.p
-                variants={{
-                  hidden: { opacity: 0 },
-                  show: { opacity: 1 },
-                }}
-                transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.15 }}
-                className="mt-4 text-sm text-[#0b1220]/45"
+                variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}
+                className="mt-6 inline-flex items-center gap-2 text-sm text-white/45"
               >
-                Gratis · Sin tarjeta · Listo en minutos
+                <Star className="size-3.5 fill-amber-300 text-amber-300" aria-hidden />
+                Hecho para quincenas mexicanas · Gratis, sin tarjeta
               </motion.p>
             </motion.div>
-          </div>
 
-          <div className="relative z-0 mt-2 w-full sm:mt-auto [perspective:1600px]">
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 48 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.95, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-            >
+            <div className="relative [perspective:1600px]">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-8 rounded-[2rem] bg-[radial-gradient(circle_at_center,rgba(145,30,254,0.28),transparent_68%)] blur-2xl"
+              />
               <motion.div
+                initial={reduceMotion ? false : { opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.95, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
                 className="origin-bottom will-change-transform"
-                style={{
-                  transform: productTransform,
-                  transformStyle: 'preserve-3d',
-                }}
+                style={{ transform: productTransform, transformStyle: 'preserve-3d' }}
               >
-                <div className="relative w-full md:left-1/2 md:w-[min(148vw,94rem)] md:-translate-x-1/2">
-                  <ProductMock variant="hero" />
-                </div>
+                <HeroDashboardMock />
               </motion.div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
-        {/* Quiet proof — after hero composition, one job */}
-        <section
-          className="relative z-10 border-y border-[#0b1220]/8 bg-white/40"
-          aria-label="Por qué MiCasa"
-        >
+        <section className="relative z-10 border-y border-white/[0.06]" aria-label="Por qué MiCasa">
           <Reveal>
-            <ul className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-6 text-sm text-[#0b1220]/55 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 md:px-8 md:py-7">
+            <ul className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-6 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 md:px-8 md:py-8">
               {PROOF.map((item) => (
                 <li
                   key={item}
-                  className="font-[family-name:var(--font-landing-display)] text-[0.95rem] font-medium tracking-tight text-[#0b1220]/70 sm:text-base"
+                  className="font-[family-name:var(--font-landing-display)] text-[0.95rem] font-medium tracking-tight text-white/70 sm:text-base"
                 >
                   {item}
                 </li>
@@ -365,84 +328,125 @@ export const LandingPage = () => {
           </Reveal>
         </section>
 
-        <FortnightScrub />
-
         <section
           id="producto"
-          className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28"
+          className="relative z-10 scroll-mt-20 py-24 md:py-32"
           aria-labelledby="producto-heading"
         >
           <div className="mx-auto max-w-6xl px-5 sm:px-6 md:px-8">
             <Reveal>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#911efe]">
+                Control
+              </p>
               <h2
                 id="producto-heading"
-                className="max-w-2xl font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.75rem]"
+                className="mt-3 max-w-2xl font-[family-name:var(--font-landing-display)] text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl md:text-[2.75rem]"
               >
-                Del plan al flujo real
+                Una plataforma construida para control absoluto
               </h2>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-[#0b1220]/55">
-                Las mismas superficies que usas en la app: liquidez hacia adelante y
-                crédito sin sorpresas de corte.
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-white/50">
+                Las mismas superficies de la app: liquidez hacia adelante y crédito
+                sin sorpresas de corte.
               </p>
             </Reveal>
 
-            <div className="mt-14 space-y-16 md:space-y-24">
+            <div className="mt-12 grid gap-5 lg:grid-cols-2">
               <Reveal>
-                <div className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
-                  <div className="max-w-md">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
-                      Liquidez
-                    </p>
-                    <h3 className="mt-3 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-[#0b1220] sm:text-3xl">
-                      Ve el valle antes de llegar a él
-                    </h3>
-                    <p className="mt-3 text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
-                      Proyección a 180 días con nómina, gastos, tarjetas y préstamos —
-                      para saber cuándo apretar y cuándo sobra.
-                    </p>
+                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d1327]/70 p-5 backdrop-blur-xl sm:p-6">
+                  <p className="text-sm font-medium text-white/80">
+                    Analítica predictiva que revela el valle antes de llegar a él.
+                  </p>
+                  <div className="mt-5">
+                    <ProductMock variant="liquidity" />
                   </div>
-                  <ProductMock variant="liquidity" />
                 </div>
               </Reveal>
-
               <Reveal delay={0.06}>
-                <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
-                  <div className="order-2 lg:order-1">
+                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d1327]/70 p-5 backdrop-blur-xl sm:p-6">
+                  <p className="text-sm font-medium text-white/80">
+                    Inteligencia en tiempo real: pagado, pendiente y crédito en el mismo ritmo.
+                  </p>
+                  <div className="mt-5">
                     <ProductMock variant="cards" />
-                  </div>
-                  <div className="order-1 max-w-md lg:order-2 lg:justify-self-end">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2E8DF5]">
-                      Crédito
-                    </p>
-                    <h3 className="mt-3 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-[#0b1220] sm:text-3xl">
-                      Cortes y cuotas sin sorpresas
-                    </h3>
-                    <p className="mt-3 text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
-                      Mercado Pago, DiDi y más: usado, mínimo y cuotas activas en el
-                      mismo ritmo quincenal.
-                    </p>
                   </div>
                 </div>
               </Reveal>
             </div>
+
+            <Reveal delay={0.08}>
+              <div className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d1327]/70 p-5 backdrop-blur-xl sm:p-8">
+                <div className="mx-auto max-w-2xl text-center">
+                  <h3 className="font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                    Ve tu casa desde otra perspectiva
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-white/50 sm:text-base">
+                    Panel, quincena y billeteras en un mismo lienzo — con el detalle
+                    que usas al planear el 1–15 y el 16–fin.
+                  </p>
+                </div>
+                <div className="mt-8">
+                  <HeroDashboardMock />
+                </div>
+              </div>
+            </Reveal>
           </div>
         </section>
 
         <section
-          className="relative z-10 border-t border-[#0b1220]/8 py-20 md:py-28"
+          className="relative z-10 border-y border-white/[0.06] py-16 md:py-20"
+          aria-labelledby="integraciones-heading"
+        >
+          <div className="mx-auto max-w-6xl px-5 sm:px-6 md:px-8">
+            <Reveal>
+              <h2
+                id="integraciones-heading"
+                className="text-center font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-white sm:text-3xl"
+              >
+                Conectado a las cuentas que ya usas
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-center text-sm text-white/45">
+                Bancos, tarjetas de tienda y wallets de México, listos para armar la quincena.
+              </p>
+            </Reveal>
+            <ul className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+              {INTEGRATIONS.map((key) => (
+                <li
+                  key={key}
+                  className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 grayscale transition hover:grayscale-0"
+                >
+                  <WalletProviderIcon
+                    providerIconKey={key}
+                    className="h-7 w-7 border-white/10 bg-white/5"
+                    showTooltipLabel={false}
+                  />
+                  <span className="text-sm text-white/70">
+                    {getWalletProviderOption(key)?.label ?? key}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <div id="quincena" className="scroll-mt-20">
+          <FortnightScrub />
+        </div>
+
+        <section
+          className="relative z-10 py-20 md:py-28"
           aria-labelledby="pasos-heading"
         >
           <div className="mx-auto max-w-6xl px-5 sm:px-6 md:px-8">
             <Reveal>
               <h2
                 id="pasos-heading"
-                className="font-[family-name:var(--font-landing-display)] text-3xl font-semibold tracking-[-0.03em] text-[#0b1220] sm:text-4xl md:text-[2.75rem]"
+                className="font-[family-name:var(--font-landing-display)] text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl"
               >
                 Tres movimientos. Toda la quincena.
               </h2>
             </Reveal>
 
-            <ol className="mt-14 divide-y divide-[#0b1220]/10 border-y border-[#0b1220]/10">
+            <ol className="mt-14 divide-y divide-white/10 border-y border-white/10">
               {STEPS.map((step, index) => (
                 <motion.li
                   key={step.n}
@@ -456,14 +460,14 @@ export const LandingPage = () => {
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
-                  <span className="font-[family-name:var(--font-landing-display)] text-sm font-semibold tracking-[0.18em] text-[#2E8DF5]">
+                  <span className="font-[family-name:var(--font-landing-display)] text-sm font-semibold tracking-[0.18em] text-[#ff5733]">
                     {step.n}
                   </span>
                   <div>
-                    <h3 className="font-[family-name:var(--font-landing-display)] text-xl font-semibold tracking-tight text-[#0b1220] sm:text-2xl">
+                    <h3 className="font-[family-name:var(--font-landing-display)] text-xl font-semibold tracking-tight text-white sm:text-2xl">
                       {step.title}
                     </h3>
-                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#0b1220]/55 sm:text-base">
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/50 sm:text-base">
                       {step.body}
                     </p>
                   </div>
@@ -473,74 +477,77 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        <section className="relative z-10 border-t border-[#0b1220]/8">
+        <LandingPricing />
+
+        <section className="relative z-10 pb-8" aria-labelledby="cta-heading">
           <Reveal>
-            <div className="relative overflow-hidden bg-[#0b1220] px-5 py-20 text-white sm:px-8 md:px-12 md:py-28">
-              <motion.div
+            <div className="relative overflow-hidden border-y border-white/[0.06] px-5 py-20 sm:px-8 md:px-12 md:py-28">
+              <div
                 aria-hidden
-                className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#2E8DF5]/28 blur-3xl"
-                animate={
-                  reduceMotion
-                    ? undefined
-                    : { x: [0, 36, 0], y: [0, 20, 0], opacity: [0.35, 0.65, 0.35] }
-                }
-                transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,87,51,0.14),transparent_60%)]"
               />
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-cyan-400/18 blur-3xl"
-                animate={
-                  reduceMotion
-                    ? undefined
-                    : { x: [0, -28, 0], y: [0, -16, 0], opacity: [0.25, 0.5, 0.25] }
-                }
-                transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <div className="relative mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
+              <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="max-w-xl">
-                  <p className="font-[family-name:var(--font-landing-display)] text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-                    MiCasa
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#ff5733]">
+                    Camino a la claridad
                   </p>
-                  <h2 className="mt-5 font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-[-0.03em] sm:text-3xl md:text-4xl">
-                    La próxima quincena, con el plan ya armado
+                  <h2
+                    id="cta-heading"
+                    className="mt-3 font-[family-name:var(--font-landing-display)] text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl md:text-5xl"
+                  >
+                    ¿Listo para entrar? Empieza tu quincena hoy.
                   </h2>
-                  <p className="mt-4 text-base leading-relaxed text-white/60">
-                    Crea tu cuenta gratis. Sin tarjeta. En minutos estás en tu
-                    primera quincena.
+                  <p className="mt-4 text-base leading-relaxed text-white/55">
+                    Crea tu cuenta gratis. Sin tarjeta. En minutos estás en tu primera quincena.
                   </p>
+                  <div className="mt-8">
+                    <LandingLink href="/register" variant="primary">
+                      Crear cuenta gratis
+                      <ArrowRight className="size-4" aria-hidden />
+                    </LandingLink>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Link
-                    href="/register"
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-medium text-[#0b1220] transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  >
-                    Crear cuenta gratis
-                    <ArrowRight className="size-4" aria-hidden data-icon="inline-start" />
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="inline-flex h-12 items-center justify-center rounded-md px-5 text-base font-medium text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                  >
-                    Ya tengo cuenta
-                  </Link>
+
+                <div className="relative mx-auto w-full max-w-xl">
+                  <div className="rounded-[1.6rem] border border-white/12 bg-[#111319] p-2 shadow-[0_40px_100px_-40px_rgba(58,55,252,0.65)]">
+                    <div className="overflow-hidden rounded-[1.15rem]">
+                      <ProductMock variant="hero" />
+                    </div>
+                  </div>
+                  <div className="mx-auto h-2 w-[72%] rounded-b-xl bg-white/10" aria-hidden />
                 </div>
               </div>
             </div>
           </Reveal>
         </section>
+
+        <section className="relative z-10 py-20 md:py-24" aria-label="Capacidades">
+          <div className="mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-3 sm:px-6 md:px-8">
+            {BOTTOM_FEATURES.map((feature, index) => (
+              <Reveal key={feature.title} delay={index * 0.05}>
+                <div className="rounded-2xl border border-white/[0.07] bg-[#0d1327]/60 p-6">
+                  <h3 className="font-[family-name:var(--font-landing-display)] text-lg font-semibold text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/50">{feature.body}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </section>
       </main>
 
-      <footer className="relative z-10 border-t border-[#0b1220]/8 bg-[#eef3f8]">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-[#0b1220]/45 sm:px-6 md:flex-row md:items-center md:justify-between md:px-8">
+      <footer className="relative z-10 border-t border-white/[0.06]">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-white/40 sm:px-6 md:flex-row md:items-center md:justify-between md:px-8">
           <p>© {new Date().getFullYear()} MiCasa. Hecho para quincenas en México.</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
-            <Link className="transition-colors hover:text-[#0b1220]/80" href="/privacy">
+            <Link className="transition-colors hover:text-white/80" href="/privacy">
               Aviso de privacidad
             </Link>
-            <Link className="transition-colors hover:text-[#0b1220]/80" href="/terms">
+            <Link className="transition-colors hover:text-white/80" href="/terms">
               Términos de uso
             </Link>
-            <Link className="transition-colors hover:text-[#0b1220]/80" href="/login">
+            <Link className="transition-colors hover:text-white/80" href="/login">
               Iniciar sesión
             </Link>
           </nav>

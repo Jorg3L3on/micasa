@@ -240,3 +240,55 @@
     opacity: 0;
   }
 }
+
+/* ==========================================================================
+   Marketing landing — Orion-style dark canvas (scoped; does not retoken the app)
+   ========================================================================== */
+
+.landing-root {
+  --landing-bg: #060914;
+  --landing-surface: #090e1d;
+  --landing-card: #0d1327;
+  --landing-muted: #9ca3af;
+  --landing-cta-from: #ff5733;
+  --landing-cta-to: #ff2e00;
+  --landing-glow-blue: #3a37fc;
+  --landing-glow-purple: #911efe;
+  --landing-glow-magenta: #cf1ae6;
+  --landing-glow-pink: #ee477a;
+  color-scheme: dark;
+}
+
+html:has(.landing-root) {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing-root) {
+    scroll-behavior: auto;
+  }
+}
+
+.landing-cta {
+  background-image: linear-gradient(90deg, var(--landing-cta-from), var(--landing-cta-to));
+}
+
+.landing-pro-border {
+  background-image: linear-gradient(135deg, #ff4d00 0%, #8a2be2 100%);
+}
+
+.landing-accent-text {
+  background-image: linear-gradient(115deg, #ffffff 8%, #911efe 48%, #ee477a 92%);
+}
+
+@keyframes landing-glow-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(4%, -6%) scale(1.08);
+    opacity: 0.85;
+  }
+}
