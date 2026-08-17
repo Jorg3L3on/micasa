@@ -7,6 +7,7 @@ import {
   AppHeaderToolbarDynamic,
 } from '@/components/app-shell-dynamic';
 import { AppTooltipProvider } from '@/components/AppTooltipProvider';
+import { AppAtmosphere } from '@/components/app-atmosphere';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import AppLoading from './loading';
 
@@ -40,11 +41,12 @@ export default async function AppLayout({
             avatar: session.user.image ?? '',
           }}
         />
-        <SidebarInset className="min-w-0">
-          <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background shadow-sm transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <SidebarInset className="relative min-w-0">
+          <AppAtmosphere />
+          <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background/85 shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 dark:border-white/[0.06] dark:bg-[#060914]/75 dark:shadow-[0_12px_40px_-28px_rgba(58,55,252,0.55)]">
             <AppHeaderToolbarDynamic />
           </header>
-          <div className="flex flex-1 flex-col gap-4 p-6 min-h-screen min-w-0 bg-background">
+          <div className="relative z-10 flex min-h-screen min-w-0 flex-1 flex-col gap-4 bg-background p-6">
             <div className="container mx-auto">
               <Suspense fallback={<AppLoading />}>{children}</Suspense>
             </div>

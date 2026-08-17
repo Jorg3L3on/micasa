@@ -9,6 +9,10 @@ import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
+import {
+  MONTHLY_ICON_PILL_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import type {
   MonthlyBudgetAllocationRow,
   MonthlyBudgetPanelResult,
@@ -20,13 +24,7 @@ type MonthlyBudgetSidebarProps = {
   className?: string;
 };
 
-const budgetShellClass = cn(
-  'relative overflow-hidden rounded-xl border border-sky-500/20 p-4 shadow-sm',
-  'bg-gradient-to-br from-sky-500/8 via-card to-sky-500/2',
-  'dark:from-sky-500/14 dark:via-card/60 dark:to-sky-500/4',
-  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
-  'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
-);
+const budgetShellClass = cn(MONTHLY_PANEL_SHELL_CLASS, 'p-4');
 
 const BudgetSidebarHeader = ({
   headingId,
@@ -37,10 +35,10 @@ const BudgetSidebarHeader = ({
 }) => (
   <div className="flex min-w-0 items-start gap-2.5">
     <span
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10"
+      className={MONTHLY_ICON_PILL_CLASS}
       aria-hidden
     >
-      <PiggyBank className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+      <PiggyBank className="h-4 w-4 text-primary" />
     </span>
     <div className="min-w-0">
       <h2

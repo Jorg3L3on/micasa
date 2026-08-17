@@ -27,7 +27,7 @@ type FortnightSummaryHeroProps = {
 };
 
 const subBoxClass =
-  'rounded-xl border border-border/50 bg-muted/25 px-3 py-2.5 dark:bg-muted/15';
+  'rounded-xl border border-border/50 bg-muted/25 px-3 py-2.5 dark:border-white/[0.08] dark:bg-white/[0.04]';
 
 const metricLabelClass =
   'min-w-0 flex-1 text-[10px] font-semibold uppercase leading-snug tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-wider';
@@ -152,10 +152,10 @@ export const FortnightSummaryHero = ({
             label="Libre del ingreso"
             hint={incomeRemainderHint}
             amount={incomeRemainder}
-            dotClassName="bg-sky-500"
+            dotClassName="bg-primary"
             amountClassName={
               incomeRemainder >= 0
-                ? 'text-sky-700 dark:text-sky-300'
+                ? 'text-primary'
                 : 'text-destructive'
             }
           />

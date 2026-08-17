@@ -71,7 +71,7 @@ export default function RootLayout({
                 disableTransitionOnChange
               >
                 <NextTopLoader
-                  color="#10b981"
+                  color="#FF5733"
                   height={3}
                   showSpinner={false}
                   zIndex={1600}

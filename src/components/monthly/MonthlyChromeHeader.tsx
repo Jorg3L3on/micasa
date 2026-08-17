@@ -42,14 +42,14 @@ type MonthlyChromeHeaderProps = {
   showFortnightToggle?: boolean;
 };
 
-const accentEmphasisClass = 'font-medium text-sky-600 dark:text-sky-400';
+const accentEmphasisClass = 'font-medium text-primary';
 
 const fortnightSegmentClass = (active: boolean) =>
   cn(
     'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all @min-[42rem]:flex-none @min-[42rem]:px-2.5',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     active
-      ? 'bg-gradient-to-br from-primary/90 to-primary/75 text-primary-foreground shadow-sm ring-1 ring-primary/30'
+      ? 'bg-linear-to-r from-[#FF5733] to-[#FF2E00] text-white shadow-[0_8px_20px_-10px_rgba(255,87,51,0.75)]'
       : 'text-foreground/70 hover:text-foreground/90 active:scale-[0.98]',
   );
 
@@ -197,7 +197,7 @@ export const MonthlyChromeHeader = ({
             aria-label={`Progreso de la quincena: ${position.elapsedPercent}%`}
           >
             <div
-              className="h-full rounded-full bg-sky-500 transition-[width] duration-500 dark:bg-sky-400"
+              className="h-full rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a] transition-[width] duration-500"
               style={{ width: `${position.elapsedPercent}%` }}
             />
           </div>
@@ -264,14 +264,14 @@ export const MonthlyChromeHeader = ({
           <div className="shrink-0">{prevControl}</div>
 
           <div
-            className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 dark:border-sky-500/20 dark:bg-sky-500/8 @min-[42rem]:flex-none @min-[42rem]:justify-start"
+            className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-border/50 bg-muted/20 px-2.5 py-1.5 dark:border-white/[0.08] dark:bg-white/[0.03] @min-[42rem]:flex-none @min-[42rem]:justify-start"
             aria-live="polite"
           >
             <span
-              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-600/10 shadow-sm ring-1 ring-sky-500/30 dark:from-sky-400/25 dark:to-sky-500/10 sm:flex"
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 shadow-sm ring-1 ring-primary/30 dark:bg-primary/20 dark:ring-[#911efe]/40 sm:flex"
               aria-hidden
             >
-              <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+              <CalendarDays className="h-4 w-4 text-primary" />
             </span>
             <div className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
               <div className="flex min-w-0 items-center gap-1">
@@ -287,11 +287,11 @@ export const MonthlyChromeHeader = ({
               </div>
               {isCurrentMonth ? (
                 <span
-                  className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300"
+                  className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-primary dark:border-[#911efe]/40 dark:bg-[#911efe]/15 dark:text-[#d8b4fe]"
                   aria-label="Mes actual"
                 >
                   <span
-                    className="h-1.5 w-1.5 rounded-full bg-sky-500 dark:bg-sky-400"
+                    className="h-1.5 w-1.5 rounded-full bg-primary dark:bg-[#ee477a]"
                     aria-hidden
                   />
                   Actual

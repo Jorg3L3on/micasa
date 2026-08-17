@@ -14,7 +14,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
   return (
     <div
       className={cn(
-        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-[#08080b] px-5 py-8 text-[#f4f3f8]',
+        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-[#060914] px-5 py-8 text-[#f7f8ff]',
         className,
       )}
     >
@@ -30,8 +30,8 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
         aria-hidden
         className="pointer-events-none fixed inset-[-20%] z-0 animate-[login-aurora-drift_26s_ease-in-out_infinite_alternate] opacity-55 blur-[90px] motion-reduce:animate-none"
       >
-        <div className="absolute top-[12%] left-[8%] h-[42vw] w-[42vw] rounded-full bg-[radial-gradient(circle,#2E8DF5_0%,transparent_70%)] opacity-35" />
-        <div className="absolute right-[6%] bottom-[8%] h-[46vw] w-[46vw] rounded-full bg-[radial-gradient(circle,#AC3DF3_0%,transparent_70%)] opacity-30" />
+        <div className="absolute top-[12%] left-[8%] h-[42vw] w-[42vw] rounded-full bg-[radial-gradient(circle,#3a37fc_0%,transparent_70%)] opacity-40" />
+        <div className="absolute right-[6%] bottom-[8%] h-[46vw] w-[46vw] rounded-full bg-[radial-gradient(circle,#ee477a_0%,transparent_70%)] opacity-30" />
       </div>
 
       <div className="relative z-[1] w-full max-w-[880px]">
@@ -41,7 +41,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
             className="pointer-events-none absolute inset-0 rounded-3xl p-px"
             style={{
               background:
-                'linear-gradient(135deg, rgba(46,141,245,0.35), transparent 30%, transparent 70%, rgba(172,61,243,0.35))',
+                'linear-gradient(135deg, rgba(58,55,252,0.4), transparent 30%, transparent 70%, rgba(238,71,122,0.35))',
               WebkitMask:
                 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
               WebkitMaskComposite: 'xor',
@@ -49,7 +49,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
             }}
           />
 
-          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-[#2E8DF5]/[0.06] to-[#AC3DF3]/[0.05] px-7 pt-8 pb-7 max-[780px]:gap-7 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
+          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-[#3a37fc]/[0.08] to-[#ee477a]/[0.06] px-7 pt-8 pb-7 max-[780px]:gap-7 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-[#f4f3f8]"
@@ -65,7 +65,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
               </p>
               <p className="max-w-[260px] text-[26px] leading-[1.25] font-semibold tracking-tight text-[#f4f3f8]">
                 Tu dinero,{' '}
-                <em className="bg-linear-to-br from-[#2E8DF5] to-[#AC3DF3] bg-clip-text not-italic text-transparent">
+                <em className="bg-linear-to-br from-[#3a37fc] to-[#ee477a] bg-clip-text not-italic text-transparent">
                   quincena
                 </em>{' '}
                 tras quincena.

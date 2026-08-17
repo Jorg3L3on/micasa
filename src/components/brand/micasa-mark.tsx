@@ -27,8 +27,8 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
       {title ? <title>{title}</title> : null}
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2E8DF5" />
-          <stop offset="100%" stopColor="#AC3DF3" />
+          <stop offset="0%" stopColor="#3a37fc" />
+          <stop offset="100%" stopColor="#ee477a" />
         </linearGradient>
       </defs>
       <circle cx="48" cy="90" r="13" fill={`url(#${gradientId})`} />

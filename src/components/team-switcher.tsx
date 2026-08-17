@@ -135,7 +135,7 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-linear-to-br from-[#3a37fc] to-[#ee477a] text-white shadow-[0_8px_20px_-10px_rgba(58,55,252,0.8)]">
                   <DisplayIcon className="size-4" data-icon="inline-start" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
