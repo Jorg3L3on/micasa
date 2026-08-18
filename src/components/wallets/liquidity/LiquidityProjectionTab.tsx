@@ -12,8 +12,6 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -147,6 +145,34 @@ export function LiquidityProjectionTab() {
       })),
     [data?.monthly_series],
   );
+  const balanceTrendRows = useMemo(() => {
+    if (!data) return [];
+    let runningBalance = data.summary.funding_total;
+    return chartRows.map((row) => {
+      runningBalance += row.remaining;
+      return {
+        ...row,
+        projectedBalance: runningBalance,
+      };
+    });
+  }, [chartRows, data]);
+  const shouldShowDebtComposition = useMemo(() => {
+    if (!data) return false;
+    return data.monthly_series.some(
+      (month) =>
+        month.msi_debt_total > 0 ||
+        month.loan_payment_total > 0 ||
+        month.expense_template_total > 0 ||
+        month.other_debt_components_total > 0,
+    );
+  }, [data]);
+  const projectedLift = useMemo(() => {
+    if (!data) return 0;
+    return (
+      data.summary.net_liquidity_versus_obligations_including_income -
+      data.summary.net_liquidity_versus_obligations
+    );
+  }, [data]);
   const modelNotes = useMemo(() => {
     if (!data) return [];
     const notes = [
@@ -345,6 +371,9 @@ export function LiquidityProjectionTab() {
                 </p>
                 <p className="mt-0.5 text-[9px] text-muted-foreground">Sin ingresos futuros</p>
                 <p className="mt-0.5 text-[9px] text-muted-foreground">
+                  Fórmula: liquidez hoy − obligaciones
+                </p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">
                   {hasStaticShortfall
                     ? `Caída: ${formatDueLabelShort(data.summary.first_cumulative_shortfall_date!)}`
                     : 'Sin caída en el horizonte'}
@@ -405,86 +434,106 @@ export function LiquidityProjectionTab() {
                 </p>
                 <p className="mt-0.5 text-[9px] text-muted-foreground">Incluye ingresos esperados</p>
                 <p className="mt-0.5 text-[9px] text-muted-foreground">
+                  Fórmula: liquidez hoy + ingresos − obligaciones
+                </p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">
                   {hasProjectedShortfall
                     ? `Caída: ${formatDueLabelShort(data.summary.first_projected_shortfall_date!)}`
                     : 'Sin caída en el horizonte'}
                 </p>
               </div>
             </div>
+
+            <div
+              className={cn(
+                METRIC_STRIP_CLASS,
+                'border-l-[3px] border-l-sky-500/50',
+              )}
+              role="region"
+              aria-label="Impacto de ingresos esperados en el neto"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Impacto de ingresos esperados
+                  </p>
+                  <p className="mt-0.5 text-[9px] text-muted-foreground">
+                    Diferencia entre neto proyectado y neto estático
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    'font-mono text-sm font-bold tabular-nums',
+                    projectedLift < 0
+                      ? 'text-destructive'
+                      : 'text-sky-600 dark:text-sky-400',
+                  )}
+                >
+                  {formatCurrency(projectedLift)}
+                </p>
+              </div>
+            </div>
           </section>
 
-          <div className="grid gap-3 xl:grid-cols-3" role="region" aria-label="Gráficas de liquidez mensual">
+          <div className="space-y-3" role="region" aria-label="Tendencia de liquidez mensual">
             <Card className="overflow-hidden border-border/60">
               <CardContent className="px-3 py-3">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
                     <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
                   </span>
-                  <p className="text-sm font-semibold leading-none">Ingreso vs deudas</p>
+                  <div>
+                    <p className="text-sm font-semibold leading-none">Balance proyectado acumulado</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Parte de liquidez actual y suma el restante mensual de cada mes.
+                    </p>
+                  </div>
                 </div>
-                <div className="h-52 w-full">
+                <div className="h-56 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartRows}>
+                    <RechartsLineChart data={balanceTrendRows}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(127,127,127,0.2)" />
                       <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend wrapperStyle={{ fontSize: '10px' }} />
-                      <Area type="monotone" dataKey="income" name="Ingreso" stroke="#2563eb" fill="#3b82f633" />
-                      <Area type="monotone" dataKey="totalDebt" name="Deudas" stroke="#7c3aed" fill="#8b5cf633" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border-border/60">
-              <CardContent className="px-3 py-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-                    <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-                  </span>
-                  <p className="text-sm font-semibold leading-none">Composición de deuda</p>
-                </div>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartRows}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(127,127,127,0.2)" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend wrapperStyle={{ fontSize: '10px' }} />
-                      <Bar dataKey="msi" stackId="debt" name="MSI" fill="#7c3aed" />
-                      <Bar dataKey="loans" stackId="debt" name="Préstamos" fill="#0ea5e9" />
-                      <Bar dataKey="templates" stackId="debt" name="Plantillas" fill="#f59e0b" />
-                      <Bar dataKey="other" stackId="debt" name="Otros" fill="#ef4444" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border-border/60">
-              <CardContent className="px-3 py-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
-                    <LineChart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
-                  </span>
-                  <p className="text-sm font-semibold leading-none">Restante mensual</p>
-                </div>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsLineChart data={chartRows}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(127,127,127,0.2)" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Line type="monotone" dataKey="remaining" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} />
+                      <Line type="monotone" dataKey="projectedBalance" name="Balance proyectado" stroke="#2563eb" strokeWidth={2} dot={{ r: 2 }} />
                     </RechartsLineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
+            {shouldShowDebtComposition ? (
+              <Card className="overflow-hidden border-border/60">
+                <CardContent className="px-3 py-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+                      <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold leading-none">Composición de obligaciones</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        Desglose por tipo para detectar presión de deuda.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-52 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartRows}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(127,127,127,0.2)" />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <Bar dataKey="msi" stackId="debt" name="MSI" fill="#7c3aed" />
+                        <Bar dataKey="loans" stackId="debt" name="Préstamos" fill="#0ea5e9" />
+                        <Bar dataKey="templates" stackId="debt" name="Plantillas" fill="#f59e0b" />
+                        <Bar dataKey="other" stackId="debt" name="Otros" fill="#ef4444" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CreditCard, Landmark, PieChart } from 'lucide-react';
+import { Landmark, PieChart } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -107,22 +107,14 @@ export function LiquidityInsightsTab() {
 
   const sortedCards = useMemo(() => sortWalletsByType(wallets), [wallets]);
 
-  const { fundingTotal, creditUsedTotal } = useMemo(() => {
-    let funding = 0;
-    let credit = 0;
-    for (const w of wallets) {
-      if (!w.active) continue;
-      const amt = Number(w.amount);
-      if (
-        (w.type === 'CASH' || w.type === 'DEBIT_CARD') &&
-        w.include_in_liquidity !== false
-      ) {
-        funding += amt;
-      }
-      if (w.type === 'CREDIT_CARD' || w.type === 'DEPARTMENT_STORE_CARD') credit += amt;
-    }
-    return { fundingTotal: funding, creditUsedTotal: credit };
-  }, [wallets]);
+  const totalCategorySpend = useMemo(
+    () => categories.reduce((sum, row) => sum + Number(row.total), 0),
+    [categories],
+  );
+  const avgMonthlySpend = useMemo(
+    () => totalCategorySpend / ROLLING_MONTHS,
+    [totalCategorySpend],
+  );
 
   const categoryChartData = useMemo(() => {
     return [...categories]
@@ -153,39 +145,42 @@ export function LiquidityInsightsTab() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div
+          className={cn(METRIC_STRIP_CLASS, 'border-l-sky-500/50')}
+          role="region"
+          aria-label="Gasto acumulado de los últimos doce meses"
+        >
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
+              <PieChart className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" data-icon="inline-start" />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Gasto acumulado (12 meses)
+            </span>
+          </div>
+          <p className="mt-1 font-mono text-lg font-bold tabular-nums text-sky-700 dark:text-sky-300">
+            {formatCurrency(totalCategorySpend)}
+          </p>
+          <p className="text-[9px] text-muted-foreground">Suma histórica del reporte por categoría</p>
+        </div>
+        <div
           className={cn(METRIC_STRIP_CLASS, 'border-l-emerald-500/50')}
           role="region"
-          aria-label="Liquidez en efectivo y débito"
+          aria-label="Promedio mensual de gasto histórico"
         >
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15">
               <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Liquidez (efectivo + débito)
+              Promedio mensual de gasto
             </span>
           </div>
           <p className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
-            {formatCurrency(fundingTotal)}
+            {formatCurrency(avgMonthlySpend)}
           </p>
-        </div>
-        <div
-          className={cn(METRIC_STRIP_CLASS, 'border-l-violet-500/50')}
-          role="region"
-          aria-label="Saldo usado en tarjetas de crédito"
-        >
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-              <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-            </span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Crédito usado (TC + tiendas)
-            </span>
-          </div>
-          <p className="mt-1 font-mono text-lg font-bold tabular-nums">
-            {formatCurrency(creditUsedTotal)}
+          <p className="text-[9px] text-muted-foreground">
+            Referencia histórica; la proyección usa ingresos/obligaciones futuras.
           </p>
-          <p className="text-[9px] text-muted-foreground">Saldo cargado en cada línea de crédito</p>
         </div>
       </div>
 
