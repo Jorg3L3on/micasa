@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { AlertTriangle } from 'lucide-react';
-import { getMonthlyPageData } from '@/features/monthly/server/monthly.service';
+import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.service';
+import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
+import { fortnightCalendarKey } from '@/features/monthly/server/monthly.queries';
 import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context';
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
-import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
@@ -114,14 +115,12 @@ export default async function MonthlyPage({
     .toString()
     .padStart(2, '0')}${ownerQuery}`;
 
-  let pageData;
+  let shell;
   try {
-    pageData = await getMonthlyPageData({
+    shell = await getMonthlyPanelShellData({
       ownerFilter: ownerContext.ownerFilter,
       year,
       month,
-      yearParam,
-      monthParam,
       prevYear,
       prevMonthStr,
       nextYear,
@@ -151,23 +150,17 @@ export default async function MonthlyPage({
     );
   }
 
-  const {
-    firstFortnightInfo,
-    secondFortnightInfo,
-    prevFirstInfo,
-    prevSecondInfo,
-    nextFirstInfo,
-    nextSecondInfo,
-    wallets,
-    duePayments,
-    plannerDue,
-    plannerLoanDue,
-    firstTransactions,
-    secondTransactions,
-    firstSummary,
-    secondSummary,
-    budgetPanel,
-  } = pageData;
+  const pickNav = (index: number) =>
+    shell.fortnightMap.get(fortnightCalendarKey(shell.navKeys[index])) ?? null;
+
+  const firstFortnightInfo = pickNav(0);
+  const secondFortnightInfo = pickNav(1);
+  const prevFirstInfo = pickNav(2);
+  const prevSecondInfo = pickNav(3);
+  const nextFirstInfo = pickNav(4);
+  const nextSecondInfo = pickNav(5);
+  const wallets = shell.wallets;
+  const duePayments = shell.duePayments;
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
   const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null;
@@ -285,10 +278,6 @@ export default async function MonthlyPage({
     );
   }
 
-  if (firstSummary === null || secondSummary === null) {
-    throw new Error('Resumen mensual incompleto');
-  }
-
   const dueWalletIds = duePayments.map((dp) => dp.walletId);
   const [, , currentDay] = todayCalendarDate().split('-').map(Number);
   const isFirstFortnight = currentDay <= 15;
@@ -307,11 +296,6 @@ export default async function MonthlyPage({
         .map((w) => w.id)
     : [];
 
-  const cardDueFirst = plannerDue.first;
-  const cardDueSecond = plannerDue.second;
-  const loanDueFirst = plannerLoanDue.first;
-  const loanDueSecond = plannerLoanDue.second;
-
   return (
     <MonthlyPanelLayout
       ownerKey={ownerKey}
@@ -323,38 +307,29 @@ export default async function MonthlyPage({
       todayYmd={todayYmd}
       suggestedPeriod={suggestedPeriod}
       ownerQuery={ownerQuery}
-      budgetPanel={budgetPanel}
       firstLabel={firstLabel}
       secondLabel={secondLabel}
       prevControl={prevControl}
       nextNavControl={nextNavControl}
       createNextControl={createNextControl}
     >
-      <MonthlyFortnightView
+      <MonthlyPanelContentSuspense
+        ownerFilter={ownerContext.ownerFilter}
         ownerKey={ownerKey}
         year={year}
         month={month}
-        wallets={wallets}
+        yearParam={yearParam}
+        monthParam={monthParam}
+        activePeriod={suggestedPeriod}
+        shell={shell}
+        ownerQuery={ownerQuery}
+        firstLabel={firstLabel}
+        secondLabel={secondLabel}
+        firstFortnightId={firstFortnightId}
+        secondFortnightId={secondFortnightId}
         paidWalletIds={paidWalletIds}
         isCurrentMonth={isCurrentMonth}
-        budgetPanel={budgetPanel}
-        budgetOwnerQuery={ownerQuery}
-        first={{
-          label: firstLabel,
-          transactions: firstTransactions,
-          summary: firstSummary,
-          fortnightId: firstFortnightId,
-          cardDueItems: cardDueFirst,
-          loanDueItems: loanDueFirst,
-        }}
-        second={{
-          label: secondLabel,
-          transactions: secondTransactions,
-          summary: secondSummary,
-          fortnightId: secondFortnightId,
-          cardDueItems: cardDueSecond,
-          loanDueItems: loanDueSecond,
-        }}
+        monthIsMissing={monthIsMissing}
       />
     </MonthlyPanelLayout>
   );

@@ -8,9 +8,16 @@ import type {
   WalletListItem,
 } from '@/types/catalog';
 import type { PlannerLoanPaymentsResponse } from '@/types/loans';
-import type { FortnightNavInfo } from './monthly.queries';
+import type { FundingWalletBreakdownRow } from '@/lib/finance/funding-wallet-breakdown';
+import type {
+  FortnightCalendarKey,
+  FortnightNavInfo,
+} from './monthly.queries';
+import type { findFortnightsForCalendarKeys } from './monthly.queries';
 
 export type MonthlyFortnightSummary = ReportSummaryResult;
+
+export type MonthlyFortnightPeriod = 'FIRST' | 'SECOND';
 
 export type MonthlyPageData = {
   firstFortnightInfo: FortnightNavInfo | null;
@@ -28,17 +35,52 @@ export type MonthlyPageData = {
   firstSummary: MonthlyFortnightSummary | null;
   secondSummary: MonthlyFortnightSummary | null;
   budgetPanel: MonthlyBudgetPanelResult;
+  /** Fortnight whose transactions/summary were loaded on the server. */
+  loadedPeriod: MonthlyFortnightPeriod;
 };
 
-export type GetMonthlyPageDataParams = {
+export type GetMonthlyPanelShellParams = {
   ownerFilter: OwnerFilter;
   year: number;
   month: number;
-  yearParam: string;
-  monthParam: string;
   prevYear: number;
   prevMonthStr: string;
   nextYear: number;
   nextMonthStr: string;
   isCurrentMonth: boolean;
+};
+
+export type MonthlyPanelShellData = {
+  fortnightMap: Awaited<ReturnType<typeof findFortnightsForCalendarKeys>>;
+  navKeys: FortnightCalendarKey[];
+  wallets: WalletListItem[];
+  duePayments: DuePaymentItem[];
+  plannerDue: PlannerDuePaymentsResponse;
+  plannerLoanDue: PlannerLoanPaymentsResponse;
+  fundingWalletBreakdown: FundingWalletBreakdownRow[];
+};
+
+export type GetMonthlyFortnightContentParams = {
+  ownerFilter: OwnerFilter;
+  year: number;
+  month: number;
+  yearParam: string;
+  monthParam: string;
+  activePeriod: MonthlyFortnightPeriod;
+  shell: MonthlyPanelShellData;
+};
+
+export type MonthlyFortnightContentData = {
+  firstTransactions: TransactionRow[];
+  secondTransactions: TransactionRow[];
+  firstSummary: MonthlyFortnightSummary | null;
+  secondSummary: MonthlyFortnightSummary | null;
+  budgetPanel: MonthlyBudgetPanelResult;
+  loadedPeriod: MonthlyFortnightPeriod;
+};
+
+export type GetMonthlyPageDataParams = GetMonthlyPanelShellParams & {
+  yearParam: string;
+  monthParam: string;
+  activePeriod: MonthlyFortnightPeriod;
 };
