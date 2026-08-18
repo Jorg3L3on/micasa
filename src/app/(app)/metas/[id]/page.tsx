@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Archive,
   ArrowLeft,
@@ -13,13 +13,17 @@ import {
   Clock,
   Coins,
   Lightbulb,
+  MoreVertical,
   Pencil,
   Plus,
+  RotateCcw,
   SlidersHorizontal,
   Target,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletForm from '@/components/WalletForm';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
@@ -37,12 +41,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
 } from '@/lib/api/client-fetch';
-import { updateWallet, updateWalletStatus } from '@/lib/api/wallets';
+import {
+  deleteWallet,
+  updateWallet,
+  updateWalletStatus,
+} from '@/lib/api/wallets';
 import { computeGoalMetrics, GOAL_STATUS_LABEL } from '@/lib/finance/goal-metrics';
 import {
   getGoalActiveCardStyle,
@@ -77,6 +91,7 @@ const lastDayOfMonth = (year: number, monthIdx: number): string => {
 
 export default function MetaDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = Number(params.id);
   const { context } = useFinanceContext();
   const ownerQs = buildOwnerQuery(context).toString();
@@ -94,6 +109,7 @@ export default function MetaDetailPage() {
   const [balanceOpen, setBalanceOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [pendingComplete, setPendingComplete] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
@@ -191,6 +207,29 @@ export default function MetaDetailPage() {
       return;
     }
     void finishComplete();
+  };
+
+  const handleRestore = async () => {
+    if (!wallet) return;
+    try {
+      await updateWalletStatus(wallet.id, true, context);
+      toast.success('Meta restaurada');
+      await load({ silent: true });
+    } catch {
+      toast.error('No se pudo restaurar la meta');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!context || !wallet) return;
+    try {
+      await deleteWallet(wallet.id, context);
+      toast.success('Meta eliminada');
+      setDeleteOpen(false);
+      router.push(listHref);
+    } catch {
+      toast.error('No se pudo eliminar la meta');
+    }
   };
 
   if (loading) {
@@ -335,15 +374,39 @@ export default function MetaDetailPage() {
             ) : null}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Editar"
-          onClick={() => setEditOpen(true)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        {!isArchived ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Editar"
+            onClick={() => setEditOpen(true)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Más opciones"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                onClick={() => setDeleteOpen(true)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       <section
@@ -469,7 +532,29 @@ export default function MetaDetailPage() {
         ) : null}
       </section>
 
-      {isFinishedVisual && canTransfer ? (
+      {isArchived ? (
+        <button
+          type="button"
+          onClick={() => void handleRestore()}
+          className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[oklch(37.3%_0.034_259.733_/_.12)] text-[oklch(37.3%_0.034_259.733)] dark:bg-slate-500/20 dark:text-slate-300">
+            <RotateCcw className="h-4 w-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold leading-tight">
+              Restaurar
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              Reactivar para editar, ahorrar o transferir
+            </span>
+          </span>
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+        </button>
+      ) : isFinishedVisual && canTransfer ? (
         <button
           type="button"
           onClick={() => setTransferOpen(true)}
@@ -613,6 +698,19 @@ export default function MetaDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Eliminar meta"
+        description={
+          wallet.amount > 0
+            ? `¿Eliminar esta meta? El saldo de ${formatCurrency(wallet.amount)} se perderá. Esta acción no se puede deshacer.`
+            : '¿Eliminar esta meta? Esta acción no se puede deshacer.'
+        }
+        itemName={wallet.name}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

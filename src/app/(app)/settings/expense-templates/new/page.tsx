@@ -150,7 +150,7 @@ export default function NewExpenseTemplatePage() {
       await createExpenseTemplate(data, context);
       toast.success('Plantilla de gasto creada exitosamente');
       setTimeout(() => {
-        router.push(`/expense-templates${queryString ? `?${queryString}` : ''}`);
+        router.push(`/settings/expense-templates${queryString ? `?${queryString}` : ''}`);
       }, 500);
     } catch (err) {
       const message = getErrorMessage(err);
@@ -187,7 +187,7 @@ export default function NewExpenseTemplatePage() {
         cutoffSectionOpen={cutoffSectionOpen}
         onCutoffSectionOpenChange={setCutoffSectionOpen}
         onSave={handleSubmit}
-        cancelHref={`/expense-templates${queryString ? `?${queryString}` : ''}`}
+        cancelHref={`/settings/expense-templates${queryString ? `?${queryString}` : ''}`}
       />
     </div>
   );

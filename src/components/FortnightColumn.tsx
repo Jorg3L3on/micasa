@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
+import { formatCalendarDate, parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -8,9 +8,9 @@ import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
-import AddExpenseDialog from '@/components/AddExpenseDialog';
+import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
-import { AddExpenseFormValues } from '@/schemas/transaction.schema';
+import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,7 +66,7 @@ import {
   getPlannerDuePayments,
 } from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
-import { updateIncomeAmount } from '@/lib/api/incomes';
+import { createWalletIncome, updateIncomeAmount } from '@/lib/api/incomes';
 import {
   createExpenseTransaction,
   updateFortnightOverrideAmount,
@@ -102,6 +102,31 @@ const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
 
 const scopedFortnightTabStorageKey = (scope: string, p: 'FIRST' | 'SECOND') =>
   `${fortnightTabStorageKey(p)}:${scope}`;
+
+function getDefaultDateForFortnight(
+  year: number,
+  month: number,
+  period: 'FIRST' | 'SECOND',
+): string {
+  const todayYmd = todayCalendarDate();
+  const [currentYear, currentMonth, currentDay] = todayYmd.split('-').map(Number);
+
+  if (year === currentYear && month === currentMonth) {
+    if (period === 'FIRST' && currentDay >= 1 && currentDay <= 15) {
+      return todayYmd;
+    }
+    if (period === 'SECOND' && currentDay >= 16) {
+      return todayYmd;
+    }
+  }
+
+  const day = period === 'FIRST' ? 1 : 16;
+  return formatCalendarDate(
+    parseCalendarDate(
+      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    ),
+  );
+}
 
 type IncomeItemBySource = {
   fortnightId: number;
@@ -193,6 +218,7 @@ export default function FortnightColumn({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
+  const [addIncomeError, setAddIncomeError] = useState<string | null>(null);
   const [columnTab, setColumnTab] = useState<'expenses' | 'cards' | 'loans'>(
     'expenses',
   );
@@ -698,6 +724,28 @@ export default function FortnightColumn({
     }
   };
 
+  const handleAddIncome = async (data: AddIncomeFormValues) => {
+    try {
+      setAddIncomeError(null);
+      await createWalletIncome(
+        data.walletId,
+        {
+          date: data.date,
+          amount: data.amount,
+          source: data.name,
+        },
+        context,
+      );
+      toast.success('Ingreso registrado');
+      await refreshData();
+      setAddExpenseDialogOpen(false);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Error al registrar el ingreso';
+      setAddIncomeError(message);
+    }
+  };
+
   const handleRegenerateFromTemplates = async () => {
     const loadingToastId = 'fortnight-regenerating';
     try {
@@ -882,7 +930,7 @@ export default function FortnightColumn({
                 value="expenses"
                 className={cn(
                   'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
+                  compactTabs && 'min-h-8 px-2 py-1 text-xs sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
                 )}
                 aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
               >
@@ -891,8 +939,8 @@ export default function FortnightColumn({
                   <Badge
                     variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
                     className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px] xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-[11px]',
-                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] xl:h-4 xl:min-w-4 xl:px-1 xl:text-[10px]',
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-xs xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-xs',
+                      compactTabs && 'h-4 min-w-4 px-1 text-xs xl:h-4 xl:min-w-4 xl:px-1 xl:text-xs',
                       columnTab === 'expenses' && unpaidExpenseCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -906,7 +954,7 @@ export default function FortnightColumn({
                 value="cards"
                 className={cn(
                   'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
+                  compactTabs && 'min-h-8 px-2 py-1 text-xs sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
                 )}
                 aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
               >
@@ -918,8 +966,8 @@ export default function FortnightColumn({
                       pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                     }
                     className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px] xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-[11px]',
-                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] xl:h-4 xl:min-w-4 xl:px-1 xl:text-[10px]',
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-xs xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-xs',
+                      compactTabs && 'h-4 min-w-4 px-1 text-xs xl:h-4 xl:min-w-4 xl:px-1 xl:text-xs',
                       columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -933,7 +981,7 @@ export default function FortnightColumn({
                 value="loans"
                 className={cn(
                   'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-[11px] sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
+                  compactTabs && 'min-h-8 px-2 py-1 text-xs sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
                 )}
                 aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >
@@ -945,8 +993,8 @@ export default function FortnightColumn({
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
                     }
                     className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-[10px] xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-[11px]',
-                      compactTabs && 'h-4 min-w-4 px-1 text-[10px] xl:h-4 xl:min-w-4 xl:px-1 xl:text-[10px]',
+                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-xs xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-xs',
+                      compactTabs && 'h-4 min-w-4 px-1 text-xs xl:h-4 xl:min-w-4 xl:px-1 xl:text-xs',
                       columnTab === 'loans' && pendingLoanPaymentsCount > 0 &&
                         'bg-primary-foreground/20 text-primary-foreground',
                     )}
@@ -1031,7 +1079,7 @@ export default function FortnightColumn({
                       'h-9 w-9 shrink-0 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary shadow-sm hover:bg-primary/8 sm:h-8',
                       !compactTabs && 'xl:w-auto xl:px-3',
                     )}
-                    aria-label="Agregar gasto a esta quincena"
+                    aria-label="Agregar transacción a esta quincena"
                     title={
                       !fortnightId || fortnightId <= 0
                         ? 'La quincena no está disponible. Recarga la página.'
@@ -1040,12 +1088,12 @@ export default function FortnightColumn({
                   >
                     <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                     <span className={cn('hidden', !compactTabs && 'xl:inline')}>
-                      Agregar gasto
+                      Agregar transacción
                     </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={4}>
-                  Agregar gasto · A
+                  Agregar transacción · A
                 </TooltipContent>
               </Tooltip>
               <DropdownMenu>
@@ -1114,7 +1162,7 @@ export default function FortnightColumn({
                   message="Sin gastos en esta quincena"
                   description="Empieza con un gasto para ver totales y el estado del mes."
                   action={{
-                    label: 'Agregar primer gasto',
+                    label: 'Agregar transacción',
                     onClick: () => setAddExpenseDialogOpen(true),
                     variant: 'default',
                   }}
@@ -1212,19 +1260,18 @@ export default function FortnightColumn({
       />
 
       {/* Add Expense Dialog */}
-      <AddExpenseDialog
+      <AddTransactionDialog
         open={addExpenseDialogOpen}
         onOpenChange={(open) => {
           setAddExpenseDialogOpen(open);
           setAddExpenseError(null);
+          setAddIncomeError(null);
         }}
-        onCreate={handleAddExpense}
-        fortnightLabel={label}
-        fortnightId={fortnightId}
-        year={year}
-        month={month}
-        period={period}
-        error={addExpenseError && addExpenseDialogOpen ? addExpenseError : null}
+        onSaveExpense={handleAddExpense}
+        onSaveIncome={handleAddIncome}
+        defaultDate={getDefaultDateForFortnight(year, month, period)}
+        expenseError={addExpenseError && addExpenseDialogOpen ? addExpenseError : null}
+        incomeError={addIncomeError && addExpenseDialogOpen ? addIncomeError : null}
       />
 
       <CreditCardPaymentDialog

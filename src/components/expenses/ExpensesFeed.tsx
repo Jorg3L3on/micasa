@@ -29,6 +29,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
+import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import SwipeableExpenseRow from '@/components/expenses/SwipeableExpenseRow';
 import RepeatChips from '@/components/expenses/RepeatChips';
 import { groupByDay } from '@/components/expenses/groupByDay';
@@ -36,7 +37,12 @@ import type {
   ExpenseFeedItem,
   ExpensesRecentResponse,
 } from '@/types/expenses-feed';
-import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
+import type {
+  AddExpenseFormValues,
+  AddIncomeFormValues,
+} from '@/schemas/transaction.schema';
+import { createWalletIncome } from '@/lib/api/incomes';
+import { toast } from 'sonner';
 
 type ExpensesFeedProps = {
   initialPage: ExpensesRecentResponse;
@@ -66,6 +72,9 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createIncomeError, setCreateIncomeError] = useState<string | null>(
+    null,
+  );
   const [createDefaults, setCreateDefaults] = useState<
     Partial<AddExpenseFormValues> | undefined
   >(undefined);
@@ -250,6 +259,28 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
     }
   };
 
+  const handleCreateIncome = async (values: AddIncomeFormValues) => {
+    setCreateIncomeError(null);
+    try {
+      await createWalletIncome(
+        values.walletId,
+        {
+          date: values.date,
+          amount: values.amount,
+          source: values.name,
+        },
+        context,
+      );
+      toast.success('Ingreso registrado');
+      setCreateOpen(false);
+    } catch (err) {
+      setCreateIncomeError(
+        err instanceof Error ? err.message : 'No se pudo registrar el ingreso',
+      );
+      throw err;
+    }
+  };
+
   const handleUpdate = async (values: AddExpenseFormValues) => {
     if (!editing) return;
     setEditError(null);
@@ -409,6 +440,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
 
   const handleOpenCreate = useCallback(() => {
     setCreateError(null);
+    setCreateIncomeError(null);
     setCreateDefaults(undefined);
     setCreateOpen(true);
   }, []);
@@ -436,12 +468,12 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
                 size="icon"
                 className="shrink-0 sm:hidden"
                 onClick={handleOpenCreate}
-                aria-label="Agregar gasto"
+                aria-label="Agregar transacción"
               >
                 <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Agregar gasto</TooltipContent>
+            <TooltipContent side="bottom">Agregar transacción</TooltipContent>
           </Tooltip>
           <Button
             type="button"
@@ -449,7 +481,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
             onClick={handleOpenCreate}
           >
             <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
-            Agregar gasto
+            Agregar transacción
           </Button>
         </div>
       </div>
@@ -476,7 +508,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
               className="h-9 gap-1.5 rounded-xl"
             >
               <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
-              Agregar gasto
+              Agregar transacción
             </Button>
           </div>
         ) : (
@@ -619,8 +651,23 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
         }}
       />
 
+      <AddTransactionDialog
+        open={createOpen && !createDefaults}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setCreateError(null);
+            setCreateIncomeError(null);
+          }
+        }}
+        onSaveExpense={handleCreate}
+        onSaveIncome={handleCreateIncome}
+        expenseError={createError}
+        incomeError={createIncomeError}
+      />
+
       <ExpenseFormSheet
-        open={createOpen}
+        open={createOpen && Boolean(createDefaults)}
         onOpenChange={(open) => {
           setCreateOpen(open);
           if (!open) {
@@ -629,12 +676,8 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
           }
         }}
         mode="create"
-        title={createDefaults ? 'Repetir gasto' : 'Agregar gasto'}
-        description={
-          createDefaults
-            ? 'Revisa los datos y confirma.'
-            : 'Registra un gasto; asignamos la quincena automáticamente.'
-        }
+        title="Repetir gasto"
+        description="Revisa los datos y confirma."
         defaults={createDefaults}
         onSave={handleCreate}
         error={createError}

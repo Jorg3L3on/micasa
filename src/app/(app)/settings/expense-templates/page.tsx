@@ -92,7 +92,7 @@ export default function ExpenseTemplatesPage() {
   };
 
   const openEditDialog = useCallback((template: ExpenseTemplateListItem) => {
-    router.push(`/expense-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`);
+    router.push(`/settings/expense-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`);
   }, [queryString, router]);
 
   const openDeleteDialog = useCallback((template: ExpenseTemplateListItem) => {
@@ -270,7 +270,7 @@ export default function ExpenseTemplatesPage() {
       className="h-9 shrink-0 rounded-xl"
       onClick={() =>
         router.push(
-          `/expense-templates/new${queryString ? `?${queryString}` : ''}`,
+          `/settings/expense-templates/new${queryString ? `?${queryString}` : ''}`,
         )
       }
       aria-label="Agregar plantilla de gastos"

@@ -1,10 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ElementType } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronsUpDown, Home, Plus, User } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { ChevronsUpDown, Home, LogOut, Plus, Settings, User } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  CreateHouseDialog,
+  type CreatedHouse,
+} from '@/components/create-house-dialog';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,16 +47,14 @@ const TeamSwitcherShell = () => (
     </SidebarMenuItem>
   </SidebarMenu>
 );
-import { CreateHouseDialog } from '@/components/create-house-dialog';
-import type { CreatedHouse } from '@/components/create-house-dialog';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
-type TeamSwitcherProps = {
-  /** @deprecated No longer used; context comes from session and useFinanceContext */
-  teams?: { name: string; logo: ElementType; plan: string }[];
-};
+const contextItemClass = (active: boolean) =>
+  cn(
+    'gap-2 p-2',
+    active && 'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
+  );
 
-export function TeamSwitcher({}: TeamSwitcherProps = {}) {
+export function TeamSwitcher() {
   const [clientReady, setClientReady] = useState(false);
   const { isMobile } = useSidebar();
   const router = useRouter();
@@ -105,6 +110,18 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
       ? (session?.user?.name ?? 'Personal')
       : (currentHouse?.name ?? 'Casa');
   const DisplayIcon = context.type === 'user' ? User : Home;
+  const isPersonalActive = context.type === 'user';
+
+  const ownerQuery = (() => {
+    const params = new URLSearchParams();
+    const ownerType = searchParams.get('ownerType');
+    const ownerId = searchParams.get('ownerId');
+    if (ownerType) params.set('ownerType', ownerType);
+    if (ownerId) params.set('ownerId', ownerId);
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  })();
+  const settingsHref = `/settings${ownerQuery}`;
 
   const handleCreateHouse = useCallback(() => {
     setCreateOpen(true);
@@ -134,6 +151,7 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
               <SidebarMenuButton
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                aria-label={`Contexto: ${displayLabel}`}
               >
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-linear-to-br from-[#3a37fc] to-[#ee477a] text-white shadow-[0_8px_20px_-10px_rgba(58,55,252,0.8)]">
                   <DisplayIcon className="size-4" data-icon="inline-start" />
@@ -157,7 +175,8 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
                 Personal
               </DropdownMenuLabel>
               <DropdownMenuItem
-                className="gap-2 p-2"
+                className={contextItemClass(isPersonalActive)}
+                aria-current={isPersonalActive ? 'true' : undefined}
                 onClick={() => {
                   setUserContext(userId);
                   pushUrlWithOwnerContext('user', userId);
@@ -173,26 +192,26 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
               <DropdownMenuLabel className="text-muted-foreground text-xs">
                 Casas
               </DropdownMenuLabel>
-              {houses.map((house) => (
-                <DropdownMenuItem
-                  key={house.id}
-                  className="gap-2 p-2"
-                  onClick={() => {
-                    setHouseContext(house.id);
-                    pushUrlWithOwnerContext('house', house.id);
-                  }}
-                >
-                  <div className="flex size-6 items-center justify-center rounded-md border">
-                    <Home className="size-3.5 shrink-0" data-icon="inline-start" />
-                  </div>
-                  {house.name}
-                </DropdownMenuItem>
-              ))}
-
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                Acciones
-              </DropdownMenuLabel>
+              {houses.map((house) => {
+                const isHouseActive =
+                  context.type === 'house' && house.id === context.id;
+                return (
+                  <DropdownMenuItem
+                    key={house.id}
+                    className={contextItemClass(isHouseActive)}
+                    aria-current={isHouseActive ? 'true' : undefined}
+                    onClick={() => {
+                      setHouseContext(house.id);
+                      pushUrlWithOwnerContext('house', house.id);
+                    }}
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-md border">
+                      <Home className="size-3.5 shrink-0" data-icon="inline-start" />
+                    </div>
+                    {house.name}
+                  </DropdownMenuItem>
+                );
+              })}
               <DropdownMenuItem
                 className="gap-2 p-2"
                 onClick={handleCreateHouse}
@@ -203,6 +222,21 @@ export function TeamSwitcher({}: TeamSwitcherProps = {}) {
                 <div className="text-muted-foreground font-medium">
                   Crear casa
                 </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={settingsHref}>
+                  <Settings data-icon="inline-start" />
+                  Configuración
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => signOut({ callbackUrl: '/login' })}
+              >
+                <LogOut data-icon="inline-start" />
+                Cerrar sesión
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

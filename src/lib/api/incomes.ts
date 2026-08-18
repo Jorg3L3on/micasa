@@ -46,6 +46,17 @@ export async function listIncomeTemplates(
   );
 }
 
+export async function createWalletIncome(
+  walletId: number,
+  data: { date: string; amount: number; source: string },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/wallets/${walletId}/incomes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, context);
+}
+
 export async function createIncome(
   data: {
     fortnight_id: number;

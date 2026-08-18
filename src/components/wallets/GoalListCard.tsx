@@ -13,6 +13,7 @@ import {
   MoreVertical,
   Pencil,
   Plus,
+  RotateCcw,
   Target,
   Trash2,
 } from 'lucide-react';
@@ -60,6 +61,7 @@ type GoalListCardProps = {
   onSaveIncome: (wallet: WalletListItem) => void;
   onTransfer: (wallet: WalletListItem) => void;
   onComplete: (wallet: WalletListItem) => void;
+  onRestore: (wallet: WalletListItem) => void;
   onDelete: (wallet: WalletListItem) => void;
 };
 
@@ -70,6 +72,7 @@ function PrimaryGoalAction({
   strokeWidth,
   visual,
   isFinishedVisual,
+  showChevron = true,
 }: {
   label: string;
   onClick: () => void;
@@ -77,13 +80,14 @@ function PrimaryGoalAction({
   strokeWidth: number;
   visual: GoalVisualStyle;
   isFinishedVisual: boolean;
+  showChevron?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-1 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'flex shrink-0 items-center gap-2.5 rounded-xl px-1 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isFinishedVisual
           ? 'hover:bg-emerald-500/5'
           : visual === 'muted'
@@ -101,16 +105,18 @@ function PrimaryGoalAction({
       </span>
       <span
         className={cn(
-          'min-w-0 flex-1 truncate text-sm font-semibold leading-tight',
+          'truncate text-sm font-semibold leading-tight',
           goalMetricInkClass(visual),
         )}
       >
         {label}
       </span>
-      <ChevronRight
-        className={cn('h-4 w-4 shrink-0', goalMetricInkClass(visual))}
-        aria-hidden
-      />
+      {showChevron ? (
+        <ChevronRight
+          className={cn('h-4 w-4 shrink-0', goalMetricInkClass(visual))}
+          aria-hidden
+        />
+      ) : null}
     </button>
   );
 }
@@ -122,6 +128,7 @@ export const GoalListCard = ({
   onSaveIncome,
   onTransfer,
   onComplete,
+  onRestore,
   onDelete,
 }: GoalListCardProps) => {
   const metrics = computeGoalMetrics({
@@ -182,30 +189,37 @@ export const GoalListCard = ({
   const statusIconStroke =
     isFinishedVisual || status === 'archived' ? 2.5 : 2.25;
 
-  const primaryAction = isFinishedVisual
-    ? canTransfer
-      ? {
-          key: 'transfer' as const,
-          label: 'Transferir',
-          onClick: () => onTransfer(wallet),
-          Icon: ArrowLeftRight,
-        }
-      : null
-    : canSaveAndArchive
-      ? {
-          key: 'save' as const,
-          label: 'Ahorrar',
-          onClick: () => onSaveIncome(wallet),
-          Icon: Plus,
-        }
-      : canTransfer
+  const primaryAction = isArchived
+    ? {
+        key: 'restore' as const,
+        label: 'Restaurar',
+        onClick: () => onRestore(wallet),
+        Icon: RotateCcw,
+      }
+    : isFinishedVisual
+      ? canTransfer
         ? {
             key: 'transfer' as const,
             label: 'Transferir',
             onClick: () => onTransfer(wallet),
             Icon: ArrowLeftRight,
           }
-        : null;
+        : null
+      : canSaveAndArchive
+        ? {
+            key: 'save' as const,
+            label: 'Ahorrar',
+            onClick: () => onSaveIncome(wallet),
+            Icon: Plus,
+          }
+        : canTransfer
+          ? {
+              key: 'transfer' as const,
+              label: 'Transferir',
+              onClick: () => onTransfer(wallet),
+              Icon: ArrowLeftRight,
+            }
+          : null;
 
   return (
     <article className="@container h-full w-full min-w-0 max-w-full">
@@ -349,10 +363,11 @@ export const GoalListCard = ({
                   strokeWidth={primaryAction.key === 'save' ? 2.5 : 2.25}
                   visual={visual}
                   isFinishedVisual={isFinishedVisual}
+                  showChevron={primaryAction.key !== 'restore'}
                 />
-              ) : (
-                <div className="min-w-0 flex-1" />
-              )}
+              ) : null}
+
+              <div className="min-w-0 flex-1" />
 
               <Button
                 asChild
@@ -378,32 +393,36 @@ export const GoalListCard = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  {canSaveAndArchive && canTransfer ? (
-                    <DropdownMenuItem
-                      onClick={() => onTransfer(wallet)}
-                      className="cursor-pointer"
-                    >
-                      <ArrowLeftRight className="mr-2 h-4 w-4" />
-                      Transferir
-                    </DropdownMenuItem>
+                  {!isArchived ? (
+                    <>
+                      {canSaveAndArchive && canTransfer ? (
+                        <DropdownMenuItem
+                          onClick={() => onTransfer(wallet)}
+                          className="cursor-pointer"
+                        >
+                          <ArrowLeftRight className="mr-2 h-4 w-4" />
+                          Transferir
+                        </DropdownMenuItem>
+                      ) : null}
+                      <DropdownMenuItem
+                        onClick={() => onEdit(wallet)}
+                        className="cursor-pointer"
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      {canSaveAndArchive ? (
+                        <DropdownMenuItem
+                          onClick={() => onComplete(wallet)}
+                          className="cursor-pointer"
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          Archivar
+                        </DropdownMenuItem>
+                      ) : null}
+                      <DropdownMenuSeparator />
+                    </>
                   ) : null}
-                  <DropdownMenuItem
-                    onClick={() => onEdit(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
-                  {canSaveAndArchive ? (
-                    <DropdownMenuItem
-                      onClick={() => onComplete(wallet)}
-                      className="cursor-pointer"
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Archivar
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onDelete(wallet)}
                     className="cursor-pointer text-destructive focus:text-destructive"

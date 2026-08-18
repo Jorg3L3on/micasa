@@ -34,13 +34,7 @@ export default async function AppLayout({
   return (
     <AppTooltipProvider>
       <SidebarProvider>
-        <AppSidebarDynamic
-          navUser={{
-            name: session.user.name ?? 'Usuario',
-            email: session.user.email ?? '',
-            avatar: session.user.image ?? '',
-          }}
-        />
+        <AppSidebarDynamic />
         <SidebarInset className="relative min-w-0">
           <AppAtmosphere />
           <header className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background/85 shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 dark:border-white/[0.06] dark:bg-[#060914]/75 dark:shadow-[0_12px_40px_-28px_rgba(58,55,252,0.55)]">

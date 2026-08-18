@@ -176,7 +176,7 @@ export default function EditIncomeTemplatePage() {
         context,
       );
       toast.success('Plantilla de ingresos actualizada');
-      router.push(`/income-templates${queryString ? `?${queryString}` : ''}`);
+      router.push(`/settings/income-templates${queryString ? `?${queryString}` : ''}`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Error al actualizar la plantilla';
@@ -200,7 +200,7 @@ export default function EditIncomeTemplatePage() {
         </div>
         <Button variant="outline" asChild>
           <Link
-            href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+            href={`/settings/income-templates${queryString ? `?${queryString}` : ''}`}
           >
             Volver a plantillas
           </Link>
@@ -423,7 +423,7 @@ export default function EditIncomeTemplatePage() {
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>
                   <Link
-                    href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+                    href={`/settings/income-templates${queryString ? `?${queryString}` : ''}`}
                   >
                     Cancelar
                   </Link>

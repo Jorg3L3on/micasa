@@ -67,11 +67,69 @@ function getPageTitle(
     { label: 'Panel financiero', href: homeHref },
   ];
 
-  // Handle expense-templates
+  // Settings shell
+  if (segments[0] === 'settings') {
+    breadcrumbs.push({
+      label: 'Configuración',
+      href: `/settings/account${qs}`,
+    });
+
+    if (segments[1] === 'expense-templates') {
+      breadcrumbs.push({
+        label: 'Gastos programados',
+        href: `/settings/expense-templates${qs}`,
+      });
+      if (segments[2] === 'new') {
+        breadcrumbs.push({ label: 'Nueva plantilla' });
+        return { title: 'Nueva plantilla', breadcrumbs };
+      }
+      if (segments[3] === 'edit') {
+        breadcrumbs.push({ label: 'Editar' });
+        return { title: 'Editar plantilla', breadcrumbs };
+      }
+      return { title: 'Gastos programados', breadcrumbs };
+    }
+
+    if (segments[1] === 'income-templates') {
+      breadcrumbs.push({
+        label: 'Ingresos programados',
+        href: `/settings/income-templates${qs}`,
+      });
+      if (segments[2] === 'new') {
+        breadcrumbs.push({ label: 'Nueva plantilla' });
+        return { title: 'Nueva plantilla', breadcrumbs };
+      }
+      if (segments[3] === 'edit') {
+        breadcrumbs.push({ label: 'Editar' });
+        return { title: 'Editar plantilla', breadcrumbs };
+      }
+      return { title: 'Ingresos programados', breadcrumbs };
+    }
+
+    if (segments[1] === 'house-users') {
+      breadcrumbs.push({ label: 'Usuarios de la casa' });
+      return { title: 'Usuarios de la casa', breadcrumbs };
+    }
+
+    if (segments[1] === 'categories') {
+      breadcrumbs.push({ label: 'Categorías' });
+      return { title: 'Categorías', breadcrumbs };
+    }
+
+    if (segments[1] === 'account') {
+      breadcrumbs.push({ label: 'Cuenta' });
+      return { title: 'Cuenta', breadcrumbs };
+    }
+
+    breadcrumbs.push({ label: 'Configuración' });
+    return { title: 'Configuración', breadcrumbs };
+  }
+
+  // Handle expense-templates (legacy paths — redirects handle navigation)
   if (segments[0] === 'expense-templates') {
     breadcrumbs.push({
       label: 'Plantillas de gastos',
-      href: `/expense-templates${qs}`,
+      href: `/settings/expense-templates${qs}`,
     });
     if (segments[1] === 'new') {
       breadcrumbs.push({ label: 'Nueva plantilla' });
@@ -84,11 +142,11 @@ function getPageTitle(
     return { title: 'Plantillas de gastos', breadcrumbs };
   }
 
-  // Handle income-templates
+  // Handle income-templates (legacy paths)
   if (segments[0] === 'income-templates') {
     breadcrumbs.push({
       label: 'Plantillas de ingresos',
-      href: `/income-templates${qs}`,
+      href: `/settings/income-templates${qs}`,
     });
     if (segments[1] === 'new') {
       breadcrumbs.push({ label: 'Nueva plantilla' });

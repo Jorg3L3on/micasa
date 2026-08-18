@@ -4,30 +4,22 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import {
   ChartLine,
-  ClipboardList,
-  FolderTree,
   Receipt,
   Calendar,
   Coins,
   Goal,
   HandCoins,
-  Home,
   PiggyBank,
-  TrendingUp,
-  Users,
   Wallet,
 } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 import { TeamSwitcher } from '@/components/team-switcher';
-import { NavUser } from '@/components/nav-user';
 import { NavMain } from '@/components/nav-main';
 import { MicasaMark } from '@/components/brand/micasa-mark';
-import { useFinanceContext } from '@/context/finance-context';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarRail,
   useSidebar,
@@ -63,18 +55,10 @@ function MobileSidebarCloseOnRoute() {
   );
 }
 
-export type AppSidebarNavUser = {
-  name: string;
-  email: string;
-  avatar: string;
-};
-
 export function AppSidebar({
-  navUser,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { navUser: AppSidebarNavUser }) {
+}: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { context } = useFinanceContext();
 
   const menuItems = [
     {
@@ -92,6 +76,12 @@ export function AppSidebar({
         (pathname.startsWith('/wallets/') &&
           !pathname.startsWith('/wallets/liquidity')) ||
         pathname.startsWith('/credit-cards'),
+    },
+    {
+      title: 'Liquidez y análisis',
+      url: '/wallets/liquidity',
+      icon: ChartLine,
+      isActive: pathname.startsWith('/wallets/liquidity'),
     },
     {
       title: 'Metas',
@@ -126,51 +116,6 @@ export function AppSidebar({
     },
   ];
 
-  const catalogItems = [
-    {
-      title: 'Categorías',
-      url: '/categories',
-      icon: FolderTree,
-      isActive: pathname.startsWith('/categories'),
-    },
-    {
-      title: 'Gastos programados',
-      url: '/expense-templates',
-      icon: ClipboardList,
-      isActive: pathname.startsWith('/expense-templates'),
-    },
-    {
-      title: 'Ingresos programados',
-      url: '/income-templates',
-      icon: TrendingUp,
-      isActive: pathname.startsWith('/income-templates'),
-    },
-    {
-      title: 'Liquidez y análisis',
-      url: '/wallets/liquidity',
-      icon: ChartLine,
-      isActive: pathname.startsWith('/wallets/liquidity'),
-    },
-    ...(context.type === 'house'
-      ? [
-          {
-            title: 'Usuarios de la casa',
-            url: '/house-users',
-            icon: Users,
-            isActive: pathname.startsWith('/house-users'),
-          },
-        ]
-      : []),
-  ];
-
-  const teams = [
-    {
-      name: 'MiCasa',
-      logo: Home,
-      plan: 'Gestión Financiera',
-    },
-  ];
-
   return (
     <>
       <MobileSidebarCloseOnRoute />
@@ -182,15 +127,11 @@ export function AppSidebar({
               MiCasa
             </span>
           </div>
-          <TeamSwitcher teams={teams} />
+          <TeamSwitcher />
         </SidebarHeader>
         <SidebarContent>
           <NavMain groupLabel="Menú" items={menuItems} />
-          <NavMain groupLabel="Catálogos" items={catalogItems} />
         </SidebarContent>
-        <SidebarFooter>
-          <NavUser user={navUser} />
-        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
     </>

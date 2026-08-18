@@ -35,6 +35,7 @@ import type { WalletFormValues } from '@/schemas/wallet.schema';
 import type { WalletListItem } from '@/types/catalog';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import { compareActiveGoals, computeGoalMetrics } from '@/lib/finance/goal-metrics';
+import { formatCurrency } from '@/lib/utils';
 
 type StatusFilter = 'active' | 'completed' | 'archived';
 
@@ -173,6 +174,17 @@ export default function MetasPage() {
     }
   };
 
+  const handleRestore = async (wallet: WalletListItem) => {
+    if (!context) return;
+    try {
+      await updateWalletStatus(wallet.id, true, context);
+      toast.success('Meta restaurada');
+      await fetchAllWallets({ silent: true });
+    } catch {
+      toast.error('No se pudo restaurar la meta');
+    }
+  };
+
   const handleCompleteConfirm = async () => {
     if (!context || !completeWallet) return;
     const wallet = completeWallet;
@@ -286,6 +298,7 @@ export default function MetasPage() {
               onSaveIncome={setIncomeWallet}
               onTransfer={setTransferWallet}
               onComplete={setCompleteWallet}
+              onRestore={(w) => void handleRestore(w)}
               onDelete={(w) => {
                 setSelected(w);
                 setDeleteOpen(true);
@@ -371,7 +384,11 @@ export default function MetasPage() {
           if (!open) setSelected(null);
         }}
         title="Eliminar meta"
-        description="¿Eliminar esta meta? Esta acción no se puede deshacer."
+        description={
+          selected && selected.amount > 0
+            ? `¿Eliminar esta meta? El saldo de ${formatCurrency(selected.amount)} se perderá. Esta acción no se puede deshacer.`
+            : '¿Eliminar esta meta? Esta acción no se puede deshacer.'
+        }
         itemName={selected?.name}
         onConfirm={handleDelete}
       />

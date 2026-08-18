@@ -110,7 +110,15 @@ export const addExpenseSchema = z
   );
 
 // Type exports
+export const addIncomeFormSchema = z.object({
+  name: z.string().min(1, 'El nombre es requerido'),
+  amount: z.number().positive('El monto debe ser mayor a 0'),
+  walletId: z.number().int().positive('La billetera es requerida'),
+  date: dateStringSchema,
+});
+
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
 export type UpdatePaidInput = z.infer<typeof updatePaidSchema>;
 export type AddExpenseFormValues = z.infer<typeof addExpenseSchema>;
+export type AddIncomeFormValues = z.infer<typeof addIncomeFormSchema>;

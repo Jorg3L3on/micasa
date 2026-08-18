@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import { useFinanceContext } from '@/context/finance-context';
+import { isGoalWalletType } from '@/domain/payment-method';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import type {
   DuePaymentItem,
@@ -206,11 +207,17 @@ export default function MonthlyFortnightView({
     setSummaryFundingRefreshNonce((n) => n + 1);
   }, []);
 
+  /** Goals live under Metas — panel strip is billeteras only. */
+  const stripWallets = useMemo(
+    () => wallets.filter((w) => !isGoalWalletType(w.type)),
+    [wallets],
+  );
+
   const walletStripSection =
-    wallets.length > 0 ? (
+    stripWallets.length > 0 ? (
       <div className="mb-7 min-w-0">
         <WalletBalanceStrip
-          wallets={wallets}
+          wallets={stripWallets}
           paidWalletIds={paidWalletIds}
           isCurrentMonth={isCurrentMonth}
           onBalancesPersisted={handleWalletBalancesPersisted}

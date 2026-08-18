@@ -109,7 +109,7 @@ export default function NewIncomeTemplatePage() {
       );
       toast.success('Plantilla de ingresos creada');
       setTimeout(() => {
-        router.push(`/income-templates${queryString ? `?${queryString}` : ''}`);
+        router.push(`/settings/income-templates${queryString ? `?${queryString}` : ''}`);
       }, 500);
     } catch (err) {
       const message =
@@ -329,7 +329,7 @@ export default function NewIncomeTemplatePage() {
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>
                   <Link
-                    href={`/plantillas-de-ingresos${queryString ? `?${queryString}` : ''}`}
+                    href={`/settings/income-templates${queryString ? `?${queryString}` : ''}`}
                   >
                     Cancelar
                   </Link>

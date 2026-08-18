@@ -79,7 +79,7 @@ export default function IncomeTemplatesPage() {
 
   const handleEdit = useCallback((template: IncomeTemplateListItem) => {
     router.push(
-      `/income-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`,
+      `/settings/income-templates/${template.id}/edit${queryString ? `?${queryString}` : ''}`,
     );
   }, [queryString, router]);
 
@@ -200,7 +200,7 @@ export default function IncomeTemplatesPage() {
           className="h-9 shrink-0 rounded-xl"
           onClick={() =>
             router.push(
-              `/income-templates/new${queryString ? `?${queryString}` : ''}`,
+              `/settings/income-templates/new${queryString ? `?${queryString}` : ''}`,
             )
           }
           aria-label="Agregar plantilla de ingresos"

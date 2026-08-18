@@ -1,7 +1,6 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { AppSidebarNavUser } from '@/components/app-sidebar';
 
 const AppSidebarClient = dynamic(
   () =>
@@ -39,12 +38,8 @@ const HeaderToolbarClient = dynamic(
   },
 );
 
-export function AppSidebarDynamic({
-  navUser,
-}: {
-  navUser: AppSidebarNavUser;
-}) {
-  return <AppSidebarClient navUser={navUser} />;
+export function AppSidebarDynamic() {
+  return <AppSidebarClient />;
 }
 
 export function AppHeaderToolbarDynamic() {

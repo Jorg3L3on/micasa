@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
@@ -32,6 +33,7 @@ type HouseUsersResponse = {
 };
 
 export default function HouseUsersPage() {
+  const router = useRouter();
   const { context } = useFinanceContext();
   const [users, setUsers] = useState<HouseUserItem[]>([]);
   const [role, setRole] = useState<'owner' | 'admin' | 'member'>('member');
@@ -44,6 +46,12 @@ export default function HouseUsersPage() {
   const [removingId, setRemovingId] = useState<number | null>(null);
 
   const isOwner = role === 'owner';
+
+  useEffect(() => {
+    if (context.type !== 'house') {
+      router.replace('/settings/account');
+    }
+  }, [context.type, router]);
 
   const fetchUsers = useCallback(async () => {
     if (context.type !== 'house') return;
@@ -176,15 +184,7 @@ export default function HouseUsersPage() {
   }, [isOwner, removingId, handleRemove]);
 
   if (context.type !== 'house') {
-    return (
-      <Card>
-        <CardContent className="py-4">
-          <p className="py-8 text-center text-muted-foreground">
-            Select a house to manage its users
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   return (

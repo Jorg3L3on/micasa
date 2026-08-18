@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { CircleX } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,10 @@ type CurrencyInputProps = Omit<
 > & {
   value: unknown;
   onChange: (val: number) => void;
+  /** Hide the leading `$` when a nearby chip (e.g. MXN) already labels currency. */
+  hideSymbol?: boolean;
+  /** Trailing clear control (Apple HIG text fields). */
+  clearable?: boolean;
 };
 
 /** Normalize locale decimal comma and strip invalid chars; keep at most one `.`. */
@@ -78,6 +83,8 @@ export const CurrencyInput = React.forwardRef<
     disabled,
     onFocus,
     onBlur,
+    hideSymbol = false,
+    clearable = false,
     ...props
   },
   ref,
@@ -110,21 +117,29 @@ export const CurrencyInput = React.forwardRef<
     onBlur?.(e);
   };
 
+  const showClear =
+    clearable &&
+    !disabled &&
+    (focused ? text.length > 0 : Number(value) !== 0 && Number.isFinite(Number(value)));
+
   return (
-    <div className="relative">
-      <span
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-sm text-muted-foreground"
-        aria-hidden
-      >
-        $
-      </span>
+    <div className="relative min-w-0 flex-1">
+      {hideSymbol ? null : (
+        <span
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-sm text-muted-foreground"
+          aria-hidden
+        >
+          $
+        </span>
+      )}
       <Input
         ref={ref}
         {...props}
         type="text"
         inputMode="decimal"
         autoComplete="off"
-        className={cn('pl-7', className)}
+        enterKeyHint={props.enterKeyHint ?? 'done'}
+        className={cn(!hideSymbol && 'pl-7', showClear && 'pr-8', className)}
         value={text}
         onChange={handleChange}
         onFocus={handleFocus}
@@ -133,6 +148,21 @@ export const CurrencyInput = React.forwardRef<
         disabled={disabled}
         aria-label={props['aria-label'] ?? 'Monto'}
       />
+      {showClear ? (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Borrar monto"
+          className="absolute right-0 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            setText('');
+            onChange(0);
+          }}
+        >
+          <CircleX className="h-4 w-4" aria-hidden />
+        </button>
+      ) : null}
     </div>
   );
 });

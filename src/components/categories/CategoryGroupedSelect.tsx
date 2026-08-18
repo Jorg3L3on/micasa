@@ -26,6 +26,7 @@ type CategoryGroupedSelectProps = {
   includeCategoryId?: number | null;
   triggerClassName?: string;
   triggerId?: string;
+  onOpenChange?: (open: boolean) => void;
 };
 
 function useGroupedCategories(
@@ -158,13 +159,16 @@ export function CategoryGroupedSelect({
   includeCategoryId,
   triggerClassName,
   triggerId,
+  onOpenChange,
 }: CategoryGroupedSelectProps) {
   const selected = categories.find((c) => c.id === value);
 
   return (
     <Select
+      modal={false}
       value={value && value > 0 ? String(value) : undefined}
       onValueChange={(v) => onValueChange(parseInt(v, 10))}
+      onOpenChange={onOpenChange}
       disabled={disabled}
     >
       <SelectTrigger
@@ -178,7 +182,12 @@ export function CategoryGroupedSelect({
           ) : null}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent
+        position="popper"
+        align="start"
+        side="bottom"
+        avoidCollisions={false}
+      >
         <CategorySelectGroups
           categories={categories}
           includeCategoryId={includeCategoryId}
