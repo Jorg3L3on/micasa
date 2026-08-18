@@ -477,7 +477,6 @@ export default function AddTransactionDialog({
                     return (
                       <GroupedRow label="Billetera">
                         <Select
-                          modal={false}
                           value={field.value ? String(field.value) : undefined}
                           onOpenChange={handleSelectOpenChange}
                           onValueChange={(value) =>
@@ -659,7 +658,6 @@ export default function AddTransactionDialog({
                     return (
                       <GroupedRow label="Billetera">
                         <Select
-                          modal={false}
                           value={field.value ? String(field.value) : undefined}
                           onOpenChange={handleSelectOpenChange}
                           onValueChange={(value) =>

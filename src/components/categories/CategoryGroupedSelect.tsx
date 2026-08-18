@@ -165,7 +165,6 @@ export function CategoryGroupedSelect({
 
   return (
     <Select
-      modal={false}
       value={value && value > 0 ? String(value) : undefined}
       onValueChange={(v) => onValueChange(parseInt(v, 10))}
       onOpenChange={onOpenChange}
