@@ -60,15 +60,15 @@ export const MonthlyPanelPreferencesProvider = ({
   suggestedPeriod,
   children,
 }: MonthlyPanelPreferencesProviderProps) => {
-  const [prefsReady, setPrefsReady] = useState(false);
   const [period, setPeriodState] = useState<FortnightPeriod>(suggestedPeriod);
   const preferenceScope = getMonthlyPreferenceScope(ownerKey, year, month);
 
   useEffect(() => {
     migrateStoredLayout(preferenceScope);
-    // Always open on the calendar-suggested quincena (current fortnight for the current month).
+  }, [preferenceScope]);
+
+  useEffect(() => {
     setPeriodState(suggestedPeriod);
-    setPrefsReady(true);
   }, [preferenceScope, suggestedPeriod]);
 
   const setPeriod = useCallback((value: FortnightPeriod) => {
@@ -77,11 +77,11 @@ export const MonthlyPanelPreferencesProvider = ({
 
   const value = useMemo(
     () => ({
-      prefsReady,
+      prefsReady: true,
       period,
       setPeriod,
     }),
-    [prefsReady, period, setPeriod],
+    [period, setPeriod],
   );
 
   return (

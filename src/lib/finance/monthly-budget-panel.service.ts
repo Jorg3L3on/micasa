@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -59,11 +60,7 @@ type AllocationAgg = {
 const allocationKey = (walletId: number, categoryId: number) =>
   `${walletId}:${categoryId}`;
 
-/**
- * Presupuesto efectivo por quincena para el sidebar del panel financiero.
- * Gasto por periodo de presupuesto que solapa cada quincena seleccionable.
- */
-export async function getMonthlyBudgetPanel(
+async function getMonthlyBudgetPanelImpl(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
@@ -125,6 +122,44 @@ export async function getMonthlyBudgetPanel(
   ]);
 
   return { first, second };
+}
+
+/**
+ * Request-scoped memo of the monthly budget panel. Report summaries and the
+ * panel sidebar invoke this several times per render; `cache` dedupes within
+ * one RSC/route request.
+ */
+const getMonthlyBudgetPanelCached = cache(
+  (
+    userId: number | null,
+    houseId: number | null,
+    year: number,
+    month: number,
+  ) =>
+    getMonthlyBudgetPanelImpl(
+      userId != null
+        ? { user_id: userId, house_id: null }
+        : { user_id: null, house_id: houseId as number },
+      year,
+      month,
+    ),
+);
+
+/**
+ * Presupuesto efectivo por quincena para el sidebar del panel financiero.
+ * Gasto por periodo de presupuesto que solapa cada quincena seleccionable.
+ */
+export function getMonthlyBudgetPanel(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<MonthlyBudgetPanelResult> {
+  return getMonthlyBudgetPanelCached(
+    ownerFilter.user_id,
+    ownerFilter.house_id,
+    year,
+    month,
+  );
 }
 
 /**

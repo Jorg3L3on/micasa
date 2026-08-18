@@ -19,6 +19,7 @@ import {
   buildExpenseWhereForFortnightScope,
   parseFortnightPeriod,
 } from '@/lib/finance/report-helpers';
+import type { FundingWalletBreakdownRow } from '@/lib/finance/funding-wallet-breakdown';
 import { getFortnightPlanningBudgetRemaining } from '@/lib/finance/monthly-budget-panel.service';
 
 export type ReportSummaryResult = {
@@ -78,6 +79,10 @@ export type GetReportSummaryParams = {
   excludeCreditInstallment: boolean;
   /** When set, skips re-resolving fortnights for the scoped month/period. */
   resolvedFortnightIds?: number[];
+  /** Precomputed from monthly budget panel to avoid redundant panel loads. */
+  planningBudgetRemaining?: number;
+  /** Precomputed from wave-1 wallets to avoid redundant wallet queries. */
+  fundingWalletBreakdown?: FundingWalletBreakdownRow[];
 };
 
 export const getReportSummary = async (
@@ -90,6 +95,8 @@ export const getReportSummary = async (
     period,
     excludeCreditInstallment,
     resolvedFortnightIds,
+    planningBudgetRemaining: precomputedBudgetRemaining,
+    fundingWalletBreakdown: precomputedFundingWallets,
   } = params;
 
   const baseWhere = await buildExpenseWhereForFortnightScope(
@@ -147,9 +154,16 @@ export const getReportSummary = async (
     };
   }
 
-  const income = await prisma.income.findMany({
-    where: incomeWhere,
-  });
+  const incomeRows =
+    scopedFortnightIds !== undefined && scopedFortnightIds.length > 0
+      ? await prisma.income.findMany({
+          where: incomeWhere,
+          include: {
+            user: { select: { id: true, name: true } },
+            income_template: { select: { name: true } },
+          },
+        })
+      : [];
 
   let totalExpense = expenses.reduce((sum, expense) => {
     return sum + Number(expense.amount);
@@ -247,8 +261,8 @@ export const getReportSummary = async (
   totalPaid = withLoanTotals.totalPaid;
   const totalUnpaid = withLoanTotals.totalUnpaid;
 
-  const overrideIncome = income.find((inc) => inc.source === '__OVERRIDE__');
-  const regularIncome = income.filter((inc) => inc.source !== '__OVERRIDE__');
+  const overrideIncome = incomeRows.find((inc) => inc.source === '__OVERRIDE__');
+  const regularIncome = incomeRows.filter((inc) => inc.source !== '__OVERRIDE__');
 
   const totalIncome = overrideIncome
     ? Number(overrideIncome.amount)
@@ -265,12 +279,14 @@ export const getReportSummary = async (
     Number.isFinite(monthNum) &&
     parsedPeriod
   ) {
-    planningBudgetRemaining = await getFortnightPlanningBudgetRemaining(
-      ownerFilter,
-      yearNum,
-      monthNum,
-      parsedPeriod,
-    );
+    planningBudgetRemaining =
+      precomputedBudgetRemaining ??
+      (await getFortnightPlanningBudgetRemaining(
+        ownerFilter,
+        yearNum,
+        monthNum,
+        parsedPeriod,
+      ));
   }
 
   const balance =
@@ -319,115 +335,91 @@ export const getReportSummary = async (
   let userIncomeData: ReportSummaryResult['userIncome'] = [];
   const incomeItems: ReportSummaryResult['incomeItems'] = [];
 
-  if (scopedFortnightIds !== undefined) {
-    const fortnightIds = scopedFortnightIds;
-
-    if (fortnightIds.length > 0) {
-      const incomes = await prisma.income.findMany({
-        where: {
-          ...ownerFilter,
-          fortnight_id: { in: fortnightIds },
-          source: { not: '__OVERRIDE__' },
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
+  if (incomeRows.length > 0) {
+    incomeRows.forEach((inc) => {
+      incomeItems.push({
+        fortnightId: inc.fortnight_id,
+        id: inc.id,
+        amount: Number(inc.amount),
+        source: inc.source,
+        userName: inc.user?.name ?? null,
+        templateName: inc.income_template?.name ?? null,
       });
+    });
 
-      const incomesForItems = await prisma.income.findMany({
-        where: {
-          ...ownerFilter,
-          fortnight_id: { in: fortnightIds },
-        },
-        include: {
-          user: { select: { name: true } },
-          income_template: { select: { name: true } },
-        },
-      });
-      incomesForItems.forEach((inc) => {
-        incomeItems.push({
-          fortnightId: inc.fortnight_id,
-          id: inc.id,
-          amount: Number(inc.amount),
-          source: inc.source,
-          userName: inc.user?.name ?? null,
-          templateName: inc.income_template?.name ?? null,
-        });
-      });
+    const incomeByFortnight: Record<number, Record<number, number>> = {};
+    const userNamesByFortnightUser: Record<
+      number,
+      Record<number, string>
+    > = {};
 
-      const incomeByFortnight: Record<number, Record<number, number>> = {};
-
-      incomes.forEach((inc) => {
+    incomeRows
+      .filter((inc) => inc.source !== '__OVERRIDE__')
+      .forEach((inc) => {
         const fortnightId = inc.fortnight_id;
         const userId = inc.user_id;
-        if (userId) {
-          const amount = Number(inc.amount);
+        if (!userId) return;
 
-          if (!incomeByFortnight[fortnightId]) {
-            incomeByFortnight[fortnightId] = {};
+        const amount = Number(inc.amount);
+        if (!incomeByFortnight[fortnightId]) {
+          incomeByFortnight[fortnightId] = {};
+        }
+        if (!incomeByFortnight[fortnightId][userId]) {
+          incomeByFortnight[fortnightId][userId] = 0;
+        }
+        incomeByFortnight[fortnightId][userId] += amount;
+
+        if (inc.user?.name) {
+          if (!userNamesByFortnightUser[fortnightId]) {
+            userNamesByFortnightUser[fortnightId] = {};
           }
-          if (!incomeByFortnight[fortnightId][userId]) {
-            incomeByFortnight[fortnightId][userId] = 0;
-          }
-          incomeByFortnight[fortnightId][userId] += amount;
+          userNamesByFortnightUser[fortnightId][userId] = inc.user.name;
         }
       });
 
-      userIncomeData = Object.entries(incomeByFortnight).map(
-        ([fortnightId, userAmounts]) => {
-          const userIncome = Object.entries(userAmounts).map(
-            ([userId, amount]) => {
-              const incomeEntry = incomes.find(
-                (inc) =>
-                  inc.fortnight_id === parseInt(fortnightId, 10) &&
-                  inc.user_id === parseInt(userId, 10),
-              );
-              return {
-                userId: parseInt(userId, 10),
-                userName: incomeEntry?.user?.name || 'Unknown',
-                income: amount,
-              };
-            },
-          );
-          return {
-            fortnightId: parseInt(fortnightId, 10),
-            userIncome,
-          };
-        },
-      );
-    }
+    userIncomeData = Object.entries(incomeByFortnight).map(
+      ([fortnightId, userAmounts]) => ({
+        fortnightId: parseInt(fortnightId, 10),
+        userIncome: Object.entries(userAmounts).map(([userId, amount]) => ({
+          userId: parseInt(userId, 10),
+          userName:
+            userNamesByFortnightUser[parseInt(fortnightId, 10)]?.[
+              parseInt(userId, 10)
+            ] ?? 'Unknown',
+          income: amount,
+        })),
+      }),
+    );
   }
 
-  const fundingWallets = await prisma.wallet.findMany({
-    where: {
-      ...ownerFilter,
-      active: true,
-      include_in_liquidity: true,
-      type: {
-        in: [PaymentMethodType.CASH, PaymentMethodType.DEBIT_CARD],
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      amount: true,
-      type: true,
-      provider_icon_key: true,
-    },
-    orderBy: [{ type: 'asc' }, { name: 'asc' }],
-  });
-  const fundingWalletBreakdown = fundingWallets.map((w) => ({
-    id: w.id,
-    name: w.name,
-    amount: Number(w.amount),
-    type: w.type,
-    provider_icon_key: w.provider_icon_key,
-  }));
+  const fundingWalletBreakdown =
+    precomputedFundingWallets ??
+    (
+      await prisma.wallet.findMany({
+        where: {
+          ...ownerFilter,
+          active: true,
+          include_in_liquidity: true,
+          type: {
+            in: [PaymentMethodType.CASH, PaymentMethodType.DEBIT_CARD],
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          amount: true,
+          type: true,
+          provider_icon_key: true,
+        },
+        orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      })
+    ).map((w) => ({
+      id: w.id,
+      name: w.name,
+      amount: Number(w.amount),
+      type: w.type,
+      provider_icon_key: w.provider_icon_key,
+    }));
   const fundingWalletBalanceTotal = fundingWalletBreakdown.reduce(
     (s, w) => s + w.amount,
     0,
