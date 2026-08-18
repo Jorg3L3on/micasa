@@ -139,12 +139,12 @@ export function LiquidityInsightsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 rounded-2xl border border-border/30 bg-gradient-to-r from-violet-500/5 via-transparent to-transparent px-4 py-3 shadow-sm dark:from-violet-500/8">
+      <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-sm">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20 dark:bg-violet-500/15">
           <PieChart className="h-5 w-5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-black tracking-tight">Análisis</h2>
+          <h2 className="text-lg font-semibold leading-tight">Análisis</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Tendencias de los últimos {ROLLING_MONTHS} meses, gasto por categoría y saldos por tarjeta.
           </p>

@@ -38,10 +38,10 @@ export default function LiquidityPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-black tracking-tight">Liquidez y análisis</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-lg font-semibold leading-tight">Liquidez y análisis</h1>
+        <p className="text-xs text-muted-foreground">
           Proyección a futuro y vista de patrones de gasto con tus saldos por cuenta.
         </p>
       </div>
@@ -70,11 +70,11 @@ export default function LiquidityPage() {
         </TabsList>
 
         <TabsContent value="proyeccion" className="mt-0">
-          {tab === 'proyeccion' ? <LiquidityProjectionTab /> : null}
+          <LiquidityProjectionTab />
         </TabsContent>
 
         <TabsContent value="analisis" className="mt-0">
-          {tab === 'analisis' ? <LiquidityInsightsTab /> : null}
+          <LiquidityInsightsTab />
         </TabsContent>
       </Tabs>
     </div>

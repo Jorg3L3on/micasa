@@ -8,6 +8,7 @@ import {
   Landmark,
   LineChart,
   BarChart3,
+  Scale,
   TrendingUp,
 } from 'lucide-react';
 import {
@@ -28,6 +29,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { fetchLiquidityProjection } from '@/lib/api/liquidity';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import {
   Collapsible,
   CollapsibleContent,
@@ -235,151 +237,181 @@ export function LiquidityProjectionTab() {
 
       {data && (
         <>
-          <div
-            className="grid grid-cols-2 gap-3 xl:grid-cols-4"
-            role="region"
-            aria-label="Resumen de liquidez"
-          >
-            <div className="relative rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 px-3 py-3 dark:from-emerald-500/12 dark:to-emerald-500/5">
-              <div className="mb-2 flex items-center gap-1.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20">
-                  <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80">
-                  Liquidez hoy
-                </span>
+          <section aria-label="Resumen del horizonte" className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold leading-tight">Resumen del horizonte</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Liquidez hoy es la base. El <span className="font-medium">Neto estático</span> no considera ingresos futuros; el <span className="font-medium">Neto proyectado</span> sí los incorpora hasta {data.until}.
+                </p>
               </div>
-              <p className="font-mono text-2xl font-black tabular-nums text-emerald-700 dark:text-emerald-300 leading-tight">
-                {formatCurrency(data.summary.funding_total)}
-              </p>
-              <p className="mt-0.5 text-[9px] text-muted-foreground">
-                Efectivo + débito incluidos
-              </p>
+              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-1.5">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:ring-emerald-500/30">
+                  <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden data-icon="inline-start" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Horizonte</p>
+                  <p className="font-mono text-xs tabular-nums text-muted-foreground">Hasta {data.until}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="relative rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/8 to-violet-500/3 px-3 py-3 dark:from-violet-500/12 dark:to-violet-500/5">
-              <div className="mb-2 flex items-center gap-1.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                  <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
-                  Obligaciones
-                </span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50')}
+                role="region"
+                aria-label="Liquidez hoy (efectivo + débito)"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:ring-emerald-500/30">
+                    <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden data-icon="inline-start" />
+                  </span>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Liquidez hoy</p>
+                </div>
+                <p className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                  {formatCurrency(data.summary.funding_total)}
+                </p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">Efectivo + débito incluidos</p>
               </div>
-              <p className="font-mono text-2xl font-black tabular-nums leading-tight">
-                {formatCurrency(data.summary.total_obligations_due_on_or_before_until)}
-              </p>
-              <p className="mt-0.5 text-[9px] text-muted-foreground">
-                Al {data.until}
-              </p>
-            </div>
 
-            <div
-              className={cn(
-                'relative rounded-xl border px-3 py-3',
-                data.summary.net_liquidity_versus_obligations >= 0
-                  ? 'border-blue-500/20 bg-gradient-to-br from-blue-500/8 to-blue-500/3 dark:from-blue-500/12 dark:to-blue-500/5'
-                  : 'border-destructive/20 bg-gradient-to-br from-destructive/8 to-destructive/3 dark:from-destructive/12 dark:to-destructive/5',
-              )}
-            >
-              <div className="mb-2 flex items-center gap-1.5">
-                <span className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1',
+              <div
+                className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}
+                role="region"
+                aria-label="Obligaciones hasta el horizonte"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/25 dark:bg-violet-500/15 dark:ring-violet-500/30">
+                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
+                  </span>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Obligaciones</p>
+                </div>
+                <p className="mt-1 font-mono text-lg font-bold tabular-nums">
+                  {formatCurrency(data.summary.total_obligations_due_on_or_before_until)}
+                </p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">Al {data.until}</p>
+              </div>
+
+              <div
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px]',
                   data.summary.net_liquidity_versus_obligations >= 0
-                    ? 'bg-blue-500/15 ring-blue-500/25 dark:bg-blue-500/20'
-                    : 'bg-destructive/15 ring-destructive/25 dark:bg-destructive/20',
-                )}>
-                  <LineChart
+                    ? 'border-l-blue-500/50'
+                    : 'border-l-destructive/50',
+                )}
+                role="region"
+                aria-label="Neto estático (sin ingresos futuros)"
+              >
+                <div className="flex items-center gap-2">
+                  <span
                     className={cn(
-                      'h-3.5 w-3.5',
+                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1',
                       data.summary.net_liquidity_versus_obligations >= 0
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-destructive',
+                        ? 'bg-blue-500/10 ring-blue-500/25 dark:bg-blue-500/15 dark:ring-blue-500/30'
+                        : 'bg-destructive/10 ring-destructive/25 dark:bg-destructive/15 dark:ring-destructive/30',
                     )}
-                  />
-                </span>
-                <span className={cn(
-                  'text-[10px] font-bold uppercase tracking-wider',
-                  data.summary.net_liquidity_versus_obligations >= 0
-                    ? 'text-blue-600/80 dark:text-blue-400/80'
-                    : 'text-destructive/80',
-                )}>
-                  Neto estático
-                </span>
-              </div>
-              <p
-                className={cn(
-                  'font-mono text-2xl font-black tabular-nums leading-tight',
-                  data.summary.net_liquidity_versus_obligations < 0
-                    ? 'text-destructive'
-                    : 'text-foreground',
-                )}
-              >
-                {formatCurrency(data.summary.net_liquidity_versus_obligations)}
-              </p>
-              <p className="mt-0.5 text-[9px] text-muted-foreground">
-                Sin ingresos futuros
-              </p>
-              <p className="mt-0.5 text-[9px] text-muted-foreground">
-                {hasStaticShortfall
-                  ? `Caída: ${formatDueLabelShort(data.summary.first_cumulative_shortfall_date!)}`
-                  : 'Sin caída en el horizonte'}
-              </p>
-            </div>
-
-            <div
-              className={cn(
-                'relative rounded-xl border px-3 py-3',
-                data.summary.net_liquidity_versus_obligations_including_income >= 0
-                  ? 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 dark:from-emerald-500/12 dark:to-emerald-500/5'
-                  : 'border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-amber-500/3 dark:from-amber-500/12 dark:to-amber-500/5',
-              )}
-            >
-              <div className="mb-2 flex items-center gap-1.5">
-                <span className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1',
-                  data.summary.net_liquidity_versus_obligations_including_income >= 0
-                    ? 'bg-emerald-500/15 ring-emerald-500/25 dark:bg-emerald-500/20'
-                    : 'bg-amber-500/15 ring-amber-500/25 dark:bg-amber-500/20',
-                )}>
-                  <CalendarClock
+                  >
+                    <Scale
+                      className={cn(
+                        'h-3.5 w-3.5',
+                        data.summary.net_liquidity_versus_obligations >= 0
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-destructive',
+                      )}
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                  </span>
+                  <p
                     className={cn(
-                      'h-3.5 w-3.5',
-                      data.summary.net_liquidity_versus_obligations_including_income >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-amber-600 dark:text-amber-400',
+                      'text-[10px] font-semibold uppercase tracking-wider',
+                      data.summary.net_liquidity_versus_obligations >= 0
+                        ? 'text-blue-600/80 dark:text-blue-400/80'
+                        : 'text-destructive/80',
                     )}
-                  />
-                </span>
-                <span className={cn(
-                  'text-[10px] font-bold uppercase tracking-wider',
-                  data.summary.net_liquidity_versus_obligations_including_income >= 0
-                    ? 'text-emerald-600/80 dark:text-emerald-400/80'
-                    : 'text-amber-600/80 dark:text-amber-400/80',
-                )}>
-                  Neto proyectado
-                </span>
+                  >
+                    Neto estático
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    'mt-1 font-mono text-lg font-bold tabular-nums',
+                    data.summary.net_liquidity_versus_obligations < 0
+                      ? 'text-destructive'
+                      : 'text-foreground',
+                  )}
+                >
+                  {formatCurrency(data.summary.net_liquidity_versus_obligations)}
+                </p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">Sin ingresos futuros</p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">
+                  {hasStaticShortfall
+                    ? `Caída: ${formatDueLabelShort(data.summary.first_cumulative_shortfall_date!)}`
+                    : 'Sin caída en el horizonte'}
+                </p>
               </div>
-              <p
+
+              <div
                 className={cn(
-                  'font-mono text-2xl font-black tabular-nums leading-tight',
-                  data.summary.net_liquidity_versus_obligations_including_income < 0
-                    ? 'text-amber-700 dark:text-amber-300'
-                    : 'text-emerald-700 dark:text-emerald-300',
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px]',
+                  data.summary.net_liquidity_versus_obligations_including_income >= 0
+                    ? 'border-l-emerald-500/50'
+                    : 'border-l-amber-500/50',
                 )}
+                role="region"
+                aria-label="Neto proyectado (incluye ingresos esperados)"
               >
-                {formatCurrency(data.summary.net_liquidity_versus_obligations_including_income)}
-              </p>
-              <p className="mt-0.5 text-[9px] text-muted-foreground">
-                Incluye ingresos esperados
-              </p>
-              <p className="mt-0.5 text-[9px] text-muted-foreground">
-                {hasProjectedShortfall
-                  ? `Caída: ${formatDueLabelShort(data.summary.first_projected_shortfall_date!)}`
-                  : 'Sin caída en el horizonte'}
-              </p>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1',
+                      data.summary.net_liquidity_versus_obligations_including_income >= 0
+                        ? 'bg-emerald-500/10 ring-emerald-500/25 dark:bg-emerald-500/15 dark:ring-emerald-500/30'
+                        : 'bg-amber-500/10 ring-amber-500/25 dark:bg-amber-500/15 dark:ring-amber-500/30',
+                    )}
+                  >
+                    <CalendarClock
+                      className={cn(
+                        'h-3.5 w-3.5',
+                        data.summary.net_liquidity_versus_obligations_including_income >= 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-amber-600 dark:text-amber-400',
+                      )}
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                  </span>
+                  <p
+                    className={cn(
+                      'text-[10px] font-semibold uppercase tracking-wider',
+                      data.summary.net_liquidity_versus_obligations_including_income >= 0
+                        ? 'text-emerald-600/80 dark:text-emerald-400/80'
+                        : 'text-amber-600/80 dark:text-amber-400/80',
+                    )}
+                  >
+                    Neto proyectado
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    'mt-1 font-mono text-lg font-bold tabular-nums',
+                    data.summary.net_liquidity_versus_obligations_including_income < 0
+                      ? 'text-amber-700 dark:text-amber-300'
+                      : 'text-emerald-700 dark:text-emerald-300',
+                  )}
+                >
+                  {formatCurrency(data.summary.net_liquidity_versus_obligations_including_income)}
+                </p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">Incluye ingresos esperados</p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">
+                  {hasProjectedShortfall
+                    ? `Caída: ${formatDueLabelShort(data.summary.first_projected_shortfall_date!)}`
+                    : 'Sin caída en el horizonte'}
+                </p>
+              </div>
             </div>
-          </div>
+          </section>
 
           <div className="grid gap-3 xl:grid-cols-3" role="region" aria-label="Gráficas de liquidez mensual">
             <Card className="overflow-hidden border-border/60">
