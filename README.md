@@ -6,9 +6,9 @@
 
 **Fortnight-first personal & household finance** — plan incomes, expenses, wallets, cards, and loans around Mexico’s real pay rhythm (`1–15` / `16–fin`), alone or as a shared house.
 
-[Live demo](https://micasa-three.vercel.app) · [Releases](https://github.com/Jorg3L3on/micasa/releases) · [Changelog](./CHANGELOG.md)
+[Live demo](https://micasa-three.vercel.app) · [Releases](https://github.com/Jorg3L3on/micasa/releases) · [Changelog](./CHANGELOG.md) · [Design system](./DESIGN.md)
 
-![MiCasa landing — fortnight planning hero](docs/images/landing-hero.jpg)
+![MiCasa landing — dark hero and glass dashboard mock](docs/images/landing-hero.jpg)
 
 ## Why fortnights
 
@@ -18,9 +18,19 @@ Most budgeting apps treat the month as one block. MiCasa uses **quincenas** as t
 - **Liquidity projection** (~180 days) across funding wallets, card cycles, and loan schedules
 - **Card reality** — statement imports, payment plans per fortnight, reconciliation tooling
 
-| Two quincenas, one month | Liquidity & credit at a glance |
+| Panel financiero | Login |
 | --- | --- |
-| ![Fortnight scrub](docs/images/landing-scrub.jpg) | ![Liquidity and cards](docs/images/landing-liquidity.jpg) |
+| ![Panel financiero](docs/images/panel-financiero.jpg) | ![Login](docs/images/login.jpg) |
+
+![Pricing — Personal, Casa, Completo](docs/images/landing-pricing.jpg)
+
+## Design system
+
+The default UI is **Orion dark**: navy canvas (`#060914`), glass cards, orange pill CTAs, blue→magenta accents. Canonical write-up for humans and agents: **[`DESIGN.md`](./DESIGN.md)**.
+
+- Tokens: `src/app/globals.css` (`.dark` + `.landing-root`)
+- Palette swatch: [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg)
+- Do **not** add third-party mockup PNGs to the repo — encode the look in tokens, shared classes (`MONTHLY_PANEL_SHELL_CLASS`, `.landing-cta`), and screenshots of **this** app.
 
 ## Core features
 
@@ -127,7 +137,7 @@ src/schemas/        # Zod schemas per resource
 prisma/             # schema (~26 models), migrations, seed
 ```
 
-Domain docs: [`docs/finance-architecture.md`](docs/finance-architecture.md) · [`docs/finance-invariants.md`](docs/finance-invariants.md) · [`docs/agents/domain.md`](docs/agents/domain.md)
+Domain docs: [`docs/finance-architecture.md`](docs/finance-architecture.md) · [`docs/finance-invariants.md`](docs/finance-invariants.md) · [`docs/agents/domain.md`](docs/agents/domain.md) · UI: [`DESIGN.md`](DESIGN.md)
 
 ## Quality and CI
 

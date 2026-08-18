@@ -13,7 +13,9 @@ when_to_use:
 
 This skill encodes the conventions already established by the canonical pages: `monthly/[year]/[month]/page.tsx`, `wallets/page.tsx`, `expenses/`, and `credit-cards/`. New pages should match this dialect; existing divergent pages should be aligned with it (not the other way around).
 
-The app frame (sidebar, sticky header, container) is owned by `src/app/(app)/layout.tsx`. **Pages render only their content** — do not re-wrap in another container or set their own background.
+**Visual language** (navy canvas, glass, orange CTAs, blue→magenta): [`DESIGN.md`](../../../DESIGN.md). Do not commit third-party mockups. Tokens live in `src/app/globals.css` (`.dark`). Default theme is dark.
+
+The app frame (sidebar, sticky header, `AppAtmosphere`, container) is owned by `src/app/(app)/layout.tsx`. **Pages render only their content** — do not re-wrap in another container or set their own background.
 
 ---
 
@@ -22,7 +24,7 @@ The app frame (sidebar, sticky header, container) is owned by `src/app/(app)/lay
 The layout already provides:
 
 ```tsx
-<div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-4 min-h-screen bg-background">
+<div className="relative z-10 flex min-h-screen min-w-0 flex-1 flex-col gap-4 bg-background p-6">
   <div className="container mx-auto">{children}</div>
 </div>
 ```
@@ -117,12 +119,13 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 
 | Color | Gradient | Used for |
 |---|---|---|
-| Orange | `135deg, #f97316 → #fb923c` | Wallets, balance |
+| Orange CTA | `135deg, #FF5733 → #FF2E00` | Primary buttons in dark (use `<Button>`, do not duplicate) |
+| Electric blue | `135deg, #3a37fc → #911efe` | Brand, debit, selected, icon pills |
+| Pink / magenta | `135deg, #ee477a → #cf1ae6` | Accent, mark gradient end |
 | Emerald | `135deg, #10b981 → #34d399` | Income, success |
 | Violet | `135deg, #8b5cf6 → #a78bfa` | Expenses, receipts |
-| Yellow | `135deg, #eab308 → #facc15` | Available, in-progress |
+| Amber | `135deg, #eab308 → #facc15` | Pending, in-progress |
 | Sky | `135deg, #0ea5e9 → #38bdf8` | Planning |
-| Blue | `135deg, #3b82f6 → #60a5fa` | Debit, generic |
 | Slate | `135deg, #64748b → #94a3b8` | Neutral / archived |
 | Rose | `135deg, #f43f5e → #fb7185` | Destructive / canceled |
 
@@ -177,6 +180,8 @@ These classes recur across canonical pages. Prefer them over inventing new ones.
 
 ```
 rounded-xl border border-border/60 bg-card shadow-sm
+rounded-2xl border border-border/60 bg-card shadow-sm dark:border-white/[0.08] dark:bg-[#0d1327]/80 dark:backdrop-blur-xl
+  /* planner glass — prefer MONTHLY_PANEL_SHELL_CLASS */
 rounded-xl border border-border/60 bg-card p-4 shadow-sm    /* tile */
 rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm  /* StatCard */
 ```
@@ -217,11 +222,12 @@ Inline semantic classes — keep these consistent so users recognize them:
 
 ### Buttons
 
-- Primary: default `<Button>` (`h-9` from variant)
+- Primary: default `<Button>` — in dark this is the orange gradient (`#FF5733` → `#FF2E00`). `--primary` remains electric blue for selection / icon pills / toggles.
 - Tall primary on a form: add `h-11`
 - Icon-only: `<Button variant="ghost" size="icon">` with `aria-label`
 - Mobile FAB: `fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden`
 - Desktop primary, hidden on mobile (paired with FAB): `hidden h-9 rounded-xl sm:inline-flex`
+- Landing-only pills: `.landing-cta` + `rounded-full` — do not use on app routes
 
 ### Layouts
 
@@ -276,7 +282,10 @@ Inline semantic classes — keep these consistent so users recognize them:
 
 Read these files — they are the source of truth this skill summarizes:
 
+- Visual contract: `DESIGN.md`
+- Tokens: `src/app/globals.css` (`.dark`, `.landing-root`)
 - Layout shell: `src/app/(app)/layout.tsx`
+- Glass panel: `src/components/monthly/monthly-panel-shell.ts`
 - Hero KPI: `src/components/StatCard.tsx`
 - Metric strip constant: `src/components/ui/metric-strip.ts`
 - Empty state: `src/components/EmptyState.tsx`

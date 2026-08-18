@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">MiCasa Orion tokens</title>
+  <desc id="desc">Navy canvas, glass card, orange CTA, blue to magenta accents. Source: DESIGN.md</desc>
+  <rect width="960" height="420" rx="24" fill="#060914"/>
+  <text x="40" y="48" fill="#f7f8ff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="700">MiCasa · Orion dark</text>
+  <text x="40" y="74" fill="#9ca3af" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">Canonical hex values  see DESIGN.md. Do not replace with third-party mockups.</text>
+
+  <!-- Surfaces -->
+  <rect x="40" y="100" width="140" height="72" rx="14" fill="#060914" stroke="rgba(255,255,255,0.12)"/>
+  <text x="52" y="124" fill="#9ca3af" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Canvas</text>
+  <text x="52" y="148" fill="#f7f8ff" font-size="14" font-family="ui-monospace, monospace">#060914</text>
+
+  <rect x="196" y="100" width="140" height="72" rx="14" fill="#090e1d" stroke="rgba(255,255,255,0.12)"/>
+  <text x="208" y="124" fill="#9ca3af" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Surface</text>
+  <text x="208" y="148" fill="#f7f8ff" font-size="14" font-family="ui-monospace, monospace">#090e1d</text>
+
+  <rect x="352" y="100" width="140" height="72" rx="14" fill="#0d1327" stroke="rgba(255,255,255,0.12)"/>
+  <text x="364" y="124" fill="#9ca3af" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Card</text>
+  <text x="364" y="148" fill="#f7f8ff" font-size="14" font-family="ui-monospace, monospace">#0d1327</text>
+
+  <rect x="508" y="100" width="140" height="72" rx="14" fill="#12183a" stroke="rgba(255,255,255,0.12)"/>
+  <text x="520" y="124" fill="#9ca3af" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Muted</text>
+  <text x="520" y="148" fill="#f7f8ff" font-size="14" font-family="ui-monospace, monospace">#12183a</text>
+
+  <rect x="664" y="100" width="256" height="72" rx="14" fill="#0d1327" stroke="rgba(255,255,255,0.08)"/>
+  <text x="676" y="124" fill="#9ca3af" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Glass recipe</text>
+  <text x="676" y="148" fill="#f7f8ff" font-size="12" font-family="ui-monospace, monospace">border-white/8 · blur-xl</text>
+
+  <!-- Accents -->
+  <rect x="40" y="196" width="168" height="72" rx="14" fill="#3a37fc"/>
+  <text x="52" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Primary</text>
+  <text x="52" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#3a37fc</text>
+
+  <rect x="224" y="196" width="168" height="72" rx="14" fill="#911efe"/>
+  <text x="236" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Ring / violet</text>
+  <text x="236" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#911efe</text>
+
+  <rect x="408" y="196" width="168" height="72" rx="14" fill="#ee477a"/>
+  <text x="420" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Pink</text>
+  <text x="420" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#ee477a</text>
+
+  <rect x="592" y="196" width="328" height="72" rx="36" fill="url(#cta)"/>
+  <text x="612" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">CTA pill</text>
+  <text x="612" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#FF5733 ’ #FF2E00</text>
+
+  <rect x="40" y="292" width="880" height="88" rx="18" fill="url(#brand)"/>
+  <text x="56" y="328" fill="#ffffff" font-size="13" font-family="ui-sans-serif, system-ui, sans-serif">Brand / featured border</text>
+  <text x="56" y="354" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#3a37fc ’ #911efe ’ #cf1ae6 ’ #ee477a · Pro #FF4D00 ’ #8A2BE2</text>
+
+  <defs>
+    <linearGradient id="cta" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FF5733"/>
+      <stop offset="100%" stop-color="#FF2E00"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3a37fc"/>
+      <stop offset="40%" stop-color="#911efe"/>
+      <stop offset="70%" stop-color="#cf1ae6"/>
+      <stop offset="100%" stop-color="#ee477a"/>
+    </linearGradient>
+  </defs>
+</svg>

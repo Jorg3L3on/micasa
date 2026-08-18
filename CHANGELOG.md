@@ -21,6 +21,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Dashboard and monthly views: compact fortnight KPIs, tooltip navigation, hardened monthly route loading.
 - Credit card statement import error handling (`NoMovementsStatementImportError` and user-facing hints).
 - Sidebar navigation order and contributing/agent workflow docs.
+- **Orion dark UI** encoded as a design system: [`DESIGN.md`](./DESIGN.md), Cursor rules, dashboard-ui skill, and README screenshots of the live landing, login, and Panel financiero (no third-party mockups in the repo).
 
 ### Fixed
 
