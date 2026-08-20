@@ -159,9 +159,8 @@ export function LiquidityProjectionTab() {
     if (!data) return [];
     const notes = [
       'Ves los próximos meses, no un saldo contable de fin de año.',
-      'La línea morada muestra cuánto te falta por pagar en total desde cada mes hacia adelante; debería ir bajando cuando terminas préstamos o compras a meses.',
-      'Las barras azules son lo que debes pagar ese mes (tarjetas, préstamos, a meses y gastos fijos).',
-      'Los hitos te dicen en qué mes terminas de pagar un préstamo o una compra a meses.',
+      'La línea muestra cuánto te falta por pagar de aquí en adelante; baja cuando terminas un préstamo o una compra a meses.',
+      'Los puntos verdes sobre la línea son el mes en que terminas de pagar algo. Toca un mes para ver el detalle.',
     ];
     if (data.options.include_unpaid_expenses) {
       notes.push('Incluimos gastos que aún no marcas como pagados.');
@@ -257,7 +256,6 @@ export function LiquidityProjectionTab() {
           <section aria-label="Tus pagos mes a mes" className="space-y-3">
             <LiquidityFutureTimeline
               months={data.monthly_series}
-              tracks={data.projection_tracks ?? []}
               events={projectionEvents}
               horizonMonths={horizonMonths}
               onHorizonChange={handleHorizonChange}
