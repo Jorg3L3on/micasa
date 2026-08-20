@@ -19,8 +19,7 @@ import {
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
 import {
-  collectLiquidityProjectionEvents,
-  collectMsiProjectionData,
+  collectLiquidityProjectionTimeline,
 } from '@/lib/finance/liquidity-projection-events';
 import {
   addDaysUtc,
@@ -106,6 +105,7 @@ export type LiquidityProjectionResult = {
   options: LiquidityProjectionOptionsEcho;
   monthly_series: LiquidityMonthlySeriesItem[];
   projection_events: LiquidityProjectionEvent[];
+  projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
 };
 
@@ -134,6 +134,7 @@ export type LiquidityMonthlySeriesItem = {
 };
 
 export type LiquidityProjectionEvent = import('@/lib/finance/liquidity-projection-events').LiquidityProjectionEvent;
+export type LiquidityProjectionTrack = import('@/lib/finance/liquidity-projection-events').LiquidityProjectionTrack;
 
 export type LiquidityCardUtilizationRiskLevel =
   | 'safe'
@@ -842,10 +843,15 @@ export const getLiquidityProjection = async (
 
   const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
   const monthKeys = buildMonthKeyRange(asOfStr, untilStr);
-  const [msiData, projectionEvents] = await Promise.all([
-    collectMsiProjectionData(input.ownerFilter, asOf, monthKeys),
-    collectLiquidityProjectionEvents(input.ownerFilter, asOf, untilStr, monthKeys),
-  ]);
+  const timeline = await collectLiquidityProjectionTimeline(
+    input.ownerFilter,
+    asOf,
+    untilStr,
+    monthKeys,
+  );
+  const msiData = { paymentsByMonth: timeline.installmentPaymentsByMonth };
+  const projectionEvents = timeline.events;
+  const projectionTracks = timeline.tracks;
   const cumulativeIncomeByMonth = new Map<string, number>();
   let cumulativeIncome = 0;
   for (const monthKey of monthKeys) {
@@ -1055,6 +1061,7 @@ export const getLiquidityProjection = async (
     },
     monthly_series,
     projection_events: projectionEvents,
+    projection_tracks: projectionTracks,
     card_utilization_summary,
   };
 };

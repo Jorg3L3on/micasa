@@ -422,6 +422,23 @@ export type LiquidityMonthlySeriesItem = {
   monthly_remaining: number;
 };
 
+export type LiquidityProjectionTrackKind = 'loan' | 'msi';
+
+export type LiquidityProjectionTrack = {
+  id: string;
+  kind: LiquidityProjectionTrackKind;
+  title: string;
+  subtitle: string;
+  start_month_key: string;
+  end_month_key: string;
+  finishes_in_horizon: boolean;
+  monthly_amount: number;
+  loan_id?: number;
+  expense_id?: number;
+  wallet_id?: number;
+  wallet_name?: string;
+};
+
 export type LiquidityProjectionEventType = 'loan_payoff' | 'msi_complete';
 
 export type LiquidityProjectionEvent = {
@@ -474,6 +491,7 @@ export type LiquidityProjectionResponse = {
   options: LiquidityProjectionOptionsEcho;
   monthly_series: LiquidityMonthlySeriesItem[];
   projection_events: LiquidityProjectionEvent[];
+  projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
 };
 

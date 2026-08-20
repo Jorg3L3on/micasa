@@ -593,6 +593,7 @@ describe('getLiquidityProjection', () => {
       );
     }
     expect(Array.isArray(result.projection_events)).toBe(true);
+    expect(Array.isArray(result.projection_tracks)).toBe(true);
   });
 
   it('does not double count payroll deductions as wallet loan obligations', async () => {

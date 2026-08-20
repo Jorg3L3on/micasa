@@ -36,6 +36,18 @@ export const formatMonthYearLabel = (monthKey: string): string => {
   });
 };
 
+export const formatShortMonthLabel = (monthKey: string): string => {
+  const [year, month] = monthKey.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, 1));
+  return d.toLocaleDateString('es-MX', {
+    month: 'short',
+    year: '2-digit',
+    timeZone: 'UTC',
+  });
+};
+
+export const compareMonthKeys = (a: string, b: string): number => a.localeCompare(b);
+
 const formatMonthYearFromYmd = (ymd: string): string => formatMonthYearLabel(ymd.slice(0, 7));
 
 export const getTightestMonth = (

@@ -62,6 +62,7 @@ const minimalResult = (): LiquidityProjectionResult => ({
     },
   ],
   projection_events: [],
+  projection_tracks: [],
   card_utilization_summary: {
     cards: [],
     dangerous_count: 0,

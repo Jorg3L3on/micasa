@@ -2,21 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CalendarClock,
   ChevronDown,
   CreditCard,
   Landmark,
   TrendingUp,
-  BarChart3,
-  Wallet,
 } from 'lucide-react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  ComposedChart,
   Legend,
-  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,7 +20,6 @@ import {
 import { useFinanceContext } from '@/context/finance-context';
 import { fetchLiquidityProjection } from '@/lib/api/liquidity';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,10 +35,8 @@ import { LiquidityGuideHero } from '@/components/wallets/liquidity/LiquidityGuid
 import { LiquidityVisualMetric } from '@/components/wallets/liquidity/LiquidityVisualMetric';
 import { liquidityUntilFromMonthHorizon } from '@/lib/finance/liquidity-projection';
 import { formatCalendarDate } from '@/lib/calendar-dates';
-import { LiquidityHorizonMenu } from '@/components/wallets/liquidity/LiquidityHorizonMenu';
+import { LiquidityFutureTimeline } from '@/components/wallets/liquidity/LiquidityFutureTimeline';
 import {
-  formatLiquidityDateLabel,
-  formatMonthYearLabel,
   getCardRiskLabel,
   getTightestMonth,
   type LiquidityHorizonMonths,
@@ -263,85 +255,18 @@ export function LiquidityProjectionTab() {
           </section>
 
           <section aria-label="Tus pagos mes a mes" className="space-y-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold leading-tight">
-                  Próximos {horizonMonths} meses: ¿bajan tus pagos?
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  La línea morada es lo que aún te falta por pagar en total desde ese mes. Las barras azules son los pagos de cada mes.
-                  {tightestMonth && tightestMonth.remaining < 0
-                    ? ` El mes más apretado parece ser ${formatMonthYearLabel(tightestMonth.monthKey)}.`
-                    : ''}
-                </p>
-              </div>
-              <LiquidityHorizonMenu value={horizonMonths} onChange={handleHorizonChange} />
-            </div>
-            <Card className="overflow-hidden border-border/60">
-              <CardContent className="px-3 py-3">
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartRows}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(127,127,127,0.2)" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend wrapperStyle={{ fontSize: '10px' }} />
-                      <Bar dataKey="paymentsDue" name="Pagos del mes" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                      <Line
-                        type="monotone"
-                        dataKey="remainingDebt"
-                        name="Te falta por pagar (total)"
-                        stroke="#7c3aed"
-                        strokeWidth={2}
-                        dot={{ r: 2 }}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <LiquidityFutureTimeline
+              months={data.monthly_series}
+              tracks={data.projection_tracks ?? []}
+              events={projectionEvents}
+              horizonMonths={horizonMonths}
+              onHorizonChange={handleHorizonChange}
+              tightestMonthKey={tightestMonth?.monthKey}
+            />
           </section>
 
-          {projectionEvents.length > 0 ? (
-            <section aria-label="Cuándo terminas de pagar" className="space-y-3">
-              <div>
-                <h2 className="text-base font-semibold leading-tight">Cuándo terminas de pagar</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Fechas claras donde se acaba un préstamo o una compra a meses dentro de estos {horizonMonths} meses.
-                </p>
-              </div>
-              <ul className="space-y-2">
-                {projectionEvents.map((event) => (
-                  <li
-                    key={`${event.event_type}-${event.loan_id ?? event.expense_id ?? event.event_date}`}
-                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-card px-4 py-3"
-                  >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
-                      <CalendarClock className="h-4 w-4 text-primary" aria-hidden />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{event.title}</p>
-                      <p className="text-xs text-muted-foreground">{event.subtitle}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-xs font-semibold text-foreground">
-                        {formatMonthYearLabel(event.month_key)}
-                      </p>
-                      {event.amount != null ? (
-                        <p className="font-mono text-xs tabular-nums text-muted-foreground">
-                          {formatCurrency(event.amount)}
-                        </p>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
           {shouldShowDebtComposition ? (
-            <Collapsible defaultOpen className="group/debt rounded-xl border border-border/60">
+            <Collapsible className="group/debt rounded-xl border border-border/60">
               <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/20">
                 <div>
                   <h2 className="text-base font-semibold leading-tight">De dónde salen tus pagos</h2>
