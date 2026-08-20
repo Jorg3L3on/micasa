@@ -87,11 +87,11 @@ export const LiquidityGuideHero = ({
           </span>
         </div>
         <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
-        {health !== 'healthy' ? (
-          <p className="text-xs text-muted-foreground">
-            Tip: baja a la gráfica y mira el mes marcado; ahí es donde conviene ajustar.
-          </p>
-        ) : null}
+        <p className="text-xs text-muted-foreground">
+          {health === 'healthy'
+            ? 'Toca un mes en la gráfica para ver ese detalle. Los puntos verdes son cuando terminas de pagar algo.'
+            : 'Toca un punto verde en la gráfica; ese es el mes en que terminas de pagar algo.'}
+        </p>
       </div>
 
       <div className="shrink-0 self-start">

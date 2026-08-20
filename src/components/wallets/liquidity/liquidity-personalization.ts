@@ -48,6 +48,21 @@ export const formatShortMonthLabel = (monthKey: string): string => {
 
 export const compareMonthKeys = (a: string, b: string): number => a.localeCompare(b);
 
+export const monthKeyFromParts = (year: number, month: number): string =>
+  `${year}-${String(month).padStart(2, '0')}`;
+
+export const shiftSelectedMonthKey = (
+  monthKeys: readonly string[],
+  currentKey: string,
+  delta: number,
+): string => {
+  if (monthKeys.length === 0) return currentKey;
+  const index = monthKeys.indexOf(currentKey);
+  const from = index >= 0 ? index : 0;
+  const next = Math.min(monthKeys.length - 1, Math.max(0, from + delta));
+  return monthKeys[next] ?? currentKey;
+};
+
 const formatMonthYearFromYmd = (ymd: string): string => formatMonthYearLabel(ymd.slice(0, 7));
 
 export const getTightestMonth = (

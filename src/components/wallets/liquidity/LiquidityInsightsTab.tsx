@@ -2,28 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  BarChart3,
-  CalendarDays,
-  History,
-  Landmark,
-  Wallet,
-} from 'lucide-react';
+import { History, Wallet } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import MonthlyOverviewChart from '@/components/wallets/liquidity/MonthlyOverviewChart';
-import { LiquidityVisualMetric } from '@/components/wallets/liquidity/LiquidityVisualMetric';
+import { LiquidityPastMonthFocus } from '@/components/wallets/liquidity/LiquidityPastMonthFocus';
 import type { WalletListItem } from '@/types/catalog';
 import type { MonthlySummaryItem } from '@/app/api/wallets/liquidity/monthly-summary/route';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
-import { getCardRiskLabel } from '@/components/wallets/liquidity/liquidity-personalization';
+import {
+  getCardRiskLabel,
+  monthKeyFromParts,
+  shiftSelectedMonthKey,
+} from '@/components/wallets/liquidity/liquidity-personalization';
 
 const CARD_TYPES = ['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD'] as const;
 const ROLLING_MONTHS = 12;
@@ -63,6 +59,7 @@ export function LiquidityInsightsTab() {
   const [loading, setLoading] = useState(true);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
+  const [selectedMonthKey, setSelectedMonthKey] = useState('');
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -108,16 +105,22 @@ export function LiquidityInsightsTab() {
     void load();
   }, [load]);
 
+  const monthKeys = useMemo(
+    () => monthlySummary.map((month) => monthKeyFromParts(month.year, month.month)),
+    [monthlySummary],
+  );
+
+  useEffect(() => {
+    if (monthKeys.length === 0) return;
+    if (monthKeys.includes(selectedMonthKey)) return;
+    setSelectedMonthKey(monthKeys[monthKeys.length - 1] ?? '');
+  }, [monthKeys, selectedMonthKey]);
+
   const sortedCards = useMemo(() => sortWalletsByType(wallets), [wallets]);
 
   const totalCategorySpend = useMemo(
     () => categories.reduce((sum, row) => sum + Number(row.total), 0),
     [categories],
-  );
-
-  const avgMonthlySpend = useMemo(
-    () => totalCategorySpend / ROLLING_MONTHS,
-    [totalCategorySpend],
   );
 
   const annualTotals = useMemo(() => {
@@ -126,10 +129,20 @@ export function LiquidityInsightsTab() {
     return { income, expenses, net: income - expenses };
   }, [monthlySummary]);
 
-  const maxMonthlyExpense = useMemo(
-    () => Math.max(...monthlySummary.map((m) => m.expense), 1),
-    [monthlySummary],
+  const averageExpense = useMemo(
+    () => (monthlySummary.length > 0 ? annualTotals.expenses / monthlySummary.length : 0),
+    [annualTotals.expenses, monthlySummary.length],
   );
+
+  const resolvedMonthKey =
+    selectedMonthKey && monthKeys.includes(selectedMonthKey)
+      ? selectedMonthKey
+      : (monthKeys[monthKeys.length - 1] ?? '');
+  const selectedIndex = monthKeys.indexOf(resolvedMonthKey);
+  const selectedMonth =
+    monthlySummary.find(
+      (month) => monthKeyFromParts(month.year, month.month) === resolvedMonthKey,
+    ) ?? null;
 
   const topCategories = useMemo(
     () => [...categories].sort((a, b) => b.total - a.total).slice(0, 5),
@@ -144,18 +157,19 @@ export function LiquidityInsightsTab() {
   const heroPrefix = firstName ? `${firstName}, ` : '';
   const heroMessage =
     totalCategorySpend > 0
-      ? `${heroPrefix}en los últimos 12 meses gastaste ${formatCurrency(totalCategorySpend)}. En promedio, cada mes salieron ${formatCurrency(avgMonthlySpend)}.`
+      ? `${heroPrefix}así se movió tu dinero el último año. Toca un mes en la gráfica para ver si te alcanzó.`
       : `${heroPrefix}aún no hay gastos registrados. Cuando empieces a anotarlos, aquí verás en qué se va tu dinero.`;
+
+  const handleShiftMonth = (delta: number) => {
+    setSelectedMonthKey(shiftSelectedMonthKey(monthKeys, resolvedMonthKey, delta));
+  };
 
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-28 rounded-2xl bg-muted/40 border border-border/30" />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="h-32 rounded-xl bg-muted/40 border border-border/30" />
-          <div className="h-32 rounded-xl bg-muted/40 border border-border/30" />
-        </div>
-        <div className="h-64 rounded-xl bg-muted/40 border border-border/30" />
+        <div className="h-72 rounded-2xl bg-muted/40 border border-border/30" />
+        <div className="h-40 rounded-2xl bg-muted/40 border border-border/30" />
       </div>
     );
   }
@@ -178,15 +192,6 @@ export function LiquidityInsightsTab() {
         <div className="min-w-0 flex-1 space-y-2">
           <h2 className="text-lg font-semibold leading-tight">Lo que ya pasó</h2>
           <p className="text-sm text-muted-foreground">{heroMessage}</p>
-          {annualTotals.net >= 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Entró más de lo que salió en el periodo. ¡Buen trabajo!
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Salió más de lo que entró. Revisa abajo en qué categorías se fue más dinero.
-            </p>
-          )}
         </div>
       </div>
 
@@ -199,136 +204,34 @@ export function LiquidityInsightsTab() {
         </div>
       ) : null}
 
-      <section className="space-y-3" aria-labelledby="past-year-heading">
-        <div>
-          <h2 id="past-year-heading" className="text-base font-semibold leading-tight">
-            Tu año en números sencillos
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sin contabilidad complicada: solo cuánto salió en total y cuánto en promedio al mes.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <LiquidityVisualMetric
-            label="Total gastado en un año"
-            hint="Suma de los últimos 12 meses"
-            amount={totalCategorySpend}
-            borderClass="border-l-sky-500/50"
-            amountClassName="text-sky-700 dark:text-sky-300"
-            barPercent={100}
-            barTone="sky"
-            icon={
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/25">
-                <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-400" aria-hidden />
-              </span>
-            }
-          />
-          <LiquidityVisualMetric
-            label="En promedio cada mes gastaste"
-            hint="Sirve para comparar si un mes se te fue de las manos"
-            amount={avgMonthlySpend}
-            borderClass="border-l-emerald-500/50"
-            amountClassName="text-emerald-700 dark:text-emerald-300"
-            barPercent={
-              maxMonthlyExpense > 0
-                ? Math.min(100, (avgMonthlySpend / maxMonthlyExpense) * 100)
-                : 50
-            }
-            barTone="emerald"
-            icon={
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25">
-                <BarChart3 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
-              </span>
-            }
-          />
-        </div>
-      </section>
+      {monthlySummary.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          En 12 meses entró{' '}
+          <span className="font-mono font-semibold tabular-nums text-emerald-300">
+            {formatCurrency(annualTotals.income)}
+          </span>{' '}
+          y salió{' '}
+          <span className="font-mono font-semibold tabular-nums text-violet-300">
+            {formatCurrency(annualTotals.expenses)}
+          </span>
+          . Toca la gráfica para ver cada mes.
+        </p>
+      ) : null}
 
-      <section className="space-y-3" aria-labelledby="in-out-heading">
-        <div>
-          <h2 id="in-out-heading" className="text-base font-semibold leading-tight">
-            Lo que entró y lo que salió
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Comparación simple de ingresos y gastos en los últimos 12 meses.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <LiquidityVisualMetric
-            label="Entró a tus cuentas"
-            hint="Todo lo que registraste como ingreso"
-            amount={annualTotals.income}
-            borderClass="border-l-emerald-500/50"
-            amountClassName="text-emerald-700 dark:text-emerald-300"
-            barPercent={
-              annualTotals.income + annualTotals.expenses > 0
-                ? (annualTotals.income / (annualTotals.income + annualTotals.expenses)) * 100
-                : 50
-            }
-            barTone="emerald"
-            icon={
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25">
-                <ArrowDownLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
-              </span>
-            }
-          />
-          <LiquidityVisualMetric
-            label="Salió en gastos"
-            hint="Todo lo que registraste como gasto"
-            amount={annualTotals.expenses}
-            borderClass="border-l-violet-500/50"
-            barPercent={
-              annualTotals.income + annualTotals.expenses > 0
-                ? (annualTotals.expenses / (annualTotals.income + annualTotals.expenses)) * 100
-                : 50
-            }
-            barTone="violet"
-            icon={
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/25">
-                <ArrowUpRight className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden />
-              </span>
-            }
-          />
-          <LiquidityVisualMetric
-            label={annualTotals.net >= 0 ? 'Te sobró en el año' : 'Te faltó en el año'}
-            hint={
-              annualTotals.net >= 0
-                ? 'Entró más de lo que salió'
-                : 'Salió más de lo que entró'
-            }
-            amount={Math.abs(annualTotals.net)}
-            borderClass={
-              annualTotals.net >= 0 ? 'border-l-emerald-500/50' : 'border-l-destructive/50'
-            }
-            amountClassName={
-              annualTotals.net >= 0
-                ? 'text-emerald-700 dark:text-emerald-300'
-                : 'text-destructive'
-            }
-            statusLabel={annualTotals.net >= 0 ? 'Te sobró' : 'Te faltó'}
-            statusTone={annualTotals.net >= 0 ? 'emerald' : 'destructive'}
-            barPercent={annualTotals.net >= 0 ? 72 : 28}
-            barTone={annualTotals.net >= 0 ? 'emerald' : 'destructive'}
-            icon={
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/25">
-                <Landmark className="h-4 w-4 text-sky-600 dark:text-sky-400" aria-hidden />
-              </span>
-            }
-          />
-        </div>
-      </section>
+      <MonthlyOverviewChart
+        months={monthlySummary}
+        selectedMonthKey={resolvedMonthKey}
+        onSelectMonth={setSelectedMonthKey}
+      />
 
-      <section className="rounded-xl border border-border/60 bg-transparent shadow-sm overflow-hidden">
-        <div className="border-b border-border/60 px-4 py-3">
-          <p className="text-sm font-semibold leading-none">Mes a mes: ingresos y gastos</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            La línea azul es lo que entró; la naranja, lo que salió.
-          </p>
-        </div>
-        <div className="p-4 pt-2">
-          <MonthlyOverviewChart />
-        </div>
-      </section>
+      <LiquidityPastMonthFocus
+        month={selectedMonth}
+        averageExpense={averageExpense}
+        canPrev={selectedIndex > 0}
+        canNext={selectedIndex >= 0 && selectedIndex < monthKeys.length - 1}
+        onPrevMonth={() => handleShiftMonth(-1)}
+        onNextMonth={() => handleShiftMonth(1)}
+      />
 
       <section className="space-y-3" aria-labelledby="categories-heading">
         <div>

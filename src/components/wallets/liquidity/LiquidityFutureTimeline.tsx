@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useMemo } from 'react';
 import { Check } from 'lucide-react';
 import {
   Area,
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -31,7 +31,8 @@ type LiquidityFutureTimelineProps = {
   events: LiquidityProjectionEvent[];
   horizonMonths: LiquidityHorizonMonths;
   onHorizonChange: (value: LiquidityHorizonMonths) => void;
-  tightestMonthKey?: string | null;
+  selectedMonthKey: string;
+  onSelectMonth: (monthKey: string) => void;
 };
 
 type ChartPoint = {
@@ -158,7 +159,8 @@ export const LiquidityFutureTimeline = ({
   events,
   horizonMonths,
   onHorizonChange,
-  tightestMonthKey,
+  selectedMonthKey,
+  onSelectMonth,
 }: LiquidityFutureTimelineProps) => {
   const eventsByMonth = useMemo(() => {
     const map = new Map<string, LiquidityProjectionEvent[]>();
@@ -189,25 +191,13 @@ export const LiquidityFutureTimeline = ({
   );
 
   const firstEventMonth = chartRows.find((row) => row.eventCount > 0)?.monthKey;
-  const [selectedMonthKey, setSelectedMonthKey] = useState(
-    firstEventMonth ?? chartRows[0]?.monthKey ?? '',
-  );
 
   useEffect(() => {
+    if (chartRows.length === 0) return;
     if (!chartRows.some((row) => row.monthKey === selectedMonthKey)) {
-      setSelectedMonthKey(
-        chartRows.find((row) => row.eventCount > 0)?.monthKey ?? chartRows[0]?.monthKey ?? '',
-      );
+      onSelectMonth(firstEventMonth ?? chartRows[0]?.monthKey ?? '');
     }
-  }, [chartRows, selectedMonthKey]);
-
-  const selectedPoint = chartRows.find((row) => row.monthKey === selectedMonthKey) ?? null;
-  const selectedEvents = eventsByMonth.get(selectedMonthKey) ?? [];
-  const isTight = selectedPoint?.monthKey === tightestMonthKey && (selectedPoint?.monthlyRemaining ?? 0) < 0;
-
-  const handleSelectMonth = (monthKey: string) => {
-    setSelectedMonthKey(monthKey);
-  };
+  }, [chartRows, firstEventMonth, onSelectMonth, selectedMonthKey]);
 
   if (months.length === 0) {
     return <p className="text-sm text-muted-foreground">Aún no hay meses por proyectar.</p>;
@@ -249,7 +239,7 @@ export const LiquidityFutureTimeline = ({
               onClick={(state) => {
                 const monthKey = (state?.activePayload?.[0]?.payload as ChartPoint | undefined)
                   ?.monthKey;
-                if (monthKey) handleSelectMonth(monthKey);
+                if (monthKey) onSelectMonth(monthKey);
               }}
             >
               <defs>
@@ -281,6 +271,13 @@ export const LiquidityFutureTimeline = ({
                 width={42}
               />
               <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.12)' }} />
+              {selectedMonthKey ? (
+                <ReferenceLine
+                  x={chartRows.find((row) => row.monthKey === selectedMonthKey)?.label}
+                  stroke="rgba(255,255,255,0.22)"
+                  strokeDasharray="3 4"
+                />
+              ) : null}
               <Area
                 type="monotone"
                 dataKey="remainingDebt"
@@ -299,7 +296,7 @@ export const LiquidityFutureTimeline = ({
                     cy={dotProps.cy}
                     payload={dotProps.payload as ChartPoint}
                     selectedMonthKey={selectedMonthKey}
-                    onSelect={handleSelectMonth}
+                    onSelect={onSelectMonth}
                   />
                 )}
                 activeDot={false}
@@ -314,61 +311,7 @@ export const LiquidityFutureTimeline = ({
           </ResponsiveContainer>
         </div>
       </div>
-
-      <AnimatePresence mode="wait">
-        {selectedPoint ? (
-          <motion.div
-            key={selectedPoint.monthKey}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-            className={cn(
-              MONTHLY_PANEL_SHELL_CLASS,
-              'px-4 py-4',
-              isTight && 'border-l-[3px] border-l-destructive/50',
-            )}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Mes seleccionado
-                </p>
-                <h3 className="text-base font-semibold capitalize">
-                  {formatMonthYearLabel(selectedPoint.monthKey)}
-                </h3>
-              </div>
-              <p className="font-mono text-lg font-bold tabular-nums">
-                {formatCurrency(selectedPoint.remainingDebt)}
-                <span className="ml-1 text-xs font-medium text-muted-foreground">aún por pagar</span>
-              </p>
-            </div>
-
-            {selectedEvents.length > 0 ? (
-              <ul className="mt-3 space-y-2">
-                {selectedEvents.map((event) => (
-                  <li
-                    key={`${event.event_type}-${event.loan_id ?? event.expense_id}`}
-                    className="flex items-start gap-2 text-sm"
-                  >
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400">
-                      <Check className="h-3 w-3 text-[#060914]" aria-hidden />
-                    </span>
-                    <span>
-                      <span className="font-semibold text-foreground">{event.title}</span>
-                      <span className="block text-xs text-muted-foreground">{event.subtitle}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Ese mes no terminas ningún préstamo ni compra a meses. La línea sigue bajando con tus pagos normales.
-              </p>
-            )}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
     </section>
   );
 };
+
