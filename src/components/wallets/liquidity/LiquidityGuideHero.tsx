@@ -76,7 +76,7 @@ export const LiquidityGuideHero = ({
 
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold leading-tight capitalize">{copy.title}</h2>
+          <h2 className="text-lg font-semibold leading-tight">{copy.title}</h2>
           <span
             className={cn(
               'rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1',

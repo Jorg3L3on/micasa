@@ -48,7 +48,7 @@ export const LiquidityMonthFocus = ({
     amount: Number(month[item.key] ?? 0),
   })).filter((item) => item.amount > 0);
   const sliceTotal = slices.reduce((sum, item) => sum + item.amount, 0);
-  const covers = month.monthly_remaining >= 0;
+  const covers = month.total_payments_due <= 0 || month.monthly_remaining >= 0;
 
   return (
     <AnimatePresence mode="wait">
@@ -70,7 +70,7 @@ export const LiquidityMonthFocus = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               {isCurrentMonth ? 'Este mes' : 'Mes en la gráfica'}
             </p>
-            <h3 className="text-base font-semibold capitalize">
+            <h3 className="text-base font-semibold">
               {formatMonthYearLabel(month.month_key)}
             </h3>
           </div>

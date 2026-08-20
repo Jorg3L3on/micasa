@@ -29,11 +29,12 @@ export const formatLiquidityDateLabel = (ymd: string): string => {
 export const formatMonthYearLabel = (monthKey: string): string => {
   const [year, month] = monthKey.split('-').map(Number);
   const d = new Date(Date.UTC(year, month - 1, 1));
-  return d.toLocaleDateString('es-MX', {
+  const raw = d.toLocaleDateString('es-MX', {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
   });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 };
 
 export const formatShortMonthLabel = (monthKey: string): string => {

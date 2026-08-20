@@ -52,7 +52,7 @@ const ChartTooltip = ({
   const point = payload[0].payload;
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#0d1327]/95 px-3 py-2.5 shadow-xl backdrop-blur-xl">
-      <p className="text-xs font-semibold capitalize text-foreground">
+      <p className="text-xs font-semibold text-foreground">
         {formatMonthYearLabel(point.monthKey)}
       </p>
       <p className="mt-1 text-[11px] text-emerald-300">
@@ -60,9 +60,13 @@ const ChartTooltip = ({
       </p>
       <p className="text-[11px] text-violet-300">Salió {formatCurrency(point.expense)}</p>
       {point.isTight ? (
-        <p className="mt-2 text-[11px] font-medium text-rose-300">Ese mes no te alcanzó</p>
+        <p className="mt-2 text-[11px] font-medium text-rose-300">
+          Te faltó {formatCurrency(Math.abs(point.net))}
+        </p>
       ) : (
-        <p className="mt-2 text-[11px] font-medium text-emerald-300">Te sobró</p>
+        <p className="mt-2 text-[11px] font-medium text-emerald-300">
+          Te sobró {formatCurrency(point.net)}
+        </p>
       )}
     </div>
   );

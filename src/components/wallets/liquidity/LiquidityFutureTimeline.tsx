@@ -63,7 +63,7 @@ const ChartTooltip = ({
   const point = payload[0].payload;
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#0d1327]/95 px-3 py-2.5 shadow-xl backdrop-blur-xl">
-      <p className="text-xs font-semibold capitalize text-foreground">
+      <p className="text-xs font-semibold text-foreground">
         {formatMonthYearLabel(point.monthKey)}
       </p>
       <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">

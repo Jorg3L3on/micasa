@@ -57,7 +57,7 @@ export const LiquidityPastMonthFocus = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Mes en la gráfica
             </p>
-            <h3 className="text-base font-semibold capitalize">
+            <h3 className="text-base font-semibold">
               {formatMonthYearLabel(monthKey)}
             </h3>
           </div>
