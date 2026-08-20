@@ -850,6 +850,7 @@ export const getLiquidityProjection = async (
     monthKeys,
   );
   const msiData = { paymentsByMonth: timeline.installmentPaymentsByMonth };
+  const payrollPaymentsByMonth = timeline.payrollPaymentsByMonth;
   const projectionEvents = timeline.events;
   const projectionTracks = timeline.tracks;
   const cumulativeIncomeByMonth = new Map<string, number>();
@@ -978,7 +979,10 @@ export const getLiquidityProjection = async (
 
   let remainingFromMonth = 0;
   for (let i = monthly_series.length - 1; i >= 0; i -= 1) {
-    remainingFromMonth += monthly_series[i]!.total_payments_due;
+    const monthKey = monthly_series[i]!.month_key;
+    remainingFromMonth +=
+      monthly_series[i]!.total_payments_due +
+      (payrollPaymentsByMonth.get(monthKey) ?? 0);
     monthly_series[i]!.remaining_payments_from_month = remainingFromMonth;
   }
 

@@ -642,4 +642,55 @@ describe('getLiquidityProjection', () => {
     expect(result.summary.expected_income_total_on_or_before_until).toBe(-300);
     expect(result.summary.total_obligations_due_on_or_before_until).toBe(500);
   });
+
+  it('puts a payoff marker on payroll loans like Fonacot when the last cuota is in view', async () => {
+    setupWalletMock([fundingRow], []);
+    findManyLoan.mockResolvedValue([
+      {
+        id: 31,
+        name: 'Fonacot Carmen',
+        lender: 'FONACOT',
+        payment_amount: 1243.68,
+        payment_source: 'PAYROLL_DEDUCTION',
+        payments: [
+          { due_date: parseCalendarDate('2026-04-16'), amount: '1243.68' },
+          { due_date: parseCalendarDate('2026-10-16'), amount: '1243.68' },
+        ],
+      },
+    ]);
+    findManyLoanPayment
+      .mockResolvedValueOnce([
+        { amount: '1243.68', due_date: parseCalendarDate('2026-04-16') },
+        { amount: '1243.68', due_date: parseCalendarDate('2026-10-16') },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: parseCalendarDate('2026-10-31'),
+      includeUnpaidExpenses: false,
+    });
+
+    expect(result.projection_events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event_type: 'loan_payoff',
+          month_key: '2026-10',
+          title: 'Terminas de pagar Fonacot Carmen',
+          loan_id: 31,
+        }),
+      ]),
+    );
+
+    const april = result.monthly_series.find((month) => month.month_key === '2026-04');
+    const september = result.monthly_series.find((month) => month.month_key === '2026-09');
+    const october = result.monthly_series.find((month) => month.month_key === '2026-10');
+    const afterPayoff = result.monthly_series.find((month) => month.month_key === '2026-11');
+
+    expect(april?.loan_payment_total).toBe(0);
+    expect(april?.remaining_payments_from_month).toBeCloseTo(2487.36);
+    expect(september?.remaining_payments_from_month).toBeCloseTo(1243.68);
+    expect(october?.remaining_payments_from_month).toBeCloseTo(1243.68);
+    expect(afterPayoff).toBeUndefined();
+  });
 });

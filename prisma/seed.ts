@@ -316,6 +316,7 @@ async function main() {
       applies_first_fortnight: true, applies_second_fortnight: true,
       due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
       category_id: catPrestamos.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
+      active: false,
     },
   });
   const etFonacotJorge = await prisma.expenseTemplate.create({
@@ -324,6 +325,7 @@ async function main() {
       applies_first_fortnight: true, applies_second_fortnight: true,
       due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
       category_id: catPrestamos.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
+      active: false,
     },
   });
   const etCarne = await prisma.expenseTemplate.create({
@@ -756,6 +758,67 @@ async function main() {
           due_date: payment.dueDate,
           amount: payment.amount.toString(),
           source_wallet_id: walletBanamex.id,
+        })),
+      },
+    },
+  });
+
+  const fonacotCarmenSchedule = generateLoanPaymentSchedule({
+    startDate: parseCalendarDate('2026-03-01'),
+    paymentAmount: 1243.68,
+    paymentCount: 16,
+    frequency: 'FORTNIGHTLY',
+  });
+  const fonacotJorgeSchedule = generateLoanPaymentSchedule({
+    startDate: parseCalendarDate('2026-03-01'),
+    paymentAmount: 2792.73,
+    paymentCount: 18,
+    frequency: 'FORTNIGHTLY',
+  });
+
+  await prisma.loan.create({
+    data: {
+      name: 'Fonacot Carmen',
+      lender: 'FONACOT',
+      type: 'PAYROLL',
+      status: 'ACTIVE',
+      principal_amount: 1243.68 * 16,
+      payment_amount: 1243.68,
+      payment_count: 16,
+      frequency: 'FORTNIGHTLY',
+      start_date: parseCalendarDate('2026-03-01'),
+      payment_source: 'PAYROLL_DEDUCTION',
+      house_id: leonSolorzano.id,
+      notes: 'Descuento de nómina; el punto verde es el mes en que termina',
+      payments: {
+        create: fonacotCarmenSchedule.map((payment) => ({
+          sequence: payment.sequence,
+          due_date: payment.dueDate,
+          amount: payment.amount.toString(),
+        })),
+      },
+    },
+  });
+
+  await prisma.loan.create({
+    data: {
+      name: 'Fonacot Jorge',
+      lender: 'FONACOT',
+      type: 'PAYROLL',
+      status: 'ACTIVE',
+      principal_amount: 2792.73 * 18,
+      payment_amount: 2792.73,
+      payment_count: 18,
+      frequency: 'FORTNIGHTLY',
+      start_date: parseCalendarDate('2026-03-01'),
+      payment_source: 'PAYROLL_DEDUCTION',
+      house_id: leonSolorzano.id,
+      notes: 'Descuento de nómina; el punto verde es el mes en que termina',
+      payments: {
+        create: fonacotJorgeSchedule.map((payment) => ({
+          sequence: payment.sequence,
+          due_date: payment.dueDate,
+          amount: payment.amount.toString(),
         })),
       },
     },
