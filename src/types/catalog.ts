@@ -412,11 +412,46 @@ export type LiquidityProjectionOptionsEcho = {
 export type LiquidityMonthlySeriesItem = {
   month_key: string;
   msi_debt_total: number;
+  installment_payment_total: number;
   loan_payment_total: number;
   expected_income_total: number;
   expense_template_total: number;
   other_debt_components_total: number;
+  total_payments_due: number;
+  remaining_payments_from_month: number;
   monthly_remaining: number;
+};
+
+export type LiquidityProjectionTrackKind = 'loan' | 'msi';
+
+export type LiquidityProjectionTrack = {
+  id: string;
+  kind: LiquidityProjectionTrackKind;
+  title: string;
+  subtitle: string;
+  start_month_key: string;
+  end_month_key: string;
+  finishes_in_horizon: boolean;
+  monthly_amount: number;
+  loan_id?: number;
+  expense_id?: number;
+  wallet_id?: number;
+  wallet_name?: string;
+};
+
+export type LiquidityProjectionEventType = 'loan_payoff' | 'msi_complete';
+
+export type LiquidityProjectionEvent = {
+  event_type: LiquidityProjectionEventType;
+  event_date: string;
+  month_key: string;
+  title: string;
+  subtitle: string;
+  loan_id?: number;
+  expense_id?: number;
+  wallet_id?: number;
+  wallet_name?: string;
+  amount?: number;
 };
 
 export type LiquidityCardUtilizationRiskLevel =
@@ -455,6 +490,8 @@ export type LiquidityProjectionResponse = {
   assumptions: readonly string[];
   options: LiquidityProjectionOptionsEcho;
   monthly_series: LiquidityMonthlySeriesItem[];
+  projection_events: LiquidityProjectionEvent[];
+  projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
 };
 

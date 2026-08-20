@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Proyección de liquidez | MiCasa',
+  title: 'Liquidez y análisis | MiCasa',
   description:
-    'Efectivo y débito vs pagos a estado de tarjetas en un horizonte de fechas.',
+    'Entiende tu dinero: lo que ya pasó, lo que tienes hoy y lo que viene.',
 };
 
 export default function LiquidityLayout({

@@ -22,6 +22,22 @@ export const LIQUIDITY_MAX_CYCLES_PER_CARD_GROUP = 48;
 
 export const DEFAULT_PROJECTION_HORIZON_DAYS = 180;
 
+export const liquidityUntilFromMonthHorizon = (asOf: Date, horizonMonths: number): Date => {
+  const asOfStr = formatCalendarDate(asOf);
+  const [yearRaw, monthRaw, dayRaw] = asOfStr.split('-').map(Number);
+  let year = yearRaw;
+  let month = monthRaw + horizonMonths;
+  while (month > 12) {
+    month -= 12;
+    year += 1;
+  }
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const day = Math.min(dayRaw, lastDay);
+  return parseCalendarDate(
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+  );
+};
+
 export const LIQUIDITY_PROJECTION_ASSUMPTIONS_ES: readonly string[] = [
   'Las fechas de estado usan el mismo calendario UTC que el motor de cortes y vencimientos.',
   'Cada periodo futuro solo suma cargos ya registrados y pagos a estado ya aplicados en la app; no se inventan compras futuras.',

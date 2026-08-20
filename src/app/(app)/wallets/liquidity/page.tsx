@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LineChart, PieChart } from 'lucide-react';
+import { CalendarClock, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
 import { LiquidityInsightsTab } from '@/components/wallets/liquidity/LiquidityInsightsTab';
+import { LiquidityWelcome } from '@/components/wallets/liquidity/LiquidityWelcome';
 
 type LiquidityPageTab = 'proyeccion' | 'analisis';
 
@@ -38,13 +39,8 @@ export default function LiquidityPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-black tracking-tight">Liquidez y análisis</h1>
-        <p className="text-sm text-muted-foreground">
-          Proyección a futuro y vista de patrones de gasto con tus saldos por cuenta.
-        </p>
-      </div>
+    <div className="space-y-5">
+      <LiquidityWelcome />
 
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
         <TabsList
@@ -54,27 +50,27 @@ export default function LiquidityPage() {
           <TabsTrigger
             value="proyeccion"
             className="shrink-0 gap-2 px-5 text-sm font-medium"
-            aria-label="Proyección de liquidez"
+            aria-label="Lo que viene: tu dinero a futuro"
           >
-            <LineChart className="size-4 shrink-0" aria-hidden data-icon="inline-start" />
-            Proyección
+            <CalendarClock className="size-4 shrink-0" aria-hidden data-icon="inline-start" />
+            Lo que viene
           </TabsTrigger>
           <TabsTrigger
             value="analisis"
             className="shrink-0 gap-2 px-5 text-sm font-medium"
-            aria-label="Análisis e historial"
+            aria-label="Lo que ya pasó: tu historial"
           >
-            <PieChart className="size-4 shrink-0" aria-hidden data-icon="inline-start" />
-            Análisis
+            <History className="size-4 shrink-0" aria-hidden data-icon="inline-start" />
+            Lo que ya pasó
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="proyeccion" className="mt-0">
-          {tab === 'proyeccion' ? <LiquidityProjectionTab /> : null}
+          <LiquidityProjectionTab />
         </TabsContent>
 
         <TabsContent value="analisis" className="mt-0">
-          {tab === 'analisis' ? <LiquidityInsightsTab /> : null}
+          <LiquidityInsightsTab />
         </TabsContent>
       </Tabs>
     </div>

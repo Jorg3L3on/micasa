@@ -12,6 +12,7 @@ const {
   findManyIncomeTemplate,
   findManyLoanPayment,
   findManyStatementImport,
+  findManyLoan,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
@@ -22,6 +23,7 @@ const {
   findManyIncomeTemplate: vi.fn(),
   findManyLoanPayment: vi.fn(),
   findManyStatementImport: vi.fn(),
+  findManyLoan: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -34,6 +36,7 @@ vi.mock('@/lib/prisma', () => ({
     income: { findMany: findManyIncome },
     incomeTemplate: { findMany: findManyIncomeTemplate },
     loanPayment: { findMany: findManyLoanPayment },
+    loan: { findMany: findManyLoan },
     creditCardStatementImport: { findMany: findManyStatementImport },
   },
 }));
@@ -82,17 +85,20 @@ describe('getLiquidityProjection', () => {
     queryRaw.mockReset();
     findManyWallet.mockReset();
     findManyExpense.mockReset();
+    findManyExpense.mockResolvedValue([]);
     findManyFortnight.mockReset();
     findManyExpenseTemplate.mockReset();
     findManyIncome.mockReset();
     findManyIncomeTemplate.mockReset();
     findManyLoanPayment.mockReset();
     findManyStatementImport.mockReset();
+    findManyLoan.mockReset();
     findManyStatementImport.mockResolvedValue([]);
     findManyFortnight.mockResolvedValue([]);
     findManyIncome.mockResolvedValue([]);
     findManyIncomeTemplate.mockResolvedValue([]);
     findManyLoanPayment.mockResolvedValue([]);
+    findManyLoan.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -446,5 +452,194 @@ describe('getLiquidityProjection', () => {
       include_unpaid_expenses: false,
       include_expense_templates: true,
     });
+  });
+
+  it('keeps summary algebra consistent with monthly series and milestones', async () => {
+    setupWalletMock(
+      [
+        { ...fundingRow, amount: '1000' },
+        {
+          id: 11,
+          name: 'Debito',
+          type: PaymentMethodType.DEBIT_CARD,
+          amount: '500',
+        },
+      ],
+      [],
+    );
+    findManyFortnight.mockResolvedValue([
+      {
+        id: 70,
+        period: 'FIRST',
+        end_date: parseCalendarDate('2026-03-15'),
+        start_date: parseCalendarDate('2026-03-01'),
+      },
+      {
+        id: 71,
+        period: 'SECOND',
+        end_date: parseCalendarDate('2026-04-30'),
+        start_date: parseCalendarDate('2026-04-16'),
+      },
+    ]);
+    findManyIncome.mockResolvedValue([
+      { amount: '2000', received_at: parseCalendarDate('2026-03-10') },
+      { amount: '800', received_at: parseCalendarDate('2026-04-20') },
+    ]);
+    findManyIncomeTemplate.mockResolvedValue([]);
+    findManyExpense.mockResolvedValue([
+      {
+        id: 901,
+        description: 'Renta',
+        amount: '900',
+        payment_date: parseCalendarDate('2026-03-15'),
+        wallet_id: 10,
+        fortnight: { id: 70, end_date: parseCalendarDate('2026-03-15') },
+        wallet: { id: 10, name: 'Efectivo', type: PaymentMethodType.CASH },
+      },
+      {
+        id: 902,
+        description: 'Internet',
+        amount: '300',
+        payment_date: parseCalendarDate('2026-04-05'),
+        wallet_id: 11,
+        fortnight: { id: 71, end_date: parseCalendarDate('2026-04-30') },
+        wallet: { id: 11, name: 'Debito', type: PaymentMethodType.DEBIT_CARD },
+      },
+    ]);
+    findManyExpenseTemplate.mockResolvedValue([
+      {
+        id: 30,
+        name: 'Gas',
+        suggested_amount: '250',
+        wallet_id: 10,
+      },
+    ]);
+    findManyLoanPayment
+      .mockResolvedValueOnce([
+        {
+          amount: '120',
+          due_date: parseCalendarDate('2026-03-31'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 777,
+          amount: '400',
+          due_date: parseCalendarDate('2026-04-10'),
+          source_wallet: {
+            id: 10,
+            name: 'Efectivo',
+            type: PaymentMethodType.CASH,
+          },
+          loan: {
+            id: 4,
+            name: 'Prestamo auto',
+            lender: 'Banco',
+            payment_source: 'WALLET',
+          },
+        },
+      ]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: parseCalendarDate('2026-04-30'),
+      includeUnpaidExpenses: true,
+      includeExpenseTemplates: true,
+    });
+
+    const totalMonthlyIncome = result.monthly_series.reduce(
+      (sum, month) => sum + month.expected_income_total,
+      0,
+    );
+    const totalMonthlyDebt = result.monthly_series.reduce(
+      (sum, month) => sum + month.total_payments_due,
+      0,
+    );
+    const totalMilestoneDebt = result.milestones.reduce(
+      (sum, milestone) => sum + milestone.total_due,
+      0,
+    );
+
+    expect(result.summary.expected_income_total_on_or_before_until).toBe(
+      totalMonthlyIncome,
+    );
+    expect(result.summary.total_obligations_due_on_or_before_until).toBe(
+      totalMonthlyDebt,
+    );
+    expect(result.summary.total_obligations_due_on_or_before_until).toBe(
+      totalMilestoneDebt,
+    );
+    expect(result.summary.net_liquidity_versus_obligations).toBe(
+      result.summary.funding_total -
+        result.summary.total_obligations_due_on_or_before_until,
+    );
+    expect(
+      result.summary.net_liquidity_versus_obligations_including_income,
+    ).toBe(
+      result.summary.funding_total +
+        result.summary.expected_income_total_on_or_before_until -
+        result.summary.total_obligations_due_on_or_before_until,
+    );
+    for (const month of result.monthly_series) {
+      expect(month.monthly_remaining).toBe(
+        month.expected_income_total - month.total_payments_due,
+      );
+      expect(month.total_payments_due).toBe(
+        month.msi_debt_total +
+          month.installment_payment_total +
+          month.loan_payment_total +
+          month.expense_template_total +
+          month.other_debt_components_total,
+      );
+    }
+    expect(Array.isArray(result.projection_events)).toBe(true);
+    expect(Array.isArray(result.projection_tracks)).toBe(true);
+  });
+
+  it('does not double count payroll deductions as wallet loan obligations', async () => {
+    setupWalletMock([fundingRow], []);
+    findManyFortnight.mockResolvedValue([]);
+    findManyIncome.mockResolvedValue([]);
+    findManyIncomeTemplate.mockResolvedValue([]);
+    findManyExpense.mockResolvedValue([]);
+    findManyLoanPayment
+      .mockResolvedValueOnce([
+        {
+          amount: '300',
+          due_date: parseCalendarDate('2026-04-15'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 2001,
+          amount: '500',
+          due_date: parseCalendarDate('2026-04-22'),
+          source_wallet: {
+            id: 10,
+            name: 'Efectivo',
+            type: PaymentMethodType.CASH,
+          },
+          loan: {
+            id: 12,
+            name: 'Prestamo personal',
+            lender: 'Banco',
+            payment_source: 'WALLET',
+          },
+        },
+      ]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: parseCalendarDate('2026-04-30'),
+      includeUnpaidExpenses: false,
+    });
+
+    const april = result.monthly_series.find((month) => month.month_key === '2026-04');
+    expect(april).toBeDefined();
+    expect(april?.expected_income_total).toBe(-300);
+    expect(april?.loan_payment_total).toBe(500);
+    expect(april?.other_debt_components_total).toBe(0);
+    expect(result.summary.expected_income_total_on_or_before_until).toBe(-300);
+    expect(result.summary.total_obligations_due_on_or_before_until).toBe(500);
   });
 });
