@@ -43,6 +43,7 @@ export type LiquidityProjectionTimeline = {
   events: LiquidityProjectionEvent[];
   tracks: LiquidityProjectionTrack[];
   installmentPaymentsByMonth: Map<string, number>;
+  payrollPaymentsByMonth: Map<string, number>;
 };
 
 const toMonthKey = (ymd: string) => ymd.slice(0, 7);
@@ -74,23 +75,31 @@ const collectLoanTimeline = async (
   asOfStr: string,
   untilStr: string,
   monthKeys: string[],
-): Promise<{ events: LiquidityProjectionEvent[]; tracks: LiquidityProjectionTrack[] }> => {
+): Promise<{
+  events: LiquidityProjectionEvent[];
+  tracks: LiquidityProjectionTrack[];
+  payrollPaymentsByMonth: Map<string, number>;
+}> => {
   const horizonStart = monthKeys[0] ?? toMonthKey(asOfStr);
   const horizonEnd = monthKeys[monthKeys.length - 1] ?? toMonthKey(untilStr);
   const asOf = parseCalendarDate(asOfStr);
-  const until = parseCalendarDate(untilStr);
+  const monthKeySet = new Set(monthKeys);
+  const payrollPaymentsByMonth = new Map<string, number>();
+  for (const key of monthKeys) {
+    payrollPaymentsByMonth.set(key, 0);
+  }
 
   const loans = await prisma.loan.findMany({
     where: {
       ...ownerFilter,
       status: 'ACTIVE',
-      payment_source: 'WALLET',
     },
     select: {
       id: true,
       name: true,
       lender: true,
       payment_amount: true,
+      payment_source: true,
       payments: {
         where: { status: 'SCHEDULED' },
         orderBy: { due_date: 'asc' },
@@ -112,7 +121,7 @@ const collectLoanTimeline = async (
       compareMonthKeys(toMonthKey(firstDue), horizonStart) < 0
         ? horizonStart
         : toMonthKey(firstDue);
-    const finishesInHorizon = compareUtcDateOnly(lastDue, untilStr) <= 0;
+    const finishesInHorizon = monthKeySet.has(lastMonth);
     const visibleEnd = finishesInHorizon
       ? lastMonth
       : compareMonthKeys(lastMonth, horizonEnd) < 0
@@ -122,9 +131,22 @@ const collectLoanTimeline = async (
     if (compareMonthKeys(startMonth, horizonEnd) > 0) continue;
     if (compareMonthKeys(visibleEnd, horizonStart) < 0) continue;
 
-    const remainingCount = loan.payments.filter(
+    const remainingPayments = loan.payments.filter(
       (payment) => payment.due_date >= asOf,
-    ).length;
+    );
+    const remainingCount = remainingPayments.length;
+    const isPayroll = loan.payment_source === 'PAYROLL_DEDUCTION';
+
+    if (isPayroll) {
+      for (const payment of remainingPayments) {
+        const monthKey = toMonthKey(toUtcDateOnlyString(payment.due_date));
+        if (!monthKeySet.has(monthKey)) continue;
+        payrollPaymentsByMonth.set(
+          monthKey,
+          (payrollPaymentsByMonth.get(monthKey) ?? 0) + Number(payment.amount),
+        );
+      }
+    }
 
     tracks.push({
       id: `loan-${loan.id}`,
@@ -138,20 +160,22 @@ const collectLoanTimeline = async (
       loan_id: loan.id,
     });
 
-    if (finishesInHorizon && lastPayment.due_date >= asOf && lastPayment.due_date <= until) {
+    if (finishesInHorizon && lastPayment.due_date >= asOf) {
       events.push({
         event_type: 'loan_payoff',
         event_date: lastDue,
         month_key: lastMonth,
         title: `Terminas de pagar ${loan.name}`,
-        subtitle: `Última mensualidad con ${loan.lender}`,
+        subtitle: isPayroll
+          ? `Último descuento de nómina · ${loan.lender}`
+          : `Última mensualidad con ${loan.lender}`,
         loan_id: loan.id,
         amount: Number(lastPayment.amount),
       });
     }
   }
 
-  return { events, tracks };
+  return { events, tracks, payrollPaymentsByMonth };
 };
 
 export const collectMsiProjectionData = async (
@@ -298,6 +322,7 @@ export const collectLiquidityProjectionTimeline = async (
     events,
     tracks,
     installmentPaymentsByMonth: msiData.paymentsByMonth,
+    payrollPaymentsByMonth: loanTimeline.payrollPaymentsByMonth,
   };
 };
 
