@@ -1,6 +1,6 @@
 'use client';
 
-import { Landmark } from 'lucide-react';
+import { DollarSign, Landmark } from 'lucide-react';
 import Image from 'next/image';
 import {
   getWalletProviderOption,
@@ -44,8 +44,16 @@ export const WalletProviderIcon = ({
           className={cn('h-4 w-4 rounded-sm object-contain', iconClassName)}
           unoptimized
         />
+      ) : provider?.key === 'CASH_GENERIC' ? (
+        <DollarSign
+          className={cn('h-4 w-4 shrink-0', iconClassName)}
+          aria-hidden="true"
+          strokeWidth={2.25}
+        />
       ) : provider ? (
-        <span className={cn('leading-none', iconClassName)}>{provider.shortLabel}</span>
+        <span className="flex size-full items-center justify-center leading-none tracking-normal">
+          {provider.shortLabel}
+        </span>
       ) : (
         <Landmark className={cn('h-3.5 w-3.5', iconClassName)} aria-hidden="true" data-icon="inline-start" />
       )}

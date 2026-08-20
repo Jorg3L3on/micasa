@@ -13,14 +13,13 @@ import { toast } from 'sonner';
 import {
   ArrowDownAZ,
   ArrowDownZA,
-  ChevronDown,
   LineChart,
   ListFilter,
+  Search,
   WalletIcon,
   X,
   Zap,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Collapsible,
   CollapsibleContent,
@@ -40,10 +39,8 @@ import { createCreditCard, updateCreditCard } from '@/lib/api/credit-cards';
 import {
   createWallet,
   deleteWallet,
-  getWalletMetrics,
   updateWallet,
 } from '@/lib/api/wallets';
-import type { WalletBalanceMetrics } from '@/lib/finance/wallet-balance-evolution';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_OPTIONS,
@@ -385,11 +382,7 @@ const compareWallets = (
 export default function WalletsPage() {
   const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
-  const [walletMetrics, setWalletMetrics] = useState<
-    Record<string, WalletBalanceMetrics>
-  >({});
   const [loading, setLoading] = useState(true);
-  const [metricsLoading, setMetricsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -792,7 +785,7 @@ export default function WalletsPage() {
         undefined,
         context,
       );
-      setWallets(data);
+      setWallets(data.filter((w) => w.type !== 'GOAL'));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al cargar las billeteras',
@@ -802,22 +795,9 @@ export default function WalletsPage() {
     }
   }, [context]);
 
-  const fetchWalletMetrics = useCallback(async () => {
-    try {
-      setMetricsLoading(true);
-      const data = await getWalletMetrics(context);
-      setWalletMetrics(data.by_wallet_id);
-    } catch {
-      setWalletMetrics({});
-    } finally {
-      setMetricsLoading(false);
-    }
-  }, [context]);
-
   useEffect(() => {
     void fetchWallets();
-    void fetchWalletMetrics();
-  }, [fetchWallets, fetchWalletMetrics]);
+  }, [fetchWallets]);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
@@ -846,7 +826,6 @@ export default function WalletsPage() {
         toast.success('Billetera creada');
       }
       await fetchWallets();
-      await fetchWalletMetrics();
       setCreateDialogOpen(false);
     } catch (err) {
       const message =
@@ -868,7 +847,6 @@ export default function WalletsPage() {
         toast.success('Billetera actualizada');
       }
       await fetchWallets();
-      await fetchWalletMetrics();
       setEditDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
@@ -886,7 +864,6 @@ export default function WalletsPage() {
       await deleteWallet(selectedWallet.id, context);
       toast.success('Eliminada');
       await fetchWallets();
-      await fetchWalletMetrics();
       setDeleteDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
@@ -983,8 +960,7 @@ export default function WalletsPage() {
         </div>
       )}
 
-      <Card className="min-w-0 overflow-hidden">
-        <CardContent className="min-w-0 px-3 pt-6 sm:px-6">
+      <div className="min-w-0">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
               Cargando...
@@ -992,48 +968,70 @@ export default function WalletsPage() {
           ) : wallets.length === 0 ? (
             <EmptyState message="No se encontraron billeteras" />
           ) : (
-            <div className="space-y-4">
+            <div className="@container w-full min-w-0">
+            <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
               <Collapsible
                 open={filtersOpen}
                 onOpenChange={setFiltersOpen}
                 className="w-full"
               >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 w-full justify-between gap-2 sm:max-w-md"
-                    >
-                      <span className="flex min-w-0 items-center gap-2 text-left">
-                        <ListFilter className="h-4 w-4 shrink-0" data-icon="inline-start" />
-                        <span className="truncate font-medium">
-                          Filtros, búsqueda y orden
-                        </span>
-                        {activeFilterDimensionCount > 0 ? (
-                          <Badge
-                            variant="secondary"
-                            className="h-5 shrink-0 px-1.5 tabular-nums"
-                          >
-                            {activeFilterDimensionCount}
-                          </Badge>
-                        ) : null}
-                      </span>
-                      <ChevronDown
-                        className={cn(
-                          'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
-                          filtersOpen && 'rotate-180',
-                        )}
-                        aria-hidden
-                        data-icon="inline-end"
-                      />
-                    </Button>
-                  </CollapsibleTrigger>
+                <div className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <Search
+                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <Input
+                      placeholder="Buscar"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-11 w-full rounded-xl border-0 bg-muted/70 pr-10 pl-10 shadow-none md:text-[15px]"
+                      aria-label="Buscar por nombre"
+                      type="search"
+                    />
+                    {searchQuery.trim() ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1/2 right-0.5 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setSearchQuery('')}
+                        aria-label="Borrar búsqueda"
+                      >
+                        <X className="h-4 w-4" data-icon="inline-start" />
+                      </Button>
+                    ) : null}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'relative h-11 w-11 shrink-0 rounded-full',
+                            filtersOpen && 'bg-muted text-foreground',
+                          )}
+                          aria-label="Filtros y orden"
+                          aria-expanded={filtersOpen}
+                        >
+                          <ListFilter className="h-4 w-4" data-icon="inline-start" />
+                          {activeFilterDimensionCount > 0 ? (
+                            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground tabular-nums">
+                              {activeFilterDimensionCount}
+                            </span>
+                          ) : null}
+                        </Button>
+                      </CollapsibleTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Filtros y orden</TooltipContent>
+                  </Tooltip>
                   {!filtersOpen && hasActiveFilters ? (
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-10 shrink-0 text-muted-foreground sm:self-center"
+                      className="h-11 shrink-0 text-muted-foreground"
                       onClick={() => handleClearFilters()}
                       aria-label="Limpiar todos los filtros"
                     >
@@ -1044,27 +1042,6 @@ export default function WalletsPage() {
                 <CollapsibleContent className="data-[state=open]:pt-4">
                   <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                  <div className="relative w-full max-w-full sm:max-w-xs">
-                    <Input
-                      placeholder="Buscar por nombre..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pr-10"
-                      aria-label="Buscar por nombre"
-                    />
-                    {searchQuery.trim() ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0.5 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => setSearchQuery('')}
-                        aria-label="Borrar búsqueda"
-                      >
-                        <X className="h-4 w-4" data-icon="inline-start" />
-                      </Button>
-                    ) : null}
-                  </div>
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     <Select
                       value={sortKey}
@@ -1449,25 +1426,14 @@ export default function WalletsPage() {
               </Collapsible>
 
               <div
-                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3"
+                className="flex flex-wrap items-baseline justify-between gap-2"
                 role="status"
                 aria-live="polite"
               >
-                <p className="text-sm text-muted-foreground">
-                  Mostrando{' '}
-                  <span className="font-mono font-medium tabular-nums text-foreground">
-                    {displayWallets.length}
-                  </span>
-                  {' '}
-                  de{' '}
-                  <span className="font-mono tabular-nums text-foreground">
-                    {wallets.length}
-                  </span>
-                  {' '}
-                  billeteras
-                  {listIsFiltered ? (
-                    <span className="text-xs"> · filtrado</span>
-                  ) : null}
+                <p className="text-[13px] text-muted-foreground">
+                  {displayWallets.length} de {wallets.length}{' '}
+                  {wallets.length === 1 ? 'billetera' : 'billeteras'}
+                  {listIsFiltered ? ' · filtrado' : ''}
                 </p>
               </div>
 
@@ -1477,16 +1443,23 @@ export default function WalletsPage() {
                 </p>
               ) : (
                 <ul
-                  className="grid list-none grid-cols-1 gap-3 p-0 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
+                  className="isolate flex w-full list-none flex-col p-0 md:grid md:grid-cols-2 md:gap-5 md:py-1 @min-[1045px]:!grid-cols-3"
                   role="list"
+                  aria-label="Billeteras"
                 >
-                  {displayWallets.map((wallet) => (
-                    <li key={wallet.id} className="min-w-0">
+                  {displayWallets.map((wallet, index) => (
+                    <li
+                      key={wallet.id}
+                      className={cn(
+                        'relative min-w-0 md:mt-0',
+                        index > 0 && 'max-md:mt-[calc(7rem-63%)]',
+                      )}
+                      style={{ zIndex: index + 1 }}
+                    >
                       <WalletListCard
                         wallet={wallet}
                         ownerQueryString={ownerQueryString}
-                        metrics={walletMetrics[String(wallet.id)] ?? null}
-                        metricsLoading={metricsLoading}
+                        isHouseContext={isHouseContext}
                         onEdit={openEditDialog}
                         onTransfer={openTransferDialog}
                         onDelete={openDeleteDialog}
@@ -1497,9 +1470,9 @@ export default function WalletsPage() {
                 </ul>
               )}
             </div>
+            </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
       </div>
 
       <Button
@@ -1537,7 +1510,6 @@ export default function WalletsPage() {
           setBalanceWallet((prev) =>
             prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
           );
-          void fetchWalletMetrics();
         }}
       />
 
@@ -1557,7 +1529,6 @@ export default function WalletsPage() {
         context={context}
         onSuccess={async () => {
           await fetchWallets();
-          void fetchWalletMetrics();
         }}
       />
 

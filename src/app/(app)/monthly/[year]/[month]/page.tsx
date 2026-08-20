@@ -10,7 +10,6 @@ import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
-import { MonthlyWelcome } from '@/components/monthly/MonthlyWelcome';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
@@ -215,7 +214,6 @@ export default async function MonthlyPage({
   if (monthIsMissing) {
     return (
       <div className="space-y-5">
-        <MonthlyWelcome />
         <MonthlyPanelPreferencesProvider
           ownerKey={ownerKey}
           year={year}

@@ -1,11 +1,9 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeftRight,
-  ArrowRight,
   BookmarkIcon,
   MoreVertical,
   Pencil,
@@ -17,16 +15,13 @@ import {
   PAYMENT_METHOD_LABELS,
   isCreditOrStoreCardWalletType,
 } from '@/domain/payment-method';
-import type { WalletBalanceMetrics } from '@/lib/finance/wallet-balance-evolution';
 import {
   getProviderBrandColor,
   getProviderCardStyle,
   getWalletBrandCssVars,
-  WALLET_BRAND_HIT_BUTTON_CLASS,
 } from '@/lib/provider-card-style';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,22 +29,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { WalletAmountTrendIndicator } from '@/components/wallets/WalletAmountTrendIndicator';
-import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-} from 'recharts';
 
 const getEffectiveCreditLimit = ({
   credit_limit,
@@ -67,8 +49,7 @@ const getEffectiveCreditLimit = ({
 type WalletListCardProps = {
   wallet: WalletListItem;
   ownerQueryString: string;
-  metrics?: WalletBalanceMetrics | null;
-  metricsLoading?: boolean;
+  isHouseContext?: boolean;
   onEdit: (wallet: WalletListItem) => void;
   onTransfer?: (wallet: WalletListItem) => void;
   onDelete: (wallet: WalletListItem) => void;
@@ -78,14 +59,12 @@ type WalletListCardProps = {
 export const WalletListCard = ({
   wallet,
   ownerQueryString,
-  metrics,
-  metricsLoading = false,
+  isHouseContext = false,
   onEdit,
   onTransfer,
   onDelete,
   onOpenBalance,
 }: WalletListCardProps) => {
-  const sparklineRef = useRef<HTMLDivElement>(null);
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
   const canTransfer =
@@ -94,40 +73,17 @@ export const WalletListCard = ({
     wallet.type === 'GOAL';
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
 
-  const providerCardStyle = useMemo(
-    () => getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'list'),
-    [wallet.provider_icon_key, wallet.type],
-  );
-  const hasBrandTint = Boolean(providerCardStyle);
   const brandColor = useMemo(
     () =>
       getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? '#6366f1',
     [wallet.provider_icon_key, wallet.type],
   );
-  const brandCssVars = useMemo(
-    () => getWalletBrandCssVars(brandColor),
-    [brandColor],
-  );
   const cardStyle = useMemo(
-    () => ({ ...providerCardStyle, ...brandCssVars }),
-    [providerCardStyle, brandCssVars],
-  );
-
-  const fallbackAccent = isCard
-    ? 'neutral'
-    : wallet.type === 'DEBIT_CARD'
-      ? 'blue'
-      : wallet.type === 'CASH'
-        ? 'emerald'
-        : 'neutral';
-
-  const fallbackShellClass = cn(
-    'border bg-card',
-    fallbackAccent === 'blue' &&
-      'border-blue-500/35 dark:border-blue-500/40',
-    fallbackAccent === 'emerald' &&
-      'border-emerald-500/35 dark:border-emerald-500/40',
-    fallbackAccent === 'neutral' && 'border-border/60',
+    () => ({
+      ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'wow'),
+      ...getWalletBrandCssVars(brandColor),
+    }),
+    [wallet.provider_icon_key, wallet.type, brandColor],
   );
 
   const detailHref = useMemo(
@@ -138,65 +94,62 @@ export const WalletListCard = ({
     [isCard, wallet.id, ownerQueryString],
   );
 
-  const effectiveLimit =
-    getEffectiveCreditLimit({
-      credit_limit: wallet.credit_limit,
-      temporary_credit_limit: wallet.temporary_credit_limit,
-    }) ?? 0;
+  const effectiveLimit = getEffectiveCreditLimit({
+    credit_limit: wallet.credit_limit,
+    temporary_credit_limit: wallet.temporary_credit_limit,
+  });
+  const hasCreditLimit = isCard && effectiveLimit != null && effectiveLimit > 0;
   const amountNumber = Number(wallet.amount);
   const usagePercent =
-    isCard && effectiveLimit > 0
+    hasCreditLimit && effectiveLimit != null
       ? Math.min((Math.max(0, amountNumber) / effectiveLimit) * 100, 100)
       : 0;
 
   const isNegativeBalance = isFunding && amountNumber < 0;
-  const isOverLimit = isCard && effectiveLimit > 0 && amountNumber > effectiveLimit;
+  const isOverLimit =
+    hasCreditLimit && effectiveLimit != null && amountNumber > effectiveLimit;
   const hasAlert = isNegativeBalance || isOverLimit;
 
-  const displayBalance = metrics?.current_balance ?? amountNumber;
-  const previousBalance = metrics?.previous_balance ?? displayBalance;
-  const diff = metrics?.diff ?? 0;
-  const trendIsPositive = isCard ? diff <= 0 : diff >= 0;
+  const usageLabel = isOverLimit
+    ? 'Excedido'
+    : `${usagePercent.toFixed(0)}% usado`;
 
-  const sparklineData = useMemo(() => {
-    if (metrics?.history && metrics.history.length > 0) {
-      return metrics.history;
-    }
-    // Keep a flat chart when metrics are missing/empty — never replace with copy.
-    const value = displayBalance;
-    return [
-      { date: '', as_of: '', value },
-      { date: '', as_of: '', value },
-    ];
-  }, [metrics?.history, displayBalance]);
-
-  const subtitleParts = useMemo(() => {
-    const parts: string[] = [typeLabel];
+  const compactMetric = useMemo(() => {
     if (isCard) {
-      if (effectiveLimit > 0) {
-        parts.push(`Línea ${formatCurrency(effectiveLimit)}`);
-        parts.push(
-          isOverLimit ? 'Excedido' : `${usagePercent.toFixed(0)}% usado`,
-        );
-      } else {
-        parts.push('Sin línea');
-      }
-      if (wallet.due_day != null) {
-        parts.push(`Paga ${wallet.due_day}`);
-      }
-    } else {
-      parts.push(wallet.assignee?.name ?? 'Sin titular');
+      return hasCreditLimit ? usageLabel : 'Sin límite';
     }
-    return parts;
+    if (isFunding && isHouseContext) {
+      return wallet.assignee?.name ?? 'Compartida';
+    }
+    return null;
   }, [
-    typeLabel,
     isCard,
-    effectiveLimit,
-    usagePercent,
-    isOverLimit,
-    wallet.due_day,
+    hasCreditLimit,
+    usageLabel,
+    isFunding,
+    isHouseContext,
     wallet.assignee?.name,
   ]);
+
+  const availableCredit =
+    hasCreditLimit && effectiveLimit != null
+      ? effectiveLimit - amountNumber
+      : null;
+  const underAmountLine = hasCreditLimit
+    ? {
+        kind: 'disponible' as const,
+        amount: Math.max(0, availableCredit ?? 0),
+      }
+    : isFunding && !wallet.include_in_liquidity
+      ? { kind: 'excluded' as const }
+      : null;
+  const showTemporaryTope =
+    isCard &&
+    wallet.credit_limit != null &&
+    wallet.temporary_credit_limit != null &&
+    wallet.temporary_credit_limit > wallet.credit_limit;
+
+  const showBottomBar = hasCreditLimit;
 
   const articleLabel = hasAlert
     ? `${wallet.name}, ${isOverLimit ? 'límite excedido' : 'saldo negativo'}`
@@ -206,44 +159,48 @@ export const WalletListCard = ({
 
   return (
     <article
-      className={cn('@container h-full w-full min-w-0 max-w-full', !wallet.active && 'opacity-80')}
+      className={cn(
+        '@container w-full min-w-0 max-w-full',
+        !wallet.active && 'opacity-80',
+      )}
       aria-label={articleLabel}
     >
-      <Card
+      <div
         className={cn(
-          'h-full w-full min-w-0 max-w-full overflow-hidden border bg-card py-0 shadow-sm transition-shadow duration-200 hover:shadow-md motion-reduce:transition-none',
-          !hasBrandTint && fallbackShellClass,
-          hasAlert && 'border-rose-500/50 ring-1 ring-inset ring-rose-500/25',
+          'relative aspect-[1.586/1] w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
+          'shadow-[0_12px_32px_-14px_rgba(0,0,0,0.62),0_4px_12px_-6px_rgba(0,0,0,0.4)]',
+          'transition-transform duration-200 ease-out motion-reduce:transition-none',
+          'active:scale-[0.985] md:hover:-translate-y-1',
+          hasAlert && 'ring-2 ring-inset ring-rose-400/70',
         )}
         style={cardStyle}
       >
-        <CardContent className="flex h-full min-w-0 flex-col gap-3 p-3 sm:gap-4 sm:p-4">
-          <div className="flex min-w-0 items-start gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <WalletProviderIcon
-                providerIconKey={wallet.provider_icon_key}
-                className="h-8 w-8 shrink-0 rounded-lg border border-border/60 bg-card shadow-sm ring-1 ring-border/60"
-                iconClassName="h-4 w-4"
-                showTooltipLabel={false}
-              />
-              <div className="min-w-0">
-                <h3
-                  className={cn(
-                    'truncate text-sm font-semibold leading-tight text-foreground',
-                    !wallet.active && 'text-muted-foreground',
-                  )}
-                >
-                  {wallet.name}
-                </h3>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {subtitleParts.join(' · ')}
-                </p>
-              </div>
+        <Link
+          href={detailHref}
+          className="absolute inset-0 z-0 rounded-[1.375rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+          aria-label={`Abrir ${wallet.name}`}
+        />
+
+        <div className="pointer-events-none relative z-10 flex h-full flex-col p-4 sm:p-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <WalletProviderIcon
+              providerIconKey={wallet.provider_icon_key}
+              className="h-10 w-10 shrink-0 rounded-[0.7rem] border-white/25 bg-white/37 shadow-none ring-0"
+              iconClassName="h-5 w-5"
+              showTooltipLabel={false}
+            />
+            <div className="min-w-0 flex-1 pr-8">
+              <h3 className="truncate text-[15px] font-semibold leading-tight tracking-tight text-white">
+                {wallet.name}
+              </h3>
+              <p className="mt-0.5 truncate text-[12px] text-white/70">
+                {typeLabel}
+              </p>
             </div>
             {!wallet.active ? (
               <Badge
                 variant="outline"
-                className="h-6 shrink-0 gap-0.5 px-1.5 text-[10px]"
+                className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-[10px] text-white"
               >
                 <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
                 Inactivo
@@ -251,227 +208,135 @@ export const WalletListCard = ({
             ) : null}
           </div>
 
-          <div className="grid min-w-0 grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] items-end gap-2 sm:gap-3">
+          <div className="mt-2.5 grid min-w-0 grid-cols-[minmax(0,1.1fr)_minmax(5.5rem,38%)] items-start gap-3">
             <div className="min-w-0">
-              <div className="rounded-md py-0.5">
-                <p
-                  className={cn(
-                    'truncate font-mono text-xl font-semibold tabular-nums tracking-tight sm:text-2xl',
-                    hasAlert ? 'text-destructive' : 'text-foreground',
-                  )}
-                >
-                  {formatCurrency(displayBalance)}
+              <p
+                className={cn(
+                  'truncate font-mono text-[1.65rem] font-semibold leading-none tabular-nums tracking-tight sm:text-3xl',
+                  hasAlert ? 'text-rose-200' : 'text-white',
+                )}
+              >
+                {formatCurrency(amountNumber)}
+              </p>
+              <p className="mt-1 text-[11px] text-white/55">
+                {isCard ? 'Deuda' : 'Saldo'}
+              </p>
+              {underAmountLine?.kind === 'disponible' ? (
+                <p className="mt-0.5 truncate text-[11px] text-white/55">
+                  Disponible{' '}
+                  <span
+                    className={cn(
+                      'font-mono font-medium tabular-nums',
+                      isOverLimit ? 'text-rose-200' : 'text-white/80',
+                    )}
+                  >
+                    {formatCurrency(underAmountLine.amount)}
+                  </span>
                 </p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {isCard ? 'Deuda' : 'Saldo'}
+              ) : underAmountLine?.kind === 'excluded' ? (
+                <p className="mt-0.5 truncate text-[11px] text-white/55">
+                  Fuera de la liquidez
                 </p>
-              </div>
-              {metricsLoading ? (
-                <div className="mt-1 h-5 w-full max-w-36 animate-pulse rounded bg-muted/70" />
-              ) : metrics ? (
-                <WalletAmountTrendIndicator
-                  diff={diff}
-                  isPositive={trendIsPositive}
-                  previousAmount={previousBalance}
-                  currentAmount={displayBalance}
-                  className="mt-1"
-                />
               ) : null}
             </div>
 
-            <div
-              ref={sparklineRef}
-              className="relative z-10 h-14 w-full min-w-0 sm:h-16"
-              aria-hidden
-            >
-              {metricsLoading ? (
-                <div className="h-full w-full animate-pulse rounded-lg bg-muted/50" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <LineChart
-                    data={sparklineData}
-                    margin={{ top: 4, right: 2, left: 2, bottom: 4 }}
-                  >
-                    <RechartsTooltip
-                      cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
-                      allowEscapeViewBox={{ x: true, y: true }}
-                      wrapperStyle={{ outline: 'none', pointerEvents: 'none' }}
-                      content={({ active, payload, coordinate }) => {
-                        if (
-                          !active ||
-                          !payload?.length ||
-                          coordinate?.x == null ||
-                          coordinate?.y == null ||
-                          typeof document === 'undefined'
-                        ) {
-                          return null;
-                        }
-                        const rect = sparklineRef.current?.getBoundingClientRect();
-                        if (!rect) return null;
-                        const point = payload[0].payload as {
-                          date: string;
-                          value: number;
-                        };
-                        const left = rect.left + coordinate.x;
-                        const top = rect.top + coordinate.y;
-                        return createPortal(
-                          <div
-                            className="pointer-events-none fixed z-50 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
-                            style={{
-                              left,
-                              top,
-                              transform: 'translate(-50%, calc(-100% - 8px))',
-                            }}
-                          >
-                            {point.date ? (
-                              <p className="mb-0.5 text-muted-foreground">{point.date}</p>
-                            ) : null}
-                            <p className="font-mono font-medium tabular-nums text-foreground">
-                              {formatCurrency(point.value)}
-                            </p>
-                          </div>,
-                          document.body,
-                        );
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke={brandColor}
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
+            <div className="flex min-w-0 flex-col items-end pt-1 text-right">
+              {compactMetric ? (
+                <p
+                  className={cn(
+                    'max-w-full truncate text-[13px] font-medium leading-tight tabular-nums',
+                    isOverLimit
+                      ? 'text-rose-200'
+                      : compactMetric === 'Sin límite'
+                        ? 'text-white/55'
+                        : 'text-white/80',
+                  )}
+                >
+                  {compactMetric}
+                </p>
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-auto flex min-w-0 items-center gap-1">
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-              <WalletPaymentMethodTypeIcon
-                type={wallet.type}
-                className="shrink-0"
-              />
-              {/* Icons when the card itself is narrow (grid columns), not viewport sm */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className={cn(
-                      'shrink-0 @[22rem]:hidden',
-                      WALLET_BRAND_HIT_BUTTON_CLASS,
-                    )}
-                    onClick={() => onOpenBalance(wallet)}
-                    aria-label="Editar saldo"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={4}>
-                  Editar saldo
-                </TooltipContent>
-              </Tooltip>
+          <div className="mt-auto" />
+        </div>
+
+        {showTemporaryTope ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-start px-4 sm:px-5">
+            <span className="rounded-full border border-white/25 bg-black/25 px-2 py-0.5 text-[10px] font-medium tracking-wide text-white/90">
+              Tope temporal
+            </span>
+          </div>
+        ) : null}
+
+        {showBottomBar ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1.5 w-full overflow-hidden bg-white/20"
+            role="meter"
+            aria-label="Porcentaje de línea usado"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(usagePercent)}
+          >
+            <div
+              className={cn(
+                'h-full',
+                isOverLimit ? 'bg-rose-300' : 'bg-white/85',
+              )}
+              style={{ width: `${usagePercent}%` }}
+            />
+          </div>
+        ) : null}
+
+        <div className="absolute top-2.5 right-2.5 z-20">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className={cn(
-                  'hidden h-8 shrink px-3 @[22rem]:inline-flex',
-                  WALLET_BRAND_HIT_BUTTON_CLASS,
-                )}
-                onClick={() => onOpenBalance(wallet)}
+                size="icon-sm"
+                className="size-8 rounded-full text-white hover:bg-white/15 hover:text-white focus-visible:ring-white/70"
+                aria-label={`Más opciones para ${wallet.name}`}
               >
-                Editar saldo
+                <MoreVertical className="h-4 w-4" />
               </Button>
-            </div>
-            <div className="flex shrink-0 items-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="icon-sm"
-                    className={cn(
-                      'shrink-0 @[22rem]:hidden',
-                      WALLET_BRAND_HIT_BUTTON_CLASS,
-                    )}
-                  >
-                    <Link href={detailHref} aria-label="Ver detalles">
-                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={4}>
-                  Detalles
-                </TooltipContent>
-              </Tooltip>
-              <Link
-                href={detailHref}
-                className="hidden shrink-0 @[22rem]:inline-flex"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                onClick={() => onOpenBalance(wallet)}
+                className="cursor-pointer"
               >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={cn('h-8 px-3', WALLET_BRAND_HIT_BUTTON_CLASS)}
-                >
-                  Detalles →
-                </Button>
-              </Link>
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className={cn('shrink-0', WALLET_BRAND_HIT_BUTTON_CLASS)}
-                        aria-label={`Más opciones para ${wallet.name}`}
-                      >
-                        <MoreVertical className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={4}>
-                    Más opciones
-                  </TooltipContent>
-                </Tooltip>
-              <DropdownMenuContent align="end" className="w-44">
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Editar saldo
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onEdit(wallet)}
+                className="cursor-pointer"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+              {canTransfer && onTransfer ? (
                 <DropdownMenuItem
-                  onClick={() => onEdit(wallet)}
+                  onClick={() => onTransfer(wallet)}
                   className="cursor-pointer"
                 >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Editar
+                  <ArrowLeftRight className="mr-2 h-4 w-4" />
+                  Transferir saldo
                 </DropdownMenuItem>
-                {canTransfer && onTransfer ? (
-                  <DropdownMenuItem
-                    onClick={() => onTransfer(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Transferir saldo
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onDelete(wallet)}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Eliminar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              ) : null}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(wallet)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </article>
   );
 };

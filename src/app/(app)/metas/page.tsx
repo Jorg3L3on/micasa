@@ -199,7 +199,7 @@ export default function MetasPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-4 sm:px-6">
+    <div className="space-y-5 pb-24 sm:pb-0">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <h2 className="text-lg font-semibold leading-tight tracking-tight">

@@ -696,15 +696,6 @@ export default function WalletForm({
 
             <DialogFooter className="gap-2 border-t border-border/60 pt-4 sm:justify-end">
               <Button
-                type="button"
-                variant="ghost"
-                className="h-9 text-muted-foreground"
-                disabled={isSubmitting}
-                onClick={() => handleOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
                 type="submit"
                 disabled={isSubmitting}
                 className="h-9 min-w-[9rem] rounded-xl"

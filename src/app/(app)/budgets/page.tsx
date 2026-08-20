@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import BudgetPeriodDetail from '@/components/BudgetPeriodDetail';
 import BudgetFormDialog from '@/components/BudgetFormDialog';
@@ -57,6 +58,163 @@ import {
 type BudgetsView = 'budgets' | 'templates';
 type BudgetStatus = 'active' | 'history' | 'scheduled';
 type BudgetSort = 'attention' | 'name' | 'period_end';
+
+const BUDGET_STATUS_TABS: ReadonlyArray<{ value: BudgetStatus; label: string }> = [
+  { value: 'active', label: 'Activos' },
+  { value: 'history', label: 'Historial' },
+  { value: 'scheduled', label: 'Programados' },
+];
+
+const SEGMENT_DRAG_PX = 8;
+const SEGMENT_SWIPE_PX = 48;
+const SEGMENT_FLICK_VX = 480;
+
+function clampSegment(value: number, max: number) {
+  return Math.min(max, Math.max(0, value));
+}
+
+function useBudgetStatusGestures(status: BudgetStatus, setStatus: (status: BudgetStatus) => void) {
+  const count = BUDGET_STATUS_TABS.length;
+  const statusIndex = Math.max(
+    0,
+    BUDGET_STATUS_TABS.findIndex((tab) => tab.value === status),
+  );
+  const [thumbIndex, setThumbIndex] = useState(statusIndex);
+  const [listDragging, setListDragging] = useState(false);
+  const thumbIndexRef = useRef(statusIndex);
+  const listDragRef = useRef(false);
+  const listMovedRef = useRef(false);
+  const listStartXRef = useRef(0);
+  const listOriginRef = useRef(statusIndex);
+  const listLastXRef = useRef(0);
+  const listLastTRef = useRef(0);
+  const listVelocityRef = useRef(0);
+  const panelStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const suppressPanelClickRef = useRef(false);
+
+  const setThumb = useCallback((value: number) => {
+    thumbIndexRef.current = value;
+    setThumbIndex(value);
+  }, []);
+
+  useEffect(() => {
+    if (listDragRef.current) return;
+    setThumb(statusIndex);
+  }, [setThumb, statusIndex]);
+
+  const commitIndex = useCallback(
+    (nextIndex: number) => {
+      const clamped = clampSegment(Math.round(nextIndex), count - 1);
+      setThumb(clamped);
+      const next = BUDGET_STATUS_TABS[clamped];
+      if (next) setStatus(next.value);
+    },
+    [count, setStatus, setThumb],
+  );
+
+  const onListPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    listDragRef.current = true;
+    listMovedRef.current = false;
+    listStartXRef.current = event.clientX;
+    listOriginRef.current = statusIndex;
+    listLastXRef.current = event.clientX;
+    listLastTRef.current = event.timeStamp;
+    listVelocityRef.current = 0;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, [statusIndex]);
+
+  const onListPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!listDragRef.current) return;
+      const dx = event.clientX - listStartXRef.current;
+      if (Math.abs(dx) >= SEGMENT_DRAG_PX) {
+        listMovedRef.current = true;
+        setListDragging(true);
+      }
+      const dt = event.timeStamp - listLastTRef.current;
+      if (dt > 0) {
+        listVelocityRef.current = ((event.clientX - listLastXRef.current) / dt) * 1000;
+      }
+      listLastXRef.current = event.clientX;
+      listLastTRef.current = event.timeStamp;
+      const width = event.currentTarget.getBoundingClientRect().width;
+      const segmentWidth = (width - 4) / count;
+      if (segmentWidth <= 0) return;
+      setThumb(clampSegment(listOriginRef.current + dx / segmentWidth, count - 1));
+    },
+    [count, setThumb],
+  );
+
+  const finishListPointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!listDragRef.current) return;
+      listDragRef.current = false;
+      setListDragging(false);
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        /* already released */
+      }
+      if (!listMovedRef.current) {
+        setThumb(statusIndex);
+        return;
+      }
+      let next = thumbIndexRef.current;
+      if (listVelocityRef.current > SEGMENT_FLICK_VX) next = listOriginRef.current + 1;
+      else if (listVelocityRef.current < -SEGMENT_FLICK_VX) next = listOriginRef.current - 1;
+      commitIndex(next);
+    },
+    [commitIndex, setThumb, statusIndex],
+  );
+
+  const onPanelPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest('[data-no-swipe]')) {
+      panelStartRef.current = null;
+      return;
+    }
+    panelStartRef.current = { x: event.clientX, y: event.clientY, t: event.timeStamp };
+  }, []);
+
+  const onPanelPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const start = panelStartRef.current;
+      panelStartRef.current = null;
+      if (!start) return;
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+      if (Math.abs(dx) < Math.abs(dy)) return;
+      const dt = Math.max(event.timeStamp - start.t, 1);
+      const vx = (dx / dt) * 1000;
+      const flicked = Math.abs(vx) >= SEGMENT_FLICK_VX;
+      const swiped = Math.abs(dx) >= SEGMENT_SWIPE_PX;
+      if (!flicked && !swiped) return;
+      suppressPanelClickRef.current = true;
+      if (dx < 0 || vx < -SEGMENT_FLICK_VX) commitIndex(statusIndex + 1);
+      else commitIndex(statusIndex - 1);
+    },
+    [commitIndex, statusIndex],
+  );
+
+  const onPanelClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressPanelClickRef.current) return;
+    suppressPanelClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
+  return {
+    thumbIndex,
+    listDragging,
+    onListPointerDown,
+    onListPointerMove,
+    finishListPointer,
+    onPanelPointerDown,
+    onPanelPointerUp,
+    onPanelClickCapture,
+  };
+}
 
 const PAGE_SIZE = 10;
 const DETAIL_REVEAL_CLASS =
@@ -346,6 +504,17 @@ export default function BudgetsPage() {
     });
   }, [updateQuery]);
 
+  const {
+    thumbIndex,
+    listDragging,
+    onListPointerDown,
+    onListPointerMove,
+    finishListPointer,
+    onPanelPointerDown,
+    onPanelPointerUp,
+    onPanelClickCapture,
+  } = useBudgetStatusGestures(status, setStatus);
+
   const loadData = useCallback(async () => {
     // Wait for finance context sync (default is user/0 before session + URL resolve).
     // Matching loans/wallets: skip the unscoped fetch that races and paints an empty list.
@@ -603,7 +772,7 @@ export default function BudgetsPage() {
             <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-end">
           <div className="flex items-center gap-5" role="tablist" aria-label="Vista de presupuestos">
             {([
               ['budgets', 'Presupuestos'],
@@ -625,53 +794,7 @@ export default function BudgetsPage() {
               </button>
             ))}
           </div>
-
-          {view === 'budgets' ? (
-            <div className="mb-1 flex items-center gap-2">
-              <div
-                className="flex items-center rounded-lg bg-muted p-1"
-                role="tablist"
-                aria-label="Estado de presupuestos"
-              >
-                {([
-                  ['active', 'Activos'],
-                  ['history', 'Historial'],
-                  ['scheduled', 'Programados'],
-                ] as const).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={status === value}
-                    onClick={() => setStatus(value)}
-                    className={cn(
-                      'h-7 rounded-md px-3 text-xs font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      status === value && 'bg-background text-foreground shadow-sm',
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
-
-        {view === 'budgets' && status === 'history' ? (
-          <div className="flex justify-end pb-2">
-            <div className="flex items-center rounded-lg border border-border/60 bg-card px-1 py-0.5">
-              <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(-1)} aria-label="Mes anterior">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <p className="min-w-28 text-center text-sm">
-                {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
-              </p>
-              <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(1)} disabled={isCurrentMonth} aria-label="Mes siguiente">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ) : null}
       </header>
 
       {error ? (
@@ -685,9 +808,65 @@ export default function BudgetsPage() {
       ) : null}
 
       {view === 'budgets' ? (
-        <Card className="gap-0 py-0">
-          <CardContent className="p-0">
-            <div className="flex flex-wrap items-center gap-2 border-b border-border/60 p-4 sm:p-5">
+        <Tabs
+          value={status}
+          onValueChange={(value) => {
+            if (value === 'active' || value === 'history' || value === 'scheduled') {
+              setStatus(value);
+            }
+          }}
+          className="gap-0"
+        >
+          <Card className="gap-0 py-0">
+            <div className="flex min-h-11 items-center justify-center px-4 pt-4 sm:px-5">
+              <TabsList
+                variant="segmented"
+                aria-label="Estado de presupuestos"
+                className="w-full max-w-[22rem] touch-manipulation"
+                onPointerDown={onListPointerDown}
+                onPointerMove={onListPointerMove}
+                onPointerUp={finishListPointer}
+                onPointerCancel={finishListPointer}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'pointer-events-none absolute top-[2px] left-[2px] z-0 h-[calc(100%-4px)] rounded-full bg-white shadow-[0_3px_8px_rgba(0,0,0,0.12),0_3px_1px_rgba(0,0,0,0.04)] dark:bg-[#636366] dark:shadow-[0_1px_4px_rgba(0,0,0,0.45)]',
+                    !listDragging &&
+                      'transition-transform duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none',
+                  )}
+                  style={{
+                    width: `calc((100% - 4px) / ${BUDGET_STATUS_TABS.length})`,
+                    transform: `translateX(${thumbIndex * 100}%)`,
+                  }}
+                />
+                {BUDGET_STATUS_TABS.map((tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    id={`budget-status-tab-${tab.value}`}
+                    value={tab.value}
+                    aria-controls="budget-status-panel"
+                  >
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+            <CardContent className="p-0">
+              <div
+                id="budget-status-panel"
+                role="tabpanel"
+                aria-labelledby={`budget-status-tab-${status}`}
+                className="touch-pan-y"
+                onPointerDown={onPanelPointerDown}
+                onPointerUp={onPanelPointerUp}
+                onPointerCancel={onPanelPointerUp}
+                onClickCapture={onPanelClickCapture}
+              >
+                <div
+                  data-no-swipe
+                  className="flex flex-wrap items-center gap-2 border-b border-border/60 p-4 sm:p-5"
+                >
               <div className="relative min-w-56 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -703,6 +882,19 @@ export default function BudgetsPage() {
                   aria-label="Buscar presupuestos"
                 />
               </div>
+              {status === 'history' ? (
+                <div className="flex items-center rounded-lg border border-border/60 bg-card px-1 py-0.5">
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(-1)} aria-label="Mes anterior">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <p className="min-w-28 text-center text-sm">
+                    {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+                  </p>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(1)} disabled={isCurrentMonth} aria-label="Mes siguiente">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="h-9">
@@ -782,8 +974,10 @@ export default function BudgetsPage() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </Tabs>
       ) : (
         <Card className="gap-0 py-0">
           <CardContent className="space-y-5 p-4 sm:p-5">

@@ -234,7 +234,7 @@ export default function MetaDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4">
+      <div className="space-y-4">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-48 w-full rounded-xl" />
       </div>
@@ -243,7 +243,7 @@ export default function MetaDetailPage() {
 
   if (!wallet || !metrics) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10 text-center">
+      <div className="py-10 text-center">
         <p className="text-muted-foreground">Meta no encontrada</p>
         <Button asChild variant="ghost" className="mt-3">
           <Link href={listHref}>Volver a Metas</Link>
@@ -339,7 +339,7 @@ export default function MetaDetailPage() {
         : [];
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6">
+    <div className="space-y-5">
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="icon-sm" aria-label="Volver">
           <Link href={listHref}>

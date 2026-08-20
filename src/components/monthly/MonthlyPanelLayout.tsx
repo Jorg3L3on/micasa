@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
-import { MonthlyWelcome } from '@/components/monthly/MonthlyWelcome';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
@@ -54,8 +53,6 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
-      <MonthlyWelcome />
-
       <div
         className={cn(
           '@container',
