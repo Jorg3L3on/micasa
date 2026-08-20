@@ -99,11 +99,11 @@ export const LiquidityFundingWalletsMenu = ({
               variant="ghost"
               size="sm"
               className="h-8 gap-1.5 px-2 text-xs"
-              aria-label="Qué cuentas cuentan para liquidez"
+              aria-label="Elegir qué cuentas suman a tu dinero disponible"
               disabled={loading && wallets.length === 0}
             >
               <Settings2 className="size-3.5 shrink-0" aria-hidden />
-              Qué cuentas cuentan
+              Elegir cuentas
               {wallets.length > 0 ? (
                 <span className="text-[10px] tabular-nums text-muted-foreground">
                   {includedCount}/{wallets.length}
@@ -113,11 +113,11 @@ export const LiquidityFundingWalletsMenu = ({
           </DropdownMenuTrigger>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          Elige qué efectivo y débito suman a Liquidez
+          Marca qué cuentas de efectivo y débito cuentan como dinero disponible
         </TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Incluir en liquidez</DropdownMenuLabel>
+        <DropdownMenuLabel>Contar en mi dinero disponible</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {wallets.length === 0 ? (
           <p className="px-2 py-3 text-xs text-muted-foreground">

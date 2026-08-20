@@ -6,10 +6,9 @@ import {
   ChevronDown,
   CreditCard,
   Landmark,
-  LineChart,
-  BarChart3,
-  Scale,
   TrendingUp,
+  BarChart3,
+  Wallet,
 } from 'lucide-react';
 import {
   Bar,
@@ -27,7 +26,6 @@ import { useFinanceContext } from '@/context/finance-context';
 import { fetchLiquidityProjection } from '@/lib/api/liquidity';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import {
   Collapsible,
   CollapsibleContent,
@@ -39,23 +37,16 @@ import type {
 } from '@/types/catalog';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import { CreditCardInstallmentProjectionBlock } from '@/components/credit-cards/CreditCardInstallmentProjectionBlock';
-import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
+import { LiquidityGuideHero } from '@/components/wallets/liquidity/LiquidityGuideHero';
+import { LiquidityVisualMetric } from '@/components/wallets/liquidity/LiquidityVisualMetric';
+import {
+  formatLiquidityDateLabel,
+  getCardRiskLabel,
+} from '@/components/wallets/liquidity/liquidity-personalization';
 
 const defaultUntilYmdUtc = (): string => {
   const d = new Date();
-  const currentYear = d.getUTCFullYear();
-  return `${currentYear}-12-31`;
-};
-
-const formatDueLabelShort = (ymd: string) => {
-  const [y, m, day] = ymd.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1, day));
-  return d.toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  return `${d.getUTCFullYear()}-12-31`;
 };
 
 const formatMonthLabel = (monthKey: string) => {
@@ -71,24 +62,18 @@ const formatMonthLabel = (monthKey: string) => {
 function LoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-[90px] rounded-xl bg-muted/40 border border-border/30" />
-        ))}
+      <div className="h-28 rounded-2xl bg-muted/40 border border-border/30" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="h-32 rounded-xl bg-muted/40 border border-border/30" />
+        <div className="h-32 rounded-xl bg-muted/40 border border-border/30" />
       </div>
-      <div className="h-28 rounded-xl bg-muted/40 border border-border/30" />
-      <div className="space-y-2">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className={cn('rounded-xl bg-muted/35 border border-border/25', i === 0 ? 'h-16' : 'h-14')} />
-        ))}
-      </div>
+      <div className="h-56 rounded-xl bg-muted/40 border border-border/30" />
     </div>
   );
 }
 
 export function LiquidityProjectionTab() {
   const { context } = useFinanceContext();
-
   const [untilInput] = useState(defaultUntilYmdUtc);
   const [data, setData] = useState<LiquidityProjectionResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,7 +98,7 @@ export function LiquidityProjectionTab() {
       );
       setData(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar la proyección');
+      setError(e instanceof Error ? e.message : 'No se pudo cargar tu panorama');
       setData(null);
     } finally {
       setLoading(false);
@@ -124,9 +109,6 @@ export function LiquidityProjectionTab() {
     void load();
   }, [load]);
 
-  const hasStaticShortfall = data?.summary.first_cumulative_shortfall_date != null;
-  const hasProjectedShortfall = data?.summary.first_projected_shortfall_date != null;
-  const hasShortfall = hasProjectedShortfall || hasStaticShortfall;
   const chartRows = useMemo(
     () =>
       (data?.monthly_series ?? []).map((month) => ({
@@ -145,17 +127,16 @@ export function LiquidityProjectionTab() {
       })),
     [data?.monthly_series],
   );
+
   const balanceTrendRows = useMemo(() => {
     if (!data) return [];
     let runningBalance = data.summary.funding_total;
     return chartRows.map((row) => {
       runningBalance += row.remaining;
-      return {
-        ...row,
-        projectedBalance: runningBalance,
-      };
+      return { ...row, projectedBalance: runningBalance };
     });
   }, [chartRows, data]);
+
   const shouldShowDebtComposition = useMemo(() => {
     if (!data) return false;
     return data.monthly_series.some(
@@ -166,329 +147,161 @@ export function LiquidityProjectionTab() {
         month.other_debt_components_total > 0,
     );
   }, [data]);
-  const projectedLift = useMemo(() => {
-    if (!data) return 0;
-    return (
-      data.summary.net_liquidity_versus_obligations_including_income -
-      data.summary.net_liquidity_versus_obligations
-    );
-  }, [data]);
+
+  const projectedNet = data?.summary.net_liquidity_versus_obligations_including_income ?? 0;
+  const expectedIncome = data?.summary.expected_income_total_on_or_before_until ?? 0;
+  const obligations = data?.summary.total_obligations_due_on_or_before_until ?? 0;
+  const fundingTotal = data?.summary.funding_total ?? 0;
+  const untilLabel = data ? formatLiquidityDateLabel(data.until) : '';
+
+  const coveragePercent = useMemo(() => {
+    if (!data || obligations <= 0) return 100;
+    const totalResources = Math.max(fundingTotal + Math.max(expectedIncome, 0), 0);
+    return Math.min(100, (totalResources / obligations) * 100);
+  }, [data, obligations, fundingTotal, expectedIncome]);
+
   const modelNotes = useMemo(() => {
     if (!data) return [];
     const notes = [
-      'La fila "Restante" se calcula por mes como: ingreso esperado - (MSI + préstamos + plantillas + otros cargos).',
-      'Los préstamos pagados desde billetera aparecen como obligaciones; los de nómina reducen el ingreso esperado y no duplican una salida de billetera.',
-      'Las tarjetas se proyectan con cortes y vencimientos reales; no se inventan compras futuras fuera de lo ya registrado.',
-      'Neto estático usa solo liquidez actual; neto proyectado suma ingresos esperados hasta el horizonte.',
-      'La liquidez actual (efectivo + débito) es una foto de hoy y se mantiene como base para ambos netos.',
+      'Contamos el dinero en efectivo y débito que tú eliges incluir.',
+      'Sumamos los pagos que ya debes hasta fin de año: tarjetas, préstamos, gastos fijos y pendientes.',
+      'Tus ingresos esperados (como nómina) ayudan a cubrir esos pagos.',
+      'La gráfica muestra mes a mes si te sobra o te falta dinero.',
     ];
     if (data.options.include_unpaid_expenses) {
-      notes.push('Se incluyen gastos impagos con fecha de pago registrada o fin de quincena cuando no hay fecha.');
+      notes.push('Incluimos gastos que aún no marcas como pagados.');
     }
     if (data.options.include_expense_templates) {
-      notes.push('Se incluyen plantillas pendientes en quincenas ya creadas como montos estimados.');
-    }
-    if (data.options.stress_cycle_percent > 0) {
-      notes.push(
-        `Escenario de estrés activo: se agrega ${data.options.stress_cycle_percent}% del ciclo en curso cuando aplica.`,
-      );
+      notes.push('Incluimos gastos que se repiten cada quincena como estimación.');
     }
     return notes;
   }, [data]);
 
   return (
     <div className="space-y-6">
-      <div
-        className={cn(
-          'flex items-center gap-4 rounded-2xl border px-4 py-3 shadow-sm',
-          hasShortfall
-            ? 'border-destructive/25 bg-gradient-to-r from-destructive/5 via-transparent to-transparent dark:from-destructive/8'
-            : 'border-border/30 bg-gradient-to-r from-primary/5 via-transparent to-transparent dark:from-primary/8',
-        )}
-      >
-        <span
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-colors',
-            hasShortfall
-              ? 'bg-destructive/10 ring-destructive/20 dark:bg-destructive/15'
-              : 'bg-emerald-500/10 ring-emerald-500/20 dark:bg-emerald-500/15 dark:ring-emerald-500/25',
-          )}
-        >
-          <LineChart
-            className={cn(
-              'h-5 w-5',
-              hasShortfall
-                ? 'text-destructive'
-                : 'text-emerald-600 dark:text-emerald-400',
-            )} data-icon="inline-start" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-black tracking-tight">
-              Proyección de liquidez
-            </h2>
-            {data && (
-              <span
-                className={cn(
-                  'rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider leading-none',
-                  hasShortfall
-                    ? 'bg-destructive/10 text-destructive ring-1 ring-destructive/20'
-                    : 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-400',
-                )}
-              >
-                {hasShortfall ? '⚠ Déficit' : '✓ Saludable'}
-              </span>
-            )}
-          </div>
+      <LiquidityGuideHero data={data} onAccountsChanged={() => void load()} />
 
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Vista mensual de ingresos esperados, deudas y efectivo restante para tomar decisiones.
-          </p>
-        </div>
-        <div className="shrink-0 self-start sm:self-center">
-          <LiquidityFundingWalletsMenu onChanged={() => void load()} />
-        </div>
-      </div>
-
-      {error && (
+      {error ? (
         <div
           className="rounded-xl border border-l-[3px] border-l-destructive/50 bg-destructive/5 px-4 py-3 text-sm text-destructive"
           role="alert"
         >
           {error}
         </div>
-      )}
+      ) : null}
 
-      {loading && !data && <LoadingSkeleton />}
+      {loading && !data ? <LoadingSkeleton /> : null}
 
-      {data && (
+      {data ? (
         <>
-          <section aria-label="Resumen del horizonte" className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold leading-tight">Resumen del horizonte</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Liquidez hoy es la base. El <span className="font-medium">Neto estático</span> no considera ingresos futuros; el <span className="font-medium">Neto proyectado</span> sí los incorpora hasta {data.until}.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-1.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:ring-emerald-500/30">
-                  <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden data-icon="inline-start" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Horizonte</p>
-                  <p className="font-mono text-xs tabular-nums text-muted-foreground">Hasta {data.until}</p>
-                </div>
-              </div>
+          <section aria-label="Lo que tienes hoy" className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold leading-tight">Lo que tienes hoy</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Tu dinero disponible ahora y lo que debes pagar hasta {untilLabel}.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div
-                className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50')}
-                role="region"
-                aria-label="Liquidez hoy (efectivo + débito)"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:ring-emerald-500/30">
-                    <Landmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden data-icon="inline-start" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LiquidityVisualMetric
+                label="Dinero disponible hoy"
+                hint="Efectivo y débito que cuentas"
+                amount={fundingTotal}
+                borderClass="border-l-emerald-500/50"
+                amountClassName="text-emerald-700 dark:text-emerald-300"
+                barPercent={100}
+                barTone="emerald"
+                icon={
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/25">
+                    <Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
                   </span>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Liquidez hoy</p>
-                </div>
-                <p className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
-                  {formatCurrency(data.summary.funding_total)}
-                </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">Efectivo + débito incluidos</p>
-              </div>
-
-              <div
-                className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}
-                role="region"
-                aria-label="Obligaciones hasta el horizonte"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/25 dark:bg-violet-500/15 dark:ring-violet-500/30">
-                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden data-icon="inline-start" />
+                }
+              />
+              <LiquidityVisualMetric
+                label="Pagos que debes"
+                hint={`Hasta ${untilLabel}`}
+                amount={obligations}
+                borderClass="border-l-violet-500/50"
+                barPercent={obligations > 0 ? Math.min(100, (obligations / Math.max(fundingTotal + obligations, 1)) * 100) : 0}
+                barTone="violet"
+                icon={
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/25">
+                    <CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden />
                   </span>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Obligaciones</p>
-                </div>
-                <p className="mt-1 font-mono text-lg font-bold tabular-nums">
-                  {formatCurrency(data.summary.total_obligations_due_on_or_before_until)}
-                </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">Al {data.until}</p>
-              </div>
-
-              <div
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'border-l-[3px]',
-                  data.summary.net_liquidity_versus_obligations >= 0
-                    ? 'border-l-blue-500/50'
-                    : 'border-l-destructive/50',
-                )}
-                role="region"
-                aria-label="Neto estático (sin ingresos futuros)"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1',
-                      data.summary.net_liquidity_versus_obligations >= 0
-                        ? 'bg-blue-500/10 ring-blue-500/25 dark:bg-blue-500/15 dark:ring-blue-500/30'
-                        : 'bg-destructive/10 ring-destructive/25 dark:bg-destructive/15 dark:ring-destructive/30',
-                    )}
-                  >
-                    <Scale
-                      className={cn(
-                        'h-3.5 w-3.5',
-                        data.summary.net_liquidity_versus_obligations >= 0
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-destructive',
-                      )}
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  <p
-                    className={cn(
-                      'text-[10px] font-semibold uppercase tracking-wider',
-                      data.summary.net_liquidity_versus_obligations >= 0
-                        ? 'text-blue-600/80 dark:text-blue-400/80'
-                        : 'text-destructive/80',
-                    )}
-                  >
-                    Neto estático
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    'mt-1 font-mono text-lg font-bold tabular-nums',
-                    data.summary.net_liquidity_versus_obligations < 0
-                      ? 'text-destructive'
-                      : 'text-foreground',
-                  )}
-                >
-                  {formatCurrency(data.summary.net_liquidity_versus_obligations)}
-                </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">Sin ingresos futuros</p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">
-                  Fórmula: liquidez hoy − obligaciones
-                </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">
-                  {hasStaticShortfall
-                    ? `Caída: ${formatDueLabelShort(data.summary.first_cumulative_shortfall_date!)}`
-                    : 'Sin caída en el horizonte'}
-                </p>
-              </div>
-
-              <div
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'border-l-[3px]',
-                  data.summary.net_liquidity_versus_obligations_including_income >= 0
-                    ? 'border-l-emerald-500/50'
-                    : 'border-l-amber-500/50',
-                )}
-                role="region"
-                aria-label="Neto proyectado (incluye ingresos esperados)"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1',
-                      data.summary.net_liquidity_versus_obligations_including_income >= 0
-                        ? 'bg-emerald-500/10 ring-emerald-500/25 dark:bg-emerald-500/15 dark:ring-emerald-500/30'
-                        : 'bg-amber-500/10 ring-amber-500/25 dark:bg-amber-500/15 dark:ring-amber-500/30',
-                    )}
-                  >
-                    <CalendarClock
-                      className={cn(
-                        'h-3.5 w-3.5',
-                        data.summary.net_liquidity_versus_obligations_including_income >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-amber-600 dark:text-amber-400',
-                      )}
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  <p
-                    className={cn(
-                      'text-[10px] font-semibold uppercase tracking-wider',
-                      data.summary.net_liquidity_versus_obligations_including_income >= 0
-                        ? 'text-emerald-600/80 dark:text-emerald-400/80'
-                        : 'text-amber-600/80 dark:text-amber-400/80',
-                    )}
-                  >
-                    Neto proyectado
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    'mt-1 font-mono text-lg font-bold tabular-nums',
-                    data.summary.net_liquidity_versus_obligations_including_income < 0
-                      ? 'text-amber-700 dark:text-amber-300'
-                      : 'text-emerald-700 dark:text-emerald-300',
-                  )}
-                >
-                  {formatCurrency(data.summary.net_liquidity_versus_obligations_including_income)}
-                </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">Incluye ingresos esperados</p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">
-                  Fórmula: liquidez hoy + ingresos − obligaciones
-                </p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">
-                  {hasProjectedShortfall
-                    ? `Caída: ${formatDueLabelShort(data.summary.first_projected_shortfall_date!)}`
-                    : 'Sin caída en el horizonte'}
-                </p>
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                METRIC_STRIP_CLASS,
-                'border-l-[3px] border-l-sky-500/50',
-              )}
-              role="region"
-              aria-label="Impacto de ingresos esperados en el neto"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Impacto de ingresos esperados
-                  </p>
-                  <p className="mt-0.5 text-[9px] text-muted-foreground">
-                    Diferencia entre neto proyectado y neto estático
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    'font-mono text-sm font-bold tabular-nums',
-                    projectedLift < 0
-                      ? 'text-destructive'
-                      : 'text-sky-600 dark:text-sky-400',
-                  )}
-                >
-                  {formatCurrency(projectedLift)}
-                </p>
-              </div>
+                }
+              />
             </div>
           </section>
 
-          <div className="space-y-3" role="region" aria-label="Tendencia de liquidez mensual">
+          <section aria-label="¿Te alcanza?" className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold leading-tight">¿Te alcanza?</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                La respuesta principal: contando lo que tienes hoy y lo que esperamos que entre.
+              </p>
+            </div>
+
+            <LiquidityVisualMetric
+              label="Te alcanza contando lo que entrará"
+              hint={
+                projectedNet >= 0
+                  ? 'Tus ingresos ayudan a cubrir tus pagos'
+                  : 'Aun con ingresos, no alcanza para todo lo que debes'
+              }
+              amount={projectedNet}
+              borderClass={
+                projectedNet >= 0 ? 'border-l-emerald-500/50' : 'border-l-destructive/50'
+              }
+              amountClassName={
+                projectedNet >= 0
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-destructive'
+              }
+              statusLabel={projectedNet >= 0 ? 'Te alcanza' : 'Te falta'}
+              statusTone={projectedNet >= 0 ? 'emerald' : 'destructive'}
+              barPercent={coveragePercent}
+              barTone={projectedNet >= 0 ? 'emerald' : 'destructive'}
+              icon={
+                <span
+                  className={cn(
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1',
+                    projectedNet >= 0
+                      ? 'bg-emerald-500/10 ring-emerald-500/25'
+                      : 'bg-destructive/10 ring-destructive/25',
+                  )}
+                >
+                  <Wallet className="h-4 w-4" aria-hidden />
+                </span>
+              }
+            />
+
+            {expectedIncome > 0 ? (
+              <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                Tus ingresos esperados suman{' '}
+                <span className="font-mono font-semibold tabular-nums text-foreground">
+                  {formatCurrency(expectedIncome)}
+                </span>{' '}
+                hasta {untilLabel}.
+              </p>
+            ) : null}
+
+            {data.summary.first_projected_shortfall_date ? (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+                El primer mes complicado podría ser{' '}
+                {formatLiquidityDateLabel(data.summary.first_projected_shortfall_date)}.
+              </p>
+            ) : null}
+          </section>
+
+          <section aria-label="Tu dinero mes a mes" className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold leading-tight">Mes a mes, ¿sube o baja?</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                La línea muestra cómo va quedando tu dinero conforme pasan los meses.
+              </p>
+            </div>
             <Card className="overflow-hidden border-border/60">
               <CardContent className="px-3 py-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-                    <TrendingUp className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold leading-none">Balance proyectado acumulado</p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      Parte de liquidez actual y suma el restante mensual de cada mes.
-                    </p>
-                  </div>
-                </div>
                 <div className="h-56 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsLineChart data={balanceTrendRows}>
@@ -496,26 +309,34 @@ export function LiquidityProjectionTab() {
                       <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Line type="monotone" dataKey="projectedBalance" name="Balance proyectado" stroke="#2563eb" strokeWidth={2} dot={{ r: 2 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="projectedBalance"
+                        name="Tu dinero"
+                        stroke="#2563eb"
+                        strokeWidth={2}
+                        dot={{ r: 2 }}
+                      />
                     </RechartsLineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-            {shouldShowDebtComposition ? (
-              <Card className="overflow-hidden border-border/60">
-                <CardContent className="px-3 py-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-                      <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold leading-none">Composición de obligaciones</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        Desglose por tipo para detectar presión de deuda.
-                      </p>
-                    </div>
-                  </div>
+          </section>
+
+          {shouldShowDebtComposition ? (
+            <Collapsible defaultOpen className="group/debt rounded-xl border border-border/60">
+              <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/20">
+                <div>
+                  <h2 className="text-base font-semibold leading-tight">De dónde salen tus pagos</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Tarjetas, préstamos y gastos fijos, mes por mes.
+                  </p>
+                </div>
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/debt:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border-t border-border/60 px-3 pb-3 pt-2">
                   <div className="h-52 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartRows}>
@@ -524,238 +345,202 @@ export function LiquidityProjectionTab() {
                         <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                         <Tooltip formatter={(value: number) => formatCurrency(value)} />
                         <Legend wrapperStyle={{ fontSize: '10px' }} />
-                        <Bar dataKey="msi" stackId="debt" name="MSI" fill="#7c3aed" />
+                        <Bar dataKey="msi" stackId="debt" name="Pagos a meses" fill="#7c3aed" />
                         <Bar dataKey="loans" stackId="debt" name="Préstamos" fill="#0ea5e9" />
-                        <Bar dataKey="templates" stackId="debt" name="Plantillas" fill="#f59e0b" />
-                        <Bar dataKey="other" stackId="debt" name="Otros" fill="#ef4444" />
+                        <Bar dataKey="templates" stackId="debt" name="Gastos fijos" fill="#f59e0b" />
+                        <Bar dataKey="other" stackId="debt" name="Otros pagos" fill="#ef4444" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </CardContent>
-              </Card>
-            ) : null}
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div
-              className="overflow-hidden rounded-xl border border-border/40 shadow-sm"
-              role="region"
-              aria-label="Resumen de uso de tarjetas"
-            >
-              <div className="flex items-center gap-2.5 border-b border-border/40 bg-gradient-to-r from-violet-500/8 to-violet-500/3 px-3 py-2.5 dark:from-violet-500/12">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                  <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-                </span>
-                <span className="flex-1 text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
-                  Riesgo de uso de tarjetas
-                </span>
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  {data.card_utilization_summary.dangerous_count} en riesgo
-                </span>
-              </div>
-              {data.card_utilization_summary.cards.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-muted-foreground">
-                  No hay tarjetas de crédito o departamentales activas.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border/30">
-                  {data.card_utilization_summary.cards.map((card: LiquidityCardUtilizationItem) => {
-                    const isDanger = card.is_danger;
-                    const isUnrated = card.risk_level === 'unrated_no_limit';
-                    const utilization = card.utilization_percent ?? 0;
-                    const isWarning = !isUnrated && !isDanger && utilization > 50;
-                    return (
-                      <li key={card.card_id} className={cn(isDanger && 'border-l-[3px] border-l-destructive/60')}>
-                        <div className="flex items-center gap-3 px-3 py-2.5">
-                          <span className={cn(
-                            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1',
-                            isDanger
-                              ? 'bg-destructive/10 ring-destructive/30'
-                              : isWarning
-                                ? 'bg-amber-500/10 ring-amber-500/25'
-                                : isUnrated
-                                  ? 'bg-muted/60 ring-border/40'
-                                  : 'bg-emerald-500/10 ring-emerald-500/25',
-                          )}>
-                            <CreditCard className={cn(
-                              'h-3.5 w-3.5',
-                              isDanger
-                                ? 'text-destructive'
-                                : isWarning
-                                  ? 'text-amber-600 dark:text-amber-400'
-                                  : isUnrated
-                                    ? 'text-muted-foreground'
-                                    : 'text-emerald-600 dark:text-emerald-400',
-                            )} data-icon="inline-start" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{card.card_name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {PAYMENT_METHOD_LABELS[
-                                card.card_type as keyof typeof PAYMENT_METHOD_LABELS
-                              ] ?? card.card_type}
-                            </p>
-                          </div>
-                          <span className={cn(
-                            'rounded-md px-1.5 py-0.5 text-[9px] font-bold ring-1',
-                            isDanger
-                              ? 'bg-destructive/10 text-destructive ring-destructive/20'
-                              : isWarning
-                                ? 'bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300'
-                                : isUnrated
-                                  ? 'bg-muted text-muted-foreground ring-border/40'
-                                  : 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
-                          )}>
-                            {isUnrated ? 'Sin límite' : `${utilization.toFixed(1)}%`}
-                          </span>
-                        </div>
-                        <div className="px-3 pb-2.5">
-                          {isUnrated ? (
-                            <p className="text-[10px] text-muted-foreground">
-                              Tarjeta sin límite de crédito válido. Riesgo no evaluado.
-                            </p>
-                          ) : (
-                            <>
-                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
-                                <div
-                                  className={cn(
-                                    'h-full rounded-full transition-all duration-500',
-                                    isDanger
-                                      ? 'bg-destructive'
-                                      : isWarning
-                                        ? 'bg-amber-500'
-                                        : 'bg-gradient-to-r from-emerald-500 to-emerald-400',
-                                  )}
-                                  style={{ width: `${Math.min(100, utilization)}%` }}
-                                />
-                              </div>
-                              <p className="mt-1 text-[10px] font-mono tabular-nums text-muted-foreground">
-                                {formatCurrency(card.used_amount)} de {formatCurrency(card.credit_limit ?? 0)}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            <div role="region" aria-label="Items MSI">
-              <CreditCardInstallmentProjectionBlock />
-            </div>
-          </div>
-
-          <div role="region" aria-label="Serie mensual de liquidez">
-            <div className="mb-3 flex items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20 dark:bg-blue-500/15 dark:ring-blue-500/25">
-                <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold leading-none">Flujo mensual proyectado</h3>
-                  <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold tabular-nums text-blue-700 ring-1 ring-blue-500/20 dark:text-blue-300">
-                    {data.monthly_series.length}
-                  </span>
                 </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : null}
+
+          <Collapsible className="group/cards rounded-xl border border-border/60">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/20">
+              <div>
+                <h2 className="text-base font-semibold leading-tight">Cómo van tus tarjetas</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data.card_utilization_summary.dangerous_count > 0
+                    ? `${data.card_utilization_summary.dangerous_count} tarjeta(s) muy llena(s).`
+                    : 'Revisa si alguna tarjeta está casi al límite.'}
+                </p>
               </div>
-            </div>
-            <div className="overflow-hidden rounded-xl border border-border/40 shadow-sm">
-              <div className="hidden border-b border-border/40 bg-muted/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-7">
-                <span>Mes</span>
-                <span className="text-right">Ingreso</span>
-                <span className="text-right">MSI</span>
-                <span className="text-right">Préstamos</span>
-                <span className="text-right">Plantillas</span>
-                <span className="text-right">Otros</span>
-                <span className="text-right">Restante</span>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/cards:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t border-border/60">
+                {data.card_utilization_summary.cards.length === 0 ? (
+                  <p className="px-4 py-4 text-sm text-muted-foreground">
+                    No tienes tarjetas activas registradas.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border/40">
+                    {data.card_utilization_summary.cards.map((card: LiquidityCardUtilizationItem) => {
+                      const isUnrated = card.risk_level === 'unrated_no_limit';
+                      const utilization = card.utilization_percent ?? 0;
+                      const risk = getCardRiskLabel(
+                        isUnrated ? null : utilization,
+                        isUnrated,
+                      );
+                      return (
+                        <li key={card.card_id} className="px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">{card.card_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {PAYMENT_METHOD_LABELS[
+                                  card.card_type as keyof typeof PAYMENT_METHOD_LABELS
+                                ] ?? card.card_type}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+                                risk.tone === 'destructive' && 'bg-destructive/10 text-destructive ring-destructive/20',
+                                risk.tone === 'amber' && 'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
+                                risk.tone === 'emerald' && 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
+                                risk.tone === 'muted' && 'bg-muted text-muted-foreground ring-border/40',
+                              )}
+                            >
+                              {risk.label}
+                            </span>
+                          </div>
+                          {!isUnrated ? (
+                            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted/40">
+                              <div
+                                className={cn(
+                                  'h-full rounded-full',
+                                  risk.tone === 'destructive' && 'bg-destructive',
+                                  risk.tone === 'amber' && 'bg-amber-500',
+                                  risk.tone === 'emerald' && 'bg-emerald-500',
+                                )}
+                                style={{ width: `${Math.min(100, utilization)}%` }}
+                              />
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
-              {data.monthly_series.map((month) => {
-                const noDebt =
-                  month.msi_debt_total === 0 &&
-                  month.loan_payment_total === 0 &&
-                  month.expense_template_total === 0 &&
-                  month.other_debt_components_total === 0;
-                const noIncome = month.expected_income_total === 0;
-                return (
-                  <div
-                    key={month.month_key}
-                    className={cn(
-                      'border-b border-border/30 px-3 py-3 text-sm last:border-b-0',
-                      month.monthly_remaining < 0 && 'border-l-[3px] border-l-destructive/50',
-                    )}
-                  >
-                    <div className="grid gap-2 md:grid-cols-7 md:items-center">
-                      <span className="font-semibold">{formatMonthLabel(month.month_key)}</span>
-                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Ingreso</span>
-                        <span className="font-mono tabular-nums">{formatCurrency(month.expected_income_total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">MSI</span>
-                        <span className="font-mono tabular-nums">{formatCurrency(month.msi_debt_total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Préstamos</span>
-                        <span className="font-mono tabular-nums">{formatCurrency(month.loan_payment_total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Plantillas</span>
-                        <span className="font-mono tabular-nums">{formatCurrency(month.expense_template_total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Otros</span>
-                        <span className="font-mono tabular-nums">{formatCurrency(month.other_debt_components_total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:hidden">Restante</span>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible className="group/msi rounded-xl border border-border/60">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/20">
+              <div>
+                <h2 className="text-base font-semibold leading-tight">Compras a meses</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Pagos fijos que siguen cada mes hasta terminar.
+                </p>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/msi:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="border-t border-border/60 p-3">
+              <CreditCardInstallmentProjectionBlock />
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible className="group/months rounded-xl border border-border/60">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/20">
+              <div>
+                <h2 className="text-base font-semibold leading-tight">Ver mes por mes</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Detalle con números, solo si lo necesitas.
+                </p>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/months:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="overflow-hidden border-t border-border/60">
+                <div className="hidden border-b border-border/40 bg-muted/20 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-7">
+                  <span>Mes</span>
+                  <span className="text-right">Entra</span>
+                  <span className="text-right">A meses</span>
+                  <span className="text-right">Préstamos</span>
+                  <span className="text-right">Fijos</span>
+                  <span className="text-right">Otros</span>
+                  <span className="text-right">Resultado</span>
+                </div>
+                {data.monthly_series.map((month) => {
+                  const ok = month.monthly_remaining >= 0;
+                  return (
+                    <div
+                      key={month.month_key}
+                      className={cn(
+                        'border-b border-border/30 px-3 py-3 text-sm last:border-b-0',
+                        !ok && 'border-l-[3px] border-l-destructive/50',
+                      )}
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2 md:hidden">
+                        <span className="font-semibold">{formatMonthLabel(month.month_key)}</span>
                         <span
                           className={cn(
-                            'font-mono tabular-nums font-bold',
-                            month.monthly_remaining < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400',
+                            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                            ok
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-destructive/10 text-destructive',
+                          )}
+                        >
+                          {ok ? 'Te alcanza' : 'Te falta'}
+                        </span>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-7 md:items-center">
+                        <span className="hidden font-semibold md:block">
+                          {formatMonthLabel(month.month_key)}
+                        </span>
+                        <span className="font-mono tabular-nums md:text-right">
+                          {formatCurrency(month.expected_income_total)}
+                        </span>
+                        <span className="font-mono tabular-nums md:text-right">
+                          {formatCurrency(month.msi_debt_total)}
+                        </span>
+                        <span className="font-mono tabular-nums md:text-right">
+                          {formatCurrency(month.loan_payment_total)}
+                        </span>
+                        <span className="font-mono tabular-nums md:text-right">
+                          {formatCurrency(month.expense_template_total)}
+                        </span>
+                        <span className="font-mono tabular-nums md:text-right">
+                          {formatCurrency(month.other_debt_components_total)}
+                        </span>
+                        <span
+                          className={cn(
+                            'font-mono tabular-nums font-bold md:text-right',
+                            ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
                           )}
                         >
                           {formatCurrency(month.monthly_remaining)}
                         </span>
                       </div>
                     </div>
-                    {(noIncome || noDebt) && (
-                      <span className="text-[10px] text-muted-foreground md:col-span-6">
-                        {noIncome && noDebt
-                          ? 'Sin ingresos ni obligaciones proyectadas para este mes.'
-                          : noIncome
-                            ? 'Sin ingresos proyectados para este mes.'
-                            : 'Sin obligaciones proyectadas para este mes.'}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
-          <Collapsible className="group/assume rounded-xl border border-dashed border-border/50 bg-muted/10">
-            <CollapsibleTrigger
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/30 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Ver cómo leer esta proyección"
-            >
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-data-[state=open]/assume:rotate-180" data-icon="inline-end" />
-              Cómo leer esta proyección
+          <Collapsible className="group/help rounded-xl border border-dashed border-border/50 bg-muted/10">
+            <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30">
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/help:rotate-180" />
+              ¿Cómo se calcula esto?
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <ul className="px-4 pb-4 space-y-2 text-[11px] text-muted-foreground">
-                {modelNotes.map((a) => (
-                  <li key={a} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
-                    {a}
+              <ul className="space-y-2 px-4 pb-4 text-sm text-muted-foreground">
+                {modelNotes.map((note) => (
+                  <li key={note} className="flex items-start gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                    {note}
                   </li>
                 ))}
               </ul>
             </CollapsibleContent>
           </Collapsible>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

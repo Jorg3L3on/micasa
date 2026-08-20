@@ -86,8 +86,8 @@ export default function MonthlyOverviewChart() {
     <div className="card-surface p-5">
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="text-base font-semibold text-foreground">Resumen anual</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Últimos 12 meses</p>
+          <h3 className="text-base font-semibold text-foreground">Tu año en la gráfica</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Últimos 12 meses, mes por mes</p>
         </div>
         <div className="flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
