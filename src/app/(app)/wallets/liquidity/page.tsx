@@ -40,7 +40,7 @@ export default function LiquidityPage() {
 
   return (
     <div className="space-y-5">
-      <LiquidityWelcome activeTab={tab} />
+      <LiquidityWelcome />
 
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
         <TabsList
