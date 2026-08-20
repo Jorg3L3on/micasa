@@ -14,9 +14,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart as RechartsLineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -39,15 +39,28 @@ import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import { CreditCardInstallmentProjectionBlock } from '@/components/credit-cards/CreditCardInstallmentProjectionBlock';
 import { LiquidityGuideHero } from '@/components/wallets/liquidity/LiquidityGuideHero';
 import { LiquidityVisualMetric } from '@/components/wallets/liquidity/LiquidityVisualMetric';
+import { liquidityUntilFromMonthHorizon } from '@/lib/finance/liquidity-projection';
+import { formatCalendarDate } from '@/lib/calendar-dates';
+import { LiquidityHorizonMenu } from '@/components/wallets/liquidity/LiquidityHorizonMenu';
 import {
   formatLiquidityDateLabel,
+  formatMonthYearLabel,
   getCardRiskLabel,
+  getTightestMonth,
+  type LiquidityHorizonMonths,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 
-const defaultUntilYmdUtc = (): string => {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-12-31`;
+const HORIZON_STORAGE_KEY = 'micasa.liquidity.horizonMonths';
+
+const readStoredHorizon = (): LiquidityHorizonMonths => {
+  if (typeof window === 'undefined') return 6;
+  const raw = window.localStorage.getItem(HORIZON_STORAGE_KEY);
+  if (raw === '3' || raw === '6' || raw === '12') return Number(raw) as LiquidityHorizonMonths;
+  return 6;
 };
+
+const horizonUntilYmd = (horizonMonths: LiquidityHorizonMonths): string =>
+  formatCalendarDate(liquidityUntilFromMonthHorizon(new Date(), horizonMonths));
 
 const formatMonthLabel = (monthKey: string) => {
   const [year, month] = monthKey.split('-').map(Number);
@@ -74,7 +87,10 @@ function LoadingSkeleton() {
 
 export function LiquidityProjectionTab() {
   const { context } = useFinanceContext();
-  const [untilInput] = useState(defaultUntilYmdUtc);
+  const [horizonMonths, setHorizonMonths] = useState<LiquidityHorizonMonths>(() =>
+    readStoredHorizon(),
+  );
+  const untilInput = useMemo(() => horizonUntilYmd(horizonMonths), [horizonMonths]);
   const [data, setData] = useState<LiquidityProjectionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +121,11 @@ export function LiquidityProjectionTab() {
     }
   }, [context, untilInput]);
 
+  const handleHorizonChange = (next: LiquidityHorizonMonths) => {
+    setHorizonMonths(next);
+    window.localStorage.setItem(HORIZON_STORAGE_KEY, String(next));
+  };
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -113,60 +134,42 @@ export function LiquidityProjectionTab() {
     () =>
       (data?.monthly_series ?? []).map((month) => ({
         label: formatMonthLabel(month.month_key),
+        monthKey: month.month_key,
         income: month.expected_income_total,
         msi: month.msi_debt_total,
+        installments: month.installment_payment_total,
         loans: month.loan_payment_total,
         templates: month.expense_template_total,
         other: month.other_debt_components_total,
-        remaining: month.monthly_remaining,
-        totalDebt:
-          month.msi_debt_total +
-          month.loan_payment_total +
-          month.expense_template_total +
-          month.other_debt_components_total,
+        paymentsDue: month.total_payments_due,
+        remainingDebt: month.remaining_payments_from_month,
+        monthlyRemaining: month.monthly_remaining,
       })),
     [data?.monthly_series],
   );
 
-  const balanceTrendRows = useMemo(() => {
-    if (!data) return [];
-    let runningBalance = data.summary.funding_total;
-    return chartRows.map((row) => {
-      runningBalance += row.remaining;
-      return { ...row, projectedBalance: runningBalance };
-    });
-  }, [chartRows, data]);
+  const tightestMonth = useMemo(
+    () => (data ? getTightestMonth(data) : null),
+    [data],
+  );
+
+  const nextMonthPayments = data?.monthly_series[0]?.total_payments_due ?? 0;
+  const nextMonthIncome = data?.monthly_series[0]?.expected_income_total ?? 0;
+  const fundingTotal = data?.summary.funding_total ?? 0;
+  const projectionEvents = data?.projection_events ?? [];
 
   const shouldShowDebtComposition = useMemo(() => {
     if (!data) return false;
-    return data.monthly_series.some(
-      (month) =>
-        month.msi_debt_total > 0 ||
-        month.loan_payment_total > 0 ||
-        month.expense_template_total > 0 ||
-        month.other_debt_components_total > 0,
-    );
+    return data.monthly_series.some((month) => month.total_payments_due > 0);
   }, [data]);
-
-  const projectedNet = data?.summary.net_liquidity_versus_obligations_including_income ?? 0;
-  const expectedIncome = data?.summary.expected_income_total_on_or_before_until ?? 0;
-  const obligations = data?.summary.total_obligations_due_on_or_before_until ?? 0;
-  const fundingTotal = data?.summary.funding_total ?? 0;
-  const untilLabel = data ? formatLiquidityDateLabel(data.until) : '';
-
-  const coveragePercent = useMemo(() => {
-    if (!data || obligations <= 0) return 100;
-    const totalResources = Math.max(fundingTotal + Math.max(expectedIncome, 0), 0);
-    return Math.min(100, (totalResources / obligations) * 100);
-  }, [data, obligations, fundingTotal, expectedIncome]);
 
   const modelNotes = useMemo(() => {
     if (!data) return [];
     const notes = [
-      'Contamos el dinero en efectivo y débito que tú eliges incluir.',
-      'Sumamos los pagos que ya debes hasta fin de año: tarjetas, préstamos, gastos fijos y pendientes.',
-      'Tus ingresos esperados (como nómina) ayudan a cubrir esos pagos.',
-      'La gráfica muestra mes a mes si te sobra o te falta dinero.',
+      'Ves los próximos meses, no un saldo contable de fin de año.',
+      'La línea morada muestra cuánto te falta por pagar en total desde cada mes hacia adelante; debería ir bajando cuando terminas préstamos o compras a meses.',
+      'Las barras azules son lo que debes pagar ese mes (tarjetas, préstamos, a meses y gastos fijos).',
+      'Los hitos te dicen en qué mes terminas de pagar un préstamo o una compra a meses.',
     ];
     if (data.options.include_unpaid_expenses) {
       notes.push('Incluimos gastos que aún no marcas como pagados.');
@@ -179,7 +182,11 @@ export function LiquidityProjectionTab() {
 
   return (
     <div className="space-y-6">
-      <LiquidityGuideHero data={data} onAccountsChanged={() => void load()} />
+      <LiquidityGuideHero
+        data={data}
+        horizonMonths={horizonMonths}
+        onAccountsChanged={() => void load()}
+      />
 
       {error ? (
         <div
@@ -194,15 +201,15 @@ export function LiquidityProjectionTab() {
 
       {data ? (
         <>
-          <section aria-label="Lo que tienes hoy" className="space-y-3">
+          <section aria-label="Tu mes más cercano" className="space-y-3">
             <div>
-              <h2 className="text-base font-semibold leading-tight">Lo que tienes hoy</h2>
+              <h2 className="text-base font-semibold leading-tight">Tu próximo mes</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Tu dinero disponible ahora y lo que debes pagar hasta {untilLabel}.
+                Lo más inmediato: cuánto entra, cuánto sale y cuánto tienes hoy en efectivo y débito.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <LiquidityVisualMetric
                 label="Dinero disponible hoy"
                 hint="Efectivo y débito que cuentas"
@@ -218,11 +225,15 @@ export function LiquidityProjectionTab() {
                 }
               />
               <LiquidityVisualMetric
-                label="Pagos que debes"
-                hint={`Hasta ${untilLabel}`}
-                amount={obligations}
+                label="Pagos del próximo mes"
+                hint="Todo lo que debes pagar ese mes"
+                amount={nextMonthPayments}
                 borderClass="border-l-violet-500/50"
-                barPercent={obligations > 0 ? Math.min(100, (obligations / Math.max(fundingTotal + obligations, 1)) * 100) : 0}
+                barPercent={
+                  nextMonthPayments + nextMonthIncome > 0
+                    ? Math.min(100, (nextMonthPayments / (nextMonthPayments + nextMonthIncome)) * 100)
+                    : 0
+                }
                 barTone="violet"
                 icon={
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 ring-1 ring-violet-500/25">
@@ -230,99 +241,104 @@ export function LiquidityProjectionTab() {
                   </span>
                 }
               />
+              <LiquidityVisualMetric
+                label="Ingresos esperados ese mes"
+                hint="Lo que registramos que entrará"
+                amount={nextMonthIncome}
+                borderClass="border-l-sky-500/50"
+                amountClassName="text-sky-700 dark:text-sky-300"
+                barPercent={
+                  nextMonthPayments + nextMonthIncome > 0
+                    ? Math.min(100, (nextMonthIncome / (nextMonthPayments + nextMonthIncome)) * 100)
+                    : 50
+                }
+                barTone="sky"
+                icon={
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/25">
+                    <TrendingUp className="h-4 w-4 text-sky-600 dark:text-sky-400" aria-hidden />
+                  </span>
+                }
+              />
             </div>
           </section>
 
-          <section aria-label="¿Te alcanza?" className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold leading-tight">¿Te alcanza?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                La respuesta principal: contando lo que tienes hoy y lo que esperamos que entre.
-              </p>
-            </div>
-
-            <LiquidityVisualMetric
-              label="Te alcanza contando lo que entrará"
-              hint={
-                projectedNet >= 0
-                  ? 'Tus ingresos ayudan a cubrir tus pagos'
-                  : 'Aun con ingresos, no alcanza para todo lo que debes'
-              }
-              amount={projectedNet}
-              borderClass={
-                projectedNet >= 0 ? 'border-l-emerald-500/50' : 'border-l-destructive/50'
-              }
-              amountClassName={
-                projectedNet >= 0
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : 'text-destructive'
-              }
-              statusLabel={projectedNet >= 0 ? 'Te alcanza' : 'Te falta'}
-              statusTone={projectedNet >= 0 ? 'emerald' : 'destructive'}
-              barPercent={coveragePercent}
-              barTone={projectedNet >= 0 ? 'emerald' : 'destructive'}
-              icon={
-                <span
-                  className={cn(
-                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1',
-                    projectedNet >= 0
-                      ? 'bg-emerald-500/10 ring-emerald-500/25'
-                      : 'bg-destructive/10 ring-destructive/25',
-                  )}
-                >
-                  <Wallet className="h-4 w-4" aria-hidden />
-                </span>
-              }
-            />
-
-            {expectedIncome > 0 ? (
-              <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                Tus ingresos esperados suman{' '}
-                <span className="font-mono font-semibold tabular-nums text-foreground">
-                  {formatCurrency(expectedIncome)}
-                </span>{' '}
-                hasta {untilLabel}.
-              </p>
-            ) : null}
-
-            {data.summary.first_projected_shortfall_date ? (
-              <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
-                El primer mes complicado podría ser{' '}
-                {formatLiquidityDateLabel(data.summary.first_projected_shortfall_date)}.
-              </p>
-            ) : null}
-          </section>
-
-          <section aria-label="Tu dinero mes a mes" className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold leading-tight">Mes a mes, ¿sube o baja?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                La línea muestra cómo va quedando tu dinero conforme pasan los meses.
-              </p>
+          <section aria-label="Tus pagos mes a mes" className="space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold leading-tight">
+                  Próximos {horizonMonths} meses: ¿bajan tus pagos?
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  La línea morada es lo que aún te falta por pagar en total desde ese mes. Las barras azules son los pagos de cada mes.
+                  {tightestMonth && tightestMonth.remaining < 0
+                    ? ` El mes más apretado parece ser ${formatMonthYearLabel(tightestMonth.monthKey)}.`
+                    : ''}
+                </p>
+              </div>
+              <LiquidityHorizonMenu value={horizonMonths} onChange={handleHorizonChange} />
             </div>
             <Card className="overflow-hidden border-border/60">
               <CardContent className="px-3 py-3">
-                <div className="h-56 w-full">
+                <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RechartsLineChart data={balanceTrendRows}>
+                    <ComposedChart data={chartRows}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(127,127,127,0.2)" />
                       <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Legend wrapperStyle={{ fontSize: '10px' }} />
+                      <Bar dataKey="paymentsDue" name="Pagos del mes" fill="#2563eb" radius={[4, 4, 0, 0]} />
                       <Line
                         type="monotone"
-                        dataKey="projectedBalance"
-                        name="Tu dinero"
-                        stroke="#2563eb"
+                        dataKey="remainingDebt"
+                        name="Te falta por pagar (total)"
+                        stroke="#7c3aed"
                         strokeWidth={2}
                         dot={{ r: 2 }}
                       />
-                    </RechartsLineChart>
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </section>
+
+          {projectionEvents.length > 0 ? (
+            <section aria-label="Cuándo terminas de pagar" className="space-y-3">
+              <div>
+                <h2 className="text-base font-semibold leading-tight">Cuándo terminas de pagar</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Fechas claras donde se acaba un préstamo o una compra a meses dentro de estos {horizonMonths} meses.
+                </p>
+              </div>
+              <ul className="space-y-2">
+                {projectionEvents.map((event) => (
+                  <li
+                    key={`${event.event_type}-${event.loan_id ?? event.expense_id ?? event.event_date}`}
+                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-card px-4 py-3"
+                  >
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
+                      <CalendarClock className="h-4 w-4 text-primary" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{event.title}</p>
+                      <p className="text-xs text-muted-foreground">{event.subtitle}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs font-semibold text-foreground">
+                        {formatMonthYearLabel(event.month_key)}
+                      </p>
+                      {event.amount != null ? (
+                        <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                          {formatCurrency(event.amount)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {shouldShowDebtComposition ? (
             <Collapsible defaultOpen className="group/debt rounded-xl border border-border/60">
@@ -345,7 +361,8 @@ export function LiquidityProjectionTab() {
                         <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                         <Tooltip formatter={(value: number) => formatCurrency(value)} />
                         <Legend wrapperStyle={{ fontSize: '10px' }} />
-                        <Bar dataKey="msi" stackId="debt" name="Pagos a meses" fill="#7c3aed" />
+                        <Bar dataKey="msi" stackId="debt" name="Estados de tarjeta" fill="#7c3aed" />
+                        <Bar dataKey="installments" stackId="debt" name="Compras a meses" fill="#a855f7" />
                         <Bar dataKey="loans" stackId="debt" name="Préstamos" fill="#0ea5e9" />
                         <Bar dataKey="templates" stackId="debt" name="Gastos fijos" fill="#f59e0b" />
                         <Bar dataKey="other" stackId="debt" name="Otros pagos" fill="#ef4444" />
@@ -456,9 +473,10 @@ export function LiquidityProjectionTab() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="overflow-hidden border-t border-border/60">
-                <div className="hidden border-b border-border/40 bg-muted/20 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-7">
+                <div className="hidden border-b border-border/40 bg-muted/20 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-8">
                   <span>Mes</span>
                   <span className="text-right">Entra</span>
+                  <span className="text-right">Tarjetas</span>
                   <span className="text-right">A meses</span>
                   <span className="text-right">Préstamos</span>
                   <span className="text-right">Fijos</span>
@@ -485,10 +503,10 @@ export function LiquidityProjectionTab() {
                               : 'bg-destructive/10 text-destructive',
                           )}
                         >
-                          {ok ? 'Te alcanza' : 'Te falta'}
+                          {ok ? 'Te alcanza' : 'Apretado'}
                         </span>
                       </div>
-                      <div className="grid gap-2 md:grid-cols-7 md:items-center">
+                      <div className="grid gap-2 md:grid-cols-8 md:items-center">
                         <span className="hidden font-semibold md:block">
                           {formatMonthLabel(month.month_key)}
                         </span>
@@ -497,6 +515,9 @@ export function LiquidityProjectionTab() {
                         </span>
                         <span className="font-mono tabular-nums md:text-right">
                           {formatCurrency(month.msi_debt_total)}
+                        </span>
+                        <span className="font-mono tabular-nums md:text-right">
+                          {formatCurrency(month.installment_payment_total)}
                         </span>
                         <span className="font-mono tabular-nums md:text-right">
                           {formatCurrency(month.loan_payment_total)}

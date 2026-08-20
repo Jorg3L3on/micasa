@@ -12,6 +12,7 @@ import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/Liqu
 
 type LiquidityGuideHeroProps = {
   data: LiquidityProjectionResponse | null;
+  horizonMonths?: import('@/components/wallets/liquidity/liquidity-personalization').LiquidityHorizonMonths;
   onAccountsChanged?: () => void;
 };
 
@@ -35,6 +36,7 @@ const toneClasses = {
 
 export const LiquidityGuideHero = ({
   data,
+  horizonMonths = 6,
   onAccountsChanged,
 }: LiquidityGuideHeroProps) => {
   const { data: session } = useSession();
@@ -50,7 +52,7 @@ export const LiquidityGuideHero = ({
     );
   }
 
-  const copy = buildLiquidityHeroCopy(data, firstName);
+  const copy = buildLiquidityHeroCopy(data, firstName, horizonMonths);
   const tone = toneClasses[copy.tone];
   const health = getLiquidityHealth(data);
 
@@ -87,7 +89,7 @@ export const LiquidityGuideHero = ({
         <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         {health !== 'healthy' ? (
           <p className="text-xs text-muted-foreground">
-            Tip: revisa la gráfica de abajo para ver en qué mes se pone difícil.
+            Tip: baja a la gráfica y mira el mes marcado; ahí es donde conviene ajustar.
           </p>
         ) : null}
       </div>

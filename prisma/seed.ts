@@ -8,6 +8,8 @@ import {
   HouseRole,
 } from '@/generated/prisma/client';
 import { hash } from 'bcryptjs';
+import { parseCalendarDate } from '@/lib/calendar-dates';
+import { generateLoanPaymentSchedule } from '@/lib/finance/loan-schedule';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -40,6 +42,8 @@ async function main() {
   await prisma.transfer.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.income.deleteMany();
+  await prisma.loanPayment.deleteMany();
+  await prisma.loan.deleteMany();
   await prisma.expenseTemplate.deleteMany();
   await prisma.incomeTemplate.deleteMany();
   await prisma.wallet.deleteMany();
@@ -718,6 +722,86 @@ async function main() {
       { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Paula',          amount: 300,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etPaula.id },
       { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,   is_paid: false, due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
       { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Didi card',      amount: 1500,    is_paid: false, due_day: 18, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etDidiCard.id },
+    ],
+  });
+
+  // ─────────────────────────────────────────────
+  // LOANS (house demo for liquidity projection)
+  // ─────────────────────────────────────────────
+  const personalLoanSchedule = generateLoanPaymentSchedule({
+    startDate: parseCalendarDate('2026-03-01'),
+    paymentAmount: 3500,
+    paymentCount: 10,
+    frequency: 'MONTHLY',
+  });
+
+  await prisma.loan.create({
+    data: {
+      name: 'Crédito personal Banamex',
+      lender: 'Banamex',
+      type: 'PERSONAL',
+      status: 'ACTIVE',
+      principal_amount: 35000,
+      payment_amount: 3500,
+      payment_count: 10,
+      frequency: 'MONTHLY',
+      start_date: parseCalendarDate('2026-03-01'),
+      payment_source: 'WALLET',
+      house_id: leonSolorzano.id,
+      source_wallet_id: walletBanamex.id,
+      notes: 'Préstamo demo para proyección mes a mes',
+      payments: {
+        create: personalLoanSchedule.map((payment) => ({
+          sequence: payment.sequence,
+          due_date: payment.dueDate,
+          amount: payment.amount.toString(),
+          source_wallet_id: walletBanamex.id,
+        })),
+      },
+    },
+  });
+
+  // ─────────────────────────────────────────────
+  // MSI PURCHASES (active installments on credit cards)
+  // ─────────────────────────────────────────────
+  await prisma.expense.createMany({
+    data: [
+      {
+        fortnight_id: f_house_mar26_first.id,
+        house_id: leonSolorzano.id,
+        description: 'Laptop a 12 meses',
+        amount: 850,
+        is_paid: true,
+        payment_date: parseCalendarDate('2026-02-10'),
+        category_id: catCasa.id,
+        wallet_id: walletDidiCard.id,
+        credit_installment_current: 2,
+        credit_installment_total: 12,
+      },
+      {
+        fortnight_id: f_house_mar26_first.id,
+        house_id: leonSolorzano.id,
+        description: 'Televisor Liverpool 6 meses',
+        amount: 1200,
+        is_paid: true,
+        payment_date: parseCalendarDate('2026-01-20'),
+        category_id: catCasa.id,
+        wallet_id: walletDidiCard.id,
+        credit_installment_current: 3,
+        credit_installment_total: 6,
+      },
+      {
+        fortnight_id: f_house_mar26_second.id,
+        house_id: leonSolorzano.id,
+        description: 'Refrigerador C&A 18 meses',
+        amount: 650,
+        is_paid: true,
+        payment_date: parseCalendarDate('2026-02-28'),
+        category_id: catCasa.id,
+        wallet_id: walletCnAEfectivo.id,
+        credit_installment_current: 1,
+        credit_installment_total: 18,
+      },
     ],
   });
 

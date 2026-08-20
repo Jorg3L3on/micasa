@@ -51,13 +51,17 @@ const minimalResult = (): LiquidityProjectionResult => ({
     {
       month_key: '2026-03',
       msi_debt_total: 50,
+      installment_payment_total: 0,
       loan_payment_total: 0,
       expected_income_total: 100,
       expense_template_total: 0,
       other_debt_components_total: 0,
+      total_payments_due: 50,
+      remaining_payments_from_month: 50,
       monthly_remaining: 50,
     },
   ],
+  projection_events: [],
   card_utilization_summary: {
     cards: [],
     dangerous_count: 0,

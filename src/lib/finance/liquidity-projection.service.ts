@@ -19,6 +19,10 @@ import {
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
 import {
+  collectLiquidityProjectionEvents,
+  collectMsiProjectionData,
+} from '@/lib/finance/liquidity-projection-events';
+import {
   addDaysUtc,
   compareUtcDateOnly,
   DEFAULT_PROJECTION_HORIZON_DAYS,
@@ -101,6 +105,7 @@ export type LiquidityProjectionResult = {
   assumptions: readonly string[];
   options: LiquidityProjectionOptionsEcho;
   monthly_series: LiquidityMonthlySeriesItem[];
+  projection_events: LiquidityProjectionEvent[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
 };
 
@@ -118,12 +123,17 @@ export type GetLiquidityProjectionInput = {
 export type LiquidityMonthlySeriesItem = {
   month_key: string;
   msi_debt_total: number;
+  installment_payment_total: number;
   loan_payment_total: number;
   expected_income_total: number;
   expense_template_total: number;
   other_debt_components_total: number;
+  total_payments_due: number;
+  remaining_payments_from_month: number;
   monthly_remaining: number;
 };
+
+export type LiquidityProjectionEvent = import('@/lib/finance/liquidity-projection-events').LiquidityProjectionEvent;
 
 export type LiquidityCardUtilizationRiskLevel =
   | 'safe'
@@ -832,6 +842,10 @@ export const getLiquidityProjection = async (
 
   const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
   const monthKeys = buildMonthKeyRange(asOfStr, untilStr);
+  const [msiData, projectionEvents] = await Promise.all([
+    collectMsiProjectionData(input.ownerFilter, asOf, monthKeys),
+    collectLiquidityProjectionEvents(input.ownerFilter, asOf, untilStr, monthKeys),
+  ]);
   const cumulativeIncomeByMonth = new Map<string, number>();
   let cumulativeIncome = 0;
   for (const monthKey of monthKeys) {
@@ -932,24 +946,35 @@ export const getLiquidityProjection = async (
       expense_template_total: 0,
       other_debt_components_total: 0,
     };
+    const installment_payment_total = msiData.paymentsByMonth.get(month_key) ?? 0;
     const expected_income_total = expectedIncomeByMonth.get(month_key) ?? 0;
-    const monthly_remaining =
-      expected_income_total -
-      (monthDebt.msi_debt_total +
-        monthDebt.loan_payment_total +
-        monthDebt.expense_template_total +
-        monthDebt.other_debt_components_total);
+    const total_payments_due =
+      monthDebt.msi_debt_total +
+      installment_payment_total +
+      monthDebt.loan_payment_total +
+      monthDebt.expense_template_total +
+      monthDebt.other_debt_components_total;
+    const monthly_remaining = expected_income_total - total_payments_due;
 
     return {
       month_key,
       msi_debt_total: monthDebt.msi_debt_total,
+      installment_payment_total,
       loan_payment_total: monthDebt.loan_payment_total,
       expected_income_total,
       expense_template_total: monthDebt.expense_template_total,
       other_debt_components_total: monthDebt.other_debt_components_total,
+      total_payments_due,
+      remaining_payments_from_month: 0,
       monthly_remaining,
     };
   });
+
+  let remainingFromMonth = 0;
+  for (let i = monthly_series.length - 1; i >= 0; i -= 1) {
+    remainingFromMonth += monthly_series[i]!.total_payments_due;
+    monthly_series[i]!.remaining_payments_from_month = remainingFromMonth;
+  }
 
   const utilizationCards: LiquidityCardUtilizationItem[] = creditCardsForUtilization.map((card) => {
     const usedAmount = Math.max(Number(card.amount ?? 0), 0);
@@ -1029,6 +1054,7 @@ export const getLiquidityProjection = async (
       include_expense_templates: includeTemplates,
     },
     monthly_series,
+    projection_events: projectionEvents,
     card_utilization_summary,
   };
 };

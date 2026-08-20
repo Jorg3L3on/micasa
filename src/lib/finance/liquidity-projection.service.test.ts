@@ -12,6 +12,7 @@ const {
   findManyIncomeTemplate,
   findManyLoanPayment,
   findManyStatementImport,
+  findManyLoan,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
@@ -22,6 +23,7 @@ const {
   findManyIncomeTemplate: vi.fn(),
   findManyLoanPayment: vi.fn(),
   findManyStatementImport: vi.fn(),
+  findManyLoan: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -34,6 +36,7 @@ vi.mock('@/lib/prisma', () => ({
     income: { findMany: findManyIncome },
     incomeTemplate: { findMany: findManyIncomeTemplate },
     loanPayment: { findMany: findManyLoanPayment },
+    loan: { findMany: findManyLoan },
     creditCardStatementImport: { findMany: findManyStatementImport },
   },
 }));
@@ -82,17 +85,20 @@ describe('getLiquidityProjection', () => {
     queryRaw.mockReset();
     findManyWallet.mockReset();
     findManyExpense.mockReset();
+    findManyExpense.mockResolvedValue([]);
     findManyFortnight.mockReset();
     findManyExpenseTemplate.mockReset();
     findManyIncome.mockReset();
     findManyIncomeTemplate.mockReset();
     findManyLoanPayment.mockReset();
     findManyStatementImport.mockReset();
+    findManyLoan.mockReset();
     findManyStatementImport.mockResolvedValue([]);
     findManyFortnight.mockResolvedValue([]);
     findManyIncome.mockResolvedValue([]);
     findManyIncomeTemplate.mockResolvedValue([]);
     findManyLoanPayment.mockResolvedValue([]);
+    findManyLoan.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -546,12 +552,7 @@ describe('getLiquidityProjection', () => {
       0,
     );
     const totalMonthlyDebt = result.monthly_series.reduce(
-      (sum, month) =>
-        sum +
-        month.msi_debt_total +
-        month.loan_payment_total +
-        month.expense_template_total +
-        month.other_debt_components_total,
+      (sum, month) => sum + month.total_payments_due,
       0,
     );
     const totalMilestoneDebt = result.milestones.reduce(
@@ -581,13 +582,17 @@ describe('getLiquidityProjection', () => {
     );
     for (const month of result.monthly_series) {
       expect(month.monthly_remaining).toBe(
-        month.expected_income_total -
-          (month.msi_debt_total +
-            month.loan_payment_total +
-            month.expense_template_total +
-            month.other_debt_components_total),
+        month.expected_income_total - month.total_payments_due,
+      );
+      expect(month.total_payments_due).toBe(
+        month.msi_debt_total +
+          month.installment_payment_total +
+          month.loan_payment_total +
+          month.expense_template_total +
+          month.other_debt_components_total,
       );
     }
+    expect(Array.isArray(result.projection_events)).toBe(true);
   });
 
   it('does not double count payroll deductions as wallet loan obligations', async () => {
