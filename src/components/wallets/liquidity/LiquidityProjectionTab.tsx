@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import { fetchLiquidityProjection } from '@/lib/api/liquidity';
-import { formatCurrency } from '@/lib/utils';
 import {
   Collapsible,
   CollapsibleContent,
@@ -17,6 +16,7 @@ import { formatCalendarDate } from '@/lib/calendar-dates';
 import { LiquidityFutureTimeline } from '@/components/wallets/liquidity/LiquidityFutureTimeline';
 import { LiquidityMonthFocus } from '@/components/wallets/liquidity/LiquidityMonthFocus';
 import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
+import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
 import {
   getTightestMonth,
   shiftSelectedMonthKey,
@@ -132,12 +132,8 @@ export function LiquidityProjectionTab() {
   }, [data]);
 
   return (
-    <div className="space-y-6">
-      <LiquidityGuideHero
-        data={data}
-        horizonMonths={horizonMonths}
-        onAccountsChanged={() => void load()}
-      />
+    <div className="space-y-5">
+      <LiquidityGuideHero data={data} horizonMonths={horizonMonths} />
 
       {error ? (
         <div
@@ -152,13 +148,11 @@ export function LiquidityProjectionTab() {
 
       {data ? (
         <>
-          <p className="text-sm text-muted-foreground">
-            Hoy tienes{' '}
-            <span className="font-mono font-semibold tabular-nums text-emerald-300">
-              {formatCurrency(fundingTotal)}
-            </span>{' '}
-            en efectivo y débito. Toca la gráfica para ver cada mes.
-          </p>
+          <LiquidityAccountsToday
+            fundingTotal={fundingTotal}
+            onChanged={() => void load()}
+            actions={<LiquidityFundingWalletsMenu onChanged={() => void load()} />}
+          />
 
           <LiquidityFutureTimeline
             months={data.monthly_series}
@@ -185,8 +179,6 @@ export function LiquidityProjectionTab() {
             onPrevMonth={() => handleShiftMonth(-1)}
             onNextMonth={() => handleShiftMonth(1)}
           />
-
-          <LiquidityAccountsToday onChanged={() => void load()} />
 
           <Collapsible className="group/help rounded-xl border border-dashed border-border/50 bg-muted/10">
             <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30">

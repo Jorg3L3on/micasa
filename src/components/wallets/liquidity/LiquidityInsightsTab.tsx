@@ -9,7 +9,6 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import MonthlyOverviewChart from '@/components/wallets/liquidity/MonthlyOverviewChart';
 import { LiquidityPastMonthFocus } from '@/components/wallets/liquidity/LiquidityPastMonthFocus';
-import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
 import type { MonthlySummaryItem } from '@/app/api/wallets/liquidity/monthly-summary/route';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 import {
@@ -138,7 +137,7 @@ export function LiquidityInsightsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div
         className={cn(
           'flex flex-col gap-3 rounded-2xl border px-4 py-4 shadow-sm sm:flex-row sm:items-start',
@@ -240,8 +239,6 @@ export function LiquidityInsightsTab() {
           </CardContent>
         </Card>
       </section>
-
-      <LiquidityAccountsToday />
     </div>
   );
 }

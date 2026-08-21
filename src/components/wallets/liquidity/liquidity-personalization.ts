@@ -52,6 +52,10 @@ export const compareMonthKeys = (a: string, b: string): number => a.localeCompar
 export const monthKeyFromParts = (year: number, month: number): string =>
   `${year}-${String(month).padStart(2, '0')}`;
 
+/** Payroll deductions can make expected income negative; never show that as “Entra”. */
+export const displayIncomingCash = (expectedIncomeTotal: number): number =>
+  Math.max(0, expectedIncomeTotal);
+
 export const shiftSelectedMonthKey = (
   monthKeys: readonly string[],
   currentKey: string,

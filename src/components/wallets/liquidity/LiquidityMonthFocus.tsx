@@ -9,7 +9,10 @@ import type {
   LiquidityMonthlySeriesItem,
   LiquidityProjectionEvent,
 } from '@/types/catalog';
-import { formatMonthYearLabel } from '@/components/wallets/liquidity/liquidity-personalization';
+import {
+  displayIncomingCash,
+  formatMonthYearLabel,
+} from '@/components/wallets/liquidity/liquidity-personalization';
 import { LiquidityMonthStepper } from '@/components/wallets/liquidity/LiquidityMonthStepper';
 import { LiquidityMonthDebtItemsList } from '@/components/wallets/liquidity/LiquidityMonthDebtItemsList';
 import { monthDebtItemsTotal } from '@/lib/finance/liquidity-month-debt-items';
@@ -39,6 +42,7 @@ export const LiquidityMonthFocus = ({
 
   const debtItems = month.debt_items ?? [];
   const debtTotal = monthDebtItemsTotal(debtItems);
+  const incomingCash = displayIncomingCash(month.expected_income_total);
   const covers = month.total_payments_due <= 0 || month.monthly_remaining >= 0;
 
   return (
@@ -88,10 +92,15 @@ export const LiquidityMonthFocus = ({
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50')}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Entra
+              Entra a tu cuenta
             </p>
-            <p className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-300">
-              {formatCurrency(month.expected_income_total)}
+            <p
+              className={cn(
+                'mt-1 font-mono text-lg font-bold tabular-nums',
+                incomingCash > 0 ? 'text-emerald-300' : 'text-muted-foreground',
+              )}
+            >
+              {formatCurrency(incomingCash)}
             </p>
           </div>
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}>
@@ -134,11 +143,7 @@ export const LiquidityMonthFocus = ({
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Ese mes no terminas ningún préstamo ni compra a meses. Toca un punto verde para ver cuándo sí.
-          </p>
-        )}
+        ) : null}
       </motion.div>
     </AnimatePresence>
   );

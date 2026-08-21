@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  displayIncomingCash,
   formatMonthYearLabel,
   monthKeyFromParts,
   shiftSelectedMonthKey,
@@ -28,5 +29,11 @@ describe('liquidity month selection helpers', () => {
 
   it('title-cases the month without capitalizing de', () => {
     expect(formatMonthYearLabel('2026-11')).toBe('Noviembre de 2026');
+  });
+
+  it('never shows negative cash as Entra', () => {
+    expect(displayIncomingCash(-8072.82)).toBe(0);
+    expect(displayIncomingCash(0)).toBe(0);
+    expect(displayIncomingCash(166400)).toBe(166400);
   });
 });

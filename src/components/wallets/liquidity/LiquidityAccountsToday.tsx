@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
@@ -17,9 +17,15 @@ import type { WalletListItem } from '@/types/catalog';
 
 type LiquidityAccountsTodayProps = {
   onChanged?: () => void;
+  actions?: ReactNode;
+  fundingTotal?: number;
 };
 
-export const LiquidityAccountsToday = ({ onChanged }: LiquidityAccountsTodayProps) => {
+export const LiquidityAccountsToday = ({
+  onChanged,
+  actions,
+  fundingTotal,
+}: LiquidityAccountsTodayProps) => {
   const { context } = useFinanceContext();
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +69,7 @@ export const LiquidityAccountsToday = ({ onChanged }: LiquidityAccountsTodayProp
         aria-labelledby="liquidity-cards-today-heading"
       >
         <div className="flex flex-wrap items-start justify-between gap-2 px-4 py-4 sm:px-5">
-          <div>
+          <div className="min-w-0">
             <h2
               id="liquidity-cards-today-heading"
               className="text-base font-semibold leading-tight"
@@ -71,12 +77,25 @@ export const LiquidityAccountsToday = ({ onChanged }: LiquidityAccountsTodayProp
               Tus tarjetas hoy
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Logos, deuda y lo que te queda libre ahora. Toca una cuenta para corregir el saldo.
+              {fundingTotal != null ? (
+                <>
+                  Hoy tienes{' '}
+                  <span className="font-mono font-semibold tabular-nums text-emerald-300">
+                    {formatCurrency(fundingTotal)}
+                  </span>{' '}
+                  en efectivo y débito. Toca una cuenta para corregir el saldo.
+                </>
+              ) : (
+                'Deuda y lo que te queda libre ahora. Toca una cuenta para corregir el saldo.'
+              )}
             </p>
           </div>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {accounts.length} cuenta{accounts.length === 1 ? '' : 's'}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            {actions}
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {accounts.length} cuenta{accounts.length === 1 ? '' : 's'}
+            </span>
+          </div>
         </div>
 
         {!loading && accounts.length > 0 ? (
