@@ -40,6 +40,15 @@ export async function updateCreditCard(
   }, context);
 }
 
+export async function deleteCreditCard(
+  id: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/credit-cards/${id}`, {
+    method: 'DELETE',
+  }, context);
+}
+
 export async function getCreditCardStatement(
   id: number,
   context?: FinanceContextType,

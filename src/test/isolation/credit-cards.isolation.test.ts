@@ -15,6 +15,7 @@ const {
   getOwnerContext,
   getCreditCardByOwner,
   updateCreditCardForOwner,
+  deleteCreditCardForOwner,
   listCreditCardPaymentsByOwner,
   findFirstWallet,
   findManyImports,
@@ -23,6 +24,7 @@ const {
   getOwnerContext: vi.fn(),
   getCreditCardByOwner: vi.fn(),
   updateCreditCardForOwner: vi.fn(),
+  deleteCreditCardForOwner: vi.fn(),
   listCreditCardPaymentsByOwner: vi.fn(),
   findFirstWallet: vi.fn(),
   findManyImports: vi.fn(),
@@ -51,11 +53,12 @@ vi.mock('@/lib/finance/credit-card.service', async (importOriginal) => {
     ...actual,
     getCreditCardByOwner,
     updateCreditCardForOwner,
+    deleteCreditCardForOwner,
     listCreditCardPaymentsByOwner,
   };
 });
 
-import { GET, PATCH } from '@/app/api/credit-cards/[id]/route';
+import { DELETE, GET, PATCH } from '@/app/api/credit-cards/[id]/route';
 import { GET as getPayments } from '@/app/api/credit-cards/[id]/payments/route';
 import { GET as getStatementImports } from '@/app/api/credit-cards/[id]/statement-imports/route';
 
@@ -87,6 +90,11 @@ describe('isolation: credit cards', () => {
       async (_id: number, _data: unknown, filter: { user_id: number | null }) => {
         if (filter.user_id === USER_B) throw notFoundError();
         return { id: RESOURCE_ID, name: 'SECRET_CARD_A' };
+      },
+    );
+    deleteCreditCardForOwner.mockImplementation(
+      async (_id: number, filter: { user_id: number | null }) => {
+        if (filter.user_id === USER_B) throw notFoundError();
       },
     );
     listCreditCardPaymentsByOwner.mockImplementation(
@@ -135,6 +143,39 @@ describe('isolation: credit cards', () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it('DELETE /api/credit-cards/[id] → 404 for User A card under User B context', async () => {
+    const response = await DELETE(
+      requestFor(`/api/credit-cards/${RESOURCE_ID}`, {
+        method: 'DELETE',
+      }) as Parameters<typeof DELETE>[0],
+      { params: paramsOf(RESOURCE_ID) },
+    );
+
+    expect(response.status).toBe(404);
+    expect(deleteCreditCardForOwner).toHaveBeenCalledWith(
+      RESOURCE_ID,
+      ownerFilterB,
+    );
+    const body = await response.json();
+    expect(JSON.stringify(body)).not.toContain('SECRET_CARD_A');
+  });
+
+  it('DELETE → 403 when house context is forbidden', async () => {
+    getOwnerContext.mockResolvedValue(forbiddenHouseContext);
+
+    const response = await DELETE(
+      requestFor(`/api/credit-cards/${RESOURCE_ID}`, {
+        method: 'DELETE',
+        ownerType: 'house',
+        ownerId: HOUSE_A,
+      }) as Parameters<typeof DELETE>[0],
+      { params: paramsOf(RESOURCE_ID) },
+    );
+
+    expect(response.status).toBe(403);
+    expect(deleteCreditCardForOwner).not.toHaveBeenCalled();
   });
 
   it('GET → 403 when house context is forbidden', async () => {
