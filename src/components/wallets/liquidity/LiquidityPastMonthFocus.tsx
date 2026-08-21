@@ -10,6 +10,7 @@ import {
   monthKeyFromParts,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 import { LiquidityMonthStepper } from '@/components/wallets/liquidity/LiquidityMonthStepper';
+import { LiquidityMonthDebtItemsList } from '@/components/wallets/liquidity/LiquidityMonthDebtItemsList';
 
 type LiquidityPastMonthFocusProps = {
   month: MonthlySummaryItem | null;
@@ -118,6 +119,11 @@ export const LiquidityPastMonthFocus = ({
             </p>
           </div>
         </div>
+
+        <LiquidityMonthDebtItemsList
+          items={month.debt_items ?? []}
+          emptyMessage="Ese mes no pagaste préstamos ni tarjetas."
+        />
 
         {spendRatio != null ? (
           <div className="mt-4 space-y-2">

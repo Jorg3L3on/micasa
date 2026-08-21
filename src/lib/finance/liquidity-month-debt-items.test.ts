@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildMonthDebtItems,
+  groupDebtItemsByMonth,
   monthDebtItemsTotal,
+  pastLoanDebtSubtitle,
 } from '@/lib/finance/liquidity-month-debt-items';
 
 describe('buildMonthDebtItems', () => {
@@ -82,5 +84,67 @@ describe('buildMonthDebtItems', () => {
     expect(september).toEqual([
       expect.objectContaining({ title: 'Laptop', amount: 2700, kind: 'msi' }),
     ]);
+  });
+});
+
+describe('groupDebtItemsByMonth', () => {
+  it('merges same-wallet card payments and keeps loans as named concepts', () => {
+    const byMonth = groupDebtItemsByMonth([
+      {
+        month_key: '2026-03',
+        kind: 'card',
+        group_id: '12',
+        title: 'DIDI Card',
+        subtitle: 'Pago de tarjeta',
+        amount: 500,
+      },
+      {
+        month_key: '2026-03',
+        kind: 'card',
+        group_id: '12',
+        title: 'DIDI Card',
+        subtitle: 'Pago de tarjeta',
+        amount: 679.43,
+      },
+      {
+        month_key: '2026-03',
+        kind: 'loan',
+        group_id: '5',
+        title: 'Banamex',
+        subtitle: 'Banamex',
+        amount: 3500,
+      },
+      {
+        month_key: '2026-03',
+        kind: 'loan',
+        group_id: '31',
+        title: 'Fonacot Carmen',
+        subtitle: pastLoanDebtSubtitle('PAYROLL_DEDUCTION', 'FONACOT'),
+        amount: 1243.68,
+      },
+      {
+        month_key: '2026-04',
+        kind: 'loan',
+        group_id: '5',
+        title: 'Banamex',
+        subtitle: 'Banamex',
+        amount: 3500,
+      },
+    ]);
+
+    const march = byMonth.get('2026-03') ?? [];
+    expect(march.map((item) => item.title)).toEqual(['Banamex', 'Fonacot Carmen', 'DIDI Card']);
+    expect(march.find((item) => item.title === 'DIDI Card')?.amount).toBeCloseTo(1179.43);
+    expect(monthDebtItemsTotal(march)).toBeCloseTo(3500 + 1243.68 + 1179.43);
+    expect(byMonth.get('2026-04')).toEqual([
+      expect.objectContaining({ title: 'Banamex', amount: 3500, kind: 'loan' }),
+    ]);
+  });
+});
+
+describe('pastLoanDebtSubtitle', () => {
+  it('labels payroll deductions vs wallet loans', () => {
+    expect(pastLoanDebtSubtitle('PAYROLL_DEDUCTION', 'FONACOT')).toBe('Nómina · FONACOT');
+    expect(pastLoanDebtSubtitle('WALLET', 'Banamex')).toBe('Banamex');
   });
 });

@@ -11,6 +11,7 @@ import type {
 } from '@/types/catalog';
 import { formatMonthYearLabel } from '@/components/wallets/liquidity/liquidity-personalization';
 import { LiquidityMonthStepper } from '@/components/wallets/liquidity/LiquidityMonthStepper';
+import { LiquidityMonthDebtItemsList } from '@/components/wallets/liquidity/LiquidityMonthDebtItemsList';
 import { monthDebtItemsTotal } from '@/lib/finance/liquidity-month-debt-items';
 
 type LiquidityMonthFocusProps = {
@@ -22,12 +23,6 @@ type LiquidityMonthFocusProps = {
   canNext: boolean;
   onPrevMonth: () => void;
   onNextMonth: () => void;
-};
-
-const KIND_LABEL: Record<'card' | 'msi' | 'loan', string> = {
-  card: 'Tarjeta',
-  msi: 'Compra a meses',
-  loan: 'Préstamo',
 };
 
 export const LiquidityMonthFocus = ({
@@ -117,42 +112,10 @@ export const LiquidityMonthFocus = ({
           </div>
         </div>
 
-        {debtItems.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Conceptos de este mes
-            </p>
-            <ul className="divide-y divide-border/40 overflow-hidden rounded-xl border border-border/50">
-              {debtItems.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-start justify-between gap-3 px-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{item.title}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {KIND_LABEL[item.kind]}
-                      {item.subtitle ? ` · ${item.subtitle}` : ''}
-                    </p>
-                  </div>
-                  <p className="shrink-0 font-mono text-sm font-bold tabular-nums">
-                    {formatCurrency(item.amount)}
-                  </p>
-                </li>
-              ))}
-              <li className="flex items-center justify-between gap-3 bg-muted/20 px-3 py-2.5">
-                <p className="text-sm font-semibold">Total</p>
-                <p className="font-mono text-sm font-bold tabular-nums">
-                  {formatCurrency(debtTotal)}
-                </p>
-              </li>
-            </ul>
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Ese mes no hay pagos de préstamos ni tarjetas.
-          </p>
-        )}
+        <LiquidityMonthDebtItemsList
+          items={debtItems}
+          emptyMessage="Ese mes no hay pagos de préstamos ni tarjetas."
+        />
 
         {events.length > 0 ? (
           <ul className="mt-4 space-y-2">

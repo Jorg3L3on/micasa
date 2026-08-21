@@ -7,6 +7,12 @@ import {
   calendarMonthKeyFromDate,
   pastDebtDateForLoanPayment,
 } from '@/lib/finance/monthly-chart-debt';
+import {
+  groupDebtItemsByMonth,
+  pastLoanDebtSubtitle,
+  type MonthDebtItem,
+  type MonthDebtItemInput,
+} from '@/lib/finance/liquidity-month-debt-items';
 
 export type MonthlySummaryItem = {
   year: number;
@@ -14,6 +20,7 @@ export type MonthlySummaryItem = {
   label: string;
   income: number;
   expense: number;
+  debt_items: MonthDebtItem[];
 };
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -74,7 +81,11 @@ export async function GET(request: NextRequest) {
           ...ownerFilter,
           paid_at: { gte: rangeFrom, lte: rangeTo },
         },
-        select: { amount: true, paid_at: true },
+        select: {
+          amount: true,
+          paid_at: true,
+          credit_card_wallet: { select: { id: true, name: true } },
+        },
       }),
       prisma.loanPayment.findMany({
         where: {
@@ -96,7 +107,14 @@ export async function GET(request: NextRequest) {
           paid_at: true,
           due_date: true,
           status: true,
-          loan: { select: { payment_source: true } },
+          loan: {
+            select: {
+              id: true,
+              name: true,
+              lender: true,
+              payment_source: true,
+            },
+          },
         },
       }),
     ]);
@@ -128,8 +146,19 @@ export async function GET(request: NextRequest) {
       if (entry) entry.expense += amount;
     };
 
+    const debtItemInputs: MonthDebtItemInput[] = [];
+
     for (const payment of cardPayments) {
-      addDebt(payment.paid_at, Number(payment.amount));
+      const amount = Number(payment.amount);
+      addDebt(payment.paid_at, amount);
+      debtItemInputs.push({
+        month_key: calendarMonthKeyFromDate(payment.paid_at),
+        kind: 'card',
+        group_id: String(payment.credit_card_wallet.id),
+        title: payment.credit_card_wallet.name,
+        subtitle: 'Pago de tarjeta',
+        amount,
+      });
     }
 
     for (const payment of loanPayments) {
@@ -140,17 +169,30 @@ export async function GET(request: NextRequest) {
         payment_source: payment.loan.payment_source,
       });
       if (!when) continue;
-      addDebt(when, Number(payment.amount));
+      const amount = Number(payment.amount);
+      addDebt(when, amount);
+      debtItemInputs.push({
+        month_key: calendarMonthKeyFromDate(when),
+        kind: 'loan',
+        group_id: String(payment.loan.id),
+        title: payment.loan.name,
+        subtitle: pastLoanDebtSubtitle(payment.loan.payment_source, payment.loan.lender),
+        amount,
+      });
     }
+
+    const debtItemsByMonth = groupDebtItemsByMonth(debtItemInputs);
 
     const result: MonthlySummaryItem[] = months.map(({ year, month }) => {
       const entry = byMonth.get(`${year}-${month}`) ?? { income: 0, expense: 0 };
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
       return {
         year,
         month,
         label: MONTH_LABELS[month - 1],
         income: Math.round(entry.income * 100) / 100,
         expense: Math.round(entry.expense * 100) / 100,
+        debt_items: debtItemsByMonth.get(monthKey) ?? [],
       };
     });
 
