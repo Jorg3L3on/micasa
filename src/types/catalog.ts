@@ -420,6 +420,13 @@ export type LiquidityMonthlySeriesItem = {
   total_payments_due: number;
   remaining_payments_from_month: number;
   monthly_remaining: number;
+  debt_items: Array<{
+    id: string;
+    kind: 'card' | 'msi' | 'loan';
+    title: string;
+    subtitle: string;
+    amount: number;
+  }>;
 };
 
 export type LiquidityProjectionTrackKind = 'loan' | 'msi';

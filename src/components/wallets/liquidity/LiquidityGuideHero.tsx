@@ -4,16 +4,12 @@ import { useSession } from 'next-auth/react';
 import { Sparkles } from 'lucide-react';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
 import { cn } from '@/lib/utils';
-import {
-  buildLiquidityHeroCopy,
-  getLiquidityHealth,
-} from '@/components/wallets/liquidity/liquidity-personalization';
-import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
+import { buildLiquidityHeroCopy } from '@/components/wallets/liquidity/liquidity-personalization';
+import type { LiquidityHorizonMonths } from '@/components/wallets/liquidity/liquidity-personalization';
 
 type LiquidityGuideHeroProps = {
   data: LiquidityProjectionResponse | null;
-  horizonMonths?: import('@/components/wallets/liquidity/liquidity-personalization').LiquidityHorizonMonths;
-  onAccountsChanged?: () => void;
+  horizonMonths?: LiquidityHorizonMonths;
 };
 
 const toneClasses = {
@@ -37,7 +33,6 @@ const toneClasses = {
 export const LiquidityGuideHero = ({
   data,
   horizonMonths = 6,
-  onAccountsChanged,
 }: LiquidityGuideHeroProps) => {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
@@ -54,7 +49,6 @@ export const LiquidityGuideHero = ({
 
   const copy = buildLiquidityHeroCopy(data, firstName, horizonMonths);
   const tone = toneClasses[copy.tone];
-  const health = getLiquidityHealth(data);
 
   return (
     <div
@@ -87,15 +81,6 @@ export const LiquidityGuideHero = ({
           </span>
         </div>
         <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
-        <p className="text-xs text-muted-foreground">
-          {health === 'healthy'
-            ? 'Toca un mes en la gráfica para ver ese detalle. Los puntos verdes son cuando terminas de pagar algo.'
-            : 'Toca un punto verde en la gráfica; ese es el mes en que terminas de pagar algo.'}
-        </p>
-      </div>
-
-      <div className="shrink-0 self-start">
-        <LiquidityFundingWalletsMenu onChanged={onAccountsChanged} />
       </div>
     </div>
   );

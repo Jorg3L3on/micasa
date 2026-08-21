@@ -211,7 +211,7 @@ export const LiquidityFutureTimeline = ({
             Cómo bajan tus pagos
           </h2>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            La línea es lo que aún debes de aquí en adelante. Los puntos verdes son el mes en que terminas un préstamo o una compra a meses.
+            Lo que aún debes de préstamos y tarjetas. Toca un mes para ver cada concepto y su monto. Los puntos verdes son cuando terminas de pagar.
           </p>
         </div>
         <LiquidityHorizonMenu value={horizonMonths} onChange={onHorizonChange} />

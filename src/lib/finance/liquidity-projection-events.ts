@@ -6,6 +6,7 @@ import {
 } from '@/lib/finance/liquidity-projection';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import type { PayrollDebtLineItem } from '@/lib/finance/liquidity-month-debt-items';
 
 export type LiquidityProjectionEventType = 'loan_payoff' | 'msi_complete';
 
@@ -44,6 +45,7 @@ export type LiquidityProjectionTimeline = {
   tracks: LiquidityProjectionTrack[];
   installmentPaymentsByMonth: Map<string, number>;
   payrollPaymentsByMonth: Map<string, number>;
+  payrollLineItems: PayrollDebtLineItem[];
 };
 
 const toMonthKey = (ymd: string) => ymd.slice(0, 7);
@@ -79,6 +81,7 @@ const collectLoanTimeline = async (
   events: LiquidityProjectionEvent[];
   tracks: LiquidityProjectionTrack[];
   payrollPaymentsByMonth: Map<string, number>;
+  payrollLineItems: PayrollDebtLineItem[];
 }> => {
   const horizonStart = monthKeys[0] ?? toMonthKey(asOfStr);
   const horizonEnd = monthKeys[monthKeys.length - 1] ?? toMonthKey(untilStr);
@@ -110,6 +113,7 @@ const collectLoanTimeline = async (
 
   const events: LiquidityProjectionEvent[] = [];
   const tracks: LiquidityProjectionTrack[] = [];
+  const payrollLineItems: PayrollDebtLineItem[] = [];
 
   for (const loan of loans) {
     if (loan.payments.length === 0) continue;
@@ -141,10 +145,18 @@ const collectLoanTimeline = async (
       for (const payment of remainingPayments) {
         const monthKey = toMonthKey(toUtcDateOnlyString(payment.due_date));
         if (!monthKeySet.has(monthKey)) continue;
+        const amount = Number(payment.amount);
         payrollPaymentsByMonth.set(
           monthKey,
-          (payrollPaymentsByMonth.get(monthKey) ?? 0) + Number(payment.amount),
+          (payrollPaymentsByMonth.get(monthKey) ?? 0) + amount,
         );
+        payrollLineItems.push({
+          month_key: monthKey,
+          loan_id: loan.id,
+          title: loan.name,
+          subtitle: `Nómina · ${loan.lender}`,
+          amount,
+        });
       }
     }
 
@@ -175,7 +187,7 @@ const collectLoanTimeline = async (
     }
   }
 
-  return { events, tracks, payrollPaymentsByMonth };
+  return { events, tracks, payrollPaymentsByMonth, payrollLineItems };
 };
 
 export const collectMsiProjectionData = async (
@@ -323,6 +335,7 @@ export const collectLiquidityProjectionTimeline = async (
     tracks,
     installmentPaymentsByMonth: msiData.paymentsByMonth,
     payrollPaymentsByMonth: loanTimeline.payrollPaymentsByMonth,
+    payrollLineItems: loanTimeline.payrollLineItems,
   };
 };
 

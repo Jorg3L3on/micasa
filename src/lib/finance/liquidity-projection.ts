@@ -38,6 +38,19 @@ export const liquidityUntilFromMonthHorizon = (asOf: Date, horizonMonths: number
   );
 };
 
+/**
+ * Remaining-debt curve: loans, card statements, and MSI.
+ * Recurring templates and unpaid cash/debit bills are cash-flow, not remaining debt.
+ */
+export const monthScheduledDebtTotal = (month: {
+  msi_debt_total: number;
+  installment_payment_total: number;
+  loan_payment_total: number;
+}): number =>
+  month.msi_debt_total +
+  month.installment_payment_total +
+  month.loan_payment_total;
+
 export const LIQUIDITY_PROJECTION_ASSUMPTIONS_ES: readonly string[] = [
   'Las fechas de estado usan el mismo calendario UTC que el motor de cortes y vencimientos.',
   'Cada periodo futuro solo suma cargos ya registrados y pagos a estado ya aplicados en la app; no se inventan compras futuras.',

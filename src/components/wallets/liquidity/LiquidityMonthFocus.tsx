@@ -9,8 +9,13 @@ import type {
   LiquidityMonthlySeriesItem,
   LiquidityProjectionEvent,
 } from '@/types/catalog';
-import { formatMonthYearLabel } from '@/components/wallets/liquidity/liquidity-personalization';
+import {
+  displayIncomingCash,
+  formatMonthYearLabel,
+} from '@/components/wallets/liquidity/liquidity-personalization';
 import { LiquidityMonthStepper } from '@/components/wallets/liquidity/LiquidityMonthStepper';
+import { LiquidityMonthDebtItemsList } from '@/components/wallets/liquidity/LiquidityMonthDebtItemsList';
+import { monthDebtItemsTotal } from '@/lib/finance/liquidity-month-debt-items';
 
 type LiquidityMonthFocusProps = {
   month: LiquidityMonthlySeriesItem | null;
@@ -22,14 +27,6 @@ type LiquidityMonthFocusProps = {
   onPrevMonth: () => void;
   onNextMonth: () => void;
 };
-
-const COMPOSITION = [
-  { key: 'msi_debt_total', label: 'Estado de tarjeta', barClass: 'bg-violet-500', dotClass: 'bg-violet-500' },
-  { key: 'installment_payment_total', label: 'Compras a meses', barClass: 'bg-fuchsia-500', dotClass: 'bg-fuchsia-500' },
-  { key: 'loan_payment_total', label: 'Préstamos', barClass: 'bg-sky-500', dotClass: 'bg-sky-500' },
-  { key: 'expense_template_total', label: 'Gastos fijos', barClass: 'bg-amber-500', dotClass: 'bg-amber-500' },
-  { key: 'other_debt_components_total', label: 'Otros', barClass: 'bg-rose-500', dotClass: 'bg-rose-500' },
-] as const;
 
 export const LiquidityMonthFocus = ({
   month,
@@ -43,11 +40,9 @@ export const LiquidityMonthFocus = ({
 }: LiquidityMonthFocusProps) => {
   if (!month) return null;
 
-  const slices = COMPOSITION.map((item) => ({
-    ...item,
-    amount: Number(month[item.key] ?? 0),
-  })).filter((item) => item.amount > 0);
-  const sliceTotal = slices.reduce((sum, item) => sum + item.amount, 0);
+  const debtItems = month.debt_items ?? [];
+  const debtTotal = monthDebtItemsTotal(debtItems);
+  const incomingCash = displayIncomingCash(month.expected_income_total);
   const covers = month.total_payments_due <= 0 || month.monthly_remaining >= 0;
 
   return (
@@ -97,18 +92,23 @@ export const LiquidityMonthFocus = ({
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50')}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Entra
+              Entra a tu cuenta
             </p>
-            <p className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-300">
-              {formatCurrency(month.expected_income_total)}
+            <p
+              className={cn(
+                'mt-1 font-mono text-lg font-bold tabular-nums',
+                incomingCash > 0 ? 'text-emerald-300' : 'text-muted-foreground',
+              )}
+            >
+              {formatCurrency(incomingCash)}
             </p>
           </div>
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Sales a pagar
+              Deudas de este mes
             </p>
             <p className="mt-1 font-mono text-lg font-bold tabular-nums">
-              {formatCurrency(month.total_payments_due)}
+              {formatCurrency(debtTotal)}
             </p>
           </div>
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-sky-500/50')}>
@@ -121,38 +121,10 @@ export const LiquidityMonthFocus = ({
           </div>
         </div>
 
-        {sliceTotal > 0 ? (
-          <div className="mt-4 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              De dónde salen esos pagos
-            </p>
-            <div className="flex h-2.5 overflow-hidden rounded-full bg-muted/40">
-              {slices.map((slice) => (
-                <div
-                  key={slice.key}
-                  className={cn('h-full', slice.barClass)}
-                  style={{ width: `${(slice.amount / sliceTotal) * 100}%` }}
-                  title={`${slice.label}: ${formatCurrency(slice.amount)}`}
-                />
-              ))}
-            </div>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
-              {slices.map((slice) => (
-                <li key={slice.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', slice.dotClass)} />
-                  <span>{slice.label}</span>
-                  <span className="font-mono tabular-nums text-foreground">
-                    {formatCurrency(slice.amount)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Ese mes no hay pagos proyectados.
-          </p>
-        )}
+        <LiquidityMonthDebtItemsList
+          items={debtItems}
+          emptyMessage="Ese mes no hay pagos de préstamos ni tarjetas."
+        />
 
         {events.length > 0 ? (
           <ul className="mt-4 space-y-2">
@@ -171,11 +143,7 @@ export const LiquidityMonthFocus = ({
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Ese mes no terminas ningún préstamo ni compra a meses. Toca un punto verde para ver cuándo sí.
-          </p>
-        )}
+        ) : null}
       </motion.div>
     </AnimatePresence>
   );

@@ -4,25 +4,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import { fetchLiquidityProjection } from '@/lib/api/liquidity';
-import { cn, formatCurrency } from '@/lib/utils';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import type {
-  LiquidityCardUtilizationItem,
-  LiquidityProjectionResponse,
-} from '@/types/catalog';
-import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
+import type { LiquidityProjectionResponse } from '@/types/catalog';
 import { LiquidityGuideHero } from '@/components/wallets/liquidity/LiquidityGuideHero';
 import { liquidityUntilFromMonthHorizon } from '@/lib/finance/liquidity-projection';
 import { formatCalendarDate } from '@/lib/calendar-dates';
 import { LiquidityFutureTimeline } from '@/components/wallets/liquidity/LiquidityFutureTimeline';
 import { LiquidityMonthFocus } from '@/components/wallets/liquidity/LiquidityMonthFocus';
-import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
+import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
 import {
-  getCardRiskLabel,
   getTightestMonth,
   shiftSelectedMonthKey,
   type LiquidityHorizonMonths,
@@ -124,25 +119,21 @@ export function LiquidityProjectionTab() {
     if (!data) return [];
     const notes = [
       'Toca un mes en la gráfica: el detalle de abajo cambia con ese mes.',
-      'La línea es lo que aún debes de aquí en adelante. Baja cuando terminas un préstamo o una compra a meses.',
+      'La línea es lo que aún debes de préstamos y tarjetas. Baja cuando terminas un préstamo o una compra a meses.',
       'Los puntos verdes son el mes en que terminas de pagar algo.',
     ];
     if (data.options.include_unpaid_expenses) {
-      notes.push('Incluimos gastos que aún no marcas como pagados.');
+      notes.push('Los gastos impagos de efectivo o débito salen en el detalle del mes, no en la línea de deuda.');
     }
     if (data.options.include_expense_templates) {
-      notes.push('Incluimos gastos que se repiten cada quincena como estimación.');
+      notes.push('Los gastos fijos que se repiten (renta, suscripciones) salen en el detalle del mes, no en la línea de deuda.');
     }
     return notes;
   }, [data]);
 
   return (
-    <div className="space-y-6">
-      <LiquidityGuideHero
-        data={data}
-        horizonMonths={horizonMonths}
-        onAccountsChanged={() => void load()}
-      />
+    <div className="space-y-5">
+      <LiquidityGuideHero data={data} horizonMonths={horizonMonths} />
 
       {error ? (
         <div
@@ -157,13 +148,11 @@ export function LiquidityProjectionTab() {
 
       {data ? (
         <>
-          <p className="text-sm text-muted-foreground">
-            Hoy tienes{' '}
-            <span className="font-mono font-semibold tabular-nums text-emerald-300">
-              {formatCurrency(fundingTotal)}
-            </span>{' '}
-            en efectivo y débito. Toca la gráfica para ver cada mes.
-          </p>
+          <LiquidityAccountsToday
+            fundingTotal={fundingTotal}
+            onChanged={() => void load()}
+            actions={<LiquidityFundingWalletsMenu onChanged={() => void load()} />}
+          />
 
           <LiquidityFutureTimeline
             months={data.monthly_series}
@@ -190,66 +179,6 @@ export function LiquidityProjectionTab() {
             onPrevMonth={() => handleShiftMonth(-1)}
             onNextMonth={() => handleShiftMonth(1)}
           />
-
-          {data.card_utilization_summary.cards.length > 0 ? (
-            <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'px-4 py-4 sm:px-5')}>
-              <h2 className="text-base font-semibold leading-tight">Tus tarjetas hoy</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {data.card_utilization_summary.dangerous_count > 0
-                  ? `${data.card_utilization_summary.dangerous_count} muy llena(s). Eso también empuja los pagos de la gráfica.`
-                  : 'Ninguna está al límite ahora.'}
-              </p>
-              <ul className="mt-3 space-y-3">
-                {data.card_utilization_summary.cards.map((card: LiquidityCardUtilizationItem) => {
-                  const isUnrated = card.risk_level === 'unrated_no_limit';
-                  const utilization = card.utilization_percent ?? 0;
-                  const risk = getCardRiskLabel(isUnrated ? null : utilization, isUnrated);
-                  return (
-                    <li key={card.card_id}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{card.card_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {PAYMENT_METHOD_LABELS[
-                              card.card_type as keyof typeof PAYMENT_METHOD_LABELS
-                            ] ?? card.card_type}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
-                            risk.tone === 'destructive' &&
-                              'bg-destructive/10 text-destructive ring-destructive/20',
-                            risk.tone === 'amber' &&
-                              'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
-                            risk.tone === 'emerald' &&
-                              'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
-                            risk.tone === 'muted' &&
-                              'bg-muted text-muted-foreground ring-border/40',
-                          )}
-                        >
-                          {risk.label}
-                        </span>
-                      </div>
-                      {!isUnrated ? (
-                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
-                          <div
-                            className={cn(
-                              'h-full rounded-full',
-                              risk.tone === 'destructive' && 'bg-destructive',
-                              risk.tone === 'amber' && 'bg-amber-500',
-                              risk.tone === 'emerald' && 'bg-emerald-500',
-                            )}
-                            style={{ width: `${Math.min(100, utilization)}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : null}
 
           <Collapsible className="group/help rounded-xl border border-dashed border-border/50 bg-muted/10">
             <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30">
