@@ -22,6 +22,10 @@ import {
   collectLiquidityProjectionTimeline,
 } from '@/lib/finance/liquidity-projection-events';
 import {
+  buildMonthDebtItems,
+  type MonthDebtItem,
+} from '@/lib/finance/liquidity-month-debt-items';
+import {
   addDaysUtc,
   compareUtcDateOnly,
   DEFAULT_PROJECTION_HORIZON_DAYS,
@@ -132,6 +136,7 @@ export type LiquidityMonthlySeriesItem = {
   total_payments_due: number;
   remaining_payments_from_month: number;
   monthly_remaining: number;
+  debt_items: MonthDebtItem[];
 };
 
 export type LiquidityProjectionEvent = import('@/lib/finance/liquidity-projection-events').LiquidityProjectionEvent;
@@ -947,6 +952,13 @@ export const getLiquidityProjection = async (
     }
   }
 
+  const debtItemsByMonth = buildMonthDebtItems(
+    monthKeys,
+    milestones,
+    projectionTracks,
+    timeline.payrollLineItems,
+  );
+
   const monthly_series: LiquidityMonthlySeriesItem[] = monthKeys.map((month_key) => {
     const monthDebt = debtByMonth.get(month_key) ?? {
       msi_debt_total: 0,
@@ -975,6 +987,7 @@ export const getLiquidityProjection = async (
       total_payments_due,
       remaining_payments_from_month: 0,
       monthly_remaining,
+      debt_items: debtItemsByMonth.get(month_key) ?? [],
     };
   });
 
