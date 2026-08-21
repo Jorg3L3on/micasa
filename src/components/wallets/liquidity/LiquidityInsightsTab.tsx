@@ -2,26 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { History, Wallet } from 'lucide-react';
+import { History } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import MonthlyOverviewChart from '@/components/wallets/liquidity/MonthlyOverviewChart';
 import { LiquidityPastMonthFocus } from '@/components/wallets/liquidity/LiquidityPastMonthFocus';
-import type { WalletListItem } from '@/types/catalog';
+import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
 import type { MonthlySummaryItem } from '@/app/api/wallets/liquidity/monthly-summary/route';
-import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
-import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
-import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
 import {
-  getCardRiskLabel,
   monthKeyFromParts,
   shiftSelectedMonthKey,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 
-const CARD_TYPES = ['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD'] as const;
 const ROLLING_MONTHS = 12;
 
 type CategoryReportRow = {
@@ -30,42 +25,15 @@ type CategoryReportRow = {
   total: number;
 };
 
-const sortWalletsByType = (wallets: WalletListItem[]): WalletListItem[] => {
-  return [...wallets]
-    .filter(
-      (wallet) =>
-        CARD_TYPES.includes(wallet.type as (typeof CARD_TYPES)[number]) && wallet.active,
-    )
-    .sort((a, b) => {
-      const getTypeRank = (type: string) => {
-        if (type === 'CASH') return 0;
-        if (type === 'DEBIT_CARD') return 1;
-        if (type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') return 2;
-        return 3;
-      };
-      const rankDiff = getTypeRank(a.type) - getTypeRank(b.type);
-      if (rankDiff !== 0) return rankDiff;
-      return a.name.localeCompare(b.name, 'es');
-    });
-};
-
 export function LiquidityInsightsTab() {
   const { data: session } = useSession();
   const { context } = useFinanceContext();
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
-  const [wallets, setWallets] = useState<WalletListItem[]>([]);
   const [categories, setCategories] = useState<CategoryReportRow[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryError, setCategoryError] = useState<string | null>(null);
-  const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
   const [selectedMonthKey, setSelectedMonthKey] = useState('');
-
-  const ownerQueryString = useMemo(() => {
-    const q = buildOwnerQuery(context);
-    const s = q.toString();
-    return s ? `?${s}` : '';
-  }, [context]);
 
   const load = useCallback(async () => {
     if (!context || (context.type === 'user' && context.id === 0)) {
@@ -75,8 +43,7 @@ export function LiquidityInsightsTab() {
     try {
       setLoading(true);
       setCategoryError(null);
-      const [walletList, catRows, monthlyRows] = await Promise.all([
-        clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
+      const [catRows, monthlyRows] = await Promise.all([
         clientFetchFromApi<CategoryReportRow[]>(
           `/api/reports?type=by-category&windowMonths=${ROLLING_MONTHS}`,
           undefined,
@@ -88,12 +55,10 @@ export function LiquidityInsightsTab() {
           context,
         ),
       ]);
-      setWallets(walletList);
       setCategories(Array.isArray(catRows) ? catRows : []);
       setMonthlySummary(Array.isArray(monthlyRows) ? monthlyRows : []);
     } catch (e) {
       setCategoryError(e instanceof Error ? e.message : 'No se pudieron cargar tus datos');
-      setWallets([]);
       setCategories([]);
       setMonthlySummary([]);
     } finally {
@@ -115,8 +80,6 @@ export function LiquidityInsightsTab() {
     if (monthKeys.includes(selectedMonthKey)) return;
     setSelectedMonthKey(monthKeys[monthKeys.length - 1] ?? '');
   }, [monthKeys, selectedMonthKey]);
-
-  const sortedCards = useMemo(() => sortWalletsByType(wallets), [wallets]);
 
   const totalCategorySpend = useMemo(
     () => categories.reduce((sum, row) => sum + Number(row.total), 0),
@@ -278,119 +241,7 @@ export function LiquidityInsightsTab() {
         </Card>
       </section>
 
-      <section
-        className="rounded-xl border border-border/60 bg-transparent shadow-sm overflow-hidden"
-        aria-labelledby="insights-cards-heading"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
-          <div>
-            <h2 id="insights-cards-heading" className="text-base font-semibold leading-tight">
-              Tus cuentas hoy
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Efectivo, débito y tarjetas. Toca una cuenta para corregir su saldo.
-            </p>
-          </div>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {sortedCards.length} cuenta{sortedCards.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-        {sortedCards.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-            No hay cuentas activas de efectivo o tarjeta.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border/40">
-            {sortedCards.map((card) => {
-              const limit = Number(card.credit_limit ?? 0);
-              const used = Number(card.amount);
-              const isCredit =
-                card.type === 'CREDIT_CARD' || card.type === 'DEPARTMENT_STORE_CARD';
-              const utilizationPct =
-                isCredit && limit > 0 ? Math.min(100, (Math.max(0, used) / limit) * 100) : null;
-              const risk = getCardRiskLabel(utilizationPct, limit <= 0 && isCredit);
-
-              return (
-                <li key={card.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCard(card)}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`Ver o editar ${card.name}`}
-                  >
-                    <WalletProviderIcon
-                      providerIconKey={card.provider_icon_key}
-                      className="mt-0.5 h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-card"
-                      iconClassName="h-5 w-5"
-                      data-icon="inline-start"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-medium">{card.name}</p>
-                        {isCredit ? (
-                          <span
-                            className={cn(
-                              'rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
-                              risk.tone === 'destructive' &&
-                                'bg-destructive/10 text-destructive ring-destructive/20',
-                              risk.tone === 'amber' &&
-                                'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
-                              risk.tone === 'emerald' &&
-                                'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
-                              risk.tone === 'muted' &&
-                                'bg-muted text-muted-foreground ring-border/40',
-                            )}
-                          >
-                            {risk.label}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        {PAYMENT_METHOD_LABELS[card.type as keyof typeof PAYMENT_METHOD_LABELS] ??
-                          card.type}
-                      </p>
-                      <p className="mt-1 font-mono text-sm font-bold tabular-nums">
-                        {isCredit ? 'Debes: ' : 'Tienes: '}
-                        {formatCurrency(used)}
-                      </p>
-                      {utilizationPct != null ? (
-                        <div className="mt-2 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-muted/50">
-                          <div
-                            className={cn(
-                              'h-full rounded-full transition-all',
-                              utilizationPct > 80
-                                ? 'bg-destructive/80'
-                                : utilizationPct > 50
-                                  ? 'bg-amber-500/80'
-                                  : 'bg-emerald-500/80',
-                            )}
-                            style={{ width: `${utilizationPct}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                    <Wallet className="mt-1 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <WalletBalanceEditDialog
-        wallet={selectedCard}
-        ownerQueryString={ownerQueryString}
-        onOpenChange={(open) => {
-          if (!open) setSelectedCard(null);
-        }}
-        onSaved={(walletId, newAmount) => {
-          setSelectedCard((prev) =>
-            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
-          );
-          void load();
-        }}
-      />
+      <LiquidityAccountsToday />
     </div>
   );
 }
