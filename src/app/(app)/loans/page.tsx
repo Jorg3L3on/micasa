@@ -10,6 +10,7 @@ import {
   CircleSlash,
   Clock,
   Eye,
+  History,
   HandCoins,
   Landmark,
   Loader2,
@@ -211,6 +212,7 @@ const paymentStatusLabel = (status: LoanPaymentVisualStatus) => {
 
 const paymentActionLabel = (action: LoanPaymentActionValue) => {
   if (action === 'MARK_PAID') return 'Confirmar pago';
+  if (action === 'MARK_PAID_EXTERNAL') return 'Registrar pago histórico';
   if (action === 'MARK_SCHEDULED') return 'Deshacer pago';
   if (action === 'SKIP') return 'Omitir pago';
   return 'Cancelar pago';
@@ -240,6 +242,9 @@ const paymentActionDescription = (
     return paymentSource === 'PAYROLL_DEDUCTION'
       ? 'Se marcará como pagado. Si eliges billetera, se generará un gasto vinculado contra esa billetera.'
       : 'Se marcará como pagado y se generará el gasto vinculado contra la billetera seleccionada.';
+  }
+  if (action === 'MARK_PAID_EXTERNAL') {
+    return 'Se marcará como pagado sin descontar de ninguna billetera ni crear un gasto. Úsalo cuando el pago ya se hizo fuera de MiCasa (banco, Mercado Libre, etc.).';
   }
   if (action === 'MARK_SCHEDULED') {
     return 'Se regresará el pago a por pagar y se revertirá el gasto vinculado o el movimiento de billetera asociado.';
@@ -791,11 +796,15 @@ export default function LoansPage() {
     }
 
     const errors: PaymentActionErrors = {};
-    if (paymentActionDraft.action === 'MARK_PAID') {
+    if (
+      paymentActionDraft.action === 'MARK_PAID' ||
+      paymentActionDraft.action === 'MARK_PAID_EXTERNAL'
+    ) {
       if (!isValidCalendarDateString(paymentActionDraft.paidAt)) {
         errors.paidAt = 'Selecciona una fecha de pago válida.';
       }
       if (
+        paymentActionDraft.action === 'MARK_PAID' &&
         selectedLoan.paymentSource === 'WALLET' &&
         !paymentActionDraft.sourceWalletId
       ) {
@@ -828,6 +837,10 @@ export default function LoansPage() {
         if (paymentActionDraft.sourceWalletId) {
           payload.sourceWalletId = Number(paymentActionDraft.sourceWalletId);
         }
+      }
+
+      if (paymentActionDraft.action === 'MARK_PAID_EXTERNAL') {
+        payload.paidAt = paymentActionDraft.paidAt;
       }
 
       await applyLoanPaymentAction(paymentActionDraft.paymentId, payload, context);
@@ -2254,7 +2267,7 @@ export default function LoansPage() {
                                     {formatCurrency(payment.amount)}
                                   </p>
                                   {payment.status === 'SCHEDULED' ? (
-                                    <div className="grid grid-cols-3 gap-1 sm:mt-2 sm:flex sm:justify-end sm:gap-1.5">
+                                    <div className="grid grid-cols-2 gap-1 sm:mt-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-1.5">
                                       <Button
                                         type="button"
                                         variant="outline"
@@ -2271,6 +2284,27 @@ export default function LoansPage() {
                                           data-icon="inline-start"
                                         />
                                         Pagar
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px]"
+                                        onClick={() =>
+                                          startPaymentAction(
+                                            payment,
+                                            'MARK_PAID_EXTERNAL',
+                                          )
+                                        }
+                                        disabled={paymentActionSubmitting}
+                                        aria-label="Registrar pago histórico sin mover billetera"
+                                      >
+                                        <History
+                                          className="h-3 w-3"
+                                          aria-hidden
+                                          data-icon="inline-start"
+                                        />
+                                        Ya pagado
                                       </Button>
                                       <Button
                                         type="button"
@@ -2360,10 +2394,15 @@ export default function LoansPage() {
                                         'mt-3 grid gap-3',
                                         paymentActionDraft.action === 'MARK_PAID'
                                           ? 'min-[380px]:grid-cols-[145px_minmax(0,1fr)]'
-                                          : 'sm:grid-cols-2',
+                                          : paymentActionDraft.action ===
+                                              'MARK_PAID_EXTERNAL'
+                                            ? 'min-[380px]:grid-cols-1'
+                                            : 'sm:grid-cols-2',
                                       )}
                                     >
-                                      {paymentActionDraft.action === 'MARK_PAID' ? (
+                                      {paymentActionDraft.action === 'MARK_PAID' ||
+                                      paymentActionDraft.action ===
+                                        'MARK_PAID_EXTERNAL' ? (
                                         <>
                                           <div className="space-y-1.5">
                                             <Label
@@ -2405,6 +2444,8 @@ export default function LoansPage() {
                                             ) : null}
                                           </div>
 
+                                          {paymentActionDraft.action ===
+                                          'MARK_PAID' ? (
                                           <div className="space-y-1.5">
                                             <Label>
                                               Billetera de pago
@@ -2483,13 +2524,22 @@ export default function LoansPage() {
                                               </p>
                                             ) : null}
                                           </div>
+                                          ) : (
+                                            <p className="text-[11px] text-muted-foreground">
+                                              No se descontará saldo ni se creará
+                                              un gasto vinculado.
+                                            </p>
+                                          )}
                                         </>
                                       ) : null}
 
                                       <div
                                         className={cn(
                                           'space-y-1.5',
-                                          paymentActionDraft.action === 'MARK_PAID'
+                                          paymentActionDraft.action ===
+                                            'MARK_PAID' ||
+                                            paymentActionDraft.action ===
+                                              'MARK_PAID_EXTERNAL'
                                             ? 'min-[380px]:col-span-2'
                                             : 'sm:col-span-2',
                                         )}

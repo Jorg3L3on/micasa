@@ -9,6 +9,7 @@ export type LoanPaymentStatusValue =
   | 'CANCELLED';
 export type LoanPaymentActionValue =
   | 'MARK_PAID'
+  | 'MARK_PAID_EXTERNAL'
   | 'MARK_SCHEDULED'
   | 'SKIP'
   | 'CANCEL';
