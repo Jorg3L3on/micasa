@@ -1,12 +1,19 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState, ViewTransition } from 'react';
 import { useParams } from 'next/navigation';
 import { Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
+import {
+  ContentEnter,
+  SkeletonExit,
+} from '@/components/view-transition/SuspenseReveal';
+import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
+import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
+import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import {
   CreditCardCycleSummary,
   CreditCardDetailHeaderActions,
@@ -80,33 +87,43 @@ const shiftDateByDays = (dateStr: string, days: number): string =>
 const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
 
-const CreditCardDetailSkeleton = () => (
-  <div className="space-y-0 pb-24 lg:pb-0">
-    <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-9 w-28" />
-        <Skeleton className="h-9 w-9 rounded-lg" />
+const CreditCardDetailSkeleton = ({ cardId }: { cardId: number }) => (
+  <SkeletonExit>
+    <DirectionalTransition>
+      <div className="space-y-0 pb-24 lg:pb-0">
+        <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-9 w-9 rounded-lg" />
+          </div>
+          <ViewTransition
+            name={walletCardViewTransitionName(cardId)}
+            share="morph"
+            default="none"
+          >
+            <WalletCardVtPlaceholder walletId={cardId} variant="credit" />
+          </ViewTransition>
+          <Skeleton className="h-14 w-full rounded-2xl" />
+          <div className="flex justify-center gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-14 rounded-full" />
+            ))}
+          </div>
+          <Skeleton className="h-20 w-full rounded-2xl" />
+        </div>
+        <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
+          <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" />
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="mt-4 h-10 w-full rounded-xl" />
+          <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
+        </div>
       </div>
-      <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-md rounded-2xl" />
-      <Skeleton className="h-14 w-full rounded-2xl" />
-      <div className="flex justify-center gap-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-14 rounded-full" />
-        ))}
-      </div>
-      <Skeleton className="h-20 w-full rounded-2xl" />
-    </div>
-    <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-      <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" />
-      <div className="grid grid-cols-3 gap-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
-        ))}
-      </div>
-      <Skeleton className="mt-4 h-10 w-full rounded-xl" />
-      <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
-    </div>
-  </div>
+    </DirectionalTransition>
+  </SkeletonExit>
 );
 
 const TabContentSkeleton = () => (
@@ -209,41 +226,51 @@ const CreditCardDetailPageContent = () => {
           return;
         }
 
-        const [cardData, statementData, paymentMethodsData, categoriesData, planData] =
-          await Promise.all([
-            clientFetchFromApi<CreditCardListItem>(
-              `/api/credit-cards/${creditCardId}`,
-              undefined,
-              context,
-            ),
-            statementPromise,
-            getPaymentMethodOptions(context),
-            clientFetchFromApi<CategoryOption[]>(
-              '/api/categories',
-              undefined,
-              context,
-            ),
-            getCreditCardPaymentPlan(creditCardId, context).catch(() => ({
-              items: [],
-            })),
-          ]);
-
-        let importsData: CreditCardStatementImportListItem[] = [];
-        try {
-          importsData = await listCreditCardStatementImports(
-            creditCardId,
+        // Hero-first: card + statement unblock the morph; secondary loads after.
+        const [cardData, statementData] = await Promise.all([
+          clientFetchFromApi<CreditCardListItem>(
+            `/api/credit-cards/${creditCardId}`,
+            undefined,
             context,
-          );
-        } catch {
-          importsData = [];
-        }
+          ),
+          statementPromise,
+        ]);
 
         setCard(cardData);
         setStatement(statementData);
-        setPaymentSources(paymentMethodsData);
-        setCategoryOptions(categoriesData);
-        setStatementImports(importsData);
-        setPaymentPlanItems(planData.items);
+        setLoading(false);
+
+        try {
+          const [paymentMethodsData, categoriesData, planData] =
+            await Promise.all([
+              getPaymentMethodOptions(context),
+              clientFetchFromApi<CategoryOption[]>(
+                '/api/categories',
+                undefined,
+                context,
+              ),
+              getCreditCardPaymentPlan(creditCardId, context).catch(() => ({
+                items: [],
+              })),
+            ]);
+
+          let importsData: CreditCardStatementImportListItem[] = [];
+          try {
+            importsData = await listCreditCardStatementImports(
+              creditCardId,
+              context,
+            );
+          } catch {
+            importsData = [];
+          }
+
+          setPaymentSources(paymentMethodsData);
+          setCategoryOptions(categoriesData);
+          setStatementImports(importsData);
+          setPaymentPlanItems(planData.items);
+        } catch {
+          /* hero already visible — secondary chrome optional */
+        }
       } catch (err) {
         setError(
           err instanceof Error
@@ -477,7 +504,7 @@ const CreditCardDetailPageContent = () => {
     : '';
 
   if (context.id === 0 || (loading && !statement)) {
-    return <CreditCardDetailSkeleton />;
+    return <CreditCardDetailSkeleton cardId={creditCardId} />;
   }
 
   if (error || !card || !statement) {
@@ -489,6 +516,7 @@ const CreditCardDetailPageContent = () => {
   }
 
   return (
+    <DirectionalTransition>
     <div className="relative pb-24 lg:pb-0">
       <CreditCardHeroZone>
         <CreditCardDetailHeaderActions
@@ -501,12 +529,17 @@ const CreditCardDetailPageContent = () => {
           onAdjustBalance={() => setBalanceDialogOpen(true)}
         />
 
-        <CreditCardVisualHero
-          card={card}
-          statement={statement}
-          utilizationPct={utilizationPct}
-        />
-
+        <ViewTransition
+          name={walletCardViewTransitionName(card.id)}
+          share="morph"
+          default="none"
+        >
+          <CreditCardVisualHero
+            card={card}
+            statement={statement}
+            utilizationPct={utilizationPct}
+          />
+        </ViewTransition>
         <CreditCardDuePaymentStrip
           statement={statement}
           daysUntilDue={daysUntilDue}
@@ -779,13 +812,26 @@ const CreditCardDetailPageContent = () => {
         }
       />
     </div>
+    </DirectionalTransition>
   );
 };
 
+function CreditCardDetailSuspenseFallback() {
+  const params = useParams<{ id: string }>();
+  const cardId = Number(params.id);
+  return (
+    <CreditCardDetailSkeleton
+      cardId={Number.isFinite(cardId) ? cardId : 0}
+    />
+  );
+}
+
 export default function CreditCardDetailPage() {
   return (
-    <Suspense fallback={<CreditCardDetailSkeleton />}>
-      <CreditCardDetailPageContent />
+    <Suspense fallback={<CreditCardDetailSuspenseFallback />}>
+      <ContentEnter>
+        <CreditCardDetailPageContent />
+      </ContentEnter>
     </Suspense>
   );
 }

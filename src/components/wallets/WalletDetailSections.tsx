@@ -1,20 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  ArrowDownLeft,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
+import {
   ArrowLeftRight,
-  ArrowUpRight,
   Banknote,
   ChevronLeft,
   ChevronRight,
-  Coins,
+  Diff,
   Download,
   Landmark,
   MoreHorizontal,
   Pencil,
-  Plus,
   RotateCcw,
   SlidersHorizontal,
   Upload,
@@ -28,6 +33,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   kpiMetricCardShellClass,
   kpiMetricLabelClass,
   kpiMetricValueClass,
@@ -39,12 +49,25 @@ import {
   creditCardSegmentedTabChromeClass,
   creditCardSegmentedTabListClass,
 } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
+import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import { cn, formatCurrency } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { WalletDetail } from '@/types/wallet-movements';
+
+/** Panel motion — matches DESIGN.md `--motion-panel` / `--ease-out-soft`. */
+const DOCK_MOTION =
+  'duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none';
+
+const DOCK_GLASS_CLASS = cn(
+  'border border-border/60 bg-card/75 shadow-[var(--shadow-card)] backdrop-blur-xl',
+  'dark:border-white/[0.12] dark:bg-[#0d1327]/55',
+  'dark:shadow-[0_16px_48px_-24px_rgba(58,55,252,0.45)]',
+);
 
 export const WalletHeroZone = ({
   children,
@@ -71,7 +94,8 @@ export const WalletPeriodWorkspaceShell = ({
   <div className="mt-0">
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',
+        MONTHLY_PANEL_SHELL_CLASS,
+        'px-3 py-3 sm:px-4 sm:py-4',
         'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px',
         'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
       )}
@@ -105,78 +129,47 @@ export const WalletDetailTabTrigger = ({
 );
 
 type HeaderActionsProps = {
-  walletName: string;
   backHref: string;
-  canImport: boolean;
-  onRegisterExpense: () => void;
-  onRegisterIncome: () => void;
-  onEditWallet: () => void;
-  onImport: () => void;
-  onExportCsv: () => void;
 };
 
-export const WalletDetailHeaderActions = ({
-  walletName,
-  backHref,
-  canImport,
-  onRegisterExpense,
-  onRegisterIncome,
-  onEditWallet,
-  onImport,
-  onExportCsv,
-}: HeaderActionsProps) => (
-  <div className="flex items-center justify-between gap-2">
-    <Link
-      href={backHref}
-      className="inline-flex h-9 min-w-0 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      aria-label="Volver a billeteras"
-    >
-      <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden data-icon="inline-start" />
-      <span className="truncate sm:inline">Billeteras</span>
-    </Link>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          aria-label={`Más acciones para ${walletName}`}
-        >
-          <MoreHorizontal className="h-5 w-5" data-icon="inline-start" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        {canImport ? (
-          <>
-            <DropdownMenuItem onClick={onRegisterExpense} className="cursor-pointer">
-              <Plus className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-              Registrar gasto
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onRegisterIncome} className="cursor-pointer">
-              <Coins className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-              Registrar ingreso
-            </DropdownMenuItem>
-          </>
-        ) : null}
-        <DropdownMenuItem onClick={onEditWallet} className="cursor-pointer">
-          <Pencil className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Editar billetera
-        </DropdownMenuItem>
-        {canImport ? (
-          <DropdownMenuItem onClick={onImport} className="cursor-pointer">
-            <Upload className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-            Importar CSV
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem onClick={onExportCsv} className="cursor-pointer">
-          <Download className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Exportar CSV
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </div>
-);
+export const WalletDetailHeaderActions = ({ backHref }: HeaderActionsProps) => {
+  const router = useRouter();
+
+  const handleBack = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    navigateWithTransitionType(backHref, 'nav-back', (href) =>
+      router.push(href),
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Link
+        href={backHref}
+        onClick={handleBack}
+        className="inline-flex h-9 min-w-0 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        aria-label="Volver a billeteras"
+      >
+        <ChevronLeft
+          className="h-5 w-5 shrink-0"
+          aria-hidden
+          data-icon="inline-start"
+        />
+        <span className="truncate sm:inline">Billeteras</span>
+      </Link>
+    </div>
+  );
+};
 
 type VisualHeroProps = {
   wallet: WalletDetail;
@@ -239,7 +232,9 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <WalletProviderIcon
                   providerIconKey={wallet.provider_icon_key}
                   className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
-                  iconClassName="h-4 w-4" data-icon="inline-start" />
+                  iconClassName="h-4 w-4"
+                  data-icon="inline-start"
+                />
               ) : (
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/15">
                   <FallbackIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
@@ -289,89 +284,272 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
 type QuickActionsProps = {
   canImport: boolean;
   canTransfer?: boolean;
-  onRegisterExpense: () => void;
-  onRegisterIncome: () => void;
+  onAddTransaction: () => void;
+  onEditWallet: () => void;
   onImport: () => void;
   onAdjustBalance: () => void;
+  onExportCsv: () => void;
   onTransfer?: () => void;
+};
+
+type DockAction = {
+  key: string;
+  label: string;
+  ariaLabel: string;
+  icon: typeof ArrowLeftRight;
+  onClick: () => void;
+};
+
+type MasMenuItem = {
+  key: string;
+  label: string;
+  icon: typeof Pencil;
+  onClick: () => void;
 };
 
 export const WalletQuickActions = ({
   canImport,
   canTransfer = false,
-  onRegisterExpense,
-  onRegisterIncome,
+  onAddTransaction,
+  onEditWallet,
   onImport,
   onAdjustBalance,
+  onExportCsv,
   onTransfer,
 }: QuickActionsProps) => {
-  const actions = [
+  const isMobile = useIsMobile();
+  const [compact, setCompact] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const compactRef = useRef(false);
+
+  useEffect(() => {
+    if (!isMobile) {
+      compactRef.current = false;
+      return;
+    }
+
+    lastScrollYRef.current = window.scrollY;
+
+    const onScroll = () => {
+      const y = Math.max(0, window.scrollY);
+      const prev = lastScrollYRef.current;
+      const delta = y - prev;
+      lastScrollYRef.current = y;
+
+      if (delta > 8 && y > 56 && !compactRef.current) {
+        compactRef.current = true;
+        setCompact(true);
+      } else if ((delta < -8 || y < 24) && compactRef.current) {
+        compactRef.current = false;
+        setCompact(false);
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isMobile]);
+
+  const showTransfer = Boolean(canTransfer && onTransfer);
+  const showRegistrar = canImport;
+
+  const masItems: MasMenuItem[] = [
     ...(canImport
       ? [
           {
-            key: 'expense',
-            label: 'Gasto',
-            icon: ArrowUpRight,
-            onClick: onRegisterExpense,
-          },
-          {
-            key: 'income',
-            label: 'Ingreso',
-            icon: ArrowDownLeft,
-            onClick: onRegisterIncome,
-          },
-          {
             key: 'import',
-            label: 'Importar',
-            ariaLabel: 'Importar movimientos CSV',
+            label: 'Importar CSV',
             icon: Upload,
             onClick: onImport,
-          },
+          } satisfies MasMenuItem,
         ]
       : []),
     {
-      key: 'adjust',
-      label: 'Ajustar',
-      icon: SlidersHorizontal,
-      onClick: onAdjustBalance,
+      key: 'export',
+      label: 'Exportar CSV',
+      icon: Download,
+      onClick: onExportCsv,
     },
-    ...(canTransfer && onTransfer
+  ];
+
+  const actions: DockAction[] = [
+    ...(showRegistrar
+      ? [
+          {
+            key: 'registrar',
+            label: 'Registrar',
+            ariaLabel: 'Registrar transacción',
+            icon: Diff,
+            onClick: onAddTransaction,
+          } satisfies DockAction,
+        ]
+      : []),
+    ...(showTransfer
       ? [
           {
             key: 'transfer',
             label: 'Transferir',
             ariaLabel: 'Transferir saldo',
             icon: ArrowLeftRight,
-            onClick: onTransfer,
-          },
+            onClick: onTransfer!,
+          } satisfies DockAction,
         ]
       : []),
+    {
+      key: 'adjust',
+      label: 'Ajustar',
+      ariaLabel: 'Ajustar saldo',
+      icon: SlidersHorizontal,
+      onClick: onAdjustBalance,
+    },
+    {
+      key: 'edit',
+      label: 'Editar',
+      ariaLabel: 'Editar billetera',
+      icon: Pencil,
+      onClick: onEditWallet,
+    },
+    {
+      key: 'more',
+      label: 'Más',
+      ariaLabel: 'Más acciones',
+      icon: MoreHorizontal,
+      onClick: () => {},
+    },
   ];
 
-  return (
-    <div
-      className="flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:justify-center sm:gap-6"
-      role="group"
-      aria-label="Acciones rápidas"
-    >
-      {actions.map(({ key, label, ariaLabel, icon: Icon, onClick }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={onClick}
-          className="flex min-w-[4.25rem] shrink-0 flex-col items-center gap-2 transition-opacity hover:opacity-90 active:opacity-75"
-          aria-label={ariaLabel ?? label}
+  const itemCount = actions.length;
+  const hideLabel = isMobile && compact;
+
+  const renderActionContent = (action: DockAction) => {
+    const Icon = action.icon;
+    return (
+      <>
+        <Icon
+          className={cn(
+            'shrink-0 transition-transform',
+            DOCK_MOTION,
+            hideLabel ? 'h-5 w-5 scale-95' : 'h-5 w-5 scale-100 sm:h-6 sm:w-6',
+          )}
+          aria-hidden
+          data-icon="inline-start"
+        />
+        <span
+          className={cn(
+            'max-w-full overflow-hidden whitespace-nowrap px-0.5 text-[10px] font-medium leading-tight sm:text-[11px]',
+            'transition-[opacity,max-height,margin,transform]',
+            DOCK_MOTION,
+            hideLabel
+              ? 'pointer-events-none mt-0 max-h-0 translate-y-1 opacity-0'
+              : 'mt-0.5 max-h-4 translate-y-0 opacity-100',
+          )}
+          aria-hidden={hideLabel}
         >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/15 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/8">
-            <Icon className="h-5 w-5 text-foreground dark:text-white" aria-hidden data-icon="inline-start" />
-          </span>
-          <span className="max-w-[4.5rem] text-center text-xs font-medium leading-tight text-muted-foreground">
-            {label}
-          </span>
-        </button>
-      ))}
+          {action.label}
+        </span>
+      </>
+    );
+  };
+
+  const dockItemClass = cn(
+    'flex min-w-0 flex-1 flex-col items-center justify-center rounded-full text-foreground/90',
+    'transition-[height,min-height,padding,gap,background-color,transform]',
+    DOCK_MOTION,
+    'hover:bg-foreground/5 active:scale-[0.97] active:bg-foreground/10',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+    'dark:hover:bg-white/10 dark:active:bg-white/15',
+    'motion-reduce:active:scale-100',
+    hideLabel
+      ? 'h-11 min-h-11 min-w-11 gap-0 px-1.5 py-0'
+      : 'min-h-14 gap-0 px-1.5 pb-1 pt-1.5 sm:min-h-16 sm:px-2',
+  );
+
+  const dock = (
+    <div
+      role="toolbar"
+      aria-label="Acciones rápidas"
+      data-compact={hideLabel ? 'true' : 'false'}
+      className={cn(
+        DOCK_GLASS_CLASS,
+        'flex origin-bottom items-stretch justify-evenly rounded-full',
+        'transition-[transform,padding,gap,box-shadow]',
+        DOCK_MOTION,
+        isMobile
+          ? cn(
+              'w-[85vw] max-w-[calc(100vw-1.5rem)]',
+              hideLabel
+                ? 'scale-[0.88] gap-0 px-1.5 py-1 shadow-[0_6px_24px_-14px_rgba(0,0,0,0.4)]'
+                : 'scale-100 gap-0.5 px-2 pb-1 pt-1',
+              itemCount <= 3 && 'w-[min(85vw,20rem)]',
+            )
+          : 'w-full max-w-none scale-100 gap-0.5 px-2 pb-1 pt-1',
+      )}
+    >
+      {actions.map((action) => {
+        if (action.key === 'more') {
+          return (
+            <DropdownMenu key={action.key}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={dockItemClass}
+                  aria-label={action.ariaLabel}
+                >
+                  {renderActionContent(action)}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                side="top"
+                className="min-w-[12rem]"
+              >
+                {masItems.map((item) => {
+                  const ItemIcon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.key}
+                      onSelect={item.onClick}
+                      className="cursor-pointer"
+                    >
+                      <ItemIcon
+                        className="mr-2 h-4 w-4 shrink-0"
+                        data-icon="inline-start"
+                      />
+                      {item.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        }
+
+        return (
+          <button
+            key={action.key}
+            type="button"
+            onClick={action.onClick}
+            className={dockItemClass}
+            aria-label={action.ariaLabel}
+          >
+            {renderActionContent(action)}
+          </button>
+        );
+      })}
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        role="presentation"
+      >
+        <div className="pointer-events-auto">{dock}</div>
+      </div>
+    );
+  }
+
+  return dock;
 };
 
 type PeriodMetric = {
@@ -462,31 +640,43 @@ export const WalletPeriodSummary = ({
   return (
     <div className="space-y-4" role="region" aria-label="Periodo y totales">
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onPrevious}
-          aria-label="Mes anterior"
-        >
-          <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full"
+              onClick={onPrevious}
+              aria-label="Mes anterior"
+            >
+              <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Mes anterior</TooltipContent>
+        </Tooltip>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {isCurrentMonth ? 'Mes actual' : 'Periodo'}
           </p>
-          <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">{rangeLabel}</p>
+          <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
+            {rangeLabel}
+          </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onNext}
-          disabled={isCurrentMonth}
-          aria-label="Mes siguiente"
-        >
-          <ChevronRight className="h-4 w-4" data-icon="inline-end" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full"
+              onClick={onNext}
+              disabled={isCurrentMonth}
+              aria-label="Mes siguiente"
+            >
+              <ChevronRight className="h-4 w-4" data-icon="inline-end" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Mes siguiente</TooltipContent>
+        </Tooltip>
         {!isCurrentMonth ? (
           <Button
             variant="outline"
@@ -495,7 +685,11 @@ export const WalletPeriodSummary = ({
             onClick={onResetToToday}
             aria-label="Volver al mes actual"
           >
-            <RotateCcw className="mr-1 h-3 w-3" aria-hidden data-icon="inline-start" />
+            <RotateCcw
+              className="mr-1 h-3 w-3"
+              aria-hidden
+              data-icon="inline-start"
+            />
             Hoy
           </Button>
         ) : null}

@@ -80,7 +80,10 @@ type AddTransactionDialogProps = {
   onSaveExpense: (values: AddExpenseFormValues) => Promise<void>;
   onSaveIncome: (values: AddIncomeFormValues) => Promise<void>;
   defaultDate?: string;
+  /** Which tab is active when the dialog opens. */
+  defaultTab?: TransactionTab;
   expenseDefaults?: Partial<AddExpenseFormValues>;
+  incomeDefaults?: Partial<AddIncomeFormValues>;
   expenseError?: string | null;
   incomeError?: string | null;
 };
@@ -214,7 +217,9 @@ export default function AddTransactionDialog({
   onSaveExpense,
   onSaveIncome,
   defaultDate,
+  defaultTab = 'expense',
   expenseDefaults,
+  incomeDefaults,
   expenseError,
   incomeError,
 }: AddTransactionDialogProps) {
@@ -263,13 +268,17 @@ export default function AddTransactionDialog({
 
   useEffect(() => {
     if (!open) return;
-    setTab('expense');
+    setTab(defaultTab);
     expenseForm.reset({
       ...emptyExpense(resolvedDate),
       ...expenseDefaults,
       date: expenseDefaults?.date ?? resolvedDate,
     });
-    incomeForm.reset(emptyIncome(resolvedDate));
+    incomeForm.reset({
+      ...emptyIncome(resolvedDate),
+      ...incomeDefaults,
+      date: incomeDefaults?.date ?? resolvedDate,
+    });
     // Reset only when the dialog opens — not on every parent re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

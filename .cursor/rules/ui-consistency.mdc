@@ -21,6 +21,7 @@ When adding or changing screens, align with **`DESIGN.md`** (repo root) and **`f
 - **Icon-only controls**: always **`aria-label`** and usually **`Tooltip`** with Spanish copy matching existing patterns.
 - **Binary preferences**: use shared **`Toggle` / `ToggleField`** (`src/components/ui/toggle.tsx`) — electric blue (`bg-primary`) ON, neutral glass OFF; `layout="row" | "stack"`. Checkbox only for multi-select. See `DESIGN.md`.
 - **Destructive list/card delete**: **Viewport Delete Rule** — `md+` quiet trash (no swipe); below `md` swipe only (hide trash). See `DESIGN.md`.
+- **New multi-field form overlays**: Dialog on desktop, bottom Sheet on mobile — see **`responsive-overlays`** and **`DESIGN.md` → Overlays**.
 
 ## Surfaces and color
 
@@ -39,3 +40,4 @@ When adding or changing screens, align with **`DESIGN.md`** (repo root) and **`f
 3. Are **rare** actions in a **menu**, not the main bar?
 4. Is **chrome** separated from **content** and not overcrowded?
 5. **`aria-label` / tooltips** on icon-only controls?
+6. New multi-field overlay: Dialog on desktop + bottom Sheet on mobile (`responsive-overlays`)?

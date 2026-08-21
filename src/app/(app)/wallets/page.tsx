@@ -73,6 +73,12 @@ import type { WalletListItem } from '@/types/catalog';
 import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
+import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
+import {
+  getWalletListCache,
+  setWalletListCache,
+  walletListOwnerKey,
+} from '@/lib/ui/wallet-list-cache';
 import { cn } from '@/lib/utils';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -381,8 +387,13 @@ const compareWallets = (
 
 export default function WalletsPage() {
   const { context } = useFinanceContext();
-  const [wallets, setWallets] = useState<WalletListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const ownerKey = walletListOwnerKey(context);
+  const cacheHit = ownerKey ? getWalletListCache(ownerKey) : null;
+
+  const [wallets, setWallets] = useState<WalletListItem[]>(
+    () => cacheHit ?? [],
+  );
+  const [loading, setLoading] = useState(() => !cacheHit);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -776,28 +787,47 @@ export default function WalletsPage() {
     };
   }, [context]);
 
-  const fetchWallets = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await clientFetchFromApi<WalletListItem[]>(
-        '/api/wallets',
-        undefined,
-        context,
-      );
-      setWallets(data.filter((w) => w.type !== 'GOAL'));
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Error al cargar las billeteras',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [context]);
+  const fetchWallets = useCallback(
+    async (options?: { soft?: boolean }) => {
+      const soft = options?.soft ?? false;
+      try {
+        if (!soft) {
+          setLoading(true);
+        }
+        setError(null);
+        const data = await clientFetchFromApi<WalletListItem[]>(
+          '/api/wallets',
+          undefined,
+          context,
+        );
+        const filtered = data.filter((w) => w.type !== 'GOAL');
+        setWallets(filtered);
+        const key = walletListOwnerKey(context);
+        if (key) {
+          setWalletListCache(key, filtered);
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar las billeteras',
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [context],
+  );
 
   useEffect(() => {
-    void fetchWallets();
-  }, [fetchWallets]);
+    const key = walletListOwnerKey(context);
+    const hit = key ? getWalletListCache(key) : null;
+    if (hit) {
+      setWallets(hit);
+      setLoading(false);
+      void fetchWallets({ soft: true });
+      return;
+    }
+    void fetchWallets({ soft: false });
+  }, [context, fetchWallets]);
 
   const handleCreate = async (data: WalletFormValues) => {
     try {
@@ -903,8 +933,9 @@ export default function WalletsPage() {
   }, []);
 
   return (
+    <DirectionalTransition>
     <div className="space-y-4 pb-24">
-      <div
+      <header
         className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
         aria-label="Acciones de billeteras"
       >
@@ -951,7 +982,7 @@ export default function WalletsPage() {
             Agregar billetera o tarjeta
           </Button>
         </div>
-      </div>
+      </header>
 
       <div className="relative z-0">
       {error && !deleteDialogOpen && (
@@ -961,7 +992,7 @@ export default function WalletsPage() {
       )}
 
       <div className="min-w-0">
-          {loading ? (
+          {loading && wallets.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               Cargando...
             </div>
@@ -1504,9 +1535,14 @@ export default function WalletsPage() {
           if (!open) setBalanceWallet(null);
         }}
         onSaved={(walletId, newAmount) => {
-          setWallets((prev) =>
-            prev.map((w) => (w.id === walletId ? { ...w, amount: newAmount } : w)),
-          );
+          setWallets((prev) => {
+            const next = prev.map((w) =>
+              w.id === walletId ? { ...w, amount: newAmount } : w,
+            );
+            const key = walletListOwnerKey(context);
+            if (key) setWalletListCache(key, next);
+            return next;
+          });
           setBalanceWallet((prev) =>
             prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
           );
@@ -1582,5 +1618,6 @@ export default function WalletsPage() {
         </>
       )}
     </div>
+    </DirectionalTransition>
   );
 }

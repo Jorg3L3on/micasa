@@ -1,7 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, type MouseEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ViewTransition } from 'react';
 import {
   ArrowLeftRight,
   BookmarkIcon,
@@ -32,6 +34,11 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import {
+  navigateWithTransitionType,
+  stashWalletCardVtSnapshot,
+  walletCardViewTransitionName,
+} from '@/lib/ui/wallet-card-view-transition';
 
 const getEffectiveCreditLimit = ({
   credit_limit,
@@ -65,6 +72,7 @@ export const WalletListCard = ({
   onDelete,
   onOpenBalance,
 }: WalletListCardProps) => {
+  const router = useRouter();
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
   const canTransfer =
@@ -93,6 +101,34 @@ export const WalletListCard = ({
         : `/wallets/${wallet.id}${ownerQueryString}`,
     [isCard, wallet.id, ownerQueryString],
   );
+
+  const viewTransitionName = walletCardViewTransitionName(wallet.id);
+
+  const handleOpenDetail = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    stashWalletCardVtSnapshot({
+      id: wallet.id,
+      name: wallet.name,
+      typeLabel,
+      amount: Number(wallet.amount),
+      isCredit: isCard,
+      providerIconKey: wallet.provider_icon_key ?? null,
+      style: cardStyle,
+    });
+    navigateWithTransitionType(detailHref, 'nav-forward', (href) =>
+      router.push(href),
+    );
+  };
 
   const effectiveLimit = getEffectiveCreditLimit({
     credit_limit: wallet.credit_limit,
@@ -165,6 +201,11 @@ export const WalletListCard = ({
       )}
       aria-label={articleLabel}
     >
+      <ViewTransition
+        name={viewTransitionName}
+        share="morph"
+        default="none"
+      >
       <div
         className={cn(
           'relative aspect-[1.586/1] w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
@@ -174,9 +215,11 @@ export const WalletListCard = ({
           hasAlert && 'ring-2 ring-inset ring-rose-400/70',
         )}
         style={cardStyle}
+        data-wallet-vt={viewTransitionName}
       >
         <Link
           href={detailHref}
+          onClick={handleOpenDetail}
           className="absolute inset-0 z-0 rounded-[1.375rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
           aria-label={`Abrir ${wallet.name}`}
         />
@@ -337,6 +380,7 @@ export const WalletListCard = ({
           </DropdownMenu>
         </div>
       </div>
+      </ViewTransition>
     </article>
   );
 };

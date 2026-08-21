@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMemo, type MouseEvent, type ReactNode } from 'react';
 import {
   CalendarClock,
   ChevronLeft,
@@ -39,6 +40,7 @@ import {
   creditCardSegmentedTabChromeClass,
   creditCardSegmentedTabListClass,
 } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import {
   kpiMetricCardShellClass,
   kpiMetricLabelClass,
@@ -243,10 +245,31 @@ export const CreditCardDetailHeaderActions = ({
   onExportPdf,
   onEditCard,
   onAdjustBalance,
-}: HeaderActionsProps) => (
+}: HeaderActionsProps) => {
+  const router = useRouter();
+
+  const handleBack = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    navigateWithTransitionType(backHref, 'nav-back', (href) =>
+      router.push(href),
+    );
+  };
+
+  return (
   <div className="flex items-center justify-between gap-2">
     <Link
       href={backHref}
+      onClick={handleBack}
       className="inline-flex h-9 min-w-0 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       aria-label="Volver a billeteras"
     >
@@ -291,7 +314,8 @@ export const CreditCardDetailHeaderActions = ({
       </DropdownMenuContent>
     </DropdownMenu>
   </div>
-);
+  );
+};
 
 type VisualHeroProps = {
   card: CreditCardListItem;

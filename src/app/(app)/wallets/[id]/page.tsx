@@ -2,25 +2,30 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Plus, Wallet as WalletIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
-import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import WalletForm from '@/components/WalletForm';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
-import ExpenseFormSheet from '@/components/expenses/ExpenseFormSheet';
-import type { AddExpenseFormValues } from '@/schemas/transaction.schema';
+import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
+import type {
+  AddExpenseFormValues,
+  AddIncomeFormValues,
+} from '@/schemas/transaction.schema';
 import type { WalletFormValues } from '@/schemas/wallet.schema';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { ViewTransition } from 'react';
+import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
+import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
+import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan, createCreditCardPayment, updateCreditCard } from '@/lib/api/credit-cards';
 import { getPaymentMethodOptions, updateWallet } from '@/lib/api/wallets';
+import { createWalletIncome } from '@/lib/api/incomes';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
@@ -30,6 +35,7 @@ import {
 } from '@/lib/finance/wallet-period-analytics';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
+import { cn } from '@/lib/utils';
 import type {
   WalletDetail,
   WalletMovementsResponse,
@@ -79,29 +85,40 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
 
 type WalletDetailTab = 'resumen' | 'movimientos' | 'compromisos';
 
-const WalletDetailSkeleton = () => (
-  <div className="space-y-0 pb-24 lg:pb-0">
-    <div className="relative -mx-4 space-y-5 px-4 pb-2 sm:-mx-0 sm:pb-3">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-9 w-28" />
-        <Skeleton className="h-9 w-9 rounded-lg" />
+const WalletDetailSkeleton = ({ walletId }: { walletId: number }) => (
+  <DirectionalTransition>
+    <div className="space-y-0">
+      <div className="relative -mx-4 space-y-5 px-4 pb-2 sm:-mx-0 sm:pb-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-9 rounded-lg" />
+        </div>
+        <ViewTransition
+          name={walletCardViewTransitionName(walletId)}
+          share="morph"
+          default="none"
+        >
+          <WalletCardVtPlaceholder walletId={walletId} variant="funding" />
+        </ViewTransition>
       </div>
-      <Skeleton className="mx-auto min-h-[10.75rem] w-full max-w-sm rounded-2xl sm:min-h-[12rem]" />
-    </div>
-    <div className="flex justify-center gap-6 py-7 sm:py-9">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-14 w-14 rounded-full" />
-      ))}
-    </div>
-    <div className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
-        ))}
+      <div className="space-y-3 px-1 py-7 sm:py-9">
+        <Skeleton className="h-12 w-full rounded-full" />
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
+          ))}
+        </div>
       </div>
-      <Skeleton className="mt-4 h-48 w-full rounded-xl" />
+      <div className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="mt-4 h-48 w-full rounded-xl" />
+      </div>
     </div>
-  </div>
+  </DirectionalTransition>
 );
 
 export default function WalletDetailPage() {
@@ -114,7 +131,8 @@ export default function WalletDetailPage() {
 
   const [wallet, setWallet] = useState<WalletDetail | null>(null);
   const [data, setData] = useState<WalletMovementsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [heroLoading, setHeroLoading] = useState(true);
+  const [bodyLoading, setBodyLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<{ from: string; to: string }>(() => {
     const qFrom = searchParams.get('from');
@@ -133,9 +151,9 @@ export default function WalletDetailPage() {
   >([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [transactionOpen, setTransactionOpen] = useState(false);
   const [expenseError, setExpenseError] = useState<string | null>(null);
-  const [incomeOpen, setIncomeOpen] = useState(false);
+  const [incomeError, setIncomeError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<WalletDetailTab>(() => {
     const tab = searchParams.get('tab');
     return tab === 'movimientos' || tab === 'compromisos' ? tab : 'resumen';
@@ -181,82 +199,135 @@ export default function WalletDetailPage() {
   const isCreditWallet =
     wallet?.type === 'CREDIT_CARD' || wallet?.type === 'DEPARTMENT_STORE_CARD';
 
-  const loadData = useCallback(async () => {
-    if (context.id === 0) return;
+  const loadWallet = useCallback(async (): Promise<WalletDetail | null> => {
+    if (context.id === 0) return null;
     if (!Number.isFinite(walletId)) {
       setError('Billetera inválida');
-      setLoading(false);
-      return;
+      setHeroLoading(false);
+      return null;
     }
     try {
-      setLoading(true);
+      setHeroLoading(true);
       setError(null);
-      const [detail, movements] = await Promise.all([
-        clientFetchFromApi<WalletDetail>(
-          `/api/wallets/${walletId}`,
-          undefined,
-          context,
-        ),
-        clientFetchFromApi<WalletMovementsResponse>(
-          `/api/wallets/${walletId}/movements?from=${range.from}&to=${range.to}`,
-          undefined,
-          context,
-        ),
-      ]);
+      const detail = await clientFetchFromApi<WalletDetail>(
+        `/api/wallets/${walletId}`,
+        undefined,
+        context,
+      );
       setWallet(detail);
-      setData(movements);
       if (detail.type === 'GOAL') {
         const qs = searchParams.toString();
         router.replace(`/metas/${walletId}${qs ? `?${qs}` : ''}`);
-        return;
+        return null;
       }
-      if (
-        detail.type === 'CREDIT_CARD' ||
-        detail.type === 'DEPARTMENT_STORE_CARD'
-      ) {
-        const [plan, methods, categories] = await Promise.all([
-          getCreditCardPaymentPlan(walletId, context).catch(() => ({
-            items: [] as CreditCardPaymentPlanView[],
-          })),
-          getPaymentMethodOptions(context),
-          clientFetchFromApi<CategoryOption[]>(
-            '/api/categories',
-            undefined,
-            context,
-          ),
-        ]);
-        setPaymentPlanItems(plan.items);
-        setPaymentSources(methods);
-        setCategoryOptions(categories);
-      } else {
-        setPaymentPlanItems([]);
-        setPaymentSources([]);
-        setCategoryOptions([]);
-        const list = await clientFetchFromApi<
-          { id: number; name: string; type: string; amount: number | string; active: boolean }[]
-        >('/api/wallets', undefined, context);
-        setTransferWallets(
-          list.map((w) => ({
-            id: w.id,
-            name: w.name,
-            type: w.type,
-            amount: Number(w.amount) || 0,
-            active: w.active,
-          })),
-        );
-      }
+      return detail;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al cargar la billetera',
       );
+      return null;
     } finally {
-      setLoading(false);
+      setHeroLoading(false);
     }
-  }, [context, walletId, range.from, range.to, router, searchParams]);
+  }, [context, walletId, router, searchParams]);
+
+  const loadMovements = useCallback(async () => {
+    if (context.id === 0 || !Number.isFinite(walletId)) return;
+    try {
+      setBodyLoading(true);
+      const movements = await clientFetchFromApi<WalletMovementsResponse>(
+        `/api/wallets/${walletId}/movements?from=${range.from}&to=${range.to}`,
+        undefined,
+        context,
+      );
+      setData(movements);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar movimientos',
+      );
+    } finally {
+      setBodyLoading(false);
+    }
+  }, [context, walletId, range.from, range.to]);
+
+  const loadSecondary = useCallback(
+    async (detail: WalletDetail) => {
+      if (context.id === 0) return;
+      try {
+        if (
+          detail.type === 'CREDIT_CARD' ||
+          detail.type === 'DEPARTMENT_STORE_CARD'
+        ) {
+          const [plan, methods, categories] = await Promise.all([
+            getCreditCardPaymentPlan(walletId, context).catch(() => ({
+              items: [] as CreditCardPaymentPlanView[],
+            })),
+            getPaymentMethodOptions(context),
+            clientFetchFromApi<CategoryOption[]>(
+              '/api/categories',
+              undefined,
+              context,
+            ),
+          ]);
+          setPaymentPlanItems(plan.items);
+          setPaymentSources(methods);
+          setCategoryOptions(categories);
+          setTransferWallets([]);
+        } else {
+          setPaymentPlanItems([]);
+          setPaymentSources([]);
+          setCategoryOptions([]);
+          const list = await clientFetchFromApi<
+            {
+              id: number;
+              name: string;
+              type: string;
+              amount: number | string;
+              active: boolean;
+            }[]
+          >('/api/wallets', undefined, context);
+          setTransferWallets(
+            list.map((w) => ({
+              id: w.id,
+              name: w.name,
+              type: w.type,
+              amount: Number(w.amount) || 0,
+              active: w.active,
+            })),
+          );
+        }
+      } catch {
+        /* secondary chrome — keep hero visible */
+      }
+    },
+    [context, walletId],
+  );
+
+  /** Full refresh after mutations (hero + body + secondary). */
+  const loadData = useCallback(async () => {
+    const detail = await loadWallet();
+    if (!detail) return;
+    await Promise.all([loadMovements(), loadSecondary(detail)]);
+  }, [loadWallet, loadMovements, loadSecondary]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let cancelled = false;
+    void (async () => {
+      const detail = await loadWallet();
+      if (cancelled || !detail) return;
+      void loadSecondary(detail);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hero once per wallet/context
+  }, [context.id, walletId]);
+
+  useEffect(() => {
+    if (!wallet) return;
+    void loadMovements();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- range-driven body refresh
+  }, [wallet?.id, range.from, range.to, context.id]);
 
   const handlePrevMonth = useCallback(() => {
     const { year, monthIdx } = parseYearMonth(range.from);
@@ -347,12 +418,38 @@ export default function WalletDetailPage() {
           context,
         );
         toast.success('Gasto registrado');
-        setExpenseOpen(false);
+        setTransactionOpen(false);
         await loadData();
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'No se pudo crear el gasto';
         setExpenseError(message);
+        throw err;
+      }
+    },
+    [context, loadData],
+  );
+
+  const handleCreateIncome = useCallback(
+    async (values: AddIncomeFormValues) => {
+      setIncomeError(null);
+      try {
+        await createWalletIncome(
+          values.walletId,
+          {
+            date: values.date,
+            amount: values.amount,
+            source: values.name,
+          },
+          context,
+        );
+        toast.success('Ingreso registrado');
+        setTransactionOpen(false);
+        await loadData();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'No se pudo registrar el ingreso';
+        setIncomeError(message);
         throw err;
       }
     },
@@ -371,7 +468,8 @@ export default function WalletDetailPage() {
 
   const handleOpenExpense = useCallback(() => {
     setExpenseError(null);
-    setExpenseOpen(true);
+    setIncomeError(null);
+    setTransactionOpen(true);
   }, []);
 
   const handleEditWallet = useCallback(
@@ -420,11 +518,11 @@ export default function WalletDetailPage() {
     [analytics.averageDailyOutflow, wallet],
   );
 
-  if (context.id === 0 || (loading && !data)) {
-    return <WalletDetailSkeleton />;
+  if (context.id === 0 || (heroLoading && !wallet)) {
+    return <WalletDetailSkeleton walletId={walletId} />;
   }
 
-  if (error || !wallet || !data) {
+  if ((error && !wallet) || !wallet) {
     return (
       <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
         {error ?? 'No se pudo cargar la billetera'}
@@ -432,38 +530,59 @@ export default function WalletDetailPage() {
     );
   }
 
-  return (
-    <div className="relative pb-24 lg:pb-0">
-      <WalletHeroZone wallet={wallet}>
-        <WalletDetailHeaderActions
-          walletName={wallet.name}
-          backHref={backHref}
-          canImport={canImport}
-          onRegisterExpense={handleOpenExpense}
-          onRegisterIncome={() => setIncomeOpen(true)}
-          onEditWallet={() => {
-            setEditError(null);
-            setEditOpen(true);
-          }}
-          onImport={() => setImportOpen(true)}
-          onExportCsv={handleExportCsv}
-        />
+  const bodyPending = bodyLoading || !data;
 
-        <WalletVisualHero wallet={wallet} />
+  return (
+    <DirectionalTransition>
+    <div className="relative">
+      <WalletHeroZone wallet={wallet}>
+        <WalletDetailHeaderActions backHref={backHref} />
+
+        <ViewTransition
+          name={walletCardViewTransitionName(wallet.id)}
+          share="morph"
+          default="none"
+        >
+          <WalletVisualHero wallet={wallet} />
+        </ViewTransition>
       </WalletHeroZone>
 
-      <div className="py-7 sm:py-9" role="presentation">
-        <WalletQuickActions
-          canImport={canImport}
-          canTransfer={canImport}
-          onRegisterExpense={handleOpenExpense}
-          onRegisterIncome={() => setIncomeOpen(true)}
-          onImport={() => setImportOpen(true)}
-          onAdjustBalance={() => setBalanceOpen(true)}
-          onTransfer={() => setTransferOpen(true)}
-        />
-      </div>
+      <div className="relative">
+        <div
+          className={cn(
+            'z-30 md:sticky md:top-16 md:px-1 md:py-7',
+            'md:group-has-data-[collapsible=icon]/sidebar-wrapper:top-12',
+          )}
+        >
+          <WalletQuickActions
+            canImport={canImport}
+            canTransfer={canImport}
+            onAddTransaction={handleOpenExpense}
+            onEditWallet={() => {
+              setEditError(null);
+              setEditOpen(true);
+            }}
+            onImport={() => setImportOpen(true)}
+            onAdjustBalance={() => setBalanceOpen(true)}
+            onExportCsv={handleExportCsv}
+            onTransfer={() => setTransferOpen(true)}
+          />
+        </div>
 
+      {bodyPending ? (
+        <div
+          className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm"
+          role="status"
+          aria-label="Cargando movimientos"
+        >
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
+            ))}
+          </div>
+          <Skeleton className="mt-4 h-48 w-full rounded-xl" />
+        </div>
+      ) : (
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as WalletDetailTab)}
@@ -515,8 +634,7 @@ export default function WalletDetailPage() {
               movements={data.movements}
               ownerQueryString={ownerQueryString}
               canRegister={canImport}
-              onRegisterExpense={handleOpenExpense}
-              onRegisterIncome={() => setIncomeOpen(true)}
+              onAddTransaction={handleOpenExpense}
             />
           </TabsContent>
 
@@ -533,29 +651,27 @@ export default function WalletDetailPage() {
           </TabsContent>
         </WalletPeriodWorkspaceShell>
       </Tabs>
+      )}
+      </div>
 
       {canImport ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden">
-          <div className="mx-auto flex max-w-lg gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 flex-1 gap-1.5 rounded-xl"
-              onClick={handleOpenExpense}
-            >
-              <Plus className="h-4 w-4" aria-hidden data-icon="inline-start" />
-              Gasto
-            </Button>
-            <Button
-              type="button"
-              className="h-11 flex-1 gap-1.5 rounded-xl"
-              onClick={() => setIncomeOpen(true)}
-            >
-              <WalletIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
-              Ingreso
-            </Button>
-          </div>
-        </div>
+        <AddTransactionDialog
+          open={transactionOpen}
+          onOpenChange={(open) => {
+            setTransactionOpen(open);
+            if (!open) {
+              setExpenseError(null);
+              setIncomeError(null);
+            }
+          }}
+          defaultTab="expense"
+          expenseDefaults={{ paymentMethodId: walletId, isPaid: true }}
+          incomeDefaults={{ walletId }}
+          onSaveExpense={handleCreateExpense}
+          onSaveIncome={handleCreateIncome}
+          expenseError={expenseError}
+          incomeError={incomeError}
+        />
       ) : null}
 
       {canImport && (
@@ -563,33 +679,6 @@ export default function WalletDetailPage() {
           open={importOpen}
           onOpenChange={setImportOpen}
           walletId={walletId}
-          context={context}
-          onSuccess={loadData}
-        />
-      )}
-
-      {canImport && (
-        <ExpenseFormSheet
-          open={expenseOpen}
-          onOpenChange={(open) => {
-            setExpenseOpen(open);
-            if (!open) setExpenseError(null);
-          }}
-          mode="create"
-          title={`Registrar gasto — ${wallet.name}`}
-          description="Registra un gasto pagado con esta billetera; asignamos la quincena automáticamente."
-          defaults={{ paymentMethodId: walletId, isPaid: true }}
-          onSave={handleCreateExpense}
-          error={expenseError}
-        />
-      )}
-
-      {canImport && (
-        <WalletQuickIncomeDialog
-          open={incomeOpen}
-          onOpenChange={setIncomeOpen}
-          walletId={walletId}
-          walletName={wallet.name}
           context={context}
           onSuccess={loadData}
         />
@@ -672,5 +761,6 @@ export default function WalletDetailPage() {
         />
       ) : null}
     </div>
+    </DirectionalTransition>
   );
 }

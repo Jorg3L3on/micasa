@@ -97,16 +97,16 @@ const SORT_LABELS: Record<SortField, string> = {
 type WalletMovementsFeedProps = {
   movements: WalletMovement[];
   ownerQueryString: string;
-  onRegisterExpense?: () => void;
-  onRegisterIncome?: () => void;
+  onAddTransaction?: () => void;
+  addTransactionLabel?: string;
   canRegister?: boolean;
 };
 
 export const WalletMovementsFeed = ({
   movements,
   ownerQueryString,
-  onRegisterExpense,
-  onRegisterIncome,
+  onAddTransaction,
+  addTransactionLabel = 'Agregar transacción',
   canRegister = false,
 }: WalletMovementsFeedProps) => {
   const [query, setQuery] = useState('');
@@ -203,8 +203,8 @@ export const WalletMovementsFeed = ({
       {isEmpty ? (
         <WalletFeedEmpty
           canRegister={canRegister}
-          onRegisterExpense={onRegisterExpense}
-          onRegisterIncome={onRegisterIncome}
+          onAddTransaction={onAddTransaction}
+          addTransactionLabel={addTransactionLabel}
         />
       ) : filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
@@ -301,12 +301,12 @@ export const WalletMovementsFeed = ({
 
 const WalletFeedEmpty = ({
   canRegister,
-  onRegisterExpense,
-  onRegisterIncome,
+  onAddTransaction,
+  addTransactionLabel,
 }: {
   canRegister: boolean;
-  onRegisterExpense?: () => void;
-  onRegisterIncome?: () => void;
+  onAddTransaction?: () => void;
+  addTransactionLabel: string;
 }) => (
   <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center">
     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
@@ -318,19 +318,10 @@ const WalletFeedEmpty = ({
         Registra un ingreso o un gasto para verlos aquí.
       </p>
     </div>
-    {canRegister ? (
-      <div className="flex flex-wrap justify-center gap-2">
-        {onRegisterExpense ? (
-          <Button type="button" size="sm" variant="outline" onClick={onRegisterExpense}>
-            Registrar gasto
-          </Button>
-        ) : null}
-        {onRegisterIncome ? (
-          <Button type="button" size="sm" onClick={onRegisterIncome}>
-            Registrar ingreso
-          </Button>
-        ) : null}
-      </div>
+    {canRegister && onAddTransaction ? (
+      <Button type="button" size="sm" onClick={onAddTransaction}>
+        {addTransactionLabel}
+      </Button>
     ) : null}
   </div>
 );

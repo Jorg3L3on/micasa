@@ -10,7 +10,7 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 | Login | `/login` | `src/components/login/*` |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
-Runtime tokens live in `src/app/globals.css` (`.dark` for the app, `.landing-root` for marketing). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). Light-mode tokens still exist for the `d` hotkey; new work should look correct in dark first.
+Runtime tokens live in `src/app/globals.css` (`.dark` for the app, `.landing-root` for marketing). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
 
 Agent entry points:
 
@@ -70,7 +70,7 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts`. Reuse it (or the same class string) for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page.
 
 ```
-relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm
+relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]
 dark:border-white/[0.08] dark:bg-[#0d1327]/80
 dark:shadow-[0_24px_80px_-48px_rgba(58,55,252,0.45)] dark:backdrop-blur-xl
 ```
@@ -100,7 +100,88 @@ List/card delete is viewport-split (`md` = 768px):
 - **`md+`:** quiet trash icon (`hidden md:inline-flex`), no swipe.
 - **Below `md`:** swipe-to-delete only (`swipeEnabled={isMobile}`); hide the trash icon.
 
-Shared trailing control: `SwipeDeleteAction`. Confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx`.
+Shared trailing control: `SwipeDeleteAction`. Confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx`. Shared swipe thresholds: `src/lib/ui/swipe-delete.ts`.
+
+### Form actions (Save / Cancelar / Cerrar / X)
+
+| Situation | Pattern |
+| --- | --- |
+| **Responsive form overlay** (Dialog + Sheet) | Header **Cancelar** (`ghost` + `text-primary`, left) replaces the top-right **X**. Centered title. No footer Cancelar. One full-width primary (`h-11 w-full rounded-xl`). At most one dismiss and one primary — no duplicate Cancelar/Guardar. |
+| Page / non-overlay forms | Footer **Cancelar** (`outline`) + primary (**Guardar** / **Crear** / …); optional header **X** whose `sr-only` label is **Cerrar** |
+| Read-only / done / import result | Footer **Cerrar** only (or X alone) |
+| Destructive confirm | `ConfirmDeleteDialog` / `AlertDialog`: **Cancelar** + destructive confirm (same on both breakpoints) |
+
+Rules:
+
+- Overlay chrome matches **Add Transaction** (`src/components/transactions/AddTransactionDialog.tsx`) and **WalletForm** (`src/components/WalletForm.tsx`).
+- Loading copy uses the ellipsis character: `Guardando…` / `Eliminando…` / `Creando…`.
+- Destructive confirms use a destructive primary; do not invent a second Cancelar in the footer of an overlay that already has header Cancelar.
+
+### Motion tokens
+
+CSS variables in `globals.css` (respect `prefers-reduced-motion`):
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--motion-fast` | 120ms | Press / toggle feedback |
+| `--motion-base` | 200ms | Routine state / route fade |
+| `--motion-panel` | 320ms | Dialog / sheet open-close |
+| `--ease-out-soft` | cubic-bezier(0.22, 1, 0.36, 1) | Continuity |
+| `--ease-spring` | cubic-bezier(0.16, 1, 0.3, 1) | Snappy micro feedback |
+
+Utilities: `.motion-fade-in`, `.motion-slide-up`. Route transitions use View Transitions + a short mobile page settle. Operate surfaces stay ≤ ~300ms; no scroll-reveal theater on the planner.
+
+### Light mode inventory (known gaps)
+
+Fix these when touching light parity (do not leave new hardcoded dark-only chrome):
+
+- Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
+- Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
+- Primary `Button`: blue→purple gradient in light, orange only in `.dark` (intentional; keep documented)
+- Landing stays always-dark (`.landing-root`) — out of light scope
+- Card faces that are always “dark plastic” (e.g. wallet list card art) may stay dark by design
+
+---
+
+## Overlays (Dialog / Sheet)
+
+New **multi-field** create/edit (and similar form) overlays must present differently by breakpoint:
+
+| Breakpoint | Surface |
+| --- | --- |
+| Desktop (`md+`, ≥ 768px) | Centered modal **`Dialog`** |
+| Mobile (`< 768px`) | Bottom **sheet** |
+
+Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets) model (modal sheet rising from the bottom, scrollable content, dismissible). Implement like **Add Transaction**:
+
+- Canonical: `src/components/transactions/AddTransactionDialog.tsx` (WalletForm chrome follows the same header/primary pattern; field body may stay denser stacked labels)
+
+- Breakpoint: `useIsMobile()` from `src/hooks/use-mobile.ts` (do not invent a second hook)
+- Same data and actions on both breakpoints; mobile may restyle for thumb reach, height, and gestures (swipe/dismiss, denser rows)
+- Sheet chrome defaults: `side="bottom"`, `max-h-[92vh]`, rounded top, scrollable body, safe-area bottom padding
+- Keep component filenames as `*Dialog` for consistency; the dual presentation is still required
+- When the form uses portaled Select/popover menus, prevent sheet dismiss while those menus are open
+
+### Overlay chrome (Dialog and Sheet)
+
+Same language on both surfaces:
+
+1. **Cancelar** — `Button variant="ghost"` + `text-primary`, absolute **left** in the header; `showCloseButton={false}` (no top-right **X**)
+2. **Title** — centered (`text-base font-semibold`); **no** icon beside the title
+3. **Description** — not visible; keep `DialogDescription` / `SheetDescription` as **`sr-only`** for accessibility
+4. **Primary** — one full-width submit (`h-11 w-full rounded-xl`); no second Cancelar or Guardar
+5. **Body** — Add Transaction–style **grouped bordered rows** (`rounded-xl border divide-y`, label + control rows, single column on both breakpoints). Extra sections (e.g. credit fields) use a second grouped card with a small section label
+
+**Overlay vs page:** long, multi-step, or deep-linkable flows belong on a **route**, not in a sheet. This section applies only when an overlay is the right choice.
+
+**Exceptions**
+
+- Short confirms / deletes: `AlertDialog` / `ConfirmDeleteDialog` — same UI on both breakpoints unless mobile clearly suffers
+- Marketing landing: out of scope
+- Existing Dialog-only forms: migrate opportunistically when touched; no big-bang retrofit
+- Do not extract a shared responsive overlay wrapper until the same chrome is duplicated across multiple new flows
+
+Agent rule: `.cursor/rules/responsive-overlays.mdc`.
 
 ---
 
@@ -150,7 +231,7 @@ When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 2. Swap shells to glass (`MONTHLY_PANEL_SHELL_CLASS` or the same dark border/blur).
 3. Use default `<Button>` for the section CTA; menus for overflow.
 4. Metric strips stay calm + left border.
-5. Verify in **dark** at desktop and a narrow viewport.
+5. Verify in **dark and light** at desktop and a narrow viewport.
 
 ---
 

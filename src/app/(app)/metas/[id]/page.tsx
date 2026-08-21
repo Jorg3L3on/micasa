@@ -612,7 +612,8 @@ export default function MetaDetailPage() {
           <WalletMovementsFeed
             movements={movements.movements}
             ownerQueryString={ownerQs}
-            onRegisterIncome={() => setIncomeOpen(true)}
+            onAddTransaction={() => setIncomeOpen(true)}
+            addTransactionLabel="Registrar ingreso"
             canRegister={canSaveAndArchive}
           />
         ) : null}

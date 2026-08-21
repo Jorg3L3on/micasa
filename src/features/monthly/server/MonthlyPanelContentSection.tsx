@@ -7,6 +7,10 @@ import {
   MONTHLY_PANEL_MAIN_COLUMN_CLASS,
   MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS,
 } from '@/components/monthly/MonthlyPanelLayout';
+import {
+  ContentEnter,
+  SkeletonExit,
+} from '@/components/view-transition/SuspenseReveal';
 import { getMonthlyFortnightContentData } from '@/features/monthly/server/monthly.service';
 import type { MonthlyPanelShellData } from '@/features/monthly/server/monthly.types';
 import type { MonthlyFortnightPeriod } from '@/features/monthly/server/monthly.types';
@@ -138,35 +142,37 @@ export const MonthlyPanelContentFallback = ({
   paidWalletIds?: number[];
   isCurrentMonth?: boolean;
 }) => (
-  <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
-    <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
-      <MonthlyFortnightView
-        ownerKey="loading"
-        year={2000}
-        month={1}
-        wallets={wallets}
-        paidWalletIds={paidWalletIds}
-        isCurrentMonth={isCurrentMonth}
-        serverLoadedPeriod="FIRST"
-        loading
-        first={{
-          label: '',
-          transactions: [],
-          summary: null,
-          fortnightId: 0,
-        }}
-        second={{
-          label: '',
-          transactions: [],
-          summary: null,
-          fortnightId: 0,
-        }}
-      />
+  <SkeletonExit>
+    <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
+      <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
+        <MonthlyFortnightView
+          ownerKey="loading"
+          year={2000}
+          month={1}
+          wallets={wallets}
+          paidWalletIds={paidWalletIds}
+          isCurrentMonth={isCurrentMonth}
+          serverLoadedPeriod="FIRST"
+          loading
+          first={{
+            label: '',
+            transactions: [],
+            summary: null,
+            fortnightId: 0,
+          }}
+          second={{
+            label: '',
+            transactions: [],
+            summary: null,
+            fortnightId: 0,
+          }}
+        />
+      </div>
+      <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
+        <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+      </div>
     </div>
-    <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-      <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
-    </div>
-  </div>
+  </SkeletonExit>
 );
 
 export const MonthlyPanelContentSuspense = (
@@ -181,6 +187,8 @@ export const MonthlyPanelContentSuspense = (
       />
     }
   >
-    <MonthlyPanelContentSection {...props} />
+    <ContentEnter>
+      <MonthlyPanelContentSection {...props} />
+    </ContentEnter>
   </Suspense>
 );

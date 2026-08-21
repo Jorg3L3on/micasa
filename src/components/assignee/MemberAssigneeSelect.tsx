@@ -12,6 +12,7 @@ import {
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { cn } from '@/lib/utils';
 
 type HouseUserItem = {
   id: number;
@@ -25,6 +26,10 @@ type MemberAssigneeSelectProps = {
   onChange: (userId: number | '') => void;
   disabled?: boolean;
   label?: string;
+  /** Hide the built-in label when the parent already shows one (e.g. GroupedRow). */
+  hideLabel?: boolean;
+  triggerClassName?: string;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export default function MemberAssigneeSelect({
@@ -33,6 +38,9 @@ export default function MemberAssigneeSelect({
   onChange,
   disabled,
   label = 'Asignado a',
+  hideLabel = false,
+  triggerClassName,
+  onOpenChange,
 }: MemberAssigneeSelectProps) {
   const { context } = useFinanceContext();
   const [members, setMembers] = useState<HouseUserItem[]>([]);
@@ -55,16 +63,23 @@ export default function MemberAssigneeSelect({
   }
 
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">
-        {label}
-      </Label>
+    <div className={hideLabel ? undefined : 'space-y-1.5'}>
+      {hideLabel ? null : (
+        <Label htmlFor={id} className="text-xs text-muted-foreground">
+          {label}
+        </Label>
+      )}
       <Select
         value={value === '' ? undefined : String(value)}
         onValueChange={(next) => onChange(next ? Number(next) : '')}
+        onOpenChange={onOpenChange}
         disabled={disabled || loading || members.length === 0}
       >
-        <SelectTrigger id={id} className="w-full min-w-0" aria-label="Seleccionar opción">
+        <SelectTrigger
+          id={id}
+          className={cn('w-full min-w-0', triggerClassName)}
+          aria-label={label}
+        >
           <SelectValue placeholder={loading ? 'Cargando…' : 'Elige un miembro'} />
         </SelectTrigger>
         <SelectContent>

@@ -2,6 +2,10 @@ import { Suspense } from 'react';
 import { fetchFromApi } from '@/lib/api-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import TransactionsDataTable from '@/components/TransactionsDataTable';
+import {
+  ContentEnter,
+  SkeletonExit,
+} from '@/components/view-transition/SuspenseReveal';
 import type { TransactionRow } from '@/types/catalog';
 
 type TransactionSearchParams = {
@@ -43,18 +47,20 @@ async function getTransactions(
 
 function TransactionsLoadingSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <Skeleton className="h-5 w-36" />
-        <Skeleton className="h-4 w-72 max-w-full" />
+    <SkeletonExit>
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[72px] rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-[500px] rounded-xl" />
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[72px] rounded-lg" />
-        ))}
-      </div>
-      <Skeleton className="h-[500px] rounded-xl" />
-    </div>
+    </SkeletonExit>
   );
 }
 
@@ -65,7 +71,11 @@ async function TransactionsContent({
 }) {
   const resolvedSearchParams = await searchParams;
   const transactions = await getTransactions(resolvedSearchParams);
-  return <TransactionsDataTable transactions={transactions} />;
+  return (
+    <ContentEnter>
+      <TransactionsDataTable transactions={transactions} />
+    </ContentEnter>
+  );
 }
 
 export default async function TransactionsPage({
