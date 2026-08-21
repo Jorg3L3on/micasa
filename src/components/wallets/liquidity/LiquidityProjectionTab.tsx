@@ -124,14 +124,14 @@ export function LiquidityProjectionTab() {
     if (!data) return [];
     const notes = [
       'Toca un mes en la gráfica: el detalle de abajo cambia con ese mes.',
-      'La línea es lo que aún debes de aquí en adelante. Baja cuando terminas un préstamo o una compra a meses.',
+      'La línea es lo que aún debes de préstamos y tarjetas. Baja cuando terminas un préstamo o una compra a meses.',
       'Los puntos verdes son el mes en que terminas de pagar algo.',
     ];
     if (data.options.include_unpaid_expenses) {
-      notes.push('Incluimos gastos que aún no marcas como pagados.');
+      notes.push('Los gastos impagos de efectivo o débito salen en el detalle del mes, no en la línea de deuda.');
     }
     if (data.options.include_expense_templates) {
-      notes.push('Incluimos gastos que se repiten cada quincena como estimación.');
+      notes.push('Los gastos fijos que se repiten (renta, suscripciones) salen en el detalle del mes, no en la línea de deuda.');
     }
     return notes;
   }, [data]);

@@ -28,6 +28,7 @@ import {
   LIQUIDITY_MAX_CYCLES_PER_CARD_GROUP,
   LIQUIDITY_PROJECTION_ASSUMPTIONS_ES,
   advanceStatementCursor,
+  monthScheduledDebtTotal,
   toUtcDateOnlyString,
 } from '@/lib/finance/liquidity-projection';
 
@@ -981,7 +982,7 @@ export const getLiquidityProjection = async (
   for (let i = monthly_series.length - 1; i >= 0; i -= 1) {
     const monthKey = monthly_series[i]!.month_key;
     remainingFromMonth +=
-      monthly_series[i]!.total_payments_due +
+      monthScheduledDebtTotal(monthly_series[i]!) +
       (payrollPaymentsByMonth.get(monthKey) ?? 0);
     monthly_series[i]!.remaining_payments_from_month = remainingFromMonth;
   }

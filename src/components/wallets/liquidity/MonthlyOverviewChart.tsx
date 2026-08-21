@@ -58,7 +58,9 @@ const ChartTooltip = ({
       <p className="mt-1 text-[11px] text-emerald-300">
         Entró {formatCurrency(point.income)}
       </p>
-      <p className="text-[11px] text-violet-300">Salió {formatCurrency(point.expense)}</p>
+      <p className="text-[11px] text-violet-300">
+        Pagaste {formatCurrency(point.expense)} de deudas
+      </p>
       {point.isTight ? (
         <p className="mt-2 text-[11px] font-medium text-rose-300">
           Te faltó {formatCurrency(Math.abs(point.net))}
@@ -142,7 +144,7 @@ export default function MonthlyOverviewChart({
       <div>
         <h2 className="text-base font-semibold leading-tight">Cómo se movió tu dinero</h2>
         <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          La línea verde es lo que entró; la violeta, lo que salió. Los puntos rosa son meses en que salió más de lo que entró.
+          La línea verde es lo que entró. La violeta es lo que pagaste de deudas (préstamos y tarjetas), no renta ni otros gastos fijos. Los puntos rosa son meses en que las deudas superaron lo que entró.
         </p>
       </div>
 
@@ -154,7 +156,7 @@ export default function MonthlyOverviewChart({
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-5 rounded-full bg-violet-400" />
-            Salió
+            Salió (deudas)
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-400" />

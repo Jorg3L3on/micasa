@@ -157,7 +157,7 @@ export function LiquidityInsightsTab() {
   const heroPrefix = firstName ? `${firstName}, ` : '';
   const heroMessage =
     totalCategorySpend > 0
-      ? `${heroPrefix}así se movió tu dinero el último año. Toca un mes en la gráfica para ver si te alcanzó.`
+      ? `${heroPrefix}así se movió tu dinero el último año. La gráfica muestra solo deudas (préstamos y tarjetas), no gastos fijos. Toca un mes para ver si te alcanzó.`
       : `${heroPrefix}aún no hay gastos registrados. Cuando empieces a anotarlos, aquí verás en qué se va tu dinero.`;
 
   const handleShiftMonth = (delta: number) => {
@@ -210,10 +210,11 @@ export function LiquidityInsightsTab() {
           <span className="font-mono font-semibold tabular-nums text-emerald-300">
             {formatCurrency(annualTotals.income)}
           </span>{' '}
-          y salió{' '}
+          y pagaste{' '}
           <span className="font-mono font-semibold tabular-nums text-violet-300">
             {formatCurrency(annualTotals.expenses)}
-          </span>
+          </span>{' '}
+          de deudas
           . Toca la gráfica para ver cada mes.
         </p>
       ) : null}

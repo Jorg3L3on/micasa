@@ -324,6 +324,10 @@ describe('getLiquidityProjection', () => {
       is_estimate: true,
       expense_template_id: 1,
     });
+    const april = result.monthly_series.find((month) => month.month_key === '2026-04');
+    expect(april?.expense_template_total).toBe(199);
+    expect(april?.total_payments_due).toBeGreaterThanOrEqual(199);
+    expect(april?.remaining_payments_from_month).toBe(0);
   });
 
   it('adds scheduled wallet loan payments to obligations', async () => {

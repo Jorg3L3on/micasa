@@ -92,7 +92,7 @@ export const LiquidityPastMonthFocus = ({
           </div>
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Salió
+              Deudas
             </p>
             <p className="mt-1 font-mono text-lg font-bold tabular-nums text-violet-300">
               {formatCurrency(month.expense)}

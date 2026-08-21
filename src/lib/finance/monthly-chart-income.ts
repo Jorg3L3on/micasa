@@ -1,6 +1,7 @@
 /**
  * Aggregation rules for `/api/wallets/liquidity/monthly-summary` — aligned with panel totals:
- * - Expenses: planning cash flow only (see `wherePlanningCashFlowExpenses`).
+ * - Expenses / “salió”: debt outflows only (loan payments + credit-card payments).
+ *   Recurring templates (rent, subscriptions) are excluded.
  * - Income: per fortnight, `source === '__OVERRIDE__'` replaces other rows (same as reports).
  */
 

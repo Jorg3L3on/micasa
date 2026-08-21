@@ -5,6 +5,7 @@ import {
   addDaysUtc,
   advanceStatementCursor,
   compareUtcDateOnly,
+  monthScheduledDebtTotal,
   toUtcDateOnlyString,
 } from '@/lib/finance/liquidity-projection';
 
@@ -24,6 +25,18 @@ describe('advanceStatementCursor', () => {
     expect(toUtcDateOnlyString(next)).toBe('2026-03-16');
     const w2 = resolveCreditCardStatementWindow(next, 15, 20);
     expect(toUtcDateOnlyString(w2.statementEnd)).toBe('2026-03-15');
+  });
+});
+
+describe('monthScheduledDebtTotal', () => {
+  it('sums loans, card statements, and MSI and ignores recurring templates', () => {
+    expect(
+      monthScheduledDebtTotal({
+        msi_debt_total: 400,
+        installment_payment_total: 150,
+        loan_payment_total: 200,
+      }),
+    ).toBe(750);
   });
 });
 
