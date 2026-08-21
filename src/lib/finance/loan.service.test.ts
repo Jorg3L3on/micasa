@@ -830,4 +830,118 @@ describe('updateLoanPaymentForOwner', () => {
     expect(txUpdateLoanPayment).not.toHaveBeenCalled();
     expect(createExpenseInTransaction).not.toHaveBeenCalled();
   });
+
+  it('marks wallet-loan payments as externally paid without debiting or creating an expense', async () => {
+    txFindFirstLoanPayment.mockResolvedValueOnce(scheduledWalletPayment);
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'PAID',
+      paid_at: parseCalendarDate('2026-05-15'),
+      source_wallet_id: null,
+      source_wallet: null,
+      linked_expense: null,
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([
+      { status: 'PAID' },
+      { status: 'SCHEDULED' },
+    ]);
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'MARK_PAID_EXTERNAL',
+      paidAt: '2026-05-15',
+      // Ignored on purpose — historical payments must not move cash.
+      sourceWalletId: 10,
+      note: 'Pagado en Mercado Libre',
+    });
+
+    expect(payment).toMatchObject({
+      id: 22,
+      status: 'PAID',
+      paidAt: '2026-05-15',
+      sourceWalletId: null,
+      linkedExpenseId: null,
+    });
+    expect(findFirstWallet).not.toHaveBeenCalled();
+    expect(txFindFirstWallet).not.toHaveBeenCalled();
+    expect(txUpdateWallet).not.toHaveBeenCalled();
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
+    expect(txUpdateLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'PAID',
+          source_wallet_id: null,
+          note: 'Pagado en Mercado Libre',
+        }),
+      }),
+    );
+    expect(txUpdateLoan).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { status: 'ACTIVE' },
+    });
+  });
+
+  it('keeps SKIP as skipped (not paid) and does not move wallet cash', async () => {
+    txFindFirstLoanPayment.mockResolvedValueOnce(scheduledWalletPayment);
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'SKIPPED',
+      paid_at: null,
+      source_wallet: { name: 'BBVA' },
+      linked_expense: null,
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([
+      { status: 'SKIPPED' },
+      { status: 'SCHEDULED' },
+    ]);
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'SKIP',
+    });
+
+    expect(payment.status).toBe('SKIPPED');
+    expect(payment.paidAt).toBeNull();
+    expect(txFindFirstWallet).not.toHaveBeenCalled();
+    expect(txUpdateWallet).not.toHaveBeenCalled();
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
+    expect(txUpdateLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'SKIPPED',
+          paid_at: null,
+        }),
+      }),
+    );
+    expect(txUpdateLoan).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { status: 'ACTIVE' },
+    });
+  });
+
+  it('undoes externally paid payments without changing wallet balances', async () => {
+    txFindFirstLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'PAID',
+      paid_at: parseCalendarDate('2026-05-15'),
+      source_wallet_id: null,
+      linked_expense: null,
+    });
+    txUpdateLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      status: 'SCHEDULED',
+      paid_at: null,
+      source_wallet_id: null,
+      source_wallet: null,
+      linked_expense: null,
+    });
+    txFindManyLoanPayment.mockResolvedValueOnce([{ status: 'SCHEDULED' }]);
+
+    const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
+      action: 'MARK_SCHEDULED',
+    });
+
+    expect(payment.status).toBe('SCHEDULED');
+    expect(txUpdateWallet).not.toHaveBeenCalled();
+    expect(txDeleteExpense).not.toHaveBeenCalled();
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
+  });
 });

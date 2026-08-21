@@ -31,6 +31,7 @@ export const loanPaymentSourceSchema = z.enum([
 ]);
 export const loanPaymentActionSchema = z.enum([
   'MARK_PAID',
+  'MARK_PAID_EXTERNAL',
   'MARK_SCHEDULED',
   'SKIP',
   'CANCEL',

@@ -73,5 +73,12 @@ describe('calendar date schemas', () => {
         paidAt: '05/06/2026',
       }),
     ).toThrow();
+
+    expect(
+      updateLoanPaymentSchema.parse({
+        action: 'MARK_PAID_EXTERNAL',
+        paidAt: '2026-05-15',
+      }).action,
+    ).toBe('MARK_PAID_EXTERNAL');
   });
 });
