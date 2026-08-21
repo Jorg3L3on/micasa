@@ -21,6 +21,8 @@ export const createTransactionFieldsSchema = z.object({
   expense_template_id: positiveIntSchema.optional(),
   credit_installment_current: z.number().int().positive().optional().nullable(),
   credit_installment_total: z.number().int().positive().optional().nullable(),
+  /** When paid, whether to adjust wallet balance. Default true. */
+  apply_wallet_delta: optionalBooleanSchema,
 });
 
 export const withPaidWalletRefine = <T extends z.ZodTypeAny>(schema: T) =>
@@ -80,6 +82,14 @@ export const updatePaidSchema = z.object({
   paid: z.boolean(),
 });
 
+/** Empty / unset wallet → null (quick-capture forms may use 0 / null before selection). */
+export const optionalPaymentMethodIdSchema = z
+  .union([z.number().int().positive(), z.literal(0), z.null(), z.undefined()])
+  .transform((value): number | null => {
+    if (value == null || value === 0) return null;
+    return value;
+  });
+
 export const addExpenseSchema = z
   .object({
     name: z.string().min(1, 'El nombre es requerido'),
@@ -94,6 +104,8 @@ export const addExpenseSchema = z
     isRecurring: z.boolean(),
     applyToBothFortnights: z.boolean(),
     expenseTemplateId: z.number().int().positive().optional().nullable(),
+    /** When paid, whether to adjust wallet balance. Default true. */
+    applyWalletDelta: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -108,6 +120,38 @@ export const addExpenseSchema = z
       path: ['applyToBothFortnights'],
     },
   );
+
+/** Quick-capture form (global FAB): wallet only required when paid. */
+export const quickExpenseSchema = z
+  .object({
+    name: z.string().min(1, 'El nombre es requerido'),
+    categoryId: z.number().int().positive('La categoría es requerida'),
+    amount: z.number().positive('El monto debe ser mayor a 0'),
+    paymentMethodId: optionalPaymentMethodIdSchema,
+    date: dateStringSchema,
+    isPaid: z.boolean(),
+    applyWalletDelta: z.boolean(),
+  })
+  .refine(
+    (data) => {
+      if (!data.isPaid) return true;
+      return data.paymentMethodId != null && data.paymentMethodId > 0;
+    },
+    {
+      message: 'La billetera es requerida para un gasto pagado',
+      path: ['paymentMethodId'],
+    },
+  );
+
+export type QuickExpenseFormValues = {
+  name: string;
+  categoryId: number;
+  amount: number;
+  paymentMethodId: number | null;
+  date: string;
+  isPaid: boolean;
+  applyWalletDelta: boolean;
+};
 
 // Type exports
 export const addIncomeFormSchema = z.object({

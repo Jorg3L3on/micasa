@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
       walletId,
       creditInstallmentCurrent: validatedData.credit_installment_current ?? null,
       creditInstallmentTotal: validatedData.credit_installment_total ?? null,
+      applyWalletDelta: validatedData.apply_wallet_delta,
     });
 
     return NextResponse.json(

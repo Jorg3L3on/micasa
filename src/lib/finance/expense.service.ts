@@ -68,6 +68,12 @@ export type CreateExpenseInput = {
   loanPaymentId?: number | null;
   creditInstallmentCurrent?: number | null;
   creditInstallmentTotal?: number | null;
+  /**
+   * When `isPaid` is true, whether to apply the wallet balance/credit delta.
+   * Default true. Set false for historic catch-up when the wallet saldo is
+   * already up to date (record the expense without re-subtracting).
+   */
+  applyWalletDelta?: boolean;
 };
 
 type UpdateExpenseInput = {
@@ -202,7 +208,10 @@ export async function createExpenseInTransaction(
     loanPaymentId,
     creditInstallmentCurrent,
     creditInstallmentTotal,
+    applyWalletDelta = true,
   } = input;
+
+  const shouldApplyWalletDelta = isPaid && applyWalletDelta !== false;
 
   if (amount <= 0) {
     const error = new Error('Amount must be greater than 0') as ExpenseServiceError;
@@ -284,7 +293,7 @@ export async function createExpenseInTransaction(
       }
     }
 
-    if (isPaid) {
+    if (shouldApplyWalletDelta) {
       assertPaidChargeAllowedForWallet(wallet, amount);
     }
   }
@@ -324,7 +333,12 @@ export async function createExpenseInTransaction(
     },
   });
 
-  if (expense.is_paid && expense.wallet_id != null && walletType != null) {
+  if (
+    shouldApplyWalletDelta &&
+    expense.is_paid &&
+    expense.wallet_id != null &&
+    walletType != null
+  ) {
     await applyWalletAmountDelta(
       tx,
       expense.wallet_id,

@@ -9,17 +9,29 @@ import { createExpense } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import { dateStringSchema } from '@/schemas/common.schema';
 
-const bodySchema = z.object({
-  name: z.string().min(1),
-  categoryId: z.number().int().positive(),
-  amount: z.number().positive(),
-  paymentMethodId: z.number().int().positive(),
-  date: dateStringSchema,
-  isPaid: z.boolean(),
-  isRecurring: z.boolean(),
-  applyToBothFortnights: z.boolean(),
-  expenseTemplateId: z.number().int().positive().nullable().optional(),
-});
+const bodySchema = z
+  .object({
+    name: z.string().min(1),
+    categoryId: z.number().int().positive(),
+    amount: z.number().positive(),
+    paymentMethodId: z.number().int().positive().optional().nullable(),
+    date: dateStringSchema,
+    isPaid: z.boolean(),
+    isRecurring: z.boolean(),
+    applyToBothFortnights: z.boolean(),
+    expenseTemplateId: z.number().int().positive().nullable().optional(),
+    applyWalletDelta: z.boolean().optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.isPaid) return true;
+      return data.paymentMethodId != null && data.paymentMethodId > 0;
+    },
+    {
+      message: 'La billetera es requerida para un gasto pagado',
+      path: ['paymentMethodId'],
+    },
+  );
 
 function decimalToNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -60,15 +72,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const wallet = await prisma.wallet.findFirst({
-      where: { id: data.paymentMethodId, ...ownerFilter },
-      select: { id: true },
-    });
-    if (!wallet) {
-      return NextResponse.json(
-        { error: 'Wallet not found' },
-        { status: 404 },
-      );
+    const walletId =
+      data.paymentMethodId != null && data.paymentMethodId > 0
+        ? data.paymentMethodId
+        : null;
+
+    if (walletId != null) {
+      const wallet = await prisma.wallet.findFirst({
+        where: { id: walletId, ...ownerFilter },
+        select: { id: true },
+      });
+      if (!wallet) {
+        return NextResponse.json(
+          { error: 'Wallet not found' },
+          { status: 404 },
+        );
+      }
     }
 
     const [yearStr, monthStr, dayStr] = data.date.split('-');
@@ -93,7 +112,8 @@ export async function POST(request: NextRequest) {
       isPaid: data.isPaid,
       paymentDate: data.isPaid ? data.date : null,
       expenseTemplateId: data.expenseTemplateId ?? null,
-      walletId: data.paymentMethodId,
+      walletId,
+      applyWalletDelta: data.applyWalletDelta,
     });
 
     if (data.isRecurring && data.applyToBothFortnights) {
@@ -116,7 +136,7 @@ export async function POST(request: NextRequest) {
           isPaid: false,
           paymentDate: null,
           expenseTemplateId: data.expenseTemplateId ?? null,
-          walletId: data.paymentMethodId,
+          walletId,
         });
       } catch (err) {
         logFinanceEvent(
@@ -148,7 +168,7 @@ export async function POST(request: NextRequest) {
         creditInstallmentCurrent: null,
         creditInstallmentTotal: null,
         categoryId: data.categoryId,
-        walletId: data.paymentMethodId,
+        walletId,
       },
       { status: 201 },
     );
