@@ -111,15 +111,18 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   const fabBottom = needsRaisedFab(pathname) ? 'bottom-24' : 'bottom-6';
 
+  // Keep FAB below Sheet/Dialog overlays (z-50). Hide while open so it
+  // cannot intercept taps on sheet controls near the bottom edge.
   const fab =
     portalReady &&
+    !open &&
     createPortal(
       <Button
         type="button"
         size="icon"
         aria-label="Agregar gasto"
         className={cn(
-          'pointer-events-auto fixed right-6 z-[100] h-14 w-14 rounded-full shadow-lg sm:hidden',
+          'pointer-events-auto fixed right-6 z-40 h-14 w-14 rounded-full shadow-lg sm:hidden',
           fabBottom,
         )}
         onClick={openExpense}
