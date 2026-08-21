@@ -34,8 +34,13 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
+  type ClientApiError,
 } from '@/lib/api/client-fetch';
-import { createCreditCard, updateCreditCard } from '@/lib/api/credit-cards';
+import {
+  createCreditCard,
+  deleteCreditCard,
+  updateCreditCard,
+} from '@/lib/api/credit-cards';
 import {
   createWallet,
   deleteWallet,
@@ -891,21 +896,32 @@ export default function WalletsPage() {
     if (!selectedWallet) return;
     try {
       setError(null);
-      await deleteWallet(selectedWallet.id, context);
+      if (isCreditType(selectedWallet.type)) {
+        await deleteCreditCard(selectedWallet.id, context);
+      } else {
+        await deleteWallet(selectedWallet.id, context);
+      }
       toast.success('Eliminada');
       await fetchWallets();
       setDeleteDialogOpen(false);
       setSelectedWallet(null);
     } catch (err) {
+      const apiErr = err as ClientApiError;
       const message =
         err instanceof Error ? err.message : 'Error al eliminar';
       if (
+        apiErr.status === 409 ||
         message.includes('409') ||
         message.includes('in use') ||
         message.includes('Conflict') ||
-        message.includes('related')
+        message.includes('related') ||
+        message.includes('asociadas')
       ) {
-        setError('Está en uso y no puede eliminarse');
+        setError(
+          message.includes('Desactívala')
+            ? message
+            : 'Está en uso y no puede eliminarse. Desactívala desde Editar si ya no la usas.',
+        );
       } else {
         setError(message);
       }
@@ -1611,9 +1627,18 @@ export default function WalletsPage() {
               }
             }}
             onConfirm={handleDelete}
-            title="Eliminar billetera"
-            description="¿Estás seguro de querer eliminar esta billetera? Esta acción no puede deshacerse."
+            title={
+              isCreditType(selectedWallet.type)
+                ? 'Eliminar tarjeta'
+                : 'Eliminar billetera'
+            }
+            description={
+              isCreditType(selectedWallet.type)
+                ? '¿Estás seguro de querer eliminar esta tarjeta? Esta acción no puede deshacerse.'
+                : '¿Estás seguro de querer eliminar esta billetera? Esta acción no puede deshacerse.'
+            }
             itemName={selectedWallet.name}
+            error={error}
           />
         </>
       )}

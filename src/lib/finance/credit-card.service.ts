@@ -194,6 +194,99 @@ export async function updateCreditCardForOwner(
   return mapWalletToCreditCardDto(wallet, spent);
 }
 
+type CreditCardServiceError = Error & { code?: string };
+
+/**
+ * Deletes a credit / department-store card wallet owned by the current context.
+ * Refuses when expenses, templates, incomes, budget allocations, or transfers
+ * still reference the wallet. Credit-card payments are removed; statement
+ * imports and payment plans cascade. Loans that only *link* to this wallet
+ * (e.g. Mercado Libre) are unlinked so they can remain after the card is gone.
+ */
+export async function deleteCreditCardForOwner(
+  id: number,
+  ownerFilter: OwnerFilter,
+) {
+  const existing = await prisma.wallet.findFirst({
+    where: {
+      id,
+      ...ownerFilter,
+      ...creditCardWalletWhere,
+    },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    const error = new Error('Tarjeta no encontrada') as CreditCardServiceError;
+    error.code = 'P2025';
+    throw error;
+  }
+
+  const [
+    relatedExpense,
+    relatedExpenseTemplate,
+    relatedIncome,
+    relatedBudgetAllocation,
+    relatedTransfer,
+  ] = await Promise.all([
+    prisma.expense.findFirst({ where: { wallet_id: id }, select: { id: true } }),
+    prisma.expenseTemplate.findFirst({
+      where: { wallet_id: id },
+      select: { id: true },
+    }),
+    prisma.income.findFirst({ where: { wallet_id: id }, select: { id: true } }),
+    prisma.budgetAllocation.findFirst({
+      where: { wallet_id: id },
+      select: { id: true },
+    }),
+    prisma.walletTransfer.findFirst({
+      where: {
+        OR: [{ from_wallet_id: id }, { to_wallet_id: id }],
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  if (
+    relatedExpense ||
+    relatedExpenseTemplate ||
+    relatedIncome ||
+    relatedBudgetAllocation ||
+    relatedTransfer
+  ) {
+    const error = new Error(
+      'La tarjeta tiene movimientos o plantillas asociadas y no puede eliminarse. Desactívala desde Editar si ya no la usas.',
+    ) as CreditCardServiceError;
+    error.code = 'WALLET_IN_USE';
+    throw error;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.loan.updateMany({
+      where: { linked_wallet_id: id },
+      data: { linked_wallet_id: null },
+    });
+
+    await tx.loan.updateMany({
+      where: { source_wallet_id: id },
+      data: { source_wallet_id: null },
+    });
+
+    await tx.loanPayment.updateMany({
+      where: { source_wallet_id: id },
+      data: { source_wallet_id: null },
+    });
+
+    await tx.creditCardPayment.deleteMany({
+      where: {
+        OR: [{ credit_card_wallet_id: id }, { source_wallet_id: id }],
+      },
+    });
+
+    await tx.wallet.delete({ where: { id } });
+  });
+}
+
 export async function createCreditCardPurchase(
   creditCardId: number,
   ownerFilter: OwnerFilter,

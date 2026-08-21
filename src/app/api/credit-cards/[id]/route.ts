@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updateCreditCardSchema } from '@/schemas/credit-card.schema';
 import {
+  deleteCreditCardForOwner,
   getCreditCardByOwner,
   updateCreditCardForOwner,
 } from '@/lib/finance/credit-card.service';
@@ -117,6 +118,68 @@ export async function PATCH(
     console.error('Error updating credit card:', error);
     return NextResponse.json(
       { error: 'No se pudo actualizar la tarjeta' },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+
+    const creditCardId = await parseCreditCardId(params);
+    await deleteCreditCardForOwner(creditCardId, context.ownerFilter);
+
+    return NextResponse.json(
+      { message: 'Tarjeta eliminada correctamente' },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'INVALID_ID'
+    ) {
+      return NextResponse.json(
+        { error: 'Se requiere un id válido' },
+        { status: 400 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'WALLET_IN_USE'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'La tarjeta está en uso y no puede eliminarse',
+        },
+        { status: 409 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
+    }
+
+    console.error('Error deleting credit card:', error);
+    return NextResponse.json(
+      { error: 'No se pudo eliminar la tarjeta' },
       { status: 500 },
     );
   }
