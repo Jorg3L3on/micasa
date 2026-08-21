@@ -4,10 +4,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -57,9 +59,14 @@ type QuickCaptureHostProps = {
 export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
   const pathname = usePathname() ?? '';
   const router = useRouter();
   const { context } = useFinanceContext();
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   const openExpense = useCallback(() => {
     setError(null);
@@ -84,15 +91,15 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
             isPaid: values.isPaid,
             isRecurring: false,
             applyToBothFortnights: false,
-            applyWalletDelta: values.isPaid ? values.applyWalletDelta : undefined,
+            applyWalletDelta: values.isPaid
+              ? values.applyWalletDelta
+              : undefined,
           }),
         },
         context,
       );
       setOpen(false);
-      toast.success(
-        values.isPaid ? 'Gasto registrado' : 'Gasto planificado',
-      );
+      toast.success(values.isPaid ? 'Gasto registrado' : 'Gasto planificado');
       router.refresh();
     } catch (err) {
       const message =
@@ -104,21 +111,28 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   const fabBottom = needsRaisedFab(pathname) ? 'bottom-24' : 'bottom-6';
 
-  return (
-    <QuickCaptureContext.Provider value={value}>
-      {children}
+  const fab =
+    portalReady &&
+    createPortal(
       <Button
         type="button"
         size="icon"
         aria-label="Agregar gasto"
         className={cn(
-          'fixed right-6 z-50 h-14 w-14 rounded-full shadow-lg sm:hidden',
+          'pointer-events-auto fixed right-6 z-[100] h-14 w-14 rounded-full shadow-lg sm:hidden',
           fabBottom,
         )}
         onClick={openExpense}
       >
         <Plus className="h-6 w-6" data-icon="inline-start" />
-      </Button>
+      </Button>,
+      document.body,
+    );
+
+  return (
+    <QuickCaptureContext.Provider value={value}>
+      {children}
+      {fab}
       <QuickExpenseSheet
         open={open}
         onOpenChange={(next) => {

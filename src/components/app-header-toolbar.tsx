@@ -36,7 +36,7 @@ export default function AppHeaderToolbar() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="hidden h-9 w-9 sm:inline-flex"
+                className="h-9 w-9"
                 aria-label="Agregar gasto"
                 onClick={quickCapture.openExpense}
               >
