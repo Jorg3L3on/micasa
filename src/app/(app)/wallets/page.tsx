@@ -8,29 +8,25 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   ArrowDownAZ,
   ArrowDownZA,
   LineChart,
   ListFilter,
-  Search,
-  WalletIcon,
-  X,
+  Plus,
   Zap,
 } from 'lucide-react';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import WalletDeleteDialog from '@/components/wallets/WalletDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  ToolbarFiltersPortal,
+  useRegisterToolbarActions,
+} from '@/context/toolbar-actions-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
@@ -58,7 +54,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -75,7 +70,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
-import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
+import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
@@ -948,146 +943,48 @@ export default function WalletsPage() {
     setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
   }, []);
 
+  const openCreateDialog = useCallback(() => {
+    setCreateDialogOpen(true);
+  }, []);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  const leadingActionIcon = useMemo(
+    () => <LineChart data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    search: {
+      value: searchQuery,
+      onChange: setSearchQuery,
+      placeholder: 'Buscar por nombre',
+    },
+    filters: {
+      open: filtersOpen,
+      onOpenChange: setFiltersOpen,
+      activeCount: activeFilterDimensionCount,
+    },
+    primaryAction: {
+      label: 'Agregar billetera o tarjeta',
+      onClick: openCreateDialog,
+      icon: primaryActionIcon,
+    },
+    leadingAction: {
+      label: 'Proyección de liquidez',
+      href: '/wallets/liquidity',
+      icon: leadingActionIcon,
+    },
+  });
+
   return (
     <DirectionalTransition>
-    <div className="space-y-4 pb-24">
-      <header
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Acciones de billeteras"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">Billeteras</h2>
-          <p className="text-xs text-muted-foreground">
-            Saldo, tarjetas y líneas disponibles en tu contexto actual.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0 sm:hidden"
-                asChild
-              >
-                <Link
-                  href="/wallets/liquidity"
-                  aria-label="Ver proyección de liquidez"
-                >
-                  <LineChart className="h-4 w-4" aria-hidden data-icon="inline-start" />
-                  <span className="sr-only">Ver proyección de liquidez</span>
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              Proyección de liquidez
-            </TooltipContent>
-          </Tooltip>
-          <Button variant="outline" asChild className="hidden sm:inline-flex">
-            <Link href="/wallets/liquidity" aria-label="Ver proyección de liquidez">
-              <LineChart className="h-4 w-4" data-icon="inline-start" />
-              Proyección de liquidez
-            </Link>
-          </Button>
-          <Button
-            type="button"
-            className="hidden h-9 rounded-xl sm:inline-flex"
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            <WalletIcon className="h-4 w-4" data-icon="inline-start" />
-            Agregar billetera o tarjeta
-          </Button>
-        </div>
-      </header>
-
-      <div className="relative z-0">
-      {error && !deleteDialogOpen && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      <div className="min-w-0">
-          {loading && wallets.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Cargando...
-            </div>
-          ) : wallets.length === 0 ? (
-            <EmptyState message="No se encontraron billeteras" />
-          ) : (
-            <div className="@container w-full min-w-0">
-            <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
-              <Collapsible
-                open={filtersOpen}
-                onOpenChange={setFiltersOpen}
-                className="w-full"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="relative min-w-0 flex-1">
-                    <Search
-                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <Input
-                      placeholder="Buscar"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-11 w-full rounded-xl border-0 bg-muted/70 pr-10 pl-10 shadow-none md:text-[15px]"
-                      aria-label="Buscar por nombre"
-                      type="search"
-                    />
-                    {searchQuery.trim() ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-1/2 right-0.5 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => setSearchQuery('')}
-                        aria-label="Borrar búsqueda"
-                      >
-                        <X className="h-4 w-4" data-icon="inline-start" />
-                      </Button>
-                    ) : null}
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'relative h-11 w-11 shrink-0 rounded-full',
-                            filtersOpen && 'bg-muted text-foreground',
-                          )}
-                          aria-label="Filtros y orden"
-                          aria-expanded={filtersOpen}
-                        >
-                          <ListFilter className="h-4 w-4" data-icon="inline-start" />
-                          {activeFilterDimensionCount > 0 ? (
-                            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground tabular-nums">
-                              {activeFilterDimensionCount}
-                            </span>
-                          ) : null}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Filtros y orden</TooltipContent>
-                  </Tooltip>
-                  {!filtersOpen && hasActiveFilters ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-11 shrink-0 text-muted-foreground"
-                      onClick={() => handleClearFilters()}
-                      aria-label="Limpiar todos los filtros"
-                    >
-                      Limpiar
-                    </Button>
-                  ) : null}
-                </div>
-                <CollapsibleContent className="data-[state=open]:pt-4">
-                  <div className="flex flex-col gap-4">
+    <div className="space-y-4 pb-8 md:pb-4">
+      <ToolbarFiltersPortal>
+        <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     <Select
@@ -1468,22 +1365,26 @@ export default function WalletsPage() {
                     ) : null}
                   </div>
                 </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+        </div>
+      </ToolbarFiltersPortal>
 
-              <div
-                className="flex flex-wrap items-baseline justify-between gap-2"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="text-[13px] text-muted-foreground">
-                  {displayWallets.length} de {wallets.length}{' '}
-                  {wallets.length === 1 ? 'billetera' : 'billeteras'}
-                  {listIsFiltered ? ' · filtrado' : ''}
-                </p>
-              </div>
+      <div className="relative z-0">
+      {error && !deleteDialogOpen && (
+        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
+      <div className="min-w-0">
+          {loading && wallets.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              Cargando...
+            </div>
+          ) : wallets.length === 0 ? (
+            <EmptyState message="No se encontraron billeteras" />
+          ) : (
+            <div className="@container w-full min-w-0">
+            <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
               {displayWallets.length === 0 ? (
                 <p className="py-8 text-center text-muted-foreground">
                   Ninguna billetera coincide con los filtros.
@@ -1516,21 +1417,23 @@ export default function WalletsPage() {
                   ))}
                 </ul>
               )}
+
+              <div
+                className="flex flex-wrap items-baseline justify-center gap-2"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="text-[13px] text-muted-foreground">
+                  {displayWallets.length} de {wallets.length}{' '}
+                  {wallets.length === 1 ? 'billetera' : 'billeteras'}
+                  {listIsFiltered ? ' · filtrado' : ''}
+                </p>
+              </div>
             </div>
             </div>
           )}
       </div>
       </div>
-
-      <Button
-        type="button"
-        size="icon"
-        aria-label="Agregar billetera o tarjeta"
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg sm:hidden"
-        onClick={() => setCreateDialogOpen(true)}
-      >
-        <WalletIcon className="h-6 w-6" data-icon="inline-start" />
-      </Button>
 
       <WalletForm
         open={createDialogOpen}
@@ -1544,26 +1447,38 @@ export default function WalletsPage() {
         error={formError && createDialogOpen ? formError : null}
       />
 
-      <WalletBalanceEditDialog
-        wallet={balanceWallet}
-        ownerQueryString={ownerQueryString}
-        onOpenChange={(open) => {
-          if (!open) setBalanceWallet(null);
-        }}
-        onSaved={(walletId, newAmount) => {
-          setWallets((prev) => {
-            const next = prev.map((w) =>
-              w.id === walletId ? { ...w, amount: newAmount } : w,
+      {balanceWallet && context ? (
+        <WalletBalanceDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setBalanceWallet(null);
+          }}
+          walletId={balanceWallet.id}
+          walletName={balanceWallet.name}
+          currentAmount={Number(balanceWallet.amount) || 0}
+          context={context}
+          variant={isCreditType(balanceWallet.type) ? 'credit' : 'funding'}
+          creditLimit={getEffectiveCreditLimit({
+            credit_limit: balanceWallet.credit_limit,
+            temporary_credit_limit: balanceWallet.temporary_credit_limit,
+          })}
+          onSuccess={(newAmount) => {
+            setWallets((prev) => {
+              const next = prev.map((w) =>
+                w.id === balanceWallet.id ? { ...w, amount: newAmount } : w,
+              );
+              const key = walletListOwnerKey(context);
+              if (key) setWalletListCache(key, next);
+              return next;
+            });
+            setBalanceWallet((prev) =>
+              prev && prev.id === balanceWallet.id
+                ? { ...prev, amount: newAmount }
+                : prev,
             );
-            const key = walletListOwnerKey(context);
-            if (key) setWalletListCache(key, next);
-            return next;
-          });
-          setBalanceWallet((prev) =>
-            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
-          );
-        }}
-      />
+          }}
+        />
+      ) : null}
 
       <WalletTransferDialog
         open={transferWallet != null}
@@ -1617,7 +1532,7 @@ export default function WalletsPage() {
             error={formError && editDialogOpen ? formError : null}
           />
 
-          <ConfirmDeleteDialog
+          <WalletDeleteDialog
             open={deleteDialogOpen}
             onOpenChange={(open) => {
               setDeleteDialogOpen(open);

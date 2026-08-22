@@ -23,14 +23,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const DETAIL_BALANCE_INPUT_ID = 'wallet-detail-balance-input';
 
-type WalletBalanceDialogProps = {
+export type WalletBalanceDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   walletId: number;
   walletName: string;
   currentAmount: number;
   context: FinanceContextType;
-  onSuccess: () => void;
+  /** Called after a successful PATCH with the persisted amount. */
+  onSuccess: (newAmount: number) => void;
   /**
    * `credit`: saldo utilizado en TC / tienda (no crea movimientos).
    * `funding` (default): efectivo / débito.
@@ -41,9 +42,8 @@ type WalletBalanceDialogProps = {
 };
 
 /**
- * Modal de ajuste rápido de saldo en la página de detalle de una billetera
- * (`/wallets/[id]`) o deuda en tarjeta (`/credit-cards/[id]`).
- * Distinto de {@link WalletBalanceEditDialog} (listas / strip).
+ * Shared overlay to adjust wallet balance / credit debt (Dialog desktop,
+ * Sheet mobile). Used from wallet lists, strips, liquidity, and detail pages.
  */
 export default function WalletBalanceDialog({
   open,
@@ -120,7 +120,7 @@ export default function WalletBalanceDialog({
         context,
       );
       toast.success(isCredit ? 'Deuda actualizada' : 'Saldo actualizado');
-      onSuccess();
+      onSuccess(parsed);
       onOpenChange(false);
     } catch (error) {
       toast.error(

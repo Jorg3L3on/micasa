@@ -54,5 +54,6 @@ export const monthScheduledDebtTotal = (month: {
 export const LIQUIDITY_PROJECTION_ASSUMPTIONS_ES: readonly string[] = [
   'Las fechas de estado usan el mismo calendario UTC que el motor de cortes y vencimientos.',
   'Cada periodo futuro solo suma cargos ya registrados y pagos a estado ya aplicados en la app; no se inventan compras futuras.',
+  'El saldo actual de una tarjeta solo estima el próximo vencimiento cuando no hay estado/ledger; no se repite mes a mes en el horizonte.',
   'El efectivo y débito son una foto de saldos actuales; no entran ingresos futuros ni otros gastos no ligados a tarjetas en esta proyección.',
 ];

@@ -20,10 +20,13 @@ import { MicasaMark } from '@/components/brand/micasa-mark';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { AlertsBell } from '@/components/AlertsBell';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 
 /** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
@@ -132,6 +135,12 @@ export function AppSidebar({
         <SidebarContent>
           <NavMain groupLabel="Menú" items={menuItems} />
         </SidebarContent>
+        <SidebarFooter className="gap-1 border-t border-sidebar-border">
+          <div className="flex items-center justify-between gap-2 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center">
+            <AlertsBell />
+            <ThemeToggle />
+          </div>
+        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
     </>

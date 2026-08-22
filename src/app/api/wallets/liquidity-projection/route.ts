@@ -1,12 +1,16 @@
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import { parseCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
-  defaultLiquidityUntilFromAsOf,
   getLiquidityProjection,
 } from '@/lib/finance/liquidity-projection.service';
 import { liquidityProjectionToCsv } from '@/lib/finance/liquidity-projection-csv';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
+import {
+  isLiquidityChartRangeId,
+  monthKeyToUntilDate,
+  resolveLiquidityChartRange,
+} from '@/lib/finance/liquidity-chart-range';
 
 const parseOptionalBool = (value: string | null): boolean | undefined => {
   if (value == null) return undefined;
@@ -43,11 +47,17 @@ export async function GET(request: NextRequest) {
     const includeTemplates = parseOptionalBool(
       searchParams.get('includeTemplates'),
     );
+    const chartRangeParam = searchParams.get('chartRange');
 
     const asOf = new Date();
+    const asOfYmd = formatCalendarDate(asOf);
+    const chartRange = isLiquidityChartRangeId(chartRangeParam)
+      ? chartRangeParam
+      : 'plus_minus_3';
+    const chartBounds = resolveLiquidityChartRange(chartRange, asOfYmd);
     const until = untilParam
       ? parseCalendarDate(untilParam)
-      : defaultLiquidityUntilFromAsOf(asOf);
+      : monthKeyToUntilDate(chartBounds.toMonthKey);
 
     if (Number.isNaN(until.getTime())) {
       return NextResponse.json(
@@ -60,6 +70,7 @@ export async function GET(request: NextRequest) {
       ownerFilter: context.ownerFilter,
       asOf,
       until,
+      fromMonthKey: chartBounds.fromMonthKey,
       omitZeroObligations: omitZeroParam ?? true,
       stressCyclePercent,
       includeUnpaidExpenses: includeUnpaid ?? true,

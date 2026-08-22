@@ -24,7 +24,13 @@ import {
 import {
   buildMonthDebtItems,
   type MonthDebtItem,
+  monthDebtItemsTotal,
 } from '@/lib/finance/liquidity-month-debt-items';
+import {
+  buildMonthKeyRange,
+  compareMonthKeys,
+} from '@/lib/finance/liquidity-chart-range';
+import { loadHistoricalOutstandingByMonth } from '@/lib/finance/liquidity-outstanding-debt.service';
 import {
   addDaysUtc,
   compareUtcDateOnly,
@@ -118,6 +124,8 @@ export type GetLiquidityProjectionInput = {
   ownerFilter: OwnerFilter;
   asOf?: Date;
   until: Date;
+  /** First month in chart series (YYYY-MM). Defaults to current month. */
+  fromMonthKey?: string;
   omitZeroObligations?: boolean;
   /** 0–100: sobre periodos con estado cerrado en $0, añade % del gasto del ciclo actual en curso. */
   stressCyclePercent?: number;
@@ -136,6 +144,8 @@ export type LiquidityMonthlySeriesItem = {
   total_payments_due: number;
   remaining_payments_from_month: number;
   monthly_remaining: number;
+  /** Total credit/store + loan balance outstanding at month-end. */
+  outstanding_debt_total: number;
   debt_items: MonthDebtItem[];
 };
 
@@ -193,23 +203,6 @@ const toMonthKeyUtc = (date: Date | string) => {
       : date;
   const ymd = formatCalendarDate(d);
   return ymd.slice(0, 7);
-};
-
-const buildMonthKeyRange = (asOf: string, until: string): string[] => {
-  let [year, month] = asOf.split('-').map(Number);
-  const [untilYear, untilMonth] = until.split('-').map(Number);
-  const months: string[] = [];
-
-  while (year < untilYear || (year === untilYear && month <= untilMonth)) {
-    months.push(`${year}-${String(month).padStart(2, '0')}`);
-    month += 1;
-    if (month > 12) {
-      month = 1;
-      year += 1;
-    }
-  }
-
-  return months;
 };
 
 const mergeMoneyByMonthKey = (
@@ -577,6 +570,17 @@ export const getLiquidityProjection = async (
   const asOf = input.asOf ?? new Date();
   const asOfStr = toUtcDateOnlyString(asOf);
   const untilStr = toUtcDateOnlyString(input.until);
+  const currentMonthKey = asOfStr.slice(0, 7);
+  const fromMonthKey = input.fromMonthKey ?? currentMonthKey;
+  const toMonthKey = untilStr.slice(0, 7);
+
+  if (compareMonthKeys(fromMonthKey, toMonthKey) > 0) {
+    const error = new Error(
+      'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.',
+    );
+    (error as { code?: string }).code = 'INVALID_HORIZON';
+    throw error;
+  }
 
   if (compareUtcDateOnly(untilStr, asOfStr) < 0) {
     const error = new Error(
@@ -725,6 +729,7 @@ export const getLiquidityProjection = async (
     if (!head) continue;
 
     let cursor = asOf;
+    let allowOutstandingBalanceFallback = true;
 
     for (let i = 0; i < LIQUIDITY_MAX_CYCLES_PER_CARD_GROUP; i += 1) {
       const window = resolveCreditCardStatementWindow(
@@ -738,7 +743,10 @@ export const getLiquidityProjection = async (
         break;
       }
 
-      const asOfYmd = toUtcDateOnlyString(cursor);
+      // Real asOf for open-cycle estimates; future cursors must not invent dues.
+      const asOfYmd = allowOutstandingBalanceFallback
+        ? asOfStr
+        : toUtcDateOnlyString(cursor);
       const ledgerCards: CardObligationFromLedgerInput[] = cardIds.map((id) => {
         const meta = cardMeta.get(id)!;
         return {
@@ -762,6 +770,7 @@ export const getLiquidityProjection = async (
         ledger.expenses,
         ledger.payments,
         asOfYmd,
+        { allowOutstandingBalanceFallback },
       );
 
       const statementStart = toUtcDateOnlyString(window.statementStart);
@@ -811,6 +820,8 @@ export const getLiquidityProjection = async (
         break;
       }
       cursor = nextCursor;
+      // Only the current statement window may fall back to today's wallet debt.
+      allowOutstandingBalanceFallback = false;
     }
   }
 
@@ -848,7 +859,7 @@ export const getLiquidityProjection = async (
   }
 
   const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
-  const monthKeys = buildMonthKeyRange(asOfStr, untilStr);
+  const monthKeys = buildMonthKeyRange(fromMonthKey, toMonthKey);
   const timeline = await collectLiquidityProjectionTimeline(
     input.ownerFilter,
     asOf,
@@ -987,9 +998,30 @@ export const getLiquidityProjection = async (
       total_payments_due,
       remaining_payments_from_month: 0,
       monthly_remaining,
+      outstanding_debt_total: 0,
       debt_items: debtItemsByMonth.get(month_key) ?? [],
     };
   });
+
+  const historicalByMonth = await loadHistoricalOutstandingByMonth(
+    input.ownerFilter,
+    monthKeys,
+    asOfStr,
+  );
+
+  for (const month of monthly_series) {
+    const historical = historicalByMonth.get(month.month_key);
+    if (historical) {
+      month.debt_items = historical.debt_items;
+      month.outstanding_debt_total = historical.outstanding_debt_total;
+      if (compareMonthKeys(month.month_key, currentMonthKey) < 0) {
+        month.total_payments_due = historical.payments_due_total;
+        month.monthly_remaining = month.expected_income_total - historical.payments_due_total;
+      }
+      continue;
+    }
+    month.outstanding_debt_total = monthDebtItemsTotal(month.debt_items);
+  }
 
   let remainingFromMonth = 0;
   for (let i = monthly_series.length - 1; i >= 0; i -= 1) {

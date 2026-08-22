@@ -5,7 +5,10 @@ export type MonthDebtItem = {
   kind: MonthDebtItemKind;
   title: string;
   subtitle: string;
+  /** Remaining balance owed as of this month (projection), or paid amount (past). */
   amount: number;
+  /** Payment due this month for cash-flow chart/metrics. */
+  payment_amount?: number;
 };
 
 type ObligationLike = {
@@ -24,7 +27,12 @@ type MilestoneLike = {
   obligations: ObligationLike[];
 };
 
-type MsiTrackLike = {
+type TrackScheduleEntry = {
+  month_key: string;
+  amount: number;
+};
+
+type DebtTrackLike = {
   id: string;
   kind: string;
   title: string;
@@ -32,9 +40,11 @@ type MsiTrackLike = {
   start_month_key: string;
   end_month_key: string;
   monthly_amount: number;
+  schedule?: TrackScheduleEntry[];
   wallet_name?: string;
 };
 
+/** @deprecated Payroll rows are folded into loan tracks with schedules. */
 export type PayrollDebtLineItem = {
   month_key: string;
   loan_id: number;
@@ -45,11 +55,59 @@ export type PayrollDebtLineItem = {
 
 const monthKeyFromYmd = (ymd: string): string => ymd.slice(0, 7);
 
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const remainingBalanceFromSchedule = (
+  schedule: readonly TrackScheduleEntry[],
+  monthKey: string,
+): number =>
+  roundMoney(
+    schedule
+      .filter((entry) => entry.month_key >= monthKey)
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  );
+
+const paymentDueInMonth = (
+  schedule: readonly TrackScheduleEntry[],
+  monthKey: string,
+): number =>
+  roundMoney(
+    schedule
+      .filter((entry) => entry.month_key === monthKey)
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  );
+
+const scheduleForTrack = (track: DebtTrackLike): TrackScheduleEntry[] => {
+  if (track.schedule && track.schedule.length > 0) {
+    return track.schedule;
+  }
+  // Fallback for tracks without an explicit schedule (monthly annuity).
+  const entries: TrackScheduleEntry[] = [];
+  let [year, month] = track.start_month_key.split('-').map(Number);
+  const end = track.end_month_key;
+  while (true) {
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    if (key > end) break;
+    entries.push({ month_key: key, amount: track.monthly_amount });
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return entries;
+};
+
+/**
+ * Builds per-month debt concepts.
+ * `amount` is remaining balance as of that month (declines after each cuota).
+ * `payment_amount` is what is due that month (for cash-flow chart/metrics).
+ */
 export const buildMonthDebtItems = (
   monthKeys: string[],
   milestones: MilestoneLike[],
-  msiTracks: MsiTrackLike[],
-  payrollItems: PayrollDebtLineItem[],
+  debtTracks: DebtTrackLike[],
+  _payrollItems: PayrollDebtLineItem[] = [],
 ): Map<string, MonthDebtItem[]> => {
   const map = new Map<string, MonthDebtItem[]>();
   for (const key of monthKeys) {
@@ -62,64 +120,52 @@ export const buildMonthDebtItems = (
     list.push(item);
   };
 
+  // Revolving card statement dues (current cycle estimate / ledger).
   for (const milestone of milestones) {
     const key = monthKeyFromYmd(milestone.due_date);
     for (const obligation of milestone.obligations) {
-      if (obligation.source === 'credit_card_statement') {
-        push(key, {
-          id: `card-${obligation.wallet_id}-${milestone.due_date}`,
-          kind: 'card',
-          title: obligation.wallet_name,
-          subtitle: 'Pago de tarjeta',
-          amount: obligation.next_due_payment,
-        });
-        continue;
-      }
-      if (obligation.source === 'loan_payment') {
-        push(key, {
-          id: `loan-${obligation.loan_id ?? obligation.loan_payment_id}-${milestone.due_date}`,
-          kind: 'loan',
-          title: obligation.loan_name ?? 'Préstamo',
-          subtitle: obligation.lender ?? 'Préstamo',
-          amount: obligation.next_due_payment,
-        });
-      }
-    }
-  }
-
-  for (const track of msiTracks) {
-    if (track.kind !== 'msi') continue;
-    for (const key of monthKeys) {
-      if (key < track.start_month_key || key > track.end_month_key) continue;
+      if (obligation.source !== 'credit_card_statement') continue;
       push(key, {
-        id: `${track.id}-${key}`,
-        kind: 'msi',
-        title: track.title,
-        subtitle: track.wallet_name ?? track.subtitle,
-        amount: track.monthly_amount,
+        id: `card-${obligation.wallet_id}-${milestone.due_date}`,
+        kind: 'card',
+        title: obligation.wallet_name,
+        subtitle: 'Adeudo de tarjeta',
+        amount: obligation.next_due_payment,
+        payment_amount: obligation.next_due_payment,
       });
     }
   }
 
-  const payrollMerged = new Map<string, PayrollDebtLineItem>();
-  for (const item of payrollItems) {
-    if (item.amount <= 0) continue;
-    const mergeKey = `${item.month_key}-${item.loan_id}`;
-    const previous = payrollMerged.get(mergeKey);
-    if (previous) {
-      previous.amount += item.amount;
-      continue;
+  for (const track of debtTracks) {
+    if (track.kind !== 'loan' && track.kind !== 'msi') continue;
+    const schedule = scheduleForTrack(track);
+    if (schedule.length === 0) continue;
+
+    const firstMonth = schedule[0]!.month_key;
+    const lastMonth = schedule[schedule.length - 1]!.month_key;
+
+    for (const key of monthKeys) {
+      if (key < firstMonth || key > lastMonth) continue;
+      // Only show while the track is still active in the visible horizon window.
+      if (key < track.start_month_key || key > track.end_month_key) continue;
+
+      const remaining = remainingBalanceFromSchedule(schedule, key);
+      if (remaining <= 0) continue;
+
+      const payment = paymentDueInMonth(schedule, key);
+      const kind: MonthDebtItemKind = track.kind === 'msi' ? 'msi' : 'loan';
+      push(key, {
+        id: `${track.id}-${key}`,
+        kind,
+        title: track.title,
+        subtitle:
+          kind === 'msi'
+            ? (track.wallet_name ?? track.subtitle)
+            : track.subtitle,
+        amount: remaining,
+        payment_amount: payment,
+      });
     }
-    payrollMerged.set(mergeKey, { ...item });
-  }
-  for (const item of payrollMerged.values()) {
-    push(item.month_key, {
-      id: `payroll-${item.loan_id}-${item.month_key}`,
-      kind: 'loan',
-      title: item.title,
-      subtitle: item.subtitle,
-      amount: item.amount,
-    });
   }
 
   for (const list of map.values()) {
@@ -137,8 +183,6 @@ export type MonthDebtItemInput = {
   subtitle: string;
   amount: number;
 };
-
-const roundMoney = (value: number): number => Math.round(value * 100) / 100;
 
 const sortMonthDebtItems = (list: MonthDebtItem[]): void => {
   list.sort((a, b) => {
@@ -188,5 +232,10 @@ export const groupDebtItemsByMonth = (
 export const pastLoanDebtSubtitle = (paymentSource: string, lender: string): string =>
   paymentSource === 'PAYROLL_DEDUCTION' ? `Nómina · ${lender}` : lender;
 
+/** Sum of remaining balances (projection table total). */
 export const monthDebtItemsTotal = (items: readonly MonthDebtItem[]): number =>
   items.reduce((sum, item) => sum + item.amount, 0);
+
+/** Sum of payments due this month (chart / “Deudas de este mes”). */
+export const monthDebtPaymentsTotal = (items: readonly MonthDebtItem[]): number =>
+  items.reduce((sum, item) => sum + (item.payment_amount ?? 0), 0);

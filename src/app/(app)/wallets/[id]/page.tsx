@@ -1,8 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  startTransition,
+  ViewTransition,
+} from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import {
+  ArrowLeftRight,
+  Diff,
+  Download,
+  Pencil,
+  SlidersHorizontal,
+  Upload,
+} from 'lucide-react';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
@@ -17,11 +32,14 @@ import type {
 import type { WalletFormValues } from '@/schemas/wallet.schema';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { ViewTransition } from 'react';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  useRegisterToolbarActions,
+  type ToolbarOverflowItem,
+} from '@/context/toolbar-actions-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { getCreditCardPaymentPlan, createCreditCardPayment, updateCreditCard } from '@/lib/api/credit-cards';
 import { getPaymentMethodOptions, updateWallet } from '@/lib/api/wallets';
@@ -35,7 +53,6 @@ import {
 } from '@/lib/finance/wallet-period-analytics';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
-import { cn } from '@/lib/utils';
 import type {
   WalletDetail,
   WalletMovementsResponse,
@@ -43,13 +60,11 @@ import type {
 import type { CreditCardPaymentPlanView, CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import {
-  WalletDetailHeaderActions,
   WalletDetailTabsList,
   WalletDetailTabTrigger,
   WalletHeroZone,
   WalletPeriodWorkspaceShell,
   WalletPeriodSummary,
-  WalletQuickActions,
   WalletVisualHero,
 } from '@/components/wallets/WalletDetailSections';
 import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
@@ -89,10 +104,6 @@ const WalletDetailSkeleton = ({ walletId }: { walletId: number }) => (
   <DirectionalTransition>
     <div className="space-y-0">
       <div className="relative -mx-4 space-y-5 px-4 pb-2 sm:-mx-0 sm:pb-3">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="h-9 w-9 rounded-lg" />
-        </div>
         <ViewTransition
           name={walletCardViewTransitionName(walletId)}
           share="morph"
@@ -193,8 +204,6 @@ export default function WalletDetailPage() {
     router.replace(nextQs ? `${pathname}?${nextQs}` : pathname, { scroll: false });
   }, [activeTab, pathname, range.from, range.to, router, searchParams]);
 
-  const backHref = `/wallets${ownerQueryString}`;
-
   const canImport = wallet?.type === 'CASH' || wallet?.type === 'DEBIT_CARD';
   const isCreditWallet =
     wallet?.type === 'CREDIT_CARD' || wallet?.type === 'DEPARTMENT_STORE_CARD';
@@ -214,20 +223,25 @@ export default function WalletDetailPage() {
         undefined,
         context,
       );
-      setWallet(detail);
       if (detail.type === 'GOAL') {
+        setWallet(detail);
+        setHeroLoading(false);
         const qs = searchParams.toString();
         router.replace(`/metas/${walletId}${qs ? `?${qs}` : ''}`);
         return null;
       }
+      // Activate share morph for placeholder → real hero (same VT name).
+      startTransition(() => {
+        setWallet(detail);
+        setHeroLoading(false);
+      });
       return detail;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al cargar la billetera',
       );
-      return null;
-    } finally {
       setHeroLoading(false);
+      return null;
     }
   }, [context, walletId, router, searchParams]);
 
@@ -472,6 +486,23 @@ export default function WalletDetailPage() {
     setTransactionOpen(true);
   }, []);
 
+  const handleOpenTransfer = useCallback(() => {
+    setTransferOpen(true);
+  }, []);
+
+  const handleOpenBalance = useCallback(() => {
+    setBalanceOpen(true);
+  }, []);
+
+  const handleOpenEdit = useCallback(() => {
+    setEditError(null);
+    setEditOpen(true);
+  }, []);
+
+  const handleOpenImport = useCallback(() => {
+    setImportOpen(true);
+  }, []);
+
   const handleEditWallet = useCallback(
     async (formData: WalletFormValues) => {
       if (!wallet) return;
@@ -518,6 +549,73 @@ export default function WalletDetailPage() {
     [analytics.averageDailyOutflow, wallet],
   );
 
+  const registrarIcon = useMemo(
+    () => <Diff className="size-5" data-icon="inline-start" />,
+    [],
+  );
+
+  const overflowItems = useMemo((): ToolbarOverflowItem[] => {
+    if (!wallet) return [];
+    const items: ToolbarOverflowItem[] = [];
+    if (canImport) {
+      items.push({
+        key: 'transfer',
+        label: 'Transferir',
+        onClick: handleOpenTransfer,
+        icon: <ArrowLeftRight data-icon="inline-start" />,
+      });
+    }
+    items.push(
+      {
+        key: 'adjust',
+        label: 'Ajustar',
+        onClick: handleOpenBalance,
+        icon: <SlidersHorizontal data-icon="inline-start" />,
+      },
+      {
+        key: 'edit',
+        label: 'Editar',
+        onClick: handleOpenEdit,
+        icon: <Pencil data-icon="inline-start" />,
+      },
+    );
+    if (canImport) {
+      items.push({
+        key: 'import',
+        label: 'Importar CSV',
+        onClick: handleOpenImport,
+        icon: <Upload data-icon="inline-start" />,
+      });
+    }
+    items.push({
+      key: 'export',
+      label: 'Exportar CSV',
+      onClick: handleExportCsv,
+      icon: <Download data-icon="inline-start" />,
+    });
+    return items;
+  }, [
+    wallet,
+    canImport,
+    handleExportCsv,
+    handleOpenTransfer,
+    handleOpenBalance,
+    handleOpenEdit,
+    handleOpenImport,
+  ]);
+
+  useRegisterToolbarActions({
+    primaryAction:
+      wallet && canImport
+        ? {
+            label: 'Registrar',
+            onClick: handleOpenExpense,
+            icon: registrarIcon,
+          }
+        : null,
+    overflow: overflowItems.length > 0 ? { items: overflowItems } : null,
+  });
+
   if (context.id === 0 || (heroLoading && !wallet)) {
     return <WalletDetailSkeleton walletId={walletId} />;
   }
@@ -536,8 +634,6 @@ export default function WalletDetailPage() {
     <DirectionalTransition>
     <div className="relative">
       <WalletHeroZone wallet={wallet}>
-        <WalletDetailHeaderActions backHref={backHref} />
-
         <ViewTransition
           name={walletCardViewTransitionName(wallet.id)}
           share="morph"
@@ -548,27 +644,6 @@ export default function WalletDetailPage() {
       </WalletHeroZone>
 
       <div className="relative">
-        <div
-          className={cn(
-            'z-30 md:sticky md:top-16 md:px-1 md:py-7',
-            'md:group-has-data-[collapsible=icon]/sidebar-wrapper:top-12',
-          )}
-        >
-          <WalletQuickActions
-            canImport={canImport}
-            canTransfer={canImport}
-            onAddTransaction={handleOpenExpense}
-            onEditWallet={() => {
-              setEditError(null);
-              setEditOpen(true);
-            }}
-            onImport={() => setImportOpen(true)}
-            onAdjustBalance={() => setBalanceOpen(true)}
-            onExportCsv={handleExportCsv}
-            onTransfer={() => setTransferOpen(true)}
-          />
-        </div>
-
       {bodyPending ? (
         <div
           className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm"

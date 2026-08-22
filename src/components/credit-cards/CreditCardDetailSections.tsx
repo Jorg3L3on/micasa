@@ -1,35 +1,19 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useMemo, type MouseEvent, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   CalendarClock,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Download,
-  FileText,
   Landmark,
-  MoreHorizontal,
   Pencil,
   Receipt,
   RotateCcw,
-  ShoppingCart,
-  SlidersHorizontal,
-  Upload,
-  Wallet,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -41,7 +25,6 @@ import {
   creditCardSegmentedTabChromeClass,
   creditCardSegmentedTabListClass,
 } from '@/components/credit-cards/credit-card-segmented-tabs';
-import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import {
   kpiMetricCardShellClass,
   kpiMetricLabelClass,
@@ -228,96 +211,6 @@ export const CreditCardCycleSpendingBar = ({
   );
 };
 
-type HeaderActionsProps = {
-  card: CreditCardListItem;
-  backHref: string;
-  onOpenImportDialog: () => void;
-  onExportCsv: () => void;
-  onExportPdf: () => void;
-  onEditCard: () => void;
-  onAdjustBalance?: () => void;
-};
-
-export const CreditCardDetailHeaderActions = ({
-  card,
-  backHref,
-  onOpenImportDialog,
-  onExportCsv,
-  onExportPdf,
-  onEditCard,
-  onAdjustBalance,
-}: HeaderActionsProps) => {
-  const router = useRouter();
-
-  const handleBack = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    ) {
-      return;
-    }
-    event.preventDefault();
-    navigateWithTransitionType(backHref, 'nav-back', (href) =>
-      router.push(href),
-    );
-  };
-
-  return (
-  <div className="flex items-center justify-between gap-2">
-    <Link
-      href={backHref}
-      onClick={handleBack}
-      className="inline-flex h-9 min-w-0 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      aria-label="Volver a billeteras"
-    >
-      <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden data-icon="inline-start" />
-      <span className="truncate sm:inline">Billeteras</span>
-    </Link>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          aria-label={`Más acciones para ${card.name}`}
-        >
-          <MoreHorizontal className="h-5 w-5" data-icon="inline-start" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem onClick={onEditCard} className="cursor-pointer">
-          <Pencil className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Editar tarjeta
-        </DropdownMenuItem>
-        {onAdjustBalance ? (
-          <DropdownMenuItem onClick={onAdjustBalance} className="cursor-pointer">
-            <SlidersHorizontal className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-            Ajustar deuda
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem onClick={onOpenImportDialog} className="cursor-pointer">
-          <Upload className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Importar estado de cuenta
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onExportCsv} className="cursor-pointer">
-          <Download className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Exportar CSV
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onExportPdf} className="cursor-pointer">
-          <FileText className="mr-2 h-4 w-4 shrink-0" data-icon="inline-start" />
-          Exportar PDF
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </div>
-  );
-};
-
 type VisualHeroProps = {
   card: CreditCardListItem;
   statement: CreditCardStatementResponse;
@@ -344,7 +237,9 @@ export const CreditCardVisualHero = ({
     >
       <div
         className={cn(
-          'relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl border p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          // Grow with content (no fixed aspect): utilization + amounts clip on
+          // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
+          'relative w-full overflow-hidden rounded-[1.375rem] border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             'border-slate-500/40 bg-linear-to-br from-slate-700 via-slate-900 to-slate-950',
         )}
@@ -363,7 +258,7 @@ export const CreditCardVisualHero = ({
           aria-hidden
         />
 
-        <div className="relative flex h-full flex-col justify-between">
+        <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {card.provider_icon_key ? (
@@ -395,7 +290,7 @@ export const CreditCardVisualHero = ({
               <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
                 Deuda actual
               </p>
-              <p className="text-3xl font-bold font-mono tabular-nums tracking-tight sm:text-4xl">
+              <p className="text-3xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(statement.outstanding_balance)}
               </p>
             </div>
@@ -407,7 +302,7 @@ export const CreditCardVisualHero = ({
                 </p>
                 <p
                   className={cn(
-                    'font-mono text-sm font-semibold tabular-nums',
+                    'font-mono text-sm font-semibold tabular-nums leading-snug',
                     (statement.available_credit ?? 0) < 0 && 'text-red-200',
                   )}
                 >
@@ -421,7 +316,7 @@ export const CreditCardVisualHero = ({
                   <p className="text-[9px] uppercase tracking-wider opacity-70">
                     Límite
                   </p>
-                  <p className="font-mono text-sm font-semibold tabular-nums">
+                  <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
                     {formatCurrency(limit)}
                   </p>
                 </div>
@@ -516,93 +411,7 @@ export const CreditCardDuePaymentStrip = ({
   );
 };
 
-type QuickActionsProps = {
-  onOpenPaymentDialog: () => void;
-  onOpenExternalPaymentDialog: () => void;
-  onOpenPurchaseDialog: () => void;
-  onOpenImportDialog: () => void;
-  onAdjustBalance?: () => void;
-};
-
-export const CreditCardQuickActions = ({
-  onOpenPaymentDialog,
-  onOpenExternalPaymentDialog,
-  onOpenPurchaseDialog,
-  onOpenImportDialog,
-  onAdjustBalance,
-}: QuickActionsProps) => {
-  const actions: {
-    key: string;
-    label: string;
-    ariaLabel?: string;
-    icon: typeof Wallet;
-    onClick: () => void;
-  }[] = [
-    {
-      key: 'pay',
-      label: 'Pagar',
-      icon: Wallet,
-      onClick: onOpenPaymentDialog,
-    },
-    {
-      key: 'external',
-      label: 'Ya pagado',
-      ariaLabel: 'Registrar pago histórico sin descontar billetera',
-      icon: CheckCircle2,
-      onClick: onOpenExternalPaymentDialog,
-    },
-    {
-      key: 'purchase',
-      label: 'Compra',
-      icon: ShoppingCart,
-      onClick: onOpenPurchaseDialog,
-    },
-    {
-      key: 'import',
-      label: 'Estado de cuenta',
-      ariaLabel: 'Importar estado de cuenta',
-      icon: Upload,
-      onClick: onOpenImportDialog,
-    },
-    ...(onAdjustBalance
-      ? [
-          {
-            key: 'adjust',
-            label: 'Ajustar',
-            icon: SlidersHorizontal,
-            onClick: onAdjustBalance,
-          },
-        ]
-      : []),
-  ];
-
-  return (
-    <div
-      className="flex justify-around gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide sm:justify-center sm:gap-6"
-      role="group"
-      aria-label="Acciones rápidas"
-    >
-      {actions.map(({ key, label, ariaLabel, icon: Icon, onClick }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={onClick}
-          className="flex min-w-[4.25rem] shrink-0 flex-col items-center gap-2 transition-opacity hover:opacity-90 active:opacity-75"
-          aria-label={ariaLabel ?? label}
-        >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-background/85 shadow-sm transition-colors hover:bg-muted/40 dark:bg-background/60">
-            <Icon className="h-5 w-5 text-foreground" aria-hidden data-icon="inline-start" />
-          </span>
-          <span className="max-w-[4.5rem] text-center text-[11px] font-medium leading-tight text-muted-foreground">
-            {label}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-};
-
-/** @deprecated Use CreditCardDuePaymentStrip + CreditCardQuickActions */
+/** @deprecated Use CreditCardDuePaymentStrip */
 export const CreditCardNextPaymentHero = CreditCardDuePaymentStrip;
 
 type CycleSummaryProps = {
