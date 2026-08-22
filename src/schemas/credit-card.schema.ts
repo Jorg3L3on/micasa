@@ -27,30 +27,113 @@ export const createCreditCardPurchaseSchema = withCreditInstallmentPairRefine(
   }),
 );
 
+const paymentAmountSchema = positiveAmountSchema.refine((value) => value > 0, {
+  message: 'El monto debe ser mayor a 0',
+});
+
+const walletPaymentFields = z.object({
+  source_wallet_id: positiveIntSchema,
+  create_fortnight_expense: z.boolean().optional(),
+  fortnight_id: positiveIntSchema.optional(),
+  category_id: positiveIntSchema.optional(),
+  expense_description: z.string().trim().max(200).optional().nullable(),
+});
+
 export const createCreditCardPaymentSchema = z
-  .object({
-    source_wallet_id: positiveIntSchema,
-    amount: positiveAmountSchema.refine((value) => value > 0, {
-      message: 'El monto debe ser mayor a 0',
+  .discriminatedUnion('mode', [
+    z
+      .object({
+        mode: z.literal('wallet'),
+        amount: paymentAmountSchema,
+        paid_at: dateStringSchema,
+        note: z.string().trim().max(200).optional().nullable(),
+      })
+      .merge(walletPaymentFields)
+      .superRefine((data, ctx) => {
+        if (data.create_fortnight_expense === true && data.category_id == null) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'Selecciona una categoría para registrar el gasto en la quincena',
+            path: ['category_id'],
+          });
+        }
+      }),
+    z.object({
+      mode: z.literal('external'),
+      amount: paymentAmountSchema,
+      paid_at: dateStringSchema,
+      note: z.string().trim().max(200).optional().nullable(),
+      /** When false, only records the payment without reducing card debt. */
+      adjusts_debt: z.boolean().optional(),
     }),
-    paid_at: dateStringSchema,
-    note: z.string().trim().max(200).optional().nullable(),
-    /** When true, creates a paid Expense in the fortnight of paid_at (category_id required). */
-    create_fortnight_expense: z.boolean().optional(),
-    /** When set, expense is created in this fortnight instead of deriving from paid_at. */
-    fortnight_id: positiveIntSchema.optional(),
-    category_id: positiveIntSchema.optional(),
-    expense_description: z.string().trim().max(200).optional().nullable(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.create_fortnight_expense === true && data.category_id == null) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Selecciona una categoría para registrar el gasto en la quincena',
-        path: ['category_id'],
-      });
+  ])
+  .or(
+    z
+      .object({
+        source_wallet_id: positiveIntSchema,
+        amount: paymentAmountSchema,
+        paid_at: dateStringSchema,
+        note: z.string().trim().max(200).optional().nullable(),
+        create_fortnight_expense: z.boolean().optional(),
+        fortnight_id: positiveIntSchema.optional(),
+        category_id: positiveIntSchema.optional(),
+        expense_description: z.string().trim().max(200).optional().nullable(),
+      })
+      .superRefine((data, ctx) => {
+        if (data.create_fortnight_expense === true && data.category_id == null) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'Selecciona una categoría para registrar el gasto en la quincena',
+            path: ['category_id'],
+          });
+        }
+      }),
+  );
+
+export const normalizeCreditCardPaymentInput = (
+  input: z.infer<typeof createCreditCardPaymentSchema>,
+) => {
+  if ('mode' in input) {
+    if (input.mode === 'external') {
+      return {
+        mode: 'external' as const,
+        amount: input.amount,
+        paid_at: input.paid_at,
+        note: input.note ?? null,
+        adjusts_debt: input.adjusts_debt ?? true,
+      };
     }
-  });
+    return {
+      mode: 'wallet' as const,
+      amount: input.amount,
+      paid_at: input.paid_at,
+      note: input.note ?? null,
+      source_wallet_id: input.source_wallet_id,
+      create_fortnight_expense: input.create_fortnight_expense,
+      fortnight_id: input.fortnight_id,
+      category_id: input.category_id,
+      expense_description: input.expense_description ?? null,
+    };
+  }
+
+  return {
+    mode: 'wallet' as const,
+    amount: input.amount,
+    paid_at: input.paid_at,
+    note: input.note ?? null,
+    source_wallet_id: input.source_wallet_id,
+    create_fortnight_expense: input.create_fortnight_expense,
+    fortnight_id: input.fortnight_id,
+    category_id: input.category_id,
+    expense_description: input.expense_description ?? null,
+  };
+};
+
+export type NormalizedCreditCardPaymentInput = ReturnType<
+  typeof normalizeCreditCardPaymentInput
+>;
 
 export const creditCardStatementQuerySchema = z.object({
   asOf: z.string().date().optional(),

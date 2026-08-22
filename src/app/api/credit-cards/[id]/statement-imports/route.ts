@@ -181,6 +181,10 @@ export async function POST(
 
     const storeFile = formData.get('store_file') !== 'false';
     const skipDuplicates = formData.get('skip_duplicates') === 'true';
+    const importCharges = formData.get('import_charges') !== 'false';
+    const importPayments = formData.get('import_payments') !== 'false';
+    const importMsiSchedule = formData.get('import_msi_schedule') !== 'false';
+    const adjustWalletDebt = formData.get('adjust_wallet_debt') !== 'false';
     const categoryField = formData.get('category_id');
     let categoryId: number | null = null;
     if (typeof categoryField === 'string' && categoryField.trim()) {
@@ -202,12 +206,20 @@ export async function POST(
       categoryId,
       skipDuplicates,
       createdByUserId: createdBy,
+      commitOptions: {
+        import_charges: importCharges,
+        import_payments: importPayments,
+        import_msi_schedule: importMsiSchedule,
+        adjust_wallet_debt: adjustWalletDebt,
+      },
     });
 
     return NextResponse.json(
       {
         import_id: result.importId,
         expenses_created: result.expensesCreated,
+        payments_created: result.paymentsCreated,
+        scheduled_created: result.scheduledCreated,
         duplicates_skipped: result.duplicatesSkipped,
         lines_skipped: result.linesSkipped,
         warnings: result.warnings,
@@ -215,6 +227,32 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'UNREADABLE_PDF'
+    ) {
+      const parseWarnings =
+        error &&
+        typeof error === 'object' &&
+        'parse_warnings' in error &&
+        Array.isArray((error as { parse_warnings?: string[] }).parse_warnings)
+          ? (error as { parse_warnings: string[] }).parse_warnings
+          : [];
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'No se pudo leer el PDF (posiblemente es una imagen escaneada)',
+          parse_warnings: parseWarnings,
+          hint: 'Usa un PDF con texto seleccionable o importa los movimientos manualmente.',
+        },
+        { status: 422 },
+      );
+    }
+
     if (
       error &&
       typeof error === 'object' &&

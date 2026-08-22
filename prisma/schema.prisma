@@ -99,8 +99,9 @@ model User {
   incomeTemplates    IncomeTemplate[]
   wallets            Wallet[]
   categories         Category[]
-  creditCardPayments CreditCardPayment[]
-  budgets            Budget[]
+  creditCardPayments            CreditCardPayment[]
+  creditCardScheduledPayments   CreditCardScheduledPayment[]
+  budgets                       Budget[]
   loans              Loan[]
   walletTransfers    WalletTransfer[]
 
@@ -348,6 +349,7 @@ model House {
   loans            Loan[]
 
   creditCardPayments            CreditCardPayment[]
+  creditCardScheduledPayments   CreditCardScheduledPayment[]
   budgets                       Budget[]
   credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
   walletTransfers               WalletTransfer[]
@@ -413,6 +415,7 @@ model Wallet {
   loan_payment_records          LoanPayment[]               @relation("LoanPaymentSourceWallet")
   credit_card_statement_imports CreditCardStatementImport[]
   credit_card_payment_plans     CreditCardPaymentPlan[]
+  credit_card_scheduled_payments CreditCardScheduledPayment[]
   budgetAllocations             BudgetAllocation[]
   wallet_transfers_from         WalletTransfer[]            @relation("WalletTransferFrom")
   wallet_transfers_to           WalletTransfer[]            @relation("WalletTransferTo")
@@ -441,6 +444,37 @@ model CreditCardPaymentPlan {
   @@unique([credit_card_wallet_id, fortnight_id])
   @@index([fortnight_id])
   @@index([credit_card_wallet_id])
+  @@index([user_id])
+  @@index([house_id])
+}
+
+enum CreditCardScheduledPaymentStatus {
+  SCHEDULED
+  PAID
+}
+
+/// Calendario de pagos futuros en tarjeta (MSI / mensualidades) sin crear compra ni mover deuda.
+model CreditCardScheduledPayment {
+  id                     Int                              @id @default(autoincrement())
+  credit_card_wallet_id  Int
+  due_date               DateTime
+  amount                 Decimal                          @db.Decimal(10, 2)
+  label                  String?
+  status                 CreditCardScheduledPaymentStatus @default(SCHEDULED)
+  paid_at                DateTime?
+  credit_card_payment_id Int?                             @unique
+  user_id                Int?
+  house_id               Int?
+  created_at             DateTime                         @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at             DateTime                         @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  credit_card_wallet Wallet             @relation(fields: [credit_card_wallet_id], references: [id], onDelete: Cascade)
+  credit_card_payment CreditCardPayment? @relation(fields: [credit_card_payment_id], references: [id], onDelete: SetNull)
+  user               User?              @relation(fields: [user_id], references: [id])
+  house              House?             @relation(fields: [house_id], references: [id])
+
+  @@index([credit_card_wallet_id, due_date])
+  @@index([credit_card_wallet_id, status])
   @@index([user_id])
   @@index([house_id])
 }
@@ -596,17 +630,20 @@ model CreditCardPayment {
   paid_at               DateTime
   note                  String?
   credit_card_wallet_id Int
-  source_wallet_id      Int
+  source_wallet_id      Int?
+  /// When false, payment is ledger-only (debt already adjusted at statement cutoff).
+  adjusts_debt          Boolean  @default(true)
   user_id               Int?
   house_id              Int?
   expense_id            Int?     @unique
   created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   credit_card_wallet Wallet   @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
-  source_wallet      Wallet   @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
+  source_wallet      Wallet?  @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
   user               User?    @relation(fields: [user_id], references: [id])
   house              House?   @relation(fields: [house_id], references: [id])
   expense            Expense? @relation(fields: [expense_id], references: [id], onDelete: SetNull)
+  scheduled_payment  CreditCardScheduledPayment?
 
   @@index([credit_card_wallet_id, paid_at])
   @@index([source_wallet_id, paid_at])

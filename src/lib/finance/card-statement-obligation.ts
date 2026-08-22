@@ -11,6 +11,7 @@ export type CardObligationAmountSource =
   | 'ledger'
   | 'wallet_debt'
   | 'projection'
+  | 'scheduled_calendar'
   | 'none';
 
 /** Planner-facing payment status for a card statement obligation. */
@@ -44,6 +45,9 @@ export const formatCardObligationAmountSourceHint = (
   }
   if (source === 'projection') {
     return 'Estimado · compras del ciclo abierto';
+  }
+  if (source === 'scheduled_calendar') {
+    return 'Calendario de pagos';
   }
   return null;
 };
@@ -555,5 +559,58 @@ export const buildCardStatementObligation = (
     obligationAmountSource,
     status,
     isEstimate,
+  };
+};
+
+export type ScheduledCalendarDue = {
+  amount: number;
+  dueDate: string;
+};
+
+/**
+ * When a user-defined payment calendar exists, prefer the nearest uncovered row
+ * over a zero statement due, or whichever obligation is due sooner.
+ */
+export const mergeScheduledCalendarWithStatementDue = ({
+  statementDue,
+  statementDueDateYmd,
+  scheduled,
+}: {
+  statementDue: number;
+  statementDueDateYmd: string;
+  scheduled: ScheduledCalendarDue | null;
+}): {
+  amount: number;
+  dueDateYmd: string;
+  usedScheduledCalendar: boolean;
+} => {
+  if (!scheduled) {
+    return {
+      amount: statementDue,
+      dueDateYmd: statementDueDateYmd,
+      usedScheduledCalendar: false,
+    };
+  }
+
+  if (statementDue <= 0) {
+    return {
+      amount: scheduled.amount,
+      dueDateYmd: scheduled.dueDate,
+      usedScheduledCalendar: true,
+    };
+  }
+
+  if (scheduled.dueDate < statementDueDateYmd) {
+    return {
+      amount: scheduled.amount,
+      dueDateYmd: scheduled.dueDate,
+      usedScheduledCalendar: true,
+    };
+  }
+
+  return {
+    amount: statementDue,
+    dueDateYmd: statementDueDateYmd,
+    usedScheduledCalendar: false,
   };
 };

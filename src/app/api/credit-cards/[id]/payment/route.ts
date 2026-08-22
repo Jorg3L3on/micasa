@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import { createCreditCardPaymentSchema } from '@/schemas/credit-card.schema';
+import { createCreditCardPaymentSchema, normalizeCreditCardPaymentInput } from '@/schemas/credit-card.schema';
 import { createCreditCardPayment } from '@/lib/finance/credit-card.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 
@@ -32,13 +32,16 @@ export async function POST(
     }
 
     const body = await request.json();
-    const validatedData = createCreditCardPaymentSchema.parse(body);
+    const validatedData = normalizeCreditCardPaymentInput(
+      createCreditCardPaymentSchema.parse(body),
+    );
 
     paymentLogContext = {
       owner_type: context.ownerType,
       owner_id: context.ownerId,
       credit_card_wallet_id: creditCardId,
-      source_wallet_id: validatedData.source_wallet_id,
+      source_wallet_id:
+        validatedData.mode === 'wallet' ? validatedData.source_wallet_id : 0,
       amount: validatedData.amount,
     };
 
