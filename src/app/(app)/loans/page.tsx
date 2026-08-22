@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleSlash,
   Clock,
   Eye,
@@ -28,6 +30,7 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import StatCard from '@/components/StatCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -51,6 +54,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
   applyLoanPaymentAction,
+  batchUpdateLoanPayments,
   createLoan,
   deleteLoan,
   listLoans,
@@ -393,6 +397,14 @@ const loanStatusFilters: Array<{ value: LoanStatusFilter; label: string }> = [
   { value: 'CANCELLED', label: 'Cancelados' },
 ];
 
+type BatchPaymentDraft = {
+  action: 'MARK_PAID' | 'MARK_PAID_EXTERNAL';
+  paymentIds: number[];
+  paidAt: string;
+  sourceWalletId: string;
+  note: string;
+};
+
 export default function LoansPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -428,6 +440,13 @@ export default function LoansPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
   const [formErrors, setFormErrors] = useState<LoanFormErrors>({});
+  const [batchMonth, setBatchMonth] = useState(() => {
+    const [year, month] = todayCalendarDate().split('-').map(Number);
+    return { year, month };
+  });
+  const [batchDraft, setBatchDraft] = useState<BatchPaymentDraft | null>(null);
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [batchError, setBatchError] = useState<string | null>(null);
 
   const resetLoanDetailDrafts = useCallback(() => {
     setPaymentActionDraft(null);
@@ -872,6 +891,107 @@ export default function LoansPage() {
     ? loanPaymentSourceLabel(selectedLoan)
     : '';
 
+  const monthScheduledPayments = useMemo(() => {
+    const monthPrefix = `${batchMonth.year}-${String(batchMonth.month).padStart(2, '0')}`;
+    const items: Array<{ payment: LoanPaymentListItem; loan: LoanListItem }> = [];
+    for (const loan of activeLoans) {
+      for (const payment of loan.payments ?? []) {
+        if (payment.status !== 'SCHEDULED') continue;
+        if (!payment.dueDate.startsWith(monthPrefix)) continue;
+        items.push({ payment, loan });
+      }
+    }
+    return items.sort((a, b) =>
+      a.payment.dueDate.localeCompare(b.payment.dueDate),
+    );
+  }, [activeLoans, batchMonth.month, batchMonth.year]);
+
+  const batchMonthLabel = useMemo(
+    () =>
+      new Date(batchMonth.year, batchMonth.month - 1, 1).toLocaleDateString(
+        'es-MX',
+        { month: 'long', year: 'numeric' },
+      ),
+    [batchMonth.month, batchMonth.year],
+  );
+
+  const batchSelectedTotal = useMemo(() => {
+    if (!batchDraft) return 0;
+    const selected = new Set(batchDraft.paymentIds);
+    return monthScheduledPayments
+      .filter((row) => selected.has(row.payment.id))
+      .reduce((sum, row) => sum + row.payment.amount, 0);
+  }, [batchDraft, monthScheduledPayments]);
+
+  const handleShiftBatchMonth = (delta: number) => {
+    setBatchMonth((current) => {
+      const date = new Date(Date.UTC(current.year, current.month - 1 + delta, 1));
+      return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+    });
+  };
+
+  const handleOpenBatchDraft = (action: 'MARK_PAID' | 'MARK_PAID_EXTERNAL') => {
+    setBatchError(null);
+    setBatchDraft({
+      action,
+      paymentIds: monthScheduledPayments.map((row) => row.payment.id),
+      paidAt: todayYmd,
+      sourceWalletId: '',
+      note: '',
+    });
+  };
+
+  const handleBatchSubmit = async () => {
+    if (!batchDraft) return;
+    if (batchDraft.paymentIds.length === 0) {
+      setBatchError('Selecciona al menos una cuota');
+      return;
+    }
+    if (
+      batchDraft.action === 'MARK_PAID' &&
+      monthScheduledPayments.some(
+        (row) =>
+          batchDraft.paymentIds.includes(row.payment.id) &&
+          row.loan.paymentSource === 'WALLET',
+      ) &&
+      !batchDraft.sourceWalletId
+    ) {
+      setBatchError('Selecciona la billetera que pagará el lote');
+      return;
+    }
+
+    try {
+      setBatchSubmitting(true);
+      setBatchError(null);
+      await batchUpdateLoanPayments(
+        {
+          paymentIds: batchDraft.paymentIds,
+          action: batchDraft.action,
+          paidAt: batchDraft.paidAt,
+          sourceWalletId: batchDraft.sourceWalletId
+            ? Number(batchDraft.sourceWalletId)
+            : undefined,
+          note: batchDraft.note.trim() || undefined,
+        },
+        context,
+      );
+      toast.success(
+        batchDraft.action === 'MARK_PAID'
+          ? `Pagaste ${batchDraft.paymentIds.length} cuota(s) de ${batchMonthLabel}`
+          : `Registraste ${batchDraft.paymentIds.length} pago(s) históricos de ${batchMonthLabel}`,
+      );
+      setBatchDraft(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo completar el lote';
+      setBatchError(message);
+      toast.error(message);
+    } finally {
+      setBatchSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
@@ -923,6 +1043,67 @@ export default function LoansPage() {
           </p>
         </div>
       </div>
+
+      {monthScheduledPayments.length > 0 ? (
+        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleShiftBatchMonth(-1)}
+                aria-label="Mes anterior"
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+              </Button>
+              <div className="min-w-0 text-center sm:text-left">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Pagos del mes
+                </p>
+                <p className="text-sm font-semibold capitalize text-foreground">
+                  {batchMonthLabel}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleShiftBatchMonth(1)}
+                aria-label="Mes siguiente"
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 rounded-xl"
+                onClick={() => handleOpenBatchDraft('MARK_PAID')}
+              >
+                Pagar {batchMonthLabel.split(' ')[0]}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl"
+                onClick={() => handleOpenBatchDraft('MARK_PAID_EXTERNAL')}
+              >
+                Ya pagado {batchMonthLabel.split(' ')[0]}
+              </Button>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {monthScheduledPayments.length} cuota
+            {monthScheduledPayments.length === 1 ? '' : 's'} pendiente
+            {monthScheduledPayments.length === 1 ? '' : 's'} en activos
+          </p>
+        </div>
+      ) : null}
 
       <div
         className="flex flex-wrap items-center gap-2"
@@ -2624,6 +2805,164 @@ export default function LoansPage() {
             </div>
           </DialogContent>
         ) : null}
+      </Dialog>
+
+      <Dialog
+        open={batchDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBatchDraft(null);
+            setBatchError(null);
+          }
+        }}
+      >
+        <DialogContent className="flex max-h-[min(92dvh,36rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3 text-left">
+            <DialogTitle className="text-base font-semibold">
+              {batchDraft?.action === 'MARK_PAID'
+                ? `Pagar ${batchMonthLabel}`
+                : `Ya pagado ${batchMonthLabel}`}
+            </DialogTitle>
+            <DialogDescription>
+              {batchDraft?.action === 'MARK_PAID'
+                ? 'Confirma las cuotas y la billetera que pagará el lote.'
+                : 'Registra pagos históricos sin mover billeteras ni crear gastos.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+            {batchError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {batchError}
+              </div>
+            ) : null}
+
+            <ul className="space-y-2" role="list">
+              {monthScheduledPayments.map(({ payment, loan }) => {
+                const checked = batchDraft?.paymentIds.includes(payment.id) ?? false;
+                return (
+                  <li
+                    key={payment.id}
+                    className="flex items-start gap-3 rounded-xl border border-border/60 px-3 py-2.5"
+                  >
+                    <Checkbox
+                      id={`batch-payment-${payment.id}`}
+                      checked={checked}
+                      onCheckedChange={(value) => {
+                        if (!batchDraft) return;
+                        const nextIds =
+                          value === true
+                            ? [...batchDraft.paymentIds, payment.id]
+                            : batchDraft.paymentIds.filter((id) => id !== payment.id);
+                        setBatchDraft({ ...batchDraft, paymentIds: nextIds });
+                      }}
+                      disabled={batchSubmitting}
+                      className="mt-0.5"
+                      aria-label={`Incluir pago de ${loan.name}`}
+                    />
+                    <label
+                      htmlFor={`batch-payment-${payment.id}`}
+                      className="min-w-0 flex-1 cursor-pointer"
+                    >
+                      <p className="text-sm font-medium text-foreground">
+                        {loan.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Vence {formatDate(payment.dueDate)} ·{' '}
+                        {formatCurrency(payment.amount)}
+                      </p>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground">Total seleccionado: </span>
+              <span className="font-mono font-semibold tabular-nums">
+                {formatCurrency(batchSelectedTotal)}
+              </span>
+            </div>
+
+            {batchDraft?.action === 'MARK_PAID' ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="batch-wallet">Billetera de pago</Label>
+                <Select
+                  value={batchDraft.sourceWalletId || '__none__'}
+                  onValueChange={(value) =>
+                    setBatchDraft({
+                      ...batchDraft,
+                      sourceWalletId: value === '__none__' ? '' : value,
+                    })
+                  }
+                  disabled={batchSubmitting}
+                >
+                  <SelectTrigger id="batch-wallet" className="h-10 w-full">
+                    <SelectValue placeholder="Selecciona billetera" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Selecciona billetera</SelectItem>
+                    {fundingWallets.map((wallet) => (
+                      <SelectItem key={wallet.id} value={String(wallet.id)}>
+                        {wallet.name}
+                        {wallet.amount != null
+                          ? ` · ${formatCurrency(wallet.amount)}`
+                          : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="batch-paid-at">Fecha de pago</Label>
+              <Input
+                id="batch-paid-at"
+                type="date"
+                value={batchDraft?.paidAt ?? todayYmd}
+                onChange={(event) => {
+                  if (!batchDraft) return;
+                  setBatchDraft({ ...batchDraft, paidAt: event.target.value });
+                }}
+                disabled={batchSubmitting}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="batch-note">Nota (opcional)</Label>
+              <Textarea
+                id="batch-note"
+                value={batchDraft?.note ?? ''}
+                onChange={(event) => {
+                  if (!batchDraft) return;
+                  setBatchDraft({ ...batchDraft, note: event.target.value });
+                }}
+                disabled={batchSubmitting}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0 gap-2 border-t border-border/60 px-4 py-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setBatchDraft(null)}
+              disabled={batchSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleBatchSubmit()}
+              disabled={batchSubmitting}
+              className="rounded-xl"
+            >
+              {batchSubmitting ? 'Guardando…' : 'Confirmar lote'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       <ConfirmDeleteDialog

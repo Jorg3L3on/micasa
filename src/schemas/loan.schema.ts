@@ -118,3 +118,17 @@ export const updateLoanSchema = z.object({
 export type CreateLoanInput = z.infer<typeof createLoanSchema>;
 export type UpdateLoanInput = z.infer<typeof updateLoanSchema>;
 export type UpdateLoanPaymentInput = z.infer<typeof updateLoanPaymentSchema>;
+
+export const batchUpdateLoanPaymentsSchema = z.object({
+  paymentIds: z
+    .array(z.number().int().positive())
+    .min(1, 'Selecciona al menos un pago'),
+  action: z.enum(['MARK_PAID', 'MARK_PAID_EXTERNAL']),
+  paidAt: dateStringSchema.optional(),
+  sourceWalletId: nullablePositiveIntFromForm.optional(),
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+export type BatchUpdateLoanPaymentsInput = z.infer<
+  typeof batchUpdateLoanPaymentsSchema
+>;
