@@ -308,7 +308,6 @@ export const LiquidityFutureTimeline = ({
                 </linearGradient>
               </defs>
               <CartesianGrid
-                yAxisId="payments"
                 strokeDasharray="3 3"
                 vertical={false}
                 stroke="rgba(255,255,255,0.06)"
