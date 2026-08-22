@@ -808,7 +808,9 @@ export default function CreditCardDetailPage() {
         walletName={card.name}
         currentAmount={statement.outstanding_balance}
         context={context}
-        onSuccess={loadData}
+        onSuccess={() => {
+          void loadData();
+        }}
         variant="credit"
         creditLimit={statement.credit_limit}
       />
