@@ -387,7 +387,7 @@ export async function getCreditCardStatementByOwner(
       paid_at: toDateOnlyString(payment.paid_at),
       note: payment.note ?? null,
       source_wallet_id: payment.source_wallet_id,
-      source_wallet_name: payment.source_wallet.name,
+      source_wallet_name: payment.source_wallet?.name ?? 'Ya pagado',
       credit_card_wallet_id: payment.credit_card_wallet_id,
       credit_card_wallet_name: payment.credit_card_wallet.name,
     })),

@@ -59,6 +59,9 @@ import {
 } from '@/lib/api/credit-cards';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
+import type { CreditCardExternalPaymentSubmitPayload } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
+import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
 import { computeCreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
@@ -153,6 +156,8 @@ const CreditCardDetailPageContent = () => {
   const [cycleLoading, setCycleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [externalPaymentDialogOpen, setExternalPaymentDialogOpen] =
+    useState(false);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -304,6 +309,7 @@ const CreditCardDetailPageContent = () => {
       await createCreditCardPayment(
         creditCardId,
         {
+          mode: 'wallet',
           ...data,
           create_fortnight_expense: true,
           fortnight_id: activeFortnightId,
@@ -320,6 +326,29 @@ const CreditCardDetailPageContent = () => {
     } catch (err) {
       setPaymentError(
         err instanceof Error ? err.message : 'Error al registrar el pago',
+      );
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  const handleExternalPaymentSubmit = async (
+    data: CreditCardExternalPaymentSubmitPayload,
+  ) => {
+    try {
+      setPaymentSubmitting(true);
+      setPaymentError(null);
+
+      await createCreditCardPayment(creditCardId, data, context);
+
+      toast.success('Pago histórico registrado');
+      setExternalPaymentDialogOpen(false);
+      await loadData();
+    } catch (err) {
+      setPaymentError(
+        err instanceof Error
+          ? err.message
+          : 'Error al registrar el pago histórico',
       );
     } finally {
       setPaymentSubmitting(false);
@@ -548,6 +577,7 @@ const CreditCardDetailPageContent = () => {
 
         <CreditCardQuickActions
           onOpenPaymentDialog={() => setPaymentDialogOpen(true)}
+          onOpenExternalPaymentDialog={() => setExternalPaymentDialogOpen(true)}
           onOpenPurchaseDialog={() => setPurchaseDialogOpen(true)}
           onOpenImportDialog={() => setMpImportDialogOpen(true)}
           onAdjustBalance={() => setBalanceDialogOpen(true)}
@@ -732,6 +762,21 @@ const CreditCardDetailPageContent = () => {
         error={paymentError}
         fortnightId={paymentFortnightId}
         onConfirm={handlePaymentSubmit}
+      />
+
+      <CreditCardExternalPaymentDialog
+        open={externalPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setExternalPaymentDialogOpen(open);
+          if (!open) setPaymentError(null);
+        }}
+        nextDuePayment={
+          paymentSuggestedOverride ?? paymentDialogSuggestedAmount
+        }
+        outstandingBalance={statement.outstanding_balance}
+        submitting={paymentSubmitting}
+        error={paymentError}
+        onConfirm={handleExternalPaymentSubmit}
       />
 
       <CreditCardQuickPurchaseDialog

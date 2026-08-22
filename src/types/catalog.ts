@@ -507,11 +507,13 @@ export type CreditCardPaymentListItem = {
   amount: number;
   paid_at: string;
   note: string | null;
-  source_wallet_id: number;
+  source_wallet_id: number | null;
   source_wallet_name: string;
   source_wallet_provider_icon_key: string | null;
   credit_card_wallet_id: number;
   credit_card_wallet_name: string;
+  adjusts_debt?: boolean;
+  is_external?: boolean;
 };
 
 export type CreditCardStatementPurchaseItem = {

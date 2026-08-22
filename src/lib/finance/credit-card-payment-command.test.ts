@@ -63,6 +63,7 @@ describe('reverseCreditCardPayment', () => {
       expense_id: 99,
       source_wallet_id: 2,
       credit_card_wallet_id: 7,
+      adjusts_debt: true,
     });
     deleteExpense.mockResolvedValueOnce(undefined);
     deletePayment.mockResolvedValueOnce(undefined);
@@ -81,6 +82,7 @@ describe('reverseCreditCardPayment', () => {
         expense_id: true,
         source_wallet_id: true,
         credit_card_wallet_id: true,
+        adjusts_debt: true,
       },
     });
     expect(applyWalletAmountDelta).toHaveBeenNthCalledWith(
@@ -107,6 +109,7 @@ describe('reverseCreditCardPayment', () => {
       expense_id: null,
       source_wallet_id: 2,
       credit_card_wallet_id: 7,
+      adjusts_debt: true,
     });
     deletePayment.mockResolvedValueOnce(undefined);
 
