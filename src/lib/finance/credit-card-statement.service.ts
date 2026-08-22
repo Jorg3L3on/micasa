@@ -530,11 +530,17 @@ export const buildCardObligationsFromLedger = (
   expenses: CardLedgerExpenseRow[],
   payments: CardLedgerPaymentRow[],
   asOfYmd: string,
+  options?: {
+    /** When false, empty future cycles do not invent dues from today's wallet debt. */
+    allowOutstandingBalanceFallback?: boolean;
+  },
 ): Map<number, CreditCardStatementObligationWithCycle & { is_estimate?: boolean }> => {
   const result = new Map<
     number,
     CreditCardStatementObligationWithCycle & { is_estimate?: boolean }
   >();
+  const allowOutstandingBalanceFallback =
+    options?.allowOutstandingBalanceFallback ?? true;
 
   for (const card of cards) {
     const {
@@ -564,6 +570,7 @@ export const buildCardObligationsFromLedger = (
       currentCyclePaymentsTotal: currentCyclePayments,
       asOfYmd,
       plannedGrossAmount: null,
+      allowOutstandingBalanceFallback,
     });
 
     result.set(card.walletId, {
@@ -659,6 +666,7 @@ export const computeObligationBreakdownFromLedger = (
   options?: {
     cardsById?: Map<number, CardObligationFromLedgerInput>;
     asOfYmd?: string;
+    allowOutstandingBalanceFallback?: boolean;
   },
 ): Map<number, CreditCardStatementObligationWithCycle> => {
   const asOfYmd =
@@ -682,6 +690,9 @@ export const computeObligationBreakdownFromLedger = (
     expenses,
     payments,
     asOfYmd,
+    {
+      allowOutstandingBalanceFallback: options?.allowOutstandingBalanceFallback,
+    },
   );
 };
 

@@ -420,12 +420,17 @@ export type LiquidityMonthlySeriesItem = {
   total_payments_due: number;
   remaining_payments_from_month: number;
   monthly_remaining: number;
+  /** Total credit/store + loan balance outstanding at month-end. */
+  outstanding_debt_total: number;
   debt_items: Array<{
     id: string;
     kind: 'card' | 'msi' | 'loan';
     title: string;
     subtitle: string;
+    /** Remaining balance owed as of this month */
     amount: number;
+    /** Payment due this month (cash-flow); omitted in historical past summaries */
+    payment_amount?: number;
   }>;
 };
 
@@ -440,6 +445,7 @@ export type LiquidityProjectionTrack = {
   end_month_key: string;
   finishes_in_horizon: boolean;
   monthly_amount: number;
+  schedule: Array<{ month_key: string; amount: number }>;
   loan_id?: number;
   expense_id?: number;
   wallet_id?: number;

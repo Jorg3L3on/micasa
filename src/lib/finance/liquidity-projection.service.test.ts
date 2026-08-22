@@ -13,6 +13,7 @@ const {
   findManyLoanPayment,
   findManyStatementImport,
   findManyLoan,
+  findManyCreditCardPayment,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
@@ -24,6 +25,11 @@ const {
   findManyLoanPayment: vi.fn(),
   findManyStatementImport: vi.fn(),
   findManyLoan: vi.fn(),
+  findManyCreditCardPayment: vi.fn(),
+}));
+
+vi.mock('@/lib/finance/wallet-movements', () => ({
+  listWalletMovements: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -38,6 +44,7 @@ vi.mock('@/lib/prisma', () => ({
     loanPayment: { findMany: findManyLoanPayment },
     loan: { findMany: findManyLoan },
     creditCardStatementImport: { findMany: findManyStatementImport },
+    creditCardPayment: { findMany: findManyCreditCardPayment },
   },
 }));
 
@@ -93,12 +100,14 @@ describe('getLiquidityProjection', () => {
     findManyLoanPayment.mockReset();
     findManyStatementImport.mockReset();
     findManyLoan.mockReset();
+    findManyCreditCardPayment.mockReset();
     findManyStatementImport.mockResolvedValue([]);
     findManyFortnight.mockResolvedValue([]);
     findManyIncome.mockResolvedValue([]);
     findManyIncomeTemplate.mockResolvedValue([]);
     findManyLoanPayment.mockResolvedValue([]);
     findManyLoan.mockResolvedValue([]);
+    findManyCreditCardPayment.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -386,7 +395,7 @@ describe('getLiquidityProjection', () => {
       includeUnpaidExpenses: false,
     });
 
-    expect(findManyLoanPayment).toHaveBeenCalledTimes(2);
+    expect(findManyLoanPayment).toHaveBeenCalledTimes(4);
     expect(findManyLoanPayment).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -696,12 +705,63 @@ describe('getLiquidityProjection', () => {
       expect.objectContaining({
         kind: 'loan',
         title: 'Fonacot Carmen',
+        amount: 2487.36,
+        payment_amount: 1243.68,
+      }),
+    ]);
+    expect(september?.debt_items).toEqual([
+      expect.objectContaining({
+        kind: 'loan',
+        title: 'Fonacot Carmen',
         amount: 1243.68,
+        payment_amount: 0,
+      }),
+    ]);
+    expect(october?.debt_items).toEqual([
+      expect.objectContaining({
+        kind: 'loan',
+        title: 'Fonacot Carmen',
+        amount: 1243.68,
+        payment_amount: 1243.68,
       }),
     ]);
     expect(april?.remaining_payments_from_month).toBeCloseTo(2487.36);
     expect(september?.remaining_payments_from_month).toBeCloseTo(1243.68);
     expect(october?.remaining_payments_from_month).toBeCloseTo(1243.68);
     expect(afterPayoff).toBeUndefined();
+  });
+
+  it('uses wallet debt only for the current statement cycle, not every future month', async () => {
+    const cardWithDebt = {
+      ...visaRow,
+      amount: '28975.00',
+    };
+    setupWalletMock([fundingRow], [cardWithDebt]);
+    queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    findManyExpense.mockResolvedValue([]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2027, 1, 28)),
+      includeUnpaidExpenses: false,
+    });
+
+    const cardObligations = result.milestones.flatMap((m) =>
+      m.obligations.filter(
+        (o) => o.source === 'credit_card_statement' && o.wallet_id === 7,
+      ),
+    );
+
+    expect(cardObligations).toHaveLength(1);
+    expect(cardObligations[0]!.next_due_payment).toBe(28975);
+    expect(cardObligations[0]!.is_estimate).toBe(true);
+
+    const february2027 = result.monthly_series.find(
+      (month) => month.month_key === '2027-02',
+    );
+    expect(february2027?.msi_debt_total).toBe(0);
+    expect(
+      (february2027?.debt_items ?? []).filter((item) => item.kind === 'card'),
+    ).toEqual([]);
   });
 });

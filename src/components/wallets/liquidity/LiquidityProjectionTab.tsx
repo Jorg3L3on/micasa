@@ -1,57 +1,66 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { CreditCard, PieChart } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { fetchLiquidityProjection } from '@/lib/api/liquidity';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import type { MonthlySummaryItem } from '@/app/api/wallets/liquidity/monthly-summary/route';
+import type { ReportSummaryResult } from '@/lib/finance/report-summary.service';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
-import { LiquidityGuideHero } from '@/components/wallets/liquidity/LiquidityGuideHero';
-import { liquidityUntilFromMonthHorizon } from '@/lib/finance/liquidity-projection';
-import { formatCalendarDate } from '@/lib/calendar-dates';
 import { LiquidityFutureTimeline } from '@/components/wallets/liquidity/LiquidityFutureTimeline';
+import { LiquidityFinancialBrief } from '@/components/wallets/liquidity/LiquidityFinancialBrief';
 import { LiquidityMonthFocus } from '@/components/wallets/liquidity/LiquidityMonthFocus';
 import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
+import { LiquiditySpendingCategories } from '@/components/wallets/liquidity/LiquiditySpendingCategories';
 import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
 import {
-  getTightestMonth,
+  LiquidityPanelConnector,
+  LiquiditySectionGroup,
+} from '@/components/wallets/liquidity/liquidity-section';
+import {
+  resolveInitialMonthKey,
   shiftSelectedMonthKey,
-  type LiquidityHorizonMonths,
+  type LiquidityChartRangeId,
 } from '@/components/wallets/liquidity/liquidity-personalization';
+import {
+  isLiquidityChartRangeId,
+  resolveLiquidityChartRange,
+} from '@/lib/finance/liquidity-chart-range';
+import {
+  buildLiquidityYtdContext,
+  type LiquidityYtdContext,
+} from '@/lib/finance/liquidity-ytd-context';
 
-const HORIZON_STORAGE_KEY = 'micasa.liquidity.horizonMonths';
+const CHART_RANGE_STORAGE_KEY = 'micasa.liquidity.chartRange';
 
-const readStoredHorizon = (): LiquidityHorizonMonths => {
-  if (typeof window === 'undefined') return 6;
-  const raw = window.localStorage.getItem(HORIZON_STORAGE_KEY);
-  if (raw === '3' || raw === '6' || raw === '12') return Number(raw) as LiquidityHorizonMonths;
-  return 6;
+const readStoredChartRange = (): LiquidityChartRangeId => {
+  if (typeof window === 'undefined') return 'plus_minus_3';
+  const raw = window.localStorage.getItem(CHART_RANGE_STORAGE_KEY);
+  return isLiquidityChartRangeId(raw) ? raw : 'plus_minus_3';
 };
-
-const horizonUntilYmd = (horizonMonths: LiquidityHorizonMonths): string =>
-  formatCalendarDate(liquidityUntilFromMonthHorizon(new Date(), horizonMonths));
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="h-28 rounded-2xl bg-muted/40 border border-border/30" />
-      <div className="h-72 rounded-2xl bg-muted/40 border border-border/30" />
-      <div className="h-40 rounded-2xl bg-muted/40 border border-border/30" />
+    <div className="space-y-8 animate-pulse">
+      <div className="h-48 rounded-2xl border border-border/30 bg-muted/30 dark:border-white/[0.06] dark:bg-[#0d1327]/40" />
+      <div className="space-y-4">
+        <div className="h-5 w-48 rounded-lg bg-muted/40" />
+        <div className="h-80 rounded-2xl border border-border/30 bg-muted/30 dark:border-white/[0.06] dark:bg-[#0d1327]/40" />
+        <div className="h-56 rounded-2xl border border-border/30 bg-muted/30 dark:border-white/[0.06] dark:bg-[#0d1327]/40" />
+      </div>
     </div>
   );
 }
 
 export function LiquidityProjectionTab() {
   const { context } = useFinanceContext();
-  const [horizonMonths, setHorizonMonths] = useState<LiquidityHorizonMonths>(() =>
-    readStoredHorizon(),
+  const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(() =>
+    readStoredChartRange(),
   );
-  const untilInput = useMemo(() => horizonUntilYmd(horizonMonths), [horizonMonths]);
   const [data, setData] = useState<LiquidityProjectionResponse | null>(null);
+  const [ytdContext, setYtdContext] = useState<LiquidityYtdContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonthKey, setSelectedMonthKey] = useState('');
@@ -64,77 +73,102 @@ export function LiquidityProjectionTab() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetchLiquidityProjection(
-        {
-          until: untilInput,
-          omitZero: true,
-          includeUnpaid: true,
-          includeTemplates: true,
-        },
-        context,
-      );
+      const currentYear = Number(todayCalendarDate().slice(0, 4));
+      const [res, monthlyRows, reportSummary] = await Promise.all([
+        fetchLiquidityProjection(
+          {
+            chartRange: 'year_and_half',
+            omitZero: true,
+            includeUnpaid: true,
+            includeTemplates: true,
+          },
+          context,
+        ),
+        clientFetchFromApi<MonthlySummaryItem[]>(
+          '/api/wallets/liquidity/monthly-summary',
+          undefined,
+          context,
+        ),
+        clientFetchFromApi<ReportSummaryResult>(
+          `/api/reports?type=summary&year=${currentYear}`,
+          undefined,
+          context,
+        ),
+      ]);
       setData(res);
+      setYtdContext(
+        buildLiquidityYtdContext({
+          asOfYmd: res.as_of,
+          monthlySummary: Array.isArray(monthlyRows) ? monthlyRows : [],
+          totalSpentYtd: reportSummary.totalExpense,
+        }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo cargar tu panorama');
       setData(null);
+      setYtdContext(null);
     } finally {
       setLoading(false);
     }
-  }, [context, untilInput]);
+  }, [context]);
 
-  const handleHorizonChange = (next: LiquidityHorizonMonths) => {
-    setHorizonMonths(next);
-    window.localStorage.setItem(HORIZON_STORAGE_KEY, String(next));
+  const handleChartRangeChange = (next: LiquidityChartRangeId) => {
+    setChartRange(next);
+    window.localStorage.setItem(CHART_RANGE_STORAGE_KEY, next);
   };
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const tightestMonth = useMemo(
-    () => (data ? getTightestMonth(data) : null),
-    [data],
+  const chartMonthKeys = useMemo(() => {
+    if (!data) return new Set<string>();
+    const bounds = resolveLiquidityChartRange(chartRange, data.as_of);
+    return new Set(bounds.monthKeys);
+  }, [chartRange, data]);
+
+  const chartMonths = useMemo(
+    () => data?.monthly_series.filter((month) => chartMonthKeys.has(month.month_key)) ?? [],
+    [chartMonthKeys, data?.monthly_series],
   );
 
-  const projectionEvents = data?.projection_events ?? [];
-  const monthKeys = data?.monthly_series.map((month) => month.month_key) ?? [];
+  const projectionEvents = useMemo(
+    () =>
+      (data?.projection_events ?? []).filter((event) => chartMonthKeys.has(event.month_key)),
+    [chartMonthKeys, data?.projection_events],
+  );
+
+  const monthKeys = chartMonths.map((month) => month.month_key);
+
+  useEffect(() => {
+    if (!data || monthKeys.length === 0) return;
+    setSelectedMonthKey((current) => {
+      if (current && monthKeys.includes(current)) return current;
+      return resolveInitialMonthKey(monthKeys, data.as_of);
+    });
+  }, [data, monthKeys]);
+
   const resolvedMonthKey =
     selectedMonthKey && monthKeys.includes(selectedMonthKey)
       ? selectedMonthKey
-      : (monthKeys[0] ?? '');
+      : resolveInitialMonthKey(monthKeys, data?.as_of ?? '');
   const selectedMonth =
-    data?.monthly_series.find((month) => month.month_key === resolvedMonthKey) ??
+    chartMonths.find((month) => month.month_key === resolvedMonthKey) ??
     null;
   const selectedIndex = monthKeys.indexOf(resolvedMonthKey);
   const selectedEvents = projectionEvents.filter(
     (event) => event.month_key === resolvedMonthKey,
   );
   const fundingTotal = data?.summary.funding_total ?? 0;
+  const currentMonthKey = data?.as_of.slice(0, 7) ?? '';
+  const isChartRefreshing = loading && data !== null;
 
   const handleShiftMonth = (delta: number) => {
     setSelectedMonthKey(shiftSelectedMonthKey(monthKeys, resolvedMonthKey, delta));
   };
 
-  const modelNotes = useMemo(() => {
-    if (!data) return [];
-    const notes = [
-      'Toca un mes en la gráfica: el detalle de abajo cambia con ese mes.',
-      'La línea es lo que aún debes de préstamos y tarjetas. Baja cuando terminas un préstamo o una compra a meses.',
-      'Los puntos verdes son el mes en que terminas de pagar algo.',
-    ];
-    if (data.options.include_unpaid_expenses) {
-      notes.push('Los gastos impagos de efectivo o débito salen en el detalle del mes, no en la línea de deuda.');
-    }
-    if (data.options.include_expense_templates) {
-      notes.push('Los gastos fijos que se repiten (renta, suscripciones) salen en el detalle del mes, no en la línea de deuda.');
-    }
-    return notes;
-  }, [data]);
-
   return (
-    <div className="space-y-5">
-      <LiquidityGuideHero data={data} horizonMonths={horizonMonths} />
-
+    <div className="space-y-10">
       {error ? (
         <div
           className="rounded-xl border border-l-[3px] border-l-destructive/50 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -148,54 +182,53 @@ export function LiquidityProjectionTab() {
 
       {data ? (
         <>
-          <LiquidityAccountsToday
-            fundingTotal={fundingTotal}
-            onChanged={() => void load()}
-            actions={<LiquidityFundingWalletsMenu onChanged={() => void load()} />}
+          <LiquidityFinancialBrief
+            data={data}
+            ytdContext={ytdContext}
+            isRefreshing={isChartRefreshing}
           />
 
-          <LiquidityFutureTimeline
-            months={data.monthly_series}
-            events={projectionEvents}
-            horizonMonths={horizonMonths}
-            onHorizonChange={handleHorizonChange}
-            selectedMonthKey={selectedMonthKey}
-            onSelectMonth={setSelectedMonthKey}
-          />
+          <LiquiditySectionGroup aria-label="Proyección mensual">
+            <LiquidityPanelConnector>
+              <LiquidityFutureTimeline
+                months={chartMonths}
+                events={projectionEvents}
+                chartRange={chartRange}
+                onChartRangeChange={handleChartRangeChange}
+                selectedMonthKey={resolvedMonthKey}
+                onSelectMonth={setSelectedMonthKey}
+                isRefreshing={false}
+                embedded
+              />
 
-          <LiquidityMonthFocus
-            month={selectedMonth}
-            events={selectedEvents}
-            isTight={
-              Boolean(
-                selectedMonth &&
-                  tightestMonth?.monthKey === selectedMonth.month_key &&
-                  selectedMonth.monthly_remaining < 0,
-              )
-            }
-            isCurrentMonth={selectedMonth?.month_key === data.monthly_series[0]?.month_key}
-            canPrev={selectedIndex > 0}
-            canNext={selectedIndex >= 0 && selectedIndex < monthKeys.length - 1}
-            onPrevMonth={() => handleShiftMonth(-1)}
-            onNextMonth={() => handleShiftMonth(1)}
-          />
+              <div className="border-t border-border/50 dark:border-white/[0.06]">
+                <LiquidityMonthFocus
+                  month={selectedMonth}
+                  events={selectedEvents}
+                  isCurrentMonth={selectedMonth?.month_key === currentMonthKey}
+                  canPrev={selectedIndex > 0}
+                  canNext={selectedIndex >= 0 && selectedIndex < monthKeys.length - 1}
+                  onPrevMonth={() => handleShiftMonth(-1)}
+                  onNextMonth={() => handleShiftMonth(1)}
+                  isRefreshing={isChartRefreshing}
+                  embedded
+                />
+              </div>
+            </LiquidityPanelConnector>
+          </LiquiditySectionGroup>
 
-          <Collapsible className="group/help rounded-xl border border-dashed border-border/50 bg-muted/10">
-            <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30">
-              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/help:rotate-180" />
-              ¿Cómo se calcula esto?
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <ul className="space-y-2 px-4 pb-4 text-sm text-muted-foreground">
-                {modelNotes.map((note) => (
-                  <li key={note} className="flex items-start gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
-                    {note}
-                  </li>
-                ))}
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
+          <LiquiditySectionGroup aria-label="Cuentas">
+            <LiquidityAccountsToday
+              fundingTotal={fundingTotal}
+              onChanged={() => void load()}
+              actions={<LiquidityFundingWalletsMenu onChanged={() => void load()} />}
+              sectionIcon={CreditCard}
+            />
+          </LiquiditySectionGroup>
+
+          <LiquiditySectionGroup aria-label="Gastos por categoría">
+            <LiquiditySpendingCategories sectionIcon={PieChart} />
+          </LiquiditySectionGroup>
         </>
       ) : null}
     </div>

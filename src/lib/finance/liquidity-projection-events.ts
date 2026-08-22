@@ -34,6 +34,8 @@ export type LiquidityProjectionTrack = {
   end_month_key: string;
   finishes_in_horizon: boolean;
   monthly_amount: number;
+  /** Installment amounts by month; used to compute remaining balance curves. */
+  schedule: Array<{ month_key: string; amount: number }>;
   loan_id?: number;
   expense_id?: number;
   wallet_id?: number;
@@ -140,6 +142,10 @@ const collectLoanTimeline = async (
     );
     const remainingCount = remainingPayments.length;
     const isPayroll = loan.payment_source === 'PAYROLL_DEDUCTION';
+    const schedule = remainingPayments.map((payment) => ({
+      month_key: toMonthKey(toUtcDateOnlyString(payment.due_date)),
+      amount: Number(payment.amount),
+    }));
 
     if (isPayroll) {
       for (const payment of remainingPayments) {
@@ -169,6 +175,7 @@ const collectLoanTimeline = async (
       end_month_key: visibleEnd,
       finishes_in_horizon: finishesInHorizon,
       monthly_amount: Number(loan.payment_amount),
+      schedule,
       loan_id: loan.id,
     });
 
@@ -273,6 +280,13 @@ export const collectMsiProjectionData = async (
 
       if (compareMonthKeys(startMonth, horizonEnd) <= 0) {
         const description = purchase.description.trim() || 'Compra a meses';
+        const schedule: Array<{ month_key: string; amount: number }> = [];
+        for (let i = 0; i <= remaining; i += 1) {
+          schedule.push({
+            month_key: monthKeyFromOffset(baseMonthKey, i),
+            amount: Number(purchase.amount),
+          });
+        }
         tracks.push({
           id: `msi-${purchase.id}`,
           kind: 'msi',
@@ -282,6 +296,7 @@ export const collectMsiProjectionData = async (
           end_month_key: visibleEnd,
           finishes_in_horizon: finishesInHorizon,
           monthly_amount: Number(purchase.amount),
+          schedule,
           expense_id: purchase.id,
           wallet_id: card.id,
           wallet_name: card.name,

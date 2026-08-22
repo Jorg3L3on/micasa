@@ -3,13 +3,14 @@ import {
   buildMonthDebtItems,
   groupDebtItemsByMonth,
   monthDebtItemsTotal,
+  monthDebtPaymentsTotal,
   pastLoanDebtSubtitle,
 } from '@/lib/finance/liquidity-month-debt-items';
 
 describe('buildMonthDebtItems', () => {
-  it('lists card, loan, MSI, and payroll concepts and skips recurring templates', () => {
+  it('lists remaining balances that decline after each cuota', () => {
     const byMonth = buildMonthDebtItems(
-      ['2026-08', '2026-09'],
+      ['2026-08', '2026-09', '2026-10', '2026-11'],
       [
         {
           due_date: '2026-08-20',
@@ -41,6 +42,19 @@ describe('buildMonthDebtItems', () => {
       ],
       [
         {
+          id: 'loan-5',
+          kind: 'loan',
+          title: 'Banamex',
+          subtitle: 'Banamex · 2 pagos',
+          start_month_key: '2026-08',
+          end_month_key: '2026-09',
+          monthly_amount: 3500,
+          schedule: [
+            { month_key: '2026-08', amount: 3500 },
+            { month_key: '2026-09', amount: 3500 },
+          ],
+        },
+        {
           id: 'msi-9',
           kind: 'msi',
           title: 'Laptop',
@@ -48,42 +62,66 @@ describe('buildMonthDebtItems', () => {
           start_month_key: '2026-08',
           end_month_key: '2026-11',
           monthly_amount: 2700,
+          schedule: [
+            { month_key: '2026-08', amount: 2700 },
+            { month_key: '2026-09', amount: 2700 },
+            { month_key: '2026-10', amount: 2700 },
+            { month_key: '2026-11', amount: 2700 },
+          ],
           wallet_name: 'Mercado Pago',
         },
-      ],
-      [
         {
-          month_key: '2026-08',
-          loan_id: 31,
+          id: 'loan-31',
+          kind: 'loan',
           title: 'Fonacot Carmen',
-          subtitle: 'Nómina · FONACOT',
-          amount: 1243.68,
-        },
-        {
-          month_key: '2026-08',
-          loan_id: 31,
-          title: 'Fonacot Carmen',
-          subtitle: 'Nómina · FONACOT',
-          amount: 1243.68,
+          subtitle: 'FONACOT · 2 pagos',
+          start_month_key: '2026-08',
+          end_month_key: '2026-10',
+          monthly_amount: 1243.68,
+          schedule: [
+            { month_key: '2026-08', amount: 1243.68 },
+            { month_key: '2026-10', amount: 1243.68 },
+          ],
         },
       ],
     );
 
     const august = byMonth.get('2026-08') ?? [];
     expect(august.map((item) => item.title)).toEqual([
-      'Banamex',
       'Laptop',
+      'Banamex',
       'Fonacot Carmen',
       'DIDI Card',
     ]);
-    expect(august.find((item) => item.title === 'Fonacot Carmen')?.amount).toBeCloseTo(2487.36);
-    expect(monthDebtItemsTotal(august)).toBeCloseTo(1179.43 + 3500 + 2700 + 2487.36);
+    expect(august.find((item) => item.title === 'Fonacot Carmen')).toMatchObject({
+      amount: 2487.36,
+      payment_amount: 1243.68,
+    });
+    expect(august.find((item) => item.title === 'Banamex')).toMatchObject({
+      amount: 7000,
+      payment_amount: 3500,
+    });
+    expect(august.find((item) => item.title === 'Laptop')).toMatchObject({
+      amount: 10800,
+      payment_amount: 2700,
+    });
+    expect(monthDebtItemsTotal(august)).toBeCloseTo(10800 + 7000 + 2487.36 + 1179.43);
+    expect(monthDebtPaymentsTotal(august)).toBeCloseTo(2700 + 3500 + 1243.68 + 1179.43);
     expect(august.some((item) => item.amount === 8000)).toBe(false);
 
     const september = byMonth.get('2026-09') ?? [];
-    expect(september).toEqual([
-      expect.objectContaining({ title: 'Laptop', amount: 2700, kind: 'msi' }),
-    ]);
+    expect(september.find((item) => item.title === 'Laptop')).toMatchObject({
+      amount: 8100,
+      payment_amount: 2700,
+    });
+    expect(september.find((item) => item.title === 'Banamex')).toMatchObject({
+      amount: 3500,
+      payment_amount: 3500,
+    });
+    expect(september.find((item) => item.title === 'Fonacot Carmen')).toMatchObject({
+      amount: 1243.68,
+      payment_amount: 0,
+    });
   });
 });
 

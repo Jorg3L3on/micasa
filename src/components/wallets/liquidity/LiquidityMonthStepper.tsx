@@ -22,7 +22,7 @@ export const LiquidityMonthStepper = ({
   canNext,
 }: LiquidityMonthStepperProps) => {
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5 rounded-xl border border-border/50 bg-muted/20 p-0.5 dark:border-white/[0.08] dark:bg-white/[0.03]">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

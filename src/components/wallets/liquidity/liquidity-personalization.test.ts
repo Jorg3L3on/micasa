@@ -3,6 +3,7 @@ import {
   displayIncomingCash,
   formatMonthYearLabel,
   monthKeyFromParts,
+  resolveInitialMonthKey,
   shiftSelectedMonthKey,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 
@@ -35,5 +36,15 @@ describe('liquidity month selection helpers', () => {
     expect(displayIncomingCash(-8072.82)).toBe(0);
     expect(displayIncomingCash(0)).toBe(0);
     expect(displayIncomingCash(166400)).toBe(166400);
+  });
+
+  it('prefers the current month when it is in the chart window', () => {
+    const keys = ['2026-05', '2026-06', '2026-07', '2026-08'];
+    expect(resolveInitialMonthKey(keys, '2026-07-15')).toBe('2026-07');
+  });
+
+  it('falls back to the first month when current month is outside the window', () => {
+    const keys = ['2026-01', '2026-02', '2026-03'];
+    expect(resolveInitialMonthKey(keys, '2026-08-15')).toBe('2026-01');
   });
 });

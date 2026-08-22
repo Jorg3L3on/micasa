@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,17 +17,22 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  LIQUIDITY_HORIZON_OPTIONS,
-  type LiquidityHorizonMonths,
+  LIQUIDITY_CHART_RANGE_OPTIONS,
+  type LiquidityChartRangeId,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 
-type LiquidityHorizonMenuProps = {
-  value: LiquidityHorizonMonths;
-  onChange: (value: LiquidityHorizonMonths) => void;
+type LiquidityChartRangeMenuProps = {
+  value: LiquidityChartRangeId;
+  onChange: (value: LiquidityChartRangeId) => void;
+  isLoading?: boolean;
 };
 
-export const LiquidityHorizonMenu = ({ value, onChange }: LiquidityHorizonMenuProps) => {
-  const active = LIQUIDITY_HORIZON_OPTIONS.find((option) => option.value === value);
+export const LiquidityChartRangeMenu = ({
+  value,
+  onChange,
+  isLoading = false,
+}: LiquidityChartRangeMenuProps) => {
+  const active = LIQUIDITY_CHART_RANGE_OPTIONS.find((option) => option.value === value);
 
   return (
     <DropdownMenu>
@@ -39,26 +44,40 @@ export const LiquidityHorizonMenu = ({ value, onChange }: LiquidityHorizonMenuPr
               variant="ghost"
               size="sm"
               className="h-8 gap-1.5 px-2 text-xs"
-              aria-label="Elegir cuántos meses ver hacia adelante"
+              disabled={isLoading}
+              aria-busy={isLoading}
+              aria-label={
+                isLoading
+                  ? 'Actualizando rango del gráfico de deudas'
+                  : 'Elegir rango del gráfico de deudas'
+              }
             >
-              <CalendarRange className="size-3.5 shrink-0" aria-hidden />
-              Ver {active?.label ?? `${value} meses`}
+              {isLoading ? (
+                <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <CalendarRange className="size-3.5 shrink-0" aria-hidden />
+              )}
+              {active?.label ?? 'Rango'}
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          Cambia el horizonte de la proyección mes a mes
+          Cambia qué meses muestra la gráfica
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>Próximos meses</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Rango del gráfico</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup
-          value={String(value)}
-          onValueChange={(next) => onChange(Number(next) as LiquidityHorizonMonths)}
+          value={value}
+          onValueChange={(next) => onChange(next as LiquidityChartRangeId)}
         >
-          {LIQUIDITY_HORIZON_OPTIONS.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={String(option.value)}>
+          {LIQUIDITY_CHART_RANGE_OPTIONS.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              disabled={isLoading}
+            >
               <span>{option.label}</span>
               <span className="ml-auto text-[10px] text-muted-foreground">{option.hint}</span>
             </DropdownMenuRadioItem>
@@ -68,3 +87,6 @@ export const LiquidityHorizonMenu = ({ value, onChange }: LiquidityHorizonMenuPr
     </DropdownMenu>
   );
 };
+
+/** @deprecated Use LiquidityChartRangeMenu */
+export const LiquidityHorizonMenu = LiquidityChartRangeMenu;

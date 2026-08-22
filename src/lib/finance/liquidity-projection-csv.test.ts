@@ -59,6 +59,7 @@ const minimalResult = (): LiquidityProjectionResult => ({
       total_payments_due: 50,
       remaining_payments_from_month: 50,
       monthly_remaining: 50,
+      outstanding_debt_total: 0,
       debt_items: [],
     },
   ],
