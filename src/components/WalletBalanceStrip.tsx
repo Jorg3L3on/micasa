@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import {
   getProviderCardStyle,
   isProviderCardDarkSurface,
@@ -11,7 +10,7 @@ import {
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CreditCard, Landmark, Wallet } from 'lucide-react';
-import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
+import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 type WalletBalanceStripProps = {
@@ -33,14 +32,12 @@ const WalletBalanceStrip = ({
   const scheme = useProviderCardScheme();
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
   const [balanceOverrides, setBalanceOverrides] = useState<Record<number, number>>({});
-  const ownerQueryString = useMemo(() => {
-    const q = buildOwnerQuery(context);
-    const s = q.toString();
-    return s ? `?${s}` : '';
-  }, [context]);
 
   const getEffectiveAmount = (wallet: WalletListItem) =>
     balanceOverrides[wallet.id] ?? wallet.amount;
+
+  const isCreditType = (type: string) =>
+    type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
 
   const handleOpenWalletModal = useCallback((wallet: WalletListItem) => {
     const effectiveAmount = balanceOverrides[wallet.id] ?? wallet.amount;
@@ -391,20 +388,32 @@ const WalletBalanceStrip = ({
           </div>
       </div>
 
-      <WalletBalanceEditDialog
-        wallet={selectedWallet}
-        ownerQueryString={ownerQueryString}
-        onOpenChange={(open) => {
-          if (!open) setSelectedWallet(null);
-        }}
-        onSaved={(walletId, newAmount) => {
-          setBalanceOverrides((prev) => ({ ...prev, [walletId]: newAmount }));
-          setSelectedWallet((prev) =>
-            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
-          );
-          onBalancesPersisted?.();
-        }}
-      />
+      {selectedWallet && context ? (
+        <WalletBalanceDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedWallet(null);
+          }}
+          walletId={selectedWallet.id}
+          walletName={selectedWallet.name}
+          currentAmount={Number(selectedWallet.amount) || 0}
+          context={context}
+          variant={isCreditType(selectedWallet.type) ? 'credit' : 'funding'}
+          creditLimit={selectedWallet.credit_limit}
+          onSuccess={(newAmount) => {
+            setBalanceOverrides((prev) => ({
+              ...prev,
+              [selectedWallet.id]: newAmount,
+            }));
+            setSelectedWallet((prev) =>
+              prev && prev.id === selectedWallet.id
+                ? { ...prev, amount: newAmount }
+                : prev,
+            );
+            onBalancesPersisted?.();
+          }}
+        />
+      ) : null}
     </>
   );
 };

@@ -345,21 +345,7 @@ export const WalletListCard = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem
-                onClick={() => onOpenBalance(wallet)}
-                className="cursor-pointer"
-              >
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Editar saldo
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onEdit(wallet)}
-                className="cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              {canTransfer && onTransfer ? (
+            {canTransfer && onTransfer ? (
                 <DropdownMenuItem
                   onClick={() => onTransfer(wallet)}
                   className="cursor-pointer"
@@ -368,6 +354,20 @@ export const WalletListCard = ({
                   Transferir saldo
                 </DropdownMenuItem>
               ) : null}
+              <DropdownMenuItem
+                onClick={() => onOpenBalance(wallet)}
+                className="cursor-pointer"
+              >
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Ajustar saldo
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onEdit(wallet)}
+                className="cursor-pointer"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete(wallet)}

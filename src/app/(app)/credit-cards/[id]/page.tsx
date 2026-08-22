@@ -1,27 +1,36 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState, ViewTransition } from 'react';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  ViewTransition,
+} from 'react';
 import { useParams } from 'next/navigation';
-import { Wallet } from 'lucide-react';
+import {
+  Download,
+  FileText,
+  Pencil,
+  ShoppingCart,
+  SlidersHorizontal,
+  Upload,
+  Wallet,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
-import {
-  ContentEnter,
-  SkeletonExit,
-} from '@/components/view-transition/SuspenseReveal';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import {
   CreditCardCycleSummary,
-  CreditCardDetailHeaderActions,
   CreditCardDetailTabTrigger,
   CreditCardDetailTabsList,
   CreditCardDuePaymentStrip,
   CreditCardHeroZone,
-  CreditCardQuickActions,
   CreditCardStatementSummaryCard,
   CreditCardVisualHero,
   CreditCardCycleSpendingBar,
@@ -42,6 +51,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  useRegisterToolbarActions,
+  type ToolbarOverflowItem,
+} from '@/context/toolbar-actions-context';
 import { useCreditCardCycleUrlState } from '@/hooks/use-credit-card-cycle-url-state';
 import {
   buildOwnerQuery,
@@ -88,42 +101,31 @@ const formatCycleRange = (start: string, end: string) =>
   `${formatDate(start)} – ${formatDate(end)}`;
 
 const CreditCardDetailSkeleton = ({ cardId }: { cardId: number }) => (
-  <SkeletonExit>
-    <DirectionalTransition>
-      <div className="space-y-0 pb-24 lg:pb-0">
-        <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-9 w-28" />
-            <Skeleton className="h-9 w-9 rounded-lg" />
-          </div>
-          <ViewTransition
-            name={walletCardViewTransitionName(cardId)}
-            share="morph"
-            default="none"
-          >
-            <WalletCardVtPlaceholder walletId={cardId} variant="credit" />
-          </ViewTransition>
-          <Skeleton className="h-14 w-full rounded-2xl" />
-          <div className="flex justify-center gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-14 rounded-full" />
-            ))}
-          </div>
-          <Skeleton className="h-20 w-full rounded-2xl" />
-        </div>
-        <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-          <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" />
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
-            ))}
-          </div>
-          <Skeleton className="mt-4 h-10 w-full rounded-xl" />
-          <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
-        </div>
+  <DirectionalTransition>
+    <div className="space-y-0">
+      <div className="relative -mx-4 space-y-4 px-4 pb-4 sm:-mx-0">
+        <ViewTransition
+          name={walletCardViewTransitionName(cardId)}
+          share="morph"
+          default="none"
+        >
+          <WalletCardVtPlaceholder walletId={cardId} variant="credit" />
+        </ViewTransition>
+        <Skeleton className="h-14 w-full rounded-2xl" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
       </div>
-    </DirectionalTransition>
-  </SkeletonExit>
+      <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
+        <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" />
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="mt-4 h-10 w-full rounded-xl" />
+        <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
+      </div>
+    </div>
+  </DirectionalTransition>
 );
 
 const TabContentSkeleton = () => (
@@ -133,7 +135,7 @@ const TabContentSkeleton = () => (
   </div>
 );
 
-const CreditCardDetailPageContent = () => {
+export default function CreditCardDetailPage() {
   const params = useParams<{ id: string }>();
   const { context } = useFinanceContext();
   const creditCardId = Number(params.id);
@@ -178,11 +180,6 @@ const CreditCardDetailPageContent = () => {
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
-
-  const backHref = useMemo(
-    () => `/wallets${ownerQueryString}`,
-    [ownerQueryString],
-  );
 
   const fundingWalletOptions = useMemo(
     () =>
@@ -236,9 +233,12 @@ const CreditCardDetailPageContent = () => {
           statementPromise,
         ]);
 
-        setCard(cardData);
-        setStatement(statementData);
-        setLoading(false);
+        // Activate share morph for placeholder → real hero (same VT name).
+        startTransition(() => {
+          setCard(cardData);
+          setStatement(statementData);
+          setLoading(false);
+        });
 
         try {
           const [paymentMethodsData, categoriesData, planData] =
@@ -277,8 +277,8 @@ const CreditCardDetailPageContent = () => {
             ? err.message
             : 'Error al cargar el estado de cuenta',
         );
-      } finally {
         setLoading(false);
+      } finally {
         setCycleLoading(false);
       }
     },
@@ -451,6 +451,22 @@ const CreditCardDetailPageContent = () => {
     setEditCardDialogOpen(true);
   }, []);
 
+  const handleOpenPurchase = useCallback(() => {
+    setPurchaseDialogOpen(true);
+  }, []);
+
+  const handleOpenPayment = useCallback(() => {
+    setPaymentDialogOpen(true);
+  }, []);
+
+  const handleOpenImport = useCallback(() => {
+    setMpImportDialogOpen(true);
+  }, []);
+
+  const handleOpenBalance = useCallback(() => {
+    setBalanceDialogOpen(true);
+  }, []);
+
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
     const due = parseCalendarDate(statement.statement_due_date.slice(0, 10));
@@ -503,7 +519,73 @@ const CreditCardDetailPageContent = () => {
     ? formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)
     : '';
 
-  if (context.id === 0 || (loading && !statement)) {
+  const compraIcon = useMemo(
+    () => <ShoppingCart className="size-5" data-icon="inline-start" />,
+    [],
+  );
+
+  const overflowItems = useMemo((): ToolbarOverflowItem[] => {
+    if (!card) return [];
+    return [
+      {
+        key: 'pay',
+        label: 'Pagar',
+        onClick: handleOpenPayment,
+        icon: <Wallet data-icon="inline-start" />,
+      },
+      {
+        key: 'import',
+        label: 'Estado de cuenta',
+        onClick: handleOpenImport,
+        icon: <Upload data-icon="inline-start" />,
+      },
+      {
+        key: 'adjust',
+        label: 'Ajustar',
+        onClick: handleOpenBalance,
+        icon: <SlidersHorizontal data-icon="inline-start" />,
+      },
+      {
+        key: 'edit',
+        label: 'Editar tarjeta',
+        onClick: handleOpenEditCardDialog,
+        icon: <Pencil data-icon="inline-start" />,
+      },
+      {
+        key: 'export-csv',
+        label: 'Exportar CSV',
+        onClick: handleExportCsv,
+        icon: <Download data-icon="inline-start" />,
+      },
+      {
+        key: 'export-pdf',
+        label: 'Exportar PDF',
+        onClick: handleExportPdf,
+        icon: <FileText data-icon="inline-start" />,
+      },
+    ];
+  }, [
+    card,
+    handleExportCsv,
+    handleExportPdf,
+    handleOpenEditCardDialog,
+    handleOpenPayment,
+    handleOpenImport,
+    handleOpenBalance,
+  ]);
+
+  useRegisterToolbarActions({
+    primaryAction: card
+      ? {
+          label: 'Compra',
+          onClick: handleOpenPurchase,
+          icon: compraIcon,
+        }
+      : null,
+    overflow: overflowItems.length > 0 ? { items: overflowItems } : null,
+  });
+
+  if (context.id === 0 || (loading && !card)) {
     return <CreditCardDetailSkeleton cardId={creditCardId} />;
   }
 
@@ -517,18 +599,8 @@ const CreditCardDetailPageContent = () => {
 
   return (
     <DirectionalTransition>
-    <div className="relative pb-24 lg:pb-0">
+    <div className="relative">
       <CreditCardHeroZone>
-        <CreditCardDetailHeaderActions
-          card={card}
-          backHref={backHref}
-          onOpenImportDialog={() => setMpImportDialogOpen(true)}
-          onExportCsv={handleExportCsv}
-          onExportPdf={handleExportPdf}
-          onEditCard={handleOpenEditCardDialog}
-          onAdjustBalance={() => setBalanceDialogOpen(true)}
-        />
-
         <ViewTransition
           name={walletCardViewTransitionName(card.id)}
           share="morph"
@@ -543,13 +615,6 @@ const CreditCardDetailPageContent = () => {
         <CreditCardDuePaymentStrip
           statement={statement}
           daysUntilDue={daysUntilDue}
-        />
-
-        <CreditCardQuickActions
-          onOpenPaymentDialog={() => setPaymentDialogOpen(true)}
-          onOpenPurchaseDialog={() => setPurchaseDialogOpen(true)}
-          onOpenImportDialog={() => setMpImportDialogOpen(true)}
-          onAdjustBalance={() => setBalanceDialogOpen(true)}
         />
 
         {isCurrentCycle ? (
@@ -815,23 +880,3 @@ const CreditCardDetailPageContent = () => {
     </DirectionalTransition>
   );
 };
-
-function CreditCardDetailSuspenseFallback() {
-  const params = useParams<{ id: string }>();
-  const cardId = Number(params.id);
-  return (
-    <CreditCardDetailSkeleton
-      cardId={Number.isFinite(cardId) ? cardId : 0}
-    />
-  );
-}
-
-export default function CreditCardDetailPage() {
-  return (
-    <Suspense fallback={<CreditCardDetailSuspenseFallback />}>
-      <ContentEnter>
-        <CreditCardDetailPageContent />
-      </ContentEnter>
-    </Suspense>
-  );
-}

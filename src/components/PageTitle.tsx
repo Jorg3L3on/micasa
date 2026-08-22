@@ -1,16 +1,6 @@
 'use client';
 
-import React from 'react';
 import { usePathname } from 'next/navigation';
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import Link from 'next/link';
 import { useFinanceContext } from '@/context/finance-context';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
@@ -20,19 +10,70 @@ const buildOwnerSuffix = (context: FinanceContextType): string => {
   return `ownerType=${context.type}&ownerId=${context.id}`;
 };
 
-function getPageTitle(
-  pathname: string,
-  context: FinanceContextType,
-): {
-  title: string;
-  breadcrumbs: Array<{ label: string; href?: string }>;
-} {
-  const ownerQs = buildOwnerSuffix(context);
-  const qs = ownerQs ? `?${ownerQs}` : '';
-  const homeHref = getAppHomeHref(ownerQs);
-  const segments = pathname.split('/').filter(Boolean);
+/** Top-level module indexes — no toolbar back (avoids history confusion). */
+const MODULE_ROOT_SEGMENTS = new Set([
+  'wallets',
+  'metas',
+  'budgets',
+  'loans',
+  'transactions',
+  'expenses',
+  'categories',
+  'account',
+  'house-users',
+]);
 
-  // Panel financiero is the product home — no parent crumb.
+/**
+ * Whether the toolbar should show Back.
+ * Hidden on Panel financiero and on each module’s main list / hub page.
+ */
+export function shouldShowToolbarBack(pathname: string): boolean {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length === 0) return false;
+  if (segments[0] === 'dashboard') return false;
+  if (segments[0] === 'monthly') return false;
+
+  // Single-segment hubs: /wallets, /metas, /budgets, …
+  if (segments.length === 1 && MODULE_ROOT_SEGMENTS.has(segments[0])) {
+    return false;
+  }
+
+  // Sidebar hub: Liquidez y análisis
+  if (
+    segments[0] === 'wallets' &&
+    segments[1] === 'liquidity' &&
+    segments.length === 2
+  ) {
+    return false;
+  }
+
+  // Settings section hubs: /settings/account, lists (not new/edit)
+  if (segments[0] === 'settings' && segments.length <= 2) {
+    return false;
+  }
+
+  // Legacy template list roots
+  if (
+    (segments[0] === 'expense-templates' ||
+      segments[0] === 'income-templates') &&
+    segments.length === 1
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function getPageTitle(pathname: string): {
+  title: string;
+  /** True when this route is the product home (Panel financiero / monthly). */
+  isHome: boolean;
+  /** Toolbar Back — false on home and module index hubs. */
+  showBack: boolean;
+} {
+  const segments = pathname.split('/').filter(Boolean);
+  const showBack = shouldShowToolbarBack(pathname);
+
   if (segments[0] === 'monthly' && segments[1] && segments[2]) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
@@ -51,115 +92,56 @@ function getPageTitle(
       'Diciembre',
     ];
     const monthName = months[month - 1] || '';
-    const title = `${monthName} ${year}`;
-    return { title, breadcrumbs: [{ label: title }] };
+    return { title: `${monthName} ${year}`, isHome: true, showBack: false };
   }
 
-  // Legacy /dashboard is redirected in middleware; treat as home if seen briefly.
   if (segments.length === 0 || segments[0] === 'dashboard') {
-    return {
-      title: 'Panel financiero',
-      breadcrumbs: [{ label: 'Panel financiero' }],
-    };
+    return { title: 'Panel financiero', isHome: true, showBack: false };
   }
 
-  const breadcrumbs: Array<{ label: string; href?: string }> = [
-    { label: 'Panel financiero', href: homeHref },
-  ];
-
-  // Settings shell
   if (segments[0] === 'settings') {
-    breadcrumbs.push({
-      label: 'Configuración',
-      href: `/settings/account${qs}`,
-    });
-
     if (segments[1] === 'expense-templates') {
-      breadcrumbs.push({
-        label: 'Gastos programados',
-        href: `/settings/expense-templates${qs}`,
-      });
-      if (segments[2] === 'new') {
-        breadcrumbs.push({ label: 'Nueva plantilla' });
-        return { title: 'Nueva plantilla', breadcrumbs };
-      }
-      if (segments[3] === 'edit') {
-        breadcrumbs.push({ label: 'Editar' });
-        return { title: 'Editar plantilla', breadcrumbs };
-      }
-      return { title: 'Gastos programados', breadcrumbs };
+      if (segments[2] === 'new')
+        return { title: 'Nueva plantilla', isHome: false, showBack };
+      if (segments[3] === 'edit')
+        return { title: 'Editar plantilla', isHome: false, showBack };
+      return { title: 'Gastos programados', isHome: false, showBack };
     }
-
     if (segments[1] === 'income-templates') {
-      breadcrumbs.push({
-        label: 'Ingresos programados',
-        href: `/settings/income-templates${qs}`,
-      });
-      if (segments[2] === 'new') {
-        breadcrumbs.push({ label: 'Nueva plantilla' });
-        return { title: 'Nueva plantilla', breadcrumbs };
-      }
-      if (segments[3] === 'edit') {
-        breadcrumbs.push({ label: 'Editar' });
-        return { title: 'Editar plantilla', breadcrumbs };
-      }
-      return { title: 'Ingresos programados', breadcrumbs };
+      if (segments[2] === 'new')
+        return { title: 'Nueva plantilla', isHome: false, showBack };
+      if (segments[3] === 'edit')
+        return { title: 'Editar plantilla', isHome: false, showBack };
+      return { title: 'Ingresos programados', isHome: false, showBack };
     }
-
     if (segments[1] === 'house-users') {
-      breadcrumbs.push({ label: 'Usuarios de la casa' });
-      return { title: 'Usuarios de la casa', breadcrumbs };
+      return { title: 'Usuarios de la casa', isHome: false, showBack };
     }
-
     if (segments[1] === 'categories') {
-      breadcrumbs.push({ label: 'Categorías' });
-      return { title: 'Categorías', breadcrumbs };
+      return { title: 'Categorías', isHome: false, showBack };
     }
-
     if (segments[1] === 'account') {
-      breadcrumbs.push({ label: 'Cuenta' });
-      return { title: 'Cuenta', breadcrumbs };
+      return { title: 'Cuenta', isHome: false, showBack };
     }
-
-    breadcrumbs.push({ label: 'Configuración' });
-    return { title: 'Configuración', breadcrumbs };
+    return { title: 'Configuración', isHome: false, showBack };
   }
 
-  // Handle expense-templates (legacy paths — redirects handle navigation)
   if (segments[0] === 'expense-templates') {
-    breadcrumbs.push({
-      label: 'Plantillas de gastos',
-      href: `/settings/expense-templates${qs}`,
-    });
-    if (segments[1] === 'new') {
-      breadcrumbs.push({ label: 'Nueva plantilla' });
-      return { title: 'Nueva plantilla', breadcrumbs };
-    }
-    if (segments[2] === 'edit') {
-      breadcrumbs.push({ label: 'Editar' });
-      return { title: 'Editar plantilla', breadcrumbs };
-    }
-    return { title: 'Plantillas de gastos', breadcrumbs };
+    if (segments[1] === 'new')
+      return { title: 'Nueva plantilla', isHome: false, showBack };
+    if (segments[2] === 'edit')
+      return { title: 'Editar plantilla', isHome: false, showBack };
+    return { title: 'Plantillas de gastos', isHome: false, showBack };
   }
 
-  // Handle income-templates (legacy paths)
   if (segments[0] === 'income-templates') {
-    breadcrumbs.push({
-      label: 'Plantillas de ingresos',
-      href: `/settings/income-templates${qs}`,
-    });
-    if (segments[1] === 'new') {
-      breadcrumbs.push({ label: 'Nueva plantilla' });
-      return { title: 'Nueva plantilla', breadcrumbs };
-    }
-    if (segments[2] === 'edit') {
-      breadcrumbs.push({ label: 'Editar' });
-      return { title: 'Editar plantilla', breadcrumbs };
-    }
-    return { title: 'Plantillas de ingresos', breadcrumbs };
+    if (segments[1] === 'new')
+      return { title: 'Nueva plantilla', isHome: false, showBack };
+    if (segments[2] === 'edit')
+      return { title: 'Editar plantilla', isHome: false, showBack };
+    return { title: 'Plantillas de ingresos', isHome: false, showBack };
   }
 
-  // Handle fortnight pages
   if (
     segments[0] === 'fortnight' &&
     segments[1] &&
@@ -185,60 +167,48 @@ function getPageTitle(
     ];
     const monthName = months[month - 1] || '';
     const periodLabel = period === 'FIRST' ? '1–15' : '16–31';
-    const title = `${periodLabel} ${monthName} ${year}`;
-    breadcrumbs.push({
-      label: `${monthName} ${year}`,
-      href: `/monthly/${year}/${segments[2]}${qs}`,
-    });
-    breadcrumbs.push({ label: periodLabel });
-    return { title, breadcrumbs };
+    return {
+      title: `${periodLabel} ${monthName} ${year}`,
+      isHome: false,
+      showBack,
+    };
   }
 
   if (segments[0] === 'wallets') {
-    breadcrumbs.push({ label: 'Billeteras', href: `/wallets${qs}` });
     if (segments[1] === 'liquidity') {
-      breadcrumbs.push({ label: 'Proyección de liquidez' });
-      return { title: 'Proyección de liquidez', breadcrumbs };
+      return { title: 'Proyección de liquidez', isHome: false, showBack };
     }
-    return { title: 'Billeteras', breadcrumbs };
+    if (segments[1]) {
+      return { title: 'Billetera', isHome: false, showBack };
+    }
+    return { title: 'Billeteras', isHome: false, showBack };
   }
 
   if (segments[0] === 'metas') {
-    breadcrumbs.push({ label: 'Metas', href: `/metas${qs}` });
-    if (segments[1]) {
-      breadcrumbs.push({ label: 'Detalle' });
-      return { title: 'Meta', breadcrumbs };
-    }
-    return { title: 'Metas', breadcrumbs };
+    if (segments[1]) return { title: 'Meta', isHome: false, showBack };
+    return { title: 'Metas', isHome: false, showBack };
   }
 
   if (segments[0] === 'credit-cards') {
-    breadcrumbs.push({ label: 'Billeteras', href: `/wallets${qs}` });
-    breadcrumbs.push({ label: 'Estado de cuenta' });
-    return { title: 'Estado de cuenta', breadcrumbs };
+    return { title: 'Estado de cuenta', isHome: false, showBack };
   }
 
   if (segments[0] === 'budgets') {
-    breadcrumbs.push({ label: 'Presupuestos' });
-    return { title: 'Presupuestos', breadcrumbs };
+    return { title: 'Presupuestos', isHome: false, showBack };
   }
 
   if (segments[0] === 'loans') {
-    breadcrumbs.push({ label: 'Prestamos' });
-    return { title: 'Prestamos', breadcrumbs };
+    return { title: 'Prestamos', isHome: false, showBack };
   }
 
   if (segments[0] === 'transactions') {
-    breadcrumbs.push({ label: 'Operaciones' });
-    return { title: 'Operaciones', breadcrumbs };
+    return { title: 'Operaciones', isHome: false, showBack };
   }
 
   if (segments[0] === 'house-users') {
-    breadcrumbs.push({ label: 'Usuarios de la casa' });
-    return { title: 'Usuarios de la casa', breadcrumbs };
+    return { title: 'Usuarios de la casa', isHome: false, showBack };
   }
 
-  // Handle other pages
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',
     categories: 'Categorías',
@@ -246,33 +216,24 @@ function getPageTitle(
   };
 
   const pageTitle = pageTitles[segments[0]] || segments[0];
-  breadcrumbs.push({ label: pageTitle });
-  return { title: pageTitle, breadcrumbs };
+  return { title: pageTitle, isHome: false, showBack };
 }
 
-export default function PageTitle() {
+export function useAppPageTitle() {
   const pathname = usePathname();
-  const { context } = useFinanceContext();
-  const { breadcrumbs } = getPageTitle(pathname, context);
+  return getPageTitle(pathname);
+}
 
+export function useAppHomeHref() {
+  const { context } = useFinanceContext();
+  const ownerQs = buildOwnerSuffix(context);
+  return getAppHomeHref(ownerQs);
+}
+
+/** Centered toolbar title (Apple-style principal). */
+export default function PageTitle() {
+  const { title } = useAppPageTitle();
   return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        {breadcrumbs.map((crumb, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <BreadcrumbSeparator />}
-            <BreadcrumbItem>
-              {crumb.href ? (
-                <BreadcrumbLink asChild>
-                  <Link href={crumb.href}>{crumb.label}</Link>
-                </BreadcrumbLink>
-              ) : (
-                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-              )}
-            </BreadcrumbItem>
-          </React.Fragment>
-        ))}
-      </BreadcrumbList>
-    </Breadcrumb>
+    <h2 className="truncate text-lg font-semibold leading-tight">{title}</h2>
   );
 }

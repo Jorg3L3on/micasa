@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
-import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import {
+  isCreditOrStoreCardWalletType,
+  PAYMENT_METHOD_LABELS,
+} from '@/domain/payment-method';
 import { cn, formatCurrency } from '@/lib/utils';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { WalletBalanceEditDialog } from '@/components/wallets/WalletBalanceEditDialog';
+import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { getCardRiskLabel } from '@/components/wallets/liquidity/liquidity-personalization';
 import {
@@ -30,12 +33,6 @@ export const LiquidityAccountsToday = ({
   const [wallets, setWallets] = useState<WalletListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
-
-  const ownerQueryString = useMemo(() => {
-    const query = buildOwnerQuery(context);
-    const value = query.toString();
-    return value ? `?${value}` : '';
-  }, [context]);
 
   const load = useCallback(async () => {
     if (!context || (context.type === 'user' && context.id === 0)) {
@@ -223,20 +220,28 @@ export const LiquidityAccountsToday = ({
         )}
       </section>
 
-      <WalletBalanceEditDialog
-        wallet={selectedCard}
-        ownerQueryString={ownerQueryString}
-        onOpenChange={(open) => {
-          if (!open) setSelectedCard(null);
-        }}
-        onSaved={(walletId, newAmount) => {
-          setSelectedCard((prev) =>
-            prev && prev.id === walletId ? { ...prev, amount: newAmount } : prev,
-          );
-          void load();
-          onChanged?.();
-        }}
-      />
+      {selectedCard ? (
+        <WalletBalanceDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedCard(null);
+          }}
+          walletId={selectedCard.id}
+          walletName={selectedCard.name}
+          currentAmount={Number(selectedCard.amount) || 0}
+          context={context}
+          variant={
+            isCreditOrStoreCardWalletType(selectedCard.type)
+              ? 'credit'
+              : 'funding'
+          }
+          creditLimit={selectedCard.credit_limit}
+          onSuccess={() => {
+            void load();
+            onChanged?.();
+          }}
+        />
+      ) : null}
     </>
   );
 };

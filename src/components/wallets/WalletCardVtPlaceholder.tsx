@@ -10,7 +10,7 @@ import {
 
 type WalletCardVtPlaceholderProps = {
   walletId: number;
-  /** Credit-card detail uses the wider aspect shell. */
+  /** Wider max-width on credit detail; both variants share aspect-[1.586/1]. */
   variant?: 'funding' | 'credit';
   className?: string;
 };
@@ -49,39 +49,23 @@ export function WalletCardVtPlaceholder({
       aria-label="Cargando billetera"
     >
       {snapshot ? (
-        <StashedCardFace snapshot={snapshot} variant={variant} />
+        <StashedCardFace snapshot={snapshot} />
       ) : (
         <div
-          className={cn(
-            'w-full animate-pulse rounded-2xl border border-border/60 bg-muted/40',
-            variant === 'credit'
-              ? 'aspect-[1.586/1]'
-              : 'min-h-[10.75rem] sm:min-h-[12rem]',
-          )}
+          className="aspect-[1.586/1] w-full animate-pulse rounded-[1.375rem] border border-border/60 bg-muted/40"
         />
       )}
     </div>
   );
 }
 
-function StashedCardFace({
-  snapshot,
-  variant,
-}: {
-  snapshot: WalletCardVtSnapshot;
-  variant: 'funding' | 'credit';
-}) {
+function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
   return (
     <div
-      className={cn(
-        'relative w-full overflow-hidden rounded-2xl border border-white/15 p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
-        variant === 'credit'
-          ? 'aspect-[1.586/1]'
-          : 'min-h-[10.75rem] pb-5 sm:min-h-[12rem] sm:pb-6',
-      )}
+      className="relative aspect-[1.586/1] w-full overflow-hidden rounded-[1.375rem] border border-white/15 p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5"
       style={snapshot.style}
     >
-      <div className="relative flex h-full min-h-[inherit] flex-col justify-between gap-6">
+      <div className="relative flex h-full flex-col justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
           {snapshot.providerIconKey ? (
             <WalletProviderIcon
@@ -108,7 +92,7 @@ function StashedCardFace({
           <p className="text-[10px] font-semibold uppercase tracking-wider opacity-55">
             {snapshot.isCredit ? 'Deuda' : 'Saldo disponible'}
           </p>
-          <p className="mt-1 font-mono text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
+          <p className="mt-1 font-mono text-2xl font-bold tabular-nums leading-snug tracking-tight sm:text-3xl">
             {formatCurrency(snapshot.amount)}
           </p>
         </div>
