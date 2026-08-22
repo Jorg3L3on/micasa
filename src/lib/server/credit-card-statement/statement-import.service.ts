@@ -43,12 +43,15 @@ const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.DEPARTMENT_STORE_CARD,
 ];
 
+type MovementKind = 'charge' | 'payment' | 'msi_installment';
+
 type ParsedMovement = {
   description: string;
   amount: number;
   paymentDate: Date;
   installmentCurrent?: number;
   installmentTotal?: number;
+  kind: MovementKind;
 };
 
 type ParsedStatement = {
@@ -70,9 +73,37 @@ type ParsedStatement = {
 export type StatementImportResult = {
   importId: number;
   expensesCreated: number;
+  paymentsCreated: number;
+  scheduledCreated: number;
   duplicatesSkipped: number;
   linesSkipped: number;
   warnings: string[];
+};
+
+export type StatementImportPreviewMovement = {
+  kind: MovementKind;
+  description: string;
+  amount: number;
+  payment_date: string;
+  installment_current?: number;
+  installment_total?: number;
+};
+
+export type StatementImportPreviewResult = {
+  provider: StatementImportProvider;
+  account_number: string | null;
+  payment_due_date: string | null;
+  total_due: number | null;
+  minimum_payment: number | null;
+  movements: StatementImportPreviewMovement[];
+  warnings: string[];
+};
+
+export type StatementImportCommitOptions = {
+  import_charges?: boolean;
+  import_payments?: boolean;
+  import_msi_schedule?: boolean;
+  adjust_wallet_debt?: boolean;
 };
 
 type ImportInput = {
@@ -87,6 +118,7 @@ type ImportInput = {
   categoryId: number | null;
   skipDuplicates: boolean;
   createdByUserId: number;
+  commitOptions?: StatementImportCommitOptions;
 };
 
 const categoryOwnerWhere = (
@@ -108,6 +140,53 @@ const startEndUtcDay = (d: Date): { start: Date; end: Date } => ({
   start: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)),
   end: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999)),
 });
+
+const PAYMENT_DESCRIPTION_RE =
+  /PAGO|ABONO|GRACIAS POR SU PAGO|POR SU PAGO|DEVOLUCI|REEMBOLSO/i;
+
+const inferMovementKind = (movement: {
+  description: string;
+  amount: number;
+  installmentCurrent?: number;
+  installmentTotal?: number;
+  kind?: MovementKind;
+}): MovementKind => {
+  if (movement.kind) return movement.kind;
+  if (PAYMENT_DESCRIPTION_RE.test(movement.description)) return 'payment';
+  if (
+    movement.installmentCurrent != null &&
+    movement.installmentTotal != null &&
+    movement.installmentCurrent < movement.installmentTotal
+  ) {
+    return 'msi_installment';
+  }
+  return 'charge';
+};
+
+const normalizeParsedMovements = (
+  movements: Array<Omit<ParsedMovement, 'kind'> & { kind?: MovementKind }>,
+): ParsedMovement[] =>
+  movements.map((movement) => ({
+    ...movement,
+    amount: Math.abs(movement.amount),
+    kind: inferMovementKind(movement),
+  }));
+
+const hasImportableStatementContent = (parsed: ParsedStatement) =>
+  parsed.movements.length > 0 ||
+  parsed.totalDue != null ||
+  parsed.minimumPayment != null ||
+  parsed.paymentDueDate != null;
+
+const assertReadablePdfText = (text: string) => {
+  if (text.replace(/\s/g, '').length < 40) {
+    const err = new Error(
+      'No se pudo leer el PDF (posiblemente es una imagen escaneada). Usa un PDF con texto seleccionable.',
+    ) as Error & { code?: string };
+    err.code = 'UNREADABLE_PDF';
+    throw err;
+  }
+};
 
 async function syncWalletTemporaryCreditFromDidiStatement(
   walletId: number,
@@ -224,16 +303,23 @@ async function runImport(
   } = input;
 
   const warnings = [...parsed.warnings];
+  const commitOptions: Required<StatementImportCommitOptions> = {
+    import_charges: input.commitOptions?.import_charges ?? true,
+    import_payments: input.commitOptions?.import_payments ?? true,
+    import_msi_schedule: input.commitOptions?.import_msi_schedule ?? true,
+    adjust_wallet_debt: input.commitOptions?.adjust_wallet_debt ?? true,
+  };
 
-  if (parsed.movements.length === 0) {
-    const msg = 'No se encontraron compras importables en el PDF.';
+  if (!hasImportableStatementContent(parsed)) {
+    const msg =
+      'No se pudo leer el PDF (posiblemente es una imagen escaneada) o no contiene datos importables.';
     warnings.push(msg);
     const err = new Error(msg) as Error & {
       code?: string;
       parse_warnings?: string[];
       statement_import_provider?: StatementImportProvider;
     };
-    err.code = 'NO_MOVEMENTS';
+    err.code = 'UNREADABLE_PDF';
     err.parse_warnings = warnings;
     err.statement_import_provider = provider;
     throw err;
@@ -265,6 +351,8 @@ async function runImport(
   }
 
   let expensesCreated = 0;
+  let paymentsCreated = 0;
+  let scheduledCreated = 0;
   let duplicatesSkipped = 0;
   const linesSkipped = 0;
   let diDiLimitMessages: string[] = [];
@@ -336,6 +424,86 @@ async function runImport(
     };
 
     for (const mov of parsed.movements) {
+      const kind = mov.kind;
+      const shouldImport =
+        (kind === 'charge' && commitOptions.import_charges) ||
+        (kind === 'payment' && commitOptions.import_payments) ||
+        (kind === 'msi_installment' && commitOptions.import_msi_schedule);
+
+      if (!shouldImport) {
+        continue;
+      }
+
+      const paymentDateStr = toDateString(mov.paymentDate);
+      const { start, end } = startEndUtcDay(mov.paymentDate);
+
+      if (kind === 'payment') {
+        if (skipDuplicates) {
+          const dup = await tx.creditCardPayment.findFirst({
+            where: {
+              credit_card_wallet_id: creditCardWalletId,
+              amount: mov.amount,
+              paid_at: { gte: start, lte: end },
+              note: mov.description,
+            },
+          });
+          if (dup) {
+            duplicatesSkipped += 1;
+            continue;
+          }
+        }
+
+        await tx.creditCardPayment.create({
+          data: {
+            amount: mov.amount,
+            paid_at: paymentDayStart(paymentDateStr),
+            note: mov.description,
+            credit_card_wallet_id: creditCardWalletId,
+            source_wallet_id: null,
+            adjusts_debt: commitOptions.adjust_wallet_debt,
+            user_id: ownerFilter.user_id,
+            house_id: ownerFilter.house_id,
+          },
+        });
+
+        if (commitOptions.adjust_wallet_debt) {
+          await applyWalletAmountDelta(tx, creditCardWalletId, -mov.amount);
+        }
+
+        paymentsCreated += 1;
+        continue;
+      }
+
+      if (kind === 'msi_installment') {
+        if (skipDuplicates) {
+          const dup = await tx.creditCardScheduledPayment.findFirst({
+            where: {
+              credit_card_wallet_id: creditCardWalletId,
+              amount: mov.amount,
+              due_date: { gte: start, lte: end },
+              label: mov.description,
+            },
+          });
+          if (dup) {
+            duplicatesSkipped += 1;
+            continue;
+          }
+        }
+
+        await tx.creditCardScheduledPayment.create({
+          data: {
+            credit_card_wallet_id: creditCardWalletId,
+            due_date: paymentDayStart(paymentDateStr),
+            amount: mov.amount,
+            label: mov.description,
+            user_id: ownerFilter.user_id,
+            house_id: ownerFilter.house_id,
+          },
+        });
+        scheduledCreated += 1;
+        continue;
+      }
+
       const period = getFortnightPeriodForDay(mov.paymentDate.getUTCDate());
       const fortnight = await resolveOrCreateFortnight({
         ownerType,
@@ -345,9 +513,6 @@ async function runImport(
         period,
         tx,
       });
-
-      const paymentDateStr = toDateString(mov.paymentDate);
-      const { start, end } = startEndUtcDay(mov.paymentDate);
 
       if (skipDuplicates) {
         const dup = await tx.expense.findFirst({
@@ -411,14 +576,16 @@ async function runImport(
         },
       });
 
-      const delta = getPaidExpenseWalletDelta(walletSnapshot.type, mov.amount);
-      walletDeltaAccumulated += delta;
-      runningWalletAmount += delta;
+      if (commitOptions.adjust_wallet_debt) {
+        const delta = getPaidExpenseWalletDelta(walletSnapshot.type, mov.amount);
+        walletDeltaAccumulated += delta;
+        runningWalletAmount += delta;
+      }
 
       expensesCreated += 1;
     }
 
-    if (walletDeltaAccumulated !== 0) {
+    if (commitOptions.adjust_wallet_debt && walletDeltaAccumulated !== 0) {
       await applyWalletAmountDelta(tx, creditCardWalletId, walletDeltaAccumulated);
     }
 
@@ -426,7 +593,7 @@ async function runImport(
   }, { timeout: 20_000, maxWait: 10_000 });
 
   // Sync wallet balance to the authoritative total from the statement (PDF).
-  if (parsed.currentBalance != null) {
+  if (commitOptions.adjust_wallet_debt && parsed.currentBalance != null) {
     await prisma.wallet.update({
       where: { id: creditCardWalletId },
       data: { amount: parsed.currentBalance },
@@ -439,7 +606,7 @@ async function runImport(
   const finalWarnings = [
     ...warnings,
     ...diDiLimitMessages,
-    `Resumen: ${expensesCreated} gasto(s) creado(s), ${duplicatesSkipped} duplicado(s) omitido(s), ${linesSkipped} línea(s) omitida(s).`,
+    `Resumen: ${expensesCreated} gasto(s), ${paymentsCreated} pago(s), ${scheduledCreated} cuota(s) programada(s); ${duplicatesSkipped} duplicado(s) omitido(s), ${linesSkipped} línea(s) omitida(s).`,
   ];
 
   await prisma.creditCardStatementImport.update({
@@ -447,7 +614,15 @@ async function runImport(
     data: { parse_warnings: finalWarnings },
   });
 
-  return { importId: importRow.id, expensesCreated, duplicatesSkipped, linesSkipped, warnings: finalWarnings };
+  return {
+    importId: importRow.id,
+    expensesCreated,
+    paymentsCreated,
+    scheduledCreated,
+    duplicatesSkipped,
+    linesSkipped,
+    warnings: finalWarnings,
+  };
 }
 
 const PROVIDER_LABELS: Record<StatementImportProvider, string> = {
@@ -462,11 +637,50 @@ export async function importStatementPdf(
   provider: StatementImportProvider,
   input: ImportInput,
 ): Promise<StatementImportResult> {
+  const parsed = await parseStatementFromBuffer(provider, input.buffer);
+  return runImport(parsed, provider, PROVIDER_LABELS[provider], input);
+}
+
+export async function previewStatementPdf(
+  provider: StatementImportProvider,
+  buffer: Buffer,
+): Promise<StatementImportPreviewResult> {
+  const parsed = await parseStatementFromBuffer(provider, buffer);
+  return {
+    provider,
+    account_number: parsed.accountNumber,
+    payment_due_date: parsed.paymentDueDate
+      ? toDateString(parsed.paymentDueDate)
+      : null,
+    total_due: parsed.totalDue,
+    minimum_payment: parsed.minimumPayment,
+    movements: parsed.movements.map((movement) => ({
+      kind: movement.kind,
+      description: movement.description,
+      amount: movement.amount,
+      payment_date: toDateString(movement.paymentDate),
+      ...(movement.installmentCurrent != null
+        ? { installment_current: movement.installmentCurrent }
+        : {}),
+      ...(movement.installmentTotal != null
+        ? { installment_total: movement.installmentTotal }
+        : {}),
+    })),
+    warnings: parsed.warnings,
+  };
+}
+
+async function parseStatementFromBuffer(
+  provider: StatementImportProvider,
+  buffer: Buffer,
+): Promise<ParsedStatement> {
+  const input = { buffer } as Pick<ImportInput, 'buffer'>;
   let parsed: ParsedStatement;
 
   switch (provider) {
     case StatementImportProvider.MERCADO_PAGO: {
       const text = await extractMercadoPagoStatementText(input.buffer);
+      assertReadablePdfText(text);
       const r = parseMercadoPagoStatementText(text);
       parsed = {
         accountNumber: r.accountNumber,
@@ -476,20 +690,22 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: null,
-        /** Misma idea que DiDi: el PDF es fuente de verdad para la deuda al cierre. */
         currentBalance:
           r.totalDue != null && Number.isFinite(r.totalDue) ? r.totalDue : null,
-        movements: r.movements.map((m) => ({
-          description: m.description,
-          amount: m.amount,
-          paymentDate: m.paymentDate,
-        })),
+        movements: normalizeParsedMovements(
+          r.movements.map((m) => ({
+            description: m.description,
+            amount: m.amount,
+            paymentDate: m.paymentDate,
+          })),
+        ),
         warnings: r.warnings,
       };
       break;
     }
     case StatementImportProvider.CA_DEPARTAMENTAL: {
       const text = await extractCaDepartamentalStatementText(input.buffer);
+      assertReadablePdfText(text);
       const r = parseCaDepartamentalStatementText(text);
       parsed = {
         accountNumber: r.accountNumber,
@@ -500,19 +716,23 @@ export async function importStatementPdf(
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
         currentBalance: r.currentBalance,
-        movements: r.movements.map((m) => ({
-          description: m.description,
-          amount: m.amount,
-          paymentDate: m.paymentDate,
-          installmentCurrent: m.installmentCurrent,
-          installmentTotal: m.installmentTotal,
-        })),
+        movements: normalizeParsedMovements(
+          r.movements.map((m) => ({
+            description: m.description,
+            amount: m.amount,
+            paymentDate: m.paymentDate,
+            installmentCurrent: m.installmentCurrent,
+            installmentTotal: m.installmentTotal,
+            kind: m.kind,
+          })),
+        ),
         warnings: r.warnings,
       };
       break;
     }
     case StatementImportProvider.CA_EFECTIVO: {
       const text = await extractCaEfectivoStatementText(input.buffer);
+      assertReadablePdfText(text);
       const r = parseCaEfectivoStatementText(text);
       parsed = {
         accountNumber: r.accountNumber,
@@ -523,19 +743,23 @@ export async function importStatementPdf(
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
         currentBalance: r.currentBalance,
-        movements: r.movements.map((m) => ({
-          description: m.description,
-          amount: m.amount,
-          paymentDate: m.paymentDate,
-          installmentCurrent: m.installmentCurrent,
-          installmentTotal: m.installmentTotal,
-        })),
+        movements: normalizeParsedMovements(
+          r.movements.map((m) => ({
+            description: m.description,
+            amount: m.amount,
+            paymentDate: m.paymentDate,
+            installmentCurrent: m.installmentCurrent,
+            installmentTotal: m.installmentTotal,
+            kind: m.kind,
+          })),
+        ),
         warnings: r.warnings,
       };
       break;
     }
     case StatementImportProvider.DIDI_CARD: {
       const text = await extractDidiCardStatementText(input.buffer);
+      assertReadablePdfText(text);
       const r = parseDidiCardStatementText(text);
       parsed = {
         accountNumber: r.accountNumber,
@@ -545,20 +769,22 @@ export async function importStatementPdf(
         periodEnd: r.periodEnd,
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
-        // DiDi: Saldo total del periodo es la fuente de verdad para la deuda al corte.
         currentBalance: r.totalDue,
         temporaryCreditLimit: r.temporaryCreditLimit,
-        movements: r.movements.map((m) => ({
-          description: m.description,
-          amount: m.amount,
-          paymentDate: m.paymentDate,
-        })),
+        movements: normalizeParsedMovements(
+          r.movements.map((m) => ({
+            description: m.description,
+            amount: m.amount,
+            paymentDate: m.paymentDate,
+          })),
+        ),
         warnings: r.warnings,
       };
       break;
     }
     case StatementImportProvider.LIVERPOOL: {
       const text = await extractLiverpoolStatementText(input.buffer);
+      assertReadablePdfText(text);
       const r = parseLiverpoolStatementText(text);
       parsed = {
         accountNumber: r.accountNumber,
@@ -569,21 +795,25 @@ export async function importStatementPdf(
         totalDue: r.totalDue,
         minimumPayment: r.minimumPayment,
         currentBalance: r.currentBalance,
-        movements: r.movements.map((m) => ({
-          description: m.description,
-          amount: m.amount,
-          paymentDate: m.paymentDate,
-        })),
+        movements: normalizeParsedMovements(
+          r.movements.map((m) => ({
+            description: m.description,
+            amount: m.amount,
+            paymentDate: m.paymentDate,
+          })),
+        ),
         warnings: r.warnings,
       };
       break;
     }
     default: {
-      const err = new Error(`Proveedor no soportado: ${String(provider)}`) as Error & { code?: string };
+      const err = new Error(`Proveedor no soportado: ${String(provider)}`) as Error & {
+        code?: string;
+      };
       err.code = 'UNSUPPORTED_PROVIDER';
       throw err;
     }
   }
 
-  return runImport(parsed, provider, PROVIDER_LABELS[provider], input);
+  return parsed;
 }
