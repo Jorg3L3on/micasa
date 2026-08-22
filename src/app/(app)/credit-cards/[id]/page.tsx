@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useParams } from 'next/navigation';
 import {
+  CheckCircle2,
   Download,
   FileText,
   Pencil,
@@ -38,11 +39,14 @@ import {
 import { CreditCardCycleLedger } from '@/components/credit-cards/CreditCardCycleLedger';
 import { CreditCardCycleWorkspaceShell } from '@/components/credit-cards/CreditCardCycleWorkspaceShell';
 import { CreditCardInstallmentPortfolio } from '@/components/credit-cards/CreditCardInstallmentPortfolio';
+import { CreditCardScheduledPaymentsSection } from '@/components/credit-cards/CreditCardScheduledPaymentsSection';
 import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
 import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
-import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import CreditCardPaymentDialog, {
+  type CreditCardPaymentSubmitPayload,
+} from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
@@ -70,7 +74,8 @@ import {
   updateCreditCard,
 } from '@/lib/api/credit-cards';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
-import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
+import type { CreditCardExternalPaymentSubmitPayload } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
+import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
 import { computeCreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
@@ -154,6 +159,8 @@ export default function CreditCardDetailPage() {
   const [cycleLoading, setCycleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [externalPaymentDialogOpen, setExternalPaymentDialogOpen] =
+    useState(false);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -303,6 +310,7 @@ export default function CreditCardDetailPage() {
       await createCreditCardPayment(
         creditCardId,
         {
+          mode: 'wallet',
           ...data,
           create_fortnight_expense: true,
           fortnight_id: activeFortnightId,
@@ -319,6 +327,29 @@ export default function CreditCardDetailPage() {
     } catch (err) {
       setPaymentError(
         err instanceof Error ? err.message : 'Error al registrar el pago',
+      );
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  const handleExternalPaymentSubmit = async (
+    data: CreditCardExternalPaymentSubmitPayload,
+  ) => {
+    try {
+      setPaymentSubmitting(true);
+      setPaymentError(null);
+
+      await createCreditCardPayment(creditCardId, data, context);
+
+      toast.success('Pago histórico registrado');
+      setExternalPaymentDialogOpen(false);
+      await loadData();
+    } catch (err) {
+      setPaymentError(
+        err instanceof Error
+          ? err.message
+          : 'Error al registrar el pago histórico',
       );
     } finally {
       setPaymentSubmitting(false);
@@ -467,6 +498,10 @@ export default function CreditCardDetailPage() {
     setBalanceDialogOpen(true);
   }, []);
 
+  const handleOpenExternalPayment = useCallback(() => {
+    setExternalPaymentDialogOpen(true);
+  }, []);
+
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
     const due = parseCalendarDate(statement.statement_due_date.slice(0, 10));
@@ -534,6 +569,12 @@ export default function CreditCardDetailPage() {
         icon: <Wallet data-icon="inline-start" />,
       },
       {
+        key: 'external',
+        label: 'Ya pagado',
+        onClick: handleOpenExternalPayment,
+        icon: <CheckCircle2 data-icon="inline-start" />,
+      },
+      {
         key: 'import',
         label: 'Estado de cuenta',
         onClick: handleOpenImport,
@@ -570,6 +611,7 @@ export default function CreditCardDetailPage() {
     handleExportPdf,
     handleOpenEditCardDialog,
     handleOpenPayment,
+    handleOpenExternalPayment,
     handleOpenImport,
     handleOpenBalance,
   ]);
@@ -734,11 +776,18 @@ export default function CreditCardDetailPage() {
             {cycleLoading ? (
               <TabContentSkeleton />
             ) : (
-              <CreditCardInstallmentPortfolio
-                purchases={statement.installment_active_purchases}
-                ownerQueryString={ownerQueryString}
-                onRegisterPurchase={() => setPurchaseDialogOpen(true)}
-              />
+              <>
+                <CreditCardScheduledPaymentsSection
+                  creditCardId={creditCardId}
+                  context={context}
+                  onChanged={() => loadData({ cycleOnly: true })}
+                />
+                <CreditCardInstallmentPortfolio
+                  purchases={statement.installment_active_purchases}
+                  ownerQueryString={ownerQueryString}
+                  onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+                />
+              </>
             )}
           </TabsContent>
         </CreditCardCycleWorkspaceShell>
@@ -789,6 +838,21 @@ export default function CreditCardDetailPage() {
         error={paymentError}
         fortnightId={paymentFortnightId}
         onConfirm={handlePaymentSubmit}
+      />
+
+      <CreditCardExternalPaymentDialog
+        open={externalPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setExternalPaymentDialogOpen(open);
+          if (!open) setPaymentError(null);
+        }}
+        nextDuePayment={
+          paymentSuggestedOverride ?? paymentDialogSuggestedAmount
+        }
+        outstandingBalance={statement.outstanding_balance}
+        submitting={paymentSubmitting}
+        error={paymentError}
+        onConfirm={handleExternalPaymentSubmit}
       />
 
       <CreditCardQuickPurchaseDialog

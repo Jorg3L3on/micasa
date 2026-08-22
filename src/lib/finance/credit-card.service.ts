@@ -3,15 +3,16 @@ import {
   coerceToCalendarDayStart,
   formatCalendarDate,
 } from '@/lib/calendar-dates';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
   CreateCreditCardInput,
-  CreateCreditCardPaymentInput,
   CreateCreditCardPurchaseInput,
+  NormalizedCreditCardPaymentInput,
   UpdateCreditCardInput,
 } from '@/schemas/credit-card.schema';
+import { coverScheduledPaymentForCardPayment } from '@/lib/finance/credit-card-scheduled-payment.service';
 import {
   applyWalletAmountDelta,
   ensureCreditWalletType,
@@ -324,22 +325,46 @@ export async function createCreditCardPurchase(
 export async function createCreditCardPayment(
   creditCardId: number,
   ownerFilter: OwnerFilter,
-  input: CreateCreditCardPaymentInput,
+  input: NormalizedCreditCardPaymentInput,
 ) {
-  return prisma.$transaction(async (tx) => {
-    const [creditCardWallet, sourceWallet] = await Promise.all([
-      tx.wallet.findFirst({
-        where: { id: creditCardId, ...ownerFilter },
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          amount: true,
-          user_id: true,
-          house_id: true,
-        },
-      }),
-      tx.wallet.findFirst({
+  const result = await prisma.$transaction(async (tx) => {
+    const creditCardWallet = await tx.wallet.findFirst({
+      where: { id: creditCardId, ...ownerFilter },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        amount: true,
+        user_id: true,
+        house_id: true,
+      },
+    });
+
+    if (!creditCardWallet) {
+      const error = new Error('Tarjeta no encontrada');
+      (error as { code?: string }).code = 'P2025';
+      throw error;
+    }
+
+    ensureCreditWalletType(creditCardWallet);
+
+    const isExternal = input.mode === 'external';
+    const adjustsDebt = isExternal ? (input.adjusts_debt ?? true) : true;
+
+    let sourceWallet:
+      | {
+          id: number;
+          name: string;
+          type: PaymentMethodType;
+          amount: Prisma.Decimal | number | string;
+          user_id: number | null;
+          house_id: number | null;
+          provider_icon_key?: string | null;
+        }
+      | null = null;
+
+    if (!isExternal) {
+      sourceWallet = await tx.wallet.findFirst({
         where: { id: input.source_wallet_id, ...ownerFilter },
         select: {
           id: true,
@@ -348,58 +373,54 @@ export async function createCreditCardPayment(
           amount: true,
           user_id: true,
           house_id: true,
+          provider_icon_key: true,
         },
-      }),
-    ]);
+      });
 
-    if (!creditCardWallet) {
-      const error = new Error('Tarjeta no encontrada');
-      (error as { code?: string }).code = 'P2025';
-      throw error;
+      if (!sourceWallet) {
+        const error = new Error('Billetera de origen no encontrada');
+        (error as { code?: string }).code = 'WALLET_NOT_FOUND';
+        throw error;
+      }
+
+      ensureFundingWalletType(sourceWallet);
+
+      if (creditCardWallet.id === sourceWallet.id) {
+        const error = new Error(
+          'La billetera de origen debe ser distinta de la tarjeta',
+        );
+        (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_WALLET';
+        throw error;
+      }
+
+      if (
+        creditCardWallet.user_id !== sourceWallet.user_id ||
+        creditCardWallet.house_id !== sourceWallet.house_id
+      ) {
+        const error = new Error(
+          'La billetera de origen debe pertenecer al mismo titular',
+        );
+        (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_OWNER';
+        throw error;
+      }
+
+      const sourceBalance = toWalletAmountNumber(sourceWallet);
+      if (sourceBalance < input.amount) {
+        const error = new Error('Saldo insuficiente en la billetera de origen');
+        (error as { code?: string }).code = 'INSUFFICIENT_SOURCE_BALANCE';
+        throw error;
+      }
     }
 
-    if (!sourceWallet) {
-      const error = new Error('Billetera de origen no encontrada');
-      (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-      throw error;
-    }
-
-    ensureCreditWalletType(creditCardWallet);
-    ensureFundingWalletType(sourceWallet);
-
-    if (creditCardWallet.id === sourceWallet.id) {
-      const error = new Error(
-        'La billetera de origen debe ser distinta de la tarjeta',
-      );
-      (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_WALLET';
-      throw error;
-    }
-
-    if (
-      creditCardWallet.user_id !== sourceWallet.user_id ||
-      creditCardWallet.house_id !== sourceWallet.house_id
-    ) {
-      const error = new Error(
-        'La billetera de origen debe pertenecer al mismo titular',
-      );
-      (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_OWNER';
-      throw error;
-    }
-
-    const currentDebt = toWalletAmountNumber(creditCardWallet);
-    if (input.amount > currentDebt) {
-      const error = new Error(
-        'El monto del pago no puede superar la deuda actual de la tarjeta',
-      );
-      (error as { code?: string }).code = 'INVALID_PAYMENT_AMOUNT';
-      throw error;
-    }
-
-    const sourceBalance = toWalletAmountNumber(sourceWallet);
-    if (sourceBalance < input.amount) {
-      const error = new Error('Saldo insuficiente en la billetera de origen');
-      (error as { code?: string }).code = 'INSUFFICIENT_SOURCE_BALANCE';
-      throw error;
+    if (adjustsDebt) {
+      const currentDebt = toWalletAmountNumber(creditCardWallet);
+      if (input.amount > currentDebt) {
+        const error = new Error(
+          'El monto del pago no puede superar la deuda actual de la tarjeta',
+        );
+        (error as { code?: string }).code = 'INVALID_PAYMENT_AMOUNT';
+        throw error;
+      }
     }
 
     const payment = await tx.creditCardPayment.create({
@@ -408,21 +429,34 @@ export async function createCreditCardPayment(
         paid_at: coerceToCalendarDate(input.paid_at),
         note: input.note ?? null,
         credit_card_wallet_id: creditCardWallet.id,
-        source_wallet_id: sourceWallet.id,
+        source_wallet_id: sourceWallet?.id ?? null,
+        adjusts_debt: adjustsDebt,
         user_id: creditCardWallet.user_id,
         house_id: creditCardWallet.house_id,
       },
       include: {
-        source_wallet: { select: { id: true, name: true, provider_icon_key: true } },
+        source_wallet: {
+          select: { id: true, name: true, provider_icon_key: true },
+        },
         credit_card_wallet: { select: { id: true, name: true } },
       },
     });
 
-    await applyWalletAmountDelta(tx, sourceWallet.id, -input.amount);
-    await applyWalletAmountDelta(tx, creditCardWallet.id, -input.amount);
+    if (sourceWallet) {
+      await applyWalletAmountDelta(tx, sourceWallet.id, -input.amount);
+    }
+
+    if (adjustsDebt) {
+      await applyWalletAmountDelta(tx, creditCardWallet.id, -input.amount);
+    }
 
     let expenseId: number | null = null;
-    if (input.create_fortnight_expense === true && input.category_id != null) {
+    if (
+      !isExternal &&
+      input.create_fortnight_expense === true &&
+      input.category_id != null &&
+      sourceWallet
+    ) {
       const category = await tx.category.findFirst({
         where: { id: input.category_id, ...ownerFilter },
       });
@@ -502,13 +536,28 @@ export async function createCreditCardPayment(
       paid_at: formatCalendarDate(payment.paid_at),
       note: payment.note ?? null,
       source_wallet_id: payment.source_wallet_id,
-      source_wallet_name: payment.source_wallet.name,
-      source_wallet_provider_icon_key: payment.source_wallet.provider_icon_key ?? null,
+      source_wallet_name: payment.source_wallet?.name ?? 'Ya pagado',
+      source_wallet_provider_icon_key:
+        payment.source_wallet?.provider_icon_key ?? null,
       credit_card_wallet_id: payment.credit_card_wallet_id,
       credit_card_wallet_name: payment.credit_card_wallet.name,
       expense_id: expenseId,
+      adjusts_debt: payment.adjusts_debt,
+      is_external: payment.source_wallet_id == null,
+      paid_at_raw: input.paid_at,
     };
   }, { timeout: 30000, maxWait: 10000 });
+
+  await coverScheduledPaymentForCardPayment(
+    creditCardId,
+    ownerFilter,
+    result.paid_at_raw,
+    result.amount,
+    result.id,
+  );
+
+  const { paid_at_raw: _paidAtRaw, ...paymentDto } = result;
+  return paymentDto;
 }
 
 export async function isCardPaymentGeneratedExpense(
@@ -547,6 +596,7 @@ export async function reverseCreditCardPayment(
         expense_id: true,
         source_wallet_id: true,
         credit_card_wallet_id: true,
+        adjusts_debt: true,
       },
     });
 
@@ -558,8 +608,12 @@ export async function reverseCreditCardPayment(
 
     const amount = Number(payment.amount);
 
-    await applyWalletAmountDelta(tx, payment.source_wallet_id, amount);
-    await applyWalletAmountDelta(tx, payment.credit_card_wallet_id, amount);
+    if (payment.source_wallet_id != null) {
+      await applyWalletAmountDelta(tx, payment.source_wallet_id, amount);
+    }
+    if (payment.adjusts_debt) {
+      await applyWalletAmountDelta(tx, payment.credit_card_wallet_id, amount);
+    }
 
     if (payment.expense_id != null) {
       await deleteCardPaymentGeneratedExpense(tx, payment.expense_id);
@@ -612,8 +666,9 @@ export async function listCreditCardPaymentsByOwner(
     paid_at: formatCalendarDate(payment.paid_at),
     note: payment.note ?? null,
     source_wallet_id: payment.source_wallet_id,
-    source_wallet_name: payment.source_wallet.name,
-    source_wallet_provider_icon_key: payment.source_wallet.provider_icon_key ?? null,
+    source_wallet_name: payment.source_wallet?.name ?? 'Ya pagado',
+    source_wallet_provider_icon_key:
+      payment.source_wallet?.provider_icon_key ?? null,
     credit_card_wallet_id: payment.credit_card_wallet_id,
     credit_card_wallet_name: payment.credit_card_wallet.name,
   }));
