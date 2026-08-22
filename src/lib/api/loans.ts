@@ -114,3 +114,23 @@ export async function applyLoanPaymentAction(
     context,
   );
 }
+
+export async function batchUpdateLoanPayments(
+  data: {
+    paymentIds: number[];
+    action: 'MARK_PAID' | 'MARK_PAID_EXTERNAL';
+    paidAt?: string;
+    sourceWalletId?: number | null;
+    note?: string | null;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<{ payments: LoanPaymentListItem[] }>(
+    '/api/loans/payments/batch',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
