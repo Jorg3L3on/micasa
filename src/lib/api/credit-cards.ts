@@ -6,6 +6,8 @@ import type {
   CreditCardPaymentPlanResponse,
   CreditCardStatementImportListItem,
   CreditCardStatementResponse,
+  CreditCardScheduledPaymentItem,
+  CreditCardScheduledPaymentsResponse,
   MercadoPagoStatementImportResponse,
   InstallmentProjectionMonthItem,
 } from '@/types/catalog';
@@ -225,4 +227,66 @@ export async function createCreditCardPurchase(
     method: 'POST',
     body: JSON.stringify(data),
   }, context);
+}
+
+export async function listCreditCardScheduledPayments(
+  creditCardId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardScheduledPaymentsResponse>(
+    `/api/credit-cards/${creditCardId}/scheduled-payments`,
+    undefined,
+    context,
+  );
+}
+
+export async function createCreditCardScheduledPayment(
+  creditCardId: number,
+  data: {
+    due_date: string;
+    amount: number;
+    label?: string | null;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardScheduledPaymentItem>(
+    `/api/credit-cards/${creditCardId}/scheduled-payments`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function updateCreditCardScheduledPayment(
+  creditCardId: number,
+  paymentId: number,
+  data: {
+    due_date?: string;
+    amount?: number;
+    label?: string | null;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardScheduledPaymentItem>(
+    `/api/credit-cards/${creditCardId}/scheduled-payments/${paymentId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function deleteCreditCardScheduledPayment(
+  creditCardId: number,
+  paymentId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<{ ok: boolean }>(
+    `/api/credit-cards/${creditCardId}/scheduled-payments/${paymentId}`,
+    { method: 'DELETE' },
+    context,
+  );
 }

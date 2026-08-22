@@ -29,6 +29,7 @@ import {
 import { CreditCardCycleLedger } from '@/components/credit-cards/CreditCardCycleLedger';
 import { CreditCardCycleWorkspaceShell } from '@/components/credit-cards/CreditCardCycleWorkspaceShell';
 import { CreditCardInstallmentPortfolio } from '@/components/credit-cards/CreditCardInstallmentPortfolio';
+import { CreditCardScheduledPaymentsSection } from '@/components/credit-cards/CreditCardScheduledPaymentsSection';
 import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
@@ -669,11 +670,18 @@ const CreditCardDetailPageContent = () => {
             {cycleLoading ? (
               <TabContentSkeleton />
             ) : (
-              <CreditCardInstallmentPortfolio
-                purchases={statement.installment_active_purchases}
-                ownerQueryString={ownerQueryString}
-                onRegisterPurchase={() => setPurchaseDialogOpen(true)}
-              />
+              <>
+                <CreditCardScheduledPaymentsSection
+                  creditCardId={creditCardId}
+                  context={context}
+                  onChanged={() => loadData({ cycleOnly: true })}
+                />
+                <CreditCardInstallmentPortfolio
+                  purchases={statement.installment_active_purchases}
+                  ownerQueryString={ownerQueryString}
+                  onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+                />
+              </>
             )}
           </TabsContent>
         </CreditCardCycleWorkspaceShell>

@@ -6,6 +6,7 @@ import {
   deriveCardStatementObligationStatus,
   deriveObligationAmountSource,
   getRemainingPlannedAmount,
+  mergeScheduledCalendarWithStatementDue,
   resolveCreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
 
@@ -289,5 +290,35 @@ describe('computeNextDuePayment (re-export parity)', () => {
         cutoffDay: 7,
       }),
     ).toBe(7646.7);
+  });
+});
+
+describe('mergeScheduledCalendarWithStatementDue', () => {
+  it('uses scheduled calendar when statement due is zero', () => {
+    expect(
+      mergeScheduledCalendarWithStatementDue({
+        statementDue: 0,
+        statementDueDateYmd: '2026-09-05',
+        scheduled: { amount: 850, dueDate: '2026-08-20' },
+      }),
+    ).toEqual({
+      amount: 850,
+      dueDateYmd: '2026-08-20',
+      usedScheduledCalendar: true,
+    });
+  });
+
+  it('keeps statement due when it is due sooner than calendar row', () => {
+    expect(
+      mergeScheduledCalendarWithStatementDue({
+        statementDue: 1200,
+        statementDueDateYmd: '2026-08-10',
+        scheduled: { amount: 850, dueDate: '2026-08-20' },
+      }),
+    ).toEqual({
+      amount: 1200,
+      dueDateYmd: '2026-08-10',
+      usedScheduledCalendar: false,
+    });
   });
 });

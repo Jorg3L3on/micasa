@@ -15,12 +15,17 @@ import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligati
 import {
   buildCardStatementObligation,
   computeNextDuePayment,
+  mergeScheduledCalendarWithStatementDue,
   paymentAppliesToStatementPeriod,
   resolveCreditCardStatementWindow,
   toDuePaymentItemFields,
   type ComputeNextDuePaymentInput,
   type CreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
+import {
+  getNextUncoveredScheduledPayment,
+  listScheduledPaymentsForPlannerMonth,
+} from '@/lib/finance/credit-card-scheduled-payment.service';
 import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
@@ -30,6 +35,7 @@ import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
+import type { DuePaymentItem } from '@/types/catalog';
 
 export {
   buildCardStatementObligation,
@@ -279,7 +285,7 @@ export async function getCreditCardStatementByOwner(
   const temporaryCreditLimit =
     card.temporary_credit_limit == null ? null : Number(card.temporary_credit_limit);
 
-  const nextDuePayment = computeNextDuePayment({
+  const nextDuePaymentRaw = computeNextDuePayment({
     lastStatementBalance,
     paymentsAppliedToStatement: paymentsAppliedToStatementTotal,
     importedTotalDue,
@@ -293,6 +299,27 @@ export async function getCreditCardStatementByOwner(
     allowOutstandingBalanceFallback:
       statementImports.length === 0 || recentImport != null,
   });
+
+  const statementDueDateYmd = recentImport?.payment_due_date
+    ? toDateOnlyString(recentImport.payment_due_date)
+    : toDateOnlyString(window.statementDueDate);
+
+  const nextScheduled = await getNextUncoveredScheduledPayment(
+    creditCardId,
+    ownerFilter,
+    toDateOnlyString(normalizedAsOf),
+  );
+
+  const mergedDue = mergeScheduledCalendarWithStatementDue({
+    statementDue: nextDuePaymentRaw,
+    statementDueDateYmd,
+    scheduled: nextScheduled
+      ? { amount: nextScheduled.amount, dueDate: nextScheduled.dueDate }
+      : null,
+  });
+
+  const nextDuePayment = mergedDue.amount;
+  const visibleDueDateYmd = mergedDue.dueDateYmd;
 
   return {
     credit_card_id: card.id,
@@ -310,9 +337,10 @@ export async function getCreditCardStatementByOwner(
     due_day: card.due_day,
     statement_start: toDateOnlyString(window.statementStart),
     statement_end: toDateOnlyString(window.statementEnd),
-    statement_due_date: recentImport?.payment_due_date
-      ? toDateOnlyString(recentImport.payment_due_date)
-      : toDateOnlyString(window.statementDueDate),
+    statement_due_date: visibleDueDateYmd,
+    next_due_payment_source: mergedDue.usedScheduledCalendar
+      ? ('scheduled_calendar' as const)
+      : null,
     current_cycle_start: toDateOnlyString(window.currentCycleStart),
     current_cycle_end: toDateOnlyString(window.currentCycleEnd),
     outstanding_balance: currentBalance,
@@ -1000,12 +1028,113 @@ const hasPlannerRelevantCardActivity = (item: {
   paymentsAppliedToStatement: number;
   paymentsAppliedToFortnight?: number;
   plannerStatus?: string;
+  obligationAmountSource?: string;
 }) =>
   item.outstandingBalance > 0 ||
   item.nextDuePayment > 0 ||
   item.paymentsAppliedToStatement > 0 ||
   (item.paymentsAppliedToFortnight ?? 0) > 0 ||
-  item.plannerStatus === 'pagado';
+  item.plannerStatus === 'pagado' ||
+  item.obligationAmountSource === 'scheduled_calendar';
+
+const sumScheduledByWallet = (
+  rows: Awaited<
+    ReturnType<typeof listScheduledPaymentsForPlannerMonth>
+  >['first'],
+) => {
+  const map = new Map<
+    number,
+    {
+      amount: number;
+      dueDate: string;
+      walletName: string;
+      walletType: string;
+    }
+  >();
+
+  for (const row of rows) {
+    const existing = map.get(row.creditCardWalletId);
+    if (existing) {
+      existing.amount += row.amount;
+      if (row.dueDate < existing.dueDate) {
+        existing.dueDate = row.dueDate;
+      }
+    } else {
+      map.set(row.creditCardWalletId, {
+        amount: row.amount,
+        dueDate: row.dueDate,
+        walletName: row.walletName,
+        walletType: row.walletType,
+      });
+    }
+  }
+
+  return map;
+};
+
+const applyScheduledCalendarToDueItems = (
+  items: DuePaymentItem[],
+  scheduledRows: Awaited<
+    ReturnType<typeof listScheduledPaymentsForPlannerMonth>
+  >['first'],
+): DuePaymentItem[] => {
+  const scheduledByWallet = sumScheduledByWallet(scheduledRows);
+  if (scheduledByWallet.size === 0) {
+    return items;
+  }
+
+  const byWallet = new Map(items.map((item) => [item.walletId, item]));
+  const result = [...items];
+
+  for (const [walletId, scheduled] of scheduledByWallet) {
+    const existing = byWallet.get(walletId);
+    if (existing) {
+      const merged = mergeScheduledCalendarWithStatementDue({
+        statementDue: existing.nextDuePayment,
+        statementDueDateYmd:
+          existing.visibleDueDate ?? existing.statementDueDate,
+        scheduled: { amount: scheduled.amount, dueDate: scheduled.dueDate },
+      });
+      if (merged.usedScheduledCalendar || existing.nextDuePayment <= 0) {
+        existing.nextDuePayment = merged.amount;
+        existing.visibleDueDate = merged.dueDateYmd;
+        existing.statementDueDate = merged.dueDateYmd;
+        existing.obligationAmountSource = merged.usedScheduledCalendar
+          ? 'scheduled_calendar'
+          : existing.obligationAmountSource;
+        existing.plannerStatus =
+          merged.amount > 0 ? 'por_pagar' : existing.plannerStatus;
+        existing.effectiveAmount = merged.amount;
+        existing.remainingPlannerAmount = merged.amount;
+        existing.targetAmount = merged.amount;
+      }
+      continue;
+    }
+
+    const newItem: DuePaymentItem = {
+      walletId,
+      walletName: scheduled.walletName,
+      walletType: scheduled.walletType,
+      dueDay: Number(scheduled.dueDate.slice(8, 10)),
+      cutoff_day: 0,
+      nextDuePayment: scheduled.amount,
+      paymentsAppliedToStatement: 0,
+      statementDueDate: scheduled.dueDate,
+      visibleDueDate: scheduled.dueDate,
+      outstandingBalance: 0,
+      plannedPayment: null,
+      effectiveAmount: scheduled.amount,
+      remainingPlannerAmount: scheduled.amount,
+      plannerStatus: 'por_pagar',
+      obligationAmountSource: 'scheduled_calendar',
+      targetAmount: scheduled.amount,
+    };
+    result.push(newItem);
+    byWallet.set(walletId, newItem);
+  }
+
+  return result;
+};
 
 /**
  * Cards with statement activity and due-day matching `dueDayPredicate`, as of `asOf`.
@@ -1310,9 +1439,24 @@ async function getDuePaymentsForPlannerMonthImpl(
     applyPlannerLayerToDueItems(second, fortnightSecond?.id, ownerFilter),
   ]);
 
+  const scheduled = await listScheduledPaymentsForPlannerMonth(
+    ownerFilter,
+    year,
+    month,
+  );
+
+  const firstWithCalendar = applyScheduledCalendarToDueItems(
+    first,
+    scheduled.first,
+  );
+  const secondWithCalendar = applyScheduledCalendarToDueItems(
+    second,
+    scheduled.second,
+  );
+
   return {
-    first: first.filter(hasPlannerRelevantCardActivity),
-    second: second.filter(hasPlannerRelevantCardActivity),
+    first: firstWithCalendar.filter(hasPlannerRelevantCardActivity),
+    second: secondWithCalendar.filter(hasPlannerRelevantCardActivity),
   };
 }
 

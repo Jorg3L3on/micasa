@@ -561,6 +561,7 @@ export type CreditCardStatementResponse = {
   payments_since_last_cutoff: number;
   payments_applied_to_statement: number;
   next_due_payment: number;
+  next_due_payment_source?: 'scheduled_calendar' | null;
   minimum_payment: number | null;
   current_cycle_purchases: number;
   current_cycle_payments: number;
@@ -569,4 +570,18 @@ export type CreditCardStatementResponse = {
   /** Gastos en cuotas pagados donde la cuota actual es menor que el total (aún quedan meses). */
   installment_active_purchases: CreditCardStatementPurchaseItem[];
   payment_history: CreditCardPaymentListItem[];
+};
+
+export type CreditCardScheduledPaymentItem = {
+  id: number;
+  creditCardWalletId: number;
+  dueDate: string;
+  amount: number;
+  label: string | null;
+  status: 'SCHEDULED' | 'PAID';
+  paidAt: string | null;
+};
+
+export type CreditCardScheduledPaymentsResponse = {
+  items: CreditCardScheduledPaymentItem[];
 };
