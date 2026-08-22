@@ -7,6 +7,7 @@ const {
   findManyExpenses,
   findFirstFortnight,
   findManyPaymentPlans,
+  findManyScheduledPayments,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallets: vi.fn(),
@@ -14,6 +15,7 @@ const {
   findManyExpenses: vi.fn(),
   findFirstFortnight: vi.fn(),
   findManyPaymentPlans: vi.fn(),
+  findManyScheduledPayments: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -33,6 +35,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     creditCardPaymentPlan: {
       findMany: findManyPaymentPlans,
+    },
+    creditCardScheduledPayment: {
+      findMany: findManyScheduledPayments,
     },
   },
 }));
@@ -59,6 +64,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findFirstFortnight.mockResolvedValue({ id: 42 });
     findManyPaymentPlans.mockReset();
     findManyPaymentPlans.mockResolvedValue([]);
+    findManyScheduledPayments.mockReset();
+    findManyScheduledPayments.mockResolvedValue([]);
   });
 
   afterEach(() => {
