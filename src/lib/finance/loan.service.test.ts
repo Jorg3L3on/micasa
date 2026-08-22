@@ -76,6 +76,7 @@ import {
   sumPlannerLoanDueForFortnight,
   updateLoanForOwner,
   updateLoanPaymentForOwner,
+  batchUpdateLoanPaymentsForOwner,
 } from '@/lib/finance/loan.service';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 
@@ -943,5 +944,147 @@ describe('updateLoanPaymentForOwner', () => {
     expect(txUpdateWallet).not.toHaveBeenCalled();
     expect(txDeleteExpense).not.toHaveBeenCalled();
     expect(createExpenseInTransaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('batchUpdateLoanPaymentsForOwner', () => {
+  const secondScheduledPayment = {
+    ...scheduledWalletPayment,
+    id: 23,
+    sequence: 2,
+    due_date: parseCalendarDate('2026-06-25'),
+  };
+
+  beforeEach(() => {
+    findFirstWallet.mockReset();
+    findManyLoanPayment.mockReset();
+    transaction.mockReset();
+    txFindFirstLoanPayment.mockReset();
+    txUpdateLoanPayment.mockReset();
+    txFindManyLoanPayment.mockReset();
+    txFindFirstWallet.mockReset();
+    txUpdateWallet.mockReset();
+    txUpdateLoan.mockReset();
+    txDeleteExpense.mockReset();
+    resolveOrCreateFortnight.mockReset();
+    createExpenseInTransaction.mockReset();
+    tx.category.findFirst.mockReset();
+    tx.category.create.mockReset();
+
+    transaction.mockImplementation((fn) => fn(tx));
+  });
+
+  it('marks multiple wallet payments paid from an alternate wallet in one batch', async () => {
+    findFirstWallet.mockResolvedValueOnce({ id: 11, type: 'CASH' });
+    findManyLoanPayment.mockResolvedValueOnce([
+      scheduledWalletPayment,
+      secondScheduledPayment,
+    ]);
+    findFirstWallet.mockResolvedValueOnce({
+      id: 11,
+      amount: '1000',
+      type: 'CASH',
+    });
+
+    txUpdateLoanPayment
+      .mockResolvedValueOnce({
+        ...scheduledWalletPayment,
+        status: 'PAID',
+        paid_at: parseCalendarDate('2026-06-10'),
+        source_wallet: { name: 'Efectivo' },
+      })
+      .mockResolvedValueOnce({
+        ...secondScheduledPayment,
+        status: 'PAID',
+        paid_at: parseCalendarDate('2026-06-10'),
+        source_wallet: { name: 'Efectivo' },
+      });
+    txFindFirstWallet
+      .mockResolvedValueOnce({ id: 11, amount: '1000', type: 'CASH' })
+      .mockResolvedValueOnce({ id: 11, amount: '850', type: 'CASH' });
+    txFindManyLoanPayment
+      .mockResolvedValueOnce([{ status: 'PAID' }])
+      .mockResolvedValueOnce([{ status: 'PAID' }, { status: 'PAID' }]);
+    resolveOrCreateFortnight.mockResolvedValue({ id: 90 });
+    tx.category.findFirst.mockResolvedValue({ id: 7 });
+    createExpenseInTransaction.mockResolvedValue({ id: 301 });
+
+    const payments = await batchUpdateLoanPaymentsForOwner(ownerFilter, {
+      paymentIds: [22, 23],
+      action: 'MARK_PAID',
+      paidAt: '2026-06-10',
+      sourceWalletId: 11,
+    });
+
+    expect(payments).toHaveLength(2);
+    expect(findManyLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: [22, 23] },
+        }),
+      }),
+    );
+    expect(txUpdateLoanPayment).toHaveBeenCalledTimes(2);
+    expect(createExpenseInTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks multiple payments as externally paid without wallet movement', async () => {
+    findManyLoanPayment.mockResolvedValueOnce([
+      scheduledWalletPayment,
+      secondScheduledPayment,
+    ]);
+
+    txUpdateLoanPayment
+      .mockResolvedValueOnce({
+        ...scheduledWalletPayment,
+        status: 'PAID',
+        paid_at: parseCalendarDate('2026-06-10'),
+        source_wallet_id: null,
+        source_wallet: null,
+      })
+      .mockResolvedValueOnce({
+        ...secondScheduledPayment,
+        status: 'PAID',
+        paid_at: parseCalendarDate('2026-06-10'),
+        source_wallet_id: null,
+        source_wallet: null,
+      });
+    txFindManyLoanPayment
+      .mockResolvedValueOnce([{ status: 'PAID' }])
+      .mockResolvedValueOnce([{ status: 'PAID' }, { status: 'PAID' }]);
+
+    const payments = await batchUpdateLoanPaymentsForOwner(ownerFilter, {
+      paymentIds: [22, 23],
+      action: 'MARK_PAID_EXTERNAL',
+      paidAt: '2026-06-10',
+    });
+
+    expect(payments).toHaveLength(2);
+    expect(findFirstWallet).not.toHaveBeenCalled();
+    expect(txUpdateWallet).not.toHaveBeenCalled();
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects the batch when wallet balance is insufficient for the total', async () => {
+    findFirstWallet.mockResolvedValueOnce({ id: 11, type: 'CASH' });
+    findManyLoanPayment.mockResolvedValueOnce([
+      scheduledWalletPayment,
+      secondScheduledPayment,
+    ]);
+    findFirstWallet.mockResolvedValueOnce({
+      id: 11,
+      amount: '200',
+      type: 'CASH',
+    });
+
+    await expect(
+      batchUpdateLoanPaymentsForOwner(ownerFilter, {
+        paymentIds: [22, 23],
+        action: 'MARK_PAID',
+        sourceWalletId: 11,
+      }),
+    ).rejects.toThrow('Saldo insuficiente');
+
+    expect(transaction).not.toHaveBeenCalled();
   });
 });

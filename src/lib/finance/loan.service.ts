@@ -6,6 +6,7 @@ import type {
   CreateLoanInput,
   UpdateLoanInput,
   UpdateLoanPaymentInput,
+  BatchUpdateLoanPaymentsInput,
 } from '@/schemas/loan.schema';
 import {
   calculateLoanProgress,
@@ -540,82 +541,260 @@ export async function deleteLoanForOwner(
   });
 }
 
+const loanPaymentUpdateInclude = {
+  linked_expense: {
+    select: {
+      id: true,
+      wallet_id: true,
+      amount: true,
+      is_paid: true,
+      wallet: { select: { type: true } },
+    },
+  },
+  loan: {
+    select: {
+      id: true,
+      name: true,
+      lender: true,
+      payment_source: true,
+    },
+  },
+} as const;
+
+type LoanPaymentUpdateRow = {
+  id: number;
+  loan_id: number;
+  sequence: number;
+  due_date: Date;
+  amount: unknown;
+  status: string;
+  paid_at: Date | null;
+  source_wallet_id: number | null;
+  note: string | null;
+  linked_expense: {
+    id: number;
+    wallet_id: number | null;
+    amount: unknown;
+    is_paid: boolean;
+    wallet: { type: PaymentMethodType } | null;
+  } | null;
+  loan: {
+    id: number;
+    name: string;
+    lender: string;
+    payment_source: string;
+  };
+};
+
+async function applyLoanPaymentUpdateInTransaction(
+  tx: Prisma.TransactionClient,
+  existing: LoanPaymentUpdateRow,
+  ownerFilter: OwnerFilter,
+  action: LoanPaymentActionValue,
+  input: {
+    paidAt?: string | null;
+    sourceWalletId?: number | null;
+    note?: string | null;
+  },
+): Promise<LoanPaymentListItem> {
+  const isExternalPaid = action === 'MARK_PAID_EXTERNAL';
+  const willDebitWallet = action === 'MARK_PAID';
+  const walletIdForAction =
+    isExternalPaid ? undefined : input.sourceWalletId;
+  const defaultSourceWalletId =
+    existing.loan.payment_source === 'WALLET'
+      ? existing.source_wallet_id
+      : null;
+  const nextSourceWalletId = isExternalPaid
+    ? null
+    : (walletIdForAction ?? defaultSourceWalletId);
+  const amount = decimalToNumber(existing.amount);
+  const wasPaid = existing.status === 'PAID';
+  const willBePaid = willDebitWallet || isExternalPaid;
+  const paidAt =
+    willBePaid
+      ? parseYmdAsUtcDate(input.paidAt ?? todayCalendarDate())
+      : null;
+
+  if (wasPaid && existing.linked_expense) {
+    await reverseAndDeleteLoanPaymentExpense(tx, existing.linked_expense);
+  } else if (wasPaid && existing.source_wallet_id) {
+    await tx.wallet.update({
+      where: { id: existing.source_wallet_id },
+      data: { amount: { increment: amount } },
+    });
+  }
+
+  if (
+    willDebitWallet &&
+    existing.loan.payment_source === 'WALLET' &&
+    !nextSourceWalletId
+  ) {
+    throw new Error('Selecciona la billetera que paga el préstamo');
+  }
+
+  if (willDebitWallet && nextSourceWalletId) {
+    const sourceWallet = await tx.wallet.findFirst({
+      where: { id: nextSourceWalletId, ...ownerFilter },
+      select: { id: true, amount: true, type: true },
+    });
+    if (!sourceWallet) {
+      throw new Error('Billetera de origen no encontrada');
+    }
+    if (!isFundingWalletType(sourceWallet.type)) {
+      throw new Error('El préstamo debe pagarse desde efectivo o débito');
+    }
+    if (decimalToNumber(sourceWallet.amount) < amount) {
+      throw new Error('Saldo insuficiente en la billetera de origen');
+    }
+  }
+
+  const shouldPersistSourceWallet =
+    !isExternalPaid &&
+    (existing.loan.payment_source === 'WALLET' ||
+      (willDebitWallet && nextSourceWalletId != null));
+
+  const payment = await tx.loanPayment.update({
+    where: { id: existing.id },
+    data: {
+      status: statusForLoanPaymentAction(action),
+      paid_at: paidAt,
+      source_wallet_id: shouldPersistSourceWallet ? nextSourceWalletId : null,
+      note: input.note === undefined ? existing.note : input.note,
+    },
+    include: {
+      source_wallet: { select: { name: true } },
+      linked_expense: { select: { id: true } },
+    },
+  });
+
+  let linkedExpense: { id: number } | null = null;
+  if (willDebitWallet && paidAt != null && nextSourceWalletId) {
+    linkedExpense = await createLinkedLoanPaymentExpense({
+      tx,
+      ownerFilter,
+      paymentId: existing.id,
+      paidAt,
+      amount,
+      sourceWalletId: nextSourceWalletId,
+      loanName: existing.loan.name,
+      lender: existing.loan.lender,
+    });
+  }
+
+  const paymentStatuses = await tx.loanPayment.findMany({
+    where: { loan_id: existing.loan.id },
+    select: { status: true },
+  });
+  await tx.loan.update({
+    where: { id: existing.loan.id },
+    data: {
+      status: deriveLoanStatusFromPayments(
+        paymentStatuses.map((row) => ({
+          status: row.status as LoanPaymentListItem['status'],
+        })),
+      ),
+    },
+  });
+
+  return mapPayment({
+    ...payment,
+    loan_id: existing.loan_id,
+    sequence: existing.sequence,
+    due_date: existing.due_date,
+    amount: existing.amount,
+    linked_expense: linkedExpense ?? payment.linked_expense,
+  });
+}
+
 export async function updateLoanPaymentForOwner(
   paymentId: number,
   ownerFilter: OwnerFilter,
   input: UpdateLoanPaymentInput,
 ): Promise<LoanPaymentListItem> {
   const action = normalizeLoanPaymentAction(input);
-  // External / historical paid never moves cash — ignore any wallet id in the payload.
   const walletIdForAction =
     action === 'MARK_PAID_EXTERNAL' ? undefined : input.sourceWalletId;
   await assertOwnedFundingWallet(walletIdForAction, ownerFilter);
-  const targetStatus = statusForLoanPaymentAction(action);
 
   return prisma.$transaction(async (tx) => {
     const existing = await tx.loanPayment.findFirst({
       where: { id: paymentId, loan: ownerFilter },
-      include: {
-        linked_expense: {
-          select: {
-            id: true,
-            wallet_id: true,
-            amount: true,
-            is_paid: true,
-            wallet: { select: { type: true } },
-          },
-        },
-        loan: {
-          select: {
-            id: true,
-            name: true,
-            lender: true,
-            payment_source: true,
-          },
-        },
-      },
+      include: loanPaymentUpdateInclude,
     });
     if (!existing) {
       throw new Error('Pago de préstamo no encontrado');
     }
 
-    const isExternalPaid = action === 'MARK_PAID_EXTERNAL';
-    const willDebitWallet = action === 'MARK_PAID';
-    const defaultSourceWalletId =
-      existing.loan.payment_source === 'WALLET'
-        ? existing.source_wallet_id
-        : null;
-    const nextSourceWalletId = isExternalPaid
-      ? null
-      : (walletIdForAction ?? defaultSourceWalletId);
-    const amount = decimalToNumber(existing.amount);
-    const wasPaid = existing.status === 'PAID';
-    const willBePaid = willDebitWallet || isExternalPaid;
-    const paidAt =
-      willBePaid
-        ? parseYmdAsUtcDate(input.paidAt ?? todayCalendarDate())
-        : null;
+    return applyLoanPaymentUpdateInTransaction(tx, existing, ownerFilter, action, {
+      paidAt: input.paidAt,
+      sourceWalletId: walletIdForAction,
+      note: input.note,
+    });
+  });
+}
 
-    if (wasPaid && existing.linked_expense) {
-      await reverseAndDeleteLoanPaymentExpense(tx, existing.linked_expense);
-    } else if (wasPaid && existing.source_wallet_id) {
-      await tx.wallet.update({
-        where: { id: existing.source_wallet_id },
-        data: { amount: { increment: amount } },
-      });
+export async function batchUpdateLoanPaymentsForOwner(
+  ownerFilter: OwnerFilter,
+  input: BatchUpdateLoanPaymentsInput,
+): Promise<LoanPaymentListItem[]> {
+  const uniqueIds = [...new Set(input.paymentIds)];
+  if (uniqueIds.length === 0) {
+    throw new Error('Selecciona al menos un pago del mes');
+  }
+
+  const action = input.action;
+  const isExternalPaid = action === 'MARK_PAID_EXTERNAL';
+  const walletIdForAction = isExternalPaid ? undefined : input.sourceWalletId;
+  await assertOwnedFundingWallet(walletIdForAction, ownerFilter);
+
+  const payments = await prisma.loanPayment.findMany({
+    where: { id: { in: uniqueIds }, loan: ownerFilter },
+    include: loanPaymentUpdateInclude,
+  });
+
+  if (payments.length !== uniqueIds.length) {
+    throw new Error('Uno o más pagos no pertenecen a este contexto');
+  }
+
+  const notScheduled = payments.filter((payment) => payment.status !== 'SCHEDULED');
+  if (notScheduled.length > 0) {
+    throw new Error('Solo puedes pagar en lote cuotas pendientes');
+  }
+
+  if (action === 'MARK_PAID') {
+    let totalDebit = 0;
+    let debitWalletId: number | null = walletIdForAction ?? null;
+
+    for (const payment of payments) {
+      const defaultSourceWalletId =
+        payment.loan.payment_source === 'WALLET'
+          ? payment.source_wallet_id
+          : null;
+      const nextSourceWalletId = walletIdForAction ?? defaultSourceWalletId;
+
+      if (payment.loan.payment_source === 'WALLET' && !nextSourceWalletId) {
+        throw new Error('Selecciona la billetera que paga el lote');
+      }
+
+      if (nextSourceWalletId) {
+        if (debitWalletId == null) {
+          debitWalletId = nextSourceWalletId;
+        } else if (debitWalletId !== nextSourceWalletId && !walletIdForAction) {
+          throw new Error('Selecciona una billetera para pagar todo el lote');
+        }
+        totalDebit += decimalToNumber(payment.amount);
+      }
     }
 
-    if (
-      willDebitWallet &&
-      existing.loan.payment_source === 'WALLET' &&
-      !nextSourceWalletId
-    ) {
-      throw new Error('Selecciona la billetera que paga el préstamo');
-    }
+    if (totalDebit > 0) {
+      const walletId = walletIdForAction ?? debitWalletId;
+      if (!walletId) {
+        throw new Error('Selecciona la billetera que paga el lote');
+      }
 
-    if (willDebitWallet && nextSourceWalletId) {
-      const sourceWallet = await tx.wallet.findFirst({
-        where: { id: nextSourceWalletId, ...ownerFilter },
+      const sourceWallet = await prisma.wallet.findFirst({
+        where: { id: walletId, ...ownerFilter },
         select: { id: true, amount: true, type: true },
       });
       if (!sourceWallet) {
@@ -624,63 +803,29 @@ export async function updateLoanPaymentForOwner(
       if (!isFundingWalletType(sourceWallet.type)) {
         throw new Error('El préstamo debe pagarse desde efectivo o débito');
       }
-      if (decimalToNumber(sourceWallet.amount) < amount) {
+      if (decimalToNumber(sourceWallet.amount) < totalDebit) {
         throw new Error('Saldo insuficiente en la billetera de origen');
       }
     }
+  }
 
-    const shouldPersistSourceWallet =
-      !isExternalPaid &&
-      (existing.loan.payment_source === 'WALLET' ||
-        (willDebitWallet && nextSourceWalletId != null));
-
-    const payment = await tx.loanPayment.update({
-      where: { id: paymentId },
-      data: {
-        status: targetStatus,
-        paid_at: paidAt,
-        source_wallet_id: shouldPersistSourceWallet ? nextSourceWalletId : null,
-        note: input.note === undefined ? existing.note : input.note,
-      },
-      include: {
-        source_wallet: { select: { name: true } },
-        linked_expense: { select: { id: true } },
-      },
-    });
-
-    let linkedExpense: { id: number } | null = null;
-    if (willDebitWallet && paidAt != null && nextSourceWalletId) {
-      linkedExpense = await createLinkedLoanPaymentExpense({
+  return prisma.$transaction(async (tx) => {
+    const results: LoanPaymentListItem[] = [];
+    for (const payment of payments) {
+      const updated = await applyLoanPaymentUpdateInTransaction(
         tx,
+        payment,
         ownerFilter,
-        paymentId,
-        paidAt,
-        amount,
-        sourceWalletId: nextSourceWalletId,
-        loanName: existing.loan.name,
-        lender: existing.loan.lender,
-      });
+        action,
+        {
+          paidAt: input.paidAt,
+          sourceWalletId: walletIdForAction,
+          note: input.note,
+        },
+      );
+      results.push(updated);
     }
-
-    const paymentStatuses = await tx.loanPayment.findMany({
-      where: { loan_id: existing.loan.id },
-      select: { status: true },
-    });
-    await tx.loan.update({
-      where: { id: existing.loan.id },
-      data: {
-        status: deriveLoanStatusFromPayments(
-          paymentStatuses.map((row) => ({
-            status: row.status as LoanPaymentListItem['status'],
-          })),
-        ),
-      },
-    });
-
-    return mapPayment({
-      ...payment,
-      linked_expense: linkedExpense ?? payment.linked_expense,
-    });
+    return results;
   });
 }
 
