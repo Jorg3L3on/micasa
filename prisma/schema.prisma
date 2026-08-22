@@ -630,14 +630,16 @@ model CreditCardPayment {
   paid_at               DateTime
   note                  String?
   credit_card_wallet_id Int
-  source_wallet_id      Int
+  source_wallet_id      Int?
+  /// When false, payment is ledger-only (debt already adjusted at statement cutoff).
+  adjusts_debt          Boolean  @default(true)
   user_id               Int?
   house_id              Int?
   expense_id            Int?     @unique
   created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   credit_card_wallet Wallet   @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
-  source_wallet      Wallet   @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
+  source_wallet      Wallet?  @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
   user               User?    @relation(fields: [user_id], references: [id])
   house              House?   @relation(fields: [house_id], references: [id])
   expense            Expense? @relation(fields: [expense_id], references: [id], onDelete: SetNull)

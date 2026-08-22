@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, type MouseEvent, type ReactNode } from 'react';
 import {
   CalendarClock,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -517,6 +518,7 @@ export const CreditCardDuePaymentStrip = ({
 
 type QuickActionsProps = {
   onOpenPaymentDialog: () => void;
+  onOpenExternalPaymentDialog: () => void;
   onOpenPurchaseDialog: () => void;
   onOpenImportDialog: () => void;
   onAdjustBalance?: () => void;
@@ -524,6 +526,7 @@ type QuickActionsProps = {
 
 export const CreditCardQuickActions = ({
   onOpenPaymentDialog,
+  onOpenExternalPaymentDialog,
   onOpenPurchaseDialog,
   onOpenImportDialog,
   onAdjustBalance,
@@ -540,6 +543,13 @@ export const CreditCardQuickActions = ({
       label: 'Pagar',
       icon: Wallet,
       onClick: onOpenPaymentDialog,
+    },
+    {
+      key: 'external',
+      label: 'Ya pagado',
+      ariaLabel: 'Registrar pago histórico sin descontar billetera',
+      icon: CheckCircle2,
+      onClick: onOpenExternalPaymentDialog,
     },
     {
       key: 'purchase',

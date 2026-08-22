@@ -8,6 +8,7 @@ import type {
   CreditCardStatementResponse,
   CreditCardScheduledPaymentItem,
   CreditCardScheduledPaymentsResponse,
+  CreditCardStatementImportPreviewResponse,
   MercadoPagoStatementImportResponse,
   InstallmentProjectionMonthItem,
 } from '@/types/catalog';
@@ -96,6 +97,18 @@ export async function listCreditCardStatementImports(
   );
 }
 
+export async function previewCreditCardStatement(
+  creditCardId: number,
+  formData: FormData,
+  context?: FinanceContextType,
+): Promise<CreditCardStatementImportPreviewResponse> {
+  return clientFetchMultipartJson<CreditCardStatementImportPreviewResponse>(
+    `/api/credit-cards/${creditCardId}/statement-imports/preview`,
+    formData,
+    context,
+  );
+}
+
 export async function uploadCreditCardStatement(
   creditCardId: number,
   formData: FormData,
@@ -179,21 +192,34 @@ export async function getCreditCardPayments(
 
 export async function createCreditCardPayment(
   id: number,
-  data: {
-    source_wallet_id: number;
-    amount: number;
-    paid_at: string;
-    note?: string | null;
-    create_fortnight_expense?: boolean;
-    category_id?: number;
-    expense_description?: string | null;
-    fortnight_id?: number;
-  },
+  data:
+    | {
+        mode?: 'wallet';
+        source_wallet_id: number;
+        amount: number;
+        paid_at: string;
+        note?: string | null;
+        create_fortnight_expense?: boolean;
+        category_id?: number;
+        expense_description?: string | null;
+        fortnight_id?: number;
+      }
+    | {
+        mode: 'external';
+        amount: number;
+        paid_at: string;
+        note?: string | null;
+        adjusts_debt?: boolean;
+      },
   context?: FinanceContextType,
 ) {
+  const payload =
+    data.mode === 'external'
+      ? data
+      : { mode: 'wallet' as const, ...data };
   return clientFetchFromApi(`/api/credit-cards/${id}/payment`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   }, context);
 }
 

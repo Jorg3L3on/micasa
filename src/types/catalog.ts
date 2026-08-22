@@ -261,10 +261,32 @@ export type CreditCardStatementImportListItem = {
   parse_warnings: string[];
 };
 
-/** POST /api/credit-cards/:id/statement-imports (Mercado Pago) */
+export type StatementImportPreviewMovement = {
+  kind: 'charge' | 'payment' | 'msi_installment';
+  description: string;
+  amount: number;
+  payment_date: string;
+  installment_current?: number;
+  installment_total?: number;
+};
+
+/** POST /api/credit-cards/:id/statement-imports/preview */
+export type CreditCardStatementImportPreviewResponse = {
+  provider: string;
+  account_number: string | null;
+  payment_due_date: string | null;
+  total_due: number | null;
+  minimum_payment: number | null;
+  movements: StatementImportPreviewMovement[];
+  warnings: string[];
+};
+
+/** POST /api/credit-cards/:id/statement-imports */
 export type MercadoPagoStatementImportResponse = {
   import_id: number;
   expenses_created: number;
+  payments_created: number;
+  scheduled_created: number;
   duplicates_skipped: number;
   lines_skipped: number;
   warnings: string[];
@@ -507,11 +529,13 @@ export type CreditCardPaymentListItem = {
   amount: number;
   paid_at: string;
   note: string | null;
-  source_wallet_id: number;
+  source_wallet_id: number | null;
   source_wallet_name: string;
   source_wallet_provider_icon_key: string | null;
   credit_card_wallet_id: number;
   credit_card_wallet_name: string;
+  adjusts_debt?: boolean;
+  is_external?: boolean;
 };
 
 export type CreditCardStatementPurchaseItem = {

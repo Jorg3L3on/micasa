@@ -40,6 +40,7 @@ export type CaDepartamentalParsedMovement = {
   paymentDate: Date;
   installmentCurrent?: number;
   installmentTotal?: number;
+  kind?: 'charge' | 'payment' | 'msi_installment';
 };
 
 export type CaDepartamentalStatementParseResult = {
@@ -187,11 +188,13 @@ export const parseCaDepartamentalStatementText = (
     // Combined text used for filtering and amount extraction
     const combined = group.join(' ');
 
-    // Only import COMPRA lines
-    if (!/COMPRA\b/i.test(combined)) continue;
+    // Import COMPRA lines and payment/abono lines
+    const isPurchase = /COMPRA\b/i.test(combined);
+    const isPayment = /PAGO|ABONO|GRACIAS POR SU PAGO/i.test(combined);
+    if (!isPurchase && !isPayment) continue;
 
-    // Extract cargo amount (positive)
-    const amountMatch = combined.match(/\$\s*([\d,]+\.\d{2})/);
+    // Extract cargo amount (positive or negative for payments)
+    const amountMatch = combined.match(/\$\s*-?([\d,]+\.\d{2})/);
     if (!amountMatch) {
       warnings.push(`Monto no encontrado en: ${combined.slice(0, 80)}`);
       continue;
@@ -245,6 +248,7 @@ export const parseCaDepartamentalStatementText = (
       description,
       amount,
       paymentDate,
+      kind: isPayment ? 'payment' : 'charge',
       ...(installmentCurrent !== undefined && installmentTotal !== undefined
         ? { installmentCurrent, installmentTotal }
         : {}),
