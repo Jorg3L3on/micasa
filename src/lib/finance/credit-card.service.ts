@@ -3,7 +3,7 @@ import {
   coerceToCalendarDayStart,
   formatCalendarDate,
 } from '@/lib/calendar-dates';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
@@ -355,8 +355,8 @@ export async function createCreditCardPayment(
       | {
           id: number;
           name: string;
-          type: string;
-          amount: unknown;
+          type: PaymentMethodType;
+          amount: Prisma.Decimal | number | string;
           user_id: number | null;
           house_id: number | null;
           provider_icon_key?: string | null;

@@ -54,7 +54,7 @@ export type CardReconciliationPaymentInput = {
   expenseAmount: number | null;
   expenseIsPaid: boolean | null;
   expenseWalletId: number | null;
-  sourceWalletId: number;
+  sourceWalletId: number | null;
 };
 
 export type CardReconciliationPlanInput = {

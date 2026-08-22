@@ -39,7 +39,7 @@ export const CreditCardScheduledPaymentDialog = ({
   onSuccess,
 }: CreditCardScheduledPaymentDialogProps) => {
   const [dueDate, setDueDate] = useState(todayCalendarDate());
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(0);
   const [label, setLabel] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,18 +47,17 @@ export const CreditCardScheduledPaymentDialog = ({
     if (!open) return;
     if (editingItem) {
       setDueDate(editingItem.dueDate);
-      setAmount(String(editingItem.amount));
+      setAmount(editingItem.amount);
       setLabel(editingItem.label ?? '');
     } else {
       setDueDate(todayCalendarDate());
-      setAmount('');
+      setAmount(0);
       setLabel('');
     }
   }, [open, editingItem]);
 
   const handleSubmit = useCallback(async () => {
-    const parsedAmount = Number(amount);
-    if (!dueDate || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!dueDate || !Number.isFinite(amount) || amount <= 0) {
       toast.error('Completa fecha y monto válidos');
       return;
     }
@@ -71,7 +70,7 @@ export const CreditCardScheduledPaymentDialog = ({
           editingItem.id,
           {
             due_date: dueDate,
-            amount: parsedAmount,
+            amount,
             label: label.trim() || null,
           },
           context,
@@ -82,7 +81,7 @@ export const CreditCardScheduledPaymentDialog = ({
           creditCardId,
           {
             due_date: dueDate,
-            amount: parsedAmount,
+            amount,
             label: label.trim() || null,
           },
           context,
@@ -142,7 +141,7 @@ export const CreditCardScheduledPaymentDialog = ({
             <CurrencyInput
               id="scheduled-amount"
               value={amount}
-              onValueChange={setAmount}
+              onChange={setAmount}
               placeholder="0.00"
             />
           </div>

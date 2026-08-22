@@ -8,6 +8,7 @@ import type {
   CreditCardStatementResponse,
   CreditCardScheduledPaymentItem,
   CreditCardScheduledPaymentsResponse,
+  CreditCardStatementImportPreviewResponse,
   MercadoPagoStatementImportResponse,
   InstallmentProjectionMonthItem,
 } from '@/types/catalog';
@@ -92,6 +93,18 @@ export async function listCreditCardStatementImports(
   return clientFetchFromApi<CreditCardStatementImportListItem[]>(
     `/api/credit-cards/${creditCardId}/statement-imports`,
     undefined,
+    context,
+  );
+}
+
+export async function previewCreditCardStatement(
+  creditCardId: number,
+  formData: FormData,
+  context?: FinanceContextType,
+): Promise<CreditCardStatementImportPreviewResponse> {
+  return clientFetchMultipartJson<CreditCardStatementImportPreviewResponse>(
+    `/api/credit-cards/${creditCardId}/statement-imports/preview`,
+    formData,
     context,
   );
 }
