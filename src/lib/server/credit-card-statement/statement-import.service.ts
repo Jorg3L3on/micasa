@@ -750,7 +750,6 @@ async function parseStatementFromBuffer(
             paymentDate: m.paymentDate,
             installmentCurrent: m.installmentCurrent,
             installmentTotal: m.installmentTotal,
-            kind: m.kind,
           })),
         ),
         warnings: r.warnings,

@@ -40,10 +40,10 @@ type CardPaymentMovementSource = {
   paid_at: Date;
   note: string | null;
   expense_id: number | null;
-  source_wallet_id: number;
+  source_wallet_id: number | null;
   credit_card_wallet_id: number;
   credit_card_wallet: { name: string };
-  source_wallet: { name: string };
+  source_wallet: { name: string } | null;
 };
 
 export const linkedSourceWalletCardPaymentExpenseIds = (
@@ -89,13 +89,14 @@ export const mapCardPaymentToWalletMovement = (
   }
 
   if (payment.credit_card_wallet_id === walletId) {
+    const sourceLabel = payment.source_wallet?.name ?? 'Pago externo';
     return {
       id: payment.id,
       kind: 'card_payment',
       date,
       description: payment.note?.trim()
-        ? `Abono desde ${payment.source_wallet.name}: ${payment.note.trim()}`
-        : `Abono desde ${payment.source_wallet.name}`,
+        ? `Abono desde ${sourceLabel}: ${payment.note.trim()}`
+        : `Abono desde ${sourceLabel}`,
       amount,
       direction: 'in',
       category: 'Pago a tarjeta',

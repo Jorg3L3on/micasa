@@ -34,7 +34,9 @@ import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditC
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
 import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
-import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import CreditCardPaymentDialog, {
+  type CreditCardPaymentSubmitPayload,
+} from '@/components/credit-cards/CreditCardPaymentDialog';
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
@@ -58,9 +60,7 @@ import {
   updateCreditCard,
 } from '@/lib/api/credit-cards';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
-import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardExternalPaymentSubmitPayload } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
-import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
