@@ -10,6 +10,7 @@ import { AppTooltipProvider } from '@/components/AppTooltipProvider';
 import { AppAtmosphere } from '@/components/app-atmosphere';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { ContentEnter } from '@/components/view-transition/SuspenseReveal';
+import { QuickCaptureHost } from '@/components/quick-capture/QuickCaptureHost';
 import AppLoading from './loading';
 
 export default async function AppLayout({
@@ -37,20 +38,22 @@ export default async function AppLayout({
       <SidebarProvider>
         <AppSidebarDynamic />
         <SidebarInset className="relative min-w-0">
-          <AppAtmosphere />
-          <header
-            className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background/85 shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 dark:border-white/[0.06] dark:bg-[#060914]/75 dark:shadow-[0_12px_40px_-28px_rgba(58,55,252,0.55)]"
-            style={{ viewTransitionName: 'app-header' }}
-          >
-            <AppHeaderToolbarDynamic />
-          </header>
-          <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6">
-            <div className="container mx-auto">
-              <Suspense fallback={<AppLoading />}>
-                <ContentEnter>{children}</ContentEnter>
-              </Suspense>
+          <QuickCaptureHost>
+            <AppAtmosphere />
+            <header
+              className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background/85 shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 dark:border-white/[0.06] dark:bg-[#060914]/75 dark:shadow-[0_12px_40px_-28px_rgba(58,55,252,0.55)]"
+              style={{ viewTransitionName: 'app-header' }}
+            >
+              <AppHeaderToolbarDynamic />
+            </header>
+            <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6">
+              <div className="container mx-auto">
+                <Suspense fallback={<AppLoading />}>
+                  <ContentEnter>{children}</ContentEnter>
+                </Suspense>
+              </div>
             </div>
-          </div>
+          </QuickCaptureHost>
         </SidebarInset>
       </SidebarProvider>
     </AppTooltipProvider>
