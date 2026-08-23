@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, CreditCard, Plus, Trash2 } from 'lucide-react';
+import { CalendarClock, CreditCard, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CreditCardInstallmentPlanItem } from '@/types/catalog';
 import {
@@ -33,6 +34,10 @@ export const CreditCardInstallmentPlansSection = ({
   const [items, setItems] = useState<CreditCardInstallmentPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] =
+    useState<CreditCardInstallmentPlanItem | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<CreditCardInstallmentPlanItem | null>(null);
   const dialogOpen = createDialogOpen ?? internalDialogOpen;
   const setDialogOpen = onCreateDialogOpenChange ?? setInternalDialogOpen;
 
@@ -65,10 +70,33 @@ export const CreditCardInstallmentPlansSection = ({
     [items],
   );
 
-  const handleDelete = async (item: CreditCardInstallmentPlanItem) => {
+  const handleOpenCreate = () => {
+    setEditingPlan(null);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (item: CreditCardInstallmentPlanItem) => {
+    setEditingPlan(item);
+    setDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setEditingPlan(null);
+    }
+    setDialogOpen(open);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteCreditCardInstallmentPlan(creditCardId, item.id, context);
+      await deleteCreditCardInstallmentPlan(
+        creditCardId,
+        deleteTarget.id,
+        context,
+      );
       toast.success('Plan eliminado');
+      setDeleteTarget(null);
       await loadItems();
       await onChanged?.();
     } catch {
@@ -77,6 +105,7 @@ export const CreditCardInstallmentPlansSection = ({
   };
 
   const handleSuccess = async () => {
+    setEditingPlan(null);
     await loadItems();
     await onChanged?.();
   };
@@ -108,7 +137,7 @@ export const CreditCardInstallmentPlansSection = ({
           type="button"
           size="sm"
           className="h-8 shrink-0 rounded-xl"
-          onClick={() => setDialogOpen(true)}
+          onClick={handleOpenCreate}
         >
           <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
           Nuevo plan
@@ -128,7 +157,7 @@ export const CreditCardInstallmentPlansSection = ({
             type="button"
             size="sm"
             className="mt-4 rounded-xl"
-            onClick={() => setDialogOpen(true)}
+            onClick={handleOpenCreate}
           >
             Crear plan de cuotas
           </Button>
@@ -162,18 +191,30 @@ export const CreditCardInstallmentPlansSection = ({
                       termina {item.endMonthLabel}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      'h-8 w-8 shrink-0 text-destructive hover:text-destructive',
-                    )}
-                    aria-label={`Eliminar plan ${item.name}`}
-                    onClick={() => void handleDelete(item)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Editar plan ${item.name}`}
+                      onClick={() => handleOpenEdit(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        'h-8 w-8 text-destructive hover:text-destructive',
+                      )}
+                      aria-label={`Eliminar plan ${item.name}`}
+                      onClick={() => setDeleteTarget(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="mb-2 flex items-end justify-between gap-2">
@@ -227,11 +268,23 @@ export const CreditCardInstallmentPlansSection = ({
 
       <CreditCardInstallmentPlanDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         creditCardId={creditCardId}
         context={context}
         defaultDueDay={defaultDueDay}
+        plan={editingPlan}
         onSuccess={handleSuccess}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar plan de cuotas"
+        description="Se eliminará el plan y sus cuotas futuras. Las cuotas ya pagadas no se revierten en el saldo de la tarjeta."
+        itemName={deleteTarget?.name}
       />
     </section>
   );

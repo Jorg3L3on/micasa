@@ -5,7 +5,10 @@ import {
   todayCalendarDate,
 } from '@/lib/calendar-dates';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import type { CreateCreditCardInstallmentPlanInput } from '@/schemas/credit-card-installment-plan.schema';
+import type {
+  CreateCreditCardInstallmentPlanInput,
+  UpdateCreditCardInstallmentPlanInput,
+} from '@/schemas/credit-card-installment-plan.schema';
 import { ensureCreditWalletType } from '@/lib/finance/wallet-accounting';
 import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
 import {
@@ -249,6 +252,185 @@ export async function createInstallmentPlan(
     }
 
     return created;
+  });
+
+  return mapPlan(plan);
+}
+
+function firstScheduledDueDateYmd(
+  payments: Array<{ status: 'SCHEDULED' | 'PAID'; due_date: Date }>,
+): string | null {
+  const scheduled = payments
+    .filter((payment) => payment.status === 'SCHEDULED')
+    .sort((a, b) => a.due_date.getTime() - b.due_date.getTime());
+  return scheduled[0] ? formatCalendarDate(scheduled[0].due_date) : null;
+}
+
+function hasStructuralPlanChanges(
+  existing: {
+    installment_amount: unknown;
+    total_installments: number;
+    paid_installments: number;
+    already_in_card_balance: boolean;
+    payments: Array<{ status: 'SCHEDULED' | 'PAID'; due_date: Date }>;
+  },
+  input: UpdateCreditCardInstallmentPlanInput,
+  nextDueDate: string,
+): boolean {
+  if (decimalToNumber(existing.installment_amount) !== input.installment_amount) {
+    return true;
+  }
+  if (existing.total_installments !== input.total_installments) {
+    return true;
+  }
+  if (existing.paid_installments !== input.paid_installments) {
+    return true;
+  }
+  if (existing.already_in_card_balance !== input.already_in_card_balance) {
+    return true;
+  }
+
+  const existingNextDue = firstScheduledDueDateYmd(existing.payments);
+  return existingNextDue !== nextDueDate;
+}
+
+export async function updateInstallmentPlan(
+  planId: number,
+  walletId: number,
+  ownerFilter: OwnerFilter,
+  input: UpdateCreditCardInstallmentPlanInput,
+): Promise<CreditCardInstallmentPlanItem> {
+  const wallet = await assertCreditCardWallet(walletId, ownerFilter);
+
+  const existing = await prisma.creditCardInstallmentPlan.findFirst({
+    where: {
+      id: planId,
+      credit_card_wallet_id: walletId,
+      ...ownerFilter,
+    },
+    include: planInclude,
+  });
+
+  if (!existing) {
+    const error = new Error('Plan de cuotas no encontrado');
+    (error as { code?: string }).code = 'NOT_FOUND';
+    throw error;
+  }
+
+  const nextDueDate =
+    input.next_due_date ??
+    firstScheduledDueDateYmd(existing.payments) ??
+    (wallet.due_day != null
+      ? defaultNextDueDateForCard(wallet.due_day)
+      : todayCalendarDate());
+
+  const structuralChanges = hasStructuralPlanChanges(
+    existing,
+    input,
+    nextDueDate,
+  );
+
+  if (!structuralChanges) {
+    if (existing.name.trim() === input.name.trim()) {
+      return mapPlan(existing);
+    }
+
+    const updated = await prisma.creditCardInstallmentPlan.update({
+      where: { id: planId },
+      data: { name: input.name.trim() },
+      include: planInclude,
+    });
+    return mapPlan(updated);
+  }
+
+  const generated = generateInstallmentPlanPayments({
+    installmentAmount: input.installment_amount,
+    totalInstallments: input.total_installments,
+    paidInstallments: input.paid_installments,
+    nextDueDate,
+  });
+
+  const existingBySequence = new Map(
+    existing.payments.map((payment) => [payment.sequence, payment]),
+  );
+
+  const oldScheduledTotal = existing.payments
+    .filter((payment) => payment.status === 'SCHEDULED')
+    .reduce((sum, payment) => sum + decimalToNumber(payment.amount), 0);
+
+  const newScheduledTotal =
+    (input.total_installments - input.paid_installments) *
+    input.installment_amount;
+
+  const oldDebtContribution = existing.already_in_card_balance
+    ? 0
+    : oldScheduledTotal;
+  const newDebtContribution = input.already_in_card_balance
+    ? 0
+    : newScheduledTotal;
+  const debtDelta = newDebtContribution - oldDebtContribution;
+
+  if (
+    debtDelta > 0 &&
+    wallet.credit_limit != null &&
+    decimalToNumber(wallet.amount) + debtDelta >
+      decimalToNumber(wallet.credit_limit)
+  ) {
+    const error = new Error(
+      'El saldo restante del plan supera el crédito disponible',
+    );
+    (error as { code?: string }).code = 'INSUFFICIENT_CREDIT';
+    throw error;
+  }
+
+  const plan = await prisma.$transaction(async (tx) => {
+    await tx.creditCardInstallmentPlanPayment.deleteMany({
+      where: { plan_id: planId },
+    });
+
+    const updated = await tx.creditCardInstallmentPlan.update({
+      where: { id: planId },
+      data: {
+        name: input.name.trim(),
+        installment_amount: input.installment_amount,
+        total_installments: input.total_installments,
+        paid_installments: input.paid_installments,
+        already_in_card_balance: input.already_in_card_balance,
+        status:
+          input.paid_installments >= input.total_installments
+            ? 'COMPLETED'
+            : 'ACTIVE',
+        payments: {
+          create: generated.map((payment) => {
+            const previous = existingBySequence.get(payment.sequence);
+            return {
+              sequence: payment.sequence,
+              due_date: payment.dueDate,
+              amount: payment.amount,
+              status: payment.status,
+              ...(payment.status === 'PAID'
+                ? {
+                    paid_at: previous?.paid_at ?? new Date(),
+                    ...(previous?.credit_card_payment_id != null
+                      ? {
+                          credit_card_payment_id:
+                            previous.credit_card_payment_id,
+                        }
+                      : {}),
+                  }
+                : {}),
+            };
+          }),
+        },
+      },
+      include: planInclude,
+    });
+
+    if (debtDelta !== 0) {
+      await applyWalletAmountDelta(tx, walletId, debtDelta);
+    }
+
+    return updated;
   });
 
   return mapPlan(plan);
