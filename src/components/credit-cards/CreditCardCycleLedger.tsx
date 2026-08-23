@@ -143,22 +143,17 @@ export const CreditCardCycleLedger = ({
       aria-label="Movimientos del ciclo"
       className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
     >
-      <div className="border-b border-border/50 bg-linear-to-br from-muted/25 via-card to-card p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight text-foreground">
-              Movimientos del ciclo
+      <div className="border-b border-border/50 px-4 py-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <p className="sr-only">
+            {allEntries.length} movimiento{allEntries.length === 1 ? '' : 's'} ·{' '}
+            {activeFilterLabel.toLowerCase()}
+          </p>
+          {showReconciliationHint ? (
+            <p className="text-xs font-medium text-amber-600 dark:text-amber-400 sm:mr-auto">
+              Hay diferencias con el import — revisa en Resumen.
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {allEntries.length} movimiento{allEntries.length === 1 ? '' : 's'} ·{' '}
-              {activeFilterLabel.toLowerCase()}
-            </p>
-            {showReconciliationHint ? (
-              <p className="mt-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                Hay diferencias con el import — revisa en Resumen.
-              </p>
-            ) : null}
-          </div>
+          ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative sm:w-64">

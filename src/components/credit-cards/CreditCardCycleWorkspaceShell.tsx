@@ -5,16 +5,16 @@ import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-sh
 import { cn } from '@/lib/utils';
 
 type CreditCardCycleWorkspaceShellProps = {
-  chrome: ReactNode;
+  chrome?: ReactNode;
   children: ReactNode;
 };
 
-/** Cycle summary + tabs — calm card like wallet detail (no mobile snap drawer). */
+/** Tab content panel — calm card like wallet detail (no mobile snap drawer). */
 export const CreditCardCycleWorkspaceShell = ({
   chrome,
   children,
 }: CreditCardCycleWorkspaceShellProps) => (
-  <div className="relative z-10 -mt-3">
+  <div className="relative z-10 mt-4">
     <div
       className={cn(
         MONTHLY_PANEL_SHELL_CLASS,
@@ -24,9 +24,9 @@ export const CreditCardCycleWorkspaceShell = ({
       )}
     >
       <div className="relative space-y-4">
-        <div className="sticky top-16 z-10 -mx-3 border-b border-border/50 bg-card px-3 pb-3 sm:-mx-4 sm:px-4 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
-          {chrome}
-        </div>
+        {chrome ? (
+          <div className="min-w-0 border-b border-border/50 pb-3">{chrome}</div>
+        ) : null}
         <div className="min-w-0">{children}</div>
       </div>
     </div>

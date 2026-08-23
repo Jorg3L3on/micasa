@@ -38,9 +38,7 @@ import {
 } from '@/components/credit-cards/CreditCardDetailSections';
 import { CreditCardCycleLedger } from '@/components/credit-cards/CreditCardCycleLedger';
 import { CreditCardCycleWorkspaceShell } from '@/components/credit-cards/CreditCardCycleWorkspaceShell';
-import { CreditCardInstallmentPortfolio } from '@/components/credit-cards/CreditCardInstallmentPortfolio';
-import { CreditCardInstallmentPlansSection } from '@/components/credit-cards/CreditCardInstallmentPlansSection';
-import { CreditCardScheduledPaymentsSection } from '@/components/credit-cards/CreditCardScheduledPaymentsSection';
+import { CreditCardCuotasTab } from '@/components/credit-cards/CreditCardCuotasTab';
 import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
@@ -90,7 +88,7 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
-import { formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import type {
   CategoryOption,
   CreditCardListItem,
@@ -121,13 +119,8 @@ const CreditCardDetailSkeleton = ({ cardId }: { cardId: number }) => (
         <Skeleton className="h-20 w-full rounded-2xl" />
       </div>
       <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-        <Skeleton className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" />
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
-          ))}
-        </div>
-        <Skeleton className="mt-4 h-10 w-full rounded-xl" />
+        <Skeleton className="mb-3 h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
         <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
       </div>
     </div>
@@ -657,6 +650,7 @@ export default function CreditCardDetailPage() {
             card={card}
             statement={statement}
             utilizationPct={utilizationPct}
+            isCurrentCycle={isCurrentCycle}
           />
         </ViewTransition>
         <CreditCardDuePaymentStrip
@@ -671,49 +665,48 @@ export default function CreditCardDetailPage() {
           />
         ) : (
           <p className="rounded-2xl border border-border/50 bg-muted/15 px-4 py-2 text-center text-xs text-muted-foreground">
-            Viendo ciclo {cycleRangeLabel} — el desglose por categoría corresponde al ciclo seleccionado abajo.
+            Viendo ciclo {cycleRangeLabel} —{' '}
+            <span className="font-mono font-semibold tabular-nums text-foreground">
+              {formatCurrency(statement.current_cycle_purchases)}
+            </span>{' '}
+            en compras. El desglose por categoría corresponde al ciclo seleccionado
+            abajo.
           </p>
         )}
+
+        <CreditCardCycleSummary
+          statement={statement}
+          isCurrentCycle={isCurrentCycle}
+          onPreviousCycle={handlePreviousCycle}
+          onNextCycle={handleNextCycle}
+          onResetToToday={handleResetToToday}
+          formatCycleRange={formatCycleRange}
+        />
+
+        <CreditCardDetailTabsList>
+          <CreditCardDetailTabTrigger value="movimientos">
+            Movimientos
+          </CreditCardDetailTabTrigger>
+          <CreditCardDetailTabTrigger value="resumen">
+            Resumen
+          </CreditCardDetailTabTrigger>
+          <CreditCardDetailTabTrigger value="cuotas">
+            Cuotas
+            {statement.installment_active_purchases.length > 0 ? (
+              <Badge
+                variant="default"
+                className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
+                aria-hidden
+              >
+                {statement.installment_active_purchases.length}
+              </Badge>
+            ) : null}
+          </CreditCardDetailTabTrigger>
+        </CreditCardDetailTabsList>
       </CreditCardHeroZone>
 
       <Tabs value={tab} onValueChange={handleTabChange} className="gap-4">
-        <CreditCardCycleWorkspaceShell
-          chrome={
-            <>
-              <CreditCardCycleSummary
-                statement={statement}
-                isCurrentCycle={isCurrentCycle}
-                onPreviousCycle={handlePreviousCycle}
-                onNextCycle={handleNextCycle}
-                onResetToToday={handleResetToToday}
-                formatCycleRange={formatCycleRange}
-                onAdjustDebt={() => setBalanceDialogOpen(true)}
-              />
-              <div className="mt-4">
-                <CreditCardDetailTabsList>
-                <CreditCardDetailTabTrigger value="movimientos">
-                  Movimientos
-                </CreditCardDetailTabTrigger>
-                <CreditCardDetailTabTrigger value="resumen">
-                  Resumen
-                </CreditCardDetailTabTrigger>
-                <CreditCardDetailTabTrigger value="cuotas">
-                  Cuotas
-                  {statement.installment_active_purchases.length > 0 ? (
-                    <Badge
-                      variant="default"
-                      className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
-                      aria-hidden
-                    >
-                      {statement.installment_active_purchases.length}
-                    </Badge>
-                  ) : null}
-                </CreditCardDetailTabTrigger>
-                </CreditCardDetailTabsList>
-              </div>
-            </>
-          }
-        >
+        <CreditCardCycleWorkspaceShell>
           <TabsContent value="movimientos" className="mt-0 space-y-4">
             {cycleLoading ? (
               <TabContentSkeleton />
@@ -738,7 +731,7 @@ export default function CreditCardDetailPage() {
               <TabContentSkeleton />
             ) : (
               <>
-                {reconciliation ? (
+                {reconciliation && reconciliation.status !== 'matched' ? (
                   <CreditCardReconciliationStrip
                     reconciliation={reconciliation}
                     cycleDueDate={statement.statement_due_date}
@@ -768,6 +761,7 @@ export default function CreditCardDetailPage() {
                   <CreditCardStatementSummaryCard
                     statement={statement}
                     daysUntilDue={daysUntilDue}
+                    collapsible
                   />
                 </div>
 
@@ -776,35 +770,18 @@ export default function CreditCardDetailPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="cuotas" className="mt-0 space-y-4">
-            {/* Keep plans section mounted during cycle refresh so edit dialog
-                state (open + selected plan) is not wiped into create defaults. */}
-            <CreditCardInstallmentPlansSection
+          <TabsContent value="cuotas" className="mt-0">
+            <CreditCardCuotasTab
               creditCardId={creditCardId}
               context={context}
               defaultDueDay={card.due_day}
+              purchases={statement.installment_active_purchases}
+              ownerQueryString={ownerQueryString}
               onChanged={() => loadData({ cycleOnly: true })}
-              createDialogOpen={installmentPlanDialogOpen}
-              onCreateDialogOpenChange={setInstallmentPlanDialogOpen}
+              createPlanDialogOpen={installmentPlanDialogOpen}
+              onCreatePlanDialogOpenChange={setInstallmentPlanDialogOpen}
+              cycleLoading={cycleLoading}
             />
-            {cycleLoading || !statement ? (
-              <TabContentSkeleton />
-            ) : (
-              <>
-                <CreditCardScheduledPaymentsSection
-                  creditCardId={creditCardId}
-                  context={context}
-                  onChanged={() => loadData({ cycleOnly: true })}
-                />
-                <CreditCardInstallmentPortfolio
-                  purchases={statement.installment_active_purchases}
-                  ownerQueryString={ownerQueryString}
-                  onCreateInstallmentPlan={() =>
-                    setInstallmentPlanDialogOpen(true)
-                  }
-                />
-              </>
-            )}
           </TabsContent>
         </CreditCardCycleWorkspaceShell>
       </Tabs>
