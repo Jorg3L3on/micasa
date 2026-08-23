@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +20,7 @@ import {
   createCreditCardInstallmentPlan,
   updateCreditCardInstallmentPlan,
 } from '@/lib/api/credit-cards';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { getInstallmentPlanFormValues } from '@/components/credit-cards/installment-plan-form-values';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type CreditCardInstallmentPlanDialogProps = {
@@ -33,22 +33,10 @@ type CreditCardInstallmentPlanDialogProps = {
   onSuccess: () => void | Promise<void>;
 };
 
-const defaultNextDueDate = (dueDay: number | null | undefined): string => {
-  const today = todayCalendarDate();
-  if (dueDay == null || dueDay < 1) return today;
-  const [year, month, day] = today.split('-').map(Number);
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const clamped = Math.min(dueDay, lastDay);
-  if (day <= clamped) {
-    return `${year}-${String(month).padStart(2, '0')}-${String(clamped).padStart(2, '0')}`;
-  }
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  const nextLast = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
-  const nextClamped = Math.min(dueDay, nextLast);
-  return `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextClamped).padStart(2, '0')}`;
-};
-
+/**
+ * Form body remounts via `key` from the parent whenever create/edit target changes,
+ * so useState initializers always match the selected plan (no empty create flash).
+ */
 export const CreditCardInstallmentPlanDialog = ({
   open,
   onOpenChange,
@@ -59,34 +47,23 @@ export const CreditCardInstallmentPlanDialog = ({
   onSuccess,
 }: CreditCardInstallmentPlanDialogProps) => {
   const isEditing = plan != null;
-  const [name, setName] = useState('');
-  const [installmentAmount, setInstallmentAmount] = useState(0);
-  const [totalInstallments, setTotalInstallments] = useState('9');
-  const [paidInstallments, setPaidInstallments] = useState('0');
-  const [nextDueDate, setNextDueDate] = useState(todayCalendarDate());
-  const [alreadyInBalance, setAlreadyInBalance] = useState(true);
+  const initial = getInstallmentPlanFormValues(plan, defaultDueDay);
+
+  const [name, setName] = useState(initial.name);
+  const [installmentAmount, setInstallmentAmount] = useState(
+    initial.installmentAmount,
+  );
+  const [totalInstallments, setTotalInstallments] = useState(
+    initial.totalInstallments,
+  );
+  const [paidInstallments, setPaidInstallments] = useState(
+    initial.paidInstallments,
+  );
+  const [nextDueDate, setNextDueDate] = useState(initial.nextDueDate);
+  const [alreadyInBalance, setAlreadyInBalance] = useState(
+    initial.alreadyInBalance,
+  );
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-
-    if (plan) {
-      setName(plan.name);
-      setInstallmentAmount(plan.installmentAmount);
-      setTotalInstallments(String(plan.totalInstallments));
-      setPaidInstallments(String(plan.paidInstallments));
-      setNextDueDate(plan.nextDueDate ?? defaultNextDueDate(defaultDueDay));
-      setAlreadyInBalance(plan.alreadyInCardBalance);
-      return;
-    }
-
-    setName('');
-    setInstallmentAmount(0);
-    setTotalInstallments('9');
-    setPaidInstallments('0');
-    setNextDueDate(defaultNextDueDate(defaultDueDay));
-    setAlreadyInBalance(true);
-  }, [open, defaultDueDay, plan]);
 
   const parsedTotal = Number.parseInt(totalInstallments.trim(), 10);
   const parsedPaid = Number.parseInt(paidInstallments.trim(), 10);

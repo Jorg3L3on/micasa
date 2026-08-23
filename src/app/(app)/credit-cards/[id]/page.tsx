@@ -778,18 +778,20 @@ export default function CreditCardDetailPage() {
           </TabsContent>
 
           <TabsContent value="cuotas" className="mt-0 space-y-4">
-            {cycleLoading ? (
+            {/* Keep plans section mounted during cycle refresh so edit dialog
+                state (open + selected plan) is not wiped into create defaults. */}
+            <CreditCardInstallmentPlansSection
+              creditCardId={creditCardId}
+              context={context}
+              defaultDueDay={card.due_day}
+              onChanged={() => loadData({ cycleOnly: true })}
+              createDialogOpen={installmentPlanDialogOpen}
+              onCreateDialogOpenChange={setInstallmentPlanDialogOpen}
+            />
+            {cycleLoading || !statement ? (
               <TabContentSkeleton />
             ) : (
               <>
-                <CreditCardInstallmentPlansSection
-                  creditCardId={creditCardId}
-                  context={context}
-                  defaultDueDay={card.due_day}
-                  onChanged={() => loadData({ cycleOnly: true })}
-                  createDialogOpen={installmentPlanDialogOpen}
-                  onCreateDialogOpenChange={setInstallmentPlanDialogOpen}
-                />
                 <CreditCardScheduledPaymentsSection
                   creditCardId={creditCardId}
                   context={context}
