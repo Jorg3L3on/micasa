@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
+import { checkRateLimit } from '@/lib/server/rate-limit';
 import {
   AgentAuthError,
   assertScope,
@@ -50,6 +51,28 @@ export const errorResult = (message: string): McpTextResult => ({
 const getAuthorizationHeader = (ctx: McpToolContext): string | null =>
   ctx.http?.req?.headers.get('authorization') ?? null;
 
+/**
+ * Per-key rate limit (policy `mcp:tool`). The api key id is the identity so
+ * one runaway agent cannot starve other connections of the same user.
+ * Returns an error result when limited, otherwise null.
+ */
+const enforceToolRateLimit = async (
+  ctx: McpToolContext,
+  apiKeyId: number,
+): Promise<McpTextResult | null> => {
+  const request = ctx.http?.req;
+  if (!request) return null;
+  const { limited, retryAfterSeconds } = await checkRateLimit(
+    request,
+    'mcp:tool',
+    apiKeyId,
+  );
+  if (!limited) return null;
+  return errorResult(
+    `Límite de solicitudes alcanzado para esta conexión. Reintenta en ${retryAfterSeconds}s.`,
+  );
+};
+
 const toErrorResult = (error: unknown): McpTextResult => {
   if (error instanceof AgentAuthError) {
     return errorResult(error.message);
@@ -86,6 +109,9 @@ export async function runAgentTool(
     );
     assertScope(agent, scope);
 
+    const limitedResult = await enforceToolRateLimit(ctx, agent.apiKeyId);
+    if (limitedResult) return limitedResult;
+
     const data = await fn(agent);
 
     logFinanceEvent('info', 'mcp.tool.invoked', {
@@ -120,6 +146,9 @@ export async function runAgentUserTool(
   try {
     const token = parseBearerToken(getAuthorizationHeader(ctx));
     const user = await resolveAgentUser(token);
+
+    const limitedResult = await enforceToolRateLimit(ctx, user.apiKeyId);
+    if (limitedResult) return limitedResult;
 
     const data = await fn(user);
 

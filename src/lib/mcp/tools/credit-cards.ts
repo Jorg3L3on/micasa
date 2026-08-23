@@ -253,6 +253,7 @@ export function registerCreditCardTools(server: McpServer) {
           .describe('Nueva deuda total de la tarjeta (saldo utilizado).'),
         confirm: confirmSchema,
       }),
+      annotations: { destructiveHint: true, idempotentHint: true },
     },
     async (args, ctx) =>
       runAgentTool('adjust_card_debt', ctx as McpToolContext, args, 'write', async (agent) => {
@@ -291,6 +292,7 @@ export function registerCreditCardTools(server: McpServer) {
           .optional()
           .describe('Límite temporal del emisor; null para quitarlo.'),
       }),
+      annotations: { destructiveHint: false, idempotentHint: true },
     },
     async (args, ctx) =>
       runAgentTool('update_card', ctx as McpToolContext, args, 'write', async (agent) => {
@@ -356,6 +358,7 @@ export function registerCreditCardTools(server: McpServer) {
           .optional()
           .describe('Total de mensualidades (MSI); requiere installment_current.'),
       }),
+      annotations: { destructiveHint: false, idempotentHint: false },
     },
     async (args, ctx) =>
       runAgentTool('add_card_purchase', ctx as McpToolContext, args, 'write', async (agent) => {
@@ -411,6 +414,7 @@ export function registerCreditCardTools(server: McpServer) {
           .default(true)
           .describe('false si la deuda actual ya refleja este pago.'),
       }),
+      annotations: { destructiveHint: false, idempotentHint: false },
     },
     async (args, ctx) =>
       runAgentTool('add_card_payment', ctx as McpToolContext, args, 'write', async (agent) => {
@@ -455,6 +459,7 @@ export function registerCreditCardTools(server: McpServer) {
           .describe('Próxima fecha de cuota; default derivado del día de pago.'),
         already_in_balance: z.boolean().default(false),
       }),
+      annotations: { destructiveHint: false, idempotentHint: false },
     },
     async (args, ctx) =>
       runAgentTool('create_installment_plan', ctx as McpToolContext, args, 'write', async (agent) => {
@@ -487,6 +492,7 @@ export function registerCreditCardTools(server: McpServer) {
         next_due_date: dateYmdSchema.optional(),
         already_in_balance: z.boolean().default(false),
       }),
+      annotations: { destructiveHint: false, idempotentHint: true },
     },
     async (args, ctx) =>
       runAgentTool('update_installment_plan', ctx as McpToolContext, args, 'write', async (agent) => {
@@ -519,6 +525,7 @@ export function registerCreditCardTools(server: McpServer) {
         payment_id: z.number().int().positive(),
         confirm: confirmSchema,
       }),
+      annotations: { destructiveHint: true, idempotentHint: true },
     },
     async (args, ctx) =>
       runAgentTool('delete_scheduled_payment', ctx as McpToolContext, args, 'write', async (agent) => {
