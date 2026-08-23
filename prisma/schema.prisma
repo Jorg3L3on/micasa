@@ -101,6 +101,7 @@ model User {
   categories         Category[]
   creditCardPayments            CreditCardPayment[]
   creditCardScheduledPayments   CreditCardScheduledPayment[]
+  creditCardInstallmentPlans    CreditCardInstallmentPlan[]
   budgets                       Budget[]
   loans              Loan[]
   walletTransfers    WalletTransfer[]
@@ -350,6 +351,7 @@ model House {
 
   creditCardPayments            CreditCardPayment[]
   creditCardScheduledPayments   CreditCardScheduledPayment[]
+  creditCardInstallmentPlans    CreditCardInstallmentPlan[]
   budgets                       Budget[]
   credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
   walletTransfers               WalletTransfer[]
@@ -416,6 +418,7 @@ model Wallet {
   credit_card_statement_imports CreditCardStatementImport[]
   credit_card_payment_plans     CreditCardPaymentPlan[]
   credit_card_scheduled_payments CreditCardScheduledPayment[]
+  credit_card_installment_plans  CreditCardInstallmentPlan[]
   budgetAllocations             BudgetAllocation[]
   wallet_transfers_from         WalletTransfer[]            @relation("WalletTransferFrom")
   wallet_transfers_to           WalletTransfer[]            @relation("WalletTransferTo")
@@ -477,6 +480,64 @@ model CreditCardScheduledPayment {
   @@index([credit_card_wallet_id, status])
   @@index([user_id])
   @@index([house_id])
+}
+
+enum CreditCardInstallmentPlanStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum CreditCardInstallmentPlanPaymentStatus {
+  SCHEDULED
+  PAID
+}
+
+/// Plan de compra a meses en tarjeta (nombre, progreso X de Y, cuotas generadas).
+model CreditCardInstallmentPlan {
+  id                      Int                             @id @default(autoincrement())
+  credit_card_wallet_id   Int
+  name                    String
+  installment_amount      Decimal                         @db.Decimal(10, 2)
+  total_installments      Int
+  /// Cuotas ya pagadas al dar de alta (0…N-1). La siguiente es paid_installments + 1.
+  paid_installments       Int                             @default(0)
+  /// Si true, el saldo de la tarjeta ya incluye la compra (alta tardía).
+  already_in_card_balance Boolean                         @default(false)
+  status                  CreditCardInstallmentPlanStatus @default(ACTIVE)
+  user_id                 Int?
+  house_id                Int?
+  created_at              DateTime                        @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at              DateTime                        @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  credit_card_wallet Wallet                             @relation(fields: [credit_card_wallet_id], references: [id], onDelete: Cascade)
+  user               User?                              @relation(fields: [user_id], references: [id])
+  house              House?                             @relation(fields: [house_id], references: [id])
+  payments           CreditCardInstallmentPlanPayment[]
+
+  @@index([credit_card_wallet_id, status])
+  @@index([user_id])
+  @@index([house_id])
+}
+
+model CreditCardInstallmentPlanPayment {
+  id                     Int                                    @id @default(autoincrement())
+  plan_id                Int
+  sequence               Int
+  due_date               DateTime
+  amount                 Decimal                                @db.Decimal(10, 2)
+  status                 CreditCardInstallmentPlanPaymentStatus @default(SCHEDULED)
+  paid_at                DateTime?
+  credit_card_payment_id Int?                                   @unique
+  created_at             DateTime                               @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at             DateTime                               @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  plan                CreditCardInstallmentPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  credit_card_payment CreditCardPayment?        @relation(fields: [credit_card_payment_id], references: [id], onDelete: SetNull)
+
+  @@unique([plan_id, sequence])
+  @@index([plan_id])
+  @@index([due_date])
+  @@index([status])
 }
 
 model Budget {
@@ -643,7 +704,8 @@ model CreditCardPayment {
   user               User?    @relation(fields: [user_id], references: [id])
   house              House?   @relation(fields: [house_id], references: [id])
   expense            Expense? @relation(fields: [expense_id], references: [id], onDelete: SetNull)
-  scheduled_payment  CreditCardScheduledPayment?
+  scheduled_payment       CreditCardScheduledPayment?
+  installment_plan_payment CreditCardInstallmentPlanPayment?
 
   @@index([credit_card_wallet_id, paid_at])
   @@index([source_wallet_id, paid_at])

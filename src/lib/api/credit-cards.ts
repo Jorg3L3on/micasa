@@ -8,6 +8,8 @@ import type {
   CreditCardStatementResponse,
   CreditCardScheduledPaymentItem,
   CreditCardScheduledPaymentsResponse,
+  CreditCardInstallmentPlanItem,
+  CreditCardInstallmentPlansResponse,
   CreditCardStatementImportPreviewResponse,
   MercadoPagoStatementImportResponse,
   InstallmentProjectionMonthItem,
@@ -312,6 +314,51 @@ export async function deleteCreditCardScheduledPayment(
 ) {
   return clientFetchFromApi<{ ok: boolean }>(
     `/api/credit-cards/${creditCardId}/scheduled-payments/${paymentId}`,
+    { method: 'DELETE' },
+    context,
+  );
+}
+
+export async function listCreditCardInstallmentPlans(
+  creditCardId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardInstallmentPlansResponse>(
+    `/api/credit-cards/${creditCardId}/installment-plans`,
+    undefined,
+    context,
+  );
+}
+
+export async function createCreditCardInstallmentPlan(
+  creditCardId: number,
+  data: {
+    name: string;
+    installment_amount: number;
+    total_installments: number;
+    paid_installments?: number;
+    next_due_date?: string;
+    already_in_card_balance?: boolean;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardInstallmentPlanItem>(
+    `/api/credit-cards/${creditCardId}/installment-plans`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function deleteCreditCardInstallmentPlan(
+  creditCardId: number,
+  planId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<{ success: boolean }>(
+    `/api/credit-cards/${creditCardId}/installment-plans/${planId}`,
     { method: 'DELETE' },
     context,
   );

@@ -137,7 +137,9 @@ export const buildMonthDebtItems = (
   }
 
   for (const track of debtTracks) {
-    if (track.kind !== 'loan' && track.kind !== 'msi') continue;
+    if (track.kind !== 'loan' && track.kind !== 'msi' && track.kind !== 'installment_plan') {
+      continue;
+    }
     const schedule = scheduleForTrack(track);
     if (schedule.length === 0) continue;
 
@@ -153,7 +155,8 @@ export const buildMonthDebtItems = (
       if (remaining <= 0) continue;
 
       const payment = paymentDueInMonth(schedule, key);
-      const kind: MonthDebtItemKind = track.kind === 'msi' ? 'msi' : 'loan';
+      const kind: MonthDebtItemKind =
+        track.kind === 'loan' ? 'loan' : 'msi';
       push(key, {
         id: `${track.id}-${key}`,
         kind,

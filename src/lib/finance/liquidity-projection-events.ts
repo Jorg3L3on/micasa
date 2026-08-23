@@ -18,12 +18,13 @@ export type LiquidityProjectionEvent = {
   subtitle: string;
   loan_id?: number;
   expense_id?: number;
+  installment_plan_id?: number;
   wallet_id?: number;
   wallet_name?: string;
   amount?: number;
 };
 
-export type LiquidityProjectionTrackKind = 'loan' | 'msi';
+export type LiquidityProjectionTrackKind = 'loan' | 'msi' | 'installment_plan';
 
 export type LiquidityProjectionTrack = {
   id: string;
@@ -38,6 +39,7 @@ export type LiquidityProjectionTrack = {
   schedule: Array<{ month_key: string; amount: number }>;
   loan_id?: number;
   expense_id?: number;
+  installment_plan_id?: number;
   wallet_id?: number;
   wallet_name?: string;
 };
@@ -197,6 +199,111 @@ const collectLoanTimeline = async (
   return { events, tracks, payrollPaymentsByMonth, payrollLineItems };
 };
 
+export const collectInstallmentPlanProjectionData = async (
+  ownerFilter: OwnerFilter,
+  asOf: Date,
+  monthKeys: string[],
+): Promise<{
+  paymentsByMonth: Map<string, number>;
+  completionEvents: LiquidityProjectionEvent[];
+  tracks: LiquidityProjectionTrack[];
+}> => {
+  const monthKeySet = new Set(monthKeys);
+  const horizonStart = monthKeys[0] ?? toUtcDateOnlyString(asOf).slice(0, 7);
+  const horizonEnd = monthKeys[monthKeys.length - 1] ?? horizonStart;
+  const paymentsByMonth = new Map<string, number>();
+  for (const key of monthKeys) {
+    paymentsByMonth.set(key, 0);
+  }
+
+  const completionEvents: LiquidityProjectionEvent[] = [];
+  const tracks: LiquidityProjectionTrack[] = [];
+  const asOfStr = toUtcDateOnlyString(asOf);
+
+  const plans = await prisma.creditCardInstallmentPlan.findMany({
+    where: {
+      ...ownerFilter,
+      status: 'ACTIVE',
+      credit_card_wallet: {
+        active: true,
+        type: { in: ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'] },
+      },
+    },
+    include: {
+      credit_card_wallet: { select: { id: true, name: true } },
+      payments: {
+        where: { status: 'SCHEDULED' },
+        orderBy: { due_date: 'asc' },
+        select: { due_date: true, amount: true },
+      },
+    },
+  });
+
+  for (const plan of plans) {
+    if (plan.payments.length === 0) continue;
+
+    const firstDue = toUtcDateOnlyString(plan.payments[0]!.due_date);
+    const lastPayment = plan.payments[plan.payments.length - 1]!;
+    const lastDue = toUtcDateOnlyString(lastPayment.due_date);
+    const lastMonth = toMonthKey(lastDue);
+    const startMonth =
+      compareMonthKeys(toMonthKey(firstDue), horizonStart) < 0
+        ? horizonStart
+        : toMonthKey(firstDue);
+    const finishesInHorizon = monthKeySet.has(lastMonth);
+    const visibleEnd = finishesInHorizon ? lastMonth : horizonEnd;
+    const remainingCount = plan.payments.length;
+    const schedule = plan.payments.map((payment) => ({
+      month_key: toMonthKey(toUtcDateOnlyString(payment.due_date)),
+      amount: Number(payment.amount),
+    }));
+
+    for (const payment of plan.payments) {
+      const monthKey = toMonthKey(toUtcDateOnlyString(payment.due_date));
+      if (!monthKeySet.has(monthKey)) continue;
+      paymentsByMonth.set(
+        monthKey,
+        (paymentsByMonth.get(monthKey) ?? 0) + Number(payment.amount),
+      );
+    }
+
+    if (compareMonthKeys(startMonth, horizonEnd) <= 0) {
+      tracks.push({
+        id: `installment-plan-${plan.id}`,
+        kind: 'installment_plan',
+        title: plan.name,
+        subtitle: `${plan.credit_card_wallet.name} · ${remainingCount} mensualidad${remainingCount === 1 ? '' : 'es'}`,
+        start_month_key: startMonth,
+        end_month_key: visibleEnd,
+        finishes_in_horizon: finishesInHorizon,
+        monthly_amount: Number(plan.installment_amount),
+        schedule,
+        installment_plan_id: plan.id,
+        wallet_id: plan.credit_card_wallet.id,
+        wallet_name: plan.credit_card_wallet.name,
+      });
+    }
+
+    if (!finishesInHorizon) continue;
+    const eventDate = endOfMonthYmd(lastMonth);
+    if (compareUtcDateOnly(eventDate, asOfStr) < 0) continue;
+
+    completionEvents.push({
+      event_type: 'msi_complete',
+      event_date: eventDate,
+      month_key: lastMonth,
+      title: `Terminas de pagar ${plan.name}`,
+      subtitle: `En ${plan.credit_card_wallet.name} · ${remainingCount} mensualidad${remainingCount === 1 ? '' : 'es'} restantes`,
+      installment_plan_id: plan.id,
+      wallet_id: plan.credit_card_wallet.id,
+      wallet_name: plan.credit_card_wallet.name,
+      amount: Number(lastPayment.amount),
+    });
+  }
+
+  return { paymentsByMonth, completionEvents, tracks };
+};
+
 export const collectMsiProjectionData = async (
   ownerFilter: OwnerFilter,
   asOf: Date,
@@ -331,15 +438,30 @@ export const collectLiquidityProjectionTimeline = async (
   monthKeys: string[],
 ): Promise<LiquidityProjectionTimeline> => {
   const asOfStr = toUtcDateOnlyString(asOf);
-  const [loanTimeline, msiData] = await Promise.all([
+  const [loanTimeline, msiData, planData] = await Promise.all([
     collectLoanTimeline(ownerFilter, asOfStr, untilStr, monthKeys),
     collectMsiProjectionData(ownerFilter, asOf, monthKeys),
+    collectInstallmentPlanProjectionData(ownerFilter, asOf, monthKeys),
   ]);
 
-  const events = [...loanTimeline.events, ...msiData.completionEvents].sort((a, b) =>
-    compareUtcDateOnly(a.event_date, b.event_date),
-  );
-  const tracks = [...loanTimeline.tracks, ...msiData.tracks].sort((a, b) => {
+  const installmentPaymentsByMonth = new Map(msiData.paymentsByMonth);
+  for (const [key, amount] of planData.paymentsByMonth) {
+    installmentPaymentsByMonth.set(
+      key,
+      (installmentPaymentsByMonth.get(key) ?? 0) + amount,
+    );
+  }
+
+  const events = [
+    ...loanTimeline.events,
+    ...msiData.completionEvents,
+    ...planData.completionEvents,
+  ].sort((a, b) => compareUtcDateOnly(a.event_date, b.event_date));
+  const tracks = [
+    ...loanTimeline.tracks,
+    ...msiData.tracks,
+    ...planData.tracks,
+  ].sort((a, b) => {
     const finishDiff = Number(b.finishes_in_horizon) - Number(a.finishes_in_horizon);
     if (finishDiff !== 0) return finishDiff;
     return compareMonthKeys(a.end_month_key, b.end_month_key);
@@ -348,7 +470,7 @@ export const collectLiquidityProjectionTimeline = async (
   return {
     events,
     tracks,
-    installmentPaymentsByMonth: msiData.paymentsByMonth,
+    installmentPaymentsByMonth,
     payrollPaymentsByMonth: loanTimeline.payrollPaymentsByMonth,
     payrollLineItems: loanTimeline.payrollLineItems,
   };
