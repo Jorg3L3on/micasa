@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleField } from '@/components/ui/toggle';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CategoryOption, CreditCardListItem } from '@/types/catalog';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
@@ -61,6 +62,11 @@ export type CreditCardQuickPurchaseDialogProps = {
   /** From estado de cuenta; avoids an extra fetch when already loaded */
   availableCredit?: number | null;
   creditLimit?: number | null;
+  /**
+   * When true (e.g. debt was just adjusted to the corte), default the
+   * “Ya está en el saldo” toggle ON so catch-up purchases stay ledger-only.
+   */
+  defaultAlreadyInCardBalance?: boolean;
 };
 
 const CreditCardQuickPurchaseDialog = ({
@@ -71,6 +77,7 @@ const CreditCardQuickPurchaseDialog = ({
   onSuccess,
   availableCredit: availableCreditProp,
   creditLimit: creditLimitProp,
+  defaultAlreadyInCardBalance = false,
 }: CreditCardQuickPurchaseDialogProps) => {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [fortnights, setFortnights] = useState<FortnightCatalogItem[]>([]);
@@ -86,6 +93,7 @@ const CreditCardQuickPurchaseDialog = ({
   const [paymentDate, setPaymentDate] = useState(todayCalendarDate());
   const [installmentCurrent, setInstallmentCurrent] = useState('');
   const [installmentTotal, setInstallmentTotal] = useState('');
+  const [alreadyInCardBalance, setAlreadyInCardBalance] = useState(false);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -138,10 +146,11 @@ const CreditCardQuickPurchaseDialog = ({
       setInstallmentCurrent('');
       setInstallmentTotal('');
       setCategoryId('');
+      setAlreadyInCardBalance(defaultAlreadyInCardBalance);
       setError(null);
       void loadCatalog();
     }
-  }, [open, loadCatalog]);
+  }, [open, loadCatalog, defaultAlreadyInCardBalance]);
 
   const resolvedLimit =
     creditLimitProp !== undefined ? creditLimitProp : fetchedLimit;
@@ -150,6 +159,7 @@ const CreditCardQuickPurchaseDialog = ({
 
   const numAmountPreview = Number(amount);
   const exceedsCreditLimit =
+    !alreadyInCardBalance &&
     resolvedLimit != null &&
     resolvedAvailable != null &&
     Number.isFinite(numAmountPreview) &&
@@ -218,11 +228,16 @@ const CreditCardQuickPurchaseDialog = ({
           description: description.trim(),
           amount: numAmount,
           payment_date: paymentDate,
+          already_in_card_balance: alreadyInCardBalance,
           ...installmentPayload,
         },
         context,
       );
-      toast.success('Compra registrada');
+      toast.success(
+        alreadyInCardBalance
+          ? 'Compra registrada en bitácora (deuda sin cambio)'
+          : 'Compra registrada',
+      );
       onOpenChange(false);
       await onSuccess();
     } catch (err) {
@@ -240,8 +255,9 @@ const CreditCardQuickPurchaseDialog = ({
         <DialogHeader>
           <DialogTitle>Registrar compra</DialogTitle>
           <DialogDescription>
-            Registra un gasto pagado con esta tarjeta. Se aplicará al saldo de
-            la tarjeta y a la quincena elegida.
+            {alreadyInCardBalance
+              ? 'El movimiento aparece en el ciclo; la deuda y el disponible no cambian.'
+              : 'Registra un gasto pagado con esta tarjeta. Se aplicará al saldo de la tarjeta y a la quincena elegida.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -251,7 +267,9 @@ const CreditCardQuickPurchaseDialog = ({
             </div>
           )}
 
-          {resolvedLimit != null && resolvedAvailable != null && (
+          {!alreadyInCardBalance &&
+            resolvedLimit != null &&
+            resolvedAvailable != null && (
             <div
               className={cn(
                 'rounded-md border border-border/60 px-3 py-2 text-xs',
@@ -400,6 +418,14 @@ const CreditCardQuickPurchaseDialog = ({
                 planificación por quincena (sí en el estado de cuenta de la
                 tarjeta).
               </p>
+
+              <ToggleField
+                label="Ya está en el saldo"
+                helper="Actívalo si ya ajustaste la deuda al corte. El movimiento queda en bitácora sin volver a subir la deuda."
+                checked={alreadyInCardBalance}
+                onCheckedChange={setAlreadyInCardBalance}
+                layout="stack"
+              />
             </>
           )}
 

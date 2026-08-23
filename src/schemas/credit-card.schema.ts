@@ -19,12 +19,21 @@ export const updateCreditCardSchema = updateWalletSchema.safeExtend({
 });
 
 export const createCreditCardPurchaseSchema = withCreditInstallmentPairRefine(
-  createTransactionFieldsSchema.omit({
-    wallet_id: true,
-    card_id: true,
-    payment_method_id: true,
-    is_paid: true,
-  }),
+  createTransactionFieldsSchema
+    .omit({
+      wallet_id: true,
+      card_id: true,
+      payment_method_id: true,
+      is_paid: true,
+      apply_wallet_delta: true,
+    })
+    .extend({
+      /**
+       * When true, records the purchase in the cycle ledger without raising
+       * card debt (saldo already matches the bank / corte).
+       */
+      already_in_card_balance: z.boolean().optional().default(false),
+    }),
 );
 
 const paymentAmountSchema = positiveAmountSchema.refine((value) => value > 0, {

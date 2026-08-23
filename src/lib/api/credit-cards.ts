@@ -248,6 +248,8 @@ export async function createCreditCardPurchase(
     expense_template_id?: number | null;
     credit_installment_current?: number | null;
     credit_installment_total?: number | null;
+    /** When true, ledger only — does not raise card debt. */
+    already_in_card_balance?: boolean;
   },
   context?: FinanceContextType,
 ) {

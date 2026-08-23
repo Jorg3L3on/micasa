@@ -73,6 +73,7 @@ export async function POST(
         credit_card_wallet_id: creditCardId,
         expense_id: purchase.id,
         amount: Number(purchase.amount),
+        already_in_card_balance: validatedData.already_in_card_balance === true,
         owner_type: context.ownerType,
         owner_id: context.ownerId,
       },
