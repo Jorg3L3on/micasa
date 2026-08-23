@@ -728,7 +728,6 @@ export default function CreditCardDetailPage() {
                 ownerQueryString={ownerQueryString}
                 reconciliation={reconciliation}
                 onRegisterPurchase={() => setPurchaseDialogOpen(true)}
-                onRegisterPayment={() => setPaymentDialogOpen(true)}
                 onGoToCuotas={() => setTab('cuotas')}
               />
             )}
@@ -809,31 +808,6 @@ export default function CreditCardDetailPage() {
           </TabsContent>
         </CreditCardCycleWorkspaceShell>
       </Tabs>
-
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 p-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:hidden">
-        <div className="mx-auto flex max-w-md gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 flex-1 rounded-xl"
-            onClick={() => setPurchaseDialogOpen(true)}
-          >
-            Compra
-          </Button>
-          <Button
-            type="button"
-            className="h-11 flex-1 rounded-xl shadow-sm"
-            onClick={() => {
-              setPaymentFortnightId(undefined);
-              setPaymentSuggestedOverride(undefined);
-              setPaymentDialogOpen(true);
-            }}
-          >
-            <Wallet data-icon="inline-start" className="h-4 w-4" aria-hidden />
-            Registrar pago
-          </Button>
-        </div>
-      </div>
 
       <CreditCardPaymentDialog
         open={paymentDialogOpen}
