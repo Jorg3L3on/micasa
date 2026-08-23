@@ -6,12 +6,14 @@ const {
   createPayment,
   applyWalletAmountDelta,
   coverScheduled,
+  coverInstallmentPlan,
 } = vi.hoisted(() => ({
   transactionFn: vi.fn(),
   findFirstWallet: vi.fn(),
   createPayment: vi.fn(),
   applyWalletAmountDelta: vi.fn(),
   coverScheduled: vi.fn(),
+  coverInstallmentPlan: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -32,6 +34,10 @@ vi.mock('@/lib/finance/credit-card-scheduled-payment.service', () => ({
   coverScheduledPaymentForCardPayment: coverScheduled,
 }));
 
+vi.mock('@/lib/finance/credit-card-installment-plan.service', () => ({
+  coverInstallmentPlanPaymentForCardPayment: coverInstallmentPlan,
+}));
+
 import { createCreditCardPayment } from '@/lib/finance/credit-card.service';
 
 const ownerFilter = { user_id: 1, house_id: null } as const;
@@ -49,6 +55,7 @@ describe('createCreditCardPayment external mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     coverScheduled.mockResolvedValue(null);
+    coverInstallmentPlan.mockResolvedValue(null);
     transactionFn.mockImplementation(async (callback) =>
       callback({
         wallet: { findFirst: findFirstWallet },
@@ -92,6 +99,7 @@ describe('createCreditCardPayment external mode', () => {
     );
     expect(result.is_external).toBe(true);
     expect(coverScheduled).toHaveBeenCalled();
+    expect(coverInstallmentPlan).toHaveBeenCalled();
   });
 
   it('supports ledger-only mode without reducing debt', async () => {

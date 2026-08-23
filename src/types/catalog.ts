@@ -615,3 +615,33 @@ export type CreditCardScheduledPaymentItem = {
 export type CreditCardScheduledPaymentsResponse = {
   items: CreditCardScheduledPaymentItem[];
 };
+
+export type CreditCardInstallmentPlanPaymentItem = {
+  id: number;
+  sequence: number;
+  dueDate: string;
+  amount: number;
+  status: 'SCHEDULED' | 'PAID';
+  paidAt: string | null;
+};
+
+export type CreditCardInstallmentPlanItem = {
+  id: number;
+  creditCardWalletId: number;
+  name: string;
+  installmentAmount: number;
+  totalInstallments: number;
+  paidInstallments: number;
+  currentInstallment: number;
+  remainingInstallments: number;
+  progressPct: number;
+  alreadyInCardBalance: boolean;
+  status: 'ACTIVE' | 'COMPLETED';
+  endMonthLabel: string;
+  nextDueDate: string | null;
+  payments: CreditCardInstallmentPlanPaymentItem[];
+};
+
+export type CreditCardInstallmentPlansResponse = {
+  items: CreditCardInstallmentPlanItem[];
+};

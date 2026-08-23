@@ -39,6 +39,7 @@ import {
 import { CreditCardCycleLedger } from '@/components/credit-cards/CreditCardCycleLedger';
 import { CreditCardCycleWorkspaceShell } from '@/components/credit-cards/CreditCardCycleWorkspaceShell';
 import { CreditCardInstallmentPortfolio } from '@/components/credit-cards/CreditCardInstallmentPortfolio';
+import { CreditCardInstallmentPlansSection } from '@/components/credit-cards/CreditCardInstallmentPlansSection';
 import { CreditCardScheduledPaymentsSection } from '@/components/credit-cards/CreditCardScheduledPaymentsSection';
 import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
@@ -777,6 +778,12 @@ export default function CreditCardDetailPage() {
               <TabContentSkeleton />
             ) : (
               <>
+                <CreditCardInstallmentPlansSection
+                  creditCardId={creditCardId}
+                  context={context}
+                  defaultDueDay={card.due_day}
+                  onChanged={() => loadData({ cycleOnly: true })}
+                />
                 <CreditCardScheduledPaymentsSection
                   creditCardId={creditCardId}
                   context={context}

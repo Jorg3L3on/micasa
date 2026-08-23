@@ -13,6 +13,7 @@ import type {
   UpdateCreditCardInput,
 } from '@/schemas/credit-card.schema';
 import { coverScheduledPaymentForCardPayment } from '@/lib/finance/credit-card-scheduled-payment.service';
+import { coverInstallmentPlanPaymentForCardPayment } from '@/lib/finance/credit-card-installment-plan.service';
 import {
   applyWalletAmountDelta,
   ensureCreditWalletType,
@@ -549,6 +550,14 @@ export async function createCreditCardPayment(
   }, { timeout: 30000, maxWait: 10000 });
 
   await coverScheduledPaymentForCardPayment(
+    creditCardId,
+    ownerFilter,
+    result.paid_at_raw,
+    result.amount,
+    result.id,
+  );
+
+  await coverInstallmentPlanPaymentForCardPayment(
     creditCardId,
     ownerFilter,
     result.paid_at_raw,

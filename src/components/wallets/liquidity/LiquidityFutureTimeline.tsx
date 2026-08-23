@@ -152,8 +152,10 @@ type LabelProps = {
 
 const PayoffLabel = ({ x, y, payload }: LabelProps) => {
   if (x == null || y == null || !payload?.eventCount) return null;
-  const shortTitle = payload.eventTitle.replace(/^Terminas de pagar\s+/i, '');
-  const text = payload.eventCount > 1 ? `${payload.eventCount} pagos terminan` : shortTitle;
+  const text =
+    payload.eventCount > 1
+      ? `${payload.eventCount} pagos terminan`
+      : payload.eventTitle.replace(/^Terminas de pagar\s+/i, '');
   const clipped = text.length > 22 ? `${text.slice(0, 20)}…` : text;
   return (
     <text
@@ -192,6 +194,16 @@ export const LiquidityFutureTimeline = ({
     () =>
       months.map((month) => {
         const monthEvents = eventsByMonth.get(month.month_key) ?? [];
+        const eventTitle =
+          monthEvents.length === 0
+            ? ''
+            : monthEvents.length === 1
+              ? (monthEvents[0]?.title ?? '')
+              : monthEvents
+                  .map((event) =>
+                    event.title.replace(/^Terminas de pagar\s+/i, ''),
+                  )
+                  .join(', ');
         return {
           label: formatShortMonthLabel(month.month_key),
           monthKey: month.month_key,
@@ -200,7 +212,7 @@ export const LiquidityFutureTimeline = ({
           income: month.expected_income_total,
           monthlyRemaining: month.monthly_remaining,
           eventCount: monthEvents.length,
-          eventTitle: monthEvents[0]?.title ?? '',
+          eventTitle,
         };
       }),
     [eventsByMonth, months],
