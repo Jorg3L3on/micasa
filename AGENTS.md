@@ -223,6 +223,11 @@ See `CLAUDE.md` and `README.md` for standard commands (`npm run dev`, `npm run l
 
 To re-seed: `npx prisma db seed` (destructive — clears all data first).
 
+### Walkthrough artifacts (agent default)
+
+- **Do not record or attach videos by default** — skip `RecordScreen`, `videoReview`, and video artifacts unless the user explicitly asks for a video.
+- Prefer screenshots, terminal output, and test/build logs as proof that changes work.
+
 ### Gotchas
 
 - **Lint exits with code 1** due to pre-existing warnings/errors in the codebase (React hooks violations, unused vars). This is expected; do not treat lint failure as a blocker for CI unless you introduced new errors.
