@@ -23,6 +23,14 @@ type CreditCardInstallmentPlansSectionProps = {
   onCreateDialogOpenChange?: (open: boolean) => void;
 };
 
+/** Atomic dialog state so open+plan never diverge across parent/child setState. */
+type PlanDialogState =
+  | { open: false; plan: null }
+  | { open: true; plan: null }
+  | { open: true; plan: CreditCardInstallmentPlanItem };
+
+const CLOSED_DIALOG: PlanDialogState = { open: false, plan: null };
+
 export const CreditCardInstallmentPlansSection = ({
   creditCardId,
   context,
@@ -33,13 +41,11 @@ export const CreditCardInstallmentPlansSection = ({
 }: CreditCardInstallmentPlansSectionProps) => {
   const [items, setItems] = useState<CreditCardInstallmentPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
-  const [editingPlan, setEditingPlan] =
-    useState<CreditCardInstallmentPlanItem | null>(null);
+  const [dialog, setDialog] = useState<PlanDialogState>(CLOSED_DIALOG);
   const [deleteTarget, setDeleteTarget] =
     useState<CreditCardInstallmentPlanItem | null>(null);
-  const dialogOpen = createDialogOpen ?? internalDialogOpen;
-  const setDialogOpen = onCreateDialogOpenChange ?? setInternalDialogOpen;
+
+  const isOpenControlled = createDialogOpen !== undefined;
 
   const loadItems = useCallback(async () => {
     if (context.id === 0) return;
@@ -61,6 +67,22 @@ export const CreditCardInstallmentPlansSection = ({
     void loadItems();
   }, [loadItems]);
 
+  // Keep local atomic state in sync when the parent drives create-open.
+  useEffect(() => {
+    if (!isOpenControlled) return;
+
+    if (createDialogOpen) {
+      setDialog((prev) => {
+        // Preserve in-progress edit; only enter create when closed.
+        if (prev.open) return prev;
+        return { open: true, plan: null };
+      });
+      return;
+    }
+
+    setDialog(CLOSED_DIALOG);
+  }, [createDialogOpen, isOpenControlled]);
+
   const totalExposure = useMemo(
     () =>
       items.reduce(
@@ -70,21 +92,32 @@ export const CreditCardInstallmentPlansSection = ({
     [items],
   );
 
+  const setParentOpen = (open: boolean) => {
+    onCreateDialogOpenChange?.(open);
+  };
+
   const handleOpenCreate = () => {
-    setEditingPlan(null);
-    setDialogOpen(true);
+    setDialog({ open: true, plan: null });
+    setParentOpen(true);
   };
 
   const handleOpenEdit = (item: CreditCardInstallmentPlanItem) => {
-    setEditingPlan(item);
-    setDialogOpen(true);
+    setDialog({ open: true, plan: item });
+    setParentOpen(true);
   };
 
   const handleDialogOpenChange = (open: boolean) => {
     if (!open) {
-      setEditingPlan(null);
+      setDialog(CLOSED_DIALOG);
+      setParentOpen(false);
+      return;
     }
-    setDialogOpen(open);
+    setDialog((prev) =>
+      prev.plan != null
+        ? { open: true, plan: prev.plan }
+        : { open: true, plan: null },
+    );
+    setParentOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -105,10 +138,19 @@ export const CreditCardInstallmentPlansSection = ({
   };
 
   const handleSuccess = async () => {
-    setEditingPlan(null);
+    setDialog(CLOSED_DIALOG);
     await loadItems();
     await onChanged?.();
   };
+
+  const dialogOpen = isOpenControlled ? Boolean(createDialogOpen) : dialog.open;
+  const editingPlan = dialog.plan;
+  // Remount form whenever create/edit target or open flips so fields init from plan.
+  const dialogInstanceKey = dialogOpen
+    ? editingPlan
+      ? `edit-${editingPlan.id}`
+      : 'create'
+    : 'closed';
 
   return (
     <section
@@ -198,6 +240,7 @@ export const CreditCardInstallmentPlansSection = ({
                       size="icon"
                       className="h-8 w-8"
                       aria-label={`Editar plan ${item.name}`}
+                      disabled={loading}
                       onClick={() => handleOpenEdit(item)}
                     >
                       <Pencil className="h-4 w-4" />
@@ -267,6 +310,7 @@ export const CreditCardInstallmentPlansSection = ({
       )}
 
       <CreditCardInstallmentPlanDialog
+        key={dialogInstanceKey}
         open={dialogOpen}
         onOpenChange={handleDialogOpenChange}
         creditCardId={creditCardId}
