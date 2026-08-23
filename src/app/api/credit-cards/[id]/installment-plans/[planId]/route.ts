@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import { deleteInstallmentPlan } from '@/lib/finance/credit-card-installment-plan.service';
+import {
+  deleteInstallmentPlan,
+  updateInstallmentPlan,
+} from '@/lib/finance/credit-card-installment-plan.service';
+import { updateCreditCardInstallmentPlanSchema } from '@/schemas/credit-card-installment-plan.schema';
 
 type RouteParams = { params: Promise<{ id: string; planId: string }> };
 
@@ -20,6 +25,53 @@ const parseIds = async (params: RouteParams['params']) => {
   }
   return { walletId, planId: parsedPlanId };
 };
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const context = await getOwnerContext(request);
+    if ('error' in context) return context.error;
+
+    const ids = await parseIds(params);
+    if (ids == null) {
+      return NextResponse.json(
+        { error: 'Valid id and planId parameters are required' },
+        { status: 400 },
+      );
+    }
+
+    const body = await request.json();
+    const validated = updateCreditCardInstallmentPlanSchema.parse(body);
+    const item = await updateInstallmentPlan(
+      ids.planId,
+      ids.walletId,
+      context.ownerFilter,
+      validated,
+    );
+
+    return NextResponse.json(item, { status: 200 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
+
+    const code = (error as { code?: string }).code;
+    if (code === 'NOT_FOUND' || code === 'WALLET_NOT_FOUND') {
+      return NextResponse.json({ error: (error as Error).message }, { status: 404 });
+    }
+    if (code === 'INSUFFICIENT_CREDIT') {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
+
+    console.error('Error updating installment plan:', error);
+    return NextResponse.json(
+      { error: 'Failed to update installment plan' },
+      { status: 500 },
+    );
+  }
+}
 
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {

@@ -33,3 +33,10 @@ export const createCreditCardInstallmentPlanSchema = z
 export type CreateCreditCardInstallmentPlanInput = z.infer<
   typeof createCreditCardInstallmentPlanSchema
 >;
+
+export const updateCreditCardInstallmentPlanSchema =
+  createCreditCardInstallmentPlanSchema;
+
+export type UpdateCreditCardInstallmentPlanInput = z.infer<
+  typeof updateCreditCardInstallmentPlanSchema
+>;

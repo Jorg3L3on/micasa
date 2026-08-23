@@ -15,7 +15,11 @@ import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { ToggleField } from '@/components/ui/toggle';
 import type { FinanceContextType } from '@/types/finance-context';
-import { createCreditCardInstallmentPlan } from '@/lib/api/credit-cards';
+import type { CreditCardInstallmentPlanItem } from '@/types/catalog';
+import {
+  createCreditCardInstallmentPlan,
+  updateCreditCardInstallmentPlan,
+} from '@/lib/api/credit-cards';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -25,6 +29,7 @@ type CreditCardInstallmentPlanDialogProps = {
   creditCardId: number;
   context: FinanceContextType;
   defaultDueDay?: number | null;
+  plan?: CreditCardInstallmentPlanItem | null;
   onSuccess: () => void | Promise<void>;
 };
 
@@ -50,8 +55,10 @@ export const CreditCardInstallmentPlanDialog = ({
   creditCardId,
   context,
   defaultDueDay,
+  plan = null,
   onSuccess,
 }: CreditCardInstallmentPlanDialogProps) => {
+  const isEditing = plan != null;
   const [name, setName] = useState('');
   const [installmentAmount, setInstallmentAmount] = useState(0);
   const [totalInstallments, setTotalInstallments] = useState('9');
@@ -62,13 +69,24 @@ export const CreditCardInstallmentPlanDialog = ({
 
   useEffect(() => {
     if (!open) return;
+
+    if (plan) {
+      setName(plan.name);
+      setInstallmentAmount(plan.installmentAmount);
+      setTotalInstallments(String(plan.totalInstallments));
+      setPaidInstallments(String(plan.paidInstallments));
+      setNextDueDate(plan.nextDueDate ?? defaultNextDueDate(defaultDueDay));
+      setAlreadyInBalance(plan.alreadyInCardBalance);
+      return;
+    }
+
     setName('');
     setInstallmentAmount(0);
     setTotalInstallments('9');
     setPaidInstallments('0');
     setNextDueDate(defaultNextDueDate(defaultDueDay));
     setAlreadyInBalance(true);
-  }, [open, defaultDueDay]);
+  }, [open, defaultDueDay, plan]);
 
   const parsedTotal = Number.parseInt(totalInstallments.trim(), 10);
   const parsedPaid = Number.parseInt(paidInstallments.trim(), 10);
@@ -104,26 +122,38 @@ export const CreditCardInstallmentPlanDialog = ({
       return;
     }
 
+    const payload = {
+      name: name.trim(),
+      installment_amount: installmentAmount,
+      total_installments: parsedTotal,
+      paid_installments: parsedPaid,
+      next_due_date: nextDueDate,
+      already_in_card_balance: alreadyInBalance,
+    };
+
     try {
       setSubmitting(true);
-      await createCreditCardInstallmentPlan(
-        creditCardId,
-        {
-          name: name.trim(),
-          installment_amount: installmentAmount,
-          total_installments: parsedTotal,
-          paid_installments: parsedPaid,
-          next_due_date: nextDueDate,
-          already_in_card_balance: alreadyInBalance,
-        },
-        context,
-      );
-      toast.success('Plan de cuotas creado');
+      if (isEditing && plan) {
+        await updateCreditCardInstallmentPlan(
+          creditCardId,
+          plan.id,
+          payload,
+          context,
+        );
+        toast.success('Plan actualizado');
+      } else {
+        await createCreditCardInstallmentPlan(creditCardId, payload, context);
+        toast.success('Plan de cuotas creado');
+      }
       onOpenChange(false);
       await onSuccess();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'No se pudo crear el plan',
+        err instanceof Error
+          ? err.message
+          : isEditing
+            ? 'No se pudo actualizar el plan'
+            : 'No se pudo crear el plan',
       );
     } finally {
       setSubmitting(false);
@@ -133,22 +163,27 @@ export const CreditCardInstallmentPlanDialog = ({
     context,
     creditCardId,
     installmentAmount,
+    isEditing,
     name,
     nextDueDate,
     onOpenChange,
     onSuccess,
     parsedPaid,
     parsedTotal,
+    plan,
   ]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Plan de compra a meses</DialogTitle>
+          <DialogTitle>
+            {isEditing ? 'Editar plan de compra a meses' : 'Plan de compra a meses'}
+          </DialogTitle>
           <DialogDescription>
-            Registra una compra MSI con nombre y progreso. Las cuotas futuras se
-            generan solas; no tienes que capturar cada mes a mano.
+            {isEditing
+              ? 'Corrige el nombre, monto o progreso sin borrar el plan ni duplicar la deuda.'
+              : 'Registra una compra MSI con nombre y progreso. Las cuotas futuras se generan solas; no tienes que capturar cada mes a mano.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -235,8 +270,9 @@ export const CreditCardInstallmentPlanDialog = ({
                 Progreso: {nextInstallmentNumber} de {parsedTotal || '—'}
               </p>
               <p className="mt-1 text-muted-foreground">
-                Se crearán {remainingInstallments} cuota
-                {remainingInstallments === 1 ? '' : 's'} futura
+                {isEditing ? 'Quedan' : 'Se crearán'} {remainingInstallments} cuota
+                {remainingInstallments === 1 ? '' : 's'}{' '}
+                {isEditing ? 'pendiente' : 'futura'}
                 {remainingInstallments === 1 ? '' : 's'}
                 {installmentAmount > 0
                   ? ` · ${formatCurrency(installmentAmount)}/mes`
@@ -263,7 +299,7 @@ export const CreditCardInstallmentPlanDialog = ({
             Cancelar
           </Button>
           <Button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
-            {submitting ? 'Guardando…' : 'Crear plan'}
+            {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear plan'}
           </Button>
         </DialogFooter>
       </DialogContent>

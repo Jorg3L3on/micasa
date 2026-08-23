@@ -363,3 +363,26 @@ export async function deleteCreditCardInstallmentPlan(
     context,
   );
 }
+
+export async function updateCreditCardInstallmentPlan(
+  creditCardId: number,
+  planId: number,
+  data: {
+    name: string;
+    installment_amount: number;
+    total_installments: number;
+    paid_installments?: number;
+    next_due_date?: string;
+    already_in_card_balance?: boolean;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<CreditCardInstallmentPlanItem>(
+    `/api/credit-cards/${creditCardId}/installment-plans/${planId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
