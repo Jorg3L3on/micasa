@@ -14,6 +14,7 @@ const {
   findManyStatementImport,
   findManyLoan,
   findManyCreditCardPayment,
+  findManyCreditCardInstallmentPlan,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallet: vi.fn(),
@@ -26,6 +27,7 @@ const {
   findManyStatementImport: vi.fn(),
   findManyLoan: vi.fn(),
   findManyCreditCardPayment: vi.fn(),
+  findManyCreditCardInstallmentPlan: vi.fn(),
 }));
 
 vi.mock('@/lib/finance/wallet-movements', () => ({
@@ -45,6 +47,7 @@ vi.mock('@/lib/prisma', () => ({
     loan: { findMany: findManyLoan },
     creditCardStatementImport: { findMany: findManyStatementImport },
     creditCardPayment: { findMany: findManyCreditCardPayment },
+    creditCardInstallmentPlan: { findMany: findManyCreditCardInstallmentPlan },
   },
 }));
 
@@ -101,6 +104,7 @@ describe('getLiquidityProjection', () => {
     findManyStatementImport.mockReset();
     findManyLoan.mockReset();
     findManyCreditCardPayment.mockReset();
+    findManyCreditCardInstallmentPlan.mockReset();
     findManyStatementImport.mockResolvedValue([]);
     findManyFortnight.mockResolvedValue([]);
     findManyIncome.mockResolvedValue([]);
@@ -108,6 +112,7 @@ describe('getLiquidityProjection', () => {
     findManyLoanPayment.mockResolvedValue([]);
     findManyLoan.mockResolvedValue([]);
     findManyCreditCardPayment.mockResolvedValue([]);
+    findManyCreditCardInstallmentPlan.mockResolvedValue([]);
   });
 
   afterEach(() => {
