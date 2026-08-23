@@ -228,6 +228,10 @@ To re-seed: `npx prisma db seed` (destructive — clears all data first).
 - **Do not record or attach videos by default** — skip `RecordScreen`, `videoReview`, and video artifacts unless the user explicitly asks for a video.
 - Prefer screenshots, terminal output, and test/build logs as proof that changes work.
 
+### Agent execution (user default)
+
+- **Do not launch subagents** — skip the `Task` tool (`computerUse`, `videoReview`, `explore`, `debug`, etc.) unless the user explicitly asks for one. Do the work directly with Composer using shell, file, and MCP tools.
+
 ### Gotchas
 
 - **Lint exits with code 1** due to pre-existing warnings/errors in the codebase (React hooks violations, unused vars). This is expected; do not treat lint failure as a blocker for CI unless you introduced new errors.
