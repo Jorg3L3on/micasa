@@ -16,13 +16,13 @@ import { CategoryLabel } from '@/components/categories/CategoryLabel';
 type CreditCardInstallmentPortfolioProps = {
   purchases: CreditCardStatementPurchaseItem[];
   ownerQueryString: string;
-  onRegisterPurchase: () => void;
+  onCreateInstallmentPlan: () => void;
 };
 
 export const CreditCardInstallmentPortfolio = ({
   purchases,
   ownerQueryString,
-  onRegisterPurchase,
+  onCreateInstallmentPlan,
 }: CreditCardInstallmentPortfolioProps) => {
   const portfolio = useMemo(
     () => buildInstallmentPortfolio(purchases),
@@ -41,7 +41,7 @@ export const CreditCardInstallmentPortfolio = ({
         description="Las compras a meses con pagos pendientes aparecerán aquí como un portafolio con progreso y saldo restante."
         action={{
           label: 'Registrar compra a meses',
-          onClick: onRegisterPurchase,
+          onClick: onCreateInstallmentPlan,
         }}
       />
     );
@@ -129,7 +129,7 @@ export const CreditCardInstallmentPortfolio = ({
         type="button"
         variant="outline"
         className="h-10 w-full rounded-xl"
-        onClick={onRegisterPurchase}
+        onClick={onCreateInstallmentPlan}
       >
         Registrar compra a meses
       </Button>
