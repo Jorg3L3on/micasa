@@ -206,7 +206,7 @@ export const CreditCardInstallmentPlansSection = ({
         </div>
       ) : (
         <>
-          <div className="rounded-2xl border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3">
+          <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Exposición en planes
             </p>
@@ -223,7 +223,7 @@ export const CreditCardInstallmentPlansSection = ({
             {items.map((item) => (
               <li
                 key={item.id}
-                className="rounded-2xl border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3"
+                className="rounded-2xl border border-border/60 bg-card px-4 py-3"
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">

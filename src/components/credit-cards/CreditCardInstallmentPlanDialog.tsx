@@ -238,9 +238,7 @@ export const CreditCardInstallmentPlanDialog = ({
 
           {nextInstallmentNumber != null && remainingInstallments != null ? (
             <div
-              className={cn(
-                'rounded-xl border border-border/60 border-l-[3px] border-l-violet-500/50 px-3 py-2 text-xs',
-              )}
+              className="rounded-xl border border-border/60 px-3 py-2 text-xs"
               role="status"
             >
               <p className="font-medium text-foreground">

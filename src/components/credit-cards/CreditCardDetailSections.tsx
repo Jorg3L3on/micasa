@@ -619,7 +619,6 @@ type ActivitySectionCardProps = {
   title: string;
   subtitle?: string;
   icon: ReactNode;
-  accentClass?: string;
   badge?: ReactNode;
   children: ReactNode;
 };
@@ -628,13 +627,10 @@ export const CreditCardActivitySectionCard = ({
   title,
   subtitle,
   icon,
-  accentClass = 'border-l-violet-500/50',
   badge,
   children,
 }: ActivitySectionCardProps) => (
-  <Card
-    className={cn('overflow-hidden border-border/60 border-l-[3px]', accentClass)}
-  >
+  <Card className="overflow-hidden border-border/60">
     <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3">
       {icon}
       <div className="min-w-0 flex-1">

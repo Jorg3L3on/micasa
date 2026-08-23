@@ -145,7 +145,7 @@ export const CreditCardScheduledPaymentsSection = ({
           {scheduledItems.map((item) => (
             <li
               key={item.id}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 border-l-[3px] border-l-blue-500/50 bg-card px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">

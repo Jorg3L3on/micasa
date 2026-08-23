@@ -49,7 +49,7 @@ export const CreditCardInstallmentPortfolio = ({
 
   return (
     <div className="space-y-4" role="region" aria-label="Cuotas vigentes">
-      <div className="rounded-2xl border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3">
+      <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Exposición MSI total
         </p>
