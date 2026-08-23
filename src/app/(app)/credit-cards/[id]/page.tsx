@@ -640,6 +640,7 @@ export default function CreditCardDetailPage() {
   return (
     <DirectionalTransition>
     <div className="relative">
+      <Tabs value={tab} onValueChange={handleTabChange} className="gap-4">
       <CreditCardHeroZone>
         <ViewTransition
           name={walletCardViewTransitionName(card.id)}
@@ -705,7 +706,6 @@ export default function CreditCardDetailPage() {
         </CreditCardDetailTabsList>
       </CreditCardHeroZone>
 
-      <Tabs value={tab} onValueChange={handleTabChange} className="gap-4">
         <CreditCardCycleWorkspaceShell>
           <TabsContent value="movimientos" className="mt-0 space-y-4">
             {cycleLoading ? (
