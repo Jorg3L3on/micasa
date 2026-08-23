@@ -3,6 +3,7 @@ import {
   Bell,
   ClipboardList,
   FolderTree,
+  Plug,
   TrendingUp,
   Users,
   type LucideIcon,
@@ -35,6 +36,12 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     href: '/settings/account',
     label: 'Cuenta',
     icon: BadgeCheck,
+    section: 'cuenta',
+  },
+  {
+    href: '/settings/connections',
+    label: 'Conexiones',
+    icon: Plug,
     section: 'cuenta',
   },
   {
