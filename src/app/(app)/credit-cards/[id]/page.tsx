@@ -163,6 +163,8 @@ export default function CreditCardDetailPage() {
   const [externalPaymentDialogOpen, setExternalPaymentDialogOpen] =
     useState(false);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [installmentPlanDialogOpen, setInstallmentPlanDialogOpen] =
+    useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false);
@@ -783,6 +785,8 @@ export default function CreditCardDetailPage() {
                   context={context}
                   defaultDueDay={card.due_day}
                   onChanged={() => loadData({ cycleOnly: true })}
+                  createDialogOpen={installmentPlanDialogOpen}
+                  onCreateDialogOpenChange={setInstallmentPlanDialogOpen}
                 />
                 <CreditCardScheduledPaymentsSection
                   creditCardId={creditCardId}
@@ -792,7 +796,9 @@ export default function CreditCardDetailPage() {
                 <CreditCardInstallmentPortfolio
                   purchases={statement.installment_active_purchases}
                   ownerQueryString={ownerQueryString}
-                  onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+                  onCreateInstallmentPlan={() =>
+                    setInstallmentPlanDialogOpen(true)
+                  }
                 />
               </>
             )}

@@ -18,6 +18,8 @@ type CreditCardInstallmentPlansSectionProps = {
   context: FinanceContextType;
   defaultDueDay?: number | null;
   onChanged?: () => void | Promise<void>;
+  createDialogOpen?: boolean;
+  onCreateDialogOpenChange?: (open: boolean) => void;
 };
 
 export const CreditCardInstallmentPlansSection = ({
@@ -25,10 +27,14 @@ export const CreditCardInstallmentPlansSection = ({
   context,
   defaultDueDay,
   onChanged,
+  createDialogOpen,
+  onCreateDialogOpenChange,
 }: CreditCardInstallmentPlansSectionProps) => {
   const [items, setItems] = useState<CreditCardInstallmentPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const dialogOpen = createDialogOpen ?? internalDialogOpen;
+  const setDialogOpen = onCreateDialogOpenChange ?? setInternalDialogOpen;
 
   const loadItems = useCallback(async () => {
     if (context.id === 0) return;
