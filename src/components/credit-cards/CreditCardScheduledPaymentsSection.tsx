@@ -1,9 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CalendarClock, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CreditCardScheduledPaymentItem } from '@/types/catalog';
 import {
@@ -11,25 +17,48 @@ import {
   listCreditCardScheduledPayments,
 } from '@/lib/api/credit-cards';
 import { CreditCardScheduledPaymentDialog } from '@/components/credit-cards/CreditCardScheduledPaymentDialog';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 type CreditCardScheduledPaymentsSectionProps = {
   creditCardId: number;
   context: FinanceContextType;
   onChanged?: () => void | Promise<void>;
+  embedded?: boolean;
+  createDialogOpen?: boolean;
+  onCreateDialogOpenChange?: (open: boolean) => void;
 };
 
 export const CreditCardScheduledPaymentsSection = ({
   creditCardId,
   context,
   onChanged,
+  embedded = false,
+  createDialogOpen: controlledDialogOpen,
+  onCreateDialogOpenChange,
 }: CreditCardScheduledPaymentsSectionProps) => {
   const [items, setItems] = useState<CreditCardScheduledPaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CreditCardScheduledPaymentItem | null>(
     null,
   );
+
+  const isDialogControlled = controlledDialogOpen !== undefined;
+  const dialogOpen = isDialogControlled ? controlledDialogOpen : internalDialogOpen;
+
+  const setDialogOpen = (open: boolean) => {
+    if (!open) setEditingItem(null);
+    if (isDialogControlled) {
+      onCreateDialogOpenChange?.(open);
+    } else {
+      setInternalDialogOpen(open);
+    }
+  };
+
+  useEffect(() => {
+    if (!isDialogControlled || !controlledDialogOpen) return;
+    setEditingItem(null);
+  }, [controlledDialogOpen, isDialogControlled]);
 
   const loadItems = useCallback(async () => {
     if (context.id === 0) return;
@@ -93,33 +122,39 @@ export const CreditCardScheduledPaymentsSection = ({
       role="region"
       aria-label="Calendario de pagos futuros"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <CalendarClock
-              className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
-              aria-hidden
-            />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold leading-none">
-              Calendario de pagos
-            </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Cuotas futuras sin registrar compra ni mover deuda
-            </p>
+      {!embedded ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
+              <CalendarClock
+                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
+                aria-hidden
+              />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold leading-none">
+                Calendario de pagos
+              </h3>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Cuotas futuras sin registrar compra ni mover deuda
+              </p>
+            </div>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 shrink-0 rounded-xl"
+            onClick={handleOpenCreate}
+          >
+            <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
+            Agregar cuota futura
+          </Button>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 shrink-0 rounded-xl"
-          onClick={handleOpenCreate}
-        >
-          <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-          Agregar cuota futura
-        </Button>
-      </div>
+      ) : (
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Calendario de pagos
+        </h4>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando calendario…</p>
@@ -145,7 +180,7 @@ export const CreditCardScheduledPaymentsSection = ({
           {scheduledItems.map((item) => (
             <li
               key={item.id}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 border-l-[3px] border-l-blue-500/50 bg-card px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">
@@ -155,30 +190,36 @@ export const CreditCardScheduledPaymentsSection = ({
                   Vence {formatDate(item.dueDate)}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <span className="font-mono text-sm font-bold tabular-nums">
                   {formatCurrency(item.amount)}
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  aria-label="Editar cuota futura"
-                  onClick={() => handleOpenEdit(item)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn('h-8 w-8 text-destructive hover:text-destructive')}
-                  aria-label="Eliminar cuota futura"
-                  onClick={() => void handleDelete(item)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Opciones para ${item.label ?? 'pago programado'}`}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem onClick={() => handleOpenEdit(item)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => void handleDelete(item)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </li>
           ))}

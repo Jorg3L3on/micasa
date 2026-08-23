@@ -1,9 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, CreditCard, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CalendarClock, CreditCard, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CreditCardInstallmentPlanItem } from '@/types/catalog';
@@ -12,7 +18,7 @@ import {
   listCreditCardInstallmentPlans,
 } from '@/lib/api/credit-cards';
 import { CreditCardInstallmentPlanDialog } from '@/components/credit-cards/CreditCardInstallmentPlanDialog';
-import { cn, formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 type CreditCardInstallmentPlansSectionProps = {
   creditCardId: number;
@@ -21,6 +27,7 @@ type CreditCardInstallmentPlansSectionProps = {
   onChanged?: () => void | Promise<void>;
   createDialogOpen?: boolean;
   onCreateDialogOpenChange?: (open: boolean) => void;
+  embedded?: boolean;
 };
 
 /** Atomic dialog state so open+plan never diverge across parent/child setState. */
@@ -38,6 +45,7 @@ export const CreditCardInstallmentPlansSection = ({
   onChanged,
   createDialogOpen,
   onCreateDialogOpenChange,
+  embedded = false,
 }: CreditCardInstallmentPlansSectionProps) => {
   const [items, setItems] = useState<CreditCardInstallmentPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,33 +166,39 @@ export const CreditCardInstallmentPlansSection = ({
       role="region"
       aria-label="Planes de compra a meses"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <CreditCard
-              className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-              aria-hidden
-            />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold leading-none">
-              Planes a meses
-            </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Nombre, progreso y cuotas generadas automáticamente
-            </p>
+      {!embedded ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
+              <CreditCard
+                className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
+                aria-hidden
+              />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold leading-none">
+                Planes a meses
+              </h3>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Nombre, progreso y cuotas generadas automáticamente
+              </p>
+            </div>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 shrink-0 rounded-xl"
+            onClick={handleOpenCreate}
+          >
+            <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
+            Nuevo plan
+          </Button>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 shrink-0 rounded-xl"
-          onClick={handleOpenCreate}
-        >
-          <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-          Nuevo plan
-        </Button>
-      </div>
+      ) : (
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Planes a meses
+        </h4>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando planes…</p>
@@ -206,24 +220,26 @@ export const CreditCardInstallmentPlansSection = ({
         </div>
       ) : (
         <>
-          <div className="rounded-2xl border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Exposición en planes
-            </p>
-            <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
-              {formatCurrency(totalExposure)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {items.length} plan{items.length === 1 ? '' : 'es'} activo
-              {items.length === 1 ? '' : 's'}
-            </p>
-          </div>
+          {!embedded ? (
+            <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Exposición en planes
+              </p>
+              <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+                {formatCurrency(totalExposure)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {items.length} plan{items.length === 1 ? '' : 'es'} activo
+                {items.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          ) : null}
 
           <ul className="space-y-2">
             {items.map((item) => (
               <li
                 key={item.id}
-                className="rounded-2xl border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3"
+                className="rounded-2xl border border-border/60 bg-card px-4 py-3"
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -233,31 +249,35 @@ export const CreditCardInstallmentPlansSection = ({
                       termina {item.endMonthLabel}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      aria-label={`Editar plan ${item.name}`}
-                      disabled={loading}
-                      onClick={() => handleOpenEdit(item)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        'h-8 w-8 text-destructive hover:text-destructive',
-                      )}
-                      aria-label={`Eliminar plan ${item.name}`}
-                      onClick={() => setDeleteTarget(item)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        aria-label={`Opciones para ${item.name}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem
+                        disabled={loading}
+                        onClick={() => handleOpenEdit(item)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteTarget(item)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="mb-2 flex items-end justify-between gap-2">

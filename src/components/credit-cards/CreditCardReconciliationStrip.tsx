@@ -17,19 +17,19 @@ const statusConfig = {
   matched: {
     label: 'Cuadra',
     icon: CheckCircle2,
-    tone: 'border-l-emerald-500/50 text-emerald-600 dark:text-emerald-400',
+    tone: 'text-emerald-600 dark:text-emerald-400',
     message: 'La deuda registrada coincide con el cálculo del ciclo.',
   },
   minor_diff: {
     label: 'Diferencia menor',
     icon: Scale,
-    tone: 'border-l-amber-500/50 text-amber-600 dark:text-amber-400',
+    tone: 'text-amber-600 dark:text-amber-400',
     message: 'Hay una pequeña diferencia — revisa movimientos recientes.',
   },
   needs_review: {
     label: 'Revisar',
     icon: AlertTriangle,
-    tone: 'border-l-destructive/50 text-destructive',
+    tone: 'text-destructive',
     message: 'La deuda registrada no coincide con el import o el ledger.',
   },
 } as const;
@@ -47,15 +47,12 @@ export const CreditCardReconciliationStrip = ({
     <div
       role="region"
       aria-label="Conciliación del ciclo"
-      className={cn(
-        'rounded-2xl border border-border/60 border-l-[3px] bg-card px-4 py-3',
-        config.tone.split(' ')[0],
-      )}
+      className="rounded-2xl border border-border/60 bg-card px-4 py-3"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="mb-1 flex items-center gap-2">
-            <Icon className={cn('h-4 w-4 shrink-0', config.tone.split(' ').slice(1).join(' '))} aria-hidden data-icon="inline-start" />
+            <Icon className={cn('h-4 w-4 shrink-0', config.tone)} aria-hidden data-icon="inline-start" />
             <p className="text-sm font-semibold">¿Cuadra?</p>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               {config.label}

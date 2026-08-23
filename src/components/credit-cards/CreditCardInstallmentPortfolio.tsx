@@ -17,12 +17,14 @@ type CreditCardInstallmentPortfolioProps = {
   purchases: CreditCardStatementPurchaseItem[];
   ownerQueryString: string;
   onCreateInstallmentPlan: () => void;
+  embedded?: boolean;
 };
 
 export const CreditCardInstallmentPortfolio = ({
   purchases,
   ownerQueryString,
   onCreateInstallmentPlan,
+  embedded = false,
 }: CreditCardInstallmentPortfolioProps) => {
   const portfolio = useMemo(
     () => buildInstallmentPortfolio(purchases),
@@ -49,18 +51,20 @@ export const CreditCardInstallmentPortfolio = ({
 
   return (
     <div className="space-y-4" role="region" aria-label="Cuotas vigentes">
-      <div className="rounded-2xl border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Exposición MSI total
-        </p>
-        <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
-          {formatCurrency(totalExposure)}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {portfolio.length} compra{portfolio.length === 1 ? '' : 's'} activa
-          {portfolio.length === 1 ? '' : 's'}
-        </p>
-      </div>
+      {!embedded ? (
+        <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Exposición MSI total
+          </p>
+          <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+            {formatCurrency(totalExposure)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {portfolio.length} compra{portfolio.length === 1 ? '' : 's'} activa
+            {portfolio.length === 1 ? '' : 's'}
+          </p>
+        </div>
+      ) : null}
 
       <ul className="space-y-3">
         {portfolio.map((item) => {

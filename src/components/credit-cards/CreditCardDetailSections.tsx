@@ -7,30 +7,18 @@ import {
   ChevronRight,
   CreditCard,
   Landmark,
-  Pencil,
   Receipt,
   RotateCcw,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   creditCardDetailTabTriggerClass,
   creditCardSegmentedTabChromeClass,
   creditCardSegmentedTabListClass,
 } from '@/components/credit-cards/credit-card-segmented-tabs';
-import {
-  kpiMetricCardShellClass,
-  kpiMetricLabelClass,
-  kpiMetricValueClass,
-  type KpiMetricTone,
-} from '@/components/finance/kpi-metric-card-styles';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -64,43 +52,6 @@ export const CreditCardDetailTabTrigger = ({
   </TabsTrigger>
 );
 
-type SheetMetric = {
-  key: string;
-  label: string;
-  value: string;
-  tone: KpiMetricTone;
-  action?: ReactNode;
-};
-
-type SheetMetricsProps = {
-  metrics: SheetMetric[];
-};
-
-const CreditCardSheetMetrics = ({ metrics }: SheetMetricsProps) => (
-  <div
-    className="grid grid-cols-3 gap-1 sm:gap-1.5"
-    role="group"
-    aria-label="Métricas del ciclo"
-  >
-    {metrics.map(({ key, label, value, tone, action }) => (
-      <div key={key} className={cn('flex min-w-0 flex-col', kpiMetricCardShellClass(tone))}>
-        <div className="mb-1 flex items-center justify-between gap-1">
-          <p className={kpiMetricLabelClass(tone)}>{label}</p>
-          {action}
-        </div>
-        <p
-          className={cn(
-            'truncate font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
-            kpiMetricValueClass(tone),
-          )}
-        >
-          {value}
-        </p>
-      </div>
-    ))}
-  </div>
-);
-
 const CATEGORY_BAR_COLORS = [
   'bg-violet-500',
   'bg-blue-500',
@@ -111,16 +62,8 @@ const CATEGORY_BAR_COLORS = [
 ] as const;
 
 export const CreditCardHeroZone = ({ children }: { children: ReactNode }) => (
-  <div className="relative -mx-4 overflow-hidden border-b border-border/60 bg-card/80 px-4 pb-3 shadow-sm sm:-mx-0 sm:rounded-b-[1.5rem] sm:border-x sm:border-border/60">
-    <div
-      className="pointer-events-none absolute inset-0 bg-linear-to-b from-muted/35 via-card/80 to-background dark:from-muted/20 dark:via-card dark:to-background"
-      aria-hidden
-    />
-    <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-border to-transparent"
-      aria-hidden
-    />
-    <div className="relative space-y-4 py-1">{children}</div>
+  <div className="relative -mx-4 px-4 pb-2 sm:-mx-0 sm:pb-3">
+    <div className="relative space-y-4">{children}</div>
   </div>
 );
 
@@ -215,12 +158,14 @@ type VisualHeroProps = {
   card: CreditCardListItem;
   statement: CreditCardStatementResponse;
   utilizationPct: number | null;
+  isCurrentCycle?: boolean;
 };
 
 export const CreditCardVisualHero = ({
   card,
   statement,
   utilizationPct,
+  isCurrentCycle = true,
 }: VisualHeroProps) => {
   const cardStyle = useMemo(
     () => getProviderCardStyle(card.provider_icon_key, card.type, 'wow'),
@@ -231,7 +176,10 @@ export const CreditCardVisualHero = ({
 
   return (
     <div
-      className="relative mx-auto w-full max-w-md lg:max-w-lg"
+      className={cn(
+        'relative mx-auto w-full max-w-md lg:max-w-lg transition-opacity',
+        !isCurrentCycle && 'opacity-80',
+      )}
       role="region"
       aria-label={`Tarjeta ${card.name}`}
     >
@@ -288,7 +236,7 @@ export const CreditCardVisualHero = ({
           <div className="space-y-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                Deuda actual
+                {isCurrentCycle ? 'Deuda actual' : 'Deuda hoy'}
               </p>
               <p className="text-3xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(statement.outstanding_balance)}
@@ -421,7 +369,6 @@ type CycleSummaryProps = {
   onNextCycle: () => void;
   onResetToToday: () => void;
   formatCycleRange: (start: string, end: string) => string;
-  onAdjustDebt?: () => void;
 };
 
 export const CreditCardCycleSummary = ({
@@ -431,56 +378,9 @@ export const CreditCardCycleSummary = ({
   onNextCycle,
   onResetToToday,
   formatCycleRange,
-  onAdjustDebt,
 }: CycleSummaryProps) => {
-  const metrics: SheetMetric[] = [
-    {
-      key: 'debt',
-      label: 'Deuda',
-      value: formatCurrency(statement.outstanding_balance),
-      tone: 'destructive',
-      action: onAdjustDebt ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 shrink-0 text-destructive/70 hover:text-destructive"
-              onClick={onAdjustDebt}
-              aria-label="Ajustar deuda registrada"
-            >
-              <Pencil className="h-3 w-3" data-icon="inline-start" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Alinear deuda con el emisor</TooltipContent>
-        </Tooltip>
-      ) : undefined,
-    },
-    {
-      key: 'available',
-      label: 'Disponible',
-      value:
-        statement.available_credit == null
-          ? 'Sin línea'
-          : formatCurrency(statement.available_credit),
-      tone:
-        statement.available_credit == null
-          ? 'neutral'
-          : statement.available_credit < 0
-            ? 'destructive'
-            : 'emerald',
-    },
-    {
-      key: 'purchases',
-      label: 'Compras ciclo',
-      value: formatCurrency(statement.current_cycle_purchases),
-      tone: 'blue',
-    },
-  ];
-
   return (
-    <div className="space-y-4" role="region" aria-label="Ciclo y métricas">
+    <div role="region" aria-label="Navegación de ciclo">
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
@@ -526,8 +426,6 @@ export const CreditCardCycleSummary = ({
           </Button>
         ) : null}
       </div>
-
-      <CreditCardSheetMetrics metrics={metrics} />
     </div>
   );
 };
@@ -535,15 +433,17 @@ export const CreditCardCycleSummary = ({
 type StatementSummaryCardProps = {
   statement: CreditCardStatementResponse;
   daysUntilDue: number;
+  collapsible?: boolean;
 };
 
 export const CreditCardStatementSummaryCard = ({
   statement,
   daysUntilDue,
+  collapsible = false,
 }: StatementSummaryCardProps) => {
   const hasPendingDue = statement.next_due_payment > 0;
 
-  return (
+  const body = (
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
@@ -613,13 +513,28 @@ export const CreditCardStatementSummaryCard = ({
       </CardContent>
     </Card>
   );
+
+  if (!collapsible) {
+    return body;
+  }
+
+  return (
+    <details className="group rounded-2xl border border-border/60 bg-card/50 open:pb-0">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+        Detalle del corte
+        <span className="ml-2 text-xs font-normal text-muted-foreground">
+          {formatDate(statement.statement_start)} – {formatDate(statement.statement_end)}
+        </span>
+      </summary>
+      <div className="border-t border-border/50 px-1 pb-1 pt-0">{body}</div>
+    </details>
+  );
 };
 
 type ActivitySectionCardProps = {
   title: string;
   subtitle?: string;
   icon: ReactNode;
-  accentClass?: string;
   badge?: ReactNode;
   children: ReactNode;
 };
@@ -628,13 +543,10 @@ export const CreditCardActivitySectionCard = ({
   title,
   subtitle,
   icon,
-  accentClass = 'border-l-violet-500/50',
   badge,
   children,
 }: ActivitySectionCardProps) => (
-  <Card
-    className={cn('overflow-hidden border-border/60 border-l-[3px]', accentClass)}
-  >
+  <Card className="overflow-hidden border-border/60">
     <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3">
       {icon}
       <div className="min-w-0 flex-1">
