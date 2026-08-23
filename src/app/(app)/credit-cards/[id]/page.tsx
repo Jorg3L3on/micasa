@@ -168,6 +168,8 @@ export default function CreditCardDetailPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false);
+  /** After adjusting debt to corte, Compra defaults “Ya está en el saldo” ON. */
+  const [debtAdjustedThisSession, setDebtAdjustedThisSession] = useState(false);
   const [statementImports, setStatementImports] = useState<
     CreditCardStatementImportListItem[]
   >([]);
@@ -876,6 +878,7 @@ export default function CreditCardDetailPage() {
         onSuccess={loadData}
         availableCredit={statement.available_credit}
         creditLimit={statement.credit_limit}
+        defaultAlreadyInCardBalance={debtAdjustedThisSession}
       />
 
       <WalletBalanceDialog
@@ -886,6 +889,7 @@ export default function CreditCardDetailPage() {
         currentAmount={statement.outstanding_balance}
         context={context}
         onSuccess={() => {
+          setDebtAdjustedThisSession(true);
           void loadData();
         }}
         variant="credit"

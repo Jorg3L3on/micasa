@@ -309,6 +309,8 @@ export async function createCreditCardPurchase(
     throw error;
   }
 
+  const alreadyInCardBalance = input.already_in_card_balance === true;
+
   return createExpense({
     fortnightId: input.fortnight_id,
     categoryId: input.category_id,
@@ -320,6 +322,8 @@ export async function createCreditCardPurchase(
     walletId: creditCardId,
     creditInstallmentCurrent: input.credit_installment_current ?? null,
     creditInstallmentTotal: input.credit_installment_total ?? null,
+    // Ledger-only when saldo already matches the bank (JOR-74).
+    applyWalletDelta: !alreadyInCardBalance,
   });
 }
 

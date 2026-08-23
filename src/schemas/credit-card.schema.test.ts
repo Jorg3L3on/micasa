@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createCreditCardPaymentSchema } from './credit-card.schema';
+import {
+  createCreditCardPaymentSchema,
+  createCreditCardPurchaseSchema,
+} from './credit-card.schema';
 
 describe('createCreditCardPaymentSchema', () => {
   it('accepts MiCasa calendar dates for credit card payments', () => {
@@ -39,5 +42,28 @@ describe('createCreditCardPaymentSchema', () => {
         create_fortnight_expense: false,
       }),
     ).toThrow();
+  });
+});
+
+describe('createCreditCardPurchaseSchema already_in_card_balance', () => {
+  const base = {
+    fortnight_id: 1,
+    category_id: 2,
+    description: 'Cargo',
+    amount: 120,
+    payment_date: '2026-08-20',
+  };
+
+  it('defaults already_in_card_balance to false', () => {
+    const parsed = createCreditCardPurchaseSchema.parse(base);
+    expect(parsed.already_in_card_balance).toBe(false);
+  });
+
+  it('accepts already_in_card_balance true for ledger-only purchases', () => {
+    const parsed = createCreditCardPurchaseSchema.parse({
+      ...base,
+      already_in_card_balance: true,
+    });
+    expect(parsed.already_in_card_balance).toBe(true);
   });
 });
