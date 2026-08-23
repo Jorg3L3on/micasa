@@ -1,7 +1,5 @@
 export type CreditCardCycleTab = 'movimientos' | 'resumen' | 'cuotas';
 
-export type SheetSnap = 'peek' | 'half' | 'full';
-
 export const CREDIT_CARD_CYCLE_TABS: CreditCardCycleTab[] = [
   'movimientos',
   'resumen',
