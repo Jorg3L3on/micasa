@@ -118,6 +118,30 @@ model User {
   memberships HouseMember[]
   ownedHouses House[]
   transfers   Transfer[]
+
+  // Agent connectors (MCP)
+  apiKeys ApiKey[]
+}
+
+/**
+ * Bearer tokens for agent connectors (e.g. the MCP endpoint at /api/mcp).
+ * The plaintext token is shown once at mint time; only the bcrypt hash is
+ * stored. `key_prefix` (first chars of the token) is the lookup key.
+ */
+model ApiKey {
+  id           Int       @id @default(autoincrement())
+  user_id      Int
+  name         String
+  key_hash     String
+  key_prefix   String    @unique
+  scopes       String[]  @default(["read"])
+  last_used_at DateTime?
+  revoked_at   DateTime?
+  created_at   DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
 }
 
 /**
