@@ -47,32 +47,57 @@ El token es **tu usuario**; cada tool elige el contexto financiero con `ownerTyp
 
 La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerContext` en la app).
 
-## Tools v1
+## Tools v2
 
-Lectura (scope `read`):
+Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resuelven billeteras y categorías por **id o nombre** (nombre ambiguo → error con ids para desambiguar).
+
+### Flujo típico del agente
+
+1. `list_houses` → elige contexto personal o casa.
+2. `list_categories` / `list_wallets` → catálogo para gastos e ingresos.
+3. `add_expense` / `add_income` / `transfer` según la intención del usuario.
+
+### Lectura (scope `read`)
 
 | Tool | Qué hace |
 |---|---|
 | `list_houses` | Descubrimiento: userId del token + casas con rol |
 | `list_wallets` | Billeteras con saldo, límite y crédito disponible |
 | `list_cards` | Tarjetas: deuda, límite, corte, día de pago |
-| `get_card` | Detalle: estado de cuenta, movimientos, MSI, cuotas programadas |
-| `list_loans` | Préstamos con calendario; `year` + `month` filtra cuotas del mes |
+| `get_card` | Detalle: estado de cuenta, movimientos recientes, MSI |
+| `list_card_movements` | Movimientos de una tarjeta por rango o ciclo actual |
+| `list_loans` | Préstamos; `year` + `month` filtra cuotas del mes |
+| `get_loan` | Detalle + calendario de un préstamo |
+| `list_categories` | Catálogo de categorías (gasto e ingreso comparten árbol) |
+| `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, filtros) |
+| `list_upcoming` | Pagos del mes: tarjetas, MSI y préstamos unificados |
+| `list_goals` | Metas con progreso hacia el objetivo |
+| `list_budgets` | Presupuestos activos: tope, gastado, restante |
+| `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app) |
 
-Escritura (scope `write`):
+### Escritura (scope `write`)
 
 | Tool | Qué hace | Nota |
 |---|---|---|
-| `adjust_card_debt` | Fija la deuda en libros (alineación con el banco) | Requiere `confirm: true`; `destructiveHint` |
-| `update_card` | Corte, día de pago, límite, límite temporal | Idempotente |
-| `add_card_purchase` | Compra en tarjeta; `already_in_balance` para ledger-only | Resuelve quincena desde la fecha; categoría por id o nombre |
-| `add_card_payment` | Pago **externo** (no descuenta billeteras de MiCasa); `adjusts_debt: false` si la deuda ya lo refleja | |
+| `add_expense` | Gasto en cualquier billetera | `already_in_balance` para bitácora sin mover saldo |
+| `update_expense` / `delete_expense` | Corregir o borrar gasto | `delete_expense` requiere `confirm: true` |
+| `add_income` | Ingreso en billetera de activo | Sube saldo |
+| `adjust_wallet_balance` | Fija saldo efectivo/débito/meta | `confirm: true` |
+| `transfer` | Entre billeteras de activo/metas | No es pago de tarjeta |
+| `contribute_goal` / `withdraw_goal` | Aportar o retirar de una meta | Transfer interna |
+| `create_loan` / `update_loan` / `add_loan_payment` | Préstamos personales | Cuotas externas con `paid_payments_count` / `MARK_PAID_EXTERNAL` |
+| `delete_loan` | Elimina préstamo | `confirm: true` |
+| `upsert_budget` / `delete_budget` | Crear/actualizar o desactivar presupuesto | Presupuesto simple (1 billetera + categoría) |
+| `adjust_card_debt` | Fija deuda de tarjeta | `confirm: true` |
+| `update_card` | Corte, pago, límites | Idempotente |
+| `add_card_purchase` | Compra en tarjeta | `already_in_balance` opcional |
+| `add_card_payment` | Pago externo de tarjeta | No descuenta billeteras MiCasa |
 | `create_installment_plan` / `update_installment_plan` | Planes MSI | |
-| `delete_scheduled_payment` | Elimina cuota programada no cubierta | Requiere `confirm: true`; `destructiveHint` |
+| `delete_scheduled_payment` | Elimina cuota programada | `confirm: true` |
 
-Las tools declaran anotaciones MCP (`readOnlyHint`, `destructiveHint`, `idempotentHint`): los clientes que las respetan (Claude, Cursor) muestran confirmaciones nativas antes de operaciones destructivas.
+Las tools declaran anotaciones MCP (`readOnlyHint`, `destructiveHint`, `idempotentHint`).
 
-Fuera de v1: pago de tarjeta que descuenta una billetera (modo `wallet`), import de estados de cuenta PDF/CSV y administración.
+Fuera de v2: pago de tarjeta descontando billetera MiCasa (modo `wallet`), import PDF/CSV vía MCP, administración.
 
 ## Límites de uso
 
@@ -104,7 +129,7 @@ Todos los clientes usan la misma URL y el token como Bearer. La página **Ajuste
 ## Fuera de alcance (v3, documentado)
 
 - **OAuth 2.1 + `/.well-known/oauth-protected-resource`** — para clientes que no aceptan Bearer manual (p. ej. conectores ChatGPT estándar).
-- Tools de gastos/presupuestos, MCP resources/prompts.
+- MCP resources/prompts.
 
 ## Costos
 

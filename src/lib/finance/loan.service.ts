@@ -1079,3 +1079,143 @@ export async function aggregateLoanPaymentsForFortnights(
     upcoming,
   };
 }
+
+export async function getLoanByIdForOwner(
+  loanId: number,
+  ownerFilter: OwnerFilter,
+): Promise<LoanListItem> {
+  const loan = await prisma.loan.findFirst({
+    where: { id: loanId, ...ownerFilter },
+    include: loanInclude,
+  });
+  if (!loan) {
+    throw new Error('Préstamo no encontrado');
+  }
+  return mapLoan(loan);
+}
+
+export type CreateLoanMcpInput = CreateLoanInput & {
+  paidPaymentsCount?: number;
+};
+
+export async function createLoanForOwnerWithProgress(
+  ownerType: 'user' | 'house',
+  ownerId: number,
+  ownerFilter: OwnerFilter,
+  input: CreateLoanMcpInput,
+): Promise<LoanListItem> {
+  const loan = await createLoanForOwner(ownerType, ownerId, ownerFilter, input);
+  const paidCount = input.paidPaymentsCount ?? 0;
+  if (paidCount <= 0) {
+    return loan;
+  }
+
+  const scheduled = (loan.payments ?? [])
+    .filter((payment) => payment.status === 'SCHEDULED')
+    .sort((a, b) => a.sequence - b.sequence)
+    .slice(0, paidCount);
+
+  for (const payment of scheduled) {
+    await updateLoanPaymentForOwner(payment.id, ownerFilter, {
+      action: 'MARK_PAID_EXTERNAL',
+      paidAt: payment.dueDate,
+      note: 'Cuota ya pagada fuera de MiCasa (MCP)',
+    });
+  }
+
+  return getLoanByIdForOwner(loan.id, ownerFilter);
+}
+
+export type UpdateLoanScheduleInput = UpdateLoanInput & {
+  paymentAmount?: number;
+  paymentCount?: number;
+  nextPaymentDate?: string;
+};
+
+export async function updateLoanScheduleForOwner(
+  loanId: number,
+  ownerFilter: OwnerFilter,
+  input: UpdateLoanScheduleInput,
+): Promise<LoanListItem> {
+  const existing = await prisma.loan.findFirst({
+    where: { id: loanId, ...ownerFilter },
+    include: {
+      payments: { orderBy: { sequence: 'asc' } },
+    },
+  });
+  if (!existing) {
+    throw new Error('Préstamo no encontrado');
+  }
+
+  const metadata = await updateLoanForOwner(loanId, ownerFilter, input);
+
+  const needsScheduleChange =
+    input.paymentAmount != null ||
+    input.paymentCount != null ||
+    input.nextPaymentDate != null;
+
+  if (!needsScheduleChange) {
+    return metadata;
+  }
+
+  const paidOrClosed = existing.payments.filter(
+    (payment) => payment.status === 'PAID' || payment.status === 'SKIPPED',
+  );
+  const paidCount = paidOrClosed.length;
+  const paymentAmount =
+    input.paymentAmount ?? decimalToNumber(existing.payment_amount);
+  const paymentCount = input.paymentCount ?? existing.payment_count;
+
+  if (paymentCount < paidCount) {
+    throw new Error(
+      `El total de cuotas (${paymentCount}) no puede ser menor a las ya pagadas (${paidCount})`,
+    );
+  }
+
+  const startDate = input.nextPaymentDate
+    ? parseYmdAsUtcDate(input.nextPaymentDate)
+    : existing.payments.find((p) => p.status === 'SCHEDULED')?.due_date ??
+      existing.start_date;
+
+  const remainingCount = paymentCount - paidCount;
+  const newSchedule = generateLoanPaymentSchedule({
+    startDate,
+    paymentAmount,
+    paymentCount: remainingCount,
+    frequency: existing.frequency as CreateLoanInput['frequency'],
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.loanPayment.deleteMany({
+      where: { loan_id: loanId, status: 'SCHEDULED' },
+    });
+
+    await tx.loan.update({
+      where: { id: loanId },
+      data: {
+        payment_amount: paymentAmount.toString(),
+        payment_count: paymentCount,
+        ...(input.nextPaymentDate
+          ? { start_date: parseYmdAsUtcDate(input.nextPaymentDate) }
+          : {}),
+      },
+    });
+
+    if (newSchedule.length > 0) {
+      await tx.loanPayment.createMany({
+        data: newSchedule.map((payment, index) => ({
+          loan_id: loanId,
+          sequence: paidCount + index + 1,
+          due_date: payment.dueDate,
+          amount: payment.amount.toString(),
+          source_wallet_id:
+            existing.payment_source === 'WALLET'
+              ? existing.source_wallet_id
+              : null,
+        })),
+      });
+    }
+  });
+
+  return getLoanByIdForOwner(loanId, ownerFilter);
+}

@@ -57,7 +57,8 @@ type ExpenseTransactionDtoSource = {
 
 export type CreateExpenseInput = {
   fortnightId: number;
-  categoryId: number;
+  /** Null omits categoría (MCP / gastos rápidos sin catálogo). */
+  categoryId: number | null;
   description: string;
   amount: number;
   isPaid?: boolean;
@@ -219,13 +220,15 @@ export async function createExpenseInTransaction(
     throw error;
   }
 
-  const category = await tx.category.findUnique({
-    where: { id: categoryId },
-  });
-  if (!category) {
-    const error = new Error('Category not found') as ExpenseServiceError;
-    error.code = 'CATEGORY_NOT_FOUND';
-    throw error;
+  if (categoryId != null) {
+    const category = await tx.category.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category) {
+      const error = new Error('Category not found') as ExpenseServiceError;
+      error.code = 'CATEGORY_NOT_FOUND';
+      throw error;
+    }
   }
 
   const fortnight = await tx.fortnight.findUnique({
@@ -313,7 +316,7 @@ export async function createExpenseInTransaction(
     data: {
       fortnight_id: fortnightId,
       wallet_id: effectiveWalletId ?? undefined,
-      category_id: categoryId,
+      category_id: categoryId ?? undefined,
       description,
       amount,
       is_paid: isPaid,
