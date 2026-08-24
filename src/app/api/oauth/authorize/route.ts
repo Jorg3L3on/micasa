@@ -7,7 +7,7 @@ import {
 import {
   getMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
-import { oauthErrorResponse } from '@/lib/server/mcp-oauth/cors';
+import { oauthErrorResponse, oauthOptionsResponse, withOAuthCors } from '@/lib/server/mcp-oauth/cors';
 
 const requiredParams = [
   'response_type',
@@ -16,6 +16,10 @@ const requiredParams = [
   'code_challenge',
   'code_challenge_method',
 ] as const;
+
+export function OPTIONS() {
+  return oauthOptionsResponse();
+}
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
@@ -61,7 +65,7 @@ export async function GET(request: NextRequest) {
     const callback = `${url.pathname}${url.search}`;
     const loginUrl = new URL('/login', url.origin);
     loginUrl.searchParams.set('callbackUrl', callback);
-    return Response.redirect(loginUrl);
+    return withOAuthCors(Response.redirect(loginUrl));
   }
 
   const consentUrl = new URL('/oauth/consent', url.origin);
@@ -71,5 +75,5 @@ export async function GET(request: NextRequest) {
   const resource = url.searchParams.get('resource') ?? getMcpResourceUrl(request);
   consentUrl.searchParams.set('resource', resource);
 
-  return Response.redirect(consentUrl);
+  return withOAuthCors(Response.redirect(consentUrl));
 }

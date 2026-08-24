@@ -1,25 +1,41 @@
 import { z } from 'zod';
+import {
+  cimdClientIdsMatch,
+  isClientIdMetadataUrl,
+} from '@/lib/server/mcp-oauth/cimd';
 
-const clientMetadataSchema = z.object({
-  client_id: z.string().url(),
-  client_name: z.string().min(1),
-  redirect_uris: z.array(z.string().url()).min(1),
-  grant_types: z.array(z.string()).optional(),
-  response_types: z.array(z.string()).optional(),
-  token_endpoint_auth_method: z.string().optional(),
-  client_uri: z.string().url().optional(),
-  logo_uri: z.string().url().optional(),
-});
+const clientMetadataSchema = z
+  .object({
+    client_id: z.string().url(),
+    client_name: z.string().min(1).optional(),
+    redirect_uris: z.array(z.string().url()).min(1),
+    grant_types: z.array(z.string()).optional(),
+    response_types: z.array(z.string()).optional(),
+    token_endpoint_auth_method: z.string().optional(),
+    token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
+    client_uri: z.string().url().optional(),
+    logo_uri: z.string().url().optional(),
+    jwks_uri: z.string().url().optional(),
+    token_endpoint_auth_signing_alg: z.string().optional(),
+  })
+  .passthrough();
 
-export type ClientIdMetadataDocument = z.infer<typeof clientMetadataSchema>;
+export type ClientIdMetadataDocument = z.infer<typeof clientMetadataSchema> & {
+  client_name: string;
+};
 
-export const isClientIdMetadataUrl = (clientId: string): boolean => {
-  try {
-    const url = new URL(clientId);
-    return url.protocol === 'https:' && url.pathname.length > 1;
-  } catch {
-    return false;
-  }
+export const parseClientIdMetadataDocument = (
+  fetchUrl: string,
+  json: unknown,
+): ClientIdMetadataDocument | null => {
+  const parsed = clientMetadataSchema.safeParse(json);
+  if (!parsed.success) return null;
+  if (!cimdClientIdsMatch(fetchUrl, parsed.data.client_id)) return null;
+
+  return {
+    ...parsed.data,
+    client_name: parsed.data.client_name?.trim() || 'OAuth client',
+  };
 };
 
 export const fetchClientIdMetadataDocument = async (
@@ -34,13 +50,8 @@ export const fetchClientIdMetadataDocument = async (
   if (!response.ok) return null;
 
   const json: unknown = await response.json();
-  const parsed = clientMetadataSchema.safeParse(json);
-  if (!parsed.success) return null;
-  if (parsed.data.client_id !== clientId) return null;
-  return parsed.data;
+  return parseClientIdMetadataDocument(clientId, json);
 };
 
-export const validateRedirectUri = (
-  redirectUri: string,
-  allowedUris: string[],
-): boolean => allowedUris.includes(redirectUri);
+export { isClientIdMetadataUrl } from '@/lib/server/mcp-oauth/cimd';
+export { validateRedirectUri } from '@/lib/server/mcp-oauth/cimd';

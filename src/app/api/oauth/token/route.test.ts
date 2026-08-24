@@ -84,6 +84,45 @@ describe('POST /api/oauth/token (PKCE)', () => {
     );
   });
 
+  it('intercambia code sin client_secret para private_key_jwt (ChatGPT CIMD)', async () => {
+    resolveOAuthClientMock.mockResolvedValue({
+      ...clientRow,
+      client_id: 'https://chatgpt.com/oauth/client.json',
+      token_endpoint_auth_method: 'private_key_jwt',
+    });
+    verifyClientSecretMock.mockReturnValue(true);
+    exchangeAuthorizationCodeMock.mockResolvedValue({
+      access_token: 'micasa_oauth_access-token-de-prueba',
+      token_type: 'Bearer',
+      expires_in: 7776000,
+      refresh_token: 'micasa_refresh_refresh-token-de-prueba',
+      scope: 'read write',
+    });
+
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: 'micasa_code_uno-solo-uso',
+      redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+      client_id: 'https://chatgpt.com/oauth/client.json',
+      code_verifier: VERIFIER,
+      resource: 'http://localhost:3000/api/mcp',
+    });
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(200);
+    expect(verifyClientSecretMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token_endpoint_auth_method: 'private_key_jwt' }),
+      undefined,
+    );
+  });
+
   it('401 cuando el cliente es desconocido', async () => {
     resolveOAuthClientMock.mockResolvedValue(null);
 
