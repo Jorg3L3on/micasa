@@ -31,6 +31,7 @@ MiCasa implementa OAuth 2.1 + PKCE para el recurso MCP:
 - **Dynamic Client Registration (RFC 7591):** `POST /api/oauth/register` — ChatGPT **no** necesita un client id preconfigurado.
 - **Client ID Metadata Documents (CIMD):** soportado cuando `client_id` es una URL HTTPS con metadata JSON.
 - **Flujo:** authorization code + PKCE (`S256`) + parámetro `resource` (RFC 8707) apuntando a la URL del MCP.
+- **Token endpoint auth (metadata):** el authorization server anuncia solo `none` y `client_secret_post` en `token_endpoint_auth_methods_supported`, para que clientes como ChatGPT usen PKCE (`none`) en lugar de `private_key_jwt`. Si un cliente CIMD envía `client_assertion` de todas formas, el token endpoint sigue aceptándola.
 - **Access token:** prefijo `micasa_oauth_…`, enviado como `Authorization: Bearer` en `/api/mcp`.
 - **Revocación:** Ajustes → Conexiones → sección **Conexiones OAuth**.
 
@@ -141,7 +142,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **1.3.1** (transport 401 + RFC 9728 discovery) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **1.3.6** (OAuth AS metadata: PKCE/`none` only in discovery; transport 401 + RFC 9728 desde 1.3.1) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 
