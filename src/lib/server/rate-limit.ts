@@ -9,7 +9,9 @@ export type RateLimitPolicyId =
   | 'auth:login'
   | 'auth:register'
   | 'mutation:statement-import'
-  | 'mutation:receipt-upload';
+  | 'mutation:receipt-upload'
+  | 'mutation:api-key-create'
+  | 'mcp:tool';
 
 type RateLimitScope = 'ip' | 'user';
 
@@ -24,6 +26,9 @@ export const RATE_LIMIT_POLICIES: Record<RateLimitPolicyId, RateLimitPolicy> = {
   'auth:register': { max: 10, windowMs: 60 * 60 * 1000, scope: 'ip' },
   'mutation:statement-import': { max: 20, windowMs: 60 * 60 * 1000, scope: 'user' },
   'mutation:receipt-upload': { max: 20, windowMs: 60 * 60 * 1000, scope: 'user' },
+  'mutation:api-key-create': { max: 10, windowMs: 60 * 60 * 1000, scope: 'user' },
+  // MCP tool calls per agent (identity = api key id, passed as userId).
+  'mcp:tool': { max: 120, windowMs: 60 * 1000, scope: 'user' },
 };
 
 const RATE_LIMIT_ERROR = 'Demasiadas solicitudes. Inténtalo más tarde.';
