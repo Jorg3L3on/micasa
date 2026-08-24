@@ -16,6 +16,14 @@ const proxy = auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
+  // OAuth DCR at issuer root: GET /register stays the signup page; POST/OPTIONS → DCR handler.
+  if (
+    pathname === '/register' &&
+    (req.method === 'POST' || req.method === 'OPTIONS')
+  ) {
+    return NextResponse.rewrite(new URL('/api/oauth/register', req.url));
+  }
+
   // Landing, auth forms, and legal pages are always public for guests.
   if (!isLoggedIn && PUBLIC_PATHS.has(pathname)) {
     return NextResponse.next();
