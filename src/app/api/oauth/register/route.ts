@@ -7,15 +7,17 @@ import {
   oauthOptionsResponse,
 } from '@/lib/server/mcp-oauth/cors';
 
-const registrationSchema = z.object({
-  client_name: z.string().min(1).max(120),
-  redirect_uris: z.array(z.string().url()).min(1).max(20),
-  grant_types: z.array(z.string()).optional(),
-  response_types: z.array(z.string()).optional(),
-  token_endpoint_auth_method: z.enum(['none', 'client_secret_post']).optional(),
-  client_uri: z.string().url().optional(),
-  logo_uri: z.string().url().optional(),
-});
+const registrationSchema = z
+  .object({
+    client_name: z.string().min(1).max(120).optional(),
+    redirect_uris: z.array(z.string().url()).min(1).max(20),
+    grant_types: z.array(z.string()).optional(),
+    response_types: z.array(z.string()).optional(),
+    token_endpoint_auth_method: z.string().optional(),
+    client_uri: z.string().url().optional(),
+    logo_uri: z.string().url().optional(),
+  })
+  .passthrough();
 
 export function OPTIONS() {
   return oauthOptionsResponse();

@@ -1,11 +1,14 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/prisma';
-import { hashOAuthSecret, verifyOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
 import {
   fetchClientIdMetadataDocument,
   isClientIdMetadataUrl,
-  validateRedirectUri,
 } from '@/lib/server/mcp-oauth/client-id-metadata';
+import {
+  isPublicTokenAuthMethod,
+  validateRedirectUri,
+} from '@/lib/server/mcp-oauth/cimd';
+import { hashOAuthSecret, verifyOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
 
 export type ResolvedOAuthClient = {
   client_id: string;
@@ -54,14 +57,16 @@ export const resolveOAuthClient = async (
   const metadata = await fetchClientIdMetadataDocument(clientId);
   if (!metadata) return null;
 
+  const authMethod = metadata.token_endpoint_auth_method ?? 'none';
+
   const created = await prisma.mcpOAuthClient.create({
     data: {
-      client_id: metadata.client_id,
+      client_id: clientId,
       client_name: metadata.client_name,
       redirect_uris: metadata.redirect_uris,
       grant_types: metadata.grant_types ?? ['authorization_code', 'refresh_token'],
       response_types: metadata.response_types ?? ['code'],
-      token_endpoint_auth_method: metadata.token_endpoint_auth_method ?? 'none',
+      token_endpoint_auth_method: authMethod,
       client_uri: metadata.client_uri ?? null,
       logo_uri: metadata.logo_uri ?? null,
     },
@@ -71,7 +76,7 @@ export const resolveOAuthClient = async (
 };
 
 export type DynamicClientRegistrationInput = {
-  client_name: string;
+  client_name?: string;
   redirect_uris: string[];
   grant_types?: string[];
   response_types?: string[];
@@ -93,7 +98,7 @@ export const registerDynamicOAuthClient = async (
   const created = await prisma.mcpOAuthClient.create({
     data: {
       client_id: clientId,
-      client_name: input.client_name,
+      client_name: input.client_name?.trim() || 'MCP OAuth client',
       redirect_uris: input.redirect_uris,
       grant_types: input.grant_types ?? ['authorization_code', 'refresh_token'],
       response_types: input.response_types ?? ['code'],
@@ -114,16 +119,26 @@ export const assertRedirectUriAllowed = (
   client: ResolvedOAuthClient,
   redirectUri: string,
 ): void => {
-  if (!validateRedirectUri(redirectUri, client.redirect_uris)) {
+  if (!validateRedirectUri(redirectUri, client.redirect_uris, client.client_id)) {
     throw new Error('redirect_uri no autorizado para este cliente');
   }
 };
 
+/**
+ * Public / PKCE clients (none, private_key_jwt) do not use a shared secret at
+ * the token endpoint. ChatGPT CIMD advertises private_key_jwt but exchanges
+ * codes with PKCE only.
+ */
 export const verifyClientSecret = (
   client: ResolvedOAuthClient,
   clientSecret: string | null | undefined,
 ): boolean => {
-  if (client.token_endpoint_auth_method === 'none') return true;
-  if (!client.client_secret_hash || !clientSecret) return false;
-  return verifyOAuthSecret(clientSecret, client.client_secret_hash);
+  if (isPublicTokenAuthMethod(client.token_endpoint_auth_method)) {
+    return true;
+  }
+  if (client.token_endpoint_auth_method === 'client_secret_post') {
+    if (!client.client_secret_hash || !clientSecret) return false;
+    return verifyOAuthSecret(clientSecret, client.client_secret_hash);
+  }
+  return true;
 };
