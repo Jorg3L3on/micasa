@@ -49,7 +49,13 @@ describe('well-known OAuth routes', () => {
     const body = await response.json();
     expect(body.registration_endpoint).toContain('/api/oauth/register');
     expect(body.client_id_metadata_document_supported).toBe(true);
-    expect(body.token_endpoint_auth_methods_supported).toContain('private_key_jwt');
+    expect(body.token_endpoint_auth_methods_supported).toEqual([
+      'none',
+      'client_secret_post',
+    ]);
+    expect(body.token_endpoint_auth_methods_supported).not.toContain(
+      'private_key_jwt',
+    );
   });
 
   it('GET /.well-known/oauth-authorization-server/mcp (ChatGPT alias)', async () => {
@@ -60,7 +66,13 @@ describe('well-known OAuth routes', () => {
     const body = await response.json();
     expect(body.token_endpoint).toContain('/api/oauth/token');
     expect(body.registration_endpoint).toContain('/api/oauth/register');
-    expect(body.token_endpoint_auth_methods_supported).toContain('private_key_jwt');
+    expect(body.token_endpoint_auth_methods_supported).toEqual([
+      'none',
+      'client_secret_post',
+    ]);
+    expect(body.token_endpoint_auth_methods_supported).not.toContain(
+      'private_key_jwt',
+    );
   });
 
   it('GET /.well-known/oauth-authorization-server/api/mcp (ChatGPT alias)', async () => {
@@ -70,7 +82,13 @@ describe('well-known OAuth routes', () => {
     expectJsonCors(response);
     const body = await response.json();
     expect(body.authorization_endpoint).toContain('/api/oauth/authorize');
-    expect(body.token_endpoint_auth_methods_supported).toContain('private_key_jwt');
+    expect(body.token_endpoint_auth_methods_supported).toEqual([
+      'none',
+      'client_secret_post',
+    ]);
+    expect(body.token_endpoint_auth_methods_supported).not.toContain(
+      'private_key_jwt',
+    );
   });
 
   it('OPTIONS /.well-known/oauth-authorization-server/mcp includes CORS', () => {
