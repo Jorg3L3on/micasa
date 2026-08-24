@@ -3,6 +3,7 @@ import { listInstallmentPlanPaymentsForPlannerMonth } from '@/lib/finance/credit
 import { getDuePaymentsForPlannerMonth } from '@/lib/finance/credit-card-statement.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import type { DuePaymentItem } from '@/types/catalog';
 
 export type UpcomingCommitmentItem = {
   date: string;
@@ -24,15 +25,7 @@ export type UpcomingCommitmentsResult = {
 const cardDueKey = (walletId: number, dueDateYmd: string): string =>
   `${walletId}:${dueDateYmd}`;
 
-const isUnpaidCardPlannerRow = (item: {
-  plannerStatus: string;
-  effectiveAmount?: number;
-  remainingPlannerAmount?: number;
-  nextDuePayment: number;
-  plannedPayment?: number | null;
-  paymentsAppliedToFortnight?: number;
-  paymentsAppliedToStatement?: number;
-}): boolean => {
+const isUnpaidCardPlannerRow = (item: DuePaymentItem): boolean => {
   if (item.plannerStatus === 'pagado' || item.plannerStatus === 'sin_cargo') {
     return false;
   }
