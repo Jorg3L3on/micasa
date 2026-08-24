@@ -108,6 +108,8 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 
 ### Reglas de lectura (v1.3.x)
 
+**v1.3.2:** compatibilidad ChatGPT CIMD/DCR — acepta `private_key_jwt`, `client_name` opcional en DCR, alias CIMD en hosts `chatgpt.com` / `chat.openai.com`, redirects `connector_platform_oauth_redirect` y `/connector/oauth/*`; token endpoint usa PKCE sin `client_secret`.
+
 **v1.3.1:** el transporte HTTP exige Bearer válido antes de `initialize` / `tools/list`; sin token responde **401** + `WWW-Authenticate` con `resource_metadata` (RFC 9728, requerido por ChatGPT OAuth).
 
 **v1.3.0:** OAuth 2.1 + DCR.
@@ -141,7 +143,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **1.3.1** (transport 401 + RFC 9728 discovery) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **1.3.2** (ChatGPT CIMD/DCR + transport 401) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 

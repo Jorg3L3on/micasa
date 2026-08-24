@@ -57,6 +57,40 @@ describe('POST /api/oauth/register (DCR)', () => {
     expect(body).not.toHaveProperty('client_secret');
   });
 
+  it('registra un cliente con private_key_jwt (ChatGPT DCR)', async () => {
+    registerDynamicOAuthClientMock.mockResolvedValue({
+      client: {
+        client_id: '22222222-3333-4444-5555-666666666666',
+        client_name: 'ChatGPT',
+        redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'],
+        grant_types: ['authorization_code', 'refresh_token'],
+        response_types: ['code'],
+        token_endpoint_auth_method: 'private_key_jwt',
+        client_uri: 'https://chatgpt.com/',
+        logo_uri: null,
+        client_secret_hash: null,
+      },
+      clientSecret: null,
+    });
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/oauth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'],
+          token_endpoint_auth_method: 'private_key_jwt',
+          jwks_uri: 'https://chatgpt.com/oauth/jwks.json',
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.token_endpoint_auth_method).toBe('private_key_jwt');
+    expect(body).not.toHaveProperty('client_secret');
+  });
+
   it('rechaza metadata inválida', async () => {
     const response = await POST(
       new Request('http://localhost:3000/api/oauth/register', {
