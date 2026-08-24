@@ -38,7 +38,7 @@ const baseProjection = (
 });
 
 describe('buildMcpLiquidityPayload', () => {
-  it('ignores past shortfall dates and counts obligations from as_of forward', () => {
+  it('ignores past obligations when counting committed totals and forward headroom', () => {
     const projection = baseProjection({
       milestones: [
         {
@@ -77,9 +77,33 @@ describe('buildMcpLiquidityPayload', () => {
 
     expect(payload.committed_obligations_total).toBe(1200);
     expect(payload.net_liquidity).toBe(3800);
+    expect(payload.lasts_until).toBeNull();
+    expect(payload.next_gap).toBeNull();
+  });
+
+  it('reports next_gap when forward obligations exceed funding', () => {
+    const projection = baseProjection({
+      milestones: [
+        {
+          due_date: '2026-07-01',
+          is_past_due: false,
+          obligations: [],
+          total_due: 6200,
+          cumulative_due_through_date: 6200,
+          funding_total: 5000,
+          liquidity_headroom: -1200,
+        },
+      ],
+    });
+
+    const payload = buildMcpLiquidityPayload(projection, '2026-06-01', '2026-08-01');
+
     expect(payload.lasts_until).toBe('2026-07-01');
-    expect(payload.lasts_until_including_income).toBe('2026-07-01');
-    expect(payload.next_gap?.date).toBe('2026-07-01');
+    expect(payload.next_gap).toEqual({
+      date: '2026-07-01',
+      shortfall: 1200,
+      cumulative_due: 6200,
+    });
   });
 
   it('returns null lasts_until when cash covers the forward horizon', () => {

@@ -1,5 +1,6 @@
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import { listInstallmentPlanPaymentsForPlannerMonth } from '@/lib/finance/credit-card-installment-plan.service';
+import type { PlannerInstallmentPlanPaymentItem } from '@/lib/finance/credit-card-installment-plan.service';
 import { getDuePaymentsForPlannerMonth } from '@/lib/finance/credit-card-statement.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -32,11 +33,38 @@ const isUnpaidCardPlannerRow = (item: DuePaymentItem): boolean => {
   return getEffectiveCardPaymentAmount(item) > 0;
 };
 
+const sumMsiByWalletDate = (
+  planPayments: PlannerInstallmentPlanPaymentItem[],
+): Map<string, number> => {
+  const totals = new Map<string, number>();
+  for (const payment of planPayments) {
+    const key = cardDueKey(payment.walletId, payment.dueDate);
+    totals.set(key, (totals.get(key) ?? 0) + payment.amount);
+  }
+  return totals;
+};
+
+const leftoverRevolvingFromCardDue = (
+  payment: DuePaymentItem,
+  msiOnDate: number,
+): number => {
+  const cardAmount = getEffectiveCardPaymentAmount(payment);
+  if (cardAmount <= 0) return 0;
+
+  // Calendario / resto al corte: monto aparte de las cuotas MSI del plan.
+  if (payment.obligationAmountSource === 'scheduled_calendar') {
+    return cardAmount;
+  }
+
+  return Math.max(0, cardAmount - msiOnDate);
+};
+
 /**
- * Unified upcoming commitments for a planner month — same dedup rule as Panel
- * financiero / Liquidez: one card obligation per wallet per due date (MSI +
- * revolving combined via getDuePaymentsForPlannerMonth); standalone MSI plan
- * rows only when not already covered by that card due line.
+ * Unified upcoming commitments for a planner month.
+ *
+ * Per card/date: sum(MSI plan cuotas in month) + leftover revolving (resto al
+ * corte). Never drop MSI because a leftover revolving row exists; never stack
+ * full statement due that already embeds those MSI with the same cuotas again.
  */
 export async function listUpcomingCommitmentsForMonth(
   ownerFilter: OwnerFilter,
@@ -51,33 +79,10 @@ export async function listUpcomingCommitmentsForMonth(
     listLoanPaymentsForPlannerMonth(ownerFilter, year, month),
   ]);
 
+  const msiByWalletDate = sumMsiByWalletDate(planPayments);
   const items: UpcomingCommitmentItem[] = [];
-  const coveredCardDue = new Set<string>();
-
-  for (const payment of [...cardDue.first, ...cardDue.second]) {
-    if (!isUnpaidCardPlannerRow(payment)) continue;
-
-    const date = payment.visibleDueDate ?? payment.statementDueDate;
-    if (!date.startsWith(monthPrefix)) continue;
-
-    const amount = getEffectiveCardPaymentAmount(payment);
-    coveredCardDue.add(cardDueKey(payment.walletId, date));
-
-    items.push({
-      date,
-      type: 'revolving',
-      name: `Pago tarjeta ${payment.walletName}`,
-      amount,
-      is_paid: false,
-      source_id: payment.walletId,
-      wallet_or_loan: payment.walletName,
-    });
-  }
 
   for (const payment of planPayments) {
-    if (coveredCardDue.has(cardDueKey(payment.walletId, payment.dueDate))) {
-      continue;
-    }
     items.push({
       date: payment.dueDate,
       type: 'msi',
@@ -85,6 +90,27 @@ export async function listUpcomingCommitmentsForMonth(
       amount: payment.amount,
       is_paid: false,
       source_id: payment.planId,
+      wallet_or_loan: payment.walletName,
+    });
+  }
+
+  for (const payment of [...cardDue.first, ...cardDue.second]) {
+    if (!isUnpaidCardPlannerRow(payment)) continue;
+
+    const date = payment.visibleDueDate ?? payment.statementDueDate;
+    if (!date.startsWith(monthPrefix)) continue;
+
+    const msiOnDate = msiByWalletDate.get(cardDueKey(payment.walletId, date)) ?? 0;
+    const leftover = leftoverRevolvingFromCardDue(payment, msiOnDate);
+    if (leftover <= 0) continue;
+
+    items.push({
+      date,
+      type: 'revolving',
+      name: `Pago tarjeta ${payment.walletName}`,
+      amount: leftover,
+      is_paid: false,
+      source_id: payment.walletId,
       wallet_or_loan: payment.walletName,
     });
   }

@@ -33,7 +33,7 @@ beforeEach(() => {
 });
 
 describe('listUpcomingCommitmentsForMonth', () => {
-  it('dedupes revolving statement due — one card line, not statement + MSI stacked', async () => {
+  it('splits full statement due into MSI cuota + leftover revolving without double-counting', async () => {
     getDuePaymentsForPlannerMonth.mockResolvedValue({
       first: [],
       second: [
@@ -47,6 +47,7 @@ describe('listUpcomingCommitmentsForMonth', () => {
           plannerStatus: 'por_pagar',
           visibleDueDate: '2026-06-20',
           statementDueDate: '2026-06-20',
+          obligationAmountSource: 'ledger',
           plannedPayment: null,
           paymentsAppliedToStatement: 0,
         },
@@ -68,14 +69,76 @@ describe('listUpcomingCommitmentsForMonth', () => {
 
     const result = await listUpcomingCommitmentsForMonth(ownerFilter, 2026, 6);
 
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]).toMatchObject({
-      type: 'revolving',
-      amount: 1500,
-      date: '2026-06-20',
-      wallet_or_loan: 'Tarjeta A',
-    });
+    expect(result.items).toHaveLength(2);
+    expect(result.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'msi',
+          amount: 500,
+          date: '2026-06-20',
+        }),
+        expect.objectContaining({
+          type: 'revolving',
+          amount: 1000,
+          date: '2026-06-20',
+        }),
+      ]),
+    );
     expect(result.period_total).toBe(1500);
+  });
+
+  it('includes leftover revolving scheduled payment AND MSI cuota on the same due date', async () => {
+    getDuePaymentsForPlannerMonth.mockResolvedValue({
+      first: [],
+      second: [
+        {
+          walletId: 20,
+          walletName: 'Tarjeta departamental',
+          walletType: 'DEPARTMENT_STORE_CARD',
+          nextDuePayment: 180,
+          effectiveAmount: 180,
+          remainingPlannerAmount: 180,
+          plannerStatus: 'por_pagar',
+          visibleDueDate: '2026-09-05',
+          statementDueDate: '2026-09-05',
+          obligationAmountSource: 'scheduled_calendar',
+          plannedPayment: null,
+          paymentsAppliedToStatement: 0,
+        },
+      ],
+    });
+    listInstallmentPlanPaymentsForPlannerMonth.mockResolvedValue([
+      {
+        id: 701,
+        planId: 70,
+        planName: 'Muebles MSI',
+        walletId: 20,
+        walletName: 'Tarjeta departamental',
+        dueDate: '2026-09-05',
+        amount: 650,
+        sequence: 4,
+        status: 'SCHEDULED',
+      },
+    ]);
+
+    const result = await listUpcomingCommitmentsForMonth(ownerFilter, 2026, 9);
+
+    expect(result.items).toHaveLength(2);
+    expect(result.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'msi',
+          amount: 650,
+          date: '2026-09-05',
+        }),
+        expect.objectContaining({
+          type: 'revolving',
+          amount: 180,
+          date: '2026-09-05',
+        }),
+      ]),
+    );
+    expect(result.period_total).toBe(830);
   });
 
   it('includes MSI plan cuota in a future month when card due does not cover that date', async () => {
@@ -90,20 +153,20 @@ describe('listUpcomingCommitmentsForMonth', () => {
         planName: 'Laptop MSI',
         walletId: 11,
         walletName: 'Tarjeta B',
-        dueDate: '2026-08-17',
+        dueDate: '2026-10-17',
         amount: 300,
         sequence: 3,
         status: 'SCHEDULED',
       },
     ]);
 
-    const result = await listUpcomingCommitmentsForMonth(ownerFilter, 2026, 8);
+    const result = await listUpcomingCommitmentsForMonth(ownerFilter, 2026, 10);
 
     expect(result.items).toEqual([
       expect.objectContaining({
         type: 'msi',
         amount: 300,
-        date: '2026-08-17',
+        date: '2026-10-17',
         name: 'Laptop MSI',
       }),
     ]);
@@ -123,6 +186,7 @@ describe('listUpcomingCommitmentsForMonth', () => {
           plannerStatus: 'por_pagar',
           visibleDueDate: '2026-07-05',
           statementDueDate: '2026-07-05',
+          obligationAmountSource: 'ledger',
           plannedPayment: null,
           paymentsAppliedToStatement: 0,
         },
