@@ -525,6 +525,11 @@ export function registerCreditCardTools(server: McpServer) {
 
           const inRange = (dateYmd: string) => dateYmd >= from! && dateYmd <= to!;
 
+          const [scheduledPayments, installmentPlans] = await Promise.all([
+            listScheduledPaymentsForCard(args.card_id, agent.ownerFilter),
+            listInstallmentPlansForCard(args.card_id, agent.ownerFilter),
+          ]);
+
           const purchaseMap = new Map<number, (typeof statement.statement_purchases)[number]>();
           for (const purchase of [
             ...statement.statement_purchases,
@@ -553,6 +558,33 @@ export function registerCreditCardTools(server: McpServer) {
                 description: payment.note ?? `Pago ${payment.source_wallet_name}`,
                 amount: payment.amount,
               })),
+            ...scheduledPayments
+              .filter(
+                (row) =>
+                  row.status === 'SCHEDULED' && inRange(row.dueDate.slice(0, 10)),
+              )
+              .map((row) => ({
+                kind: 'scheduled_payment' as const,
+                id: row.id,
+                date: row.dueDate.slice(0, 10),
+                description: row.label ?? 'Cuota programada',
+                amount: row.amount,
+              })),
+            ...installmentPlans.flatMap((plan) =>
+              plan.payments
+                .filter(
+                  (payment) =>
+                    payment.status === 'SCHEDULED' &&
+                    inRange(payment.dueDate.slice(0, 10)),
+                )
+                .map((payment) => ({
+                  kind: 'installment' as const,
+                  id: payment.id,
+                  date: payment.dueDate.slice(0, 10),
+                  description: `${plan.name} (${payment.sequence}/${plan.totalInstallments})`,
+                  amount: payment.amount,
+                })),
+            ),
           ].sort((a, b) => a.date.localeCompare(b.date));
 
           return {

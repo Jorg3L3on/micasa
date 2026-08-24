@@ -14,7 +14,10 @@ const handler = createMcpHandler(
     registerMcpTools(server);
   },
   {
-    serverInfo: { name: 'micasa', version: '1.1.0' },
+    serverInfo: { name: 'micasa', version: '1.2.0' },
+    capabilities: {
+      tools: { listChanged: true },
+    },
     instructions:
       'Conector de MiCasa (finanzas del hogar). Llama list_houses primero para descubrir ownerType/ownerId; todas las demás herramientas los requieren. Los montos están en MXN.',
   },

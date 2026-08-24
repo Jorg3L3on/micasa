@@ -197,7 +197,7 @@ export function registerExpenseTools(server: McpServer) {
           ...(categoryId != null ? { category_id: categoryId } : {}),
         };
 
-        const [total, expenses] = await Promise.all([
+        const [total, expenses, expensesForTotals] = await Promise.all([
           prisma.expense.count({ where }),
           prisma.expense.findMany({
             where,
@@ -209,10 +209,33 @@ export function registerExpenseTools(server: McpServer) {
             skip: args.offset,
             take: args.limit,
           }),
+          prisma.expense.findMany({
+            where,
+            select: {
+              amount: true,
+              wallet: { select: { name: true } },
+              category: { select: { name: true } },
+            },
+          }),
         ]);
 
         const totalsByWallet = new Map<string, number>();
         const totalsByCategory = new Map<string, number>();
+        const rangeTotalsByWallet = new Map<string, number>();
+        const rangeTotalsByCategory = new Map<string, number>();
+
+        for (const expense of expensesForTotals) {
+          const walletKey = expense.wallet?.name ?? 'Sin billetera';
+          rangeTotalsByWallet.set(
+            walletKey,
+            (rangeTotalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
+          );
+          const categoryKey = expense.category?.name ?? 'Sin categoría';
+          rangeTotalsByCategory.set(
+            categoryKey,
+            (rangeTotalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
+          );
+        }
 
         for (const expense of expenses) {
           const walletKey = expense.wallet?.name ?? 'Sin billetera';
@@ -250,6 +273,10 @@ export function registerExpenseTools(server: McpServer) {
                 ? 'debt_increase'
                 : 'balance_decrease',
           })),
+          totals: {
+            by_wallet: Object.fromEntries(rangeTotalsByWallet),
+            by_category: Object.fromEntries(rangeTotalsByCategory),
+          },
           totals_in_page: {
             by_wallet: Object.fromEntries(totalsByWallet),
             by_category: Object.fromEntries(totalsByCategory),
