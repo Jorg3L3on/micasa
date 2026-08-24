@@ -120,7 +120,9 @@ model User {
   transfers   Transfer[]
 
   // Agent connectors (MCP)
-  apiKeys ApiKey[]
+  apiKeys              ApiKey[]
+  mcpOAuthGrants       McpOAuthGrant[]
+  mcpOAuthAuthCodes    McpOAuthAuthorizationCode[]
 }
 
 /**
@@ -143,6 +145,69 @@ model ApiKey {
   user User @relation(fields: [user_id], references: [id])
 
   @@index([user_id])
+}
+
+/// Dynamically registered OAuth clients for MCP connectors (RFC 7591 / CIMD).
+model McpOAuthClient {
+  id                         Int      @id @default(autoincrement())
+  client_id                  String   @unique
+  client_secret_hash         String?
+  client_name                String
+  redirect_uris              String[]
+  grant_types                String[] @default(["authorization_code", "refresh_token"])
+  response_types             String[] @default(["code"])
+  token_endpoint_auth_method String   @default("none")
+  client_uri                 String?
+  logo_uri                   String?
+  created_at                 DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  authorizationCodes McpOAuthAuthorizationCode[]
+  grants             McpOAuthGrant[]
+}
+
+/// Short-lived authorization codes (OAuth 2.1 + PKCE).
+model McpOAuthAuthorizationCode {
+  id                    Int       @id @default(autoincrement())
+  code_hash             String    @unique
+  client_id             String
+  user_id               Int
+  redirect_uri          String
+  scopes                String[]
+  code_challenge        String
+  code_challenge_method String    @default("S256")
+  resource              String
+  expires_at            DateTime
+  used_at               DateTime?
+  created_at            DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  client McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  user   User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([client_id])
+  @@index([user_id])
+}
+
+/// OAuth access/refresh grants issued after user consent (ChatGPT, etc.).
+model McpOAuthGrant {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int
+  client_id            String
+  token_hash           String
+  token_prefix         String    @unique
+  refresh_token_hash   String?   @unique
+  refresh_token_prefix String?   @unique
+  scopes               String[]
+  resource             String
+  last_used_at         DateTime?
+  expires_at           DateTime?
+  revoked_at           DateTime?
+  created_at           DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  client McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  user   User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([client_id])
 }
 
 /**

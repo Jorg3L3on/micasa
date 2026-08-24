@@ -1,6 +1,6 @@
 # MCP connector (Grok Bot / Cursor / Claude / ChatGPT)
 
-MiCasa expone un servidor [MCP](https://modelcontextprotocol.io) HTTP en `POST /api/mcp` para conectar agentes externos (Grok Bot, Cursor, Claude, ChatGPT en modo desarrollador u otro cliente MCP con soporte de Streamable HTTP + Bearer auth). Las tools llaman directamente a los services del dominio (`credit-card.service`, `loan.service`, …) — la UI y las rutas `/api/*` no cambian.
+MiCasa expone un servidor [MCP](https://modelcontextprotocol.io) HTTP en `POST /api/mcp` para conectar agentes externos (Grok Bot, Cursor, Claude, ChatGPT u otro cliente MCP con soporte de Streamable HTTP). Las tools llaman directamente a los services del dominio (`credit-card.service`, `loan.service`, …) — la UI y las rutas `/api/*` no cambian.
 
 ## URL del conector
 
@@ -13,17 +13,48 @@ El endpoint responde `OPTIONS` con CORS abierto (`Authorization`, `Content-Type`
 
 ## Autenticación
 
-La cookie de NextAuth no sirve para conectores; se usa un **token de agente** (`micasa_…`) enviado como `Authorization: Bearer`. El token identifica a un usuario de MiCasa; solo se guarda su hash SHA-256 (tabla `ApiKey`) — el token tiene 256 bits de entropía, así que la verificación es sub-milisegundo en cada tool call sin sacrificar seguridad. Las llaves creadas antes del cambio (hash bcrypt) siguen funcionando y se migran solas al nuevo formato en su siguiente uso.
+La cookie de NextAuth **no** sirve para conectores MCP. Hay **dos caminos** compatibles:
 
-### Crear un token (UI — recomendado)
+| Camino | Clientes típicos | Cómo se obtiene |
+|---|---|---|
+| **Bearer `micasa_…`** | Grok Bot, Cursor, Claude (header manual) | Ajustes → Conexiones → Nueva conexión |
+| **OAuth 2.1** | ChatGPT (conector estándar / Developer Mode con OAuth) | Login MiCasa en pantalla de consentimiento; DCR automático |
+
+Ambos identifican al **mismo usuario** de MiCasa y respetan scopes `read` / `write`.
+
+### OAuth (ChatGPT y clientes sin campo Token)
+
+MiCasa implementa OAuth 2.1 + PKCE para el recurso MCP:
+
+- **Protected Resource Metadata (RFC 9728):** `GET /.well-known/oauth-protected-resource` (también `…/api/mcp`).
+- **Authorization Server Metadata (RFC 8414):** `GET /.well-known/oauth-authorization-server`.
+- **Dynamic Client Registration (RFC 7591):** `POST /api/oauth/register` — ChatGPT **no** necesita un client id preconfigurado.
+- **Client ID Metadata Documents (CIMD):** soportado cuando `client_id` es una URL HTTPS con metadata JSON.
+- **Flujo:** authorization code + PKCE (`S256`) + parámetro `resource` (RFC 8707) apuntando a la URL del MCP.
+- **Access token:** prefijo `micasa_oauth_…`, enviado como `Authorization: Bearer` en `/api/mcp`.
+- **Revocación:** Ajustes → Conexiones → sección **Conexiones OAuth**.
+
+#### Conectar ChatGPT (OAuth)
+
+1. En ChatGPT: **Settings → Connectors → Developer Mode** (activar).
+2. **Add connector** → URL del servidor MCP (`https://…/api/mcp`).
+3. **Autenticación: OAuth** — deja client id / secret vacíos; ChatGPT usa DCR contra `/api/oauth/register`.
+4. Al conectar, inicia sesión en MiCasa y aprueba en la pantalla de consentimiento.
+5. Prueba con la tool `list_houses`.
+
+### Bearer token (Grok / Cursor / Claude)
+
+Se usa un **token de agente** (`micasa_…`) enviado como `Authorization: Bearer`. El token identifica a un usuario de MiCasa; solo se guarda su hash SHA-256 (tabla `ApiKey`) — el token tiene 256 bits de entropía, así que la verificación es sub-milisegundo en cada tool call sin sacrificar seguridad. Las llaves creadas antes del cambio (hash bcrypt) siguen funcionando y se migran solas al nuevo formato en su siguiente uso.
+
+#### Crear un token (UI — recomendado)
 
 1. Inicia sesión y ve a **Ajustes → Conexiones** (`/settings/connections`).
 2. Pulsa **Nueva conexión**, ponle nombre (p. ej. "Grok Bot"), activa **Permitir escritura** solo si el agente debe registrar compras/pagos/ajustes y elige una **expiración** opcional (30/90/365 días); al vencer, el token deja de funcionar solo.
 3. Copia el token que se muestra — **solo se muestra una vez**.
 
-Desde la misma página puedes **renombrar** y **revocar** conexiones (la revocación es inmediata: el Bearer deja de funcionar en la siguiente llamada) y ver el último uso de cada llave.
+Desde la misma página puedes **renombrar** y **revocar** conexiones Bearer (la revocación es inmediata) y **revocar conexiones OAuth** en la sección dedicada.
 
-### Crear un token (script — ops/emergencia)
+#### Crear un token (script — ops/emergencia)
 
 ```bash
 node scripts/mint-agent-token.mjs --email tu@correo.com --name "Grok Bot" --scopes read,write
@@ -75,7 +106,7 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 | `list_budgets` | Presupuestos activos: tope, gastado, restante |
 | `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app) |
 
-### Reglas de lectura (v1.2.0)
+### Reglas de lectura (v1.3.0)
 
 Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
@@ -106,7 +137,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **1.2.0** (bump desde 1.1.0) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **1.3.0** (OAuth 2.1 + DCR) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 
@@ -134,11 +165,11 @@ Fuera de v2: pago de tarjeta descontando billetera MiCasa (modo `wallet`), impor
 
 ## Límites de uso
 
-Cada llave tiene un límite de **120 llamadas de tool por minuto** (policy `mcp:tool`). Al excederlo, la tool responde con un error que indica en cuántos segundos reintentar. Crear llaves también está limitado (10 por hora por usuario).
+Cada llave Bearer o grant OAuth tiene un límite de **120 llamadas de tool por minuto** (policy `mcp:tool`). Al excederlo, la tool responde con un error que indica en cuántos segundos reintentar. Crear llaves también está limitado (10 por hora por usuario).
 
 ## Conectar el cliente
 
-Todos los clientes usan la misma URL y el token como Bearer. La página **Ajustes → Conexiones** muestra estos snippets con botón de copiar.
+Todos los clientes usan la misma URL del servidor MCP. La página **Ajustes → Conexiones** muestra snippets con botón de copiar.
 
 **Grok Bot / conector MCP remoto**: agrega un conector tipo Streamable HTTP con la URL de producción y pega el token como Bearer (una sola vez).
 
@@ -157,13 +188,26 @@ Todos los clientes usan la misma URL y el token como Bearer. La página **Ajuste
 
 **Claude (web o Desktop)**: Settings → Connectors → *Add custom connector*, URL del servidor + header `Authorization: Bearer micasa_...`.
 
-**ChatGPT (modo desarrollador)**: activa *Developer Mode* en Settings → Connectors y crea un conector MCP con la URL y el token como access token. Nota: los conectores estándar de ChatGPT (sin developer mode) requieren OAuth 2.1, que está fuera de alcance de v1/v2 (ver abajo).
+**ChatGPT (OAuth — recomendado)**: Settings → Connectors → Developer Mode → Add connector → URL `https://…/api/mcp` → Autenticación **OAuth**. No hace falta client id: el registro dinámico (DCR) crea el cliente al conectar. Tras login MiCasa, prueba `list_houses`.
 
-## Fuera de alcance (v3, documentado)
+**ChatGPT (token manual)**: alternativa en Developer Mode con access token Bearer `micasa_…` de Ajustes → Conexiones.
 
-- **OAuth 2.1 + `/.well-known/oauth-protected-resource`** — para clientes que no aceptan Bearer manual (p. ej. conectores ChatGPT estándar).
+## Endpoints OAuth (referencia)
+
+| Endpoint | Método | Uso |
+|---|---|---|
+| `/.well-known/oauth-protected-resource` | GET | Descubrimiento del recurso MCP |
+| `/.well-known/oauth-authorization-server` | GET | Metadata del authorization server |
+| `/api/oauth/register` | POST | Dynamic Client Registration (RFC 7591) |
+| `/api/oauth/authorize` | GET | Inicio authorization code + PKCE |
+| `/api/oauth/token` | POST | Intercambio code → access token |
+| `/api/oauth/revoke` | POST | Revocación de token |
+| `/oauth/consent` | GET | Pantalla de consentimiento (NextAuth) |
+
+## Fuera de alcance (documentado)
+
 - MCP resources/prompts.
 
 ## Costos
 
-El endpoint es una función normal de Vercel dentro del mismo proyecto (handler stateless, sin Redis ni sesiones); no agrega servicios ni costos al plan gratuito. El rate limit usa memoria del proceso (o Upstash si ya está configurado por env vars, opcional).
+El endpoint es una función normal de Vercel dentro del mismo proyecto (handler stateless, sin Redis ni sesiones OAuth persistentes en memoria); no agrega servicios ni costos al plan gratuito. El rate limit usa memoria del proceso (o Upstash si ya está configurado por env vars, opcional).

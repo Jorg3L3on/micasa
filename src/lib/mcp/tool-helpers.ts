@@ -52,20 +52,20 @@ const getAuthorizationHeader = (ctx: McpToolContext): string | null =>
   ctx.http?.req?.headers.get('authorization') ?? null;
 
 /**
- * Per-key rate limit (policy `mcp:tool`). The api key id is the identity so
- * one runaway agent cannot starve other connections of the same user.
+ * Per-credential rate limit (policy `mcp:tool`). Api key ids are positive;
+ * OAuth grant ids are negated so identities never collide.
  * Returns an error result when limited, otherwise null.
  */
 const enforceToolRateLimit = async (
   ctx: McpToolContext,
-  apiKeyId: number,
+  rateLimitIdentity: number,
 ): Promise<McpTextResult | null> => {
   const request = ctx.http?.req;
   if (!request) return null;
   const { limited, retryAfterSeconds } = await checkRateLimit(
     request,
     'mcp:tool',
-    apiKeyId,
+    rateLimitIdentity,
   );
   if (!limited) return null;
   return errorResult(
@@ -109,7 +109,7 @@ export async function runAgentTool(
     );
     assertScope(agent, scope);
 
-    const limitedResult = await enforceToolRateLimit(ctx, agent.apiKeyId);
+    const limitedResult = await enforceToolRateLimit(ctx, agent.rateLimitIdentity);
     if (limitedResult) return limitedResult;
 
     const data = await fn(agent);
@@ -118,7 +118,8 @@ export async function runAgentTool(
       tool: toolName,
       owner_type: agent.ownerType,
       owner_id: agent.ownerId,
-      api_key_id: agent.apiKeyId,
+      api_key_id: agent.apiKeyId ?? null,
+      oauth_grant_id: agent.oauthGrantId ?? null,
       scope,
     });
 
@@ -147,7 +148,7 @@ export async function runAgentUserTool(
     const token = parseBearerToken(getAuthorizationHeader(ctx));
     const user = await resolveAgentUser(token);
 
-    const limitedResult = await enforceToolRateLimit(ctx, user.apiKeyId);
+    const limitedResult = await enforceToolRateLimit(ctx, user.rateLimitIdentity);
     if (limitedResult) return limitedResult;
 
     const data = await fn(user);
@@ -155,7 +156,8 @@ export async function runAgentUserTool(
     logFinanceEvent('info', 'mcp.tool.invoked', {
       tool: toolName,
       user_id: user.userId,
-      api_key_id: user.apiKeyId,
+      api_key_id: user.apiKeyId ?? null,
+      oauth_grant_id: user.oauthGrantId ?? null,
     });
 
     return jsonResult(data);
