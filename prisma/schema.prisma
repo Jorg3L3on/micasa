@@ -136,6 +136,7 @@ model ApiKey {
   key_prefix   String    @unique
   scopes       String[]  @default(["read"])
   last_used_at DateTime?
+  expires_at   DateTime?
   revoked_at   DateTime?
   created_at   DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
