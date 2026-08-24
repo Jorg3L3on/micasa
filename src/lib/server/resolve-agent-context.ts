@@ -1,15 +1,18 @@
-import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import {
+  AGENT_TOKEN_LOOKUP_LENGTH,
+  AGENT_TOKEN_PREFIX,
+  hashAgentToken,
+  isLegacyAgentTokenHash,
+  verifyAgentToken,
+} from '@/lib/server/agent-token';
 import type {
   OwnerContextRole,
   OwnerContextSuccess,
   OwnerFilter,
 } from '@/lib/server/get-owner-context';
 
-export const AGENT_TOKEN_PREFIX = 'micasa_';
-
-/** Chars of the token stored in plaintext for O(1) lookup (includes "micasa_"). */
-export const AGENT_TOKEN_LOOKUP_LENGTH = 15;
+export { AGENT_TOKEN_LOOKUP_LENGTH, AGENT_TOKEN_PREFIX };
 
 export type AgentScope = 'read' | 'write';
 
@@ -71,7 +74,11 @@ export async function resolveAgentUser(token: string): Promise<{
     throw unauthorized();
   }
 
-  const matches = await compare(token, apiKey.key_hash);
+  if (apiKey.expires_at != null && apiKey.expires_at.getTime() <= Date.now()) {
+    throw unauthorized('Token de agente expirado');
+  }
+
+  const matches = await verifyAgentToken(token, apiKey.key_hash);
   if (!matches) {
     throw unauthorized();
   }
@@ -80,11 +87,17 @@ export async function resolveAgentUser(token: string): Promise<{
     throw forbidden('Usuario inactivo');
   }
 
-  // Best-effort usage timestamp; never block the tool call on it.
+  // Best-effort usage timestamp (plus opportunistic re-hash of legacy bcrypt
+  // keys to the fast SHA-256 format); never block the tool call on it.
   prisma.apiKey
     .update({
       where: { id: apiKey.id },
-      data: { last_used_at: new Date() },
+      data: {
+        last_used_at: new Date(),
+        ...(isLegacyAgentTokenHash(apiKey.key_hash)
+          ? { key_hash: hashAgentToken(token) }
+          : {}),
+      },
     })
     .catch(() => undefined);
 

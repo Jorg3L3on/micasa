@@ -6,13 +6,13 @@
  *   node scripts/mint-agent-token.mjs --email you@example.com --name "Grok Bot" [--scopes read,write]
  *   node scripts/mint-agent-token.mjs --revoke <key_prefix>
  *
- * The plaintext token is printed ONCE; only its bcrypt hash is stored.
+ * The plaintext token is printed ONCE; only its SHA-256 hash is stored
+ * (format `sha256:<hex>`, in sync with src/lib/server/agent-token.ts).
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import bcrypt from 'bcryptjs';
 import pg from 'pg';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -106,7 +106,7 @@ try {
 
   const token = `${TOKEN_PREFIX}${crypto.randomBytes(32).toString('base64url')}`;
   const keyPrefix = token.slice(0, LOOKUP_LENGTH);
-  const keyHash = await bcrypt.hash(token, 10);
+  const keyHash = `sha256:${crypto.createHash('sha256').update(token).digest('hex')}`;
 
   await client.query(
     'INSERT INTO "ApiKey" (user_id, name, key_hash, key_prefix, scopes) VALUES ($1, $2, $3, $4, $5)',

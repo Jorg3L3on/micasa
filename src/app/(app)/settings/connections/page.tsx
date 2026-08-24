@@ -26,6 +26,7 @@ export default async function ConnectionsPage() {
       key_prefix: true,
       scopes: true,
       last_used_at: true,
+      expires_at: true,
       revoked_at: true,
       created_at: true,
     },
@@ -38,6 +39,7 @@ export default async function ConnectionsPage() {
     key_prefix: key.key_prefix,
     scopes: key.scopes,
     last_used_at: key.last_used_at?.toISOString() ?? null,
+    expires_at: key.expires_at?.toISOString() ?? null,
     revoked_at: key.revoked_at?.toISOString() ?? null,
     created_at: key.created_at.toISOString(),
   }));

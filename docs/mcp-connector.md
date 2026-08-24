@@ -13,12 +13,12 @@ El endpoint responde `OPTIONS` con CORS abierto (`Authorization`, `Content-Type`
 
 ## Autenticación
 
-La cookie de NextAuth no sirve para conectores; se usa un **token de agente** (`micasa_…`) enviado como `Authorization: Bearer`. El token identifica a un usuario de MiCasa; solo se guarda su hash (tabla `ApiKey`).
+La cookie de NextAuth no sirve para conectores; se usa un **token de agente** (`micasa_…`) enviado como `Authorization: Bearer`. El token identifica a un usuario de MiCasa; solo se guarda su hash SHA-256 (tabla `ApiKey`) — el token tiene 256 bits de entropía, así que la verificación es sub-milisegundo en cada tool call sin sacrificar seguridad. Las llaves creadas antes del cambio (hash bcrypt) siguen funcionando y se migran solas al nuevo formato en su siguiente uso.
 
 ### Crear un token (UI — recomendado)
 
 1. Inicia sesión y ve a **Ajustes → Conexiones** (`/settings/connections`).
-2. Pulsa **Nueva conexión**, ponle nombre (p. ej. "Grok Bot") y activa **Permitir escritura** solo si el agente debe registrar compras/pagos/ajustes.
+2. Pulsa **Nueva conexión**, ponle nombre (p. ej. "Grok Bot"), activa **Permitir escritura** solo si el agente debe registrar compras/pagos/ajustes y elige una **expiración** opcional (30/90/365 días); al vencer, el token deja de funcionar solo.
 3. Copia el token que se muestra — **solo se muestra una vez**.
 
 Desde la misma página puedes **renombrar** y **revocar** conexiones (la revocación es inmediata: el Bearer deja de funcionar en la siguiente llamada) y ver el último uso de cada llave.

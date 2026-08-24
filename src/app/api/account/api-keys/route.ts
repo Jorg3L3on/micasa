@@ -12,6 +12,7 @@ const API_KEY_LIST_SELECT = {
   key_prefix: true,
   scopes: true,
   last_used_at: true,
+  expires_at: true,
   revoked_at: true,
   created_at: true,
 } as const;
@@ -22,6 +23,7 @@ const toApiKeyDto = (key: {
   key_prefix: string;
   scopes: string[];
   last_used_at: Date | null;
+  expires_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
 }) => ({
@@ -30,6 +32,7 @@ const toApiKeyDto = (key: {
   key_prefix: key.key_prefix,
   scopes: key.scopes,
   last_used_at: key.last_used_at?.toISOString() ?? null,
+  expires_at: key.expires_at?.toISOString() ?? null,
   revoked_at: key.revoked_at?.toISOString() ?? null,
   created_at: key.created_at.toISOString(),
 });
@@ -83,15 +86,20 @@ export async function POST(request: NextRequest) {
     const input = createApiKeySchema.parse(body);
 
     const { token, keyPrefix } = generateAgentToken();
-    const keyHash = await hashAgentToken(token);
+
+    const expiresAt =
+      input.expires_in_days != null
+        ? new Date(Date.now() + input.expires_in_days * 24 * 60 * 60 * 1000)
+        : null;
 
     const created = await prisma.apiKey.create({
       data: {
         user_id: userId,
         name: input.name,
-        key_hash: keyHash,
+        key_hash: hashAgentToken(token),
         key_prefix: keyPrefix,
         scopes: input.scopes,
+        expires_at: expiresAt,
       },
       select: API_KEY_LIST_SELECT,
     });

@@ -16,6 +16,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
+import { hashAgentToken } from '@/lib/server/agent-token';
 import {
   AgentAuthError,
   assertScope,
@@ -26,12 +27,14 @@ import {
 } from '@/lib/server/resolve-agent-context';
 
 const VALID_TOKEN = 'micasa_secreto-de-prueba-suficientemente-largo';
-const VALID_HASH = hashSync(VALID_TOKEN, 4);
+const VALID_HASH = hashAgentToken(VALID_TOKEN);
+const LEGACY_BCRYPT_HASH = hashSync(VALID_TOKEN, 4);
 
 const activeApiKey = {
   id: 10,
   key_hash: VALID_HASH,
   revoked_at: null,
+  expires_at: null,
   scopes: ['read', 'write'],
   user: { id: 2, active: true },
 };
@@ -96,6 +99,47 @@ describe('resolveAgentUser', () => {
       resolveAgentUser('micasa_secreto-equivocado-igual-de-largo'),
       401,
     );
+  });
+
+  it('401 cuando la llave está expirada', async () => {
+    findUniqueApiKey.mockResolvedValue({
+      ...activeApiKey,
+      expires_at: new Date(Date.now() - 1000),
+    });
+    await expectAgentAuthError(resolveAgentUser(VALID_TOKEN), 401);
+  });
+
+  it('acepta llaves con expiración futura', async () => {
+    findUniqueApiKey.mockResolvedValue({
+      ...activeApiKey,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    const result = await resolveAgentUser(VALID_TOKEN);
+    expect(result.userId).toBe(2);
+  });
+
+  it('verifica hashes bcrypt legados y los migra a sha256', async () => {
+    findUniqueApiKey.mockResolvedValue({
+      ...activeApiKey,
+      key_hash: LEGACY_BCRYPT_HASH,
+    });
+    const result = await resolveAgentUser(VALID_TOKEN);
+    expect(result.userId).toBe(2);
+    // The best-effort update re-hashes the legacy key to sha256.
+    await vi.waitFor(() => expect(updateApiKey).toHaveBeenCalled());
+    expect(updateApiKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ key_hash: VALID_HASH }),
+      }),
+    );
+  });
+
+  it('no re-escribe el hash cuando ya es sha256', async () => {
+    findUniqueApiKey.mockResolvedValue(activeApiKey);
+    await resolveAgentUser(VALID_TOKEN);
+    await vi.waitFor(() => expect(updateApiKey).toHaveBeenCalled());
+    const updateData = updateApiKey.mock.calls[0][0].data;
+    expect(updateData).not.toHaveProperty('key_hash');
   });
 
   it('403 cuando el usuario está inactivo', async () => {

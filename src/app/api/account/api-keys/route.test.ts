@@ -30,7 +30,7 @@ vi.mock('@/lib/server/agent-token', () => ({
     token: 'micasa_test-token-plaintext',
     keyPrefix: 'micasa_test-tok',
   })),
-  hashAgentToken: vi.fn(async () => 'hashed-token'),
+  hashAgentToken: vi.fn(() => 'sha256:hashed-token'),
 }));
 
 import { GET, POST } from './route';
@@ -139,6 +139,7 @@ describe('POST /api/account/api-keys', () => {
       key_prefix: 'micasa_test-tok',
       scopes: ['read', 'write'],
       last_used_at: null,
+      expires_at: null,
       revoked_at: null,
       created_at: NOW,
     });
@@ -153,14 +154,49 @@ describe('POST /api/account/api-keys', () => {
         data: expect.objectContaining({
           user_id: 7,
           name: 'Grok Bot',
-          key_hash: 'hashed-token',
+          key_hash: 'sha256:hashed-token',
           key_prefix: 'micasa_test-tok',
           scopes: ['read', 'write'],
+          expires_at: null,
         }),
       }),
     );
     const body = await response.json();
     expect(body.token).toBe('micasa_test-token-plaintext');
     expect(body).not.toHaveProperty('key_hash');
+  });
+
+  it('stores expires_at when expires_in_days is provided', async () => {
+    createApiKey.mockResolvedValue({
+      id: 6,
+      name: 'Temporal',
+      key_prefix: 'micasa_test-tok',
+      scopes: ['read'],
+      last_used_at: null,
+      expires_at: new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000),
+      revoked_at: null,
+      created_at: NOW,
+    });
+
+    const response = await POST(
+      makePostRequest({ name: 'Temporal', scopes: ['read'], expires_in_days: 30 }),
+    );
+
+    expect(response.status).toBe(201);
+    const data = createApiKey.mock.calls[0][0].data;
+    expect(data.expires_at).toBeInstanceOf(Date);
+    const expectedMs = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    expect(Math.abs(data.expires_at.getTime() - expectedMs)).toBeLessThan(60_000);
+    const body = await response.json();
+    expect(body.expires_at).toBeTruthy();
+  });
+
+  it('rejects expires_in_days above 365', async () => {
+    const response = await POST(
+      makePostRequest({ name: 'Eterna', scopes: ['read'], expires_in_days: 400 }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createApiKey).not.toHaveBeenCalled();
   });
 });

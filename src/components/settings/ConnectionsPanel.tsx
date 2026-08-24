@@ -52,6 +52,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
@@ -62,6 +69,7 @@ export type ApiKeySummary = {
   key_prefix: string;
   scopes: string[];
   last_used_at: string | null;
+  expires_at: string | null;
   revoked_at: string | null;
   created_at: string;
 };
@@ -90,6 +98,27 @@ const formatRelative = (iso: string | null): string => {
 
 const scopesLabel = (scopes: string[]): string =>
   scopes.includes('write') ? 'Lectura y escritura' : 'Lectura';
+
+const isExpired = (key: ApiKeySummary): boolean =>
+  key.expires_at != null && new Date(key.expires_at).getTime() <= Date.now();
+
+const formatExpiry = (iso: string): string => {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  const rtf = new Intl.RelativeTimeFormat('es-MX', { numeric: 'auto' });
+  for (const { unit, ms } of RELATIVE_UNITS) {
+    if (Math.abs(diffMs) >= ms) {
+      return `Expira ${rtf.format(Math.round(diffMs / ms), unit)}`;
+    }
+  }
+  return 'Expira pronto';
+};
+
+const EXPIRY_OPTIONS: Array<{ value: string; label: string; days: number | null }> = [
+  { value: 'never', label: 'Sin expiración', days: null },
+  { value: '30', label: '30 días', days: 30 },
+  { value: '90', label: '90 días', days: 90 },
+  { value: '365', label: '1 año', days: 365 },
+];
 
 const copyToClipboard = async (value: string, message: string) => {
   try {
@@ -209,6 +238,7 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [allowWrite, setAllowWrite] = useState(false);
+  const [expiryOption, setExpiryOption] = useState('never');
   const [creating, setCreating] = useState(false);
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
@@ -228,6 +258,7 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
   const handleOpenCreate = () => {
     setNewName('');
     setAllowWrite(false);
+    setExpiryOption('never');
     setCreatedToken(null);
     setTokenCopied(false);
     setCreateOpen(true);
@@ -251,6 +282,9 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
 
     try {
       setCreating(true);
+      const expiresInDays =
+        EXPIRY_OPTIONS.find((option) => option.value === expiryOption)?.days ??
+        null;
       const created = await clientFetchFromApi<CreatedKeyResponse>(
         '/api/account/api-keys',
         {
@@ -258,6 +292,7 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
           body: JSON.stringify({
             name,
             scopes: allowWrite ? ['read', 'write'] : ['read'],
+            expires_in_days: expiresInDays,
           }),
         },
       );
@@ -404,6 +439,33 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
         onCheckedChange={setAllowWrite}
         disabled={creating}
       />
+      <div className="space-y-1.5">
+        <label
+          htmlFor="connection-expiry"
+          className="text-sm font-medium text-foreground"
+        >
+          Expiración
+        </label>
+        <Select
+          value={expiryOption}
+          onValueChange={setExpiryOption}
+          disabled={creating}
+        >
+          <SelectTrigger id="connection-expiry" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EXPIRY_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          Al expirar, el token deja de funcionar automáticamente.
+        </p>
+      </div>
       <Button
         type="button"
         onClick={handleCreate}
@@ -479,18 +541,20 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
             <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60">
               {keys.map((key) => {
                 const revoked = key.revoked_at != null;
+                const expired = !revoked && isExpired(key);
+                const inactive = revoked || expired;
                 return (
                   <li
                     key={key.id}
                     className={cn(
                       'flex items-center gap-3 bg-card px-3 py-3',
-                      revoked && 'opacity-55',
+                      inactive && 'opacity-55',
                     )}
                   >
                     <span
                       className={cn(
                         'flex size-9 shrink-0 items-center justify-center rounded-xl',
-                        revoked
+                        inactive
                           ? 'bg-muted text-muted-foreground'
                           : 'bg-sky-500/15 text-sky-500',
                       )}
@@ -512,6 +576,13 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
                           >
                             Revocada
                           </Badge>
+                        ) : expired ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/40 text-[10px] text-amber-500"
+                          >
+                            Expirada
+                          </Badge>
                         ) : (
                           <Badge
                             variant="outline"
@@ -524,7 +595,12 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         <span className="font-mono">{key.key_prefix}…</span>
                         {' · '}
-                        {revoked ? 'Ya no funciona' : formatRelative(key.last_used_at)}
+                        {inactive
+                          ? 'Ya no funciona'
+                          : formatRelative(key.last_used_at)}
+                        {!inactive && key.expires_at
+                          ? ` · ${formatExpiry(key.expires_at)}`
+                          : ''}
                       </p>
                     </div>
                     {!revoked && (
