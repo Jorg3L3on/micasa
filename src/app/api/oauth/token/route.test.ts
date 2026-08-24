@@ -49,7 +49,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
   it('intercambia authorization code por access token', async () => {
     exchangeAuthorizationCodeMock.mockResolvedValue({
       access_token: 'micasa_oauth_access-token-de-prueba',
-      token_type: 'Bearer',
+      token_type: 'bearer',
       expires_in: 7776000,
       refresh_token: 'micasa_refresh_refresh-token-de-prueba',
       scope: 'read write',
@@ -75,7 +75,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
     expect(response.status).toBe(200);
     const json = await response.json();
     expect(json.access_token).toBe('micasa_oauth_access-token-de-prueba');
-    expect(json.token_type).toBe('Bearer');
+    expect(json.token_type).toBe('bearer');
     expect(exchangeAuthorizationCodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: CLIENT_ID,
@@ -93,7 +93,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
     verifyClientSecretMock.mockReturnValue(true);
     exchangeAuthorizationCodeMock.mockResolvedValue({
       access_token: 'micasa_oauth_access-token-de-prueba',
-      token_type: 'Bearer',
+      token_type: 'bearer',
       expires_in: 7776000,
       refresh_token: 'micasa_refresh_refresh-token-de-prueba',
       scope: 'read write',
@@ -120,6 +120,68 @@ describe('POST /api/oauth/token (PKCE)', () => {
     expect(verifyClientSecretMock).toHaveBeenCalledWith(
       expect.objectContaining({ token_endpoint_auth_method: 'private_key_jwt' }),
       undefined,
+    );
+  });
+
+  it('invalid_request when code_verifier is missing', async () => {
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: 'micasa_code_uno-solo-uso',
+      redirect_uri: 'https://chatgpt.com/connector/oauth/chatgpt',
+      client_id: 'https://chatgpt.com/oauth/client.json',
+      resource: 'http://localhost:3000/mcp',
+    });
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error).toBe('invalid_request');
+    expect(json.error_description).toContain('code_verifier');
+    expect(exchangeAuthorizationCodeMock).not.toHaveBeenCalled();
+  });
+
+  it('ignores private_key_jwt client_assertion fields on form POST', async () => {
+    exchangeAuthorizationCodeMock.mockResolvedValue({
+      access_token: 'micasa_oauth_access-token-de-prueba',
+      token_type: 'bearer',
+      expires_in: 7776000,
+      refresh_token: 'micasa_refresh_refresh-token-de-prueba',
+      scope: 'read write',
+    });
+
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: 'micasa_code_uno-solo-uso',
+      redirect_uri: 'https://chatgpt.com/connector/oauth/chatgpt',
+      client_id: 'https://chatgpt.com/oauth/client.json',
+      code_verifier: VERIFIER,
+      resource: 'http://localhost:3000/mcp',
+      client_assertion: 'eyJ.fixture.jwt',
+      client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+    });
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(200);
+    expect(exchangeAuthorizationCodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 'https://chatgpt.com/oauth/client.json',
+        redirectUri: 'https://chatgpt.com/connector/oauth/chatgpt',
+        resource: 'http://localhost:3000/mcp',
+      }),
     );
   });
 

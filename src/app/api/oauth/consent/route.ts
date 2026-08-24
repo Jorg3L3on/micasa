@@ -5,10 +5,14 @@ import {
   assertRedirectUriAllowed,
   resolveOAuthClient,
 } from '@/lib/server/mcp-oauth/clients';
-import { getMcpResourceUrl, parseScopeParam } from '@/lib/server/mcp-oauth/config';
+import {
+  getMcpResourceUrl,
+  normalizeMcpResourceUrl,
+  parseScopeParam,
+} from '@/lib/server/mcp-oauth/config';
 import { createAuthorizationCode } from '@/lib/server/mcp-oauth/grants';
 
-const consentSchema = z.object({
+const consentFieldsSchema = z.object({
   client_id: z.string().min(1),
   redirect_uri: z.string().url(),
   state: z.string().optional(),
@@ -18,6 +22,33 @@ const consentSchema = z.object({
   resource: z.string().url().optional(),
   allow_write: z.enum(['true', 'false']).optional(),
 });
+
+const parseConsentBody = async (
+  request: NextRequest,
+): Promise<{ fields: Record<string, string>; formPost: boolean }> => {
+  const contentType = request.headers.get('content-type') ?? '';
+  if (
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data')
+  ) {
+    const form = await request.formData();
+    const fields = Object.fromEntries(form.entries()) as Record<string, string>;
+    return { fields, formPost: true };
+  }
+  const json = (await request.json()) as Record<string, string>;
+  return { fields: json, formPost: false };
+};
+
+const buildOAuthCallbackUrl = (input: {
+  redirectUri: string;
+  code: string;
+  state?: string;
+}): URL => {
+  const redirect = new URL(input.redirectUri);
+  redirect.searchParams.set('code', input.code);
+  if (input.state) redirect.searchParams.set('state', input.state);
+  return redirect;
+};
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -31,8 +62,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const input = consentSchema.parse(body);
+    const { fields, formPost } = await parseConsentBody(request);
+    const input = consentFieldsSchema.parse(fields);
     const client = await resolveOAuthClient(input.client_id);
     if (!client) {
       return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 });
@@ -46,6 +77,11 @@ export async function POST(request: NextRequest) {
     }
     if (!scopes.includes('read')) scopes = ['read', ...scopes];
 
+    const resource = normalizeMcpResourceUrl(
+      input.resource ?? getMcpResourceUrl(request),
+      request,
+    );
+
     const code = await createAuthorizationCode({
       clientId: input.client_id,
       userId,
@@ -53,12 +89,18 @@ export async function POST(request: NextRequest) {
       scopes,
       codeChallenge: input.code_challenge,
       codeChallengeMethod: input.code_challenge_method,
-      resource: input.resource ?? getMcpResourceUrl(request),
+      resource,
     });
 
-    const redirect = new URL(input.redirect_uri);
-    redirect.searchParams.set('code', code);
-    if (input.state) redirect.searchParams.set('state', input.state);
+    const redirect = buildOAuthCallbackUrl({
+      redirectUri: input.redirect_uri,
+      code,
+      state: input.state,
+    });
+
+    if (formPost) {
+      return NextResponse.redirect(redirect, { status: 302 });
+    }
 
     return NextResponse.json({ redirect_to: redirect.toString() });
   } catch (error) {

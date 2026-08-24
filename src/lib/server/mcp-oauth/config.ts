@@ -4,6 +4,9 @@ export const MCP_OAUTH_SCOPES: AgentScope[] = ['read', 'write'];
 
 export const MCP_RESOURCE_PATH = '/api/mcp';
 
+/** ChatGPT may use origin + /mcp (RFC 9728 path-aware discovery) instead of /api/mcp. */
+export const MCP_RESOURCE_ALIAS_PATH = '/mcp';
+
 export const OAUTH_ACCESS_TOKEN_PREFIX = 'micasa_oauth_';
 
 export const OAUTH_REFRESH_TOKEN_PREFIX = 'micasa_refresh_';
@@ -38,6 +41,40 @@ export const getOAuthIssuer = (request?: Request): string => {
 
 export const getMcpResourceUrl = (request?: Request): string =>
   `${getOAuthIssuer(request)}${MCP_RESOURCE_PATH}`;
+
+const normalizePath = (pathname: string): string => {
+  const trimmed = pathname.replace(/\/$/, '');
+  return trimmed.length > 0 ? trimmed : '/';
+};
+
+/** Canonical MCP resource URL (always …/api/mcp) for storage and RFC 8707 checks. */
+export const normalizeMcpResourceUrl = (
+  resource: string,
+  request?: Request,
+): string => {
+  try {
+    const url = new URL(resource);
+    const issuer = new URL(getOAuthIssuer(request));
+    const path = normalizePath(url.pathname);
+    if (
+      url.origin === issuer.origin &&
+      (path === MCP_RESOURCE_PATH || path === MCP_RESOURCE_ALIAS_PATH)
+    ) {
+      return `${issuer.origin}${MCP_RESOURCE_PATH}`;
+    }
+    return resource;
+  } catch {
+    return resource;
+  }
+};
+
+/** Same-origin /mcp and /api/mcp refer to this MCP connector (RFC 8707 alias). */
+export const mcpResourcesMatch = (
+  a: string,
+  b: string,
+  request?: Request,
+): boolean =>
+  normalizeMcpResourceUrl(a, request) === normalizeMcpResourceUrl(b, request);
 
 export const oauthPath = (request: Request | undefined, path: string): string =>
   `${getOAuthIssuer(request)}${path}`;
