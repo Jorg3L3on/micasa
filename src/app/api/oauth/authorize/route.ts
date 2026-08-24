@@ -6,6 +6,7 @@ import {
 } from '@/lib/server/mcp-oauth/clients';
 import {
   getMcpResourceUrl,
+  normalizeMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
 import { oauthErrorResponse, oauthOptionsResponse, withOAuthCors } from '@/lib/server/mcp-oauth/cors';
 
@@ -72,7 +73,10 @@ export async function GET(request: NextRequest) {
   for (const [key, value] of url.searchParams.entries()) {
     consentUrl.searchParams.set(key, value);
   }
-  const resource = url.searchParams.get('resource') ?? getMcpResourceUrl(request);
+  const resource = normalizeMcpResourceUrl(
+    url.searchParams.get('resource') ?? getMcpResourceUrl(request),
+    request,
+  );
   consentUrl.searchParams.set('resource', resource);
 
   return withOAuthCors(Response.redirect(consentUrl));

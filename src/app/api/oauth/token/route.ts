@@ -5,16 +5,15 @@ import {
   resolveOAuthClient,
   verifyClientSecret,
 } from '@/lib/server/mcp-oauth/clients';
-import { getMcpResourceUrl } from '@/lib/server/mcp-oauth/config';
-import {
-  exchangeAuthorizationCode,
-  refreshOAuthGrant,
-} from '@/lib/server/mcp-oauth/grants';
 import {
   oauthErrorResponse,
   oauthJsonResponse,
   oauthOptionsResponse,
 } from '@/lib/server/mcp-oauth/cors';
+import {
+  exchangeAuthorizationCode,
+  refreshOAuthGrant,
+} from '@/lib/server/mcp-oauth/grants';
 
 const parseFormBody = async (request: NextRequest) => {
   const contentType = request.headers.get('content-type') ?? '';
@@ -25,24 +24,37 @@ const parseFormBody = async (request: NextRequest) => {
   return Object.fromEntries(form.entries()) as Record<string, string>;
 };
 
-const tokenRequestSchema = z.discriminatedUnion('grant_type', [
-  z.object({
+const authorizationCodeGrantSchema = z
+  .object({
     grant_type: z.literal('authorization_code'),
     code: z.string().min(1),
     redirect_uri: z.string().url(),
     client_id: z.string().min(1),
     client_secret: z.string().optional(),
-    code_verifier: z.string().min(43).max(128),
+    code_verifier: z.string().optional(),
     resource: z.string().url().optional(),
-  }),
-  z.object({
+    client_assertion: z.string().optional(),
+    client_assertion_type: z.string().optional(),
+  })
+  .passthrough();
+
+const refreshTokenGrantSchema = z
+  .object({
     grant_type: z.literal('refresh_token'),
     refresh_token: z.string().min(1),
     client_id: z.string().min(1),
     client_secret: z.string().optional(),
     resource: z.string().url().optional(),
-  }),
+  })
+  .passthrough();
+
+const tokenRequestSchema = z.discriminatedUnion('grant_type', [
+  authorizationCodeGrantSchema,
+  refreshTokenGrantSchema,
 ]);
+
+const isValidPkceVerifier = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.length >= 43 && value.length <= 128;
 
 export function OPTIONS() {
   return oauthOptionsResponse();
@@ -60,9 +72,16 @@ export async function POST(request: NextRequest) {
       return oauthErrorResponse('invalid_client', undefined, 401);
     }
 
-    const resource = input.resource ?? getMcpResourceUrl(request);
+    const resourceParam = input.resource?.trim() || null;
 
     if (input.grant_type === 'authorization_code') {
+      if (!isValidPkceVerifier(input.code_verifier)) {
+        return oauthErrorResponse(
+          'invalid_request',
+          'code_verifier requerido para PKCE S256',
+        );
+      }
+
       try {
         assertRedirectUriAllowed(client, input.redirect_uri);
       } catch {
@@ -74,7 +93,7 @@ export async function POST(request: NextRequest) {
         clientId: input.client_id,
         redirectUri: input.redirect_uri,
         codeVerifier: input.code_verifier,
-        resource,
+        resource: resourceParam,
       });
       return oauthJsonResponse(tokenResponse);
     }
@@ -82,7 +101,7 @@ export async function POST(request: NextRequest) {
     const tokenResponse = await refreshOAuthGrant({
       refreshToken: input.refresh_token,
       clientId: input.client_id,
-      resource,
+      resource: resourceParam,
     });
     return oauthJsonResponse(tokenResponse);
   } catch (error) {

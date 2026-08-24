@@ -4,6 +4,8 @@ import {
   OAUTH_ACCESS_TOKEN_TTL_MS,
   OAUTH_CODE_TTL_MS,
   OAUTH_TOKEN_LOOKUP_LENGTH,
+  mcpResourcesMatch,
+  normalizeMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
 import {
   generateAuthorizationCode,
@@ -33,7 +35,7 @@ export const createAuthorizationCode = async (input: {
       scopes: input.scopes,
       code_challenge: input.codeChallenge,
       code_challenge_method: input.codeChallengeMethod,
-      resource: input.resource,
+      resource: normalizeMcpResourceUrl(input.resource),
       expires_at: new Date(Date.now() + OAUTH_CODE_TTL_MS),
     },
   });
@@ -70,7 +72,7 @@ export const exchangeAuthorizationCode = async (input: {
   if (!verifyPkceS256(input.codeVerifier, row.code_challenge)) {
     throw new Error('invalid_grant');
   }
-  if (input.resource && input.resource !== row.resource) {
+  if (input.resource && !mcpResourcesMatch(input.resource, row.resource)) {
     throw new Error('invalid_grant');
   }
 
@@ -85,7 +87,7 @@ export const exchangeAuthorizationCode = async (input: {
     scopes: row.scopes.filter(
       (scope): scope is AgentScope => scope === 'read' || scope === 'write',
     ),
-    resource: row.resource,
+    resource: normalizeMcpResourceUrl(row.resource),
   });
 };
 
@@ -114,7 +116,7 @@ export const issueGrant = async (input: {
 
   return {
     access_token: access.token,
-    token_type: 'Bearer' as const,
+    token_type: 'bearer' as const,
     expires_in: Math.floor(OAUTH_ACCESS_TOKEN_TTL_MS / 1000),
     refresh_token: refresh.token,
     scope: input.scopes.join(' '),
@@ -137,7 +139,7 @@ export const refreshOAuthGrant = async (input: {
   if (row.client_id !== input.clientId) {
     throw new Error('invalid_grant');
   }
-  if (input.resource && input.resource !== row.resource) {
+  if (input.resource && !mcpResourcesMatch(input.resource, row.resource)) {
     throw new Error('invalid_grant');
   }
 
@@ -158,7 +160,7 @@ export const refreshOAuthGrant = async (input: {
 
   return {
     access_token: access.token,
-    token_type: 'Bearer' as const,
+    token_type: 'bearer' as const,
     expires_in: Math.floor(OAUTH_ACCESS_TOKEN_TTL_MS / 1000),
     refresh_token: refresh.token,
     scope: row.scopes.join(' '),
