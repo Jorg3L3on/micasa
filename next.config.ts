@@ -14,6 +14,20 @@ const nextConfig: NextConfig = {
     // When using `npm run dev:turbo`, set back to true if cold starts are too slow.
     turbopackFileSystemCacheForDev: false,
   },
+  async headers() {
+    const oauthFormActionCsp =
+      "form-action 'self' https://chatgpt.com https://chat.openai.com";
+    return [
+      {
+        source: '/oauth/consent',
+        headers: [{ key: 'Content-Security-Policy', value: oauthFormActionCsp }],
+      },
+      {
+        source: '/api/oauth/consent',
+        headers: [{ key: 'Content-Security-Policy', value: oauthFormActionCsp }],
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: '/account', destination: '/settings/account', permanent: true },

@@ -95,6 +95,19 @@ describe('exchangeAuthorizationCode', () => {
     expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalled();
   });
 
+  it('accepts private_key_jwt without code_verifier when JWT auth is flagged', async () => {
+    const response = await exchangeAuthorizationCode({
+      code: CODE,
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT,
+      clientAuthenticatedViaPrivateKeyJwt: true,
+      resource: 'https://micasa.example/api/mcp',
+    });
+
+    expect(response.token_type).toBe('bearer');
+    expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalled();
+  });
+
   it('rejects already-used authorization codes with invalid_grant', async () => {
     prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue({
       ...baseCodeRow,
