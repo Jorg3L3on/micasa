@@ -106,7 +106,11 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 | `list_budgets` | Presupuestos activos: tope, gastado, restante |
 | `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app) |
 
-### Reglas de lectura (v1.3.0)
+### Reglas de lectura (v1.3.x)
+
+**v1.3.1:** el transporte HTTP exige Bearer válido antes de `initialize` / `tools/list`; sin token responde **401** + `WWW-Authenticate` con `resource_metadata` (RFC 9728, requerido por ChatGPT OAuth).
+
+**v1.3.0:** OAuth 2.1 + DCR.
 
 Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
@@ -137,7 +141,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **1.3.0** (OAuth 2.1 + DCR) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **1.3.1** (transport 401 + RFC 9728 discovery) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 

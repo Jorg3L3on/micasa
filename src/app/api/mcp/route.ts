@@ -1,21 +1,22 @@
-import { createMcpHandler } from 'mcp-handler';
+import { createMcpHandler, withMcpAuth } from 'mcp-handler';
 import { registerMcpTools } from '@/lib/mcp/register-tools';
-import { buildWwwAuthenticateChallenge } from '@/lib/server/mcp-oauth/metadata';
+import { verifyMcpBearerToken } from '@/lib/server/mcp-bearer-auth';
 
 /**
  * MCP connector endpoint (stateless Streamable HTTP). Clients: Grok Bot,
  * Cursor, Claude, ChatGPT (OAuth or developer mode) or any MCP client that
  * supports HTTP + Bearer auth.
  *
- * Auth: `micasa_…` agent tokens (Ajustes → Conexiones) or OAuth access tokens
- * (`micasa_oauth_…`) issued after user consent.
+ * Transport-level auth (RFC 9728): unauthenticated requests receive HTTP 401
+ * with `WWW-Authenticate` pointing at protected-resource metadata. Tool-level
+ * auth still validates scopes per call.
  */
-const handler = createMcpHandler(
+const mcpHandler = createMcpHandler(
   (server) => {
     registerMcpTools(server);
   },
   {
-    serverInfo: { name: 'micasa', version: '1.3.0' },
+    serverInfo: { name: 'micasa', version: '1.3.1' },
     capabilities: {
       tools: { listChanged: true },
     },
@@ -24,10 +25,15 @@ const handler = createMcpHandler(
   },
 );
 
+const authenticatedHandler = withMcpAuth(mcpHandler, verifyMcpBearerToken, {
+  required: true,
+  resourceMetadataPath: '/.well-known/oauth-protected-resource',
+});
+
 /**
  * CORS for browser-based MCP clients (Claude web, MCP Inspector). Tokens are
  * per-user Bearer credentials, so a wildcard origin does not expose data:
- * without a valid token every tool call fails.
+ * without a valid token every request is rejected at the transport layer.
  */
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -47,22 +53,8 @@ const withCors = (base: (request: Request) => Promise<Response>) =>
     return response;
   };
 
-const withOAuthDiscovery = (
-  base: (request: Request) => Promise<Response>,
-) =>
-  async (request: Request): Promise<Response> => {
-    const response = await base(request);
-    if (response.status === 401) {
-      response.headers.set(
-        'WWW-Authenticate',
-        buildWwwAuthenticateChallenge(request),
-      );
-    }
-    return response;
-  };
-
-export const GET = withCors(withOAuthDiscovery(handler));
-export const POST = withCors(withOAuthDiscovery(handler));
+export const GET = withCors(authenticatedHandler);
+export const POST = withCors(authenticatedHandler);
 
 export function OPTIONS(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
