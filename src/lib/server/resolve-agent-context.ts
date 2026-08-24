@@ -1,4 +1,3 @@
-import prisma from '@/lib/prisma';
 import {
   AGENT_TOKEN_LOOKUP_LENGTH,
   AGENT_TOKEN_PREFIX,
@@ -6,6 +5,11 @@ import {
   isLegacyAgentTokenHash,
   verifyAgentToken,
 } from '@/lib/server/agent-token';
+import {
+  OAUTH_ACCESS_TOKEN_PREFIX,
+} from '@/lib/server/mcp-oauth/config';
+import { resolveOAuthGrantUser } from '@/lib/server/mcp-oauth/grants';
+import prisma from '@/lib/prisma';
 import type {
   OwnerContextRole,
   OwnerContextSuccess,
@@ -16,9 +20,15 @@ export { AGENT_TOKEN_LOOKUP_LENGTH, AGENT_TOKEN_PREFIX };
 
 export type AgentScope = 'read' | 'write';
 
+export type AgentAuthSource = 'api_key' | 'oauth_grant';
+
 export type AgentContext = OwnerContextSuccess & {
   scopes: AgentScope[];
-  apiKeyId: number;
+  authSource: AgentAuthSource;
+  apiKeyId?: number;
+  oauthGrantId?: number;
+  /** Negative grant id for rate-limit identity (distinct from api keys). */
+  rateLimitIdentity: number;
 };
 
 export class AgentAuthError extends Error {
@@ -44,22 +54,46 @@ export function parseBearerToken(
     throw unauthorized('Falta el encabezado Authorization: Bearer');
   }
   const token = header.slice('bearer '.length).trim();
-  if (!token.startsWith(AGENT_TOKEN_PREFIX)) {
+  if (!token) {
     throw unauthorized();
   }
   return token;
 }
 
+const isApiKeyToken = (token: string): boolean =>
+  token.startsWith(AGENT_TOKEN_PREFIX) && !token.startsWith(OAUTH_ACCESS_TOKEN_PREFIX);
+
+const isOAuthAccessToken = (token: string): boolean =>
+  token.startsWith(OAUTH_ACCESS_TOKEN_PREFIX);
+
 /**
- * Resolves the user behind an agent bearer token (`micasa_...`).
- * Mirrors the session lookup half of `getOwnerContext`, but for connectors
- * (Grok Bot, Cursor MCP) that cannot hold a NextAuth cookie.
+ * Resolves the user behind a bearer credential: legacy `micasa_…` API keys
+ * (Ajustes → Conexiones) or OAuth access tokens (`micasa_oauth_…`).
  */
 export async function resolveAgentUser(token: string): Promise<{
   userId: number;
   scopes: AgentScope[];
-  apiKeyId: number;
+  authSource: AgentAuthSource;
+  apiKeyId?: number;
+  oauthGrantId?: number;
+  rateLimitIdentity: number;
 }> {
+  if (isOAuthAccessToken(token)) {
+    const oauthUser = await resolveOAuthGrantUser(token);
+    if (!oauthUser) throw unauthorized('Token OAuth inválido o expirado');
+    return {
+      userId: oauthUser.userId,
+      scopes: oauthUser.scopes,
+      authSource: 'oauth_grant',
+      oauthGrantId: oauthUser.oauthGrantId,
+      rateLimitIdentity: -oauthUser.oauthGrantId,
+    };
+  }
+
+  if (!isApiKeyToken(token)) {
+    throw unauthorized();
+  }
+
   if (token.length <= AGENT_TOKEN_LOOKUP_LENGTH) {
     throw unauthorized();
   }
@@ -87,8 +121,6 @@ export async function resolveAgentUser(token: string): Promise<{
     throw forbidden('Usuario inactivo');
   }
 
-  // Best-effort usage timestamp (plus opportunistic re-hash of legacy bcrypt
-  // keys to the fast SHA-256 format); never block the tool call on it.
   prisma.apiKey
     .update({
       where: { id: apiKey.id },
@@ -105,7 +137,13 @@ export async function resolveAgentUser(token: string): Promise<{
     (scope): scope is AgentScope => scope === 'read' || scope === 'write',
   );
 
-  return { userId: apiKey.user.id, scopes, apiKeyId: apiKey.id };
+  return {
+    userId: apiKey.user.id,
+    scopes,
+    authSource: 'api_key',
+    apiKeyId: apiKey.id,
+    rateLimitIdentity: apiKey.id,
+  };
 }
 
 /**
@@ -159,9 +197,9 @@ export async function resolveAgentContext(
   ownerId: number,
 ): Promise<AgentContext> {
   const token = parseBearerToken(authorizationHeader);
-  const { userId, scopes, apiKeyId } = await resolveAgentUser(token);
-  const owner = await resolveOwnerForAgent(userId, ownerType, ownerId);
-  return { userId, scopes, apiKeyId, ...owner };
+  const agentUser = await resolveAgentUser(token);
+  const owner = await resolveOwnerForAgent(agentUser.userId, ownerType, ownerId);
+  return { ...agentUser, ...owner };
 }
 
 export function assertScope(

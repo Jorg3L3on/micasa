@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashSync } from 'bcryptjs';
 
-const { findUniqueApiKey, updateApiKey, findFirstMembership } = vi.hoisted(
+const { findUniqueApiKey, updateApiKey, findFirstMembership, resolveOAuthGrantUserMock } =
+  vi.hoisted(
   () => ({
     findUniqueApiKey: vi.fn(),
     updateApiKey: vi.fn(),
     findFirstMembership: vi.fn(),
+    resolveOAuthGrantUserMock: vi.fn(),
   }),
 );
 
@@ -14,6 +16,10 @@ vi.mock('@/lib/prisma', () => ({
     apiKey: { findUnique: findUniqueApiKey, update: updateApiKey },
     houseMember: { findFirst: findFirstMembership },
   },
+}));
+
+vi.mock('@/lib/server/mcp-oauth/grants', () => ({
+  resolveOAuthGrantUser: resolveOAuthGrantUserMock,
 }));
 
 import { hashAgentToken } from '@/lib/server/agent-token';
@@ -27,6 +33,7 @@ import {
 } from '@/lib/server/resolve-agent-context';
 
 const VALID_TOKEN = 'micasa_secreto-de-prueba-suficientemente-largo';
+const OAUTH_TOKEN = 'micasa_oauth_acceso-de-prueba-suficientemente-largo';
 const VALID_HASH = hashAgentToken(VALID_TOKEN);
 const LEGACY_BCRYPT_HASH = hashSync(VALID_TOKEN, 4);
 
@@ -68,14 +75,13 @@ describe('parseBearerToken', () => {
     );
   });
 
-  it('rechaza tokens sin el prefijo micasa_', () => {
-    expect(() => parseBearerToken('Bearer sk-otracosa')).toThrowError(
-      AgentAuthError,
-    );
+  it('rechaza tokens vacíos', () => {
+    expect(() => parseBearerToken('Bearer   ')).toThrowError(AgentAuthError);
   });
 
-  it('acepta Bearer con token micasa_', () => {
+  it('acepta Bearer con token micasa_ o micasa_oauth_', () => {
     expect(parseBearerToken(`Bearer ${VALID_TOKEN}`)).toBe(VALID_TOKEN);
+    expect(parseBearerToken(`Bearer ${OAUTH_TOKEN}`)).toBe(OAUTH_TOKEN);
   });
 });
 
@@ -156,6 +162,24 @@ describe('resolveAgentUser', () => {
     expect(result.userId).toBe(2);
     expect(result.scopes).toEqual(['read', 'write']);
     expect(result.apiKeyId).toBe(10);
+    expect(result.authSource).toBe('api_key');
+    expect(result.rateLimitIdentity).toBe(10);
+  });
+
+  it('resuelve OAuth access tokens con micasa_oauth_', async () => {
+    resolveOAuthGrantUserMock.mockResolvedValue({
+      userId: 3,
+      scopes: ['read'],
+      oauthGrantId: 7,
+      clientName: 'ChatGPT Test Client',
+    });
+    const result = await resolveAgentUser(OAUTH_TOKEN);
+    expect(result.userId).toBe(3);
+    expect(result.scopes).toEqual(['read']);
+    expect(result.oauthGrantId).toBe(7);
+    expect(result.authSource).toBe('oauth_grant');
+    expect(result.rateLimitIdentity).toBe(-7);
+    expect(findUniqueApiKey).not.toHaveBeenCalled();
   });
 
   it('busca por el prefijo de 15 caracteres', async () => {

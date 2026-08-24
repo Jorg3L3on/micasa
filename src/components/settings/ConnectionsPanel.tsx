@@ -9,6 +9,7 @@ import {
   Pencil,
   Plug,
   ShieldOff,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -67,6 +68,17 @@ export type ApiKeySummary = {
   id: number;
   name: string;
   key_prefix: string;
+  scopes: string[];
+  last_used_at: string | null;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+};
+
+export type OAuthGrantSummary = {
+  id: number;
+  client_id: string;
+  client_name: string;
   scopes: string[];
   last_used_at: string | null;
   expires_at: string | null;
@@ -171,9 +183,17 @@ const CLIENT_SNIPPETS: ClientSnippet[] = [
   },
   {
     id: 'chatgpt',
-    label: 'ChatGPT (modo desarrollador)',
+    label: 'ChatGPT (OAuth)',
     description:
-      'Activa Developer Mode en Settings → Connectors y crea un conector MCP con autenticación por token de acceso.',
+      'En Settings → Connectors activa Developer Mode, crea un conector MCP con autenticación OAuth. No necesitas client id: ChatGPT usa registro dinámico (DCR).',
+    snippet: (url) =>
+      `MCP Server URL: ${url}\nAutenticación: OAuth\n(No client id / secret — DCR automático)`,
+  },
+  {
+    id: 'chatgpt-dev',
+    label: 'ChatGPT (token manual)',
+    description:
+      'Modo desarrollador con token Bearer manual (alternativa a OAuth).',
     snippet: (url) => `MCP Server URL: ${url}\nAccess token: <TU_TOKEN>`,
   },
 ];
@@ -230,10 +250,16 @@ function OverlayShell({
 
 type ConnectionsPanelProps = {
   initialKeys: ApiKeySummary[];
+  initialOAuthGrants?: OAuthGrantSummary[];
 };
 
-export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps) {
+export default function ConnectionsPanel({
+  initialKeys,
+  initialOAuthGrants = [],
+}: ConnectionsPanelProps) {
   const [keys, setKeys] = useState<ApiKeySummary[]>(initialKeys);
+  const [oauthGrants, setOAuthGrants] =
+    useState<OAuthGrantSummary[]>(initialOAuthGrants);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -249,6 +275,10 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
 
   const [revokeTarget, setRevokeTarget] = useState<ApiKeySummary | null>(null);
   const [revoking, setRevoking] = useState(false);
+
+  const [revokeOAuthTarget, setRevokeOAuthTarget] =
+    useState<OAuthGrantSummary | null>(null);
+  const [revokingOAuth, setRevokingOAuth] = useState(false);
 
   const mcpUrl = useMemo(() => {
     if (typeof window === 'undefined') return '/api/mcp';
@@ -371,6 +401,33 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
       );
     } finally {
       setRevoking(false);
+    }
+  };
+
+  const handleRevokeOAuth = async () => {
+    if (!revokeOAuthTarget) return;
+    try {
+      setRevokingOAuth(true);
+      await clientFetchFromApi<{ revoked: boolean }>(
+        `/api/account/oauth-grants/${revokeOAuthTarget.id}`,
+        { method: 'DELETE' },
+      );
+      const revokedAt = new Date().toISOString();
+      setOAuthGrants((prev) =>
+        prev.map((grant) =>
+          grant.id === revokeOAuthTarget.id
+            ? { ...grant, revoked_at: revokedAt }
+            : grant,
+        ),
+      );
+      toast.success('Conexión OAuth revocada. El access token dejó de funcionar.');
+      setRevokeOAuthTarget(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo revocar',
+      );
+    } finally {
+      setRevokingOAuth(false);
     }
   };
 
@@ -517,9 +574,8 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
             <div className="space-y-1">
               <CardTitle className="text-base">Conexiones</CardTitle>
               <CardDescription>
-                Llaves de acceso para agentes MCP (Grok, Claude, Cursor,
-                ChatGPT). Cada conexión usa tu usuario; el agente elige el
-                contexto (personal o casa) en cada consulta.
+                Llaves Bearer (`micasa_…`) para agentes MCP (Grok, Claude, Cursor).
+                ChatGPT puede usar OAuth en su lugar (sección de abajo).
               </CardDescription>
             </div>
           </div>
@@ -638,11 +694,122 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
       </Card>
 
       <Card>
+        <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500">
+            <Sparkles className="size-4" aria-hidden />
+          </span>
+          <div className="space-y-1">
+            <CardTitle className="text-base">Conexiones OAuth</CardTitle>
+            <CardDescription>
+              Clientes como ChatGPT que completaron login OAuth contra tu cuenta.
+              Revoca aquí si dejas de usar el conector.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {oauthGrants.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+              Aún no hay conexiones OAuth. Al autorizar ChatGPT u otro cliente
+              MCP con OAuth, aparecerán aquí.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60">
+              {oauthGrants.map((grant) => {
+                const revoked = grant.revoked_at != null;
+                const expired =
+                  !revoked &&
+                  grant.expires_at != null &&
+                  new Date(grant.expires_at).getTime() <= Date.now();
+                const inactive = revoked || expired;
+                return (
+                  <li
+                    key={grant.id}
+                    className={cn(
+                      'flex items-center gap-3 bg-card px-3 py-3',
+                      inactive && 'opacity-55',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex size-9 shrink-0 items-center justify-center rounded-xl',
+                        inactive
+                          ? 'bg-muted text-muted-foreground'
+                          : 'bg-violet-500/15 text-violet-500',
+                      )}
+                    >
+                      <Sparkles className="size-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {grant.client_name}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          OAuth
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {scopesLabel(grant.scopes)}
+                        </Badge>
+                        {revoked ? (
+                          <Badge
+                            variant="outline"
+                            className="border-red-500/40 text-[10px] text-red-500"
+                          >
+                            Revocada
+                          </Badge>
+                        ) : expired ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/40 text-[10px] text-amber-500"
+                          >
+                            Expirada
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-500/40 text-[10px] text-emerald-500"
+                          >
+                            Activa
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        <span className="font-mono">{grant.client_id.slice(0, 18)}…</span>
+                        {' · '}
+                        {inactive
+                          ? 'Ya no funciona'
+                          : formatRelative(grant.last_used_at)}
+                        {!inactive && grant.expires_at
+                          ? ` · ${formatExpiry(grant.expires_at)}`
+                          : ''}
+                      </p>
+                    </div>
+                    {!revoked && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-destructive"
+                        aria-label={`Revocar OAuth de ${grant.client_name}`}
+                        onClick={() => setRevokeOAuthTarget(grant)}
+                      >
+                        <ShieldOff className="size-4" aria-hidden />
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Cómo conectar un cliente</CardTitle>
           <CardDescription>
-            Todos los clientes usan la misma URL del servidor MCP y un token de
-            conexión como Bearer.
+            Todos los clientes usan la misma URL del servidor MCP. Grok, Cursor
+            y Claude usan un token Bearer; ChatGPT puede usar OAuth (recomendado).
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -750,6 +917,34 @@ export default function ConnectionsPanel({ initialKeys }: ConnectionsPanelProps)
               disabled={revoking}
             >
               {revoking ? 'Revocando…' : 'Revocar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={revokeOAuthTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !revokingOAuth) setRevokeOAuthTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Revocar conexión OAuth?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El acceso de “{revokeOAuthTarget?.client_name}” dejará de
+              funcionar de inmediato. El cliente tendrá que volver a pedir
+              autorización.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revokingOAuth}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleRevokeOAuth}
+              disabled={revokingOAuth}
+            >
+              {revokingOAuth ? 'Revocando…' : 'Revocar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
