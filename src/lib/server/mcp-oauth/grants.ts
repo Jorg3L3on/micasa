@@ -16,6 +16,7 @@ import {
   verifyPkceS256,
 } from '@/lib/server/mcp-oauth/tokens';
 import { isValidPkceVerifier } from '@/lib/server/mcp-oauth/token-auth';
+import { tokenClientIdMatchesCode } from '@/lib/server/mcp-oauth/clients';
 
 export const createAuthorizationCode = async (input: {
   clientId: string;
@@ -43,6 +44,22 @@ export const createAuthorizationCode = async (input: {
   return code;
 };
 
+export const peekAuthorizationCode = async (code: string) => {
+  const codeHash = hashOAuthSecret(code);
+  const row = await prisma.mcpOAuthAuthorizationCode.findUnique({
+    where: { code_hash: codeHash },
+    select: {
+      client_id: true,
+      redirect_uri: true,
+      used_at: true,
+      expires_at: true,
+    },
+  });
+  if (!row || row.used_at != null) return null;
+  if (row.expires_at.getTime() <= Date.now()) return null;
+  return row;
+};
+
 export const exchangeAuthorizationCode = async (input: {
   code: string;
   clientId: string;
@@ -62,10 +79,15 @@ export const exchangeAuthorizationCode = async (input: {
   if (row.expires_at.getTime() <= Date.now()) {
     throw new Error('invalid_grant');
   }
-  if (row.client_id !== input.clientId) {
+  if (row.redirect_uri !== input.redirectUri) {
     throw new Error('invalid_grant');
   }
-  if (row.redirect_uri !== input.redirectUri) {
+  const clientMatches = await tokenClientIdMatchesCode(
+    input.clientId,
+    row.client_id,
+    row.redirect_uri,
+  );
+  if (!clientMatches) {
     throw new Error('invalid_grant');
   }
   if (row.code_challenge_method !== 'S256') {

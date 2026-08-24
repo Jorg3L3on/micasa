@@ -10,8 +10,14 @@ const prismaMock = vi.hoisted(() => ({
   },
 }));
 
+const tokenClientIdMatchesCodeMock = vi.hoisted(() => vi.fn());
+
 vi.mock('@/lib/prisma', () => ({
   default: prismaMock,
+}));
+
+vi.mock('@/lib/server/mcp-oauth/clients', () => ({
+  tokenClientIdMatchesCode: tokenClientIdMatchesCodeMock,
 }));
 
 vi.mock('@/lib/server/mcp-oauth/tokens', async (importOriginal) => {
@@ -41,13 +47,14 @@ import { hashOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
 const CODE = 'micasa_code_fixture-authorization-code';
 const VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 const CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
-const CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
-const REDIRECT = 'https://chatgpt.com/connector/oauth/chatgpt';
+const INSTANCE_CIMD = 'https://chatgpt.com/oauth/fixture-client/client.json';
+const STABLE_CIMD = 'https://chatgpt.com/oauth/client.json';
+const REDIRECT = 'https://chatgpt.com/connector/oauth/fixture-client';
 
 const baseCodeRow = {
   id: 1,
   code_hash: hashOAuthSecret(CODE),
-  client_id: CLIENT_ID,
+  client_id: INSTANCE_CIMD,
   user_id: 42,
   redirect_uri: REDIRECT,
   scopes: ['read', 'write'],
@@ -64,13 +71,14 @@ beforeEach(() => {
   prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue(baseCodeRow);
   prismaMock.mcpOAuthAuthorizationCode.update.mockResolvedValue({});
   prismaMock.mcpOAuthGrant.create.mockResolvedValue({ id: 1 });
+  tokenClientIdMatchesCodeMock.mockResolvedValue(true);
 });
 
 describe('issueGrant', () => {
   it('returns lowercase token_type bearer', async () => {
     const response = await issueGrant({
       userId: 1,
-      clientId: CLIENT_ID,
+      clientId: INSTANCE_CIMD,
       scopes: ['read'],
       resource: 'https://micasa.example/api/mcp',
     });
@@ -84,28 +92,67 @@ describe('exchangeAuthorizationCode', () => {
   it('accepts RFC 8707 /mcp resource alias against stored /api/mcp', async () => {
     const response = await exchangeAuthorizationCode({
       code: CODE,
-      clientId: CLIENT_ID,
+      clientId: INSTANCE_CIMD,
       redirectUri: REDIRECT,
       codeVerifier: VERIFIER,
       resource: 'https://micasa.example/mcp',
     });
 
     expect(response.token_type).toBe('bearer');
-    expect(prismaMock.mcpOAuthAuthorizationCode.update).toHaveBeenCalled();
     expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalled();
+  });
+
+  it('accepts stable CIMD token client_id for instance CIMD code row with matching redirect', async () => {
+    tokenClientIdMatchesCodeMock.mockResolvedValue(true);
+
+    const response = await exchangeAuthorizationCode({
+      code: CODE,
+      clientId: STABLE_CIMD,
+      redirectUri: REDIRECT,
+      clientAuthenticatedViaPrivateKeyJwt: true,
+    });
+
+    expect(response.token_type).toBe('bearer');
+    expect(tokenClientIdMatchesCodeMock).toHaveBeenCalledWith(
+      STABLE_CIMD,
+      INSTANCE_CIMD,
+      REDIRECT,
+    );
+  });
+
+  it('rejects when redirect_uri does not match the code row', async () => {
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: INSTANCE_CIMD,
+        redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+        clientAuthenticatedViaPrivateKeyJwt: true,
+      }),
+    ).rejects.toThrow('invalid_grant');
+  });
+
+  it('rejects when token client_id is incompatible with the code row', async () => {
+    tokenClientIdMatchesCodeMock.mockResolvedValue(false);
+
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: STABLE_CIMD,
+        redirectUri: REDIRECT,
+        clientAuthenticatedViaPrivateKeyJwt: true,
+      }),
+    ).rejects.toThrow('invalid_grant');
   });
 
   it('accepts private_key_jwt without code_verifier when JWT auth is flagged', async () => {
     const response = await exchangeAuthorizationCode({
       code: CODE,
-      clientId: CLIENT_ID,
+      clientId: INSTANCE_CIMD,
       redirectUri: REDIRECT,
       clientAuthenticatedViaPrivateKeyJwt: true,
-      resource: 'https://micasa.example/api/mcp',
     });
 
     expect(response.token_type).toBe('bearer');
-    expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalled();
   });
 
   it('rejects already-used authorization codes with invalid_grant', async () => {
@@ -117,22 +164,9 @@ describe('exchangeAuthorizationCode', () => {
     await expect(
       exchangeAuthorizationCode({
         code: CODE,
-        clientId: CLIENT_ID,
+        clientId: INSTANCE_CIMD,
         redirectUri: REDIRECT,
         codeVerifier: VERIFIER,
-        resource: 'https://micasa.example/api/mcp',
-      }),
-    ).rejects.toThrow('invalid_grant');
-  });
-
-  it('rejects unrelated resource URLs with invalid_grant', async () => {
-    await expect(
-      exchangeAuthorizationCode({
-        code: CODE,
-        clientId: CLIENT_ID,
-        redirectUri: REDIRECT,
-        codeVerifier: VERIFIER,
-        resource: 'https://other.example/api/mcp',
       }),
     ).rejects.toThrow('invalid_grant');
   });

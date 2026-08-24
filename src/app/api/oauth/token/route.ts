@@ -5,7 +5,6 @@ import {
   resolveOAuthClient,
   verifyClientSecret,
 } from '@/lib/server/mcp-oauth/clients';
-import { oauthPath } from '@/lib/server/mcp-oauth/config';
 import {
   oauthErrorResponse,
   oauthJsonResponse,
@@ -13,6 +12,7 @@ import {
 } from '@/lib/server/mcp-oauth/cors';
 import {
   exchangeAuthorizationCode,
+  peekAuthorizationCode,
   refreshOAuthGrant,
 } from '@/lib/server/mcp-oauth/grants';
 import {
@@ -113,13 +113,14 @@ export async function POST(request: NextRequest) {
     const resourceParam = input.resource?.trim() || null;
 
     if (input.grant_type === 'authorization_code') {
-      const tokenEndpoint = oauthPath(request, '/api/oauth/token');
+      const codePeek = await peekAuthorizationCode(input.code);
       const authResult = await resolveAuthorizationCodeAuth({
         client,
         codeVerifier: input.code_verifier,
         clientAssertion: input.client_assertion,
         clientAssertionType: input.client_assertion_type,
-        tokenEndpoint,
+        codeClientId: codePeek?.client_id,
+        request,
       });
 
       if (!authResult.ok) {

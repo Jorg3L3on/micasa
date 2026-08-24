@@ -28,3 +28,24 @@ export const logOAuthTokenFailure = (fields: OAuthTokenFailureFields): void => {
     }),
   );
 };
+
+type OAuthJwtAssertionRejectedFields = {
+  iss?: string;
+  aud?: string | string[];
+  sub?: string;
+  typ?: string;
+  verify_error?: string;
+};
+
+export const logOAuthJwtAssertionRejected = (
+  fields: OAuthJwtAssertionRejectedFields,
+): void => {
+  console.warn(
+    JSON.stringify({
+      severity: 'warn',
+      event: 'oauth.jwt_assertion.rejected',
+      ...fields,
+      at: new Date().toISOString(),
+    }),
+  );
+};

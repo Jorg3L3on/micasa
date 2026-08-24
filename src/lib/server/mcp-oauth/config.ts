@@ -28,12 +28,21 @@ export const getOAuthIssuer = (request?: Request): string => {
   if (fromEnv) return trimTrailingSlash(fromEnv);
 
   if (request) {
+    try {
+      const url = new URL(request.url);
+      if (url.host) {
+        return trimTrailingSlash(`${url.protocol}//${url.host}`);
+      }
+    } catch {
+      // fall through to headers
+    }
+
     const host =
       request.headers.get('x-forwarded-host') ?? request.headers.get('host');
     const proto =
       request.headers.get('x-forwarded-proto') ??
       (host?.includes('localhost') ? 'http' : 'https');
-    if (host) return `${proto}://${host}`;
+    if (host) return trimTrailingSlash(`${proto}://${host}`);
   }
 
   return 'http://localhost:3000';
@@ -78,6 +87,23 @@ export const mcpResourcesMatch = (
 
 export const oauthPath = (request: Request | undefined, path: string): string =>
   `${getOAuthIssuer(request)}${path}`;
+
+/** Audiences ChatGPT / RFC 7523 clients may use for private_key_jwt assertions. */
+export const buildOAuthTokenAudiences = (request?: Request): string[] => {
+  const issuer = getOAuthIssuer(request);
+  const resource = getMcpResourceUrl(request);
+  const aliasResource = `${issuer}${MCP_RESOURCE_ALIAS_PATH}`;
+  const candidates = [
+    oauthPath(request, '/api/oauth/token'),
+    oauthPath(request, '/oauth/token'),
+    oauthPath(request, '/token'),
+    issuer,
+    `${issuer}/token`,
+    resource,
+    aliasResource,
+  ];
+  return [...new Set(candidates.map(trimTrailingSlash))];
+};
 
 export const parseScopeParam = (scope: string | null | undefined): AgentScope[] => {
   if (!scope?.trim()) return ['read'];
