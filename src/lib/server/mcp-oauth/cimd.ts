@@ -56,6 +56,37 @@ export const validateRedirectUri = (
   return false;
 };
 
+/** Stable ChatGPT CIMD + shared JWKS for all connector instances. */
+export const CHATGPT_STABLE_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
+
+export const CHATGPT_JWKS_URI = 'https://chatgpt.com/oauth/jwks.json';
+
+export const isChatGptCimdClientId = (clientId: string): boolean => {
+  if (!isClientIdMetadataUrl(clientId) || !isTrustedCimdHost(clientId)) {
+    return false;
+  }
+  try {
+    const { pathname } = new URL(clientId);
+    return pathname.endsWith('/client.json') && pathname.includes('/oauth/');
+  } catch {
+    return false;
+  }
+};
+
+export const buildAllowedJwtClientIds = (
+  ...clientIds: Array<string | undefined | null>
+): string[] => {
+  const allowed = new Set<string>();
+  for (const clientId of clientIds) {
+    if (!clientId) continue;
+    allowed.add(clientId);
+    if (isChatGptCimdClientId(clientId)) {
+      allowed.add(CHATGPT_STABLE_CIMD_CLIENT_ID);
+    }
+  }
+  return [...allowed];
+};
+
 /** Token endpoint auth methods that rely on PKCE (no shared client secret). */
 export const isPublicTokenAuthMethod = (method: string): boolean =>
   method === 'none' || method === 'private_key_jwt';

@@ -5,11 +5,13 @@ const {
   verifyClientSecretMock,
   exchangeAuthorizationCodeMock,
   resolveAuthorizationCodeAuthMock,
+  peekAuthorizationCodeMock,
 } = vi.hoisted(() => ({
   resolveOAuthClientMock: vi.fn(),
   verifyClientSecretMock: vi.fn(),
   exchangeAuthorizationCodeMock: vi.fn(),
   resolveAuthorizationCodeAuthMock: vi.fn(),
+  peekAuthorizationCodeMock: vi.fn(),
 }));
 
 vi.mock('@/lib/server/mcp-oauth/clients', () => ({
@@ -20,6 +22,7 @@ vi.mock('@/lib/server/mcp-oauth/clients', () => ({
 
 vi.mock('@/lib/server/mcp-oauth/grants', () => ({
   exchangeAuthorizationCode: exchangeAuthorizationCodeMock,
+  peekAuthorizationCode: peekAuthorizationCodeMock,
   refreshOAuthGrant: vi.fn(),
 }));
 
@@ -59,6 +62,10 @@ beforeEach(() => {
     ok: true,
     codeVerifier: VERIFIER,
     clientAuthenticatedViaPrivateKeyJwt: false,
+  });
+  peekAuthorizationCodeMock.mockResolvedValue({
+    client_id: CIMD_CLIENT_ID,
+    redirect_uri: 'https://chatgpt.com/connector/oauth/fixture-client',
   });
 });
 

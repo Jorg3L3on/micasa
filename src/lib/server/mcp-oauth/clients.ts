@@ -6,7 +6,10 @@ import {
 } from '@/lib/server/mcp-oauth/client-id-metadata';
 import {
   isPublicTokenAuthMethod,
+  isTrustedCimdHost,
   validateRedirectUri,
+  CHATGPT_JWKS_URI,
+  isChatGptCimdClientId,
 } from '@/lib/server/mcp-oauth/cimd';
 import { hashOAuthSecret, verifyOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
 
@@ -113,6 +116,43 @@ export const registerDynamicOAuthClient = async (
     client: toResolvedClient(created),
     clientSecret,
   };
+};
+
+export const resolveClientJwksUri = async (clientId: string): Promise<string | null> => {
+  const metadata = await fetchClientIdMetadataDocument(clientId);
+  if (metadata?.jwks_uri) return metadata.jwks_uri;
+  if (isChatGptCimdClientId(clientId)) return CHATGPT_JWKS_URI;
+  return null;
+};
+
+/**
+ * Token request client_id may differ from the code row (e.g. stable vs instance CIMD).
+ * redirect_uri must still match the code row exactly (checked separately).
+ */
+export const tokenClientIdMatchesCode = async (
+  tokenClientId: string,
+  codeClientId: string,
+  codeRedirectUri: string,
+): Promise<boolean> => {
+  if (tokenClientId === codeClientId) return true;
+
+  if (
+    isClientIdMetadataUrl(tokenClientId) &&
+    isClientIdMetadataUrl(codeClientId) &&
+    isTrustedCimdHost(tokenClientId) &&
+    isTrustedCimdHost(codeClientId)
+  ) {
+    return true;
+  }
+
+  const tokenClient = await resolveOAuthClient(tokenClientId);
+  if (!tokenClient) return false;
+
+  return validateRedirectUri(
+    codeRedirectUri,
+    tokenClient.redirect_uris,
+    tokenClient.client_id,
+  );
 };
 
 export const assertRedirectUriAllowed = (
