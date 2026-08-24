@@ -7,10 +7,15 @@ export const OAUTH_CORS_HEADERS: Record<string, string> = {
 };
 
 export const withOAuthCors = (response: Response): Response => {
+  const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(OAUTH_CORS_HEADERS)) {
-    response.headers.set(key, value);
+    headers.set(key, value);
   }
-  return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 };
 
 export const oauthOptionsResponse = (): Response =>

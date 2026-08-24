@@ -68,6 +68,9 @@ describe('POST /api/mcp transport auth', () => {
     expect(wwwAuth).toBeTruthy();
     expect(wwwAuth).toContain('resource_metadata=');
     expect(wwwAuth).toContain('/.well-known/oauth-protected-resource');
+    expect(response.headers.get('Access-Control-Expose-Headers')).toContain(
+      'WWW-Authenticate',
+    );
     expect(resolveAgentUserMock).not.toHaveBeenCalled();
   });
 

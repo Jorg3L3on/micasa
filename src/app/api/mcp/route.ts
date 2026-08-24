@@ -16,7 +16,7 @@ const mcpHandler = createMcpHandler(
     registerMcpTools(server);
   },
   {
-    serverInfo: { name: 'micasa', version: '1.3.1' },
+    serverInfo: { name: 'micasa', version: '1.3.2' },
     capabilities: {
       tools: { listChanged: true },
     },
@@ -40,7 +40,8 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers':
     'Authorization, Content-Type, Accept, mcp-protocol-version, mcp-session-id, last-event-id',
-  'Access-Control-Expose-Headers': 'mcp-session-id, mcp-protocol-version',
+  'Access-Control-Expose-Headers':
+    'mcp-session-id, mcp-protocol-version, WWW-Authenticate',
   'Access-Control-Max-Age': '86400',
 };
 
