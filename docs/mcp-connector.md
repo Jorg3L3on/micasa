@@ -81,17 +81,19 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **`list_upcoming(year, month)`**
 
-- **Un compromiso por tarjeta y fecha de pago:** el monto efectivo viene de `getDuePaymentsForPlannerMonth` (revolving + MSI del corte combinados, igual que el calendario del panel). No se apila el `next_due_payment` del estado de cuenta con cuotas MSI del mismo corte.
-- **Cuotas MSI de planes (`CreditCardInstallmentPlan`):** aparecen como renglones `msi` solo cuando su `dueDate` cae en el mes y **no** están ya cubiertas por la línea de pago de tarjeta de esa misma fecha.
+- **Por tarjeta y fecha:** `period_total` = suma de cuotas MSI del mes + resto revolving al corte (no el doble del estado de cuenta completo).
+- **Cuotas MSI (`CreditCardInstallmentPlan`):** **siempre** aparecen como renglones `msi` cuando su `dueDate` cae en el mes.
+- **Resto revolving:** renglón `revolving` aparte cuando hay pago programado/calendario (`scheduled_calendar`) o cuando el monto del corte (`ledger`/`import`/`projection`) excede la suma de MSI del plan en esa misma fecha. Ej.: corte \$1 500 con MSI \$500 → `msi` \$500 + `revolving` \$1 000; resto PIF \$180 + MSI \$650 → ambos renglones.
+- **No duplicar:** no apilar el `next_due_payment` íntegro del estado de cuenta **y** las cuotas MSI que ya están dentro de ese total.
 - **Préstamos:** toda cuota `SCHEDULED` con `dueDate` en el mes (vía `listLoanPaymentsForPlannerMonth`).
-- **`period_total`:** suma de ítems no pagados en la lista ya deduplicada.
+- **`period_total`:** suma de ítems no pagados en la lista deduplicada.
 
 **`get_liquidity`**
 
 - Usa `getLiquidityProjection` (mismo servicio que `/api/wallets/liquidity-projection` y la página Liquidez).
 - **`committed_obligations_total` / `net_liquidity`:** solo obligaciones con fecha **≥ `as_of`** dentro del horizonte `until` (no se arrastra deuda vencida como si fuera pagadero mañana).
 - **`lasts_until` / `lasts_until_including_income`:** primera fecha de quiebre **futura** (≥ `as_of`), o `null` si el efectivo alcanza en el horizonte.
-- **`next_gap`:** primer hueco futuro (`liquidity_headroom < 0`), no fechas pasadas.
+- **`next_gap`:** primer hueco futuro usando liquidez acumulada **desde `as_of`** (no arrastra deuda vencida en el headroom del milestone).
 
 **`list_expenses`**
 

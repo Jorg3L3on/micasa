@@ -29,10 +29,39 @@ const futureShortfallDate = (
   return isOnOrAfterAsOf(date, asOfYmd) ? date : null;
 };
 
+type ForwardLiquidityGap = {
+  date: string;
+  shortfall: number;
+  cumulativeDueFromAsOf: number;
+};
+
+const findForwardLiquidityGap = (
+  projection: LiquidityProjectionResult,
+  asOfYmd: string,
+): ForwardLiquidityGap | null => {
+  const fundingTotal = projection.summary.funding_total;
+  let cumulativeFromAsOf = 0;
+
+  for (const milestone of projection.milestones) {
+    if (!isOnOrAfterAsOf(milestone.due_date, asOfYmd)) continue;
+    cumulativeFromAsOf += milestone.total_due;
+    const headroom = fundingTotal - cumulativeFromAsOf;
+    if (headroom < 0) {
+      return {
+        date: milestone.due_date,
+        shortfall: Math.abs(headroom),
+        cumulativeDueFromAsOf: cumulativeFromAsOf,
+      };
+    }
+  }
+
+  return null;
+};
+
 /**
  * Maps getLiquidityProjection() to MCP fields aligned with the Liquidez page:
  * - Obligations counted from as_of forward (not past-due stacking).
- * - lasts_until / next_gap only on future milestone dates.
+ * - lasts_until / next_gap use forward-only cumulative headroom.
  */
 export function buildMcpLiquidityPayload(
   projection: LiquidityProjectionResult,
@@ -50,10 +79,7 @@ export function buildMcpLiquidityPayload(
 
   const fundingTotal = projection.summary.funding_total;
   const netLiquidity = fundingTotal - committedFromAsOf;
-
-  const nextGapMilestone = futureMilestones.find(
-    (milestone) => milestone.liquidity_headroom < 0,
-  );
+  const forwardGap = findForwardLiquidityGap(projection, asOfYmd);
 
   return {
     as_of: asOfYmd,
@@ -61,16 +87,16 @@ export function buildMcpLiquidityPayload(
     funding_total: fundingTotal,
     committed_obligations_total: committedFromAsOf,
     net_liquidity: netLiquidity,
-    lasts_until: nextGapMilestone?.due_date ?? null,
+    lasts_until: forwardGap?.date ?? null,
     lasts_until_including_income: futureShortfallDate(
       projection.summary.first_projected_shortfall_date,
       asOfYmd,
     ),
-    next_gap: nextGapMilestone
+    next_gap: forwardGap
       ? {
-          date: nextGapMilestone.due_date,
-          shortfall: Math.abs(nextGapMilestone.liquidity_headroom),
-          cumulative_due: nextGapMilestone.cumulative_due_through_date,
+          date: forwardGap.date,
+          shortfall: forwardGap.shortfall,
+          cumulative_due: forwardGap.cumulativeDueFromAsOf,
         }
       : null,
   };
