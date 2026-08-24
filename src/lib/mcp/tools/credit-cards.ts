@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
-import prisma from '@/lib/prisma';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
-import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import {
   createCreditCardPayment,
   createCreditCardPurchase,
@@ -22,6 +19,19 @@ import {
   listScheduledPaymentsForCard,
 } from '@/lib/finance/credit-card-scheduled-payment.service';
 import {
+  confirmSchema,
+  ownerIdSchema,
+  ownerTypeSchema,
+  runAgentTool,
+  type McpToolContext,
+} from '@/lib/mcp/tool-helpers';
+import {
+  calendarRangeBounds,
+  resolveCategoryRef,
+  resolveDateRange,
+  resolveFortnightIdForDate,
+} from '@/lib/mcp/resolvers';
+import {
   createCreditCardPurchaseSchema,
   normalizeCreditCardPaymentInput,
   createCreditCardPaymentSchema,
@@ -31,15 +41,6 @@ import {
   createCreditCardInstallmentPlanSchema,
   updateCreditCardInstallmentPlanSchema,
 } from '@/schemas/credit-card-installment-plan.schema';
-import type { AgentContext } from '@/lib/server/resolve-agent-context';
-import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import {
-  confirmSchema,
-  ownerIdSchema,
-  ownerTypeSchema,
-  runAgentTool,
-  type McpToolContext,
-} from '@/lib/mcp/tool-helpers';
 
 const ownerArgs = {
   ownerType: ownerTypeSchema,
@@ -55,66 +56,6 @@ const cardIdSchema = z
 const dateYmdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato requerido: YYYY-MM-DD');
-
-/**
- * Resolves the fortnight for a civil date within the owner context. This keeps
- * the connector ergonomic: the bot passes a date, never an internal fortnight id.
- */
-async function resolveFortnightIdForDate(
-  agent: AgentContext,
-  ymd: string,
-): Promise<number> {
-  const [year, month, day] = ymd.split('-').map(Number);
-  const fortnight = await resolveOrCreateFortnight({
-    ownerType: agent.ownerType,
-    ownerId: agent.ownerId,
-    year,
-    month,
-    period: getFortnightPeriodForDay(day),
-  });
-  return fortnight.id;
-}
-
-async function resolveCategoryId(
-  ownerFilter: OwnerFilter,
-  categoryId: number | undefined,
-  categoryName: string | undefined,
-): Promise<number> {
-  if (categoryId != null) {
-    const category = await prisma.category.findFirst({
-      where: { id: categoryId, ...ownerFilter },
-      select: { id: true },
-    });
-    if (!category) {
-      throw new Error('Categoría no encontrada en este contexto');
-    }
-    return category.id;
-  }
-
-  if (categoryName) {
-    const category = await prisma.category.findFirst({
-      where: {
-        ...ownerFilter,
-        name: { equals: categoryName.trim(), mode: 'insensitive' },
-      },
-      select: { id: true },
-    });
-    if (category) return category.id;
-
-    const available = await prisma.category.findMany({
-      where: { ...ownerFilter, active: true },
-      select: { name: true },
-      orderBy: { name: 'asc' },
-    });
-    throw new Error(
-      `Categoría "${categoryName}" no encontrada. Disponibles: ${available
-        .map((c) => c.name)
-        .join(', ')}`,
-    );
-  }
-
-  throw new Error('Indica category_id o category_name');
-}
 
 export function registerCreditCardTools(server: McpServer) {
   server.registerTool(
@@ -365,7 +306,9 @@ export function registerCreditCardTools(server: McpServer) {
         const purchaseDate = args.purchase_date ?? todayCalendarDate();
         const [fortnightId, categoryId] = await Promise.all([
           resolveFortnightIdForDate(agent, purchaseDate),
-          resolveCategoryId(agent.ownerFilter, args.category_id, args.category_name),
+          resolveCategoryRef(agent.ownerFilter, args.category_id, args.category_name, {
+            required: true,
+          }),
         ]);
 
         const input = createCreditCardPurchaseSchema.parse({
@@ -536,5 +479,89 @@ export function registerCreditCardTools(server: McpServer) {
         );
         return { deleted: true, payment_id: args.payment_id };
       }),
+  );
+
+  server.registerTool(
+    'list_card_movements',
+    {
+      title: 'Movimientos de tarjeta por rango',
+      description:
+        'Lista compras, pagos e importaciones de una tarjeta en un rango de fechas o el ciclo actual.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        card_id: cardIdSchema,
+        from: dateYmdSchema.optional(),
+        to: dateYmdSchema.optional(),
+        use_current_cycle: z
+          .boolean()
+          .default(false)
+          .describe('true = ciclo de corte vigente en lugar de from/to.'),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool(
+        'list_card_movements',
+        ctx as McpToolContext,
+        args,
+        'read',
+        async (agent) => {
+          const statement = await getCreditCardStatementByOwner(
+            args.card_id,
+            agent.ownerFilter,
+          );
+
+          let from = args.from;
+          let to = args.to;
+          if (args.use_current_cycle || (!from && !to)) {
+            from = statement.current_cycle_start.slice(0, 10);
+            to = statement.current_cycle_end.slice(0, 10);
+          }
+          if (!from || !to) {
+            const range = resolveDateRange({});
+            from = range.from;
+            to = range.to;
+          }
+
+          const inRange = (dateYmd: string) => dateYmd >= from! && dateYmd <= to!;
+
+          const purchaseMap = new Map<number, (typeof statement.statement_purchases)[number]>();
+          for (const purchase of [
+            ...statement.statement_purchases,
+            ...statement.current_cycle_purchase_items,
+            ...statement.installment_active_purchases,
+          ]) {
+            if (inRange(purchase.payment_date.slice(0, 10))) {
+              purchaseMap.set(purchase.id, purchase);
+            }
+          }
+
+          const movements = [
+            ...[...purchaseMap.values()].map((purchase) => ({
+              kind: 'purchase' as const,
+              id: purchase.id,
+              date: purchase.payment_date.slice(0, 10),
+              description: purchase.description,
+              amount: purchase.amount,
+            })),
+            ...statement.payment_history
+              .filter((payment) => inRange(payment.paid_at.slice(0, 10)))
+              .map((payment) => ({
+                kind: 'payment' as const,
+                id: payment.id,
+                date: payment.paid_at.slice(0, 10),
+                description: payment.note ?? `Pago ${payment.source_wallet_name}`,
+                amount: payment.amount,
+              })),
+          ].sort((a, b) => a.date.localeCompare(b.date));
+
+          return {
+            card_id: args.card_id,
+            from,
+            to,
+            movements,
+          };
+        },
+      ),
   );
 }
