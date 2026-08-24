@@ -4,6 +4,7 @@ import { GET as getProtectedResourceMcp } from '@/app/.well-known/oauth-protecte
 import { OPTIONS as optionsProtectedResourceMcp } from '@/app/.well-known/oauth-protected-resource/mcp/route';
 import { GET as getAuthServer } from '@/app/.well-known/oauth-authorization-server/route';
 import { GET as getAuthServerMcp } from '@/app/.well-known/oauth-authorization-server/mcp/route';
+import { GET as getAuthServerApiMcp } from '@/app/.well-known/oauth-authorization-server/api/mcp/route';
 import { OPTIONS as optionsAuthServerMcp } from '@/app/.well-known/oauth-authorization-server/mcp/route';
 
 const expectJsonCors = (response: Response) => {
@@ -59,6 +60,16 @@ describe('well-known OAuth routes', () => {
     const body = await response.json();
     expect(body.token_endpoint).toContain('/api/oauth/token');
     expect(body.registration_endpoint).toContain('/api/oauth/register');
+    expect(body.token_endpoint_auth_methods_supported).toContain('private_key_jwt');
+  });
+
+  it('GET /.well-known/oauth-authorization-server/api/mcp (ChatGPT alias)', async () => {
+    const response = getAuthServerApiMcp(
+      new Request('http://localhost:3000/.well-known/oauth-authorization-server/api/mcp'),
+    );
+    expectJsonCors(response);
+    const body = await response.json();
+    expect(body.authorization_endpoint).toContain('/api/oauth/authorize');
     expect(body.token_endpoint_auth_methods_supported).toContain('private_key_jwt');
   });
 
