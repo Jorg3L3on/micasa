@@ -5,6 +5,7 @@ import {
   resolveOAuthClient,
   verifyClientSecret,
 } from '@/lib/server/mcp-oauth/clients';
+import { oauthPath } from '@/lib/server/mcp-oauth/config';
 import {
   oauthErrorResponse,
   oauthJsonResponse,
@@ -14,6 +15,14 @@ import {
   exchangeAuthorizationCode,
   refreshOAuthGrant,
 } from '@/lib/server/mcp-oauth/grants';
+import {
+  clientIdHostOnly,
+  logOAuthTokenFailure,
+} from '@/lib/server/mcp-oauth/oauth-token-log';
+import {
+  isValidPkceVerifier,
+  resolveAuthorizationCodeAuth,
+} from '@/lib/server/mcp-oauth/token-auth';
 
 const parseFormBody = async (request: NextRequest) => {
   const contentType = request.headers.get('content-type') ?? '';
@@ -53,38 +62,89 @@ const tokenRequestSchema = z.discriminatedUnion('grant_type', [
   refreshTokenGrantSchema,
 ]);
 
-const isValidPkceVerifier = (value: string | undefined): value is string =>
-  typeof value === 'string' && value.length >= 43 && value.length <= 128;
-
 export function OPTIONS() {
   return oauthOptionsResponse();
 }
 
 export async function POST(request: NextRequest) {
+  let grantType = 'unknown';
+  let clientId = '';
+  let hasCode = false;
+  let hasVerifier = false;
+  let hasAssertion = false;
+
   try {
     const raw = await parseFormBody(request);
     const input = tokenRequestSchema.parse(raw);
+    grantType = input.grant_type;
+    clientId = input.client_id;
+    hasCode = Boolean(input.grant_type === 'authorization_code' && input.code);
+    hasVerifier = isValidPkceVerifier(
+      input.grant_type === 'authorization_code' ? input.code_verifier : undefined,
+    );
+    hasAssertion = Boolean(
+      input.grant_type === 'authorization_code' && input.client_assertion?.trim(),
+    );
+
     const client = await resolveOAuthClient(input.client_id);
     if (!client) {
+      logOAuthTokenFailure({
+        grant_type: grantType,
+        has_code: hasCode,
+        has_verifier: hasVerifier,
+        has_assertion: hasAssertion,
+        client_id_host: clientIdHostOnly(clientId),
+        error: 'invalid_client',
+      });
       return oauthErrorResponse('invalid_client', undefined, 401);
     }
     if (!verifyClientSecret(client, input.client_secret)) {
+      logOAuthTokenFailure({
+        grant_type: grantType,
+        has_code: hasCode,
+        has_verifier: hasVerifier,
+        has_assertion: hasAssertion,
+        client_id_host: clientIdHostOnly(clientId),
+        error: 'invalid_client',
+      });
       return oauthErrorResponse('invalid_client', undefined, 401);
     }
 
     const resourceParam = input.resource?.trim() || null;
 
     if (input.grant_type === 'authorization_code') {
-      if (!isValidPkceVerifier(input.code_verifier)) {
-        return oauthErrorResponse(
-          'invalid_request',
-          'code_verifier requerido para PKCE S256',
-        );
+      const tokenEndpoint = oauthPath(request, '/api/oauth/token');
+      const authResult = await resolveAuthorizationCodeAuth({
+        client,
+        codeVerifier: input.code_verifier,
+        clientAssertion: input.client_assertion,
+        clientAssertionType: input.client_assertion_type,
+        tokenEndpoint,
+      });
+
+      if (!authResult.ok) {
+        logOAuthTokenFailure({
+          grant_type: grantType,
+          has_code: hasCode,
+          has_verifier: hasVerifier,
+          has_assertion: hasAssertion,
+          client_id_host: clientIdHostOnly(clientId),
+          error: authResult.error,
+        });
+        return oauthErrorResponse(authResult.error, authResult.description);
       }
 
       try {
         assertRedirectUriAllowed(client, input.redirect_uri);
       } catch {
+        logOAuthTokenFailure({
+          grant_type: grantType,
+          has_code: hasCode,
+          has_verifier: hasVerifier,
+          has_assertion: hasAssertion,
+          client_id_host: clientIdHostOnly(clientId),
+          error: 'invalid_grant',
+        });
         return oauthErrorResponse('invalid_grant', 'redirect_uri no autorizado');
       }
 
@@ -92,7 +152,9 @@ export async function POST(request: NextRequest) {
         code: input.code,
         clientId: input.client_id,
         redirectUri: input.redirect_uri,
-        codeVerifier: input.code_verifier,
+        codeVerifier: authResult.codeVerifier,
+        clientAuthenticatedViaPrivateKeyJwt:
+          authResult.clientAuthenticatedViaPrivateKeyJwt,
         resource: resourceParam,
       });
       return oauthJsonResponse(tokenResponse);
@@ -106,9 +168,25 @@ export async function POST(request: NextRequest) {
     return oauthJsonResponse(tokenResponse);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      logOAuthTokenFailure({
+        grant_type: grantType,
+        has_code: hasCode,
+        has_verifier: hasVerifier,
+        has_assertion: hasAssertion,
+        client_id_host: clientIdHostOnly(clientId),
+        error: 'invalid_request',
+      });
       return oauthErrorResponse('invalid_request', error.message);
     }
     if (error instanceof Error && error.message === 'invalid_grant') {
+      logOAuthTokenFailure({
+        grant_type: grantType,
+        has_code: hasCode,
+        has_verifier: hasVerifier,
+        has_assertion: hasAssertion,
+        client_id_host: clientIdHostOnly(clientId),
+        error: 'invalid_grant',
+      });
       return oauthErrorResponse('invalid_grant');
     }
     console.error('OAuth token error:', error);

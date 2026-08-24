@@ -15,6 +15,7 @@ import {
   verifyOAuthSecret,
   verifyPkceS256,
 } from '@/lib/server/mcp-oauth/tokens';
+import { isValidPkceVerifier } from '@/lib/server/mcp-oauth/token-auth';
 
 export const createAuthorizationCode = async (input: {
   clientId: string;
@@ -46,7 +47,8 @@ export const exchangeAuthorizationCode = async (input: {
   code: string;
   clientId: string;
   redirectUri: string;
-  codeVerifier: string;
+  codeVerifier?: string | null;
+  clientAuthenticatedViaPrivateKeyJwt?: boolean;
   resource?: string | null;
 }) => {
   const codeHash = hashOAuthSecret(input.code);
@@ -69,9 +71,16 @@ export const exchangeAuthorizationCode = async (input: {
   if (row.code_challenge_method !== 'S256') {
     throw new Error('invalid_grant');
   }
-  if (!verifyPkceS256(input.codeVerifier, row.code_challenge)) {
+
+  const pkceValid =
+    isValidPkceVerifier(input.codeVerifier ?? undefined) &&
+    verifyPkceS256(input.codeVerifier!, row.code_challenge);
+  const jwtValid = input.clientAuthenticatedViaPrivateKeyJwt === true;
+
+  if (!pkceValid && !jwtValid) {
     throw new Error('invalid_grant');
   }
+
   if (input.resource && !mcpResourcesMatch(input.resource, row.resource)) {
     throw new Error('invalid_grant');
   }

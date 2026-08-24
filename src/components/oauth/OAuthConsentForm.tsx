@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   Card,
   CardContent,
@@ -12,7 +11,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleField } from '@/components/ui/toggle';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 type ConsentParams = {
   client_id: string;
@@ -38,29 +36,6 @@ export default function OAuthConsentForm({
   consentParams,
 }: OAuthConsentFormProps) {
   const [allowWrite, setAllowWrite] = useState(requestedScope.includes('write'));
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleApprove = async () => {
-    try {
-      setSubmitting(true);
-      const response = await clientFetchFromApi<{ redirect_to: string }>(
-        '/api/oauth/consent',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            ...consentParams,
-            allow_write: allowWrite ? 'true' : 'false',
-          }),
-        },
-      );
-      window.location.href = response.redirect_to;
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo autorizar la conexión',
-      );
-      setSubmitting(false);
-    }
-  };
 
   const handleDeny = () => {
     const redirect = new URL(consentParams.redirect_uri);
@@ -99,32 +74,49 @@ export default function OAuthConsentForm({
             El cliente podrá consultar tus finanzas con el token OAuth. Elige si
             también puede registrar cambios.
           </p>
-          <ToggleField
-            label="Permitir escritura"
-            helper="Con escritura el cliente puede registrar compras, pagos y ajustes."
-            checked={allowWrite}
-            onCheckedChange={setAllowWrite}
-            disabled={submitting}
-          />
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 flex-1 rounded-xl"
-              onClick={handleDeny}
-              disabled={submitting}
-            >
-              Rechazar
-            </Button>
-            <Button
-              type="button"
-              className="h-11 flex-1 rounded-xl"
-              onClick={handleApprove}
-              disabled={submitting}
-            >
-              {submitting ? 'Autorizando…' : 'Autorizar'}
-            </Button>
-          </div>
+          <form
+            method="POST"
+            action="/api/oauth/consent"
+            className="flex flex-col gap-4"
+          >
+            <input type="hidden" name="client_id" value={consentParams.client_id} />
+            <input type="hidden" name="redirect_uri" value={consentParams.redirect_uri} />
+            <input type="hidden" name="code_challenge" value={consentParams.code_challenge} />
+            <input
+              type="hidden"
+              name="code_challenge_method"
+              value={consentParams.code_challenge_method}
+            />
+            {consentParams.state ? (
+              <input type="hidden" name="state" value={consentParams.state} />
+            ) : null}
+            {consentParams.scope ? (
+              <input type="hidden" name="scope" value={consentParams.scope} />
+            ) : null}
+            {consentParams.resource ? (
+              <input type="hidden" name="resource" value={consentParams.resource} />
+            ) : null}
+            <input type="hidden" name="allow_write" value={allowWrite ? 'true' : 'false'} />
+            <ToggleField
+              label="Permitir escritura"
+              helper="Con escritura el cliente puede registrar compras, pagos y ajustes."
+              checked={allowWrite}
+              onCheckedChange={setAllowWrite}
+            />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 flex-1 rounded-xl"
+                onClick={handleDeny}
+              >
+                Rechazar
+              </Button>
+              <Button type="submit" className="h-11 flex-1 rounded-xl">
+                Autorizar
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
