@@ -5,6 +5,7 @@ import {
   defaultLiquidityUntilFromAsOf,
   getLiquidityProjection,
 } from '@/lib/finance/liquidity-projection.service';
+import { buildMcpLiquidityPayload } from '@/lib/mcp/liquidity-response';
 import {
   ownerIdSchema,
   ownerTypeSchema,
@@ -40,9 +41,11 @@ export function registerLiquidityTools(server: McpServer) {
     async (args, ctx) =>
       runAgentTool('get_liquidity', ctx as McpToolContext, args, 'read', async (agent) => {
         const asOf = new Date();
+        const asOfYmd = todayCalendarDate();
         const until = args.until
           ? parseCalendarDate(args.until)
           : defaultLiquidityUntilFromAsOf(asOf);
+        const untilYmd = args.until ?? formatCalendarDate(until);
 
         const projection = await getLiquidityProjection({
           ownerFilter: agent.ownerFilter,
@@ -51,9 +54,7 @@ export function registerLiquidityTools(server: McpServer) {
           includeUnpaidExpenses: args.include_unpaid_expenses,
         });
 
-        const nextGap = projection.milestones.find(
-          (m) => m.liquidity_headroom < 0,
-        );
+        const liquidity = buildMcpLiquidityPayload(projection, asOfYmd, untilYmd);
 
         const payoffEvents = projection.projection_events.filter(
           (event) =>
@@ -62,22 +63,7 @@ export function registerLiquidityTools(server: McpServer) {
         );
 
         return {
-          as_of: todayCalendarDate(),
-          until: args.until ?? formatCalendarDate(until),
-          funding_total: projection.summary.funding_total,
-          committed_obligations_total:
-            projection.summary.total_obligations_due_on_or_before_until,
-          net_liquidity: projection.summary.net_liquidity_versus_obligations,
-          lasts_until: projection.summary.first_cumulative_shortfall_date,
-          lasts_until_including_income:
-            projection.summary.first_projected_shortfall_date,
-          next_gap: nextGap
-            ? {
-                date: nextGap.due_date,
-                shortfall: Math.abs(nextGap.liquidity_headroom),
-                cumulative_due: nextGap.cumulative_due_through_date,
-              }
-            : null,
+          ...liquidity,
           funding_wallets: projection.funding_wallets.map((wallet) => ({
             id: wallet.id,
             name: wallet.name,

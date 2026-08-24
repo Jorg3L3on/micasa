@@ -69,11 +69,42 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 | `list_loans` | Préstamos; `year` + `month` filtra cuotas del mes |
 | `get_loan` | Detalle + calendario de un préstamo |
 | `list_categories` | Catálogo de categorías (gasto e ingreso comparten árbol) |
-| `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, filtros) |
+| `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, filtros). Incluye `totals` del rango completo y `totals_in_page` de la página actual. |
 | `list_upcoming` | Pagos del mes: tarjetas, MSI y préstamos unificados |
 | `list_goals` | Metas con progreso hacia el objetivo |
 | `list_budgets` | Presupuestos activos: tope, gastado, restante |
 | `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app) |
+
+### Reglas de lectura (v1.2.0)
+
+Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
+
+**`list_upcoming(year, month)`**
+
+- **Un compromiso por tarjeta y fecha de pago:** el monto efectivo viene de `getDuePaymentsForPlannerMonth` (revolving + MSI del corte combinados, igual que el calendario del panel). No se apila el `next_due_payment` del estado de cuenta con cuotas MSI del mismo corte.
+- **Cuotas MSI de planes (`CreditCardInstallmentPlan`):** aparecen como renglones `msi` solo cuando su `dueDate` cae en el mes y **no** están ya cubiertas por la línea de pago de tarjeta de esa misma fecha.
+- **Préstamos:** toda cuota `SCHEDULED` con `dueDate` en el mes (vía `listLoanPaymentsForPlannerMonth`).
+- **`period_total`:** suma de ítems no pagados en la lista ya deduplicada.
+
+**`get_liquidity`**
+
+- Usa `getLiquidityProjection` (mismo servicio que `/api/wallets/liquidity-projection` y la página Liquidez).
+- **`committed_obligations_total` / `net_liquidity`:** solo obligaciones con fecha **≥ `as_of`** dentro del horizonte `until` (no se arrastra deuda vencida como si fuera pagadero mañana).
+- **`lasts_until` / `lasts_until_including_income`:** primera fecha de quiebre **futura** (≥ `as_of`), o `null` si el efectivo alcanza en el horizonte.
+- **`next_gap`:** primer hueco futuro (`liquidity_headroom < 0`), no fechas pasadas.
+
+**`list_expenses`**
+
+- **`totals`:** suma por billetera y categoría en **todo** el rango filtrado (todas las páginas).
+- **`totals_in_page`:** suma solo de la página actual (`limit`/`offset`).
+
+**`list_card_movements`**
+
+- Incluye **`purchase`**, **`payment`**, **`scheduled_payment`** (cuota programada suelta) e **`installment`** (cuota de plan MSI) cuya fecha cae en `from`/`to` o en el ciclo actual (`use_current_cycle`).
+
+**Redescubrimiento de tools**
+
+- `serverInfo.version` **1.2.0** (bump desde 1.1.0) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 

@@ -564,6 +564,65 @@ export async function coverInstallmentPlanPaymentForCardPayment(
   return markInstallmentPlanPaymentPaid(target.id, creditCardPaymentId);
 }
 
+export type PlannerInstallmentPlanPaymentItem = {
+  id: number;
+  planId: number;
+  planName: string;
+  walletId: number;
+  walletName: string;
+  dueDate: string;
+  amount: number;
+  sequence: number;
+  status: 'SCHEDULED' | 'PAID';
+};
+
+/** Scheduled MSI plan rows with dueDate in the planner month (all cuotas, not only next). */
+export async function listInstallmentPlanPaymentsForPlannerMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<PlannerInstallmentPlanPaymentItem[]> {
+  const from = new Date(Date.UTC(year, month - 1, 1));
+  const to = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+  const rows = await prisma.creditCardInstallmentPlanPayment.findMany({
+    where: {
+      status: 'SCHEDULED',
+      due_date: { gte: from, lte: to },
+      plan: {
+        ...ownerFilter,
+        status: 'ACTIVE',
+        credit_card_wallet: {
+          active: true,
+          type: { in: creditCardWalletTypes },
+        },
+      },
+    },
+    include: {
+      plan: {
+        select: {
+          id: true,
+          name: true,
+          credit_card_wallet: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: [{ due_date: 'asc' }, { sequence: 'asc' }],
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    planId: row.plan.id,
+    planName: row.plan.name,
+    walletId: row.plan.credit_card_wallet.id,
+    walletName: row.plan.credit_card_wallet.name,
+    dueDate: formatCalendarDate(row.due_date),
+    amount: decimalToNumber(row.amount),
+    sequence: row.sequence,
+    status: row.status,
+  }));
+}
+
 export async function listActiveInstallmentPlansForOwner(
   ownerFilter: OwnerFilter,
 ): Promise<
