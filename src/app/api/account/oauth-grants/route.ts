@@ -11,6 +11,7 @@ const GRANT_SELECT = {
   revoked_at: true,
   created_at: true,
   client: { select: { client_name: true } },
+  allowedContexts: { select: { owner_type: true, owner_id: true } },
 } as const;
 
 const toGrantDto = (grant: {
@@ -22,11 +23,16 @@ const toGrantDto = (grant: {
   revoked_at: Date | null;
   created_at: Date;
   client: { client_name: string };
+  allowedContexts?: Array<{ owner_type: 'USER' | 'HOUSE'; owner_id: number }>;
 }) => ({
   id: grant.id,
   client_id: grant.client_id,
   client_name: grant.client.client_name,
   scopes: grant.scopes,
+  allowed_contexts: (grant.allowedContexts ?? []).map((row) => ({
+    ownerType: row.owner_type === 'USER' ? 'user' : 'house',
+    ownerId: row.owner_id,
+  })),
   last_used_at: grant.last_used_at?.toISOString() ?? null,
   expires_at: grant.expires_at?.toISOString() ?? null,
   revoked_at: grant.revoked_at?.toISOString() ?? null,

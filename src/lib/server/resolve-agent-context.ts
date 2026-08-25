@@ -9,6 +9,13 @@ import {
   OAUTH_ACCESS_TOKEN_PREFIX,
 } from '@/lib/server/mcp-oauth/config';
 import { resolveOAuthGrantUser } from '@/lib/server/mcp-oauth/grants';
+import {
+  assertOwnerOnAllowList,
+  loadAllowedContextsForApiKey,
+  loadAllowedContextsForOAuthGrant,
+} from '@/lib/server/agent-allowed-contexts';
+import { AgentAuthError } from '@/lib/server/agent-auth-error';
+import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 import prisma from '@/lib/prisma';
 import type {
   OwnerContextRole,
@@ -17,6 +24,7 @@ import type {
 } from '@/lib/server/get-owner-context';
 
 export { AGENT_TOKEN_LOOKUP_LENGTH, AGENT_TOKEN_PREFIX };
+export { AgentAuthError } from '@/lib/server/agent-auth-error';
 
 export type AgentScope = 'read' | 'write';
 
@@ -29,17 +37,8 @@ export type AgentContext = OwnerContextSuccess & {
   oauthGrantId?: number;
   /** Negative grant id for rate-limit identity (distinct from api keys). */
   rateLimitIdentity: number;
+  allowedContexts: AgentContextEntry[];
 };
-
-export class AgentAuthError extends Error {
-  readonly status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = 'AgentAuthError';
-    this.status = status;
-  }
-}
 
 const unauthorized = (message = 'Token de agente inválido') =>
   new AgentAuthError(message, 401);
@@ -77,16 +76,21 @@ export async function resolveAgentUser(token: string): Promise<{
   apiKeyId?: number;
   oauthGrantId?: number;
   rateLimitIdentity: number;
+  allowedContexts: AgentContextEntry[];
 }> {
   if (isOAuthAccessToken(token)) {
     const oauthUser = await resolveOAuthGrantUser(token);
     if (!oauthUser) throw unauthorized('Token OAuth inválido o expirado');
+    const allowedContexts = await loadAllowedContextsForOAuthGrant(
+      oauthUser.oauthGrantId,
+    );
     return {
       userId: oauthUser.userId,
       scopes: oauthUser.scopes,
       authSource: 'oauth_grant',
       oauthGrantId: oauthUser.oauthGrantId,
       rateLimitIdentity: -oauthUser.oauthGrantId,
+      allowedContexts,
     };
   }
 
@@ -137,12 +141,15 @@ export async function resolveAgentUser(token: string): Promise<{
     (scope): scope is AgentScope => scope === 'read' || scope === 'write',
   );
 
+  const allowedContexts = await loadAllowedContextsForApiKey(apiKey.id);
+
   return {
     userId: apiKey.user.id,
     scopes,
     authSource: 'api_key',
     apiKeyId: apiKey.id,
     rateLimitIdentity: apiKey.id,
+    allowedContexts,
   };
 }
 
@@ -155,6 +162,7 @@ export async function resolveOwnerForAgent(
   userId: number,
   ownerType: 'user' | 'house',
   ownerId: number,
+  allowedContexts: AgentContextEntry[],
 ): Promise<{
   ownerType: 'user' | 'house';
   ownerId: number;
@@ -164,6 +172,8 @@ export async function resolveOwnerForAgent(
   if (!Number.isInteger(ownerId) || ownerId <= 0) {
     throw new AgentAuthError('ownerId inválido', 400);
   }
+
+  assertOwnerOnAllowList(allowedContexts, ownerType, ownerId);
 
   if (ownerType === 'house') {
     const membership = await prisma.houseMember.findFirst({
@@ -198,7 +208,12 @@ export async function resolveAgentContext(
 ): Promise<AgentContext> {
   const token = parseBearerToken(authorizationHeader);
   const agentUser = await resolveAgentUser(token);
-  const owner = await resolveOwnerForAgent(agentUser.userId, ownerType, ownerId);
+  const owner = await resolveOwnerForAgent(
+    agentUser.userId,
+    ownerType,
+    ownerId,
+    agentUser.allowedContexts,
+  );
   return { ...agentUser, ...owner };
 }
 

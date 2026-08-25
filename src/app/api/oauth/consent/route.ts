@@ -11,6 +11,13 @@ import {
   parseScopeParam,
 } from '@/lib/server/mcp-oauth/config';
 import { createAuthorizationCode } from '@/lib/server/mcp-oauth/grants';
+import {
+  parseConsentFormData,
+  parseContextFieldsFromForm,
+  scalarConsentField,
+  validateSelectableContexts,
+} from '@/lib/server/agent-allowed-contexts';
+import { AgentAuthError } from '@/lib/server/agent-auth-error';
 
 const consentFieldsSchema = z.object({
   client_id: z.string().min(1),
@@ -25,17 +32,19 @@ const consentFieldsSchema = z.object({
 
 const parseConsentBody = async (
   request: NextRequest,
-): Promise<{ fields: Record<string, string>; formPost: boolean }> => {
+): Promise<{
+  fields: Record<string, string | string[]>;
+  formPost: boolean;
+}> => {
   const contentType = request.headers.get('content-type') ?? '';
   if (
     contentType.includes('application/x-www-form-urlencoded') ||
     contentType.includes('multipart/form-data')
   ) {
     const form = await request.formData();
-    const fields = Object.fromEntries(form.entries()) as Record<string, string>;
-    return { fields, formPost: true };
+    return { fields: parseConsentFormData(form), formPost: true };
   }
-  const json = (await request.json()) as Record<string, string>;
+  const json = (await request.json()) as Record<string, string | string[]>;
   return { fields: json, formPost: false };
 };
 
@@ -63,7 +72,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const { fields, formPost } = await parseConsentBody(request);
-    const input = consentFieldsSchema.parse(fields);
+    const input = consentFieldsSchema.parse({
+      client_id: scalarConsentField(fields, 'client_id'),
+      redirect_uri: scalarConsentField(fields, 'redirect_uri'),
+      state: scalarConsentField(fields, 'state'),
+      scope: scalarConsentField(fields, 'scope'),
+      code_challenge: scalarConsentField(fields, 'code_challenge'),
+      code_challenge_method: scalarConsentField(fields, 'code_challenge_method'),
+      resource: scalarConsentField(fields, 'resource'),
+      allow_write: scalarConsentField(fields, 'allow_write'),
+    });
     const client = await resolveOAuthClient(input.client_id);
     if (!client) {
       return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 });
@@ -82,6 +100,9 @@ export async function POST(request: NextRequest) {
       request,
     );
 
+    const parsedContexts = parseContextFieldsFromForm(fields);
+    const allowedContexts = await validateSelectableContexts(userId, parsedContexts);
+
     const code = await createAuthorizationCode({
       clientId: input.client_id,
       userId,
@@ -90,6 +111,7 @@ export async function POST(request: NextRequest) {
       codeChallenge: input.code_challenge,
       codeChallengeMethod: input.code_challenge_method,
       resource,
+      allowedContexts,
     });
 
     const redirect = buildOAuthCallbackUrl({
@@ -104,6 +126,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ redirect_to: redirect.toString() });
   } catch (error) {
+    if (error instanceof AgentAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Solicitud inválida', details: error.issues },

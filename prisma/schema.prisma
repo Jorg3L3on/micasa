@@ -79,6 +79,12 @@ enum StatementImportProvider {
   LIVERPOOL
 }
 
+/// Financial context type allowed on MCP API keys and OAuth grants.
+enum AgentContextOwnerType {
+  USER
+  HOUSE
+}
+
 model User {
   id                   Int     @id @default(autoincrement())
   name                 String
@@ -144,6 +150,8 @@ model ApiKey {
 
   user User @relation(fields: [user_id], references: [id])
 
+  allowedContexts AgentConnectionAllowedContext[]
+
   @@index([user_id])
 }
 
@@ -180,8 +188,9 @@ model McpOAuthAuthorizationCode {
   used_at               DateTime? @db.Timestamptz(3)
   created_at            DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
-  client McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
-  user   User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  client           McpOAuthClient                    @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  user             User                              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allowedContexts  McpOAuthAuthorizationCodeContext[]
 
   @@index([client_id])
   @@index([user_id])
@@ -203,11 +212,43 @@ model McpOAuthGrant {
   revoked_at           DateTime? @db.Timestamptz(3)
   created_at           DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
-  client McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
-  user   User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  client          McpOAuthClient                 @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  user            User                           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allowedContexts AgentConnectionAllowedContext[]
 
   @@index([user_id])
   @@index([client_id])
+}
+
+/// Allow-list row for an MCP API key or OAuth grant (ownerType + ownerId).
+model AgentConnectionAllowedContext {
+  id             Int                   @id @default(autoincrement())
+  owner_type     AgentContextOwnerType
+  owner_id       Int
+  api_key_id     Int?
+  oauth_grant_id Int?
+  created_at     DateTime              @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  apiKey     ApiKey?         @relation(fields: [api_key_id], references: [id], onDelete: Cascade)
+  oauthGrant McpOAuthGrant?  @relation(fields: [oauth_grant_id], references: [id], onDelete: Cascade)
+
+  @@unique([api_key_id, owner_type, owner_id])
+  @@unique([oauth_grant_id, owner_type, owner_id])
+  @@index([api_key_id])
+  @@index([oauth_grant_id])
+}
+
+/// Contexts selected at OAuth consent, copied to the grant on token exchange.
+model McpOAuthAuthorizationCodeContext {
+  id                    Int                   @id @default(autoincrement())
+  authorization_code_id Int
+  owner_type            AgentContextOwnerType
+  owner_id              Int
+
+  authorizationCode McpOAuthAuthorizationCode @relation(fields: [authorization_code_id], references: [id], onDelete: Cascade)
+
+  @@unique([authorization_code_id, owner_type, owner_id])
+  @@index([authorization_code_id])
 }
 
 /// Durable, secret-free log of OAuth token endpoint hits (JOR-90 diagnostics).

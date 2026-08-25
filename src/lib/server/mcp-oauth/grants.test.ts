@@ -5,9 +5,17 @@ const prismaMock = vi.hoisted(() => ({
     findUnique: vi.fn(),
     update: vi.fn(),
   },
+  mcpOAuthAuthorizationCodeContext: {
+    findMany: vi.fn(),
+  },
   mcpOAuthGrant: {
     create: vi.fn(),
   },
+  agentConnectionAllowedContext: {
+    deleteMany: vi.fn(),
+    createMany: vi.fn(),
+  },
+  $transaction: vi.fn(),
 }));
 
 const tokenClientIdMatchesCodeMock = vi.hoisted(() => vi.fn());
@@ -74,7 +82,16 @@ beforeEach(() => {
   vi.stubEnv('NEXTAUTH_URL', 'https://micasa.example');
   prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue(baseCodeRow);
   prismaMock.mcpOAuthAuthorizationCode.update.mockResolvedValue({});
+  prismaMock.mcpOAuthAuthorizationCodeContext.findMany.mockResolvedValue([]);
   prismaMock.mcpOAuthGrant.create.mockResolvedValue({ id: 1 });
+  prismaMock.agentConnectionAllowedContext.deleteMany.mockResolvedValue({ count: 0 });
+  prismaMock.agentConnectionAllowedContext.createMany.mockResolvedValue({ count: 0 });
+  prismaMock.$transaction.mockImplementation(async (ops: unknown) => {
+    if (Array.isArray(ops)) {
+      for (const op of ops) await op;
+    }
+    return ops;
+  });
   tokenClientIdMatchesCodeMock.mockResolvedValue(true);
 });
 

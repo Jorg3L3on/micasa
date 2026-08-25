@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { buildSelectableContextsForUser } from '@/lib/server/agent-allowed-contexts';
 import ConnectionsPanel, {
   type ApiKeySummary,
   type OAuthGrantSummary,
@@ -19,7 +20,7 @@ export default async function ConnectionsPage() {
 
   const userId = Number(session.user.id);
 
-  const [keys, oauthGrants] = await Promise.all([
+  const [keys, oauthGrants, selectableContexts] = await Promise.all([
     prisma.apiKey.findMany({
       where: { user_id: userId },
       select: {
@@ -31,6 +32,7 @@ export default async function ConnectionsPage() {
         expires_at: true,
         revoked_at: true,
         created_at: true,
+        allowedContexts: { select: { owner_type: true, owner_id: true } },
       },
       orderBy: [{ revoked_at: 'asc' }, { created_at: 'desc' }],
     }),
@@ -45,16 +47,27 @@ export default async function ConnectionsPage() {
         revoked_at: true,
         created_at: true,
         client: { select: { client_name: true } },
+        allowedContexts: { select: { owner_type: true, owner_id: true } },
       },
       orderBy: [{ revoked_at: 'asc' }, { created_at: 'desc' }],
     }),
+    buildSelectableContextsForUser(userId),
   ]);
+
+  const mapContexts = (
+    rows: Array<{ owner_type: 'USER' | 'HOUSE'; owner_id: number }>,
+  ) =>
+    rows.map((row) => ({
+      ownerType: row.owner_type === 'USER' ? ('user' as const) : ('house' as const),
+      ownerId: row.owner_id,
+    }));
 
   const initialKeys: ApiKeySummary[] = keys.map((key) => ({
     id: key.id,
     name: key.name,
     key_prefix: key.key_prefix,
     scopes: key.scopes,
+    allowed_contexts: mapContexts(key.allowedContexts),
     last_used_at: key.last_used_at?.toISOString() ?? null,
     expires_at: key.expires_at?.toISOString() ?? null,
     revoked_at: key.revoked_at?.toISOString() ?? null,
@@ -66,6 +79,7 @@ export default async function ConnectionsPage() {
     client_id: grant.client_id,
     client_name: grant.client.client_name,
     scopes: grant.scopes,
+    allowed_contexts: mapContexts(grant.allowedContexts),
     last_used_at: grant.last_used_at?.toISOString() ?? null,
     expires_at: grant.expires_at?.toISOString() ?? null,
     revoked_at: grant.revoked_at?.toISOString() ?? null,
@@ -76,6 +90,7 @@ export default async function ConnectionsPage() {
     <ConnectionsPanel
       initialKeys={initialKeys}
       initialOAuthGrants={initialOAuthGrants}
+      selectableContexts={selectableContexts}
     />
   );
 }

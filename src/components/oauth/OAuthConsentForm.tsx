@@ -11,6 +11,11 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleField } from '@/components/ui/toggle';
+import AgentContextPicker, {
+  AgentContextHiddenFields,
+  useDefaultContextSelection,
+} from '@/components/settings/AgentContextPicker';
+import type { SelectableContext } from '@/types/agent-context';
 
 type ConsentParams = {
   client_id: string;
@@ -27,6 +32,7 @@ type OAuthConsentFormProps = {
   clientUri: string | null;
   requestedScope: string;
   consentParams: ConsentParams;
+  selectableContexts: SelectableContext[];
 };
 
 export default function OAuthConsentForm({
@@ -34,8 +40,12 @@ export default function OAuthConsentForm({
   clientUri,
   requestedScope,
   consentParams,
+  selectableContexts,
 }: OAuthConsentFormProps) {
   const [allowWrite, setAllowWrite] = useState(requestedScope.includes('write'));
+  const [selectedContexts, setSelectedContexts] = useDefaultContextSelection(
+    selectableContexts,
+  );
 
   const handleDeny = () => {
     const redirect = new URL(consentParams.redirect_uri);
@@ -44,6 +54,8 @@ export default function OAuthConsentForm({
     if (consentParams.state) redirect.searchParams.set('state', consentParams.state);
     window.location.href = redirect.toString();
   };
+
+  const canAuthorize = selectedContexts.length > 0;
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-8">
@@ -71,8 +83,8 @@ export default function OAuthConsentForm({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            El cliente podrá consultar tus finanzas con el token OAuth. Elige si
-            también puede registrar cambios.
+            Elige qué contextos puede ver este cliente y si también puede
+            registrar cambios.
           </p>
           <form
             method="POST"
@@ -97,6 +109,13 @@ export default function OAuthConsentForm({
               <input type="hidden" name="resource" value={consentParams.resource} />
             ) : null}
             <input type="hidden" name="allow_write" value={allowWrite ? 'true' : 'false'} />
+            <AgentContextHiddenFields value={selectedContexts} />
+            <AgentContextPicker
+              idPrefix="oauth-consent"
+              contexts={selectableContexts}
+              value={selectedContexts}
+              onChange={setSelectedContexts}
+            />
             <ToggleField
               label="Permitir escritura"
               helper="Con escritura el cliente puede registrar compras, pagos y ajustes."
@@ -112,7 +131,11 @@ export default function OAuthConsentForm({
               >
                 Rechazar
               </Button>
-              <Button type="submit" className="h-11 flex-1 rounded-xl">
+              <Button
+                type="submit"
+                className="h-11 flex-1 rounded-xl"
+                disabled={!canAuthorize}
+              >
                 Autorizar
               </Button>
             </div>

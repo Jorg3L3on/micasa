@@ -1,18 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashSync } from 'bcryptjs';
 
-const { findUniqueApiKey, updateApiKey, findFirstMembership } = vi.hoisted(
-  () => ({
+const { findUniqueApiKey, updateApiKey, findFirstMembership, findManyAllowedContexts } =
+  vi.hoisted(() => ({
     findUniqueApiKey: vi.fn(),
     updateApiKey: vi.fn(),
     findFirstMembership: vi.fn(),
-  }),
-);
+    findManyAllowedContexts: vi.fn(),
+  }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
     apiKey: { findUnique: findUniqueApiKey, update: updateApiKey },
     houseMember: { findFirst: findFirstMembership },
+    agentConnectionAllowedContext: { findMany: findManyAllowedContexts },
   },
 }));
 
@@ -42,6 +43,7 @@ const houseArgs = { ownerType: 'house' as const, ownerId: 3 };
 beforeEach(() => {
   vi.clearAllMocks();
   updateApiKey.mockResolvedValue({});
+  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
 });
 
 describe('runAgentTool', () => {

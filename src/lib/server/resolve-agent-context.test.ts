@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashSync } from 'bcryptjs';
 
-const { findUniqueApiKey, updateApiKey, findFirstMembership, resolveOAuthGrantUserMock } =
+const { findUniqueApiKey, updateApiKey, findFirstMembership, resolveOAuthGrantUserMock, findManyAllowedContexts } =
   vi.hoisted(
   () => ({
     findUniqueApiKey: vi.fn(),
     updateApiKey: vi.fn(),
     findFirstMembership: vi.fn(),
     resolveOAuthGrantUserMock: vi.fn(),
+    findManyAllowedContexts: vi.fn(),
   }),
 );
 
@@ -15,6 +16,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     apiKey: { findUnique: findUniqueApiKey, update: updateApiKey },
     houseMember: { findFirst: findFirstMembership },
+    agentConnectionAllowedContext: { findMany: findManyAllowedContexts },
   },
 }));
 
@@ -62,6 +64,7 @@ const expectAgentAuthError = async (
 beforeEach(() => {
   vi.clearAllMocks();
   updateApiKey.mockResolvedValue({});
+  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'USER', owner_id: 2 }]);
 });
 
 describe('parseBearerToken', () => {
@@ -194,36 +197,49 @@ describe('resolveAgentUser', () => {
 });
 
 describe('resolveOwnerForAgent', () => {
+  const allowedHouse = [{ ownerType: 'house' as const, ownerId: 3 }];
+  const allowedPersonal = [{ ownerType: 'user' as const, ownerId: 2 }];
+
   it('403 en casa sin membresía', async () => {
     findFirstMembership.mockResolvedValue(null);
-    await expectAgentAuthError(resolveOwnerForAgent(2, 'house', 99), 403);
+    await expectAgentAuthError(
+      resolveOwnerForAgent(2, 'house', 99, allowedHouse),
+      403,
+    );
   });
 
   it('devuelve ownerFilter de casa para miembros', async () => {
     findFirstMembership.mockResolvedValue({ role: 'MEMBER' });
-    const owner = await resolveOwnerForAgent(2, 'house', 3);
+    const owner = await resolveOwnerForAgent(2, 'house', 3, allowedHouse);
     expect(owner.ownerFilter).toEqual({ user_id: null, house_id: 3 });
     expect(owner.role).toBe('member');
   });
 
   it('403 cuando intenta actuar como otro usuario', async () => {
-    await expectAgentAuthError(resolveOwnerForAgent(2, 'user', 5), 403);
+    await expectAgentAuthError(
+      resolveOwnerForAgent(2, 'user', 5, allowedPersonal),
+      403,
+    );
   });
 
   it('devuelve ownerFilter personal para sí mismo', async () => {
-    const owner = await resolveOwnerForAgent(2, 'user', 2);
+    const owner = await resolveOwnerForAgent(2, 'user', 2, allowedPersonal);
     expect(owner.ownerFilter).toEqual({ user_id: 2, house_id: null });
     expect(owner.role).toBe('owner');
   });
 
   it('400 con ownerId no entero positivo', async () => {
-    await expectAgentAuthError(resolveOwnerForAgent(2, 'house', 0), 400);
+    await expectAgentAuthError(
+      resolveOwnerForAgent(2, 'house', 0, allowedHouse),
+      400,
+    );
   });
 });
 
 describe('resolveAgentContext', () => {
   it('compone token + owner en un contexto completo', async () => {
     findUniqueApiKey.mockResolvedValue(activeApiKey);
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
     findFirstMembership.mockResolvedValue({ role: 'OWNER' });
     const agent = await resolveAgentContext(
       `Bearer ${VALID_TOKEN}`,

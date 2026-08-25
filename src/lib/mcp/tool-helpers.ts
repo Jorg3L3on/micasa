@@ -10,6 +10,7 @@ import {
   type AgentContext,
   type AgentScope,
 } from '@/lib/server/resolve-agent-context';
+import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 
 /** Structural view of the SDK's ServerContext — only what the tools need. */
 export type McpToolContext = {
@@ -142,7 +143,11 @@ export async function runAgentTool(
 export async function runAgentUserTool(
   toolName: string,
   ctx: McpToolContext,
-  fn: (user: { userId: number; scopes: AgentScope[] }) => Promise<unknown>,
+  fn: (user: {
+    userId: number;
+    scopes: AgentScope[];
+    allowedContexts: AgentContextEntry[];
+  }) => Promise<unknown>,
 ): Promise<McpTextResult> {
   try {
     const token = parseBearerToken(getAuthorizationHeader(ctx));

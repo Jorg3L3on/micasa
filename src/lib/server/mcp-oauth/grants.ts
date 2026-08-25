@@ -31,9 +31,10 @@ export const createAuthorizationCode = async (input: {
   codeChallenge: string;
   codeChallengeMethod: string;
   resource: string;
+  allowedContexts: import('@/schemas/agent-context.schema').AgentContextEntry[];
 }) => {
   const { token: code, tokenHash } = generateAuthorizationCode();
-  await prisma.mcpOAuthAuthorizationCode.create({
+  const row = await prisma.mcpOAuthAuthorizationCode.create({
     data: {
       code_hash: tokenHash,
       client_id: input.clientId,
@@ -46,6 +47,14 @@ export const createAuthorizationCode = async (input: {
       expires_at: oauthExpiresAtFromNow(OAUTH_CODE_TTL_MS),
     },
   });
+
+  if (input.allowedContexts.length > 0) {
+    const { createAuthorizationCodeContexts } = await import(
+      '@/lib/server/agent-allowed-contexts'
+    );
+    await createAuthorizationCodeContexts(row.id, input.allowedContexts);
+  }
+
   return code;
 };
 
@@ -117,6 +126,11 @@ export const exchangeAuthorizationCode = async (input: {
     data: { used_at: new Date() },
   });
 
+  const { loadAuthorizationCodeContexts } = await import(
+    '@/lib/server/agent-allowed-contexts'
+  );
+  const allowedContexts = await loadAuthorizationCodeContexts(row.id);
+
   return issueGrant({
     userId: row.user_id,
     clientId: row.client_id,
@@ -124,6 +138,7 @@ export const exchangeAuthorizationCode = async (input: {
       (scope): scope is AgentScope => scope === 'read' || scope === 'write',
     ),
     resource: normalizeMcpResourceUrl(row.resource),
+    allowedContexts,
   });
 };
 
@@ -132,11 +147,12 @@ export const issueGrant = async (input: {
   clientId: string;
   scopes: AgentScope[];
   resource: string;
+  allowedContexts?: import('@/schemas/agent-context.schema').AgentContextEntry[];
 }) => {
   const access = generateOAuthAccessToken();
   const refresh = generateOAuthRefreshToken();
 
-  await prisma.mcpOAuthGrant.create({
+  const grant = await prisma.mcpOAuthGrant.create({
     data: {
       user_id: input.userId,
       client_id: input.clientId,
@@ -149,6 +165,13 @@ export const issueGrant = async (input: {
       expires_at: oauthExpiresAtFromNow(OAUTH_ACCESS_TOKEN_TTL_MS),
     },
   });
+
+  if (input.allowedContexts && input.allowedContexts.length > 0) {
+    const { replaceOAuthGrantAllowedContexts } = await import(
+      '@/lib/server/agent-allowed-contexts'
+    );
+    await replaceOAuthGrantAllowedContexts(grant.id, input.allowedContexts);
+  }
 
   return {
     access_token: access.token,

@@ -1,10 +1,12 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { authMock, createAuthorizationCodeMock } = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  createAuthorizationCodeMock: vi.fn(),
-}));
+const { authMock, createAuthorizationCodeMock, validateSelectableContextsMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    createAuthorizationCodeMock: vi.fn(),
+    validateSelectableContextsMock: vi.fn(),
+  }));
 
 vi.mock('@/lib/auth', () => ({
   auth: authMock,
@@ -29,6 +31,16 @@ vi.mock('@/lib/server/mcp-oauth/grants', () => ({
   createAuthorizationCode: createAuthorizationCodeMock,
 }));
 
+vi.mock('@/lib/server/agent-allowed-contexts', async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import('@/lib/server/agent-allowed-contexts')
+  >();
+  return {
+    ...actual,
+    validateSelectableContexts: validateSelectableContextsMock,
+  };
+});
+
 import { POST } from '@/app/api/oauth/consent/route';
 
 const CONSENT_FIELDS = {
@@ -46,11 +58,18 @@ beforeEach(() => {
   vi.stubEnv('NEXTAUTH_URL', 'https://micasa.example');
   authMock.mockResolvedValue({ user: { id: '42' } });
   createAuthorizationCodeMock.mockResolvedValue('micasa_code_fixture-code-value');
+  validateSelectableContextsMock.mockImplementation(
+    async (_userId, contexts) => contexts,
+  );
 });
 
 describe('POST /api/oauth/consent', () => {
   it('form POST returns HTTP 302 Found without iss in callback query', async () => {
-    const body = new URLSearchParams(CONSENT_FIELDS);
+    const body = new URLSearchParams({
+      ...CONSENT_FIELDS,
+      context_owner_type: 'user',
+      context_owner_id: '42',
+    });
 
     const response = await POST(
       new NextRequest('https://micasa.example/api/oauth/consent', {
@@ -75,7 +94,11 @@ describe('POST /api/oauth/consent', () => {
       new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(CONSENT_FIELDS),
+        body: JSON.stringify({
+          ...CONSENT_FIELDS,
+          context_owner_type: 'user',
+          context_owner_id: '42',
+        }),
       }),
     );
 
