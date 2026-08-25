@@ -42,7 +42,11 @@ import {
   exchangeAuthorizationCode,
   issueGrant,
 } from '@/lib/server/mcp-oauth/grants';
-import { hashOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
+import { OAuthInvalidGrantError } from '@/lib/server/mcp-oauth/invalid-grant';
+import {
+  hashOAuthSecret,
+  verifyPkceS256,
+} from '@/lib/server/mcp-oauth/tokens';
 
 const CODE = 'micasa_code_fixture-authorization-code';
 const VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
@@ -128,7 +132,7 @@ describe('exchangeAuthorizationCode', () => {
         redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',
         clientAuthenticatedViaPrivateKeyJwt: true,
       }),
-    ).rejects.toThrow('invalid_grant');
+    ).rejects.toMatchObject({ reason: 'redirect' } satisfies Partial<OAuthInvalidGrantError>);
   });
 
   it('rejects when token client_id is incompatible with the code row', async () => {
@@ -141,7 +145,7 @@ describe('exchangeAuthorizationCode', () => {
         redirectUri: REDIRECT,
         clientAuthenticatedViaPrivateKeyJwt: true,
       }),
-    ).rejects.toThrow('invalid_grant');
+    ).rejects.toMatchObject({ reason: 'client' } satisfies Partial<OAuthInvalidGrantError>);
   });
 
   it('accepts private_key_jwt without code_verifier when JWT auth is flagged', async () => {
@@ -168,6 +172,46 @@ describe('exchangeAuthorizationCode', () => {
         redirectUri: REDIRECT,
         codeVerifier: VERIFIER,
       }),
-    ).rejects.toThrow('invalid_grant');
+    ).rejects.toMatchObject({ reason: 'other' } satisfies Partial<OAuthInvalidGrantError>);
+  });
+
+  it('rejects expired authorization codes with reason expired', async () => {
+    prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue({
+      ...baseCodeRow,
+      expires_at: new Date(Date.now() - 1_000),
+    });
+
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: INSTANCE_CIMD,
+        redirectUri: REDIRECT,
+        codeVerifier: VERIFIER,
+      }),
+    ).rejects.toMatchObject({ reason: 'expired' } satisfies Partial<OAuthInvalidGrantError>);
+  });
+
+  it('exchanges ChatGPT CIMD instance + connector_instance redirect + PKCE + /api/mcp resource', async () => {
+    const response = await exchangeAuthorizationCode({
+      code: CODE,
+      clientId: INSTANCE_CIMD,
+      redirectUri: REDIRECT,
+      codeVerifier: VERIFIER,
+      resource: 'https://micasa.example/api/mcp',
+    });
+
+    expect(response.token_type).toBe('bearer');
+    expect(response.access_token).toContain('micasa_oauth_');
+    expect(tokenClientIdMatchesCodeMock).toHaveBeenCalledWith(
+      INSTANCE_CIMD,
+      INSTANCE_CIMD,
+      REDIRECT,
+    );
+    expect(verifyPkceS256(VERIFIER, CHALLENGE)).toBe(true);
+    expect(prismaMock.mcpOAuthAuthorizationCode.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { used_at: expect.any(Date) },
+      }),
+    );
   });
 });

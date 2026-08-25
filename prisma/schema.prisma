@@ -176,8 +176,8 @@ model McpOAuthAuthorizationCode {
   code_challenge        String
   code_challenge_method String    @default("S256")
   resource              String
-  expires_at            DateTime
-  used_at               DateTime?
+  expires_at            DateTime  @db.Timestamptz(3)
+  used_at               DateTime? @db.Timestamptz(3)
   created_at            DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   client McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
@@ -198,9 +198,9 @@ model McpOAuthGrant {
   refresh_token_prefix String?   @unique
   scopes               String[]
   resource             String
-  last_used_at         DateTime?
-  expires_at           DateTime?
-  revoked_at           DateTime?
+  last_used_at         DateTime? @db.Timestamptz(3)
+  expires_at           DateTime? @db.Timestamptz(3)
+  revoked_at           DateTime? @db.Timestamptz(3)
   created_at           DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   client McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
@@ -223,8 +223,9 @@ model McpOAuthTokenAttempt {
   client_id_kind  String?
   redirect_kind   String?
   resource_kind   String?
-  error           String?
-  http_status     Int?
+  error                 String?
+  invalid_grant_reason  String?
+  http_status           Int?
   created_at      DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
   updated_at      DateTime @updatedAt @db.Timestamp(3)
 

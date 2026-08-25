@@ -16,6 +16,10 @@ import {
   refreshOAuthGrant,
 } from '@/lib/server/mcp-oauth/grants';
 import {
+  isOAuthInvalidGrantError,
+  type InvalidGrantReason,
+} from '@/lib/server/mcp-oauth/invalid-grant';
+import {
   clientIdHostOnly,
   logOAuthTokenFailure,
 } from '@/lib/server/mcp-oauth/oauth-token-log';
@@ -76,10 +80,12 @@ const returnWithAttempt = async (
   error: string,
   status: number,
   response: Response,
+  invalidGrantReason?: InvalidGrantReason | null,
 ): Promise<Response> => {
   await finishTokenAttempt(attemptId, {
     error,
     http_status: status,
+    invalid_grant_reason: invalidGrantReason ?? null,
   });
   return response;
 };
@@ -217,6 +223,7 @@ export async function POST(request: NextRequest) {
           'invalid_grant',
           400,
           oauthErrorResponse('invalid_grant', 'redirect_uri no autorizado'),
+          'redirect',
         );
       }
 
@@ -265,7 +272,7 @@ export async function POST(request: NextRequest) {
         oauthErrorResponse('invalid_request', error.message),
       );
     }
-    if (error instanceof Error && error.message === 'invalid_grant') {
+    if (isOAuthInvalidGrantError(error)) {
       logOAuthTokenFailure({
         grant_type: grantType,
         has_code: hasCode,
@@ -279,6 +286,7 @@ export async function POST(request: NextRequest) {
         'invalid_grant',
         400,
         oauthErrorResponse('invalid_grant'),
+        error.reason,
       );
     }
     console.error('OAuth token error:', error);

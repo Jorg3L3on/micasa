@@ -213,6 +213,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
     expect(finishTokenAttemptMock).toHaveBeenCalledWith(99, {
       error: 'invalid_request',
       http_status: 400,
+      invalid_grant_reason: null,
     });
   });
 

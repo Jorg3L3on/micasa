@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import type { InvalidGrantReason } from '@/lib/server/mcp-oauth/invalid-grant';
 import {
   sanitizeTokenAttemptBody,
   type SanitizedTokenAttemptBody,
@@ -29,6 +30,7 @@ type StartTokenAttemptInput = {
 type FinishTokenAttemptInput = {
   error: string;
   http_status: number;
+  invalid_grant_reason?: InvalidGrantReason | null;
 };
 
 const logFailure = (phase: string, error: unknown): void => {
@@ -103,6 +105,7 @@ export const finishTokenAttempt = async (
       data: {
         error: input.error,
         http_status: input.http_status,
+        invalid_grant_reason: input.invalid_grant_reason ?? null,
       },
     });
   } catch (error) {
