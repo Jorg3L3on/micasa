@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { listUserHouses } from '@/lib/house/house.service';
 import { buildSelectableContextsForUser } from '@/lib/server/agent-allowed-contexts';
 import { resolveOAuthClient } from '@/lib/server/mcp-oauth/clients';
 import OAuthConsentForm from '@/components/oauth/OAuthConsentForm';

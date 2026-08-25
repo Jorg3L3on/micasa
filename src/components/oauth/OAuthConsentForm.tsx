@@ -14,8 +14,8 @@ import { ToggleField } from '@/components/ui/toggle';
 import AgentContextPicker, {
   AgentContextHiddenFields,
   useDefaultContextSelection,
-  type SelectableContext,
 } from '@/components/settings/AgentContextPicker';
+import type { SelectableContext } from '@/types/agent-context';
 
 type ConsentParams = {
   client_id: string;

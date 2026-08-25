@@ -67,8 +67,8 @@ import { cn } from '@/lib/utils';
 import AgentContextPicker, {
   formatContextLabel,
   useDefaultContextSelection,
-  type SelectableContext,
 } from '@/components/settings/AgentContextPicker';
+import type { SelectableContext } from '@/types/agent-context';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 
 export type ApiKeySummary = {

@@ -4,13 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Home, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
-
-export type SelectableContext = {
-  ownerType: 'user' | 'house';
-  ownerId: number;
-  label: string;
-  helper?: string;
-};
+import type { SelectableContext } from '@/types/agent-context';
 
 type AgentContextPickerProps = {
   contexts: SelectableContext[];

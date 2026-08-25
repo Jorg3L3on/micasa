@@ -1,7 +1,7 @@
 import { AgentContextOwnerType } from '@/generated/prisma/client';
 import { listUserHouses } from '@/lib/house/house.service';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
-import type { SelectableContext } from '@/components/settings/AgentContextPicker';
+import type { SelectableContext } from '@/types/agent-context';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 import prisma from '@/lib/prisma';
 

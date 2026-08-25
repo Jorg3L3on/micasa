@@ -90,7 +90,14 @@ export async function PATCH(
       await replaceApiKeyAllowedContexts(resolved.keyId, validated);
     }
 
-    const updated = await prisma.apiKey.findUniqueOrThrow({
+    if (renameInput.success && !contextsInput.success) {
+      return NextResponse.json(
+        { id: resolved.keyId, name: renameInput.data.name },
+        { status: 200 },
+      );
+    }
+
+    const updated = await prisma.apiKey.findUnique({
       where: { id: resolved.keyId },
       select: {
         id: true,
@@ -98,6 +105,13 @@ export async function PATCH(
         allowedContexts: { select: { owner_type: true, owner_id: true } },
       },
     });
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Conexión no encontrada' },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json(
       {
