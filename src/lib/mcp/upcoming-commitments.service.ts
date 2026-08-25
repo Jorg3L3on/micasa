@@ -17,7 +17,11 @@ import {
   getLiquidityProjection,
 } from '@/lib/finance/liquidity-projection.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import {
+  getCurrentCalendarFortnightRef,
+  getFortnightPeriodForDay,
+  getNextCalendarFortnight,
+} from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { DuePaymentItem } from '@/types/catalog';
 
@@ -148,12 +152,55 @@ const matchesPeriodFilter = (
   period: 'FIRST' | 'SECOND',
 ): boolean => getFortnightPeriodForDay(Number(dateYmd.slice(8, 10))) === period;
 
+/** Calendar months covered by current + next fortnight (planner fallback window). */
+const getPlannerWindowMonthKeys = (asOf = new Date()): Set<string> => {
+  const current = getCurrentCalendarFortnightRef(asOf);
+  const next = getNextCalendarFortnight(asOf);
+  const keys = new Set<string>();
+  keys.add(`${current.year}-${String(current.month).padStart(2, '0')}`);
+  keys.add(`${next.year}-${String(next.month).padStart(2, '0')}`);
+  return keys;
+};
+
+const monthKeyFromYmd = (ymd: string): string => ymd.slice(0, 7);
+
+/** Card/date pairs the planner resolved as paid, no-charge, or zero leftover revolving. */
+const collectPlannerSuppressedRevolvingKeysForMonth = async (
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<Set<string>> => {
+  const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+  const [cardDue, planPayments] = await Promise.all([
+    getDuePaymentsForPlannerMonth(ownerFilter, year, month),
+    listInstallmentPlanPaymentsForPlannerMonth(ownerFilter, year, month),
+  ]);
+  const msiByWalletDate = sumMsiByWalletDate(planPayments);
+  const suppressed = new Set<string>();
+
+  for (const payment of [...cardDue.first, ...cardDue.second]) {
+    const date = payment.visibleDueDate ?? payment.statementDueDate;
+    if (!date.startsWith(monthPrefix)) continue;
+
+    const msiOnDate =
+      msiByWalletDate.get(cardDueKey(payment.walletId, date)) ?? 0;
+    const leftover = leftoverRevolvingFromCardDue(payment, msiOnDate);
+    if (!isUnpaidCardPlannerRow(payment) || leftover <= 0) {
+      suppressed.add(cardDueKey(payment.walletId, date));
+    }
+  }
+
+  return suppressed;
+};
+
 const collectProjectedRevolvingFromLiquidity = async (
   ownerFilter: OwnerFilter,
   fromYmd: string,
   toYmd: string,
   msiByWalletDate: Map<string, number>,
   existingRevolvingKeys: Set<string>,
+  plannerSuppressedRevolvingKeys: Set<string>,
+  plannerWindowMonthKeys: Set<string>,
 ): Promise<UpcomingCommitmentItem[]> => {
   const today = todayCalendarDate();
   const horizonEnd = formatCalendarDate(defaultLiquidityUntilFromAsOf(new Date()));
@@ -186,12 +233,17 @@ const collectProjectedRevolvingFromLiquidity = async (
       continue;
     }
 
+    if (plannerWindowMonthKeys.has(monthKeyFromYmd(milestone.due_date))) {
+      continue;
+    }
+
     for (const obligation of milestone.obligations) {
       if (obligation.source !== 'credit_card_statement') continue;
       if (obligation.next_due_payment <= 0) continue;
 
       const key = cardDueKey(obligation.wallet_id, milestone.due_date);
       if (existingRevolvingKeys.has(key)) continue;
+      if (plannerSuppressedRevolvingKeys.has(key)) continue;
 
       const msiOnDate = msiByWalletDate.get(key) ?? 0;
       const leftover = Math.max(0, obligation.next_due_payment - msiOnDate);
@@ -309,11 +361,21 @@ export async function listUpcomingCommitments(
   const itemMap = new Map<string, UpcomingCommitmentItem>();
   const msiByWalletDate = new Map<string, number>();
   const existingRevolvingKeys = new Set<string>();
+  const plannerSuppressedRevolvingKeys = new Set<string>();
+  const plannerWindowMonthKeys = getPlannerWindowMonthKeys();
 
   for (const { year, month } of months) {
-    const [planPayments] = await Promise.all([
+    const [planPayments, suppressedForMonth] = await Promise.all([
       listInstallmentPlanPaymentsForPlannerMonth(input.ownerFilter, year, month),
+      collectPlannerSuppressedRevolvingKeysForMonth(
+        input.ownerFilter,
+        year,
+        month,
+      ),
     ]);
+    for (const key of suppressedForMonth) {
+      plannerSuppressedRevolvingKeys.add(key);
+    }
     for (const [key, amount] of sumMsiByWalletDate(planPayments)) {
       msiByWalletDate.set(key, (msiByWalletDate.get(key) ?? 0) + amount);
     }
@@ -344,6 +406,8 @@ export async function listUpcomingCommitments(
     range.to,
     msiByWalletDate,
     existingRevolvingKeys,
+    plannerSuppressedRevolvingKeys,
+    plannerWindowMonthKeys,
   );
   for (const item of projectedRevolving) {
     itemMap.set(itemDedupeKey(item), item);
