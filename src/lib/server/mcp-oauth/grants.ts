@@ -7,6 +7,12 @@ import {
   mcpResourcesMatch,
   normalizeMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
+import { tokenClientIdMatchesCode } from '@/lib/server/mcp-oauth/clients';
+import { OAuthInvalidGrantError } from '@/lib/server/mcp-oauth/invalid-grant';
+import {
+  isOAuthExpiryPast,
+  oauthExpiresAtFromNow,
+} from '@/lib/server/mcp-oauth/oauth-expiry';
 import {
   generateAuthorizationCode,
   generateOAuthAccessToken,
@@ -16,7 +22,6 @@ import {
   verifyPkceS256,
 } from '@/lib/server/mcp-oauth/tokens';
 import { isValidPkceVerifier } from '@/lib/server/mcp-oauth/token-auth';
-import { tokenClientIdMatchesCode } from '@/lib/server/mcp-oauth/clients';
 
 export const createAuthorizationCode = async (input: {
   clientId: string;
@@ -38,7 +43,7 @@ export const createAuthorizationCode = async (input: {
       code_challenge: input.codeChallenge,
       code_challenge_method: input.codeChallengeMethod,
       resource: normalizeMcpResourceUrl(input.resource),
-      expires_at: new Date(Date.now() + OAUTH_CODE_TTL_MS),
+      expires_at: oauthExpiresAtFromNow(OAUTH_CODE_TTL_MS),
     },
   });
   return code;
@@ -56,7 +61,7 @@ export const peekAuthorizationCode = async (code: string) => {
     },
   });
   if (!row || row.used_at != null) return null;
-  if (row.expires_at.getTime() <= Date.now()) return null;
+  if (isOAuthExpiryPast(row.expires_at)) return null;
   return row;
 };
 
@@ -74,13 +79,13 @@ export const exchangeAuthorizationCode = async (input: {
   });
 
   if (!row || row.used_at != null) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError(row ? 'other' : 'not_found');
   }
-  if (row.expires_at.getTime() <= Date.now()) {
-    throw new Error('invalid_grant');
+  if (isOAuthExpiryPast(row.expires_at)) {
+    throw new OAuthInvalidGrantError('expired');
   }
   if (row.redirect_uri !== input.redirectUri) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('redirect');
   }
   const clientMatches = await tokenClientIdMatchesCode(
     input.clientId,
@@ -88,10 +93,10 @@ export const exchangeAuthorizationCode = async (input: {
     row.redirect_uri,
   );
   if (!clientMatches) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('client');
   }
   if (row.code_challenge_method !== 'S256') {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('pkce');
   }
 
   const pkceValid =
@@ -100,11 +105,11 @@ export const exchangeAuthorizationCode = async (input: {
   const jwtValid = input.clientAuthenticatedViaPrivateKeyJwt === true;
 
   if (!pkceValid && !jwtValid) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('pkce');
   }
 
   if (input.resource && !mcpResourcesMatch(input.resource, row.resource)) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('resource');
   }
 
   await prisma.mcpOAuthAuthorizationCode.update({
@@ -141,7 +146,7 @@ export const issueGrant = async (input: {
       refresh_token_prefix: refresh.tokenPrefix,
       scopes: input.scopes,
       resource: input.resource,
-      expires_at: new Date(Date.now() + OAUTH_ACCESS_TOKEN_TTL_MS),
+      expires_at: oauthExpiresAtFromNow(OAUTH_ACCESS_TOKEN_TTL_MS),
     },
   });
 
@@ -165,13 +170,13 @@ export const refreshOAuthGrant = async (input: {
   });
 
   if (!row || row.revoked_at != null) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError(row ? 'other' : 'not_found');
   }
   if (row.client_id !== input.clientId) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('client');
   }
   if (input.resource && !mcpResourcesMatch(input.resource, row.resource)) {
-    throw new Error('invalid_grant');
+    throw new OAuthInvalidGrantError('resource');
   }
 
   const access = generateOAuthAccessToken();
@@ -185,7 +190,7 @@ export const refreshOAuthGrant = async (input: {
       refresh_token_hash: refresh.tokenHash,
       refresh_token_prefix: refresh.tokenPrefix,
       revoked_at: null,
-      expires_at: new Date(Date.now() + OAUTH_ACCESS_TOKEN_TTL_MS),
+      expires_at: oauthExpiresAtFromNow(OAUTH_ACCESS_TOKEN_TTL_MS),
     },
   });
 
@@ -233,7 +238,7 @@ export const resolveOAuthGrantUser = async (accessToken: string) => {
     },
   });
   if (!grant || grant.revoked_at != null) return null;
-  if (grant.expires_at != null && grant.expires_at.getTime() <= Date.now()) {
+  if (grant.expires_at != null && isOAuthExpiryPast(grant.expires_at)) {
     return null;
   }
   if (!verifyOAuthSecret(accessToken, grant.token_hash)) return null;
