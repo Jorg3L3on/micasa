@@ -6,7 +6,7 @@ import { Pool } from 'pg'
 
 const LOCAL_TIMESTAMP_WRITES = Symbol.for('micasa.localTimestampWrites')
 /** Bump when adding models so long-lived `npm run dev` drops a stale singleton. */
-const PRISMA_CLIENT_GENERATION = 3
+const PRISMA_CLIENT_GENERATION = 4
 
 type TaggedPrismaClient = PrismaClient & {
   [LOCAL_TIMESTAMP_WRITES]?: true
@@ -24,8 +24,8 @@ function createPrismaClient(): PrismaClient {
   const prisma = createBasePrismaClient().$extends({
     query: {
       $allModels: {
-        async $allOperations({ operation, args, query }) {
-          return query(transformPrismaWriteArgs(args, operation) as typeof args)
+        async $allOperations({ model, operation, args, query }) {
+          return query(transformPrismaWriteArgs(args, operation, model) as typeof args)
         },
       },
     },
