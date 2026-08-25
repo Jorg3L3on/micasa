@@ -20,6 +20,15 @@ import {
   logOAuthTokenFailure,
 } from '@/lib/server/mcp-oauth/oauth-token-log';
 import {
+  finishTokenAttempt,
+  getTokenAttemptPath,
+  logTokenGetAttempt,
+  logTokenPreflightAttempt,
+  sanitizeTokenAttemptBodyFromRecord,
+  startTokenAttempt,
+  updateTokenAttemptBody,
+} from '@/lib/server/mcp-oauth/token-attempt-log';
+import {
   isValidPkceVerifier,
   resolveAuthorizationCodeAuth,
 } from '@/lib/server/mcp-oauth/token-auth';
@@ -62,19 +71,60 @@ const tokenRequestSchema = z.discriminatedUnion('grant_type', [
   refreshTokenGrantSchema,
 ]);
 
-export function OPTIONS() {
+const returnWithAttempt = async (
+  attemptId: number | null,
+  error: string,
+  status: number,
+  response: Response,
+): Promise<Response> => {
+  await finishTokenAttempt(attemptId, {
+    error,
+    http_status: status,
+  });
+  return response;
+};
+
+export async function OPTIONS(request: NextRequest) {
+  await logTokenPreflightAttempt(request);
   return oauthOptionsResponse();
 }
 
+export async function GET(request: NextRequest) {
+  await logTokenGetAttempt(request);
+  return oauthErrorResponse('invalid_request', 'Use POST', 405);
+}
+
 export async function POST(request: NextRequest) {
+  const path = getTokenAttemptPath(request);
+  const contentType = request.headers.get('content-type');
+  const attemptId = await startTokenAttempt({
+    path,
+    method: 'POST',
+    content_type: contentType,
+  });
+
   let grantType = 'unknown';
   let clientId = '';
   let hasCode = false;
   let hasVerifier = false;
   let hasAssertion = false;
+  let sanitizedBody: ReturnType<typeof sanitizeTokenAttemptBodyFromRecord> | undefined;
 
   try {
-    const raw = await parseFormBody(request);
+    let raw: Record<string, string>;
+    try {
+      raw = await parseFormBody(request);
+      sanitizedBody = sanitizeTokenAttemptBodyFromRecord(raw);
+      await updateTokenAttemptBody(attemptId, sanitizedBody);
+    } catch {
+      return returnWithAttempt(
+        attemptId,
+        'parse',
+        400,
+        oauthErrorResponse('invalid_request', 'Invalid request body'),
+      );
+    }
+
     const input = tokenRequestSchema.parse(raw);
     grantType = input.grant_type;
     clientId = input.client_id;
@@ -85,6 +135,7 @@ export async function POST(request: NextRequest) {
     hasAssertion = Boolean(
       input.grant_type === 'authorization_code' && input.client_assertion?.trim(),
     );
+    sanitizedBody = sanitizeTokenAttemptBodyFromRecord(raw);
 
     const client = await resolveOAuthClient(input.client_id);
     if (!client) {
@@ -96,7 +147,12 @@ export async function POST(request: NextRequest) {
         client_id_host: clientIdHostOnly(clientId),
         error: 'invalid_client',
       });
-      return oauthErrorResponse('invalid_client', undefined, 401);
+      return returnWithAttempt(
+        attemptId,
+        'invalid_client',
+        401,
+        oauthErrorResponse('invalid_client', undefined, 401),
+      );
     }
     if (!verifyClientSecret(client, input.client_secret)) {
       logOAuthTokenFailure({
@@ -107,7 +163,12 @@ export async function POST(request: NextRequest) {
         client_id_host: clientIdHostOnly(clientId),
         error: 'invalid_client',
       });
-      return oauthErrorResponse('invalid_client', undefined, 401);
+      return returnWithAttempt(
+        attemptId,
+        'invalid_client',
+        401,
+        oauthErrorResponse('invalid_client', undefined, 401),
+      );
     }
 
     const resourceParam = input.resource?.trim() || null;
@@ -132,7 +193,12 @@ export async function POST(request: NextRequest) {
           client_id_host: clientIdHostOnly(clientId),
           error: authResult.error,
         });
-        return oauthErrorResponse(authResult.error, authResult.description);
+        return returnWithAttempt(
+          attemptId,
+          authResult.error,
+          400,
+          oauthErrorResponse(authResult.error, authResult.description),
+        );
       }
 
       try {
@@ -146,7 +212,12 @@ export async function POST(request: NextRequest) {
           client_id_host: clientIdHostOnly(clientId),
           error: 'invalid_grant',
         });
-        return oauthErrorResponse('invalid_grant', 'redirect_uri no autorizado');
+        return returnWithAttempt(
+          attemptId,
+          'invalid_grant',
+          400,
+          oauthErrorResponse('invalid_grant', 'redirect_uri no autorizado'),
+        );
       }
 
       const tokenResponse = await exchangeAuthorizationCode({
@@ -158,7 +229,12 @@ export async function POST(request: NextRequest) {
           authResult.clientAuthenticatedViaPrivateKeyJwt,
         resource: resourceParam,
       });
-      return oauthJsonResponse(tokenResponse);
+      return returnWithAttempt(
+        attemptId,
+        'ok',
+        200,
+        oauthJsonResponse(tokenResponse),
+      );
     }
 
     const tokenResponse = await refreshOAuthGrant({
@@ -166,7 +242,12 @@ export async function POST(request: NextRequest) {
       clientId: input.client_id,
       resource: resourceParam,
     });
-    return oauthJsonResponse(tokenResponse);
+    return returnWithAttempt(
+      attemptId,
+      'ok',
+      200,
+      oauthJsonResponse(tokenResponse),
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       logOAuthTokenFailure({
@@ -177,7 +258,12 @@ export async function POST(request: NextRequest) {
         client_id_host: clientIdHostOnly(clientId),
         error: 'invalid_request',
       });
-      return oauthErrorResponse('invalid_request', error.message);
+      return returnWithAttempt(
+        attemptId,
+        'invalid_request',
+        400,
+        oauthErrorResponse('invalid_request', error.message),
+      );
     }
     if (error instanceof Error && error.message === 'invalid_grant') {
       logOAuthTokenFailure({
@@ -188,9 +274,19 @@ export async function POST(request: NextRequest) {
         client_id_host: clientIdHostOnly(clientId),
         error: 'invalid_grant',
       });
-      return oauthErrorResponse('invalid_grant');
+      return returnWithAttempt(
+        attemptId,
+        'invalid_grant',
+        400,
+        oauthErrorResponse('invalid_grant'),
+      );
     }
     console.error('OAuth token error:', error);
-    return oauthErrorResponse('server_error', undefined, 500);
+    return returnWithAttempt(
+      attemptId,
+      'server_error',
+      500,
+      oauthErrorResponse('server_error', undefined, 500),
+    );
   }
 }
