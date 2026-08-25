@@ -20,7 +20,23 @@ La cookie de NextAuth **no** sirve para conectores MCP. Hay **dos caminos** comp
 | **Bearer `micasa_…`** | Grok Bot, Cursor, Claude (header manual) | Ajustes → Conexiones → Nueva conexión |
 | **OAuth 2.1** | ChatGPT (conector estándar / Developer Mode con OAuth) | Login MiCasa en pantalla de consentimiento; DCR automático |
 
-Ambos identifican al **mismo usuario** de MiCasa y respetan scopes `read` / `write`.
+Ambos identifican al **mismo usuario** de MiCasa y respetan scopes `read` / `write`. Desde **v1.3.9**, cada llave o grant OAuth lleva además una **allow-list de contextos** (cuenta personal y/o casas). El enforcer se aplica en **cada tool** — no es un filtro del chat.
+
+### Contextos visibles (v1.3.9)
+
+Al conectar (OAuth o llave Bearer) eliges qué contextos ve el cliente:
+
+- **Cuenta personal** (`ownerType: "user"`, `ownerId` = tu userId)
+- **Cada casa** donde eres miembro (`ownerType: "house"`, `ownerId` = id de la casa)
+
+Reglas:
+
+1. **Mínimo uno** al autorizar OAuth o crear una llave en Ajustes → Conexiones.
+2. La allow-list se guarda en la base (tabla `AgentConnectionAllowedContext`), editable después en Conexiones sin re-login del cliente.
+3. **`list_houses`** solo devuelve contextos permitidos (y `personalContext: null` si la personal no está autorizada).
+4. Cualquier otra tool con un `ownerId` fuera de la lista → error explícito (`403`), nunca éxito vacío silencioso.
+5. Sigue exigiéndose **membresía** a la casa; si te sacan de una casa, desaparece aunque siga en el grant.
+6. **Llaves/grants existentes sin filas** en la allow-list → **fail closed** (no ven nada). Re-conecta o edita en Conexiones.
 
 ### OAuth (ChatGPT y clientes sin campo Token)
 
@@ -40,7 +56,7 @@ MiCasa implementa OAuth 2.1 + PKCE para el recurso MCP:
 1. En ChatGPT: **Settings → Connectors → Developer Mode** (activar).
 2. **Add connector** → URL del servidor MCP (`https://…/api/mcp`).
 3. **Autenticación: OAuth** — deja client id / secret vacíos; ChatGPT usa DCR contra `/api/oauth/register`.
-4. Al conectar, inicia sesión en MiCasa y aprueba en la pantalla de consentimiento.
+4. Al conectar, inicia sesión en MiCasa y aprueba en la pantalla de consentimiento (**marca al menos un contexto**).
 5. Prueba con la tool `list_houses`.
 
 ### Bearer token (Grok / Cursor / Claude)
@@ -50,10 +66,10 @@ Se usa un **token de agente** (`micasa_…`) enviado como `Authorization: Bearer
 #### Crear un token (UI — recomendado)
 
 1. Inicia sesión y ve a **Ajustes → Conexiones** (`/settings/connections`).
-2. Pulsa **Nueva conexión**, ponle nombre (p. ej. "Grok Bot"), activa **Permitir escritura** solo si el agente debe registrar compras/pagos/ajustes y elige una **expiración** opcional (30/90/365 días); al vencer, el token deja de funcionar solo.
+2. Pulsa **Nueva conexión**, ponle nombre (p. ej. "Grok Bot"), **elige contextos visibles**, activa **Permitir escritura** solo si el agente debe registrar compras/pagos/ajustes y elige una **expiración** opcional (30/90/365 días); al vencer, el token deja de funcionar solo.
 3. Copia el token que se muestra — **solo se muestra una vez**.
 
-Desde la misma página puedes **renombrar** y **revocar** conexiones Bearer (la revocación es inmediata) y **revocar conexiones OAuth** en la sección dedicada.
+Desde la misma página puedes **renombrar**, **editar contextos** y **revocar** conexiones Bearer (la revocación es inmediata) y **editar contextos / revocar conexiones OAuth** en la sección dedicada.
 
 #### Crear un token (script — ops/emergencia)
 
@@ -72,9 +88,9 @@ node scripts/mint-agent-token.mjs --revoke micasa_XXXXXXXX
 
 ## Modelo de contexto
 
-El token es **tu usuario**; cada tool elige el contexto financiero con `ownerType` + `ownerId`:
+El token es **tu usuario**; cada tool elige el contexto financiero con `ownerType` + `ownerId`. Solo los contextos en la **allow-list** del token/grant son válidos:
 
-1. Llama `list_houses` primero — devuelve tu `userId` y las casas donde eres miembro.
+1. Llama `list_houses` primero — devuelve tu `userId`, `personalContext` (si está permitida) y las casas autorizadas.
 2. Pasa `ownerType: "house", ownerId: <id>` (casa compartida) o `ownerType: "user", ownerId: <tu userId>` (finanzas personales) en todas las demás tools.
 
 La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerContext` en la app).
@@ -142,7 +158,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **1.3.6** (OAuth AS metadata: PKCE/`none` only in discovery; transport 401 + RFC 9728 desde 1.3.1) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **1.3.9** (allow-list de contextos por llave/grant OAuth; fail closed sin filas) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 

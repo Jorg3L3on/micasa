@@ -1,5 +1,9 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { listUserHouses } from '@/lib/house/house.service';
+import {
+  filterAllowedHouses,
+  isPersonalContextAllowed,
+} from '@/lib/server/agent-allowed-contexts';
 import { runAgentUserTool, type McpToolContext } from '@/lib/mcp/tool-helpers';
 
 export function registerHouseTools(server: McpServer) {
@@ -13,11 +17,18 @@ export function registerHouseTools(server: McpServer) {
     },
     async (ctx) =>
       runAgentUserTool('list_houses', ctx as McpToolContext, async (user) => {
-        const houses = await listUserHouses(user.userId);
+        const allHouses = await listUserHouses(user.userId);
+        const houses = filterAllowedHouses(allHouses, user.allowedContexts);
+        const personalAllowed = isPersonalContextAllowed(
+          user.userId,
+          user.allowedContexts,
+        );
         return {
           userId: user.userId,
           scopes: user.scopes,
-          personalContext: { ownerType: 'user', ownerId: user.userId },
+          personalContext: personalAllowed
+            ? { ownerType: 'user', ownerId: user.userId }
+            : null,
           houses: houses.map((house) => ({
             ownerType: 'house',
             ownerId: house.id,

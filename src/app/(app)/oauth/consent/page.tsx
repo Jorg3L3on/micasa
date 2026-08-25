@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { listUserHouses } from '@/lib/house/house.service';
+import { buildSelectableContextsForUser } from '@/lib/server/agent-allowed-contexts';
 import { resolveOAuthClient } from '@/lib/server/mcp-oauth/clients';
 import OAuthConsentForm from '@/components/oauth/OAuthConsentForm';
 
@@ -48,11 +50,15 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
     );
   }
 
+  const userId = Number(session.user.id);
+  const selectableContexts = await buildSelectableContextsForUser(userId);
+
   return (
     <OAuthConsentForm
       clientName={client.client_name}
       clientUri={client.client_uri}
       requestedScope={readParam(params, 'scope') ?? 'read write'}
+      selectableContexts={selectableContexts}
       consentParams={{
         client_id: clientId,
         redirect_uri: redirectUri,

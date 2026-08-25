@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { authMock, findManyApiKey, createApiKey, enforceRateLimitMock } =
-  vi.hoisted(() => ({
-    authMock: vi.fn(),
-    findManyApiKey: vi.fn(),
-    createApiKey: vi.fn(),
-    enforceRateLimitMock: vi.fn(),
-  }));
+const {
+  authMock,
+  findManyApiKey,
+  createApiKey,
+  findUniqueOrThrowApiKey,
+  enforceRateLimitMock,
+  validateSelectableContextsMock,
+  replaceApiKeyAllowedContextsMock,
+} = vi.hoisted(() => ({
+  authMock: vi.fn(),
+  findManyApiKey: vi.fn(),
+  createApiKey: vi.fn(),
+  findUniqueOrThrowApiKey: vi.fn(),
+  enforceRateLimitMock: vi.fn(),
+  validateSelectableContextsMock: vi.fn(),
+  replaceApiKeyAllowedContextsMock: vi.fn(),
+}));
 
 vi.mock('@/lib/auth', () => ({
   auth: authMock,
@@ -17,8 +27,14 @@ vi.mock('@/lib/prisma', () => ({
     apiKey: {
       findMany: findManyApiKey,
       create: createApiKey,
+      findUniqueOrThrow: findUniqueOrThrowApiKey,
     },
   },
+}));
+
+vi.mock('@/lib/server/agent-allowed-contexts', () => ({
+  validateSelectableContexts: validateSelectableContextsMock,
+  replaceApiKeyAllowedContexts: replaceApiKeyAllowedContextsMock,
 }));
 
 vi.mock('@/lib/server/rate-limit', () => ({
@@ -48,6 +64,21 @@ beforeEach(() => {
   vi.clearAllMocks();
   authMock.mockResolvedValue({ user: { id: '7' } });
   enforceRateLimitMock.mockResolvedValue(null);
+  validateSelectableContextsMock.mockResolvedValue([
+    { ownerType: 'user', ownerId: 7 },
+  ]);
+  replaceApiKeyAllowedContextsMock.mockResolvedValue(undefined);
+  findUniqueOrThrowApiKey.mockImplementation(async () => ({
+    id: 5,
+    name: 'Grok Bot',
+    key_prefix: 'micasa_test-tok',
+    scopes: ['read', 'write'],
+    last_used_at: null,
+    expires_at: null,
+    revoked_at: null,
+    created_at: NOW,
+    allowedContexts: [{ owner_type: 'USER', owner_id: 7 }],
+  }));
 });
 
 describe('GET /api/account/api-keys', () => {
@@ -67,6 +98,7 @@ describe('GET /api/account/api-keys', () => {
         name: 'Grok Bot',
         key_prefix: 'micasa_abcd1234',
         scopes: ['read', 'write'],
+        allowedContexts: [],
         last_used_at: NOW,
         revoked_at: null,
         created_at: NOW,
@@ -97,7 +129,11 @@ describe('POST /api/account/api-keys', () => {
     authMock.mockResolvedValue(null);
 
     const response = await POST(
-      makePostRequest({ name: 'Grok', scopes: ['read'] }),
+      makePostRequest({
+        name: 'Grok',
+        scopes: ['read'],
+        allowed_contexts: [{ ownerType: 'user', ownerId: 7 }],
+      }),
     );
 
     expect(response.status).toBe(401);
@@ -125,7 +161,11 @@ describe('POST /api/account/api-keys', () => {
     enforceRateLimitMock.mockResolvedValue(limited);
 
     const response = await POST(
-      makePostRequest({ name: 'Grok', scopes: ['read'] }),
+      makePostRequest({
+        name: 'Grok',
+        scopes: ['read'],
+        allowed_contexts: [{ ownerType: 'user', ownerId: 7 }],
+      }),
     );
 
     expect(response.status).toBe(429);
@@ -145,7 +185,11 @@ describe('POST /api/account/api-keys', () => {
     });
 
     const response = await POST(
-      makePostRequest({ name: 'Grok Bot', scopes: ['read', 'write'] }),
+      makePostRequest({
+        name: 'Grok Bot',
+        scopes: ['read', 'write'],
+        allowed_contexts: [{ ownerType: 'user', ownerId: 7 }],
+      }),
     );
 
     expect(response.status).toBe(201);
@@ -167,19 +211,36 @@ describe('POST /api/account/api-keys', () => {
   });
 
   it('stores expires_at when expires_in_days is provided', async () => {
+    const expiresAt = new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000);
     createApiKey.mockResolvedValue({
       id: 6,
       name: 'Temporal',
       key_prefix: 'micasa_test-tok',
       scopes: ['read'],
       last_used_at: null,
-      expires_at: new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000),
+      expires_at: expiresAt,
       revoked_at: null,
       created_at: NOW,
     });
+    findUniqueOrThrowApiKey.mockResolvedValueOnce({
+      id: 6,
+      name: 'Temporal',
+      key_prefix: 'micasa_test-tok',
+      scopes: ['read'],
+      last_used_at: null,
+      expires_at: expiresAt,
+      revoked_at: null,
+      created_at: NOW,
+      allowedContexts: [{ owner_type: 'USER', owner_id: 7 }],
+    });
 
     const response = await POST(
-      makePostRequest({ name: 'Temporal', scopes: ['read'], expires_in_days: 30 }),
+      makePostRequest({
+        name: 'Temporal',
+        scopes: ['read'],
+        expires_in_days: 30,
+        allowed_contexts: [{ ownerType: 'user', ownerId: 7 }],
+      }),
     );
 
     expect(response.status).toBe(201);
@@ -189,6 +250,15 @@ describe('POST /api/account/api-keys', () => {
     expect(Math.abs(data.expires_at.getTime() - expectedMs)).toBeLessThan(60_000);
     const body = await response.json();
     expect(body.expires_at).toBeTruthy();
+  });
+
+  it('rejects missing allowed_contexts', async () => {
+    const response = await POST(
+      makePostRequest({ name: 'Sin contextos', scopes: ['read'] }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createApiKey).not.toHaveBeenCalled();
   });
 
   it('rejects expires_in_days above 365', async () => {

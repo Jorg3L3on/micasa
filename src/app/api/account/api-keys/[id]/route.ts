@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { renameApiKeySchema } from '@/schemas/api-key.schema';
+import { renameApiKeySchema, updateApiKeyContextsSchema } from '@/schemas/api-key.schema';
+import {
+  replaceApiKeyAllowedContexts,
+  validateSelectableContexts,
+} from '@/lib/server/agent-allowed-contexts';
+import { AgentAuthError } from '@/lib/server/agent-auth-error';
 
 async function resolveOwnKeyId(
   params: Promise<{ id: string }>,
@@ -56,16 +61,59 @@ export async function PATCH(
     if ('error' in resolved) return resolved.error;
 
     const body = await request.json();
-    const input = renameApiKeySchema.parse(body);
+    const renameInput = renameApiKeySchema.safeParse(body);
+    const contextsInput = updateApiKeyContextsSchema.safeParse(body);
 
-    const updated = await prisma.apiKey.update({
+    if (!renameInput.success && !contextsInput.success) {
+      return NextResponse.json(
+        {
+          error: 'Error de validación',
+          details: renameInput.error?.issues ?? contextsInput.error?.issues,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (renameInput.success) {
+      await prisma.apiKey.update({
+        where: { id: resolved.keyId },
+        data: { name: renameInput.data.name },
+      });
+    }
+
+    if (contextsInput.success) {
+      const validated = await validateSelectableContexts(
+        resolved.userId,
+        contextsInput.data.allowed_contexts,
+        { allowEmpty: true },
+      );
+      await replaceApiKeyAllowedContexts(resolved.keyId, validated);
+    }
+
+    const updated = await prisma.apiKey.findUniqueOrThrow({
       where: { id: resolved.keyId },
-      data: { name: input.name },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        allowedContexts: { select: { owner_type: true, owner_id: true } },
+      },
     });
 
-    return NextResponse.json(updated, { status: 200 });
+    return NextResponse.json(
+      {
+        id: updated.id,
+        name: updated.name,
+        allowed_contexts: updated.allowedContexts.map((row) => ({
+          ownerType: row.owner_type === 'USER' ? 'user' : 'house',
+          ownerId: row.owner_id,
+        })),
+      },
+      { status: 200 },
+    );
   } catch (error) {
+    if (error instanceof AgentAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Error de validación', details: error.issues },

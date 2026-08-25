@@ -11,6 +11,11 @@ import {
   parseScopeParam,
 } from '@/lib/server/mcp-oauth/config';
 import { createAuthorizationCode } from '@/lib/server/mcp-oauth/grants';
+import {
+  parseContextFieldsFromForm,
+  validateSelectableContexts,
+} from '@/lib/server/agent-allowed-contexts';
+import { AgentAuthError } from '@/lib/server/agent-auth-error';
 
 const consentFieldsSchema = z.object({
   client_id: z.string().min(1),
@@ -82,6 +87,9 @@ export async function POST(request: NextRequest) {
       request,
     );
 
+    const parsedContexts = parseContextFieldsFromForm(fields);
+    const allowedContexts = await validateSelectableContexts(userId, parsedContexts);
+
     const code = await createAuthorizationCode({
       clientId: input.client_id,
       userId,
@@ -90,6 +98,7 @@ export async function POST(request: NextRequest) {
       codeChallenge: input.code_challenge,
       codeChallengeMethod: input.code_challenge_method,
       resource,
+      allowedContexts,
     });
 
     const redirect = buildOAuthCallbackUrl({
@@ -104,6 +113,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ redirect_to: redirect.toString() });
   } catch (error) {
+    if (error instanceof AgentAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Solicitud inválida', details: error.issues },

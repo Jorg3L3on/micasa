@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  agentContextListSchema,
+  agentContextListUpdateSchema,
+} from '@/schemas/agent-context.schema';
 
 export const apiKeyScopesSchema = z
   .array(z.enum(['read', 'write']))
@@ -14,6 +18,7 @@ export const createApiKeySchema = z.object({
     .min(1, 'El nombre es obligatorio')
     .max(60, 'Máximo 60 caracteres'),
   scopes: apiKeyScopesSchema,
+  allowed_contexts: agentContextListSchema,
   expires_in_days: z
     .number()
     .int()
@@ -33,4 +38,9 @@ export const renameApiKeySchema = z.object({
 });
 
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
+export const updateApiKeyContextsSchema = z.object({
+  allowed_contexts: agentContextListUpdateSchema,
+});
+
 export type RenameApiKeyInput = z.infer<typeof renameApiKeySchema>;
+export type UpdateApiKeyContextsInput = z.infer<typeof updateApiKeyContextsSchema>;

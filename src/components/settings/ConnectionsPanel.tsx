@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   KeyRound,
+  Layers,
   MoreHorizontal,
   Pencil,
   Plug,
@@ -63,12 +64,19 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
+import AgentContextPicker, {
+  formatContextLabel,
+  useDefaultContextSelection,
+  type SelectableContext,
+} from '@/components/settings/AgentContextPicker';
+import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 
 export type ApiKeySummary = {
   id: number;
   name: string;
   key_prefix: string;
   scopes: string[];
+  allowed_contexts: AgentContextEntry[];
   last_used_at: string | null;
   expires_at: string | null;
   revoked_at: string | null;
@@ -80,6 +88,7 @@ export type OAuthGrantSummary = {
   client_id: string;
   client_name: string;
   scopes: string[];
+  allowed_contexts: AgentContextEntry[];
   last_used_at: string | null;
   expires_at: string | null;
   revoked_at: string | null;
@@ -110,6 +119,16 @@ const formatRelative = (iso: string | null): string => {
 
 const scopesLabel = (scopes: string[]): string =>
   scopes.includes('write') ? 'Lectura y escritura' : 'Lectura';
+
+const contextsSummary = (
+  contexts: AgentContextEntry[],
+  selectableContexts: SelectableContext[],
+): string => {
+  if (contexts.length === 0) return 'Sin contextos (bloqueado)';
+  return contexts
+    .map((entry) => formatContextLabel(entry, selectableContexts))
+    .join(', ');
+};
 
 const isExpired = (key: ApiKeySummary): boolean =>
   key.expires_at != null && new Date(key.expires_at).getTime() <= Date.now();
@@ -251,11 +270,13 @@ function OverlayShell({
 type ConnectionsPanelProps = {
   initialKeys: ApiKeySummary[];
   initialOAuthGrants?: OAuthGrantSummary[];
+  selectableContexts: SelectableContext[];
 };
 
 export default function ConnectionsPanel({
   initialKeys,
   initialOAuthGrants = [],
+  selectableContexts,
 }: ConnectionsPanelProps) {
   const [keys, setKeys] = useState<ApiKeySummary[]>(initialKeys);
   const [oauthGrants, setOAuthGrants] =
@@ -280,6 +301,20 @@ export default function ConnectionsPanel({
     useState<OAuthGrantSummary | null>(null);
   const [revokingOAuth, setRevokingOAuth] = useState(false);
 
+  const [editContextsTarget, setEditContextsTarget] = useState<
+    | { kind: 'api_key'; item: ApiKeySummary }
+    | { kind: 'oauth_grant'; item: OAuthGrantSummary }
+    | null
+  >(null);
+  const [editContextsValue, setEditContextsValue] = useState<AgentContextEntry[]>(
+    [],
+  );
+  const [savingContexts, setSavingContexts] = useState(false);
+
+  const [createContexts, setCreateContexts] = useDefaultContextSelection(
+    selectableContexts,
+  );
+
   const mcpUrl = useMemo(() => {
     if (typeof window === 'undefined') return '/api/mcp';
     return `${window.location.origin}/api/mcp`;
@@ -291,6 +326,7 @@ export default function ConnectionsPanel({
     setExpiryOption('never');
     setCreatedToken(null);
     setTokenCopied(false);
+    setCreateContexts([]);
     setCreateOpen(true);
   };
 
@@ -309,6 +345,10 @@ export default function ConnectionsPanel({
       toast.error('Ponle un nombre a la conexión');
       return;
     }
+    if (createContexts.length === 0) {
+      toast.error('Selecciona al menos un contexto');
+      return;
+    }
 
     try {
       setCreating(true);
@@ -322,6 +362,7 @@ export default function ConnectionsPanel({
           body: JSON.stringify({
             name,
             scopes: allowWrite ? ['read', 'write'] : ['read'],
+            allowed_contexts: createContexts,
             expires_in_days: expiresInDays,
           }),
         },
@@ -431,6 +472,57 @@ export default function ConnectionsPanel({
     }
   };
 
+  const handleOpenEditContexts = (
+    target:
+      | { kind: 'api_key'; item: ApiKeySummary }
+      | { kind: 'oauth_grant'; item: OAuthGrantSummary },
+  ) => {
+    setEditContextsTarget(target);
+    setEditContextsValue(target.item.allowed_contexts);
+  };
+
+  const handleSaveContexts = async () => {
+    if (!editContextsTarget) return;
+    try {
+      setSavingContexts(true);
+      const endpoint =
+        editContextsTarget.kind === 'api_key'
+          ? `/api/account/api-keys/${editContextsTarget.item.id}`
+          : `/api/account/oauth-grants/${editContextsTarget.item.id}`;
+      const updated = await clientFetchFromApi<{
+        allowed_contexts: AgentContextEntry[];
+      }>(endpoint, {
+        method: 'PATCH',
+        body: JSON.stringify({ allowed_contexts: editContextsValue }),
+      });
+      if (editContextsTarget.kind === 'api_key') {
+        setKeys((prev) =>
+          prev.map((key) =>
+            key.id === editContextsTarget.item.id
+              ? { ...key, allowed_contexts: updated.allowed_contexts }
+              : key,
+          ),
+        );
+      } else {
+        setOAuthGrants((prev) =>
+          prev.map((grant) =>
+            grant.id === editContextsTarget.item.id
+              ? { ...grant, allowed_contexts: updated.allowed_contexts }
+              : grant,
+          ),
+        );
+      }
+      toast.success('Contextos actualizados');
+      setEditContextsTarget(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudieron guardar los contextos',
+      );
+    } finally {
+      setSavingContexts(false);
+    }
+  };
+
   const createBody = createdToken ? (
     <div className="flex flex-col gap-4">
       <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
@@ -496,6 +588,13 @@ export default function ConnectionsPanel({
         onCheckedChange={setAllowWrite}
         disabled={creating}
       />
+      <AgentContextPicker
+        idPrefix="create-key"
+        contexts={selectableContexts}
+        value={createContexts}
+        onChange={setCreateContexts}
+        disabled={creating}
+      />
       <div className="space-y-1.5">
         <label
           htmlFor="connection-expiry"
@@ -526,10 +625,30 @@ export default function ConnectionsPanel({
       <Button
         type="button"
         onClick={handleCreate}
-        disabled={creating}
+        disabled={creating || createContexts.length === 0}
         className="h-11 w-full rounded-xl"
       >
         {creating ? 'Creando…' : 'Crear conexión'}
+      </Button>
+    </div>
+  );
+
+  const editContextsBody = (
+    <div className="flex flex-col gap-4">
+      <AgentContextPicker
+        idPrefix="edit-contexts"
+        contexts={selectableContexts}
+        value={editContextsValue}
+        onChange={setEditContextsValue}
+        disabled={savingContexts}
+      />
+      <Button
+        type="button"
+        onClick={handleSaveContexts}
+        disabled={savingContexts}
+        className="h-11 w-full rounded-xl"
+      >
+        {savingContexts ? 'Guardando…' : 'Guardar contextos'}
       </Button>
     </div>
   );
@@ -658,6 +777,12 @@ export default function ConnectionsPanel({
                           ? ` · ${formatExpiry(key.expires_at)}`
                           : ''}
                       </p>
+                      <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Layers className="mt-0.5 size-3 shrink-0" aria-hidden />
+                        <span className="line-clamp-2">
+                          {contextsSummary(key.allowed_contexts, selectableContexts)}
+                        </span>
+                      </p>
                     </div>
                     {!revoked && (
                       <DropdownMenu>
@@ -673,6 +798,13 @@ export default function ConnectionsPanel({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              handleOpenEditContexts({ kind: 'api_key', item: key })
+                            }
+                          >
+                            <Layers className="size-4" aria-hidden /> Editar contextos
+                          </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handleOpenRename(key)}>
                             <Pencil className="size-4" aria-hidden /> Renombrar
                           </DropdownMenuItem>
@@ -783,18 +915,45 @@ export default function ConnectionsPanel({
                           ? ` · ${formatExpiry(grant.expires_at)}`
                           : ''}
                       </p>
+                      <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Layers className="mt-0.5 size-3 shrink-0" aria-hidden />
+                        <span className="line-clamp-2">
+                          {contextsSummary(grant.allowed_contexts, selectableContexts)}
+                        </span>
+                      </p>
                     </div>
                     {!revoked && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 shrink-0 text-destructive"
-                        aria-label={`Revocar OAuth de ${grant.client_name}`}
-                        onClick={() => setRevokeOAuthTarget(grant)}
-                      >
-                        <ShieldOff className="size-4" aria-hidden />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 shrink-0"
+                            aria-label={`Más acciones para ${grant.client_name}`}
+                          >
+                            <MoreHorizontal className="size-4" aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              handleOpenEditContexts({
+                                kind: 'oauth_grant',
+                                item: grant,
+                              })
+                            }
+                          >
+                            <Layers className="size-4" aria-hidden /> Editar contextos
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setRevokeOAuthTarget(grant)}
+                          >
+                            <ShieldOff className="size-4" aria-hidden /> Revocar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </li>
                 );
@@ -893,6 +1052,17 @@ export default function ConnectionsPanel({
         description="Cambia el nombre visible de la conexión."
       >
         {renameBody}
+      </OverlayShell>
+
+      <OverlayShell
+        open={editContextsTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !savingContexts) setEditContextsTarget(null);
+        }}
+        title="Editar contextos"
+        description="Cambia qué contextos puede ver esta conexión."
+      >
+        {editContextsBody}
       </OverlayShell>
 
       <AlertDialog

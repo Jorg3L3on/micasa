@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { findUniqueApiKey, updateApiKey, findFirstMembership, resolveOAuthGrantUserMock } =
+const { findUniqueApiKey, updateApiKey, findFirstMembership, resolveOAuthGrantUserMock, findManyAllowedContexts } =
   vi.hoisted(() => ({
     findUniqueApiKey: vi.fn(),
     updateApiKey: vi.fn(),
     findFirstMembership: vi.fn(),
     resolveOAuthGrantUserMock: vi.fn(),
+    findManyAllowedContexts: vi.fn(),
   }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
     apiKey: { findUnique: findUniqueApiKey, update: updateApiKey },
     houseMember: { findFirst: findFirstMembership },
+    agentConnectionAllowedContext: { findMany: findManyAllowedContexts },
   },
 }));
 
@@ -44,6 +46,7 @@ const ctxWithToken = (token: string) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   updateApiKey.mockResolvedValue({});
+  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'USER', owner_id: 2 }]);
 });
 
 describe('MCP tool auth: ApiKey vs OAuth', () => {
@@ -77,6 +80,7 @@ describe('MCP tool auth: ApiKey vs OAuth', () => {
       oauthGrantId: 12,
       clientName: 'ChatGPT Test Client',
     });
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'USER', owner_id: 5 }]);
 
     const result = await runAgentUserTool(
       'list_houses',

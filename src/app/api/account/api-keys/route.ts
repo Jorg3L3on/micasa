@@ -5,6 +5,12 @@ import prisma from '@/lib/prisma';
 import { createApiKeySchema } from '@/schemas/api-key.schema';
 import { generateAgentToken, hashAgentToken } from '@/lib/server/agent-token';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
+import {
+  replaceApiKeyAllowedContexts,
+  validateSelectableContexts,
+} from '@/lib/server/agent-allowed-contexts';
+import { AgentAuthError } from '@/lib/server/agent-auth-error';
+import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 
 const API_KEY_LIST_SELECT = {
   id: true,
@@ -15,7 +21,18 @@ const API_KEY_LIST_SELECT = {
   expires_at: true,
   revoked_at: true,
   created_at: true,
+  allowedContexts: {
+    select: { owner_type: true, owner_id: true },
+  },
 } as const;
+
+const mapAllowedContexts = (
+  rows: Array<{ owner_type: 'USER' | 'HOUSE'; owner_id: number }>,
+): AgentContextEntry[] =>
+  rows.map((row) => ({
+    ownerType: row.owner_type === 'USER' ? 'user' : 'house',
+    ownerId: row.owner_id,
+  }));
 
 const toApiKeyDto = (key: {
   id: number;
@@ -26,11 +43,13 @@ const toApiKeyDto = (key: {
   expires_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
+  allowedContexts?: Array<{ owner_type: 'USER' | 'HOUSE'; owner_id: number }>;
 }) => ({
   id: key.id,
   name: key.name,
   key_prefix: key.key_prefix,
   scopes: key.scopes,
+  allowed_contexts: mapAllowedContexts(key.allowedContexts ?? []),
   last_used_at: key.last_used_at?.toISOString() ?? null,
   expires_at: key.expires_at?.toISOString() ?? null,
   revoked_at: key.revoked_at?.toISOString() ?? null,
@@ -84,6 +103,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const input = createApiKeySchema.parse(body);
+    const allowedContexts = await validateSelectableContexts(
+      userId,
+      input.allowed_contexts,
+    );
 
     const { token, keyPrefix } = generateAgentToken();
 
@@ -104,12 +127,22 @@ export async function POST(request: NextRequest) {
       select: API_KEY_LIST_SELECT,
     });
 
+    await replaceApiKeyAllowedContexts(created.id, allowedContexts);
+
+    const withContexts = await prisma.apiKey.findUniqueOrThrow({
+      where: { id: created.id },
+      select: API_KEY_LIST_SELECT,
+    });
+
     // The plaintext token travels ONLY in this response; never persisted.
     return NextResponse.json(
-      { ...toApiKeyDto(created), token },
+      { ...toApiKeyDto(withContexts), token },
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof AgentAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Error de validación', details: error.issues },
