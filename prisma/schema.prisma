@@ -210,6 +210,27 @@ model McpOAuthGrant {
   @@index([client_id])
 }
 
+/// Durable, secret-free log of OAuth token endpoint hits (JOR-90 diagnostics).
+model McpOAuthTokenAttempt {
+  id              Int      @id @default(autoincrement())
+  path            String
+  method          String
+  content_type    String?
+  grant_type      String?
+  has_code        Boolean  @default(false)
+  has_verifier    Boolean  @default(false)
+  has_assertion   Boolean  @default(false)
+  client_id_kind  String?
+  redirect_kind   String?
+  resource_kind   String?
+  error           String?
+  http_status     Int?
+  created_at      DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+
+  @@index([created_at])
+}
+
 /**
  * Append-only audit trail for platform-admin mutations (e.g. password override).
  * Never store plaintext secrets in metadata.

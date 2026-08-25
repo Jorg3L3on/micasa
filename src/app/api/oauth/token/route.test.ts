@@ -6,12 +6,18 @@ const {
   exchangeAuthorizationCodeMock,
   resolveAuthorizationCodeAuthMock,
   peekAuthorizationCodeMock,
+  startTokenAttemptMock,
+  finishTokenAttemptMock,
+  updateTokenAttemptBodyMock,
 } = vi.hoisted(() => ({
   resolveOAuthClientMock: vi.fn(),
   verifyClientSecretMock: vi.fn(),
   exchangeAuthorizationCodeMock: vi.fn(),
   resolveAuthorizationCodeAuthMock: vi.fn(),
   peekAuthorizationCodeMock: vi.fn(),
+  startTokenAttemptMock: vi.fn(),
+  finishTokenAttemptMock: vi.fn(),
+  updateTokenAttemptBodyMock: vi.fn(),
 }));
 
 vi.mock('@/lib/server/mcp-oauth/clients', () => ({
@@ -32,6 +38,19 @@ vi.mock('@/lib/server/mcp-oauth/token-auth', async (importOriginal) => {
   return {
     ...actual,
     resolveAuthorizationCodeAuth: resolveAuthorizationCodeAuthMock,
+  };
+});
+
+vi.mock('@/lib/server/mcp-oauth/token-attempt-log', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/server/mcp-oauth/token-attempt-log')>();
+  return {
+    ...actual,
+    startTokenAttempt: startTokenAttemptMock,
+    finishTokenAttempt: finishTokenAttemptMock,
+    updateTokenAttemptBody: updateTokenAttemptBodyMock,
+    logTokenPreflightAttempt: vi.fn(),
+    logTokenGetAttempt: vi.fn(),
   };
 });
 
@@ -56,6 +75,9 @@ const clientRow = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  startTokenAttemptMock.mockResolvedValue(99);
+  finishTokenAttemptMock.mockResolvedValue(undefined);
+  updateTokenAttemptBodyMock.mockResolvedValue(undefined);
   resolveOAuthClientMock.mockResolvedValue(clientRow);
   verifyClientSecretMock.mockReturnValue(true);
   resolveAuthorizationCodeAuthMock.mockResolvedValue({
@@ -182,6 +204,16 @@ describe('POST /api/oauth/token (PKCE)', () => {
     const json = await response.json();
     expect(json.error).toBe('invalid_request');
     expect(exchangeAuthorizationCodeMock).not.toHaveBeenCalled();
+    expect(startTokenAttemptMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/api/oauth/token',
+        method: 'POST',
+      }),
+    );
+    expect(finishTokenAttemptMock).toHaveBeenCalledWith(99, {
+      error: 'invalid_request',
+      http_status: 400,
+    });
   });
 
   it('401 cuando el cliente es desconocido', async () => {
