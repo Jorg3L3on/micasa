@@ -16,7 +16,7 @@ const mcpHandler = createMcpHandler(
     registerMcpTools(server);
   },
   {
-    serverInfo: { name: 'micasa', version: '1.3.9' },
+    serverInfo: { name: 'micasa', version: '2.0.0' },
     capabilities: {
       tools: { listChanged: true },
     },

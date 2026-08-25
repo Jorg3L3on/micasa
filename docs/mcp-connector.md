@@ -118,10 +118,11 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 | `get_loan` | Detalle + calendario de un préstamo |
 | `list_categories` | Catálogo de categorías (gasto e ingreso comparten árbol) |
 | `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, filtros). Incluye `totals` del rango completo y `totals_in_page` de la página actual. |
-| `list_upcoming` | Pagos del mes: tarjetas, MSI y préstamos unificados |
+| `list_upcoming` | Pagos unificados: tarjetas (revolving + MSI), préstamos. Filtros: `year`/`month`, `period` FIRST\|SECOND, `from`/`to`. Revolving futuro vía proyección de liquidez (~180 días). |
 | `list_goals` | Metas con progreso hacia el objetivo |
 | `list_budgets` | Presupuestos activos: tope, gastado, restante |
 | `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app) |
+| `get_fortnight` | Resumen y gastos de una quincena (`year`, `month`, `period`) |
 
 ### Reglas de lectura (v1.3.x)
 
@@ -131,13 +132,15 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 
 Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
-**`list_upcoming(year, month)`**
+**`list_upcoming(year, month)`** — también acepta `period`, `from`/`to`
 
 - **Por tarjeta y fecha:** `period_total` = suma de cuotas MSI del mes + resto revolving al corte (no el doble del estado de cuenta completo).
-- **Cuotas MSI (`CreditCardInstallmentPlan`):** **siempre** aparecen como renglones `msi` cuando su `dueDate` cae en el mes.
+- **Cuotas MSI (`CreditCardInstallmentPlan`):** **siempre** aparecen como renglones `msi` cuando su `dueDate` cae en el mes o rango.
 - **Resto revolving:** renglón `revolving` aparte cuando hay pago programado/calendario (`scheduled_calendar`) o cuando el monto del corte (`ledger`/`import`/`projection`) excede la suma de MSI del plan en esa misma fecha. Ej.: corte \$1 500 con MSI \$500 → `msi` \$500 + `revolving` \$1 000; resto PIF \$180 + MSI \$650 → ambos renglones.
+- **Revolving más allá de la quincena actual/siguiente:** si el planner no tiene fila (sin estado de cuenta ni scheduled), se complementa con obligaciones `credit_card_statement` de `getLiquidityProjection` (mismo horizonte ~180 días que Liquidez).
 - **No duplicar:** no apilar el `next_due_payment` íntegro del estado de cuenta **y** las cuotas MSI que ya están dentro de ese total.
 - **Préstamos:** toda cuota `SCHEDULED` con `dueDate` en el mes (vía `listLoanPaymentsForPlannerMonth`).
+- **`period` FIRST\|SECOND:** filtra ítems cuya fecha cae en esa quincena del mes.
 - **`period_total`:** suma de ítems no pagados en la lista deduplicada.
 
 **`get_liquidity`**
@@ -158,15 +161,19 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **1.3.9** (allow-list de contextos por llave/grant OAuth; fail closed sin filas) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **2.0.0** (P0: quincena, revolving proyectado, pay_card wallet, ingresos CRUD) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 
 | Tool | Qué hace | Nota |
 |---|---|---|
-| `add_expense` | Gasto en cualquier billetera | `already_in_balance` para bitácora sin mover saldo |
+| `add_expense` | Gasto en cualquier billetera | `is_paid` (default true); `already_in_balance` para bitácora sin mover saldo |
 | `update_expense` / `delete_expense` | Corregir o borrar gasto | `delete_expense` requiere `confirm: true` |
 | `add_income` | Ingreso en billetera de activo | Sube saldo |
+| `list_incomes` | Ingresos de una quincena | `fortnight_id` o `year`+`month`+`period` |
+| `update_income` / `delete_income` | Corregir o borrar ingreso | `delete_income` requiere `confirm: true` |
+| `create_month` | Crear mes / expandir plantillas | Misma regla que UI: año en curso, mes actual o futuro |
+| `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario |
 | `adjust_wallet_balance` | Fija saldo efectivo/débito/meta | `confirm: true` |
 | `transfer` | Entre billeteras de activo/metas | No es pago de tarjeta |
 | `contribute_goal` / `withdraw_goal` | Aportar o retirar de una meta | Transfer interna |
@@ -176,13 +183,14 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 | `adjust_card_debt` | Fija deuda de tarjeta | `confirm: true` |
 | `update_card` | Corte, pago, límites | Idempotente |
 | `add_card_purchase` | Compra en tarjeta | `already_in_balance` opcional |
-| `add_card_payment` | Pago externo de tarjeta | No descuenta billeteras MiCasa |
+| `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa) |
+| `pay_card` | Pagar tarjeta desde billetera | Alias de `add_card_payment` con `mode: wallet` |
 | `create_installment_plan` / `update_installment_plan` | Planes MSI | |
 | `delete_scheduled_payment` | Elimina cuota programada | `confirm: true` |
 
 Las tools declaran anotaciones MCP (`readOnlyHint`, `destructiveHint`, `idempotentHint`).
 
-Fuera de v2: pago de tarjeta descontando billetera MiCasa (modo `wallet`), import PDF/CSV vía MCP, administración.
+Fuera de v2: import PDF/CSV vía MCP, administración.
 
 ## Límites de uso
 

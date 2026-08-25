@@ -62,6 +62,12 @@ export function registerExpenseTools(server: McpServer) {
           .describe('Fecha del gasto (YYYY-MM-DD). Default: hoy CDMX.'),
         ...categoryRefSchema,
         already_in_balance: z.boolean().default(false),
+        is_paid: z
+          .boolean()
+          .default(true)
+          .describe(
+            'true = gasto pagado (mueve saldo/deuda); false = pendiente de pago en la quincena.',
+          ),
       }),
       annotations: { destructiveHint: false, idempotentHint: false },
     },
@@ -115,10 +121,10 @@ export function registerExpenseTools(server: McpServer) {
           categoryId,
           description: args.description,
           amount: args.amount,
-          isPaid: true,
+          isPaid: args.is_paid,
           paymentDate: expenseDate,
           walletId: wallet.id,
-          applyWalletDelta: !args.already_in_balance,
+          applyWalletDelta: args.is_paid && !args.already_in_balance,
         });
 
         const updatedWallet = await prisma.wallet.findUnique({
@@ -132,8 +138,9 @@ export function registerExpenseTools(server: McpServer) {
           wallet_name: wallet.name,
           amount: args.amount,
           date: expenseDate,
-          effect: 'balance_decrease',
+          effect: args.is_paid ? 'balance_decrease' : 'pending_expense',
           new_balance_or_debt: updatedWallet ? Number(updatedWallet.amount) : null,
+          is_paid: args.is_paid,
           already_in_balance: args.already_in_balance,
         };
       }),

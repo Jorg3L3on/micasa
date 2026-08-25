@@ -18,6 +18,7 @@ import {
   deleteScheduledPayment,
   listScheduledPaymentsForCard,
 } from '@/lib/finance/credit-card-scheduled-payment.service';
+import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import {
   confirmSchema,
   ownerIdSchema,
@@ -30,6 +31,7 @@ import {
   resolveCategoryRef,
   resolveDateRange,
   resolveFortnightIdForDate,
+  resolveWalletRef,
 } from '@/lib/mcp/resolvers';
 import {
   createCreditCardPurchaseSchema,
@@ -56,6 +58,98 @@ const cardIdSchema = z
 const dateYmdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato requerido: YYYY-MM-DD');
+
+type CardPaymentToolArgs = {
+  card_id: number;
+  mode?: 'external' | 'wallet';
+  amount: number;
+  paid_at?: string;
+  note?: string;
+  adjusts_debt?: boolean;
+  source_wallet_id?: number;
+  source_wallet_name?: string;
+  create_fortnight_expense?: boolean;
+  fortnight_id?: number;
+  category_id?: number;
+  category_name?: string;
+  expense_description?: string;
+};
+
+const executeCardPayment = async (
+  agent: AgentContext,
+  args: CardPaymentToolArgs,
+) => {
+  const paidAt = args.paid_at ?? todayCalendarDate();
+  const mode = args.mode ?? 'external';
+
+  if (mode === 'external') {
+    const input = normalizeCreditCardPaymentInput(
+      createCreditCardPaymentSchema.parse({
+        mode: 'external',
+        amount: args.amount,
+        paid_at: paidAt,
+        note: args.note ?? null,
+        adjusts_debt: args.adjusts_debt ?? true,
+      }),
+    );
+    const payment = await createCreditCardPayment(
+      args.card_id,
+      agent.ownerFilter,
+      input,
+    );
+    return {
+      payment_id: payment.id,
+      mode: 'external' as const,
+      amount: payment.amount,
+      paid_at: paidAt,
+      adjusts_debt: args.adjusts_debt ?? true,
+    };
+  }
+
+  const sourceWallet = await resolveWalletRef(
+    agent.ownerFilter,
+    args.source_wallet_id,
+    args.source_wallet_name,
+  );
+  const categoryId =
+    args.create_fortnight_expense === true
+      ? await resolveCategoryRef(
+          agent.ownerFilter,
+          args.category_id,
+          args.category_name,
+          { required: true },
+        )
+      : undefined;
+
+  const input = normalizeCreditCardPaymentInput(
+    createCreditCardPaymentSchema.parse({
+      mode: 'wallet',
+      amount: args.amount,
+      paid_at: paidAt,
+      note: args.note ?? null,
+      source_wallet_id: sourceWallet.id,
+      create_fortnight_expense: args.create_fortnight_expense,
+      fortnight_id: args.fortnight_id,
+      category_id: categoryId,
+      expense_description: args.expense_description ?? null,
+    }),
+  );
+  const payment = await createCreditCardPayment(
+    args.card_id,
+    agent.ownerFilter,
+    input,
+  );
+
+  return {
+    payment_id: payment.id,
+    mode: 'wallet' as const,
+    amount: payment.amount,
+    paid_at: paidAt,
+    source_wallet_id: sourceWallet.id,
+    source_wallet_name: sourceWallet.name,
+    expense_id: payment.expense_id ?? null,
+  };
+};
 
 export function registerCreditCardTools(server: McpServer) {
   server.registerTool(
@@ -341,47 +435,121 @@ export function registerCreditCardTools(server: McpServer) {
   server.registerTool(
     'add_card_payment',
     {
-      title: 'Registrar pago de tarjeta (externo)',
+      title: 'Registrar pago de tarjeta',
       description:
-        'Registra un pago ya hecho fuera de MiCasa (transferencia bancaria, efectivo). Baja la deuda de la tarjeta salvo adjusts_debt: false (el pago ya está reflejado en el saldo). NO descuenta de ninguna billetera de MiCasa.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        card_id: cardIdSchema,
-        amount: z.number().positive(),
-        paid_at: dateYmdSchema
-          .optional()
-          .describe('Fecha del pago (YYYY-MM-DD). Default: hoy (CDMX).'),
-        note: z.string().trim().max(200).optional(),
-        adjusts_debt: z
-          .boolean()
-          .default(true)
-          .describe('false si la deuda actual ya refleja este pago.'),
-      }),
+        'Registra un pago de tarjeta. mode external: pago fuera de MiCasa (no descuenta billeteras). mode wallet: descuenta una billetera del contexto (mismo POST que la UI).',
+      inputSchema: z
+        .object({
+          ...ownerArgs,
+          card_id: cardIdSchema,
+          mode: z
+            .enum(['external', 'wallet'])
+            .default('external')
+            .describe(
+              'external = pago ya hecho fuera; wallet = descuenta billetera MiCasa.',
+            ),
+          amount: z.number().positive(),
+          paid_at: dateYmdSchema
+            .optional()
+            .describe('Fecha del pago (YYYY-MM-DD). Default: hoy (CDMX).'),
+          note: z.string().trim().max(200).optional(),
+          adjusts_debt: z
+            .boolean()
+            .default(true)
+            .describe('Solo mode external: false si la deuda ya refleja el pago.'),
+          source_wallet_id: z.number().int().positive().optional(),
+          source_wallet_name: z
+            .string()
+            .trim()
+            .min(1)
+            .optional()
+            .describe('Billetera origen (mode wallet).'),
+          create_fortnight_expense: z
+            .boolean()
+            .optional()
+            .describe('mode wallet: registrar gasto en quincena.'),
+          fortnight_id: z.number().int().positive().optional(),
+          category_id: z.number().int().positive().optional(),
+          category_name: z.string().trim().min(1).optional(),
+          expense_description: z.string().trim().max(200).optional(),
+        })
+        .superRefine((data, ctxRef) => {
+          if (data.mode === 'wallet' && !data.source_wallet_id && !data.source_wallet_name) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'mode wallet requiere source_wallet_id o source_wallet_name',
+              path: ['source_wallet_id'],
+            });
+          }
+          if (
+            data.mode === 'wallet' &&
+            data.create_fortnight_expense === true &&
+            data.category_id == null &&
+            !data.category_name
+          ) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'create_fortnight_expense requiere category_id o category_name',
+              path: ['category_id'],
+            });
+          }
+        }),
       annotations: { destructiveHint: false, idempotentHint: false },
     },
     async (args, ctx) =>
       runAgentTool('add_card_payment', ctx as McpToolContext, args, 'write', async (agent) => {
-        const input = normalizeCreditCardPaymentInput(
-          createCreditCardPaymentSchema.parse({
-            mode: 'external',
-            amount: args.amount,
-            paid_at: args.paid_at ?? todayCalendarDate(),
-            note: args.note ?? null,
-            adjusts_debt: args.adjusts_debt,
-          }),
-        );
-        const payment = await createCreditCardPayment(
-          args.card_id,
-          agent.ownerFilter,
-          input,
-        );
-        return {
-          payment_id: payment.id,
-          amount: payment.amount,
-          paid_at: args.paid_at ?? todayCalendarDate(),
-          adjusts_debt: args.adjusts_debt,
-        };
+        const payment = await executeCardPayment(agent, args);
+        return payment;
       }),
+  );
+
+  server.registerTool(
+    'pay_card',
+    {
+      title: 'Pagar tarjeta desde billetera',
+      description:
+        'Paga una tarjeta descontando una billetera de efectivo/débito del contexto. Alias de add_card_payment con mode wallet.',
+      inputSchema: z
+        .object({
+          ...ownerArgs,
+          card_id: cardIdSchema,
+          amount: z.number().positive(),
+          paid_at: dateYmdSchema.optional(),
+          note: z.string().trim().max(200).optional(),
+          source_wallet_id: z.number().int().positive().optional(),
+          source_wallet_name: z.string().trim().min(1).optional(),
+          create_fortnight_expense: z.boolean().optional(),
+          fortnight_id: z.number().int().positive().optional(),
+          category_id: z.number().int().positive().optional(),
+          category_name: z.string().trim().min(1).optional(),
+          expense_description: z.string().trim().max(200).optional(),
+        })
+        .superRefine((data, ctxRef) => {
+          if (!data.source_wallet_id && !data.source_wallet_name) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'Indica source_wallet_id o source_wallet_name',
+              path: ['source_wallet_id'],
+            });
+          }
+          if (
+            data.create_fortnight_expense === true &&
+            data.category_id == null &&
+            !data.category_name
+          ) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'create_fortnight_expense requiere category_id o category_name',
+              path: ['category_id'],
+            });
+          }
+        }),
+      annotations: { destructiveHint: false, idempotentHint: false },
+    },
+    async (args, ctx) =>
+      runAgentTool('pay_card', ctx as McpToolContext, args, 'write', async (agent) =>
+        executeCardPayment(agent, { ...args, mode: 'wallet' as const }),
+      ),
   );
 
   server.registerTool(
