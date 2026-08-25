@@ -10,6 +10,7 @@ import { registerTransferTools } from '@/lib/mcp/tools/transfers';
 import { registerGoalTools } from '@/lib/mcp/tools/goals';
 import { registerPlanningTools } from '@/lib/mcp/tools/planning';
 import { registerLiquidityTools } from '@/lib/mcp/tools/liquidity';
+import { registerFortnightTools } from '@/lib/mcp/tools/fortnights';
 import { registerBudgetTools } from '@/lib/mcp/tools/budgets';
 
 /**
@@ -29,5 +30,6 @@ export function registerMcpTools(server: McpServer) {
   registerGoalTools(server);
   registerPlanningTools(server);
   registerLiquidityTools(server);
+  registerFortnightTools(server);
   registerBudgetTools(server);
 }

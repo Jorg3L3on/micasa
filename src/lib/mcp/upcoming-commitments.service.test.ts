@@ -4,10 +4,12 @@ const {
   getDuePaymentsForPlannerMonth,
   listInstallmentPlanPaymentsForPlannerMonth,
   listLoanPaymentsForPlannerMonth,
+  getLiquidityProjection,
 } = vi.hoisted(() => ({
   getDuePaymentsForPlannerMonth: vi.fn(),
   listInstallmentPlanPaymentsForPlannerMonth: vi.fn(),
   listLoanPaymentsForPlannerMonth: vi.fn(),
+  getLiquidityProjection: vi.fn(),
 }));
 
 vi.mock('@/lib/finance/credit-card-statement.service', () => ({
@@ -22,7 +24,23 @@ vi.mock('@/lib/finance/loan.service', () => ({
   listLoanPaymentsForPlannerMonth,
 }));
 
-import { listUpcomingCommitmentsForMonth } from '@/lib/mcp/upcoming-commitments.service';
+vi.mock('@/lib/finance/liquidity-projection.service', () => ({
+  getLiquidityProjection,
+  defaultLiquidityUntilFromAsOf: vi.fn(() => new Date('2026-12-31T12:00:00.000Z')),
+}));
+
+vi.mock('@/lib/calendar-dates', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/calendar-dates')>();
+  return {
+    ...actual,
+    todayCalendarDate: vi.fn(() => '2026-08-10'),
+  };
+});
+
+import {
+  listUpcomingCommitments,
+  listUpcomingCommitmentsForMonth,
+} from '@/lib/mcp/upcoming-commitments.service';
 
 const ownerFilter = { user_id: 1, house_id: null };
 
@@ -30,6 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   listLoanPaymentsForPlannerMonth.mockResolvedValue({ first: [], second: [] });
   listInstallmentPlanPaymentsForPlannerMonth.mockResolvedValue([]);
+  getLiquidityProjection.mockResolvedValue({ milestones: [] });
 });
 
 describe('listUpcomingCommitmentsForMonth', () => {
@@ -211,5 +230,191 @@ describe('listUpcomingCommitmentsForMonth', () => {
 
     expect(result.items).toHaveLength(2);
     expect(result.period_total).toBe(2900);
+  });
+});
+
+describe('listUpcomingCommitments', () => {
+  it('filters by period FIRST within a month', async () => {
+    getDuePaymentsForPlannerMonth.mockResolvedValue({
+      first: [
+        {
+          walletId: 12,
+          walletName: 'Tarjeta C',
+          walletType: 'CREDIT_CARD',
+          nextDuePayment: 400,
+          effectiveAmount: 400,
+          remainingPlannerAmount: 400,
+          plannerStatus: 'por_pagar',
+          visibleDueDate: '2026-07-05',
+          statementDueDate: '2026-07-05',
+          obligationAmountSource: 'ledger',
+          plannedPayment: null,
+          paymentsAppliedToStatement: 0,
+        },
+      ],
+      second: [
+        {
+          walletId: 13,
+          walletName: 'Tarjeta D',
+          walletType: 'CREDIT_CARD',
+          nextDuePayment: 900,
+          effectiveAmount: 900,
+          remainingPlannerAmount: 900,
+          plannerStatus: 'por_pagar',
+          visibleDueDate: '2026-07-20',
+          statementDueDate: '2026-07-20',
+          obligationAmountSource: 'ledger',
+          plannedPayment: null,
+          paymentsAppliedToStatement: 0,
+        },
+      ],
+    });
+
+    const result = await listUpcomingCommitments({
+      ownerFilter,
+      year: 2026,
+      month: 7,
+      period: 'FIRST',
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type: 'revolving',
+      date: '2026-07-05',
+      amount: 400,
+    });
+    expect(result.period).toBe('FIRST');
+  });
+
+  it('adds projected revolving from liquidity when planner has no row', async () => {
+    getDuePaymentsForPlannerMonth.mockResolvedValue({ first: [], second: [] });
+    getLiquidityProjection.mockResolvedValue({
+      milestones: [
+        {
+          due_date: '2026-11-15',
+          obligations: [
+            {
+              source: 'credit_card_statement',
+              wallet_id: 30,
+              wallet_name: 'Tarjeta E',
+              next_due_payment: 1200,
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await listUpcomingCommitments({
+      ownerFilter,
+      from: '2026-11-01',
+      to: '2026-11-30',
+    });
+
+    expect(getLiquidityProjection).toHaveBeenCalled();
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        type: 'revolving',
+        amount: 1200,
+        date: '2026-11-15',
+        wallet_or_loan: 'Tarjeta E',
+      }),
+    ]);
+  });
+
+  it('does not re-add paid or zero-leftover revolving from projection in the planner window month', async () => {
+    getDuePaymentsForPlannerMonth.mockResolvedValue({
+      first: [],
+      second: [
+        {
+          walletId: 40,
+          walletName: 'Tarjeta F',
+          walletType: 'CREDIT_CARD',
+          nextDuePayment: 0,
+          effectiveAmount: 0,
+          remainingPlannerAmount: 0,
+          plannerStatus: 'pagado',
+          visibleDueDate: '2026-08-20',
+          statementDueDate: '2026-08-20',
+          obligationAmountSource: 'ledger',
+          plannedPayment: null,
+          paymentsAppliedToStatement: 0,
+        },
+      ],
+    });
+    getLiquidityProjection.mockResolvedValue({
+      milestones: [
+        {
+          due_date: '2026-08-20',
+          obligations: [
+            {
+              source: 'credit_card_statement',
+              wallet_id: 40,
+              wallet_name: 'Tarjeta F',
+              next_due_payment: 950,
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await listUpcomingCommitments({
+      ownerFilter,
+      year: 2026,
+      month: 8,
+    });
+
+    expect(result.items.filter((item) => item.type === 'revolving')).toEqual([]);
+    expect(result.period_total).toBe(0);
+  });
+
+  it('does not double-count issued planner revolving when projection returns the same card', async () => {
+    getDuePaymentsForPlannerMonth.mockResolvedValue({
+      first: [],
+      second: [
+        {
+          walletId: 41,
+          walletName: 'Tarjeta G',
+          walletType: 'CREDIT_CARD',
+          nextDuePayment: 400,
+          effectiveAmount: 400,
+          remainingPlannerAmount: 400,
+          plannerStatus: 'por_pagar',
+          visibleDueDate: '2026-08-18',
+          statementDueDate: '2026-08-18',
+          obligationAmountSource: 'ledger',
+          plannedPayment: null,
+          paymentsAppliedToStatement: 0,
+        },
+      ],
+    });
+    getLiquidityProjection.mockResolvedValue({
+      milestones: [
+        {
+          due_date: '2026-08-18',
+          obligations: [
+            {
+              source: 'credit_card_statement',
+              wallet_id: 41,
+              wallet_name: 'Tarjeta G',
+              next_due_payment: 1200,
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await listUpcomingCommitments({
+      ownerFilter,
+      year: 2026,
+      month: 8,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type: 'revolving',
+      amount: 400,
+      date: '2026-08-18',
+    });
+    expect(result.period_total).toBe(400);
   });
 });
