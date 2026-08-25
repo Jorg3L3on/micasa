@@ -60,9 +60,9 @@ beforeEach(() => {
   vi.stubEnv('NEXTAUTH_URL', 'https://micasa.example');
   authMock.mockResolvedValue({ user: { id: '42' } });
   createAuthorizationCodeMock.mockResolvedValue('micasa_code_fixture-code-value');
-  validateSelectableContextsMock.mockResolvedValue([
-    { ownerType: 'user', ownerId: 42 },
-  ]);
+  validateSelectableContextsMock.mockImplementation(
+    async (_userId, contexts) => contexts,
+  );
 });
 
 describe('POST /api/oauth/consent contexts', () => {
@@ -104,6 +104,39 @@ describe('POST /api/oauth/consent contexts', () => {
     expect(createAuthorizationCodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         allowedContexts: [{ ownerType: 'user', ownerId: 42 }],
+      }),
+    );
+  });
+
+  it('form POST with multiple context checkboxes persists all contexts', async () => {
+    const body = new URLSearchParams();
+    for (const [key, value] of Object.entries(CONSENT_FIELDS)) {
+      body.append(key, value);
+    }
+    body.append('context_owner_type', 'user');
+    body.append('context_owner_id', '42');
+    body.append('context_owner_type', 'house');
+    body.append('context_owner_id', '10');
+
+    const response = await POST(
+      new Request('https://micasa.example/api/oauth/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      }),
+    );
+
+    expect(response.status).toBe(302);
+    expect(validateSelectableContextsMock).toHaveBeenCalledWith(42, [
+      { ownerType: 'user', ownerId: 42 },
+      { ownerType: 'house', ownerId: 10 },
+    ]);
+    expect(createAuthorizationCodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedContexts: [
+          { ownerType: 'user', ownerId: 42 },
+          { ownerType: 'house', ownerId: 10 },
+        ],
       }),
     );
   });

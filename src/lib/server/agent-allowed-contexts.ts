@@ -227,6 +227,52 @@ export const loadAuthorizationCodeContexts = async (
   }));
 };
 
+const REPEATED_CONSENT_FORM_KEYS = new Set([
+  'context_owner_type',
+  'context_owner_id',
+]);
+
+export const appendConsentFormValue = (
+  fields: Record<string, string | string[]>,
+  key: string,
+  value: string,
+): void => {
+  if (REPEATED_CONSENT_FORM_KEYS.has(key)) {
+    const existing = fields[key];
+    if (existing === undefined) {
+      fields[key] = value;
+      return;
+    }
+    if (Array.isArray(existing)) {
+      existing.push(value);
+      return;
+    }
+    fields[key] = [existing, value];
+    return;
+  }
+  fields[key] = value;
+};
+
+/** Preserves repeated keys (e.g. multiple context checkboxes) unlike Object.fromEntries. */
+export const parseConsentFormData = (
+  form: FormData,
+): Record<string, string | string[]> => {
+  const fields: Record<string, string | string[]> = {};
+  for (const [key, value] of form.entries()) {
+    appendConsentFormValue(fields, key, String(value));
+  }
+  return fields;
+};
+
+export const scalarConsentField = (
+  fields: Record<string, string | string[] | undefined>,
+  key: string,
+): string | undefined => {
+  const value = fields[key];
+  if (Array.isArray(value)) return value[0];
+  return value;
+};
+
 export const parseContextFieldsFromForm = (
   fields: Record<string, string | string[] | undefined>,
 ): AgentContextEntry[] => {
