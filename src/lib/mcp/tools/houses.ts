@@ -125,23 +125,49 @@ export function registerHouseTools(server: McpServer) {
     async (args, ctx) =>
       runAgentTool('transfer_to_house', ctx as McpToolContext, args, 'write', async (agent) => {
         const houseId = args.house_id;
+        const userId = agent.userId;
 
-        if (agent.ownerType === 'user' && agent.ownerId !== agent.userId) {
+        // Same rules as POST /api/transfers: only the token user may fund from personal.
+        if (agent.ownerType === 'user' && agent.ownerId !== userId) {
           throw new AgentAuthError('Solo puedes transferir desde tu cuenta personal', 403);
         }
         if (agent.ownerType === 'house' && agent.ownerId !== houseId) {
           throw new Error('El contexto activo debe coincidir con house_id');
         }
 
+        // USER_TO_HOUSE always posts a personal expense; require personal context on allow-list.
+        if (!isPersonalContextAllowed(userId, agent.allowedContexts)) {
+          throw new AgentAuthError(
+            'Esta conexión no tiene autorizada tu cuenta personal; no puede aportar a la casa',
+            403,
+          );
+        }
+        assertOwnerOnAllowList(agent.allowedContexts, 'user', userId);
+        assertOwnerOnAllowList(agent.allowedContexts, 'house', houseId);
+
         const membership = await prisma.houseMember.findFirst({
-          where: { house_id: houseId, user_id: agent.userId },
+          where: { house_id: houseId, user_id: userId },
           select: { id: true },
         });
         if (!membership) {
           throw new AgentAuthError('No eres miembro de esta casa', 403);
         }
 
-        assertOwnerOnAllowList(agent.allowedContexts, 'house', houseId);
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, active: true },
+        });
+        if (!user?.active) {
+          throw new Error('Usuario no encontrado o inactivo');
+        }
+
+        const house = await prisma.house.findUnique({
+          where: { id: houseId },
+          select: { id: true },
+        });
+        if (!house) {
+          throw new Error('Casa no encontrada');
+        }
 
         let userFortnightId = args.user_fortnight_id;
         let houseFortnightId = args.house_fortnight_id;
@@ -156,7 +182,7 @@ export function registerHouseTools(server: McpServer) {
             args.period === 'SECOND' ? FortnightPeriod.SECOND : FortnightPeriod.FIRST;
           const [userFortnight, houseFortnight] = await Promise.all([
             findFortnightByCalendarPeriod(
-              { user_id: agent.userId, house_id: null },
+              { user_id: userId, house_id: null },
               args.year,
               args.month,
               parsedPeriod,
@@ -184,31 +210,74 @@ export function registerHouseTools(server: McpServer) {
           );
         }
 
-        const userWalletFilter = { user_id: agent.userId, house_id: null };
-        const houseWalletFilter = { user_id: null, house_id: houseId };
+        const userFortnight = await prisma.fortnight.findUnique({
+          where: { id: userFortnightId },
+          select: { id: true, user_id: true, house_id: true },
+        });
+        if (
+          !userFortnight ||
+          userFortnight.user_id !== userId ||
+          userFortnight.house_id !== null
+        ) {
+          throw new Error('Quincena personal inválida para esta transferencia');
+        }
+
+        const houseFortnight = await prisma.fortnight.findUnique({
+          where: { id: houseFortnightId },
+          select: { id: true, user_id: true, house_id: true },
+        });
+        if (
+          !houseFortnight ||
+          houseFortnight.house_id !== houseId ||
+          houseFortnight.user_id !== null
+        ) {
+          throw new Error('Quincena de la casa inválida para esta transferencia');
+        }
 
         let userWalletId: number | null = null;
         if (args.user_wallet_id != null || args.user_wallet_name) {
           const wallet = await resolveWalletRef(
-            userWalletFilter,
+            { user_id: userId, house_id: null },
             args.user_wallet_id,
             args.user_wallet_name,
           );
-          userWalletId = wallet.id;
+          const ownedWallet = await prisma.wallet.findUnique({
+            where: { id: wallet.id },
+            select: { id: true, user_id: true, house_id: true },
+          });
+          if (
+            !ownedWallet ||
+            ownedWallet.user_id !== userId ||
+            ownedWallet.house_id !== null
+          ) {
+            throw new Error('Billetera personal inválida para esta transferencia');
+          }
+          userWalletId = ownedWallet.id;
         }
 
         let houseWalletId: number | null = null;
         if (args.house_wallet_id != null || args.house_wallet_name) {
           const wallet = await resolveWalletRef(
-            houseWalletFilter,
+            { user_id: null, house_id: houseId },
             args.house_wallet_id,
             args.house_wallet_name,
           );
-          houseWalletId = wallet.id;
+          const ownedWallet = await prisma.wallet.findUnique({
+            where: { id: wallet.id },
+            select: { id: true, user_id: true, house_id: true },
+          });
+          if (
+            !ownedWallet ||
+            ownedWallet.house_id !== houseId ||
+            ownedWallet.user_id !== null
+          ) {
+            throw new Error('Billetera de la casa inválida para esta transferencia');
+          }
+          houseWalletId = ownedWallet.id;
         }
 
         const transfer = await createUserToHouseTransfer({
-          userId: agent.userId,
+          userId,
           houseId,
           amount: args.amount,
           userWalletId,

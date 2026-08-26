@@ -32,6 +32,10 @@ const {
   getCreditCardStatementByOwner,
   resolveCategoryRef,
   resolveWalletRef,
+  userFindUnique,
+  houseFindUnique,
+  fortnightFindUnique,
+  walletFindUnique,
 } = vi.hoisted(() => ({
   findUniqueApiKey: vi.fn(),
   updateApiKey: vi.fn(),
@@ -56,6 +60,10 @@ const {
   getCreditCardStatementByOwner: vi.fn(),
   resolveCategoryRef: vi.fn(),
   resolveWalletRef: vi.fn(),
+  userFindUnique: vi.fn(),
+  houseFindUnique: vi.fn(),
+  fortnightFindUnique: vi.fn(),
+  walletFindUnique: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -75,6 +83,10 @@ vi.mock('@/lib/prisma', () => ({
       count: categoryCount,
     },
     budget: { findFirst: budgetFindFirst },
+    user: { findUnique: userFindUnique },
+    house: { findUnique: houseFindUnique },
+    fortnight: { findUnique: fortnightFindUnique },
+    wallet: { findUnique: walletFindUnique },
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
   },
 }));
@@ -232,6 +244,17 @@ beforeEach(() => {
   ]);
   resolveCategoryRef.mockResolvedValue(10);
   resolveWalletRef.mockResolvedValue({ id: 4, name: 'Efectivo', type: 'CASH' });
+  userFindUnique.mockResolvedValue({ id: 2, active: true });
+  houseFindUnique.mockResolvedValue({ id: 3 });
+  fortnightFindUnique.mockImplementation(({ where }: { where: { id: number } }) => {
+    if (where.id === 10) {
+      return Promise.resolve({ id: 10, user_id: 2, house_id: null });
+    }
+    if (where.id === 20) {
+      return Promise.resolve({ id: 20, user_id: null, house_id: 3 });
+    }
+    return Promise.resolve(null);
+  });
 });
 
 describe('registered MCP P2 tools auth fail-closed', () => {
@@ -320,7 +343,12 @@ describe('registered category tools', () => {
     expect(parseResult(result)).toMatchObject({ id: 11, name: 'Ocio', kind: 'EXPENSE' });
   });
 
-  it('delete_category requires confirm', async () => {
+  it('delete_category requires owned category before delete', async () => {
+    categoryFindFirst.mockResolvedValue({
+      id: 11,
+      name: 'Ocio',
+      kind: 'EXPENSE',
+    });
     const { assertCategoryDeletable } = await import('@/lib/finance/category.service');
     vi.mocked(assertCategoryDeletable).mockResolvedValue(undefined);
 
@@ -331,13 +359,27 @@ describe('registered category tools', () => {
     });
 
     expect(result.isError).toBeFalsy();
+    expect(categoryFindFirst).toHaveBeenCalled();
     expect(categoryDelete).toHaveBeenCalledWith({ where: { id: 11 } });
+  });
+
+  it('delete_category rejects missing owner-scoped category', async () => {
+    categoryFindFirst.mockResolvedValue(null);
+
+    const result = await invokeTool('delete_category', {
+      ...houseArgs,
+      category_id: 11,
+      confirm: true,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(categoryDelete).not.toHaveBeenCalled();
   });
 });
 
 describe('registered budget allocation tools', () => {
   it('update_budget_allocations replaces rows', async () => {
-    budgetFindFirst.mockResolvedValue({ id: 7, allocated_amount: '300' });
+    budgetFindFirst.mockResolvedValue({ id: 7, total_amount: '300' });
     updateBudgetAllocations.mockResolvedValue({ id: 7 });
     resolveCategoryRef
       .mockResolvedValueOnce(10)
@@ -418,6 +460,46 @@ describe('registered transfer_to_house', () => {
       }),
     );
     expect(parseResult(result)).toMatchObject({ transfer_id: 99, amount: 150 });
+  });
+
+  it('rejects house context when personal account is not on allow-list', async () => {
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
+
+    const result = await invokeTool('transfer_to_house', {
+      ...houseArgs,
+      house_id: 3,
+      amount: 150,
+      user_fortnight_id: 10,
+      house_fortnight_id: 20,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('cuenta personal');
+    expect(createUserToHouseTransfer).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid personal fortnight ids', async () => {
+    fortnightFindUnique.mockImplementation(({ where }: { where: { id: number } }) => {
+      if (where.id === 10) {
+        return Promise.resolve({ id: 10, user_id: 99, house_id: null });
+      }
+      if (where.id === 20) {
+        return Promise.resolve({ id: 20, user_id: null, house_id: 3 });
+      }
+      return Promise.resolve(null);
+    });
+
+    const result = await invokeTool('transfer_to_house', {
+      ...userArgs,
+      house_id: 3,
+      amount: 150,
+      user_fortnight_id: 10,
+      house_fortnight_id: 20,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Quincena personal inválida');
+    expect(createUserToHouseTransfer).not.toHaveBeenCalled();
   });
 });
 

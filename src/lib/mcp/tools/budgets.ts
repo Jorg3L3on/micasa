@@ -251,7 +251,7 @@ export function registerBudgetTools(server: McpServer) {
         async (agent) => {
           const budget = await prisma.budget.findFirst({
             where: { id: args.budget_id, ...agent.ownerFilter },
-            select: { id: true, allocated_amount: true },
+            select: { id: true, total_amount: true },
           });
           if (!budget) {
             throw new Error('Presupuesto no encontrado');
@@ -259,7 +259,7 @@ export function registerBudgetTools(server: McpServer) {
 
           const resolvedAllocations = await resolveAllocationRows(agent, args.allocations);
           const allocTotal = resolvedAllocations.reduce((sum, row) => sum + row.amount, 0);
-          if (Math.abs(allocTotal - Number(budget.allocated_amount)) > 0.01) {
+          if (Math.abs(allocTotal - Number(budget.total_amount)) > 0.01) {
             throw new Error(
               'La suma de allocations debe ser igual al monto total del presupuesto',
             );

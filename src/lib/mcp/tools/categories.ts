@@ -287,6 +287,16 @@ export function registerCategoryTools(server: McpServer) {
     },
     async (args, ctx) =>
       runAgentTool('delete_category', ctx as McpToolContext, args, 'write', async (agent) => {
+        const existing = await prisma.category.findFirst({
+          where: {
+            id: args.category_id,
+            ...categoryOwnerWhere(agent.ownerType, agent.ownerId),
+          },
+        });
+        if (!existing) {
+          throw new Error('Categoría no encontrada');
+        }
+
         try {
           await assertCategoryDeletable(
             prisma,
@@ -301,7 +311,7 @@ export function registerCategoryTools(server: McpServer) {
           throw error;
         }
 
-        await prisma.category.delete({ where: { id: args.category_id } });
+        await prisma.category.delete({ where: { id: existing.id } });
         return { deleted: true, category_id: args.category_id };
       }),
   );
