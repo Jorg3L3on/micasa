@@ -12,6 +12,7 @@ export type CategoryOption = {
   active?: boolean;
   sortOrder?: number;
   parentId?: number | null;
+  kind?: 'EXPENSE' | 'INCOME';
 };
 
 export type PaymentMethodOption = {
@@ -149,6 +150,9 @@ export type IncomeTemplateListItem = {
   name: string;
   suggestedAmount: number | null;
   source: string | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
   appliesFirstFortnight: boolean;
   appliesSecondFortnight: boolean;
   active: boolean;
