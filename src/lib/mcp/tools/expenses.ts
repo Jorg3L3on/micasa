@@ -385,9 +385,9 @@ export function registerExpenseTools(server: McpServer) {
         return {
           expense_id: expense.id,
           is_paid: expense.is_paid,
-          amount: expense.amount,
+          amount: Number(expense.amount),
           description: expense.description,
-          wallet_name: expense.paymentMethod,
+          wallet_name: expense.wallet?.name ?? 'Efectivo',
         };
       }),
   );

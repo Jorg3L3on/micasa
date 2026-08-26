@@ -47,6 +47,7 @@ const formatExpenseTemplate = (template: {
   name: string;
   suggested_amount: unknown;
   active: boolean;
+  due_day: number | null;
   due_day_first_fortnight: number | null;
   due_day_second_fortnight: number | null;
   cutoff_day: number | null;
