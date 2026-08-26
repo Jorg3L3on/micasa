@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useCallback,
+  startTransition,
   type ReactNode,
 } from 'react';
 import { toast } from 'sonner';
@@ -75,10 +76,16 @@ import { WalletListCard } from '@/components/wallets/WalletListCard';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import {
+  ContentEnter,
+  SkeletonExit,
+} from '@/components/view-transition/SuspenseReveal';
+import { WalletsListSkeleton } from '@/components/wallets/WalletsListSkeleton';
+import {
   getWalletListCache,
   setWalletListCache,
   walletListOwnerKey,
 } from '@/lib/ui/wallet-list-cache';
+import { WALLET_LIST_STACK_OVERLAP_CLASS } from '@/lib/ui/wallet-card-view-transition';
 import { cn } from '@/lib/utils';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -801,16 +808,24 @@ export default function WalletsPage() {
           context,
         );
         const filtered = data.filter((w) => w.type !== 'GOAL');
-        setWallets(filtered);
         const key = walletListOwnerKey(context);
         if (key) {
           setWalletListCache(key, filtered);
+        }
+        // startTransition activates ViewTransition enter/exit (same as Suspense reveal).
+        if (soft) {
+          setWallets(filtered);
+          setLoading(false);
+        } else {
+          startTransition(() => {
+            setWallets(filtered);
+            setLoading(false);
+          });
         }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Error al cargar las billeteras',
         );
-      } finally {
         setLoading(false);
       }
     },
@@ -1377,60 +1392,64 @@ export default function WalletsPage() {
 
       <div className="min-w-0">
           {loading && wallets.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Cargando...
-            </div>
-          ) : wallets.length === 0 ? (
-            <EmptyState message="No se encontraron billeteras" />
+            <SkeletonExit>
+              <WalletsListSkeleton />
+            </SkeletonExit>
           ) : (
-            <div className="@container w-full min-w-0">
-            <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
-              {displayWallets.length === 0 ? (
-                <p className="py-8 text-center text-muted-foreground">
-                  Ninguna billetera coincide con los filtros.
-                </p>
+            <ContentEnter>
+              {wallets.length === 0 ? (
+                <EmptyState message="No se encontraron billeteras" />
               ) : (
-                <ul
-                  className="isolate flex w-full list-none flex-col p-0 md:grid md:grid-cols-2 md:gap-5 md:py-1 @min-[1045px]:!grid-cols-3"
-                  role="list"
-                  aria-label="Billeteras"
-                >
-                  {displayWallets.map((wallet, index) => (
-                    <li
-                      key={wallet.id}
-                      className={cn(
-                        'relative min-w-0 md:mt-0',
-                        index > 0 && 'max-md:mt-[calc(7rem-63%)]',
-                      )}
-                      style={{ zIndex: index + 1 }}
-                    >
-                      <WalletListCard
-                        wallet={wallet}
-                        ownerQueryString={ownerQueryString}
-                        isHouseContext={isHouseContext}
-                        onEdit={openEditDialog}
-                        onTransfer={openTransferDialog}
-                        onDelete={openDeleteDialog}
-                        onOpenBalance={setBalanceWallet}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
+                <div className="@container w-full min-w-0">
+                  <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
+                    {displayWallets.length === 0 ? (
+                      <p className="py-8 text-center text-muted-foreground">
+                        Ninguna billetera coincide con los filtros.
+                      </p>
+                    ) : (
+                      <ul
+                        className="isolate flex w-full list-none flex-col p-0 md:grid md:grid-cols-2 md:gap-5 md:py-1 @min-[1045px]:!grid-cols-3"
+                        role="list"
+                        aria-label="Billeteras"
+                      >
+                        {displayWallets.map((wallet, index) => (
+                          <li
+                            key={wallet.id}
+                            className={cn(
+                              'relative min-w-0 md:mt-0',
+                              index > 0 && WALLET_LIST_STACK_OVERLAP_CLASS,
+                            )}
+                            style={{ zIndex: index + 1 }}
+                          >
+                            <WalletListCard
+                              wallet={wallet}
+                              ownerQueryString={ownerQueryString}
+                              isHouseContext={isHouseContext}
+                              onEdit={openEditDialog}
+                              onTransfer={openTransferDialog}
+                              onDelete={openDeleteDialog}
+                              onOpenBalance={setBalanceWallet}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
-              <div
-                className="flex flex-wrap items-baseline justify-center gap-2"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="text-[13px] text-muted-foreground">
-                  {displayWallets.length} de {wallets.length}{' '}
-                  {wallets.length === 1 ? 'billetera' : 'billeteras'}
-                  {listIsFiltered ? ' · filtrado' : ''}
-                </p>
-              </div>
-            </div>
-            </div>
+                    <div
+                      className="flex flex-wrap items-baseline justify-center gap-2"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <p className="text-[13px] text-muted-foreground">
+                        {displayWallets.length} de {wallets.length}{' '}
+                        {wallets.length === 1 ? 'billetera' : 'billeteras'}
+                        {listIsFiltered ? ' · filtrado' : ''}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </ContentEnter>
           )}
       </div>
       </div>

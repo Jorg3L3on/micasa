@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const data = bodySchema.parse(body);
 
     const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, ...ownerFilter },
+      where: { id: data.categoryId, kind: 'EXPENSE', ...ownerFilter },
     });
     if (!category) {
       return NextResponse.json(

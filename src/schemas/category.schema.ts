@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { validateCategoryIconInput } from '@/lib/category-icons';
 import { requiredStringSchema, optionalStringSchema } from './common.schema';
 
+export const categoryKindSchema = z.enum(['EXPENSE', 'INCOME']);
+
 const categoryIconSchema = (existingIcon: string | null = null) =>
   z
     .string()
@@ -33,6 +35,7 @@ export const createCategorySchema = z.object({
       }
     }),
   parentId: z.number().int().positive().nullable().optional(),
+  kind: categoryKindSchema.optional().default('EXPENSE'),
 });
 
 export const updateCategorySchema = z.object({
@@ -48,6 +51,7 @@ export const createCategoryFormSchema = (existingIcon: string | null = null) =>
     description: z.string().optional(),
     icon: categoryIconSchema(existingIcon),
     parentId: z.number().int().positive().nullable().optional(),
+    kind: categoryKindSchema.optional(),
   });
 
 export const categorySchema = createCategoryFormSchema();
@@ -56,3 +60,4 @@ export const categorySchema = createCategoryFormSchema();
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CategoryFormValues = z.infer<typeof categorySchema>;
+export type CategoryKindValue = z.infer<typeof categoryKindSchema>;

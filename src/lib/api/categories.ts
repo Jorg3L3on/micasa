@@ -9,6 +9,7 @@ export async function createCategory(
     description?: string;
     icon?: string;
     parentId?: number | null;
+    kind?: 'EXPENSE' | 'INCOME';
   },
   context?: FinanceContextType,
 ) {

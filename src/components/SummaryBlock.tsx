@@ -57,6 +57,7 @@ export type IncomeItemBySource = {
   source: string | null;
   userName: string | null;
   templateName: string | null;
+  categoryId: number | null;
 };
 
 type SummaryBlockProps = {
@@ -98,7 +99,11 @@ type SummaryBlockProps = {
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
   onEditIncome?: () => void;
-  onEditIncomeSource?: (id: number, amount: number) => void;
+  onEditIncomeSource?: (
+    id: number,
+    amount: number,
+    categoryId: number | null,
+  ) => void;
 };
 
 export default function SummaryBlock({
@@ -469,7 +474,11 @@ export default function SummaryBlock({
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() =>
-                                  onEditIncomeSource(item.id, item.amount)
+                                  onEditIncomeSource(
+                                    item.id,
+                                    item.amount,
+                                    item.categoryId,
+                                  )
                                 }
                                 aria-label={`Modificar ${displayLabel}`}
                                 tabIndex={0}

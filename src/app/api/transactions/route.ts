@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const category = await prisma.category.findFirst({
-      where: { id: validatedData.category_id, ...ownerFilter },
+      where: { id: validatedData.category_id, kind: 'EXPENSE', ...ownerFilter },
     });
     if (!category) {
       return NextResponse.json(
@@ -293,7 +293,11 @@ export async function PUT(request: NextRequest) {
 
     if (validatedData.category_id !== undefined) {
       const category = await prisma.category.findFirst({
-        where: { id: validatedData.category_id, ...ownerFilter },
+        where: {
+          id: validatedData.category_id,
+          kind: 'EXPENSE',
+          ...ownerFilter,
+        },
         select: { id: true },
       });
 

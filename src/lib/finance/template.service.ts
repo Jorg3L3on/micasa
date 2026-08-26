@@ -45,6 +45,7 @@ export async function expandIncomeTemplatesForFortnight(
         source: true,
         user_id: true,
         house_id: true,
+        category_id: true,
       },
     });
 
@@ -94,6 +95,7 @@ export async function expandIncomeTemplatesForFortnight(
             source: template.source ?? undefined,
             received_at: fortnight.start_date,
             income_template_id: template.id,
+            category_id: template.category_id,
           },
         });
         existingIncomeTemplateIds.add(template.id);
@@ -114,6 +116,7 @@ export async function expandIncomeTemplatesForFortnight(
               source: template.source ?? undefined,
               received_at: fortnight.start_date,
               income_template_id: template.id,
+              category_id: template.category_id,
             },
           });
           existingIncomeTemplateIds.add(template.id);

@@ -165,9 +165,19 @@ export async function POST(request: Request) {
 
       const userCategories = await tx.category.findMany({
         where: { user_id: userId, house_id: null },
-        select: { id: true },
+        select: { id: true, name: true, kind: true },
       });
-      const validCategoryIds = new Set(userCategories.map((c) => c.id));
+      const validCategoryIds = new Set(
+        userCategories
+          .filter((c) => c.kind === 'EXPENSE')
+          .map((c) => c.id),
+      );
+      const defaultIncomeCategoryId =
+        userCategories.find(
+          (c) => c.kind === 'INCOME' && c.name === 'Salario',
+        )?.id ??
+        userCategories.find((c) => c.kind === 'INCOME')?.id ??
+        null;
 
       // 1. Wallets
       for (const wallet of payload.wallets) {
@@ -207,6 +217,7 @@ export async function POST(request: Request) {
             active: true,
             user_id: userId,
             house_id: null,
+            category_id: defaultIncomeCategoryId,
           })),
         });
       }
@@ -302,6 +313,7 @@ export async function POST(request: Request) {
             house_id: number | null;
             fortnight_id: number;
             income_template_id: number | null;
+            category_id: number | null;
           }[] = [];
 
           for (const f of generatedFortnights) {
@@ -329,6 +341,7 @@ export async function POST(request: Request) {
                 house_id: null,
                 fortnight_id: record.id,
                 income_template_id: tmpl.id,
+                category_id: tmpl.category_id,
               });
             }
           }

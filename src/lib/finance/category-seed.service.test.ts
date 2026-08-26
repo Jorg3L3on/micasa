@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ensureDefaultCategoriesForOwner,
+  ensureDefaultIncomeCategoriesForOwner,
   seedDefaultCategoriesForOwner,
   type CategoryOwnerRef,
 } from '@/lib/finance/category-seed.service';
 import {
   DEFAULT_CATEGORY_CATALOG,
+  DEFAULT_INCOME_CATEGORY_CATALOG,
   countDefaultCatalogCategories,
+  countDefaultIncomeCatalogCategories,
 } from '@/lib/finance/default-category-catalog';
 
 type Row = {
@@ -18,6 +21,7 @@ type Row = {
   parent_id: number | null;
   user_id: number | null;
   house_id: number | null;
+  kind: 'EXPENSE' | 'INCOME';
 };
 
 function createMemoryTx(initial: Row[] = []) {
@@ -31,11 +35,14 @@ function createMemoryTx(initial: Row[] = []) {
       house_id?: number | null;
       parent_id?: number | null;
       name?: string;
+      kind?: 'EXPENSE' | 'INCOME';
     },
   ) => {
     if ('user_id' in where && row.user_id !== where.user_id) return false;
     if ('house_id' in where && row.house_id !== where.house_id) return false;
     if ('parent_id' in where && row.parent_id !== where.parent_id) return false;
+    if ('kind' in where && where.kind != null && row.kind !== where.kind)
+      return false;
     if ('name' in where && where.name != null && row.name !== where.name)
       return false;
     return true;
@@ -77,6 +84,7 @@ function createMemoryTx(initial: Row[] = []) {
           parent_id: data.parent_id ?? null,
           user_id: data.user_id ?? null,
           house_id: data.house_id ?? null,
+          kind: data.kind ?? 'EXPENSE',
         };
         rows.push(row);
         return row;
@@ -100,16 +108,22 @@ function createMemoryTx(initial: Row[] = []) {
 
 const owner: CategoryOwnerRef = { userId: 1 };
 
+const fullCatalogCount =
+  countDefaultCatalogCategories() + countDefaultIncomeCatalogCategories();
+
 describe('seedDefaultCategoriesForOwner', () => {
-  it('clones the full catalog for an empty owner', async () => {
+  it('clones expense + income catalogs for an empty owner', async () => {
     const tx = createMemoryTx();
     const result = await seedDefaultCategoriesForOwner(tx as never, owner);
     expect(result.skipped).toBe(false);
-    expect(result.created).toBe(countDefaultCatalogCategories());
-    expect(tx.getRows()).toHaveLength(countDefaultCatalogCategories());
+    expect(result.created).toBe(fullCatalogCount);
+    expect(tx.getRows()).toHaveLength(fullCatalogCount);
+    expect(tx.getRows().filter((r) => r.kind === 'INCOME')).toHaveLength(
+      countDefaultIncomeCatalogCategories(),
+    );
   });
 
-  it('no-ops when the owner already has categories', async () => {
+  it('seeds only missing kind when the other already exists', async () => {
     const tx = createMemoryTx([
       {
         id: 1,
@@ -120,11 +134,15 @@ describe('seedDefaultCategoriesForOwner', () => {
         parent_id: null,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
     ]);
     const result = await seedDefaultCategoriesForOwner(tx as never, owner);
-    expect(result).toEqual({ created: 0, skipped: true });
-    expect(tx.getRows()).toHaveLength(1);
+    expect(result.created).toBe(countDefaultIncomeCatalogCategories());
+    expect(result.skipped).toBe(false);
+    expect(tx.getRows().filter((r) => r.kind === 'INCOME')).toHaveLength(
+      countDefaultIncomeCatalogCategories(),
+    );
   });
 });
 
@@ -135,12 +153,13 @@ describe('ensureDefaultCategoriesForOwner', () => {
     );
   });
 
-  it('full-seeds an empty owner', async () => {
+  it('full-seeds an empty owner (expense only)', async () => {
     const tx = createMemoryTx();
     const result = await ensureDefaultCategoriesForOwner(tx as never, owner);
     expect(result.created).toBe(countDefaultCatalogCategories());
     expect(result.reusedRoots).toBe(0);
     expect(result.skipped).toBe(false);
+    expect(tx.getRows().every((r) => r.kind === 'EXPENSE')).toBe(true);
   });
 
   it('reuses an existing root as father and creates missing children', async () => {
@@ -154,6 +173,7 @@ describe('ensureDefaultCategoriesForOwner', () => {
         parent_id: null,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
     ]);
 
@@ -170,7 +190,6 @@ describe('ensureDefaultCategoriesForOwner', () => {
         .sort(),
     );
     expect(result.created).toBeGreaterThan(0);
-    // Original Comida row kept; no duplicate Comida.
     expect(rows.filter((r) => r.name === 'Comida')).toHaveLength(1);
   });
 
@@ -185,6 +204,7 @@ describe('ensureDefaultCategoriesForOwner', () => {
         parent_id: null,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
       {
         id: 11,
@@ -195,6 +215,7 @@ describe('ensureDefaultCategoriesForOwner', () => {
         parent_id: null,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
     ]);
 
@@ -217,6 +238,7 @@ describe('ensureDefaultCategoriesForOwner', () => {
         parent_id: null,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
     ]);
     const before = tx.getRows().length;
@@ -239,6 +261,7 @@ describe('ensureDefaultCategoriesForOwner', () => {
         parent_id: null,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
       {
         id: 10,
@@ -249,11 +272,29 @@ describe('ensureDefaultCategoriesForOwner', () => {
         parent_id: 1,
         user_id: 1,
         house_id: null,
+        kind: 'EXPENSE',
       },
     ]);
 
     await ensureDefaultCategoriesForOwner(tx as never, owner);
     const comida = tx.getRows().find((r) => r.name === 'Comida')!;
     expect(comida.parent_id).toBeNull();
+  });
+});
+
+describe('ensureDefaultIncomeCategoriesForOwner', () => {
+  it('seeds the five income roots', async () => {
+    const tx = createMemoryTx();
+    const result = await ensureDefaultIncomeCategoriesForOwner(
+      tx as never,
+      owner,
+    );
+    expect(result.created).toBe(countDefaultIncomeCatalogCategories());
+    expect(
+      tx
+        .getRows()
+        .filter((r) => r.kind === 'INCOME')
+        .map((r) => r.name),
+    ).toEqual(DEFAULT_INCOME_CATEGORY_CATALOG.map((r) => r.name));
   });
 });

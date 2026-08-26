@@ -34,7 +34,8 @@ import {
   incomeTemplateSchema,
   type IncomeTemplateFormValues,
 } from '@/schemas/income-template.schema';
-import type { IncomeTemplateListItem } from '@/types/catalog';
+import type { CategoryOption, IncomeTemplateListItem } from '@/types/catalog';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import {
   Select,
   SelectContent,
@@ -65,6 +66,7 @@ export default function EditIncomeTemplatePage() {
   const [error, setError] = useState<string | null>(null);
   const [houseMembers, setHouseMembers] = useState<HouseUserItem[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   const isHouseContext = context.type === 'house';
 
@@ -72,6 +74,7 @@ export default function EditIncomeTemplatePage() {
     resolver: zodResolver(incomeTemplateSchema),
     defaultValues: {
       name: '',
+      categoryId: 0,
       suggestedAmount: null,
       source: '',
       appliesFirstFortnight: false,
@@ -115,6 +118,7 @@ export default function EditIncomeTemplatePage() {
         setError(null);
         form.reset({
           name: found.name,
+          categoryId: found.categoryId ?? 0,
           suggestedAmount: found.suggestedAmount ?? null,
           source: found.source ?? '',
           appliesFirstFortnight: found.appliesFirstFortnight,
@@ -143,6 +147,16 @@ export default function EditIncomeTemplatePage() {
   }, [id, form, context]);
 
   useEffect(() => {
+    clientFetchFromApi<CategoryOption[]>(
+      '/api/categories?kind=income',
+      undefined,
+      context,
+    )
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, [context]);
+
+  useEffect(() => {
     if (!isHouseContext) {
       setHouseMembers([]);
       return;
@@ -166,6 +180,7 @@ export default function EditIncomeTemplatePage() {
         id,
         {
           name: data.name,
+          categoryId: data.categoryId,
           suggestedAmount: data.suggestedAmount ?? null,
           source: data.source && data.source.trim() ? data.source.trim() : null,
           appliesFirstFortnight: data.appliesFirstFortnight,
@@ -244,6 +259,27 @@ export default function EditIncomeTemplatePage() {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría</FormLabel>
+                      <CategoryGroupedSelect
+                        categories={categories}
+                        value={field.value > 0 ? field.value : undefined}
+                        onValueChange={field.onChange}
+                        includeCategoryId={
+                          field.value > 0 ? field.value : null
+                        }
+                        triggerClassName={FIELD_CLASSNAME}
+                        placeholder="Selecciona una categoría"
+                        ariaLabel="Categoría"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

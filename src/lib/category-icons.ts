@@ -1,5 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Banknote,
+  BanknoteArrowDown,
   Building2,
   Car,
   CircleEllipsis,
@@ -14,6 +16,8 @@ import {
   HeartPulse,
   Home,
   Landmark,
+  Package,
+  Percent,
   PiggyBank,
   Pill,
   Plane,
@@ -55,6 +59,10 @@ export const CATEGORY_ICON_KEYS = [
   'HAND_HEART',
   'USERS',
   'FILM',
+  'BANKNOTE',
+  'BANKNOTE_ARROW_DOWN',
+  'PERCENT',
+  'BOX',
 ] as const;
 
 export type CategoryIconKey = (typeof CATEGORY_ICON_KEYS)[number];
@@ -101,6 +109,10 @@ const CATEGORY_ICON_OPTIONS: readonly CategoryIconOption[] = [
   { key: 'HAND_HEART', label: 'Apoyo', keywords: ['familia', 'donacion'], Icon: HandHeart },
   { key: 'USERS', label: 'Hogar', keywords: ['casa', 'familia'], Icon: Users },
   { key: 'FILM', label: 'Salidas', keywords: ['cine', 'eventos'], Icon: Film },
+  { key: 'BANKNOTE', label: 'Efectivo / salario', keywords: ['salario', 'nomina', 'billete'], Icon: Banknote },
+  { key: 'BANKNOTE_ARROW_DOWN', label: 'Depósito', keywords: ['deposito', 'transferencia', 'entrada'], Icon: BanknoteArrowDown },
+  { key: 'PERCENT', label: 'Interés', keywords: ['interes', 'rendimiento'], Icon: Percent },
+  { key: 'BOX', label: 'Otro / paquete', keywords: ['otro', 'paquete', 'misc'], Icon: Package },
 ];
 
 const CATEGORY_ICON_MAP = new Map<CategoryIconKey, CategoryIconOption>(

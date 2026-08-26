@@ -187,7 +187,7 @@ PRD → issues → PR workflow: [docs/agents/workflow.md](docs/agents/workflow.m
 
 ### Design system
 
-Visual contract (Orion dark, no third-party mockups): [`DESIGN.md`](DESIGN.md). App page anatomy: [`.claude/skills/dashboard-ui/SKILL.md`](.claude/skills/dashboard-ui/SKILL.md). Cursor rules: `.cursor/rules/ui-consistency.mdc` (always) and `.cursor/rules/fintech-ui-design-system.mdc` (UI globs).
+Visual contract (Orion dark, no third-party mockups): [`DESIGN.md`](DESIGN.md). App page anatomy: [`.claude/skills/dashboard-ui/SKILL.md`](.claude/skills/dashboard-ui/SKILL.md). Toolbar chrome migrations: [`.claude/skills/toolbar-page/SKILL.md`](.claude/skills/toolbar-page/SKILL.md) (`/toolbar-page`) + PRD [`tasks/prd-app-header-toolbar.md`](tasks/prd-app-header-toolbar.md). Overlay Dialog/Sheet migrations: [`.claude/skills/responsive-overlay/SKILL.md`](.claude/skills/responsive-overlay/SKILL.md) (`/responsive-overlay`) + PRD [`tasks/prd-responsive-overlays.md`](tasks/prd-responsive-overlays.md). Cursor rules: `.cursor/rules/ui-consistency.mdc` (always), `.cursor/rules/app-header-toolbar.mdc` (always), `.cursor/rules/responsive-overlays.mdc` (always), and `.cursor/rules/fintech-ui-design-system.mdc` (UI globs).
 
 ### Issue tracker
 

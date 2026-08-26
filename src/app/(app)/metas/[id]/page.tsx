@@ -5,15 +5,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   Archive,
-  ArrowLeft,
   ArrowLeftRight,
   Check,
   CheckCircle2,
-  ChevronRight,
   Clock,
   Coins,
   Lightbulb,
-  MoreVertical,
   Pencil,
   Plus,
   RotateCcw,
@@ -41,13 +38,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  useRegisterToolbarActions,
+  type ToolbarOverflowItem,
+} from '@/context/toolbar-actions-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
@@ -168,6 +163,162 @@ export default function MetaDetailPage() {
     });
   }, [wallet]);
 
+  const goalFlags = useMemo(() => {
+    if (!wallet || !metrics) {
+      return {
+        isFunded: false,
+        visual: null as ReturnType<typeof resolveGoalVisualStyle> | null,
+        isFinishedVisual: false,
+        isArchived: false,
+        canSaveAndArchive: false,
+        canTransfer: false,
+      };
+    }
+    const isFunded =
+      metrics.goalAmount > 0 && wallet.amount >= metrics.goalAmount;
+    const visual = resolveGoalVisualStyle(metrics.status, isFunded);
+    const isArchived = metrics.status === 'archived';
+    return {
+      isFunded,
+      visual,
+      isFinishedVisual: visual === 'finished',
+      isArchived,
+      canSaveAndArchive:
+        (metrics.status === 'active' || metrics.status === 'overdue') &&
+        !isFunded,
+      canTransfer: !isArchived && wallet.amount > 0,
+    };
+  }, [wallet, metrics]);
+
+  const {
+    visual,
+    isFinishedVisual,
+    isArchived,
+    canSaveAndArchive,
+    canTransfer,
+  } = goalFlags;
+
+  const handleOpenIncome = useCallback(() => setIncomeOpen(true), []);
+  const handleOpenTransfer = useCallback(() => setTransferOpen(true), []);
+  const handleOpenBalance = useCallback(() => setBalanceOpen(true), []);
+  const handleOpenEdit = useCallback(() => {
+    setFormError(null);
+    setEditOpen(true);
+  }, []);
+  const handleOpenComplete = useCallback(() => setCompleteOpen(true), []);
+  const handleOpenDelete = useCallback(() => setDeleteOpen(true), []);
+
+  const finishComplete = useCallback(async () => {
+    if (!wallet) return;
+    try {
+      await updateWalletStatus(wallet.id, false, context);
+      toast.success('Meta archivada');
+      setPendingComplete(false);
+      await load({ silent: true });
+    } catch {
+      toast.error('No se pudo archivar la meta');
+    }
+  }, [wallet, context, load]);
+
+  const handleRestore = useCallback(async () => {
+    if (!wallet) return;
+    try {
+      await updateWalletStatus(wallet.id, true, context);
+      toast.success('Meta restaurada');
+      await load({ silent: true });
+    } catch {
+      toast.error('No se pudo restaurar la meta');
+    }
+  }, [wallet, context, load]);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  const overflowItems = useMemo((): ToolbarOverflowItem[] => {
+    if (!wallet || !metrics) return [];
+    const items: ToolbarOverflowItem[] = [];
+
+    if (isArchived) {
+      items.push({
+        key: 'restore',
+        label: 'Restaurar',
+        onClick: () => {
+          void handleRestore();
+        },
+        icon: <RotateCcw data-icon="inline-start" />,
+      });
+      items.push({
+        key: 'delete',
+        label: 'Eliminar',
+        onClick: handleOpenDelete,
+        icon: <Trash2 data-icon="inline-start" />,
+        destructive: true,
+      });
+      return items;
+    }
+
+    if (canTransfer) {
+      items.push({
+        key: 'transfer',
+        label: 'Transferir',
+        onClick: handleOpenTransfer,
+        icon: <ArrowLeftRight data-icon="inline-start" />,
+      });
+    }
+
+    if (canSaveAndArchive) {
+      items.push(
+        {
+          key: 'adjust',
+          label: 'Ajustar',
+          onClick: handleOpenBalance,
+          icon: <SlidersHorizontal data-icon="inline-start" />,
+        },
+        {
+          key: 'complete',
+          label: 'Archivar',
+          onClick: handleOpenComplete,
+          icon: <CheckCircle2 data-icon="inline-start" />,
+        },
+      );
+    }
+
+    items.push({
+      key: 'edit',
+      label: 'Editar',
+      onClick: handleOpenEdit,
+      icon: <Pencil data-icon="inline-start" />,
+    });
+
+    return items;
+  }, [
+    wallet,
+    metrics,
+    isArchived,
+    canTransfer,
+    canSaveAndArchive,
+    handleRestore,
+    handleOpenDelete,
+    handleOpenTransfer,
+    handleOpenBalance,
+    handleOpenComplete,
+    handleOpenEdit,
+  ]);
+
+  useRegisterToolbarActions({
+    primaryAction:
+      wallet && canSaveAndArchive
+        ? {
+            label: 'Ahorrar',
+            onClick: handleOpenIncome,
+            icon: primaryActionIcon,
+          }
+        : null,
+    overflow: overflowItems.length > 0 ? { items: overflowItems } : null,
+  });
+
   const handleEdit = async (data: WalletFormValues) => {
     if (!context || !wallet) return;
     setFormError(null);
@@ -186,18 +337,6 @@ export default function MetaDetailPage() {
     }
   };
 
-  const finishComplete = async () => {
-    if (!wallet) return;
-    try {
-      await updateWalletStatus(wallet.id, false, context);
-      toast.success('Meta archivada');
-      setPendingComplete(false);
-      await load({ silent: true });
-    } catch {
-      toast.error('No se pudo archivar la meta');
-    }
-  };
-
   const handleComplete = () => {
     if (!wallet) return;
     setCompleteOpen(false);
@@ -207,17 +346,6 @@ export default function MetaDetailPage() {
       return;
     }
     void finishComplete();
-  };
-
-  const handleRestore = async () => {
-    if (!wallet) return;
-    try {
-      await updateWalletStatus(wallet.id, true, context);
-      toast.success('Meta restaurada');
-      await load({ silent: true });
-    } catch {
-      toast.error('No se pudo restaurar la meta');
-    }
   };
 
   const handleDelete = async () => {
@@ -241,7 +369,7 @@ export default function MetaDetailPage() {
     );
   }
 
-  if (!wallet || !metrics) {
+  if (!wallet || !metrics || !visual) {
     return (
       <div className="py-10 text-center">
         <p className="text-muted-foreground">Meta no encontrada</p>
@@ -255,14 +383,6 @@ export default function MetaDetailPage() {
   const tipRounded = Math.round(metrics.monthlyTip * 100) / 100;
   const savedPct = Math.round(metrics.savedProgress * 100);
   const { status } = metrics;
-  const isArchived = status === 'archived';
-  const isFunded =
-    metrics.goalAmount > 0 && wallet.amount >= metrics.goalAmount;
-  const visual = resolveGoalVisualStyle(status, isFunded);
-  const isFinishedVisual = visual === 'finished';
-  const canSaveAndArchive =
-    (status === 'active' || status === 'overdue') && !isFunded;
-  const canTransfer = !isArchived && wallet.amount > 0;
 
   const daysLabel = isArchived
     ? 'Archivada'
@@ -289,124 +409,33 @@ export default function MetaDetailPage() {
         ? getGoalActiveCardStyle()
         : undefined;
 
-  const actionTiles = isFinishedVisual
-    ? []
-    : canSaveAndArchive
-      ? [
-          {
-            key: 'income',
-            label: 'Ahorrar',
-            icon: Plus,
-            onClick: () => setIncomeOpen(true),
-            disabled: false,
-          },
-          ...(canTransfer
-            ? [
-                {
-                  key: 'transfer',
-                  label: 'Transferir',
-                  icon: ArrowLeftRight,
-                  onClick: () => setTransferOpen(true),
-                  disabled: false,
-                },
-              ]
-            : []),
-          {
-            key: 'adjust',
-            label: 'Ajustar',
-            icon: SlidersHorizontal,
-            onClick: () => setBalanceOpen(true),
-            disabled: false,
-          },
-          {
-            key: 'complete',
-            label: 'Archivar',
-            icon: CheckCircle2,
-            onClick: () => setCompleteOpen(true),
-            disabled: false,
-          },
-        ]
-      : canTransfer
-        ? [
-            {
-              key: 'transfer',
-              label: 'Transferir',
-              icon: ArrowLeftRight,
-              onClick: () => setTransferOpen(true),
-              disabled: false,
-            },
-          ]
-        : [];
-
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <Button asChild variant="ghost" size="icon-sm" aria-label="Volver">
-          <Link href={listHref}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                goalSolidIconClass(visual),
-              )}
-              aria-hidden
-            >
-              <StatusIcon className="h-4 w-4" strokeWidth={statusIconStroke} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg font-semibold">{wallet.name}</h2>
-              <p className="text-xs text-muted-foreground">
-                {wallet.goal_due_date
-                  ? formatDisplayDate(wallet.goal_due_date)
-                  : 'Sin fecha límite'}
-              </p>
-            </div>
-            {status !== 'active' || isFinishedVisual ? (
-              <Badge variant="secondary" className={cn(goalStatusBadgeClass(visual))}>
-                {isFinishedVisual
-                  ? GOAL_STATUS_LABEL.achieved
-                  : GOAL_STATUS_LABEL[status]}
-              </Badge>
-            ) : null}
-          </div>
+      <div className="flex min-w-0 items-center gap-2">
+        <div
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+            goalSolidIconClass(visual),
+          )}
+          aria-hidden
+        >
+          <StatusIcon className="h-4 w-4" strokeWidth={statusIconStroke} />
         </div>
-        {!isArchived ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Editar"
-            onClick={() => setEditOpen(true)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Más opciones"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem
-                onClick={() => setDeleteOpen(true)}
-                className="cursor-pointer text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-lg font-semibold">{wallet.name}</h2>
+          <p className="text-xs text-muted-foreground">
+            {wallet.goal_due_date
+              ? formatDisplayDate(wallet.goal_due_date)
+              : 'Sin fecha límite'}
+          </p>
+        </div>
+        {status !== 'active' || isFinishedVisual ? (
+          <Badge variant="secondary" className={cn(goalStatusBadgeClass(visual))}>
+            {isFinishedVisual
+              ? GOAL_STATUS_LABEL.achieved
+              : GOAL_STATUS_LABEL[status]}
+          </Badge>
+        ) : null}
       </div>
 
       <section
@@ -531,77 +560,6 @@ export default function MetaDetailPage() {
           </div>
         ) : null}
       </section>
-
-      {isArchived ? (
-        <button
-          type="button"
-          onClick={() => void handleRestore()}
-          className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[oklch(37.3%_0.034_259.733_/_.12)] text-[oklch(37.3%_0.034_259.733)] dark:bg-slate-500/20 dark:text-slate-300">
-            <RotateCcw className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold leading-tight">
-              Restaurar
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              Reactivar para editar, ahorrar o transferir
-            </span>
-          </span>
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-        </button>
-      ) : isFinishedVisual && canTransfer ? (
-        <button
-          type="button"
-          onClick={() => setTransferOpen(true)}
-          className="flex w-full items-center gap-3 rounded-xl border border-emerald-500/25 bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-emerald-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
-            <ArrowLeftRight className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold leading-tight">
-              Transferir
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              Mover dinero a tu cuenta
-            </span>
-          </span>
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300"
-            aria-hidden
-          />
-        </button>
-      ) : null}
-
-      {actionTiles.length > 0 ? (
-        <div
-          className={cn(
-            'grid gap-2',
-            actionTiles.length === 1
-              ? 'grid-cols-1 sm:max-w-xs'
-              : 'grid-cols-2 sm:grid-cols-4',
-          )}
-        >
-          {actionTiles.map(({ key, label, icon: Icon, onClick, disabled }) => (
-            <Button
-              key={key}
-              type="button"
-              variant="outline"
-              className={cn('h-auto flex-col gap-1 py-3')}
-              onClick={onClick}
-              disabled={disabled}
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              <span className="text-xs">{label}</span>
-            </Button>
-          ))}
-        </div>
-      ) : null}
 
       <section className="space-y-2">
         <div className="flex items-center gap-2">

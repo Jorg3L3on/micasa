@@ -119,6 +119,12 @@ async function main() {
     'Préstamos',
   );
   const catSpotify = await requireCategory({ house_id: leonSolorzano.id }, 'Spotify');
+  const catSalarioJorge = await requireCategory({ user_id: jorge.id }, 'Salario');
+  const catSalarioCarmen = await requireCategory({ user_id: carmen.id }, 'Salario');
+  const catSalarioHouse = await requireCategory(
+    { house_id: leonSolorzano.id },
+    'Salario',
+  );
 
   // ─────────────────────────────────────────────
   // WALLETS
@@ -209,6 +215,7 @@ async function main() {
       name: 'Sueldo', suggested_amount: 6000,
       applies_first_fortnight: true, applies_second_fortnight: true, active: true,
       user_id: carmen.id,
+      category_id: catSalarioCarmen.id,
     },
   });
   const itSueldoJorge = await prisma.incomeTemplate.create({
@@ -216,6 +223,7 @@ async function main() {
       name: 'Sueldo', suggested_amount: 15000, source: 'SALARIO',
       applies_first_fortnight: true, applies_second_fortnight: true, active: true,
       user_id: jorge.id,
+      category_id: catSalarioJorge.id,
     },
   });
   const itSalarioCarmen = await prisma.incomeTemplate.create({
@@ -223,6 +231,7 @@ async function main() {
       name: 'Salario Carmen', suggested_amount: 5500, source: 'Salario',
       applies_first_fortnight: true, applies_second_fortnight: true, active: true,
       house_id: leonSolorzano.id,
+      category_id: catSalarioHouse.id,
     },
   });
   const itSalarioJorge = await prisma.incomeTemplate.create({
@@ -230,6 +239,7 @@ async function main() {
       name: 'Salario Jorge', suggested_amount: 15000, source: 'Salario',
       applies_first_fortnight: true, applies_second_fortnight: true, active: true,
       house_id: leonSolorzano.id,
+      category_id: catSalarioHouse.id,
     },
   });
 

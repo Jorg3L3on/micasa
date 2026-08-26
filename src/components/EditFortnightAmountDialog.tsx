@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -23,9 +23,11 @@ import { CurrencyInput } from '@/components/ui/currency-input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
-  overrideAmountFormSchema,
+  createOverrideAmountFormSchema,
   OverrideAmountFormValues,
 } from '@/schemas/fortnight.schema'
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect'
+import type { CategoryOption } from '@/types/catalog'
 
 type EditFortnightAmountDialogProps = {
   open: boolean
@@ -34,6 +36,9 @@ type EditFortnightAmountDialogProps = {
   defaultAmount: number
   fortnightLabel: string
   error?: string | null
+  requireCategory?: boolean
+  categories?: CategoryOption[]
+  defaultCategoryId?: number | null
 }
 
 export default function EditFortnightAmountDialog({
@@ -43,11 +48,65 @@ export default function EditFortnightAmountDialog({
   defaultAmount,
   fortnightLabel,
   error,
+  requireCategory = false,
+  categories = [],
+  defaultCategoryId = null,
 }: EditFortnightAmountDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Modificar ingresos — {fortnightLabel}</DialogTitle>
+          <DialogDescription>
+            Monto actual: {formatCurrency(defaultAmount)}. Este monto solo aplica
+            a esta quincena.
+          </DialogDescription>
+        </DialogHeader>
+        <EditFortnightAmountForm
+          key={requireCategory ? 'with-category' : 'amount-only'}
+          open={open}
+          onOpenChange={onOpenChange}
+          onSave={onSave}
+          defaultAmount={defaultAmount}
+          error={error}
+          requireCategory={requireCategory}
+          categories={categories}
+          defaultCategoryId={defaultCategoryId}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EditFortnightAmountForm({
+  open,
+  onOpenChange,
+  onSave,
+  defaultAmount,
+  error,
+  requireCategory,
+  categories,
+  defaultCategoryId,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSave: (data: OverrideAmountFormValues) => Promise<void>
+  defaultAmount: number
+  error?: string | null
+  requireCategory: boolean
+  categories: CategoryOption[]
+  defaultCategoryId: number | null
+}) {
+  const schema = useMemo(
+    () => createOverrideAmountFormSchema(requireCategory),
+    [requireCategory],
+  )
+
   const form = useForm<OverrideAmountFormValues>({
-    resolver: zodResolver(overrideAmountFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       amount: defaultAmount,
+      categoryId: defaultCategoryId ?? undefined,
     },
   })
 
@@ -55,9 +114,10 @@ export default function EditFortnightAmountDialog({
     if (open) {
       form.reset({
         amount: defaultAmount,
+        categoryId: defaultCategoryId ?? undefined,
       })
     }
-  }, [open, defaultAmount, form])
+  }, [open, defaultAmount, defaultCategoryId, form])
 
   const handleSubmit = async (data: OverrideAmountFormValues) => {
     try {
@@ -69,59 +129,74 @@ export default function EditFortnightAmountDialog({
     }
   }
 
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      form.reset()
-    }
-    onOpenChange(newOpen)
+  const handleCancel = () => {
+    form.reset()
+    onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modificar ingresos — {fortnightLabel}</DialogTitle>
-          <DialogDescription>
-            Monto actual: {formatCurrency(defaultAmount)}. Este monto solo aplica
-            a esta quincena.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
-              </div>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+        <FormField
+          control={form.control}
+          name="amount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Monto</FormLabel>
+              <FormControl>
+                <CurrencyInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="0.00"
+                  aria-label="Monto"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {requireCategory ? (
+          <FormField
+            control={form.control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categoría</FormLabel>
+                <CategoryGroupedSelect
+                  categories={categories}
+                  value={
+                    field.value != null && field.value > 0
+                      ? field.value
+                      : undefined
+                  }
+                  onValueChange={field.onChange}
+                  includeCategoryId={
+                    field.value != null && field.value > 0
+                      ? field.value
+                      : defaultCategoryId
+                  }
+                  placeholder="Selecciona una categoría"
+                  ariaLabel="Categoría"
+                />
+                <FormMessage />
+              </FormItem>
             )}
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto</FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="0.00"
-                      aria-label="Monto"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          />
+        ) : null}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={handleCancel}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   )
 }

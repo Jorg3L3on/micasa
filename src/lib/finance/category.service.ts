@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import type { Prisma } from '@/generated/prisma/client';
+import type { CategoryKind, Prisma } from '@/generated/prisma/client';
 
 export type CategoryOwnerType = 'user' | 'house';
 
@@ -28,6 +28,7 @@ export async function assertValidParentForCreate(
   ownerType: CategoryOwnerType,
   ownerId: number,
   parentId: number | null | undefined,
+  kind: CategoryKind,
 ): Promise<void> {
   if (parentId == null) return;
 
@@ -36,6 +37,12 @@ export async function assertValidParentForCreate(
   });
   if (!parent) {
     throw new CategoryServiceError('Categoría padre no encontrada', 404);
+  }
+  if (parent.kind !== kind) {
+    throw new CategoryServiceError(
+      'La categoría padre debe ser del mismo tipo',
+      400,
+    );
   }
   if (parent.parent_id != null) {
     throw new CategoryServiceError(
@@ -50,15 +57,44 @@ export async function findDuplicateCategoryName(
   ownerType: CategoryOwnerType,
   ownerId: number,
   name: string,
+  kind: CategoryKind,
   excludeId?: number,
 ) {
   return tx.category.findFirst({
     where: {
       ...categoryOwnerWhere(ownerType, ownerId),
       name,
+      kind,
       ...(excludeId != null ? { id: { not: excludeId } } : {}),
     },
   });
+}
+
+export async function assertOwnedCategoryOfKind(
+  tx: Tx,
+  ownerType: CategoryOwnerType,
+  ownerId: number,
+  categoryId: number,
+  kind: CategoryKind,
+): Promise<void> {
+  const category = await tx.category.findFirst({
+    where: {
+      id: categoryId,
+      kind,
+      ...categoryOwnerWhere(ownerType, ownerId),
+    },
+  });
+  if (!category) {
+    throw new CategoryServiceError(
+      kind === 'INCOME'
+        ? 'Categoría de ingreso no encontrada'
+        : 'Categoría de gasto no encontrada',
+      404,
+    );
+  }
+  if (!category.active) {
+    throw new CategoryServiceError('La categoría no está activa', 400);
+  }
 }
 
 /** Deactivate parent and cascade active=false to direct children. */
@@ -171,6 +207,29 @@ export async function assertCategoryDeletable(
   if (relatedTemplate) {
     throw new CategoryServiceError(
       'La categoría tiene plantillas de gasto asociadas y no puede eliminarse',
+      409,
+    );
+  }
+
+  const relatedIncome = await tx.income.findFirst({
+    where: { category_id: categoryId, ...ownerExpenseWhere },
+  });
+  if (relatedIncome) {
+    throw new CategoryServiceError(
+      'La categoría tiene ingresos asociados y no puede eliminarse',
+      409,
+    );
+  }
+
+  const relatedIncomeTemplate = await tx.incomeTemplate.findFirst({
+    where: {
+      category_id: categoryId,
+      ...categoryOwnerWhere(ownerType, ownerId),
+    },
+  });
+  if (relatedIncomeTemplate) {
+    throw new CategoryServiceError(
+      'La categoría tiene plantillas de ingreso asociadas y no puede eliminarse',
       409,
     );
   }

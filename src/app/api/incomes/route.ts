@@ -7,6 +7,10 @@ import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createUserToHouseTransfer } from '@/lib/finance/transfer.service';
 import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
 import { dateStringSchema } from '@/schemas/common.schema';
+import {
+  assertOwnedCategoryOfKind,
+  CategoryServiceError,
+} from '@/lib/finance/category.service';
 
 const createIncomeSchema = z.object({
   fortnight_id: z.number().int().positive(),
@@ -16,6 +20,7 @@ const createIncomeSchema = z.object({
   transfer_from_user_id: z.number().int().positive().optional(),
   income_template_id: z.number().int().positive().optional().nullable(),
   wallet_id: z.number().int().positive('La billetera es requerida'),
+  category_id: z.number().int().positive('La categoría es requerida'),
 });
 
 const updateIncomeAmountSchema = z.object({
@@ -23,7 +28,31 @@ const updateIncomeAmountSchema = z.object({
   /** Required when the income has no wallet yet; cannot be cleared once set. */
   wallet_id: z.number().int().positive().optional(),
   force_wallet_credit: z.boolean().optional(),
+  /** Required when the income has no category yet. */
+  category_id: z.number().int().positive().optional(),
 });
+
+function serializeIncome(i: {
+  id: number;
+  amount: unknown;
+  source: string | null;
+  received_at: Date;
+  fortnight_id: number;
+  income_template_id: number | null;
+  wallet_id: number | null;
+  category_id: number | null;
+}) {
+  return {
+    id: i.id,
+    amount: Number(i.amount),
+    source: i.source,
+    received_at: i.received_at,
+    fortnight_id: i.fortnight_id,
+    income_template_id: i.income_template_id,
+    wallet_id: i.wallet_id,
+    category_id: i.category_id,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,18 +75,9 @@ export async function GET(request: NextRequest) {
       orderBy: { received_at: 'asc' },
     });
 
-    return NextResponse.json(
-      incomes.map((i) => ({
-        id: i.id,
-        amount: Number(i.amount),
-        source: i.source,
-        received_at: i.received_at,
-        fortnight_id: i.fortnight_id,
-        income_template_id: i.income_template_id,
-        wallet_id: i.wallet_id,
-      })),
-      { status: 200 },
-    );
+    return NextResponse.json(incomes.map(serializeIncome), {
+      status: 200,
+    });
   } catch (error) {
     console.error('Error fetching incomes:', error);
     return NextResponse.json(
@@ -71,7 +91,7 @@ export async function PUT(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    const { ownerFilter, ownerType, ownerId } = context;
 
     const { searchParams } = new URL(request.url);
     const idRaw = searchParams.get('id');
@@ -99,7 +119,6 @@ export async function PUT(request: NextRequest) {
     const oldAmount = Number(income.amount);
     const newAmount = validated.amount;
     const oldWalletId = income.wallet_id;
-    // Use wallet from request if explicitly provided, otherwise keep existing
     const newWalletId =
       validated.wallet_id !== undefined ? validated.wallet_id : oldWalletId;
 
@@ -113,23 +132,38 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    let nextCategoryId = income.category_id;
+    if (validated.category_id !== undefined) {
+      await assertOwnedCategoryOfKind(
+        prisma,
+        ownerType,
+        ownerId,
+        validated.category_id,
+        'INCOME',
+      );
+      nextCategoryId = validated.category_id;
+    } else if (income.category_id == null) {
+      return NextResponse.json(
+        {
+          error:
+            'La categoría es requerida. Asigna una categoría de ingreso a este registro.',
+        },
+        { status: 400 },
+      );
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       if (oldWalletId === null && newWalletId != null) {
-        // First time assigning a wallet — credit the full amount
         await applyWalletAmountDelta(tx, newWalletId, newAmount);
       } else if (oldWalletId != null && newWalletId != null) {
         if (oldWalletId === newWalletId) {
           if (validated.force_wallet_credit === true) {
-            // Recovery path: explicit re-credit when historical data has wallet_id set
-            // but the wallet balance was never incremented.
             await applyWalletAmountDelta(tx, newWalletId, newAmount);
           } else {
-            // Same wallet — only adjust by the difference
             const delta = newAmount - oldAmount;
             if (delta !== 0) await applyWalletAmountDelta(tx, newWalletId, delta);
           }
         } else {
-          // Wallet changed — reverse old, credit new
           await applyWalletAmountDelta(tx, oldWalletId, -oldAmount);
           await applyWalletAmountDelta(tx, newWalletId, newAmount);
         }
@@ -140,23 +174,19 @@ export async function PUT(request: NextRequest) {
         data: {
           amount: newAmount,
           wallet_id: newWalletId,
+          category_id: nextCategoryId,
         },
       });
     });
 
-    return NextResponse.json(
-      {
-        id: updated.id,
-        amount: Number(updated.amount),
-        source: updated.source,
-        received_at: updated.received_at,
-        fortnight_id: updated.fortnight_id,
-        income_template_id: updated.income_template_id,
-        wallet_id: updated.wallet_id,
-      },
-      { status: 200 },
-    );
+    return NextResponse.json(serializeIncome(updated), { status: 200 });
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.issues },
@@ -185,6 +215,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createIncomeSchema.parse(body);
 
+    await assertOwnedCategoryOfKind(
+      prisma,
+      ownerType,
+      ownerId,
+      validated.category_id,
+      'INCOME',
+    );
+
     const fortnight = await prisma.fortnight.findUnique({
       where: { id: validated.fortnight_id },
       select: {
@@ -211,17 +249,21 @@ export async function POST(request: NextRequest) {
     if (ownerType === 'user') {
       if (fortnight.user_id !== ownerId || fortnight.house_id != null) {
         return NextResponse.json(
-          { error: 'Fortnight does not belong to the same owner (user/house) as the income' },
+          {
+            error:
+              'Fortnight does not belong to the same owner (user/house) as the income',
+          },
           { status: 400 },
         );
       }
-    } else {
-      if (fortnight.house_id !== ownerId || fortnight.user_id != null) {
-        return NextResponse.json(
-          { error: 'Fortnight does not belong to the same owner (user/house) as the income' },
-          { status: 400 },
-        );
-      }
+    } else if (fortnight.house_id !== ownerId || fortnight.user_id != null) {
+      return NextResponse.json(
+        {
+          error:
+            'Fortnight does not belong to the same owner (user/house) as the income',
+        },
+        { status: 400 },
+      );
     }
 
     const transferFromUserId = validated.transfer_from_user_id;
@@ -273,19 +315,28 @@ export async function POST(request: NextRequest) {
           fortnight_id: number;
           house_id: number;
           wallet_id: number | null;
+          category_id: number | null;
         };
       };
-      const houseIncome = (transfer as unknown as TransferWithHouseIncome).house_income;
+      const houseIncome = (transfer as unknown as TransferWithHouseIncome)
+        .house_income;
+
+      const withCategory = await prisma.income.update({
+        where: { id: houseIncome.id },
+        data: { category_id: validated.category_id },
+      });
+
       return NextResponse.json(
         {
-          id: houseIncome.id,
-          amount: houseIncome.amount,
-          source: houseIncome.source,
-          received_at: houseIncome.received_at,
-          fortnight_id: houseIncome.fortnight_id,
-          house_id: houseIncome.house_id,
+          id: withCategory.id,
+          amount: withCategory.amount,
+          source: withCategory.source,
+          received_at: withCategory.received_at,
+          fortnight_id: withCategory.fortnight_id,
+          house_id: withCategory.house_id,
           user_id: null,
-          wallet_id: houseIncome.wallet_id ?? null,
+          wallet_id: withCategory.wallet_id ?? null,
+          category_id: withCategory.category_id,
         },
         { status: 201 },
       );
@@ -305,29 +356,24 @@ export async function POST(request: NextRequest) {
           received_at: coerceToCalendarDate(validated.received_at),
           income_template_id: validated.income_template_id ?? null,
           wallet_id: walletId,
+          category_id: validated.category_id,
           ...ownerData,
         },
       });
 
-      // Credit the wallet
       await applyWalletAmountDelta(tx, walletId, validated.amount);
 
       return income;
     });
 
-    return NextResponse.json(
-      {
-        id: created.id,
-        amount: Number(created.amount),
-        source: created.source,
-        received_at: created.received_at,
-        fortnight_id: created.fortnight_id,
-        income_template_id: created.income_template_id,
-        wallet_id: created.wallet_id,
-      },
-      { status: 201 },
-    );
+    return NextResponse.json(serializeIncome(created), { status: 201 });
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.issues },

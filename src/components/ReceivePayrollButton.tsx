@@ -204,9 +204,17 @@ export function ReceivePayrollButton({
               {
                 wallet_id: entryWalletId,
                 force_wallet_credit: shouldForceWalletCredit,
+                ...(entry.template.categoryId != null
+                  ? { category_id: entry.template.categoryId }
+                  : {}),
               },
             );
           } else {
+            if (entry.template.categoryId == null) {
+              throw new Error(
+                `La plantilla "${entry.template.name}" no tiene categoría. Edítala en Configuración.`,
+              );
+            }
             await createIncome(
               {
                 fortnight_id: fortnightId,
@@ -215,6 +223,7 @@ export function ReceivePayrollButton({
                 received_at: receivedAt,
                 income_template_id: entry.template.id,
                 wallet_id: entryWalletId,
+                category_id: entry.template.categoryId,
               },
               context,
             );

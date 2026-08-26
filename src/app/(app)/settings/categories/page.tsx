@@ -25,11 +25,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 export default function CategoriesPage() {
   const { context } = useFinanceContext();
   const isMobile = useIsMobile();
+  const [kindTab, setKindTab] = useState<'expense' | 'income'>('expense');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,12 +44,15 @@ export default function CategoriesPage() {
     useState<CategoryOption | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const isIncomeTab = kindTab === 'income';
+  const kindNoun = isIncomeTab ? 'ingresos' : 'gastos';
+
   const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await clientFetchFromApi<CategoryOption[]>(
-        '/api/categories',
+        `/api/categories?kind=${kindTab}`,
         undefined,
         context,
       );
@@ -59,11 +64,21 @@ export default function CategoriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [context]);
+  }, [context, kindTab]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  useEffect(() => {
+    setCreateDialogOpen(false);
+    setEditDialogOpen(false);
+    setDeleteDialogOpen(false);
+    setSelectedCategory(null);
+    setFormError(null);
+    setOpenSwipeId(null);
+    setError(null);
+  }, [kindTab]);
 
   useEffect(() => {
     if (!isMobile) setOpenSwipeId(null);
@@ -112,6 +127,7 @@ export default function CategoriesPage() {
           description: data.description,
           icon: data.icon,
           parentId: data.parentId ?? null,
+          kind: isIncomeTab ? 'INCOME' : 'EXPENSE',
         },
         context,
       );
@@ -159,7 +175,7 @@ export default function CategoriesPage() {
       toast.success(
         nextActive
           ? 'Categoría activada'
-          : 'Categoría desactivada (ya no aparece al asignar gastos)',
+          : `Categoría desactivada (ya no aparece al asignar ${kindNoun})`,
       );
       await fetchCategories();
     } catch (err) {
@@ -211,8 +227,9 @@ export default function CategoriesPage() {
         <div className="min-w-0">
           <h2 className="text-lg font-semibold leading-tight">Categorías</h2>
           <p className="text-xs text-muted-foreground">
-            Padres y subcategorías para clasificar gastos. Desactivar las oculta
-            al asignar.
+            {isIncomeTab
+              ? 'Padres y subcategorías para clasificar ingresos. Desactivar las oculta al asignar.'
+              : 'Padres y subcategorías para clasificar gastos. Desactivar las oculta al asignar.'}
             {!loading && visibleCount > 0 ? (
               <span className="text-muted-foreground/80">
                 {' '}
@@ -265,6 +282,25 @@ export default function CategoriesPage() {
       </div>
 
       <div className="relative z-0 space-y-4">
+        <Tabs
+          value={kindTab}
+          onValueChange={(value) => {
+            if (value === 'expense' || value === 'income') {
+              setKindTab(value);
+            }
+          }}
+          className="gap-0"
+        >
+          <TabsList
+            variant="segmented"
+            aria-label="Tipo de categoría"
+            className="w-full max-w-[22rem] touch-manipulation"
+          >
+            <TabsTrigger value="expense">Gastos</TabsTrigger>
+            <TabsTrigger value="income">Ingresos</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {error && !deleteDialogOpen ? (
           <div
             className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
@@ -295,7 +331,7 @@ export default function CategoriesPage() {
                 description={
                   showInactive
                     ? 'Prueba mostrar las inactivas o agrega una nueva.'
-                    : 'Se crean por defecto al registrar; puedes agregar padres o subcategorías.'
+                    : `Se crean por defecto al registrar; puedes agregar padres o subcategorías de ${kindNoun}.`
                 }
                 action={{
                   label: 'Agregar categoría',
@@ -404,7 +440,11 @@ export default function CategoriesPage() {
             }}
             onConfirm={handleDelete}
             title="Eliminar categoría"
-            description="Solo se puede eliminar si no tiene subcategorías, gastos, plantillas ni presupuestos. Si solo quieres ocultarla al asignar, usa Desactivar."
+            description={
+              isIncomeTab
+                ? 'Solo se puede eliminar si no tiene subcategorías, ingresos ni plantillas. Si solo quieres ocultarla al asignar, usa Desactivar.'
+                : 'Solo se puede eliminar si no tiene subcategorías, gastos, plantillas ni presupuestos. Si solo quieres ocultarla al asignar, usa Desactivar.'
+            }
             itemName={selectedCategory.name}
           />
         </>

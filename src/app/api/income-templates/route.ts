@@ -6,6 +6,10 @@ import {
   createIncomeTemplateSchema,
   updateIncomeTemplateSchema,
 } from '@/schemas/income-template.schema';
+import {
+  assertOwnedCategoryOfKind,
+  CategoryServiceError,
+} from '@/lib/finance/category.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +26,13 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
+          },
+        },
       },
       orderBy: {
         name: 'asc',
@@ -35,6 +46,9 @@ export async function GET(request: NextRequest) {
         ? Number(template.suggested_amount)
         : null,
       source: template.source,
+      categoryId: template.category_id,
+      categoryName: template.category?.name ?? null,
+      categoryIcon: template.category?.icon ?? null,
       appliesFirstFortnight: template.applies_first_fortnight,
       appliesSecondFortnight: template.applies_second_fortnight,
       active: template.active,
@@ -61,6 +75,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createIncomeTemplateSchema.parse(body);
 
+    await assertOwnedCategoryOfKind(
+      prisma,
+      ownerType,
+      ownerId,
+      validatedData.categoryId,
+      'INCOME',
+    );
+
     const template = await prisma.incomeTemplate.create({
       data: {
         name: validatedData.name,
@@ -68,6 +90,7 @@ export async function POST(request: NextRequest) {
           ? validatedData.suggestedAmount.toString()
           : null,
         source: validatedData.source ?? null,
+        category_id: validatedData.categoryId,
         applies_first_fortnight: validatedData.appliesFirstFortnight,
         applies_second_fortnight: validatedData.appliesSecondFortnight,
         active: validatedData.active ?? true,
@@ -82,6 +105,13 @@ export async function POST(request: NextRequest) {
             name: true,
           },
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
+          },
+        },
       },
     });
 
@@ -93,6 +123,9 @@ export async function POST(request: NextRequest) {
           ? Number(template.suggested_amount)
           : null,
         source: template.source,
+        categoryId: template.category_id,
+        categoryName: template.category?.name ?? null,
+        categoryIcon: template.category?.icon ?? null,
         appliesFirstFortnight: template.applies_first_fortnight,
         appliesSecondFortnight: template.applies_second_fortnight,
         active: template.active,
@@ -102,6 +135,12 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Error de validación', details: error.issues },
@@ -133,7 +172,7 @@ export async function PUT(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    const { ownerFilter, ownerType, ownerId } = context;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -145,8 +184,37 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const templateId = Number(id);
+    const existing = await prisma.incomeTemplate.findFirst({
+      where: { id: templateId, ...ownerFilter },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Plantilla de ingresos no encontrada' },
+        { status: 404 },
+      );
+    }
+
     const body = await request.json();
     const validatedData = updateIncomeTemplateSchema.parse(body);
+
+    if (validatedData.categoryId !== undefined) {
+      await assertOwnedCategoryOfKind(
+        prisma,
+        ownerType,
+        ownerId,
+        validatedData.categoryId,
+        'INCOME',
+      );
+    } else if (existing.category_id == null) {
+      return NextResponse.json(
+        {
+          error:
+            'La categoría es requerida. Asigna una categoría de ingreso a esta plantilla.',
+        },
+        { status: 400 },
+      );
+    }
 
     const updateData: Record<string, unknown> = {};
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
@@ -158,6 +226,8 @@ export async function PUT(request: NextRequest) {
     }
     if (validatedData.source !== undefined)
       updateData.source = validatedData.source;
+    if (validatedData.categoryId !== undefined)
+      updateData.category_id = validatedData.categoryId;
     if (validatedData.appliesFirstFortnight !== undefined)
       updateData.applies_first_fortnight = validatedData.appliesFirstFortnight;
     if (validatedData.appliesSecondFortnight !== undefined)
@@ -169,13 +239,20 @@ export async function PUT(request: NextRequest) {
       updateData.user_id = validatedData.userId;
 
     const template = await prisma.incomeTemplate.update({
-      where: { id: Number(id), ...ownerFilter },
+      where: { id: templateId },
       data: updateData,
       include: {
         user: {
           select: {
             id: true,
             name: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
           },
         },
       },
@@ -189,6 +266,9 @@ export async function PUT(request: NextRequest) {
           ? Number(template.suggested_amount)
           : null,
         source: template.source,
+        categoryId: template.category_id,
+        categoryName: template.category?.name ?? null,
+        categoryIcon: template.category?.icon ?? null,
         appliesFirstFortnight: template.applies_first_fortnight,
         appliesSecondFortnight: template.applies_second_fortnight,
         active: template.active,
@@ -198,6 +278,12 @@ export async function PUT(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Error de validación', details: error.issues },

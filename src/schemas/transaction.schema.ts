@@ -156,6 +156,7 @@ export type QuickExpenseFormValues = {
 // Type exports
 export const addIncomeFormSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
+  categoryId: z.number().int().positive('La categoría es requerida'),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   walletId: z.number().int().positive('La billetera es requerida'),
   date: dateStringSchema,

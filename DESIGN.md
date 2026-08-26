@@ -17,7 +17,9 @@ Agent entry points:
 - This file (`DESIGN.md`) — visual contract
 - `.cursor/rules/fintech-ui-design-system.mdc` — cards, metrics, money type
 - `.cursor/rules/ui-consistency.mdc` — chrome, CTAs, hierarchy (always on)
+- `.cursor/rules/responsive-overlays.mdc` — Dialog/Sheet overlays (always on); impl + `/responsive-overlay` skill
 - `.claude/skills/dashboard-ui/SKILL.md` (same copy in `.agents/skills/dashboard-ui/`) — page anatomy
+- Overlay migrations: `.claude/skills/responsive-overlay/SKILL.md` + `tasks/prd-responsive-overlays.md`
 
 ---
 
@@ -178,10 +180,10 @@ Same language on both surfaces:
 
 - Short confirms / deletes: `AlertDialog` / `ConfirmDeleteDialog` — same UI on both breakpoints unless mobile clearly suffers
 - Marketing landing: out of scope
-- Existing Dialog-only forms: migrate opportunistically when touched; no big-bang retrofit
-- Do not extract a shared responsive overlay wrapper until the same chrome is duplicated across multiple new flows
+- Existing Dialog-only forms: migrate via `/responsive-overlay` one at a time; no big-bang retrofit
+- Thin shared chrome helper is allowed (opt-in); do not extract a mega form wrapper that owns fields/validation
 
-Agent rule: `.cursor/rules/responsive-overlays.mdc`.
+Agent rule: `.cursor/rules/responsive-overlays.mdc` (pointer) + `.cursor/rules/responsive-overlays-impl.mdc`. Skill: `/responsive-overlay` · PRD: `tasks/prd-responsive-overlays.md`.
 
 ---
 

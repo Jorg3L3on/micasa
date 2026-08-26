@@ -12,6 +12,7 @@ export const createIncomeTemplateSchema = z.object({
   name: requiredStringSchema,
   suggestedAmount: maxAmountSchema.optional().nullable(),
   source: z.string().max(255).optional().nullable(),
+  categoryId: positiveIntSchema,
   appliesFirstFortnight: z.boolean(),
   appliesSecondFortnight: z.boolean(),
   active: defaultBooleanSchema,
@@ -22,6 +23,7 @@ export const updateIncomeTemplateSchema = z.object({
   name: requiredStringSchema.optional(),
   suggestedAmount: positiveAmountSchema.optional().nullable(),
   source: z.string().max(255).optional().nullable(),
+  categoryId: positiveIntSchema.optional(),
   appliesFirstFortnight: z.boolean().optional(),
   appliesSecondFortnight: z.boolean().optional(),
   active: optionalBooleanSchema,
@@ -37,6 +39,7 @@ export const incomeTemplateSchema = z.object({
     .optional()
     .nullable(),
   source: z.string().max(255).optional().nullable(),
+  categoryId: z.number().int().positive('La categoría es requerida'),
   appliesFirstFortnight: z.boolean(),
   appliesSecondFortnight: z.boolean(),
   active: z.boolean(),

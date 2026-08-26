@@ -14,7 +14,7 @@ import {
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronLeft, MoreHorizontal, Plus, Search, X } from 'lucide-react';
+import { ChevronLeft, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -119,24 +119,31 @@ export default function AppHeaderToolbar() {
   const searchActive = Boolean(search && searchMode);
 
   /**
-   * Billeteras detail: funding `/wallets/[id]` or credit/store `/credit-cards/[id]`.
-   * Both opened from the wallets list with nav-forward — back must push the list
-   * with nav-back (not history.back) so DirectionalTransition + card morph run.
+   * Hierarchical hub details: push the list with nav-back (not history.back)
+   * so DirectionalTransition (and card morph where used) run.
+   * - Billeteras: `/wallets/[id]` or `/credit-cards/[id]` → `/wallets`
+   * - Metas: `/metas/[id]` → `/metas`
    */
-  const isBilleterasDetail = useMemo(() => {
+  const hierarchicalBackHref = useMemo(() => {
     const segments = pathname.split('/').filter(Boolean);
-    if (segments[0] === 'credit-cards' && Boolean(segments[1])) return true;
-    return (
+    const q = buildOwnerQuery(context).toString();
+    const withOwner = (path: string) => (q ? `${path}?${q}` : path);
+
+    if (segments[0] === 'credit-cards' && Boolean(segments[1])) {
+      return withOwner('/wallets');
+    }
+    if (
       segments[0] === 'wallets' &&
       Boolean(segments[1]) &&
       segments[1] !== 'liquidity'
-    );
-  }, [pathname]);
-
-  const walletsListHref = useMemo(() => {
-    const q = buildOwnerQuery(context).toString();
-    return q ? `/wallets?${q}` : '/wallets';
-  }, [context]);
+    ) {
+      return withOwner('/wallets');
+    }
+    if (segments[0] === 'metas' && Boolean(segments[1])) {
+      return withOwner('/metas');
+    }
+    return null;
+  }, [pathname, context]);
 
   const updateTitlePosition = useCallback(() => {
     const bar = idleBarRef.current;
@@ -196,8 +203,8 @@ export default function AppHeaderToolbar() {
   }, [searchActive]);
 
   const handleBack = () => {
-    if (isBilleterasDetail) {
-      navigateWithTransitionType(walletsListHref, 'nav-back', (href) =>
+    if (hierarchicalBackHref) {
+      navigateWithTransitionType(hierarchicalBackHref, 'nav-back', (href) =>
         router.push(href),
       );
       return;
@@ -330,8 +337,12 @@ export default function AppHeaderToolbar() {
   ) : null;
 
   return (
-    <div className="relative h-full w-full min-w-0">
-      <AnimatePresence initial={false} mode="popLayout">
+    <div className="relative h-full w-full min-w-0 overflow-hidden">
+      {/*
+        Both panes are absolute inset-0 — use sync crossfade, not popLayout.
+        popLayout briefly collapses the idle bar into a thin horizontal strip.
+      */}
+      <AnimatePresence initial={false}>
         {searchActive && search ? (
           <motion.div
             key="search-takeover"
@@ -340,16 +351,10 @@ export default function AppHeaderToolbar() {
             className="absolute inset-0 flex items-center gap-2 px-3 sm:px-5"
             onBlur={handleSearchChromeBlur}
             initial={
-              reduceMotion
-                ? { opacity: 1 }
-                : { opacity: 0, x: 12, filter: 'blur(4px)' }
+              reduceMotion ? { opacity: 1 } : { opacity: 0, x: 10 }
             }
-            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-            exit={
-              reduceMotion
-                ? { opacity: 0 }
-                : { opacity: 0, x: 8, filter: 'blur(4px)' }
-            }
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 6 }}
             transition={takeoverTransition}
           >
             <Button
@@ -362,7 +367,7 @@ export default function AppHeaderToolbar() {
             </Button>
             <div className="relative min-w-0 flex-1">
               <Search
-                className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground"
+                className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-5 -translate-y-1/2 text-foreground/80"
                 aria-hidden
               />
               <Input
@@ -378,24 +383,12 @@ export default function AppHeaderToolbar() {
                 }}
                 className={cn(TOOLBAR_GLASS_FIELD, 'shadow-none')}
                 aria-label={search.placeholder ?? 'Buscar'}
-                type="search"
+                type="text"
+                inputMode="search"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
-              {search.value.trim() ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    'absolute top-1/2 right-1 -translate-y-1/2',
-                    TOOLBAR_GLASS_ICON,
-                    "size-9 [&_svg:not([class*='size-'])]:size-4",
-                  )}
-                  onClick={() => search.onChange('')}
-                  aria-label="Borrar búsqueda"
-                >
-                  <X data-icon="inline-start" />
-                </Button>
-              ) : null}
             </div>
             {filters ? (
               <ToolbarFiltersControl filters={filters} size="toolbar" />
@@ -410,7 +403,7 @@ export default function AppHeaderToolbar() {
               reduceMotion ? { opacity: 1 } : { opacity: 0, x: -8 }
             }
             animate={{ opacity: 1, x: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -8 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -6 }}
             transition={takeoverTransition}
           >
             <div
@@ -456,7 +449,11 @@ export default function AppHeaderToolbar() {
                   />
                   <ToolbarIconButton
                     label={
-                      isBilleterasDetail ? 'Volver a billeteras' : 'Atrás'
+                      hierarchicalBackHref?.startsWith('/metas')
+                        ? 'Volver a metas'
+                        : hierarchicalBackHref?.startsWith('/wallets')
+                          ? 'Volver a billeteras'
+                          : 'Atrás'
                     }
                     onClick={handleBack}
                   >

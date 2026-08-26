@@ -7,7 +7,10 @@ import {
   createCategorySchema,
   updateCategorySchema,
 } from '@/schemas/category.schema';
-import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
+import {
+  seedDefaultExpenseCategoriesForOwner,
+  seedDefaultIncomeCategoriesForOwner,
+} from '@/lib/finance/category-seed.service';
 import {
   activateCategory,
   assertCategoryDeletable,
@@ -17,6 +20,7 @@ import {
   deactivateCategoryTree,
   findDuplicateCategoryName,
 } from '@/lib/finance/category.service';
+import type { CategoryKind } from '@/generated/prisma/client';
 
 function serializeCategory(category: {
   id: number;
@@ -26,6 +30,7 @@ function serializeCategory(category: {
   active: boolean;
   sort_order: number;
   parent_id: number | null;
+  kind: CategoryKind;
 }) {
   return {
     id: category.id,
@@ -35,12 +40,16 @@ function serializeCategory(category: {
     active: category.active,
     sortOrder: category.sort_order,
     parentId: category.parent_id,
+    kind: category.kind,
   };
 }
 
+const listKindSchema = z.enum(['expense', 'income', 'all']);
+
 /**
- * GET /categories?ownerType=user|house&ownerId=number
- * Lazy-seeds defaults when the owner has zero categories.
+ * GET /categories?ownerType=user|house&ownerId=number&kind=expense|income|all
+ * Lazy-seeds defaults when the owner has zero categories for the requested kind(s).
+ * Default kind=expense so expense pickers never leak income categories.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -48,15 +57,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if ('error' in context) return context.error;
     const { ownerType, ownerId } = context;
 
+    const { searchParams } = new URL(request.url);
+    const kindParam = listKindSchema.parse(
+      searchParams.get('kind') ?? 'expense',
+    );
+
+    const ownerRef =
+      ownerType === 'user' ? { userId: ownerId } : { houseId: ownerId };
+
     await prisma.$transaction(async (tx) => {
-      return seedDefaultCategoriesForOwner(
-        tx,
-        ownerType === 'user' ? { userId: ownerId } : { houseId: ownerId },
-      );
+      if (kindParam === 'expense' || kindParam === 'all') {
+        await seedDefaultExpenseCategoriesForOwner(tx, ownerRef);
+      }
+      if (kindParam === 'income' || kindParam === 'all') {
+        await seedDefaultIncomeCategoriesForOwner(tx, ownerRef);
+      }
     });
 
+    const kindFilter =
+      kindParam === 'all'
+        ? {}
+        : { kind: (kindParam === 'income' ? 'INCOME' : 'EXPENSE') as CategoryKind };
+
     const categories = await prisma.category.findMany({
-      where: categoryOwnerWhere(ownerType, ownerId),
+      where: {
+        ...categoryOwnerWhere(ownerType, ownerId),
+        ...kindFilter,
+      },
       orderBy: [{ parent_id: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
     });
 
@@ -64,6 +91,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       status: 200,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Error de validación', details: error.issues },
+        { status: 400 },
+      );
+    }
     console.error('Error fetching categories:', error);
     return NextResponse.json(
       { error: 'No se pudieron cargar las categorías' },
@@ -81,19 +114,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const body = await request.json();
     const validatedData = createCategorySchema.parse(body);
+    const kind = validatedData.kind;
     const iconResult = validateCategoryIconInput(validatedData.icon, null);
     if (!iconResult.ok) {
       return NextResponse.json({ error: iconResult.message }, { status: 400 });
     }
 
     const parentId = validatedData.parentId ?? null;
-    await assertValidParentForCreate(prisma, ownerType, ownerId, parentId);
+    await assertValidParentForCreate(
+      prisma,
+      ownerType,
+      ownerId,
+      parentId,
+      kind,
+    );
 
     const existingSameName = await findDuplicateCategoryName(
       prisma,
       ownerType,
       ownerId,
       validatedData.name,
+      kind,
     );
     if (existingSameName) {
       return NextResponse.json(
@@ -106,6 +147,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       where: {
         ...categoryOwnerWhere(ownerType, ownerId),
         parent_id: parentId,
+        kind,
       },
     });
 
@@ -117,6 +159,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         active: true,
         sort_order: siblingCount,
         parent_id: parentId,
+        kind,
         ...(ownerType === 'user'
           ? { user_id: ownerId, house_id: null }
           : { user_id: null, house_id: ownerId }),
@@ -194,6 +237,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         ownerType,
         ownerId,
         validatedData.name,
+        existing.kind,
         categoryId,
       );
       if (duplicateName) {

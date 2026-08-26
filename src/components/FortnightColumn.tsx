@@ -135,6 +135,7 @@ type IncomeItemBySource = {
   source: string | null;
   userName: string | null;
   templateName: string | null;
+  categoryId: number | null;
 };
 
 type Summary = {
@@ -214,6 +215,12 @@ export default function FortnightColumn({
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
   const [editingIncomeAmount, setEditingIncomeAmount] = useState(0);
+  const [editingIncomeCategoryId, setEditingIncomeCategoryId] = useState<
+    number | null
+  >(null);
+  const [incomeCategories, setIncomeCategories] = useState<CategoryOption[]>(
+    [],
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
@@ -299,6 +306,27 @@ export default function FortnightColumn({
   useEffect(() => {
     setCardDueItems(initialCardDueItems);
   }, [initialCardDueItems]);
+
+  useEffect(() => {
+    if (editingIncomeId == null || !overrideDialogOpen || context.id === 0) {
+      return;
+    }
+    let cancelled = false;
+    clientFetchFromApi<CategoryOption[]>(
+      '/api/categories?kind=income',
+      undefined,
+      context,
+    )
+      .then((data) => {
+        if (!cancelled) setIncomeCategories(data);
+      })
+      .catch(() => {
+        if (!cancelled) setIncomeCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingIncomeId, overrideDialogOpen, context]);
 
   useEffect(() => {
     try {
@@ -454,10 +482,16 @@ export default function FortnightColumn({
     try {
       setOverrideError(null);
       if (editingIncomeId != null) {
-        await updateIncomeAmount(editingIncomeId, data.amount, context);
+        await updateIncomeAmount(editingIncomeId, data.amount, context, {
+          category_id:
+            data.categoryId != null && data.categoryId > 0
+              ? data.categoryId
+              : undefined,
+        });
         await refreshData();
         setOverrideDialogOpen(false);
         setEditingIncomeId(null);
+        setEditingIncomeCategoryId(null);
         toast.success('Monto del ingreso actualizado.');
       } else {
         await updateFortnightOverrideAmount(
@@ -484,13 +518,19 @@ export default function FortnightColumn({
 
   const handleOpenOverrideDialog = () => {
     setEditingIncomeId(null);
+    setEditingIncomeCategoryId(null);
     setOverrideError(null);
     setOverrideDialogOpen(true);
   };
 
-  const handleOpenEditIncomeSource = (id: number, amount: number) => {
+  const handleOpenEditIncomeSource = (
+    id: number,
+    amount: number,
+    categoryId: number | null,
+  ) => {
     setEditingIncomeId(id);
     setEditingIncomeAmount(amount);
+    setEditingIncomeCategoryId(categoryId);
     setOverrideError(null);
     setOverrideDialogOpen(true);
   };
@@ -733,6 +773,7 @@ export default function FortnightColumn({
           date: data.date,
           amount: data.amount,
           source: data.name,
+          category_id: data.categoryId,
         },
         context,
       );
@@ -1248,7 +1289,10 @@ export default function FortnightColumn({
         open={overrideDialogOpen}
         onOpenChange={(open) => {
           setOverrideDialogOpen(open);
-          if (!open) setEditingIncomeId(null);
+          if (!open) {
+            setEditingIncomeId(null);
+            setEditingIncomeCategoryId(null);
+          }
           setOverrideError(null);
         }}
         onSave={handleOverrideAmount}
@@ -1257,6 +1301,9 @@ export default function FortnightColumn({
         }
         fortnightLabel={label}
         error={overrideError && overrideDialogOpen ? overrideError : null}
+        requireCategory={editingIncomeId != null}
+        categories={incomeCategories}
+        defaultCategoryId={editingIncomeCategoryId}
       />
 
       {/* Add Expense Dialog */}

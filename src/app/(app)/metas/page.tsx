@@ -22,6 +22,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
+  ToolbarFiltersPortal,
+  useRegisterToolbarActions,
+} from '@/context/toolbar-actions-context';
+import {
   buildOwnerQuery,
   clientFetchFromApi,
 } from '@/lib/api/client-fetch';
@@ -35,9 +39,15 @@ import type { WalletFormValues } from '@/schemas/wallet.schema';
 import type { WalletListItem } from '@/types/catalog';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import { compareActiveGoals, computeGoalMetrics } from '@/lib/finance/goal-metrics';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 type StatusFilter = 'active' | 'completed' | 'archived';
+
+const STATUS_FILTER_CHIPS: { value: StatusFilter; label: string }[] = [
+  { value: 'active', label: 'Activas' },
+  { value: 'completed', label: 'Completadas' },
+  { value: 'archived', label: 'Archivadas' },
+];
 
 export default function MetasPage() {
   const { context } = useFinanceContext();
@@ -46,6 +56,8 @@ export default function MetasPage() {
   const [allWallets, setAllWallets] = useState<WalletListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -89,7 +101,10 @@ export default function MetasPage() {
   );
 
   const displayGoals = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     const filtered = goals.filter((w) => {
+      if (q && !w.name.toLowerCase().includes(q)) return false;
+
       const status = computeGoalMetrics({
         amount: w.amount,
         goal_amount: w.goal_amount,
@@ -108,7 +123,59 @@ export default function MetasPage() {
 
     if (statusFilter !== 'active') return filtered;
     return [...filtered].sort(compareActiveGoals);
-  }, [goals, statusFilter]);
+  }, [goals, statusFilter, searchQuery]);
+
+  const statusChipCounts = useMemo(() => {
+    const counts = { active: 0, completed: 0, archived: 0 };
+    for (const w of goals) {
+      const status = computeGoalMetrics({
+        amount: w.amount,
+        goal_amount: w.goal_amount,
+        goal_due_date: w.goal_due_date,
+        created_at: w.created_at,
+        active: w.active,
+      }).status;
+      if (status === 'active' || status === 'overdue') counts.active += 1;
+      else if (status === 'achieved') counts.completed += 1;
+      else if (status === 'archived') counts.archived += 1;
+    }
+    return counts;
+  }, [goals]);
+
+  const activeFilterDimensionCount = useMemo(() => {
+    let n = 0;
+    if (searchQuery.trim()) n += 1;
+    if (statusFilter !== 'active') n += 1;
+    return n;
+  }, [searchQuery, statusFilter]);
+
+  const openCreateDialog = useCallback(() => {
+    setFormError(null);
+    setCreateOpen(true);
+  }, []);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    search: {
+      value: searchQuery,
+      onChange: setSearchQuery,
+      placeholder: 'Buscar por nombre',
+    },
+    filters: {
+      open: filtersOpen,
+      onOpenChange: setFiltersOpen,
+      activeCount: activeFilterDimensionCount,
+    },
+    primaryAction: {
+      label: 'Nueva meta',
+      onClick: openCreateDialog,
+      icon: primaryActionIcon,
+    },
+  });
 
   const handleCreate = async (data: WalletFormValues) => {
     if (!context) return;
@@ -198,56 +265,61 @@ export default function MetasPage() {
     await finishComplete(wallet.id);
   };
 
-  return (
-    <div className="space-y-5 pb-24 sm:pb-0">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <h2 className="text-lg font-semibold leading-tight tracking-tight">
-            Metas
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Ahorra con un objetivo y una fecha límite.
-          </p>
-        </div>
-        <Button
-          type="button"
-          className="hidden rounded-xl sm:inline-flex"
-          onClick={() => {
-            setFormError(null);
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-          Nueva meta
-        </Button>
-      </div>
+  const emptyTitle =
+    statusFilter === 'active'
+      ? 'No hay metas activas'
+      : statusFilter === 'completed'
+        ? 'No hay metas completadas'
+        : 'No hay metas archivadas';
 
-      <div
-        className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label="Filtrar metas"
-      >
-        {(
-          [
-            { value: 'active', label: 'Activas' },
-            { value: 'completed', label: 'Completadas' },
-            { value: 'archived', label: 'Archivadas' },
-          ] as const
-        ).map(({ value, label }) => (
-          <Button
-            key={value}
-            type="button"
-            size="sm"
-            variant={statusFilter === value ? 'default' : 'outline'}
-            className="h-8 shrink-0 rounded-full px-3.5 text-xs"
-            role="tab"
-            aria-selected={statusFilter === value}
-            onClick={() => setStatusFilter(value)}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
+  const emptyDescription =
+    statusFilter === 'active'
+      ? 'Crea una meta para empezar a ahorrar con propósito.'
+      : statusFilter === 'completed'
+        ? 'Cuando alcances el monto en la fecha límite, aparecerá aquí.'
+        : 'Las metas que archives se listarán en esta pestaña.';
+
+  const hasSearch = Boolean(searchQuery.trim());
+
+  return (
+    <div className="space-y-5 pb-8 md:pb-4">
+      <ToolbarFiltersPortal>
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Estado
+            </p>
+            <div
+              className="flex flex-wrap gap-2"
+              role="tablist"
+              aria-label="Filtrar metas"
+            >
+              {STATUS_FILTER_CHIPS.map(({ value, label }) => {
+                const selected = statusFilter === value;
+                const count = statusChipCounts[value];
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setStatusFilter(value)}
+                    className={cn(
+                      'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                      selected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {label}{' '}
+                    <span className="tabular-nums opacity-80">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </ToolbarFiltersPortal>
 
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -262,22 +334,20 @@ export default function MetasPage() {
           </span>
           <div className="space-y-1">
             <p className="font-medium">
-              {statusFilter === 'active'
-                ? 'No hay metas activas'
-                : statusFilter === 'completed'
-                  ? 'No hay metas completadas'
-                  : 'No hay metas archivadas'}
+              {hasSearch ? 'Ninguna meta coincide con la búsqueda' : emptyTitle}
             </p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              {statusFilter === 'active'
-                ? 'Crea una meta para empezar a ahorrar con propósito.'
-                : statusFilter === 'completed'
-                  ? 'Cuando alcances el monto en la fecha límite, aparecerá aquí.'
-                  : 'Las metas que archives se listarán en esta pestaña.'}
+              {hasSearch
+                ? 'Prueba otro nombre o limpia la búsqueda.'
+                : emptyDescription}
             </p>
           </div>
-          {statusFilter === 'active' ? (
-            <Button type="button" className="rounded-xl" onClick={() => setCreateOpen(true)}>
+          {!hasSearch && statusFilter === 'active' ? (
+            <Button
+              type="button"
+              className="rounded-xl"
+              onClick={openCreateDialog}
+            >
               <Plus className="mr-1.5 h-4 w-4" aria-hidden />
               Nueva meta
             </Button>
@@ -307,16 +377,6 @@ export default function MetasPage() {
           ))}
         </div>
       )}
-
-      <Button
-        type="button"
-        size="icon"
-        aria-label="Nueva meta"
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg sm:hidden"
-        onClick={() => setCreateOpen(true)}
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
 
       <WalletForm
         open={createOpen}

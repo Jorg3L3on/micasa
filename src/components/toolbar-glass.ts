@@ -96,7 +96,7 @@ export const TOOLBAR_GLASS_CANCEL =
 export const TOOLBAR_GLASS_FIELD =
   [
     'h-10 w-full rounded-full border border-black/[0.08] bg-white/80',
-    'pr-11 pl-11 text-[15px] shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+    'pr-4 pl-11 text-[15px] shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
     'backdrop-blur-xl backdrop-saturate-150',
     'placeholder:text-muted-foreground/80',
     'focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/20',
@@ -111,7 +111,7 @@ export const TOOLBAR_GLASS_FIELD =
 export const TOOLBAR_GLASS_SEARCH_PILL =
   [
     'inline-flex h-10 w-[350px] max-w-[350px] shrink-0 items-center gap-2 rounded-full px-3.5',
-    'border border-black/[0.08] bg-white/80 text-muted-foreground',
+    'border border-black/[0.08] bg-white/80 text-foreground/70',
     'shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
     'backdrop-blur-xl backdrop-saturate-150',
     'transition-[background-color,border-color,box-shadow,transform,opacity,width] duration-300 ease-out',

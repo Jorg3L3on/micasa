@@ -12,6 +12,20 @@ export function walletCardViewTransitionName(walletId: number): string {
   return `wallet-card-${walletId}`;
 }
 
+/**
+ * Shared list-card shell (funding + credit/store): fixed min-height, not aspect-ratio.
+ * Keep in sync with mobile stack overlap below.
+ */
+export const WALLET_LIST_CARD_SHELL_CLASS =
+  'min-h-[12rem] p-4 pb-5 sm:min-h-[13.5rem] sm:p-5 sm:pb-6';
+
+/**
+ * Mobile stacked peek (~7rem of each card under the next).
+ * Uses fixed shell heights: 12rem / sm 13.5rem (not width% from the old aspect).
+ */
+export const WALLET_LIST_STACK_OVERLAP_CLASS =
+  'max-md:mt-[calc(7rem-12rem)] max-md:sm:mt-[calc(7rem-13.5rem)]';
+
 export type WalletCardVtSnapshot = {
   id: number;
   name: string;
@@ -19,6 +33,11 @@ export type WalletCardVtSnapshot = {
   amount: number;
   isCredit: boolean;
   providerIconKey: string | null;
+  /** Credit/store: e.g. "Corte 2 · Pago 13". */
+  cycleLabel?: string | null;
+  availableCredit?: number | null;
+  creditLimit?: number | null;
+  utilizationPct?: number | null;
   /** Serializable subset of the list-card face styles (gradients, etc.). */
   style: Record<string, string>;
 };
@@ -54,6 +73,10 @@ export function stashWalletCardVtSnapshot(
       amount: snapshot.amount,
       isCredit: snapshot.isCredit,
       providerIconKey: snapshot.providerIconKey,
+      cycleLabel: snapshot.cycleLabel ?? null,
+      availableCredit: snapshot.availableCredit ?? null,
+      creditLimit: snapshot.creditLimit ?? null,
+      utilizationPct: snapshot.utilizationPct ?? null,
       style: styleToRecord(snapshot.style),
     };
     sessionStorage.setItem(stashKey(snapshot.id), JSON.stringify(payload));

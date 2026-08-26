@@ -40,6 +40,7 @@ type FortnightSummary = {
     source: string | null;
     userName: string | null;
     templateName: string | null;
+    categoryId: number | null;
   }>;
   planningExpenseCount?: number;
   planningPaidExpenseCount?: number;

@@ -11,6 +11,7 @@ export type FortnightIncomeDto = {
   fortnight_id: number;
   income_template_id: number | null;
   wallet_id: number | null;
+  category_id: number | null;
 };
 
 export type IncomeTemplateDto = {
@@ -18,6 +19,9 @@ export type IncomeTemplateDto = {
   name: string;
   suggestedAmount: number | null;
   source: string | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
   appliesFirstFortnight: boolean;
   appliesSecondFortnight: boolean;
   active: boolean;
@@ -48,7 +52,12 @@ export async function listIncomeTemplates(
 
 export async function createWalletIncome(
   walletId: number,
-  data: { date: string; amount: number; source: string },
+  data: {
+    date: string;
+    amount: number;
+    source: string;
+    category_id: number;
+  },
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi(`/api/wallets/${walletId}/incomes`, {
@@ -66,6 +75,7 @@ export async function createIncome(
     transfer_from_user_id?: number;
     income_template_id?: number | null;
     wallet_id: number;
+    category_id: number;
   },
   context?: FinanceContextType,
 ) {
@@ -82,18 +92,23 @@ export async function updateIncomeAmount(
   options?: {
     wallet_id?: number | null;
     force_wallet_credit?: boolean;
+    category_id?: number;
   },
 ) {
   const payload: {
     amount: number;
     wallet_id?: number | null;
     force_wallet_credit?: boolean;
+    category_id?: number;
   } = { amount };
   if (options && 'wallet_id' in options) {
     payload.wallet_id = options.wallet_id;
   }
   if (options?.force_wallet_credit === true) {
     payload.force_wallet_credit = true;
+  }
+  if (options?.category_id != null) {
+    payload.category_id = options.category_id;
   }
 
   return clientFetchFromApi(`/api/incomes?id=${id}`, {
@@ -107,6 +122,7 @@ export async function createIncomeTemplate(
     name: string;
     suggestedAmount?: number | null;
     source?: string | null;
+    categoryId: number;
     appliesFirstFortnight: boolean;
     appliesSecondFortnight: boolean;
     active?: boolean;
@@ -126,6 +142,7 @@ export async function updateIncomeTemplate(
     name?: string;
     suggestedAmount?: number | null;
     source?: string | null;
+    categoryId?: number;
     appliesFirstFortnight?: boolean;
     appliesSecondFortnight?: boolean;
     active?: boolean;

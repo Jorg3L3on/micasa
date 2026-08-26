@@ -110,11 +110,11 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
   const isNegative = wallet.amount < 0;
   const FallbackIcon = isCash ? Banknote : Landmark;
 
-  // List + VT placeholder keep aspect-[1.586/1]; detail heroes grow with
-  // content so mobile amounts / utilization are not clipped by overflow-hidden.
+  // Match credit/store detail hero footprint (width + min-height). Content stays
+  // spread (header top / saldo bottom); list→detail morph widens into this shell.
   return (
     <div
-      className="relative mx-auto w-full max-w-sm"
+      className="relative mx-auto w-full max-w-md lg:max-w-lg"
       role="region"
       aria-label={`Billetera ${wallet.name}`}
     >
@@ -145,7 +145,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-rose-400/80 to-transparent" />
         ) : null}
 
-        <div className="relative flex min-h-[10.75rem] flex-col justify-between gap-5 sm:min-h-[12rem]">
+        <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {wallet.provider_icon_key ? (

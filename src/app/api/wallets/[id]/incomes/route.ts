@@ -10,11 +10,16 @@ import {
   isSpendableCashWalletType,
 } from '@/lib/finance/wallet-accounting';
 import { dateStringSchema } from '@/schemas/common.schema';
+import {
+  assertOwnedCategoryOfKind,
+  CategoryServiceError,
+} from '@/lib/finance/category.service';
 
 const bodySchema = z.object({
   date: dateStringSchema,
   amount: z.number().positive(),
   source: z.string().min(1),
+  category_id: z.number().int().positive('La categoría es requerida'),
 });
 
 export async function POST(
@@ -57,6 +62,14 @@ export async function POST(
     const body = await request.json();
     const data = bodySchema.parse(body);
 
+    await assertOwnedCategoryOfKind(
+      prisma,
+      ownerType,
+      ownerId,
+      data.category_id,
+      'INCOME',
+    );
+
     const [yearStr, monthStr, dayStr] = data.date.split('-');
     const year = Number(yearStr);
     const month = Number(monthStr);
@@ -84,6 +97,7 @@ export async function POST(
           source: data.source,
           received_at: parseCalendarDate(data.date),
           wallet_id: walletId,
+          category_id: data.category_id,
           ...ownerData,
         },
       });
@@ -99,10 +113,17 @@ export async function POST(
         received_at: created.received_at,
         fortnight_id: created.fortnight_id,
         wallet_id: created.wallet_id,
+        category_id: created.category_id,
       },
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof CategoryServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.issues },

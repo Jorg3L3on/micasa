@@ -40,7 +40,11 @@ export async function POST(
         select: { id: true },
       }),
       prisma.category.findFirst({
-        where: { id: validatedData.category_id, ...context.ownerFilter },
+        where: {
+          id: validatedData.category_id,
+          kind: 'EXPENSE',
+          ...context.ownerFilter,
+        },
         select: { id: true },
       }),
     ]);

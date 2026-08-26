@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CATEGORY_CATALOG,
+  DEFAULT_INCOME_CATEGORY_CATALOG,
   countDefaultCatalogCategories,
+  countDefaultIncomeCatalogCategories,
 } from '@/lib/finance/default-category-catalog';
 import { isCategoryIconKey } from '@/lib/category-icons';
 
@@ -34,5 +36,22 @@ describe('DEFAULT_CATEGORY_CATALOG', () => {
     expect(childNames).toContain('Netflix');
     expect(childNames).toContain('Spotify');
     expect(childNames).toContain('Amazon Prime');
+  });
+});
+
+describe('DEFAULT_INCOME_CATEGORY_CATALOG', () => {
+  it('has the five flat income roots with valid icons', () => {
+    expect(DEFAULT_INCOME_CATEGORY_CATALOG.map((r) => r.name)).toEqual([
+      'Salario',
+      'Depósito',
+      'Cobro de interés',
+      'Aguinaldo',
+      'Otro ingreso',
+    ]);
+    expect(countDefaultIncomeCatalogCategories()).toBe(5);
+    for (const root of DEFAULT_INCOME_CATEGORY_CATALOG) {
+      expect(isCategoryIconKey(root.icon)).toBe(true);
+      expect(root.children).toHaveLength(0);
+    }
   });
 });

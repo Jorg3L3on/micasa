@@ -1,5 +1,9 @@
-import type { Prisma, PrismaClient } from '@/generated/prisma/client';
-import { DEFAULT_CATEGORY_CATALOG } from '@/lib/finance/default-category-catalog';
+import type { CategoryKind, Prisma, PrismaClient } from '@/generated/prisma/client';
+import {
+  DEFAULT_CATEGORY_CATALOG,
+  DEFAULT_INCOME_CATEGORY_CATALOG,
+  type DefaultCategoryRoot,
+} from '@/lib/finance/default-category-catalog';
 
 export type CategoryOwnerRef =
   | { userId: number; houseId?: never }
@@ -29,16 +33,14 @@ const ownerCreateData = (owner: CategoryOwnerRef) =>
     ? { user_id: owner.userId, house_id: null as number | null }
     : { user_id: null as number | null, house_id: owner.houseId };
 
-/**
- * Clone the default category catalog for an owner when they have zero categories.
- * Idempotent: no-op if the owner already has any category rows.
- */
-export async function seedDefaultCategoriesForOwner(
+async function seedCatalogForOwner(
   tx: Tx,
   owner: CategoryOwnerRef,
+  catalog: readonly DefaultCategoryRoot[],
+  kind: CategoryKind,
 ): Promise<{ created: number; skipped: boolean }> {
   const existing = await tx.category.count({
-    where: ownerWhere(owner),
+    where: { ...ownerWhere(owner), kind },
   });
   if (existing > 0) {
     return { created: 0, skipped: true };
@@ -47,7 +49,7 @@ export async function seedDefaultCategoriesForOwner(
   let created = 0;
   let rootOrder = 0;
 
-  for (const root of DEFAULT_CATEGORY_CATALOG) {
+  for (const root of catalog) {
     const parent = await tx.category.create({
       data: {
         name: root.name,
@@ -55,6 +57,7 @@ export async function seedDefaultCategoriesForOwner(
         active: true,
         sort_order: rootOrder,
         parent_id: null,
+        kind,
         ...ownerCreateData(owner),
       },
     });
@@ -70,6 +73,7 @@ export async function seedDefaultCategoriesForOwner(
           active: true,
           sort_order: childOrder,
           parent_id: parent.id,
+          kind,
           ...ownerCreateData(owner),
         },
       });
@@ -81,6 +85,43 @@ export async function seedDefaultCategoriesForOwner(
   return { created, skipped: false };
 }
 
+/** Seed only expense defaults when the owner has zero expense categories. */
+export async function seedDefaultExpenseCategoriesForOwner(
+  tx: Tx,
+  owner: CategoryOwnerRef,
+): Promise<{ created: number; skipped: boolean }> {
+  return seedCatalogForOwner(tx, owner, DEFAULT_CATEGORY_CATALOG, 'EXPENSE');
+}
+
+/** Seed only income defaults when the owner has zero income categories. */
+export async function seedDefaultIncomeCategoriesForOwner(
+  tx: Tx,
+  owner: CategoryOwnerRef,
+): Promise<{ created: number; skipped: boolean }> {
+  return seedCatalogForOwner(
+    tx,
+    owner,
+    DEFAULT_INCOME_CATEGORY_CATALOG,
+    'INCOME',
+  );
+}
+
+/**
+ * Clone the default expense + income catalogs for an owner when each kind is empty.
+ * Idempotent per kind. Used by onboarding / house create.
+ */
+export async function seedDefaultCategoriesForOwner(
+  tx: Tx,
+  owner: CategoryOwnerRef,
+): Promise<{ created: number; skipped: boolean }> {
+  const expense = await seedDefaultExpenseCategoriesForOwner(tx, owner);
+  const income = await seedDefaultIncomeCategoriesForOwner(tx, owner);
+  return {
+    created: expense.created + income.created,
+    skipped: expense.skipped && income.skipped,
+  };
+}
+
 type ExistingCategoryRow = {
   id: number;
   name: string;
@@ -88,19 +129,15 @@ type ExistingCategoryRow = {
   sort_order: number;
 };
 
-/**
- * Ensure the default catalog exists for an owner without deleting anything.
- * - Empty owner: full catalog clone.
- * - Existing owner: reuse matching names as roots (fathers); create only missing roots/children.
- *   If a catalog child name already exists anywhere for the owner, skip (do not reparent).
- */
-export async function ensureDefaultCategoriesForOwner(
+async function ensureCatalogForOwner(
   tx: Tx,
   owner: CategoryOwnerRef,
+  catalog: readonly DefaultCategoryRoot[],
+  kind: CategoryKind,
   options: EnsureCategoriesOptions = {},
 ): Promise<EnsureCategoriesResult> {
   const dryRun = options.dryRun === true;
-  const where = ownerWhere(owner);
+  const where = { ...ownerWhere(owner), kind };
 
   const existingRows = (await tx.category.findMany({
     where,
@@ -110,7 +147,7 @@ export async function ensureDefaultCategoriesForOwner(
   if (existingRows.length === 0) {
     if (dryRun) {
       let wouldCreate = 0;
-      for (const root of DEFAULT_CATEGORY_CATALOG) {
+      for (const root of catalog) {
         wouldCreate += 1 + root.children.length;
       }
       return {
@@ -120,7 +157,7 @@ export async function ensureDefaultCategoriesForOwner(
         skipped: false,
       };
     }
-    const seeded = await seedDefaultCategoriesForOwner(tx, owner);
+    const seeded = await seedCatalogForOwner(tx, owner, catalog, kind);
     return {
       created: seeded.created,
       skippedExisting: 0,
@@ -145,13 +182,11 @@ export async function ensureDefaultCategoriesForOwner(
         .map((r) => r.sort_order),
     ) + 1;
 
-  // Track names added during this run so later catalog entries see them.
   const knownNames = new Set(byName.keys());
-  // Synthetic ids for dry-run parent references.
   let syntheticId = -1;
   const rootIdByCatalogName = new Map<string, number>();
 
-  for (const root of DEFAULT_CATEGORY_CATALOG) {
+  for (const root of catalog) {
     const existingRoot = byName.get(root.name);
     let parentId: number;
 
@@ -167,7 +202,6 @@ export async function ensureDefaultCategoriesForOwner(
         });
       }
     } else if (knownNames.has(root.name)) {
-      // Created earlier in this pass (shouldn't happen for unique catalog names).
       skippedExisting += 1;
       parentId = rootIdByCatalogName.get(root.name)!;
     } else {
@@ -181,6 +215,7 @@ export async function ensureDefaultCategoriesForOwner(
             active: true,
             sort_order: nextRootOrder,
             parent_id: null,
+            kind,
             ...ownerCreateData(owner),
           },
         });
@@ -218,6 +253,7 @@ export async function ensureDefaultCategoriesForOwner(
           active: true,
           sort_order: childOrder,
           parent_id: parentId,
+          kind,
           ...ownerCreateData(owner),
         },
       });
@@ -233,4 +269,38 @@ export async function ensureDefaultCategoriesForOwner(
     reusedRoots,
     skipped: false,
   };
+}
+
+/**
+ * Ensure the default expense catalog exists for an owner without deleting anything.
+ */
+export async function ensureDefaultCategoriesForOwner(
+  tx: Tx,
+  owner: CategoryOwnerRef,
+  options: EnsureCategoriesOptions = {},
+): Promise<EnsureCategoriesResult> {
+  return ensureCatalogForOwner(
+    tx,
+    owner,
+    DEFAULT_CATEGORY_CATALOG,
+    'EXPENSE',
+    options,
+  );
+}
+
+/**
+ * Ensure the default income catalog exists for an owner without deleting anything.
+ */
+export async function ensureDefaultIncomeCategoriesForOwner(
+  tx: Tx,
+  owner: CategoryOwnerRef,
+  options: EnsureCategoriesOptions = {},
+): Promise<EnsureCategoriesResult> {
+  return ensureCatalogForOwner(
+    tx,
+    owner,
+    DEFAULT_INCOME_CATEGORY_CATALOG,
+    'INCOME',
+    options,
+  );
 }

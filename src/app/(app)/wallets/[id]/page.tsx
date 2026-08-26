@@ -454,6 +454,7 @@ export default function WalletDetailPage() {
             date: values.date,
             amount: values.amount,
             source: values.name,
+            category_id: values.categoryId,
           },
           context,
         );

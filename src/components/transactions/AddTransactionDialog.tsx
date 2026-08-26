@@ -205,6 +205,7 @@ function emptyExpense(date: string): AddExpenseFormValues {
 function emptyIncome(date: string): AddIncomeFormValues {
   return {
     name: '',
+    categoryId: 0,
     amount: 0,
     walletId: 0,
     date,
@@ -227,6 +228,9 @@ export default function AddTransactionDialog({
   const { context } = useFinanceContext();
   const [tab, setTab] = useState<TransactionTab>('expense');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<CategoryOption[]>(
+    [],
+  );
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
     [],
   );
@@ -289,16 +293,23 @@ export default function AddTransactionDialog({
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [categoriesData, paymentMethodsData] = await Promise.all([
-          clientFetchFromApi<CategoryOption[]>(
-            '/api/categories',
-            undefined,
-            context,
-          ),
-          getPaymentMethodOptions(context),
-        ]);
+        const [categoriesData, incomeCategoriesData, paymentMethodsData] =
+          await Promise.all([
+            clientFetchFromApi<CategoryOption[]>(
+              '/api/categories?kind=expense',
+              undefined,
+              context,
+            ),
+            clientFetchFromApi<CategoryOption[]>(
+              '/api/categories?kind=income',
+              undefined,
+              context,
+            ),
+            getPaymentMethodOptions(context),
+          ]);
         if (cancelled) return;
         setCategories(categoriesData);
+        setIncomeCategories(incomeCategoriesData);
         setPaymentMethods(paymentMethodsData);
       } catch (err) {
         console.error('Error fetching transaction form catalogs:', err);
@@ -714,6 +725,28 @@ export default function AddTransactionDialog({
                   name="amount"
                   render={({ field }) => (
                     <AmountRow value={field.value} onChange={field.onChange} />
+                  )}
+                />
+
+                <FormField
+                  control={incomeForm.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <GroupedRow label="Categoría">
+                      <CategoryGroupedSelect
+                        categories={incomeCategories}
+                        value={field.value ? Number(field.value) : undefined}
+                        onValueChange={field.onChange}
+                        onOpenChange={handleSelectOpenChange}
+                        disabled={loading}
+                        includeCategoryId={
+                          field.value ? Number(field.value) : null
+                        }
+                        placeholder="Selecciona"
+                        ariaLabel="Categoría"
+                        triggerClassName={rowTriggerClass}
+                      />
+                    </GroupedRow>
                   )}
                 />
 

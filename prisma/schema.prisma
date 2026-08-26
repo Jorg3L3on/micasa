@@ -41,6 +41,11 @@ enum BudgetFrequency {
   CUSTOM
 }
 
+enum CategoryKind {
+  EXPENSE
+  INCOME
+}
+
 enum LoanType {
   PERSONAL
   PAYROLL
@@ -323,13 +328,14 @@ model Fortnight {
 }
 
 model Category {
-  id          Int     @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String
   description String?
   icon        String?
-  active      Boolean @default(true)
-  sort_order  Int     @default(0)
+  active      Boolean      @default(true)
+  sort_order  Int          @default(0)
   parent_id   Int?
+  kind        CategoryKind @default(EXPENSE)
 
   user_id  Int?
   house_id Int?
@@ -343,6 +349,8 @@ model Category {
   children           Category[]         @relation("CategoryHierarchy")
   expenses           Expense[]
   expense_templates  ExpenseTemplate[]
+  incomes            Income[]
+  income_templates   IncomeTemplate[]
   budget_allocations BudgetAllocation[]
 
   @@index([user_id])
@@ -350,6 +358,8 @@ model Category {
   @@index([parent_id])
   @@index([user_id, parent_id])
   @@index([house_id, parent_id])
+  @@index([user_id, kind])
+  @@index([house_id, kind])
 }
 
 model ExpenseTemplate {
@@ -441,6 +451,7 @@ model Income {
   fortnight_id       Int
   income_template_id Int?
   wallet_id          Int?
+  category_id        Int?
   created_at         DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   // Relationships
@@ -449,6 +460,7 @@ model Income {
   income_template IncomeTemplate? @relation(fields: [income_template_id], references: [id])
   house           House?          @relation(fields: [house_id], references: [id])
   wallet          Wallet?         @relation(fields: [wallet_id], references: [id])
+  category        Category?       @relation(fields: [category_id], references: [id])
 
   transferAsHouse Transfer? @relation("TransferHouseIncome")
 
@@ -456,6 +468,7 @@ model Income {
   @@index([house_id])
   @@index([fortnight_id])
   @@index([wallet_id])
+  @@index([category_id])
 }
 
 model IncomeTemplate {
@@ -467,8 +480,9 @@ model IncomeTemplate {
   applies_second_fortnight Boolean  @default(false)
   active                   Boolean  @default(true)
 
-  user_id  Int?
-  house_id Int?
+  user_id     Int?
+  house_id    Int?
+  category_id Int?
 
   created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
@@ -477,9 +491,11 @@ model IncomeTemplate {
   payroll_loans Loan[]   @relation("LoanIncomeTemplate")
   user          User?    @relation(fields: [user_id], references: [id])
   house         House?   @relation(fields: [house_id], references: [id])
+  category      Category? @relation(fields: [category_id], references: [id])
 
   @@index([user_id])
   @@index([house_id])
+  @@index([category_id])
 }
 
 model House {

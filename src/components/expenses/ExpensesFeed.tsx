@@ -268,6 +268,7 @@ export default function ExpensesFeed({ initialPage }: ExpensesFeedProps) {
           date: values.date,
           amount: values.amount,
           source: values.name,
+          category_id: values.categoryId,
         },
         context,
       );

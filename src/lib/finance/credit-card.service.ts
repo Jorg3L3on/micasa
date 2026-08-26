@@ -463,7 +463,7 @@ export async function createCreditCardPayment(
       sourceWallet
     ) {
       const category = await tx.category.findFirst({
-        where: { id: input.category_id, ...ownerFilter },
+        where: { id: input.category_id, kind: 'EXPENSE', ...ownerFilter },
       });
       if (!category) {
         const error = new Error('Categoría no encontrada');

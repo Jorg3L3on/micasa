@@ -34,6 +34,8 @@ import {
   incomeTemplateSchema,
   type IncomeTemplateFormValues,
 } from '@/schemas/income-template.schema';
+import type { CategoryOption } from '@/types/catalog';
+import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 
 import {
   Select,
@@ -60,6 +62,7 @@ export default function NewIncomeTemplatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [houseMembers, setHouseMembers] = useState<HouseUserItem[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   const isHouseContext = context.type === 'house';
 
@@ -67,6 +70,7 @@ export default function NewIncomeTemplatePage() {
     resolver: zodResolver(incomeTemplateSchema),
     defaultValues: {
       name: '',
+      categoryId: 0,
       suggestedAmount: null,
       source: '',
       appliesFirstFortnight: false,
@@ -75,6 +79,16 @@ export default function NewIncomeTemplatePage() {
       userId: null,
     },
   });
+
+  useEffect(() => {
+    clientFetchFromApi<CategoryOption[]>(
+      '/api/categories?kind=income',
+      undefined,
+      context,
+    )
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, [context]);
 
   useEffect(() => {
     if (!isHouseContext) {
@@ -98,6 +112,7 @@ export default function NewIncomeTemplatePage() {
       await createIncomeTemplate(
         {
           name: data.name,
+          categoryId: data.categoryId,
           suggestedAmount: data.suggestedAmount ?? null,
           source: data.source && data.source.trim() ? data.source.trim() : null,
           appliesFirstFortnight: data.appliesFirstFortnight,
@@ -150,6 +165,27 @@ export default function NewIncomeTemplatePage() {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría</FormLabel>
+                      <CategoryGroupedSelect
+                        categories={categories}
+                        value={field.value > 0 ? field.value : undefined}
+                        onValueChange={field.onChange}
+                        includeCategoryId={
+                          field.value > 0 ? field.value : null
+                        }
+                        triggerClassName={FIELD_CLASSNAME}
+                        placeholder="Selecciona una categoría"
+                        ariaLabel="Categoría"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

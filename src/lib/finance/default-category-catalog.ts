@@ -139,3 +139,21 @@ export const countDefaultCatalogCategories = (): number =>
     (sum, root) => sum + 1 + root.children.length,
     0,
   );
+
+/**
+ * Canonical default income category roots (flat).
+ * Cloned per user/house; not a shared DB catalog.
+ */
+export const DEFAULT_INCOME_CATEGORY_CATALOG: readonly DefaultCategoryRoot[] = [
+  { name: 'Salario', icon: 'BANKNOTE', children: [] },
+  { name: 'Depósito', icon: 'BANKNOTE_ARROW_DOWN', children: [] },
+  { name: 'Cobro de interés', icon: 'PERCENT', children: [] },
+  { name: 'Aguinaldo', icon: 'GIFT', children: [] },
+  { name: 'Otro ingreso', icon: 'BOX', children: [] },
+] as const;
+
+export const countDefaultIncomeCatalogCategories = (): number =>
+  DEFAULT_INCOME_CATEGORY_CATALOG.reduce(
+    (sum, root) => sum + 1 + root.children.length,
+    0,
+  );

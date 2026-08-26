@@ -187,7 +187,7 @@ Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/wo
 
 ### Design system
 
-[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`.
+[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet migrations: `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`) + `tasks/prd-responsive-overlays.md`.
 
 ## Cursor Cloud specific instructions
 

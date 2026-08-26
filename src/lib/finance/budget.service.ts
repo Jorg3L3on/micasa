@@ -108,7 +108,7 @@ async function assertOwnerScopedReferences(
       where: { ...ownerFilter, id: { in: walletIds } },
     }),
     prisma.category.count({
-      where: { ...ownerFilter, id: { in: categoryIds } },
+      where: { ...ownerFilter, kind: 'EXPENSE', id: { in: categoryIds } },
     }),
   ]);
 
