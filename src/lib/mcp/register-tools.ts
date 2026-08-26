@@ -13,11 +13,12 @@ import { registerLiquidityTools } from '@/lib/mcp/tools/liquidity';
 import { registerFortnightTools } from '@/lib/mcp/tools/fortnights';
 import { registerBudgetTools } from '@/lib/mcp/tools/budgets';
 import { registerTemplateTools } from '@/lib/mcp/tools/templates';
+import { registerReportTools } from '@/lib/mcp/tools/reports';
 
 /**
  * MCP connector v2: v1 reads/writes for cards plus expenses, incomes, loans,
- * transfers, goals, budgets, planning, liquidity and templates. Auth is per-tool
- * via Bearer agent token (see `resolveAgentContext`).
+ * transfers, goals, budgets, planning, liquidity, templates and P2 reports/house/categories.
+ * Auth is per-tool via Bearer agent token (see `resolveAgentContext`).
  */
 export function registerMcpTools(server: McpServer) {
   registerHouseTools(server);
@@ -34,4 +35,5 @@ export function registerMcpTools(server: McpServer) {
   registerFortnightTools(server);
   registerBudgetTools(server);
   registerTemplateTools(server);
+  registerReportTools(server);
 }
