@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   createCreditCardPayment,
+  createCreditCardForOwner,
   createCreditCardPurchase,
   getCreditCardByOwner,
   listCreditCardsByOwner,
@@ -14,10 +15,14 @@ import {
   listInstallmentPlansForCard,
   updateInstallmentPlan,
 } from '@/lib/finance/credit-card-installment-plan.service';
+import { upsertCreditCardPaymentPlan } from '@/lib/finance/credit-card-payment-plan.service';
 import {
+  createScheduledPayment,
   deleteScheduledPayment,
   listScheduledPaymentsForCard,
 } from '@/lib/finance/credit-card-scheduled-payment.service';
+import { FortnightPeriod } from '@/generated/prisma/client';
+import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly.queries';
 import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import {
   confirmSchema,
@@ -37,12 +42,15 @@ import {
   createCreditCardPurchaseSchema,
   normalizeCreditCardPaymentInput,
   createCreditCardPaymentSchema,
+  createCreditCardSchema,
   updateCreditCardSchema,
 } from '@/schemas/credit-card.schema';
 import {
   createCreditCardInstallmentPlanSchema,
   updateCreditCardInstallmentPlanSchema,
 } from '@/schemas/credit-card-installment-plan.schema';
+import { createCreditCardScheduledPaymentSchema } from '@/schemas/credit-card-scheduled-payment.schema';
+import { cardPaymentPlanSchema } from '@/schemas/credit-card-payment-plan.schema';
 
 const ownerArgs = {
   ownerType: ownerTypeSchema,
@@ -58,6 +66,39 @@ const cardIdSchema = z
 const dateYmdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato requerido: YYYY-MM-DD');
+
+const periodSchema = z.enum(['FIRST', 'SECOND']);
+
+const resolveFortnightIdFromArgs = async (
+  agent: AgentContext,
+  input: {
+    fortnight_id?: number;
+    year?: number;
+    month?: number;
+    period?: 'FIRST' | 'SECOND';
+  },
+): Promise<number> => {
+  if (input.fortnight_id != null) {
+    return input.fortnight_id;
+  }
+  if (input.year != null && input.month != null && input.period != null) {
+    const parsedPeriod =
+      input.period === 'SECOND'
+        ? FortnightPeriod.SECOND
+        : FortnightPeriod.FIRST;
+    const fortnight = await findFortnightByCalendarPeriod(
+      agent.ownerFilter,
+      input.year,
+      input.month,
+      parsedPeriod,
+    );
+    if (!fortnight) {
+      throw new Error('Quincena no encontrada');
+    }
+    return fortnight.id;
+  }
+  throw new Error('Indica fortnight_id o year + month + period');
+};
 
 type CardPaymentToolArgs = {
   card_id: number;
@@ -269,6 +310,58 @@ export function registerCreditCardTools(server: McpServer) {
             : [],
           installment_plans: plans,
           scheduled_payments: scheduledPayments,
+        };
+      }),
+  );
+
+  server.registerTool(
+    'create_card',
+    {
+      title: 'Crear tarjeta de crédito',
+      description:
+        'Alta de tarjeta CREDIT_CARD o DEPARTMENT_STORE_CARD (mismo POST /api/credit-cards que la app).',
+      inputSchema: z.object({
+        ...ownerArgs,
+        name: z.string().trim().min(1),
+        type: z.enum(['CREDIT_CARD', 'DEPARTMENT_STORE_CARD']).default('CREDIT_CARD'),
+        amount: z.number().min(0).default(0).describe('Deuda inicial / saldo utilizado.'),
+        credit_limit: z.number().positive().optional(),
+        cutoff_day: z.number().int().min(1).max(31),
+        due_day: z.number().int().min(1).max(31),
+        active: z.boolean().default(true),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: false },
+    },
+    async (args, ctx) =>
+      runAgentTool('create_card', ctx as McpToolContext, args, 'write', async (agent) => {
+        const parsed = createCreditCardSchema.parse({
+          name: args.name,
+          type: args.type,
+          amount: args.amount,
+          credit_limit: args.credit_limit ?? null,
+          cutoff_day: args.cutoff_day,
+          due_day: args.due_day,
+          active: args.active,
+          include_in_liquidity: true,
+          temporary_credit_limit: null,
+          goal_amount: null,
+          goal_due_date: null,
+        });
+
+        const card = await createCreditCardForOwner(
+          agent.ownerType,
+          agent.ownerId,
+          parsed,
+        );
+
+        return {
+          id: card.id,
+          name: card.name,
+          type: card.type,
+          debt: card.amount,
+          credit_limit: card.credit_limit,
+          cutoff_day: card.cutoff_day,
+          due_day: card.due_day,
         };
       }),
   );
@@ -622,6 +715,100 @@ export function registerCreditCardTools(server: McpServer) {
           input,
         );
       }),
+  );
+
+  server.registerTool(
+    'create_scheduled_payment',
+    {
+      title: 'Crear cuota programada de tarjeta',
+      description:
+        'Programa una cuota suelta en el calendario de la tarjeta (mismo POST que la UI de cuotas).',
+      inputSchema: z.object({
+        ...ownerArgs,
+        card_id: cardIdSchema,
+        due_date: dateYmdSchema,
+        amount: z.number().positive(),
+        label: z.string().trim().max(120).optional(),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: false },
+    },
+    async (args, ctx) =>
+      runAgentTool(
+        'create_scheduled_payment',
+        ctx as McpToolContext,
+        args,
+        'write',
+        async (agent) => {
+          const input = createCreditCardScheduledPaymentSchema.parse({
+            due_date: args.due_date,
+            amount: args.amount,
+            label: args.label ?? null,
+          });
+          const item = await createScheduledPayment(
+            args.card_id,
+            agent.ownerFilter,
+            input,
+          );
+          return item;
+        },
+      ),
+  );
+
+  server.registerTool(
+    'upsert_card_payment_plan',
+    {
+      title: 'Planear pago de tarjeta en quincena',
+      description:
+        'Fija cuánto planeas pagar de una tarjeta en una quincena (mismo PUT que Panel financiero / calendario de tarjetas).',
+      inputSchema: z
+        .object({
+          ...ownerArgs,
+          card_id: cardIdSchema,
+          planned_amount: z.number().positive(),
+          fortnight_id: z.number().int().positive().optional(),
+          year: z.number().int().min(2000).max(2100).optional(),
+          month: z.number().int().min(1).max(12).optional(),
+          period: periodSchema.optional(),
+        })
+        .superRefine((data, ctxRef) => {
+          if (
+            data.fortnight_id == null &&
+            (data.year == null || data.month == null || data.period == null)
+          ) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'Indica fortnight_id o year + month + period',
+              path: ['fortnight_id'],
+            });
+          }
+        }),
+      annotations: { destructiveHint: false, idempotentHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool(
+        'upsert_card_payment_plan',
+        ctx as McpToolContext,
+        args,
+        'write',
+        async (agent) => {
+          const fortnightId = await resolveFortnightIdFromArgs(agent, args);
+          const validated = cardPaymentPlanSchema.parse({
+            walletId: args.card_id,
+            plannedAmount: args.planned_amount,
+          });
+          const plan = await upsertCreditCardPaymentPlan(
+            agent.ownerFilter,
+            fortnightId,
+            validated.walletId,
+            validated.plannedAmount,
+          );
+          return {
+            card_id: plan.credit_card_wallet_id,
+            fortnight_id: plan.fortnight_id,
+            planned_amount: Number(plan.planned_amount),
+          };
+        },
+      ),
   );
 
   server.registerTool(

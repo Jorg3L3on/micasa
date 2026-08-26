@@ -6,6 +6,7 @@ import { createCreditCardPurchase } from '@/lib/finance/credit-card.service';
 import {
   createExpense,
   deleteExpense,
+  toggleExpensePaid,
   updateExpense,
 } from '@/lib/finance/expense.service';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
@@ -308,6 +309,12 @@ export function registerExpenseTools(server: McpServer) {
         wallet_name: z.string().trim().min(1).optional(),
         category_id: z.number().int().positive().optional(),
         category_name: z.string().trim().min(1).optional(),
+        is_paid: z
+          .boolean()
+          .optional()
+          .describe(
+            'true = pagado (mueve saldo/deuda); false = pendiente. Usa set_expense_paid para solo cambiar el estado.',
+          ),
       }),
       annotations: { destructiveHint: false, idempotentHint: true },
     },
@@ -347,9 +354,41 @@ export function registerExpenseTools(server: McpServer) {
           ...(fortnightId != null ? { fortnightId } : {}),
           ...(walletId !== undefined ? { walletId } : {}),
           ...(categoryId != null ? { categoryId } : {}),
+          ...(args.is_paid !== undefined ? { isPaid: args.is_paid } : {}),
         });
 
         return { expense: updated };
+      }),
+  );
+
+  server.registerTool(
+    'set_expense_paid',
+    {
+      title: 'Marcar gasto pagado o pendiente',
+      description:
+        'Cambia el estado de pago de un gasto (PATCH paid de la app). Mueve saldo/deuda al marcar pagado; revierte al desmarcar.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        expense_id: z.number().int().positive(),
+        is_paid: z.boolean().describe('true = pagado; false = pendiente en la quincena.'),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool('set_expense_paid', ctx as McpToolContext, args, 'write', async (agent) => {
+        const expense = await toggleExpensePaid({
+          id: args.expense_id,
+          paid: args.is_paid,
+          ownerFilter: agent.ownerFilter,
+        });
+
+        return {
+          expense_id: expense.id,
+          is_paid: expense.is_paid,
+          amount: Number(expense.amount),
+          description: expense.description,
+          wallet_name: expense.wallet?.name ?? 'Efectivo',
+        };
       }),
   );
 

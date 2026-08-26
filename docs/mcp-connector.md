@@ -118,6 +118,9 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 | `get_loan` | Detalle + calendario de un préstamo |
 | `list_categories` | Catálogo de categorías (gasto e ingreso comparten árbol) |
 | `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, filtros). Incluye `totals` del rango completo y `totals_in_page` de la página actual. |
+| `list_incomes` | Ingresos de una quincena (`fortnight_id` o `year`+`month`+`period`) |
+| `list_wallet_movements` | Movimientos de billetera efectivo/débito/meta: gastos, ingresos, transferencias y pagos a tarjeta |
+| `list_expense_templates` / `list_income_templates` | Plantillas recurrentes con flags 1ª/2ª quincena |
 | `list_upcoming` | Pagos unificados: tarjetas (revolving + MSI), préstamos. Filtros: `year`/`month`, `period` FIRST\|SECOND, `from`/`to`. Revolving futuro vía proyección de liquidez (~180 días). |
 | `list_goals` | Metas con progreso hacia el objetivo |
 | `list_budgets` | Presupuestos activos: tope, gastado, restante |
@@ -161,23 +164,28 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **2.0.0** (P0: quincena, revolving proyectado, pay_card wallet, ingresos CRUD) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **2.1.0** (P1: pagado, plantillas, préstamos wallet/batch, scheduled/plan tarjeta, altas wallet/card/goal, movimientos wallet) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Escritura (scope `write`)
 
 | Tool | Qué hace | Nota |
 |---|---|---|
 | `add_expense` | Gasto en cualquier billetera | `is_paid` (default true); `already_in_balance` para bitácora sin mover saldo |
-| `update_expense` / `delete_expense` | Corregir o borrar gasto | `delete_expense` requiere `confirm: true` |
+| `update_expense` / `delete_expense` | Corregir o borrar gasto | `update_expense` acepta `is_paid`; `delete_expense` requiere `confirm: true` |
+| `set_expense_paid` | Marcar gasto pagado o pendiente | Mismo PATCH paid de la app; mueve saldo/deuda |
 | `add_income` | Ingreso en billetera de activo | Sube saldo |
-| `list_incomes` | Ingresos de una quincena | `fortnight_id` o `year`+`month`+`period` |
 | `update_income` / `delete_income` | Corregir o borrar ingreso | `delete_income` requiere `confirm: true` |
+| `create_expense_template` / `update_expense_template` / `delete_expense_template` | CRUD plantillas de gasto | Flags `applies_first_fortnight` / `applies_second_fortnight` |
+| `create_income_template` / `update_income_template` / `delete_income_template` | CRUD plantillas de ingreso | Misma expansión que la UI al crear mes |
 | `create_month` | Crear mes / expandir plantillas | Misma regla que UI: año en curso, mes actual o futuro |
 | `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario |
+| `create_wallet` | Alta billetera CASH/DEBIT | Mismo POST /api/wallets |
+| `create_card` | Alta tarjeta de crédito | Mismo POST /api/credit-cards |
+| `create_goal` / `update_goal` | Alta o edición de meta | Billetera GOAL |
 | `adjust_wallet_balance` | Fija saldo efectivo/débito/meta | `confirm: true` |
 | `transfer` | Entre billeteras de activo/metas | No es pago de tarjeta |
 | `contribute_goal` / `withdraw_goal` | Aportar o retirar de una meta | Transfer interna |
-| `create_loan` / `update_loan` / `add_loan_payment` | Préstamos personales | Cuotas externas con `paid_payments_count` / `MARK_PAID_EXTERNAL` |
+| `create_loan` / `update_loan` / `add_loan_payment` | Préstamos personales | `add_loan_payment`: `MARK_PAID` (descuenta wallet), `MARK_PAID_EXTERNAL`, `SKIP`; batch con `payment_ids` |
 | `delete_loan` | Elimina préstamo | `confirm: true` |
 | `upsert_budget` / `delete_budget` | Crear/actualizar o desactivar presupuesto | Presupuesto simple (1 billetera + categoría) |
 | `adjust_card_debt` | Fija deuda de tarjeta | `confirm: true` |
@@ -186,6 +194,8 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 | `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa) |
 | `pay_card` | Pagar tarjeta desde billetera | Alias de `add_card_payment` con `mode: wallet` |
 | `create_installment_plan` / `update_installment_plan` | Planes MSI | |
+| `create_scheduled_payment` | Cuota programada suelta en calendario de tarjeta | Mismo POST scheduled-payments |
+| `upsert_card_payment_plan` | Monto planeado de pago de tarjeta en quincena | Mismo PUT card-payment-plans del panel |
 | `delete_scheduled_payment` | Elimina cuota programada | `confirm: true` |
 
 Las tools declaran anotaciones MCP (`readOnlyHint`, `destructiveHint`, `idempotentHint`).
