@@ -1,10 +1,15 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { todayCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import { computeGoalMetrics } from '@/lib/finance/goal-metrics';
-import { listWalletsByOwner } from '@/lib/finance/wallet.service';
+import {
+  createWalletForOwner,
+  listWalletsByOwner,
+  updateWalletMetadataForOwner,
+} from '@/lib/finance/wallet.service';
 import { createWalletTransferForOwner } from '@/lib/finance/wallet-transfer.service';
 import { PaymentMethodType } from '@/generated/prisma/client';
+import { createWalletSchema, updateWalletSchema } from '@/schemas/wallet.schema';
 import {
   ownerIdSchema,
   ownerTypeSchema,
@@ -155,6 +160,115 @@ export function registerGoalTools(server: McpServer) {
         });
 
         return result;
+      }),
+  );
+
+  server.registerTool(
+    'create_goal',
+    {
+      title: 'Crear meta de ahorro',
+      description:
+        'Alta de meta (billetera GOAL, mismo POST /api/wallets con type GOAL que la app).',
+      inputSchema: z.object({
+        ...ownerArgs,
+        name: z.string().trim().min(1),
+        goal_amount: z.number().positive(),
+        goal_due_date: dateYmdSchema.optional(),
+        amount: z.number().min(0).default(0).describe('Saldo inicial acumulado.'),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: false },
+    },
+    async (args, ctx) =>
+      runAgentTool('create_goal', ctx as McpToolContext, args, 'write', async (agent) => {
+        const parsed = createWalletSchema.parse({
+          name: args.name,
+          type: 'GOAL',
+          amount: args.amount,
+          goal_amount: args.goal_amount,
+          goal_due_date: args.goal_due_date ?? null,
+          include_in_liquidity: false,
+          active: true,
+          cutoff_day: null,
+          due_day: null,
+          credit_limit: null,
+          temporary_credit_limit: null,
+        });
+
+        const wallet = await createWalletForOwner(
+          agent.ownerType,
+          agent.ownerId,
+          parsed,
+        );
+
+        return {
+          goal_id: wallet.id,
+          name: wallet.name,
+          balance: Number(wallet.amount),
+          goal_amount: wallet.goal_amount == null ? null : Number(wallet.goal_amount),
+          goal_due_date:
+            wallet.goal_due_date == null
+              ? null
+              : formatCalendarDate(wallet.goal_due_date),
+        };
+      }),
+  );
+
+  server.registerTool(
+    'update_goal',
+    {
+      title: 'Actualizar meta',
+      description:
+        'Edita nombre, objetivo, fecha límite o estado activo de una meta (mismo PATCH /api/wallets que la app).',
+      inputSchema: z.object({
+        ...ownerArgs,
+        goal_id: z.number().int().positive().optional(),
+        goal_name: z.string().trim().min(1).optional(),
+        name: z.string().trim().min(1).optional(),
+        goal_amount: z.number().positive().optional(),
+        goal_due_date: dateYmdSchema.optional().nullable(),
+        active: z.boolean().optional(),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool('update_goal', ctx as McpToolContext, args, 'write', async (agent) => {
+        const goal = await resolveWalletRef(
+          agent.ownerFilter,
+          args.goal_id,
+          args.goal_name,
+        );
+        if (goal.type !== PaymentMethodType.GOAL) {
+          throw new Error('La billetera debe ser una meta (GOAL)');
+        }
+
+        const parsed = updateWalletSchema.parse({
+          ...(args.name != null ? { name: args.name } : {}),
+          ...(args.goal_amount != null ? { goal_amount: args.goal_amount } : {}),
+          ...(args.goal_due_date !== undefined
+            ? { goal_due_date: args.goal_due_date }
+            : {}),
+          ...(args.active != null ? { active: args.active } : {}),
+          type: 'GOAL',
+          include_in_liquidity: false,
+        });
+
+        const wallet = await updateWalletMetadataForOwner(
+          goal.id,
+          parsed,
+          agent.ownerFilter,
+        );
+
+        return {
+          goal_id: wallet.id,
+          name: wallet.name,
+          balance: Number(wallet.amount),
+          goal_amount: wallet.goal_amount == null ? null : Number(wallet.goal_amount),
+          goal_due_date:
+            wallet.goal_due_date == null
+              ? null
+              : formatCalendarDate(wallet.goal_due_date),
+          active: wallet.active,
+        };
       }),
   );
 }

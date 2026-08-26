@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
+  batchUpdateLoanPaymentsForOwner,
   createLoanForOwnerWithProgress,
   deleteLoanForOwner,
   getLoanByIdForOwner,
@@ -8,7 +9,7 @@ import {
   updateLoanPaymentForOwner,
   updateLoanScheduleForOwner,
 } from '@/lib/finance/loan.service';
-import { createLoanSchema } from '@/schemas/loan.schema';
+import { createLoanSchema, updateLoanPaymentSchema } from '@/schemas/loan.schema';
 import {
   confirmSchema,
   ownerIdSchema,
@@ -16,6 +17,7 @@ import {
   runAgentTool,
   type McpToolContext,
 } from '@/lib/mcp/tool-helpers';
+import { resolveWalletRef } from '@/lib/mcp/resolvers';
 
 const ownerArgs = {
   ownerType: ownerTypeSchema,
@@ -238,37 +240,133 @@ export function registerLoanTools(server: McpServer) {
   server.registerTool(
     'add_loan_payment',
     {
-      title: 'Registrar cuota pagada (externa)',
+      title: 'Registrar acción sobre cuota de préstamo',
       description:
-        'Marca una cuota como pagada fuera de MiCasa. No descuenta billeteras.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        payment_id: z.number().int().positive(),
-        paid_at: dateYmdSchema.optional(),
-        note: z.string().trim().max(500).optional(),
-        already_in_books: z
-          .boolean()
-          .default(true)
-          .describe('true si solo es bitácora (default).'),
-      }),
+        'Marca cuota(s) de préstamo: MARK_PAID descuenta billetera origen; MARK_PAID_EXTERNAL solo bitácora; SKIP omite la cuota. Batch con payment_ids (solo MARK_PAID o MARK_PAID_EXTERNAL).',
+      inputSchema: z
+        .object({
+          ...ownerArgs,
+          payment_id: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Cuota individual (alternativa a payment_ids).'),
+          payment_ids: z
+            .array(z.number().int().positive())
+            .min(1)
+            .optional()
+            .describe('Varias cuotas pendientes en lote.'),
+          action: z
+            .enum(['MARK_PAID', 'MARK_PAID_EXTERNAL', 'SKIP'])
+            .default('MARK_PAID_EXTERNAL')
+            .describe(
+              'MARK_PAID = descuenta billetera; MARK_PAID_EXTERNAL = pagado fuera; SKIP = omitir cuota.',
+            ),
+          paid_at: dateYmdSchema.optional(),
+          note: z.string().trim().max(500).optional(),
+          source_wallet_id: z.number().int().positive().optional(),
+          source_wallet_name: z
+            .string()
+            .trim()
+            .min(1)
+            .optional()
+            .describe('Billetera origen (MARK_PAID).'),
+        })
+        .superRefine((data, ctxRef) => {
+          if (data.payment_id == null && data.payment_ids == null) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'Indica payment_id o payment_ids',
+              path: ['payment_id'],
+            });
+          }
+          if (data.payment_id != null && data.payment_ids != null) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'Usa payment_id o payment_ids, no ambos',
+              path: ['payment_ids'],
+            });
+          }
+          if (data.action === 'SKIP' && data.payment_ids != null) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'SKIP solo aplica a una cuota (payment_id)',
+              path: ['action'],
+            });
+          }
+          if (
+            data.payment_ids != null &&
+            data.action !== 'MARK_PAID' &&
+            data.action !== 'MARK_PAID_EXTERNAL'
+          ) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'En lote solo MARK_PAID o MARK_PAID_EXTERNAL',
+              path: ['action'],
+            });
+          }
+          if (
+            data.action === 'MARK_PAID' &&
+            !data.source_wallet_id &&
+            !data.source_wallet_name &&
+            data.payment_ids == null
+          ) {
+            ctxRef.addIssue({
+              code: 'custom',
+              message: 'MARK_PAID requiere source_wallet_id o source_wallet_name',
+              path: ['source_wallet_id'],
+            });
+          }
+        }),
       annotations: { destructiveHint: false, idempotentHint: false },
     },
     async (args, ctx) =>
       runAgentTool('add_loan_payment', ctx as McpToolContext, args, 'write', async (agent) => {
-        const payment = await updateLoanPaymentForOwner(
-          args.payment_id,
-          agent.ownerFilter,
-          {
-            action: 'MARK_PAID_EXTERNAL',
+        let sourceWalletId = args.source_wallet_id;
+        if (args.source_wallet_name && sourceWalletId == null) {
+          sourceWalletId = (
+            await resolveWalletRef(agent.ownerFilter, undefined, args.source_wallet_name)
+          ).id;
+        }
+
+        if (args.payment_ids != null) {
+          const payments = await batchUpdateLoanPaymentsForOwner(agent.ownerFilter, {
+            paymentIds: args.payment_ids,
+            action: args.action as 'MARK_PAID' | 'MARK_PAID_EXTERNAL',
             paidAt: args.paid_at,
-            note: args.note ?? 'Pagado fuera de MiCasa (MCP)',
-          },
+            sourceWalletId: sourceWalletId ?? null,
+            note: args.note ?? null,
+          });
+          return {
+            batch: true,
+            count: payments.length,
+            payments: payments.map((payment) => ({
+              payment_id: payment.id,
+              loan_id: payment.loanId,
+              status: payment.status,
+            })),
+          };
+        }
+
+        const input = updateLoanPaymentSchema.parse({
+          action: args.action,
+          paidAt: args.paid_at,
+          sourceWalletId: sourceWalletId ?? null,
+          note: args.note ?? null,
+        });
+
+        const payment = await updateLoanPaymentForOwner(
+          args.payment_id!,
+          agent.ownerFilter,
+          input,
         );
+
         return {
           payment_id: payment.id,
           loan_id: payment.loanId,
           status: payment.status,
-          already_in_books: args.already_in_books,
+          action: args.action,
         };
       }),
   );
