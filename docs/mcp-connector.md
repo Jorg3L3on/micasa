@@ -164,7 +164,33 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **2.1.0** (P1: pagado, plantillas, préstamos wallet/batch, scheduled/plan tarjeta, altas wallet/card/goal, movimientos wallet) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **2.2.0** (P2: reportes/alertas, casa, categorías CRUD, presupuesto multi-asignación, reconciliación/MSI; import PDF/CSV documentado fuera de v2) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+
+### Lectura P2 (scope `read`)
+
+| Tool | Qué hace |
+|---|---|
+| `get_period_summary` | Totales del periodo (ingresos, gastos, pagado/pendiente, saldos de fondo, resto de presupuesto). Misma lógica que `GET /api/reports?type=summary`. |
+| `get_alerts` | Alertas del periodo (ingreso faltante, compromiso alto, vencidos). Misma lógica que `GET /api/alerts`. |
+| `list_house_members` | Miembros de la casa (`ownerType=house`). Solo casas en allow-list + membresía. |
+| `get_card_reconciliation` | Inconsistencias en tarjetas del contexto. Misma lógica que `GET /api/credit-cards/reconciliation`. |
+| `get_card_cycle_reconciliation` | Saldo registrado vs esperado en el ciclo vigente de una tarjeta. |
+| `get_installment_portfolio` | Cuotas MSI activas y exposición restante en una tarjeta. |
+
+`list_categories` ahora incluye `kind` (`EXPENSE`/`INCOME`) y acepta filtro `kind: expense|income|all`.
+
+### Escritura P2 (scope `write`)
+
+| Tool | Qué hace | Nota |
+|---|---|---|
+| `transfer_to_house` | Aporte personal → casa (`USER_TO_HOUSE`) | Mismo POST `/api/transfers`. No es `transfer` wallet↔wallet. |
+| `create_category` / `update_category` / `delete_category` | CRUD categorías | `kind` EXPENSE\|INCOME; `delete_category` requiere `confirm: true`. |
+| `update_budget_allocations` | Reemplaza asignaciones de un presupuesto | Mismo PUT `/api/budgets/[id]/allocations`. |
+| `upsert_budget` | Acepta `allocations[]` multi-billetera/categoría | La suma debe igualar `amount`. |
+
+### Import de estados de cuenta (fuera de MCP v2)
+
+La UI importa PDF/CSV vía **multipart/form-data** (`POST /api/credit-cards/:id/statement-imports` y `/preview`). No hay API JSON limpia (URL, filas parseadas o asset id) reutilizable por agentes sin subir el archivo. **No hay tool MCP de import en v2** — sigue en la app web. Si en el futuro se expone un endpoint JSON, se podrá añadir una tool.
 
 ### Escritura (scope `write`)
 
@@ -187,7 +213,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 | `contribute_goal` / `withdraw_goal` | Aportar o retirar de una meta | Transfer interna |
 | `create_loan` / `update_loan` / `add_loan_payment` | Préstamos personales | `add_loan_payment`: `MARK_PAID` (descuenta wallet), `MARK_PAID_EXTERNAL`, `SKIP`; batch con `payment_ids` |
 | `delete_loan` | Elimina préstamo | `confirm: true` |
-| `upsert_budget` / `delete_budget` | Crear/actualizar o desactivar presupuesto | Presupuesto simple (1 billetera + categoría) |
+| `upsert_budget` / `delete_budget` | Crear/actualizar o desactivar presupuesto | Soporta `allocations[]`; ver también `update_budget_allocations` |
 | `adjust_card_debt` | Fija deuda de tarjeta | `confirm: true` |
 | `update_card` | Corte, pago, límites | Idempotente |
 | `add_card_purchase` | Compra en tarjeta | `already_in_balance` opcional |
@@ -200,7 +226,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 Las tools declaran anotaciones MCP (`readOnlyHint`, `destructiveHint`, `idempotentHint`).
 
-Fuera de v2: import PDF/CSV vía MCP, administración.
+Fuera de v2: **import PDF/CSV** vía MCP (solo multipart en la app), administración.
 
 ## Límites de uso
 

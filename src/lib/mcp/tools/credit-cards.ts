@@ -10,6 +10,12 @@ import {
   updateCreditCardForOwner,
 } from '@/lib/finance/credit-card.service';
 import { getCreditCardStatementByOwner } from '@/lib/finance/credit-card-statement.service';
+import { getCreditCardReconciliationReport } from '@/lib/finance/credit-card-reconciliation.service';
+import { computeCreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
+import {
+  buildInstallmentPortfolio,
+  sumInstallmentExposure,
+} from '@/lib/finance/credit-card-installment-portfolio';
 import {
   createInstallmentPlan,
   listInstallmentPlansForCard,
@@ -947,6 +953,119 @@ export function registerCreditCardTools(server: McpServer) {
             from,
             to,
             movements,
+          };
+        },
+      ),
+  );
+
+  server.registerTool(
+    'get_card_reconciliation',
+    {
+      title: 'Reconciliación de tarjetas',
+      description:
+        'Reporte de inconsistencias en tarjetas de crédito del contexto (deuda, pagos huérfanos, planes obsoletos). Misma lógica que GET /api/credit-cards/reconciliation.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        card_id: cardIdSchema.optional().describe(
+          'Filtra a una tarjeta. Omite para todas las tarjetas de crédito activas.',
+        ),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool(
+        'get_card_reconciliation',
+        ctx as McpToolContext,
+        args,
+        'read',
+        async (agent) =>
+          getCreditCardReconciliationReport(agent.ownerFilter, args.card_id),
+      ),
+  );
+
+  server.registerTool(
+    'get_card_cycle_reconciliation',
+    {
+      title: 'Reconciliación del ciclo de tarjeta',
+      description:
+        'Compara saldo registrado vs esperado (ledger o total importado) para el ciclo vigente de una tarjeta. Misma lógica que la franja de reconciliación en detalle de tarjeta.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        card_id: cardIdSchema,
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool(
+        'get_card_cycle_reconciliation',
+        ctx as McpToolContext,
+        args,
+        'read',
+        async (agent) => {
+          const statement = await getCreditCardStatementByOwner(
+            args.card_id,
+            agent.ownerFilter,
+          );
+          const reconciliation = computeCreditCardCycleReconciliation({
+            lastStatementBalance: statement.last_statement_balance,
+            paymentsAppliedToStatement: statement.payments_applied_to_statement,
+            currentCyclePurchases: statement.current_cycle_purchases,
+            currentCyclePayments: statement.current_cycle_payments,
+            outstandingBalance: statement.outstanding_balance,
+            importedStatementTotal: statement.imported_statement_total,
+            importedMinimumPayment: statement.minimum_payment,
+          });
+          return {
+            card_id: args.card_id,
+            card_name: statement.name,
+            statement_end: statement.statement_end,
+            ...reconciliation,
+          };
+        },
+      ),
+  );
+
+  server.registerTool(
+    'get_installment_portfolio',
+    {
+      title: 'Portafolio MSI activo',
+      description:
+        'Cuotas MSI activas en una tarjeta: progreso, cuotas restantes y exposición. Misma proyección que la pestaña Cuotas / portafolio MSI en detalle de tarjeta.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        card_id: cardIdSchema,
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool(
+        'get_installment_portfolio',
+        ctx as McpToolContext,
+        args,
+        'read',
+        async (agent) => {
+          const statement = await getCreditCardStatementByOwner(
+            args.card_id,
+            agent.ownerFilter,
+          );
+          const items = buildInstallmentPortfolio(statement.installment_active_purchases);
+          return {
+            card_id: args.card_id,
+            card_name: statement.name,
+            total_exposure: sumInstallmentExposure(items),
+            item_count: items.length,
+            items: items.map((item) => ({
+              expense_id: item.purchase.id,
+              description: item.purchase.description,
+              installment_amount: item.purchase.amount,
+              current_installment: item.currentInstallment,
+              total_installments: item.totalInstallments,
+              remaining_installments: item.remainingInstallments,
+              progress_pct: item.progressPct,
+              remaining_amount: item.remainingAmount,
+              original_amount_estimate: item.originalAmountEstimate,
+              payment_date: item.purchase.payment_date,
+            })),
           };
         },
       ),
