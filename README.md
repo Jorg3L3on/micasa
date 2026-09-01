@@ -71,6 +71,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Instalar en iPhone
+
+En **Safari** (no Chrome): **Compartir → Agregar a pantalla de inicio**. MiCasa se abre a pantalla completa, sin la barra de Safari. No hace falta App Store ni cuenta de desarrollador de Apple.
+
 Seed accounts (after `db seed`):
 
 | Name | Email | Password |
