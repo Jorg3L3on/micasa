@@ -4,6 +4,8 @@ import {
   formatCalendarDate,
   parseCalendarDate,
   todayCalendarDate,
+  startOfCalendarDay,
+  endOfCalendarDay,
 } from '@/lib/calendar-dates';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
@@ -11,6 +13,10 @@ import type {
   UpdateCreditCardScheduledPaymentInput,
 } from '@/schemas/credit-card-scheduled-payment.schema';
 import { ensureCreditWalletType } from '@/lib/finance/wallet-accounting';
+import {
+  getFortnightYmdBounds,
+  ymdFallsInFortnight,
+} from '@/lib/fortnight-calendar';
 
 export type CreditCardScheduledPaymentItem = {
   id: number;
@@ -286,8 +292,10 @@ export async function listScheduledPaymentsForPlannerMonth(
   first: PlannerScheduledCardPaymentItem[];
   second: PlannerScheduledCardPaymentItem[];
 }> {
-  const from = new Date(Date.UTC(year, month - 1, 1));
-  const to = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const firstBounds = getFortnightYmdBounds(year, month, 'FIRST');
+  const secondBounds = getFortnightYmdBounds(year, month, 'SECOND');
+  const from = startOfCalendarDay(firstBounds.startYmd);
+  const to = endOfCalendarDay(secondBounds.endYmd);
 
   const rows = await prisma.creditCardScheduledPayment.findMany({
     where: {
@@ -314,13 +322,11 @@ export async function listScheduledPaymentsForPlannerMonth(
   }));
 
   return {
-    first: mapped.filter((item) => {
-      const day = Number(item.dueDate.slice(8, 10));
-      return day <= 15;
-    }),
-    second: mapped.filter((item) => {
-      const day = Number(item.dueDate.slice(8, 10));
-      return day >= 16;
-    }),
+    first: mapped.filter((item) =>
+      ymdFallsInFortnight(item.dueDate, year, month, 'FIRST'),
+    ),
+    second: mapped.filter((item) =>
+      ymdFallsInFortnight(item.dueDate, year, month, 'SECOND'),
+    ),
   };
 }

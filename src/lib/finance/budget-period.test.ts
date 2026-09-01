@@ -9,18 +9,18 @@ import {
 } from './budget-period-windows';
 
 const juneFirstFortnight = {
-  start_date: parseCalendarDate('2026-06-01'),
-  end_date: parseCalendarDate('2026-06-15'),
+  start_date: parseCalendarDate('2026-05-31'),
+  end_date: parseCalendarDate('2026-06-14'),
 };
 
 const juneSecondFortnight = {
-  start_date: parseCalendarDate('2026-06-16'),
-  end_date: parseCalendarDate('2026-06-30'),
+  start_date: parseCalendarDate('2026-06-15'),
+  end_date: parseCalendarDate('2026-06-29'),
 };
 
 const febSecondFortnight = {
-  start_date: parseCalendarDate('2026-02-16'),
-  end_date: parseCalendarDate('2026-02-28'),
+  start_date: parseCalendarDate('2026-02-15'),
+  end_date: parseCalendarDate('2026-02-27'),
 };
 
 describe('computeBudgetWindows – CUSTOM', () => {
@@ -38,10 +38,10 @@ describe('computeBudgetWindows – BIWEEKLY', () => {
 });
 
 describe('computeBudgetWindows – WEEKLY', () => {
-  it('FIRST fortnight: full Sun–Sat weeks overlapping 1–15 (not clipped)', () => {
+  it('FIRST fortnight: full Sun–Sat weeks overlapping payday FIRST (not clipped)', () => {
     const windows = computeBudgetWindows('WEEKLY', juneFirstFortnight);
     expect(windows).toHaveLength(3);
-    // Jun 1 2026 is Monday → week May 31–Jun 6 overlaps
+    // May 31 2026 is Sunday → week May 31–Jun 6 overlaps
     expect(windows[0].start_date).toEqual(parseCalendarDate('2026-05-31'));
     expect(windows[0].end_date).toEqual(parseCalendarDate('2026-06-06'));
     expect(windows[1].start_date).toEqual(parseCalendarDate('2026-06-07'));
@@ -65,15 +65,15 @@ describe('computeBudgetWindows – DAILY', () => {
   it('generates one window per civil day in the fortnight', () => {
     const windows = computeBudgetWindows('DAILY', juneFirstFortnight);
     expect(windows).toHaveLength(15);
-    expect(windows[0].start_date).toEqual(parseCalendarDate('2026-06-01'));
-    expect(windows[0].end_date).toEqual(parseCalendarDate('2026-06-01'));
-    expect(windows[14].start_date).toEqual(parseCalendarDate('2026-06-15'));
+    expect(windows[0].start_date).toEqual(parseCalendarDate('2026-05-31'));
+    expect(windows[0].end_date).toEqual(parseCalendarDate('2026-05-31'));
+    expect(windows[14].start_date).toEqual(parseCalendarDate('2026-06-14'));
   });
 
-  it('SECOND fortnight 30-day month: 15 windows (16–30)', () => {
+  it('SECOND fortnight 30-day month: 15 windows (15–29)', () => {
     const windows = computeBudgetWindows('DAILY', juneSecondFortnight);
     expect(windows).toHaveLength(15);
-    expect(windows[0].start_date).toEqual(parseCalendarDate('2026-06-16'));
+    expect(windows[0].start_date).toEqual(parseCalendarDate('2026-06-15'));
   });
 });
 

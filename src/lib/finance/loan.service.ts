@@ -15,7 +15,7 @@ import {
   generateLoanPaymentSchedule,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { todayCalendarDate, startOfCalendarDay, endOfCalendarDay } from '@/lib/calendar-dates';
 import {
   applyWalletAmountDelta,
   getPaidExpenseWalletDelta,
@@ -23,7 +23,11 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { createExpenseInTransaction } from '@/lib/finance/expense.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import {
+  getCalendarFortnightRefForYmd,
+  getFortnightYmdBounds,
+  ymdFallsInFortnight,
+} from '@/lib/fortnight-calendar';
 import type {
   LoanDuePaymentItem,
   LoanListItem,
@@ -265,10 +269,8 @@ async function createLinkedLoanPaymentExpense(input: {
   lender: string;
 }) {
   const { ownerType, ownerId } = ownerFromFilter(input.ownerFilter);
-  const year = input.paidAt.getUTCFullYear();
-  const month = input.paidAt.getUTCMonth() + 1;
-  const day = input.paidAt.getUTCDate();
-  const period = getFortnightPeriodForDay(day);
+  const paidYmd = formatDateYmd(input.paidAt);
+  const { year, month, period } = getCalendarFortnightRefForYmd(paidYmd);
   const fortnight = await resolveOrCreateFortnight({
     ownerType,
     ownerId,
@@ -834,8 +836,10 @@ async function listLoanPaymentsForPlannerMonthImpl(
   year: number,
   month: number,
 ): Promise<PlannerLoanPaymentsResponse> {
-  const from = new Date(Date.UTC(year, month - 1, 1));
-  const to = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const firstBounds = getFortnightYmdBounds(year, month, 'FIRST');
+  const secondBounds = getFortnightYmdBounds(year, month, 'SECOND');
+  const from = startOfCalendarDay(firstBounds.startYmd);
+  const to = endOfCalendarDay(secondBounds.endYmd);
   const payments = await prisma.loanPayment.findMany({
     where: {
       due_date: { gte: from, lte: to },
@@ -867,14 +871,12 @@ async function listLoanPaymentsForPlannerMonthImpl(
   }));
 
   return {
-    first: mapped.filter((payment) => {
-      const day = Number(payment.dueDate.slice(8, 10));
-      return day <= 15;
-    }),
-    second: mapped.filter((payment) => {
-      const day = Number(payment.dueDate.slice(8, 10));
-      return day >= 16;
-    }),
+    first: mapped.filter((payment) =>
+      ymdFallsInFortnight(payment.dueDate, year, month, 'FIRST'),
+    ),
+    second: mapped.filter((payment) =>
+      ymdFallsInFortnight(payment.dueDate, year, month, 'SECOND'),
+    ),
   };
 }
 

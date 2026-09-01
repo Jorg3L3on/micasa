@@ -22,7 +22,7 @@ const ownerArgs = {
 
 const periodSchema = z
   .enum(['FIRST', 'SECOND'])
-  .describe('Quincena del mes: FIRST (días 1–15) o SECOND (16–fin).');
+  .describe('Quincena del mes: FIRST (último día del mes anterior al 14) o SECOND (15 al penúltimo día).');
 
 export function registerFortnightTools(server: McpServer) {
   server.registerTool(

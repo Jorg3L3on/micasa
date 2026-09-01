@@ -189,14 +189,14 @@ describe('ensureBudgetPeriodsForMonth', () => {
       {
         id: 1,
         period: 'FIRST',
-        start_date: parseCalendarDate('2026-08-01'),
-        end_date: parseCalendarDate('2026-08-15'),
+        start_date: parseCalendarDate('2026-07-31'),
+        end_date: parseCalendarDate('2026-08-14'),
       },
       {
         id: 2,
         period: 'SECOND',
-        start_date: parseCalendarDate('2026-08-16'),
-        end_date: parseCalendarDate('2026-08-31'),
+        start_date: parseCalendarDate('2026-08-15'),
+        end_date: parseCalendarDate('2026-08-30'),
       },
     ]);
     mocks.budgetFindMany
@@ -205,12 +205,12 @@ describe('ensureBudgetPeriodsForMonth', () => {
       .mockResolvedValueOnce([]) // DAILY
       .mockResolvedValueOnce([]); // CUSTOM
     const first = {
-      start_date: parseCalendarDate('2026-08-01'),
-      end_date: parseCalendarDate('2026-08-15'),
+      start_date: parseCalendarDate('2026-07-31'),
+      end_date: parseCalendarDate('2026-08-14'),
     };
     const second = {
-      start_date: parseCalendarDate('2026-08-16'),
-      end_date: parseCalendarDate('2026-08-31'),
+      start_date: parseCalendarDate('2026-08-15'),
+      end_date: parseCalendarDate('2026-08-30'),
     };
     mocks.budgetPeriodFindMany.mockResolvedValue([
       { id: 201, ...first },

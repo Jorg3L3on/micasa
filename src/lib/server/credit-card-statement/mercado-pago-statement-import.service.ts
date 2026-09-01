@@ -8,7 +8,7 @@ import {
   getPaidExpenseWalletDelta,
   isCreditWalletType,
 } from '@/lib/finance/wallet-accounting';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
@@ -207,17 +207,17 @@ export async function importMercadoPagoStatementPdf(input: {
     };
 
     for (const mov of parsed.movements) {
-      const period = getFortnightPeriodForDay(mov.paymentDate.getUTCDate());
+      const paymentDateStr = toPaymentDateString(mov.paymentDate);
+      const { year, month, period } = getCalendarFortnightRefForYmd(paymentDateStr);
       const fortnight = await resolveOrCreateFortnight({
         ownerType,
         ownerId,
-        year: mov.paymentDate.getUTCFullYear(),
-        month: mov.paymentDate.getUTCMonth() + 1,
+        year,
+        month,
         period,
         tx,
       });
 
-      const paymentDateStr = toPaymentDateString(mov.paymentDate);
       const { start, end } = startEndUtcDay(mov.paymentDate);
 
       if (skipDuplicates) {

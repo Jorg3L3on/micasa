@@ -24,7 +24,7 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { createWalletForOwner, updateWalletMetadataForOwner } from '@/lib/finance/wallet.service';
 import { createExpense } from '@/lib/finance/expense.service';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 
 const creditCardWalletTypes: PaymentMethodType[] = [
@@ -485,10 +485,9 @@ export async function createCreditCardPayment(
         }
         fortnight = existing;
       } else {
-        const fnYear = paidAt.getUTCFullYear();
-        const fnMonth = paidAt.getUTCMonth() + 1;
-        const fnDay = paidAt.getUTCDate();
-        const fnPeriod = getFortnightPeriodForDay(fnDay);
+        const paidYmd = formatCalendarDate(paidAt);
+        const { year: fnYear, month: fnMonth, period: fnPeriod } =
+          getCalendarFortnightRefForYmd(paidYmd);
 
         const ownerUserId = creditCardWallet.user_id;
         const ownerHouseId = creditCardWallet.house_id;

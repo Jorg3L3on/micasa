@@ -43,7 +43,7 @@ const STEPS = [
   {
     n: '01',
     title: 'Arma la quincena',
-    body: 'Ingresos y gastos en periodos 1–15 y 16–fin de mes — el ritmo real de cobrar en México.',
+    body: 'Ingresos y gastos de un payday al siguiente: último día del mes al 14, y del 15 al penúltimo — el ritmo real de cobrar en México.',
   },
   {
     n: '02',
@@ -388,7 +388,7 @@ export const LandingPage = () => {
                   </h3>
                   <p className="mt-3 text-sm leading-relaxed text-white/50 sm:text-base">
                     Panel, quincena y billeteras en un mismo lienzo — con el detalle
-                    que usas al planear el 1–15 y el 16–fin.
+                    que usas al planear del último día al 14 y del 15 al penúltimo.
                   </p>
                 </div>
                 <div className="mt-8">

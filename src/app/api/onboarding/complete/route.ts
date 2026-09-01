@@ -76,7 +76,7 @@ function generateFortnights(startYmd: string, count: number): GeneratedFortnight
   const result: GeneratedFortnight[] = [];
   const [baseYear, baseMonth] = startYmd.split('-').map(Number);
 
-  // count is number of fortnights; two per month (1–15 and 16–end)
+  // count is number of fortnights; two per month (payday-aligned FIRST/SECOND)
   for (let i = 0; i < count; i++) {
     const monthOffset = Math.floor(i / 2);
     const period: FortnightPeriod = i % 2 === 0 ? 'FIRST' : 'SECOND';

@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
+    "realign:payday-fortnights": "tsx --tsconfig tsconfig.json scripts/realign-payday-fortnights.ts",
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
     "seed:categories": "tsx --tsconfig tsconfig.json scripts/seed-categories.ts",
     "validate:metric-strips": "node scripts/validate-metric-strips.mjs",

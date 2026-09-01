@@ -173,7 +173,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                 Welcome Back
               </p>
             </div>
-            <p className="text-[11px] text-white/40">Quincena · 1–15 jul 2026</p>
+            <p className="text-[11px] text-white/40">Quincena · 30 jun–14 jul 2026</p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">

@@ -244,7 +244,10 @@ export function ReceivePayrollButton({
   };
 
   const hasEntries = entries.length > 0;
-  const periodLabel = period === 'FIRST' ? 'días 1–15' : 'días 16–fin';
+  const periodLabel =
+    period === 'FIRST'
+      ? 'último día del mes anterior al 14'
+      : 'del 15 al penúltimo día';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

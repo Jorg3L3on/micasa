@@ -18,8 +18,8 @@ import {
 } from '@/lib/finance/liquidity-projection.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import {
+  getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
-  getFortnightPeriodForDay,
   getNextCalendarFortnight,
 } from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -150,7 +150,7 @@ const resolveQueryRange = (input: ListUpcomingCommitmentsInput): {
 const matchesPeriodFilter = (
   dateYmd: string,
   period: 'FIRST' | 'SECOND',
-): boolean => getFortnightPeriodForDay(Number(dateYmd.slice(8, 10))) === period;
+): boolean => getCalendarFortnightRefForYmd(dateYmd).period === period;
 
 /** Calendar months covered by current + next fortnight (planner fallback window). */
 const getPlannerWindowMonthKeys = (asOf = new Date()): Set<string> => {

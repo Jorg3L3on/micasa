@@ -96,7 +96,7 @@ export const ProductMock = ({
           className="h-px w-full bg-linear-to-r from-transparent via-[#911efe]/80 to-transparent"
         />
         <AppChrome
-          title="Quincena · 1–15 jul 2026"
+          title="Quincena · 30 jun–14 jul 2026"
           subtitle="Casa León · vista compartida"
           tabs={['Resumen', 'Ingresos', 'Gastos']}
         />

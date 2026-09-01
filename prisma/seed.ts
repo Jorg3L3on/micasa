@@ -9,6 +9,7 @@ import {
 } from '@/generated/prisma/client';
 import { hash } from 'bcryptjs';
 import { parseCalendarDate } from '@/lib/calendar-dates';
+import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 import { generateLoanPaymentSchedule } from '@/lib/finance/loan-schedule';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
@@ -471,28 +472,44 @@ async function main() {
   // FORTNIGHTS
   // ─────────────────────────────────────────────
 
+  const bounds = (year: number, month: number, period: FortnightPeriod) =>
+    getCanonicalFortnightBounds(year, month, period);
+
   // Carmen personal
-  const f_carmen_mar26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.FIRST,  start_date: new Date('2026-03-01T06:00:00'), end_date: new Date('2026-03-14T06:00:00'), label: 'Primera quincena - 3/2026',     user_id: carmen.id } });
-  const f_carmen_mar26_second = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.SECOND, start_date: new Date('2026-03-15T06:00:00'), end_date: new Date('2026-03-31T06:00:00'), label: 'Segunda quincena - 3/2026',     user_id: carmen.id } });
-  const f_carmen_apr26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.FIRST,  start_date: new Date('2026-04-01T06:00:00'), end_date: new Date('2026-04-14T06:00:00'), label: 'Primera quincena - 4/2026',     user_id: carmen.id } });
-  const f_carmen_apr26_second = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.SECOND, start_date: new Date('2026-04-15T06:00:00'), end_date: new Date('2026-04-30T06:00:00'), label: 'Segunda quincena - 4/2026',     user_id: carmen.id } });
+  const carmenMarFirst = bounds(2026, 3, FortnightPeriod.FIRST);
+  const carmenMarSecond = bounds(2026, 3, FortnightPeriod.SECOND);
+  const carmenAprFirst = bounds(2026, 4, FortnightPeriod.FIRST);
+  const carmenAprSecond = bounds(2026, 4, FortnightPeriod.SECOND);
+  const f_carmen_mar26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.FIRST,  start_date: carmenMarFirst.start_date, end_date: carmenMarFirst.end_date, label: 'Primera quincena - 3/2026',     user_id: carmen.id } });
+  const f_carmen_mar26_second = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.SECOND, start_date: carmenMarSecond.start_date, end_date: carmenMarSecond.end_date, label: 'Segunda quincena - 3/2026',     user_id: carmen.id } });
+  const f_carmen_apr26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.FIRST,  start_date: carmenAprFirst.start_date, end_date: carmenAprFirst.end_date, label: 'Primera quincena - 4/2026',     user_id: carmen.id } });
+  const f_carmen_apr26_second = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.SECOND, start_date: carmenAprSecond.start_date, end_date: carmenAprSecond.end_date, label: 'Segunda quincena - 4/2026',     user_id: carmen.id } });
 
   // Jorge personal
-  const f_jorge_mar26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.FIRST,  start_date: new Date('2026-03-01T06:00:00'), end_date: new Date('2026-03-14T06:00:00'), label: 'Primera quincena - 3/2026',     user_id: jorge.id } });
-  const f_jorge_mar26_second = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.SECOND, start_date: new Date('2026-03-15T06:00:00'), end_date: new Date('2026-03-31T06:00:00'), label: 'Segunda quincena - 3/2026',     user_id: jorge.id } });
-  const f_jorge_apr26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.FIRST,  start_date: new Date('2026-04-01T06:00:00'), end_date: new Date('2026-04-14T06:00:00'), label: 'Primera quincena - 4/2026',     user_id: jorge.id } });
-  const f_jorge_apr26_second = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.SECOND, start_date: new Date('2026-04-15T06:00:00'), end_date: new Date('2026-04-30T06:00:00'), label: 'Segunda quincena - 4/2026',     user_id: jorge.id } });
+  const f_jorge_mar26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.FIRST,  start_date: carmenMarFirst.start_date, end_date: carmenMarFirst.end_date, label: 'Primera quincena - 3/2026',     user_id: jorge.id } });
+  const f_jorge_mar26_second = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.SECOND, start_date: carmenMarSecond.start_date, end_date: carmenMarSecond.end_date, label: 'Segunda quincena - 3/2026',     user_id: jorge.id } });
+  const f_jorge_apr26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.FIRST,  start_date: carmenAprFirst.start_date, end_date: carmenAprFirst.end_date, label: 'Primera quincena - 4/2026',     user_id: jorge.id } });
+  const f_jorge_apr26_second = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.SECOND, start_date: carmenAprSecond.start_date, end_date: carmenAprSecond.end_date, label: 'Segunda quincena - 4/2026',     user_id: jorge.id } });
 
   // Leon Solorzano house
-  const f_house_oct25_second  = await prisma.fortnight.create({ data: { year: 2025, month: 10, period: FortnightPeriod.SECOND, start_date: new Date('2025-10-16T06:00:00'), end_date: new Date('2025-10-31T06:00:00'), label: 'Segunda quincena - 10/2025',    house_id: leonSolorzano.id } });
-  const f_house_mar26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 3,  period: FortnightPeriod.FIRST,  start_date: new Date('2026-03-01T06:00:00'), end_date: new Date('2026-03-15T06:00:00'), label: 'Primera quincena - Marzo 2026', house_id: leonSolorzano.id } });
-  const f_house_mar26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 3,  period: FortnightPeriod.SECOND, start_date: new Date('2026-03-16T06:00:00'), end_date: new Date('2026-03-31T06:00:00'), label: 'Segunda quincena - Marzo 2026', house_id: leonSolorzano.id } });
-  const f_house_apr26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 4,  period: FortnightPeriod.FIRST,  start_date: new Date('2026-04-01T06:00:00'), end_date: new Date('2026-04-15T06:00:00'), label: 'Primera quincena - Abril 2026', house_id: leonSolorzano.id } });
-  const f_house_apr26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 4,  period: FortnightPeriod.SECOND, start_date: new Date('2026-04-16T06:00:00'), end_date: new Date('2026-04-30T06:00:00'), label: 'Segunda quincena - Abril 2026', house_id: leonSolorzano.id } });
-  const f_house_may26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.FIRST,  start_date: new Date('2026-05-01T06:00:00'), end_date: new Date('2026-05-15T06:00:00'), label: 'Primera quincena - Mayo 2026',  house_id: leonSolorzano.id } });
-  const f_house_may26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.SECOND, start_date: new Date('2026-05-16T06:00:00'), end_date: new Date('2026-05-31T06:00:00'), label: 'Segunda quincena - Mayo 2026',  house_id: leonSolorzano.id } });
-  const f_house_jun26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.FIRST,  start_date: new Date('2026-06-01T06:00:00'), end_date: new Date('2026-06-15T06:00:00'), label: 'Primera quincena - Junio 2026', house_id: leonSolorzano.id } });
-  const f_house_jun26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.SECOND, start_date: new Date('2026-06-16T06:00:00'), end_date: new Date('2026-06-30T06:00:00'), label: 'Segunda quincena - Junio 2026', house_id: leonSolorzano.id } });
+  const oct25Second = bounds(2025, 10, FortnightPeriod.SECOND);
+  const houseMarFirst = bounds(2026, 3, FortnightPeriod.FIRST);
+  const houseMarSecond = bounds(2026, 3, FortnightPeriod.SECOND);
+  const houseAprFirst = bounds(2026, 4, FortnightPeriod.FIRST);
+  const houseAprSecond = bounds(2026, 4, FortnightPeriod.SECOND);
+  const houseMayFirst = bounds(2026, 5, FortnightPeriod.FIRST);
+  const houseMaySecond = bounds(2026, 5, FortnightPeriod.SECOND);
+  const houseJunFirst = bounds(2026, 6, FortnightPeriod.FIRST);
+  const houseJunSecond = bounds(2026, 6, FortnightPeriod.SECOND);
+  const f_house_oct25_second  = await prisma.fortnight.create({ data: { year: 2025, month: 10, period: FortnightPeriod.SECOND, start_date: oct25Second.start_date, end_date: oct25Second.end_date, label: 'Segunda quincena - 10/2025',    house_id: leonSolorzano.id } });
+  const f_house_mar26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 3,  period: FortnightPeriod.FIRST,  start_date: houseMarFirst.start_date, end_date: houseMarFirst.end_date, label: 'Primera quincena - Marzo 2026', house_id: leonSolorzano.id } });
+  const f_house_mar26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 3,  period: FortnightPeriod.SECOND, start_date: houseMarSecond.start_date, end_date: houseMarSecond.end_date, label: 'Segunda quincena - Marzo 2026', house_id: leonSolorzano.id } });
+  const f_house_apr26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 4,  period: FortnightPeriod.FIRST,  start_date: houseAprFirst.start_date, end_date: houseAprFirst.end_date, label: 'Primera quincena - Abril 2026', house_id: leonSolorzano.id } });
+  const f_house_apr26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 4,  period: FortnightPeriod.SECOND, start_date: houseAprSecond.start_date, end_date: houseAprSecond.end_date, label: 'Segunda quincena - Abril 2026', house_id: leonSolorzano.id } });
+  const f_house_may26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.FIRST,  start_date: houseMayFirst.start_date, end_date: houseMayFirst.end_date, label: 'Primera quincena - Mayo 2026',  house_id: leonSolorzano.id } });
+  const f_house_may26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.SECOND, start_date: houseMaySecond.start_date, end_date: houseMaySecond.end_date, label: 'Segunda quincena - Mayo 2026',  house_id: leonSolorzano.id } });
+  const f_house_jun26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.FIRST,  start_date: houseJunFirst.start_date, end_date: houseJunFirst.end_date, label: 'Primera quincena - Junio 2026', house_id: leonSolorzano.id } });
+  const f_house_jun26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.SECOND, start_date: houseJunSecond.start_date, end_date: houseJunSecond.end_date, label: 'Segunda quincena - Junio 2026', house_id: leonSolorzano.id } });
 
   // ─────────────────────────────────────────────
   // BUDGETS (house demo)

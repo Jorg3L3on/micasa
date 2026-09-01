@@ -5,6 +5,10 @@ import {
   parseCalendarDate,
   startOfCalendarDay,
 } from '@/lib/calendar-dates';
+import {
+  getFortnightYmdBounds,
+  type CalendarFortnightPeriod,
+} from '@/lib/fortnight-calendar';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
 import type { DateRange } from '@/lib/finance/budget-period-spend';
 
@@ -96,23 +100,22 @@ export function computeBudgetPeriodWindowsForFortnight(
   }
 }
 
-/** MX civil fortnight bounds for a calendar month (1–15 and 16–end). */
+/** Payday-aligned fortnight bounds for a named month (query-inclusive encoding). */
 export function getCalendarFortnightBoundsForMonth(
   year: number,
   month: number,
 ): { first: DateRange; second: DateRange } {
-  const monthStr = String(month).padStart(2, '0');
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const lastDayStr = String(lastDay).padStart(2, '0');
+  const first = getFortnightYmdBounds(year, month, 'FIRST');
+  const second = getFortnightYmdBounds(year, month, 'SECOND');
 
   return {
     first: {
-      start_date: startOfCalendarDay(`${year}-${monthStr}-01`),
-      end_date: endOfCalendarDay(`${year}-${monthStr}-15`),
+      start_date: startOfCalendarDay(first.startYmd),
+      end_date: endOfCalendarDay(first.endYmd),
     },
     second: {
-      start_date: startOfCalendarDay(`${year}-${monthStr}-16`),
-      end_date: endOfCalendarDay(`${year}-${monthStr}-${lastDayStr}`),
+      start_date: startOfCalendarDay(second.startYmd),
+      end_date: endOfCalendarDay(second.endYmd),
     },
   };
 }
@@ -122,26 +125,19 @@ export function getCalendarFortnightBoundsForMonth(
  * (`parseCalendarDate`) so PostgreSQL `timestamp` round-trips keep the same
  * Mexico City calendar day. Prefer this for Fortnight / BudgetPeriod rows.
  * Use `getCalendarFortnightBoundsForMonth` for inclusive query scopes.
+ *
+ * FIRST: last day of previous month through the 14th.
+ * SECOND: the 15th through the penultimate day.
  */
 export function getCanonicalFortnightBounds(
   year: number,
   month: number,
-  period: 'FIRST' | 'SECOND',
+  period: CalendarFortnightPeriod,
 ): DateRange {
-  const monthStr = String(month).padStart(2, '0');
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const lastDayStr = String(lastDay).padStart(2, '0');
-
-  if (period === 'FIRST') {
-    return {
-      start_date: parseCalendarDate(`${year}-${monthStr}-01`),
-      end_date: parseCalendarDate(`${year}-${monthStr}-15`),
-    };
-  }
-
+  const { startYmd, endYmd } = getFortnightYmdBounds(year, month, period);
   return {
-    start_date: parseCalendarDate(`${year}-${monthStr}-16`),
-    end_date: parseCalendarDate(`${year}-${monthStr}-${lastDayStr}`),
+    start_date: parseCalendarDate(startYmd),
+    end_date: parseCalendarDate(endYmd),
   };
 }
 

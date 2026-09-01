@@ -15,16 +15,17 @@ It is intentionally high-level so it stays in sync with the existing architectur
 
 ### 2. Fortnights
 
-- **Periods** (deterministic budgeting periods; not editable catalog records):
-  - Days **1–15** → `FIRST`
-  - Days **16–end of month** → `SECOND`
+- **Periods** (payday-aligned budgeting windows; not editable catalog records):
+  - Last day of previous month through the **14th** → `FIRST` of the named month
+  - The **15th** through the **penultimate** day → `SECOND`
+  - Last day of the month belongs to `FIRST` of the **next** month
 - **Uniqueness**:
   - At most one fortnight per owner and period:
     - `@@unique([user_id, month, year, period])`
     - `@@unique([house_id, month, year, period])`
-- **Helper** (`src/lib/fortnights.ts`):
-  - `getFortnightPeriodForDay(day)` decides `FIRST`/`SECOND`.
-  - `resolveOrCreateFortnight({ ownerType, ownerId, year, month, period })`:
+- **Helper** (`src/lib/fortnight-calendar.ts`):
+  - `getCalendarFortnightRefForYmd(ymd)` decides `{ year, month, period }`.
+  - `resolveOrCreateFortnight({ ownerType, ownerId, year, month, period })` (`src/lib/fortnights.ts`):
     - Finds existing fortnight for the owner or creates one with correct `start_date` / `end_date`.
 
 #### Fortnight lifecycle (deterministic, read-only)

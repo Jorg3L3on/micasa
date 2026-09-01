@@ -14,8 +14,8 @@ import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
 import { MONTHLY_ACCENT_TEXT_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
-  formatDayMonthLabel,
   formatDayMonthLabelFromYmd,
+  getCalendarFortnightRefForYmd,
   getFortnightCalendarBounds,
   getFortnightPeriodPosition,
 } from '@/lib/fortnight-calendar';
@@ -80,10 +80,9 @@ export const MonthlyChromeHeader = ({
   showFortnightToggle = true,
 }: MonthlyChromeHeaderProps) => {
   const { prefsReady, period, setPeriod } = useMonthlyPanelPreferences();
-  const [currentYear, currentMonth] = todayYmd.split('-').map(Number) as [
-    number,
-    number,
-  ];
+  const current = getCalendarFortnightRefForYmd(todayYmd);
+  const currentYear = current.year;
+  const currentMonth = current.month;
 
   const handlePeriodChange = (next: FortnightPeriod) => {
     setPeriod(next);
@@ -91,8 +90,8 @@ export const MonthlyChromeHeader = ({
 
   const position = getFortnightPeriodPosition(year, month, period, todayYmd);
   const bounds = getFortnightCalendarBounds(year, month, period);
-  const startLabel = formatDayMonthLabel(year, month, bounds.startDay);
-  const endLabel = formatDayMonthLabel(year, month, bounds.endDay);
+  const startLabel = formatDayMonthLabelFromYmd(bounds.startYmd);
+  const endLabel = formatDayMonthLabelFromYmd(bounds.endYmd);
 
   const fortnightToggle = !showFortnightToggle ? null : !prefsReady ? (
     <Skeleton

@@ -106,8 +106,8 @@ describe('createBudget', () => {
       period: 'FIRST' as const,
     };
     const expectedBounds = {
-      start_date: parseCalendarDate('2026-06-01'),
-      end_date: parseCalendarDate('2026-06-15'),
+      start_date: parseCalendarDate('2026-05-31'),
+      end_date: parseCalendarDate('2026-06-14'),
     };
     mocks.fortnight.findFirst.mockResolvedValue(currentFortnight);
     mocks.budget.create.mockResolvedValue({ ...budgetFixture, id: 11 });

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createExpense } from '@/lib/finance/expense.service';
 import { parseWalletImportCsv } from '@/lib/finance/parse-wallet-import-csv';
@@ -78,11 +78,7 @@ export async function POST(
     }
 
     for (const row of rows) {
-      const [yearStr, monthStr, dayStr] = row.date.split('-');
-      const year = Number(yearStr);
-      const month = Number(monthStr);
-      const day = Number(dayStr);
-      const period = getFortnightPeriodForDay(day);
+      const { year, month, period } = getCalendarFortnightRefForYmd(row.date);
       try {
         const fortnight = await resolveOrCreateFortnight({
           ownerType,

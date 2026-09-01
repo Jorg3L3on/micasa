@@ -4,7 +4,7 @@
   <img src="public/apple-touch-icon.png" alt="MiCasa" width="72" height="72" />
 </p>
 
-**Fortnight-first personal & household finance** — plan incomes, expenses, wallets, cards, and loans around Mexico’s real pay rhythm (`1–15` / `16–fin`), alone or as a shared house.
+**Fortnight-first personal & household finance** — plan incomes, expenses, wallets, cards, and loans around Mexico’s real pay rhythm (último día del mes al 14 / 15 al penúltimo), alone or as a shared house.
 
 [Live demo](https://micasa-three.vercel.app) · [Releases](https://github.com/Jorg3L3on/micasa/releases) · [Changelog](./CHANGELOG.md) · [Design system](./DESIGN.md)
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { formatCalendarDate, parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
+import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
+import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -102,31 +103,6 @@ const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
 
 const scopedFortnightTabStorageKey = (scope: string, p: 'FIRST' | 'SECOND') =>
   `${fortnightTabStorageKey(p)}:${scope}`;
-
-function getDefaultDateForFortnight(
-  year: number,
-  month: number,
-  period: 'FIRST' | 'SECOND',
-): string {
-  const todayYmd = todayCalendarDate();
-  const [currentYear, currentMonth, currentDay] = todayYmd.split('-').map(Number);
-
-  if (year === currentYear && month === currentMonth) {
-    if (period === 'FIRST' && currentDay >= 1 && currentDay <= 15) {
-      return todayYmd;
-    }
-    if (period === 'SECOND' && currentDay >= 16) {
-      return todayYmd;
-    }
-  }
-
-  const day = period === 'FIRST' ? 1 : 16;
-  return formatCalendarDate(
-    parseCalendarDate(
-      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-    ),
-  );
-}
 
 type IncomeItemBySource = {
   fortnightId: number;

@@ -10,6 +10,7 @@ import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/plannin
 import { partitionLoanPaymentsForPlanningTotals } from '@/lib/finance/planning-period-loan-totals';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
 import * as alertsQueries from './alerts.queries';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import type {
   AlertsResponse,
   FinanceAlert,
@@ -21,9 +22,7 @@ import type {
 const MIN_ALERTABLE_AMOUNT = 0.005;
 
 const getCurrentPeriod = (): ResolvedAlertsPeriod => {
-  const [year, month, day] = todayCalendarDate().split('-').map(Number);
-  const period: 'FIRST' | 'SECOND' = day <= 15 ? 'FIRST' : 'SECOND';
-  return { year, month, period };
+  return getCalendarFortnightRefForYmd(todayCalendarDate());
 };
 
 const resolvePeriod = (params: GetAlertsParams) => {

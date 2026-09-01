@@ -400,7 +400,7 @@ export default function EditIncomeTemplatePage() {
                             Primera quincena
                           </FormLabel>
                           <FormDescription className="text-xs">
-                            Aplica en días 1-15
+                            Aplica del último día del mes anterior al 14
                           </FormDescription>
                         </div>
                       </FormItem>
@@ -423,7 +423,7 @@ export default function EditIncomeTemplatePage() {
                             Segunda quincena
                           </FormLabel>
                           <FormDescription className="text-xs">
-                            Aplica en días 16-31
+                            Aplica del 15 al penúltimo día
                           </FormDescription>
                         </div>
                       </FormItem>

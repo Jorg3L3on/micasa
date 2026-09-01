@@ -237,13 +237,13 @@ describe('generatePeriodsForMonth', () => {
     mocks.fortnightFindMany.mockResolvedValue([
       {
         period: 'FIRST',
-        start_date: startOfCalendarDay('2026-06-01'),
-        end_date: endOfCalendarDay('2026-06-15'),
+        start_date: startOfCalendarDay('2026-05-31'),
+        end_date: endOfCalendarDay('2026-06-14'),
       },
       {
         period: 'SECOND',
-        start_date: startOfCalendarDay('2026-06-16'),
-        end_date: endOfCalendarDay('2026-06-30'),
+        start_date: startOfCalendarDay('2026-06-15'),
+        end_date: endOfCalendarDay('2026-06-29'),
       },
     ]);
     // MX-midnight encoding (06:00Z) — not equal to canonical UTC noon windows.
@@ -253,13 +253,13 @@ describe('generatePeriodsForMonth', () => {
       return [
         {
           id: 106,
-          start_date: new Date('2026-06-01T06:00:00.000Z'),
-          end_date: new Date('2026-06-15T06:00:00.000Z'),
+          start_date: new Date('2026-05-31T06:00:00.000Z'),
+          end_date: new Date('2026-06-14T06:00:00.000Z'),
         },
         {
           id: 107,
-          start_date: new Date('2026-06-16T06:00:00.000Z'),
-          end_date: new Date('2026-06-30T06:00:00.000Z'),
+          start_date: new Date('2026-06-15T06:00:00.000Z'),
+          end_date: new Date('2026-06-29T06:00:00.000Z'),
         },
       ];
     });

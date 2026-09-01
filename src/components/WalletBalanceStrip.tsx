@@ -12,6 +12,13 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { CreditCard, Landmark, Wallet } from 'lucide-react';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  calendarDayCountInclusive,
+  dueDayFallsInFortnight,
+  dueYmdInFortnight,
+  getCurrentCalendarFortnightRef,
+} from '@/lib/fortnight-calendar';
 
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
@@ -104,28 +111,39 @@ const WalletBalanceStrip = ({
                   return effectiveAmount > 0 ? 100 : 0;
                 })();
 
-                const today = new Date();
-                const currentDay = today.getDate();
+                const current = getCurrentCalendarFortnightRef();
+                const todayYmd = todayCalendarDate();
+                const dueYmd =
+                  wallet.due_day != null
+                    ? dueYmdInFortnight(
+                        wallet.due_day,
+                        current.year,
+                        current.month,
+                        current.period,
+                      )
+                    : null;
 
-                const isFirstFortnight = currentDay <= 15;
                 const walletAlreadyPaid = paidWalletIds.includes(wallet.id);
                 const dueInCurrentFortnight =
                   isCreditType &&
                   !walletAlreadyPaid &&
                   wallet.due_day != null &&
-                  (isFirstFortnight
-                    ? wallet.due_day >= 1 && wallet.due_day <= 15
-                    : wallet.due_day >= 16);
+                  dueDayFallsInFortnight(
+                    wallet.due_day,
+                    current.year,
+                    current.month,
+                    current.period,
+                  );
 
                 const isDueNear = (() => {
-                  if (!dueInCurrentFortnight) return false;
-                  const daysUntilDue = wallet.due_day! - currentDay;
+                  if (!dueInCurrentFortnight || dueYmd == null) return false;
+                  const daysUntilDue = calendarDayCountInclusive(todayYmd, dueYmd) - 1;
                   return daysUntilDue >= 0 && daysUntilDue <= 5;
                 })();
 
                 const isDuePast = (() => {
-                  if (!dueInCurrentFortnight) return false;
-                  return wallet.due_day! < currentDay;
+                  if (!dueInCurrentFortnight || dueYmd == null) return false;
+                  return dueYmd < todayYmd;
                 })();
 
                 const showDueReminder =

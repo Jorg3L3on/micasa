@@ -43,7 +43,7 @@ import {
 } from '@/schemas/transaction.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { isGoalWalletType } from '@/domain/payment-method';
 import { cn, formatCurrency, formatMonth } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
@@ -68,12 +68,8 @@ const emptyValues = (): QuickExpenseFormValues => ({
 });
 
 function fortnightPreviewLabel(dateStr: string): string {
-  const parts = dateStr.split('-').map(Number);
-  const year = parts[0];
-  const month = parts[1];
-  const day = parts[2];
-  if (!year || !month || !day) return 'Quincena según la fecha';
-  const period = getFortnightPeriodForDay(day);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return 'Quincena según la fecha';
+  const { year, month, period } = getCalendarFortnightRefForYmd(dateStr);
   const periodLabel =
     period === 'FIRST' ? '1ª quincena' : '2ª quincena';
   const monthLabel = formatMonth(month);
