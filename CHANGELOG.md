@@ -9,6 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- **PWA / iPhone home screen** — Web App Manifest (`display: standalone`) and Apple web-app metadata so Safari can add MiCasa to the home screen without the App Store.
 - **Loans (Préstamos)** — `Loan` and `LoanPayment` models, payment schedules, planner panel, wallet linking, and integration with dashboard obligations, liquidity projection, and transactions.
 - **Expense ↔ loan payment link** — optional `Expense.loan_payment_id` when a wallet-paid installment is recorded as an expense.
 - **Recurrent budgets** and **budget periods**.

@@ -68,6 +68,6 @@ export default Sentry.wrapMiddlewareWithSentry(proxy);
 // auth redirects still run. Public routes are listed in PUBLIC_PATHS.
 export const config = {
   matcher: [
-    '/((?!api|monitoring|_next/static|_next/image|favicon.ico|icon.ico|apple-touch-icon.png|apple-icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!api|monitoring|_next/static|_next/image|favicon.ico|icon.ico|manifest.webmanifest|apple-touch-icon.png|apple-icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)',
   ],
 };
