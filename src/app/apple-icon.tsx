@@ -1,5 +1,13 @@
 import { ImageResponse } from 'next/og';
 
+import {
+  MICASA_MARK_NODE_R,
+  MICASA_MARK_NODES,
+  MICASA_MARK_PATH,
+  MICASA_MARK_STROKE_WIDTH,
+  MICASA_MARK_VIEWBOX,
+} from '@/components/brand/micasa-mark-geometry';
+
 export const size = {
   width: 180,
   height: 180,
@@ -23,42 +31,46 @@ export default function AppleIcon() {
         }}
       >
         <svg
-          width="124"
-          height="124"
-          viewBox="0 0 220 180"
+          width="148"
+          height="84"
+          viewBox={MICASA_MARK_VIEWBOX}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path
-            d="M26 118 L58 60 L94 118 L130 60 L166 118"
-            stroke="url(#micasaGrad)"
-            strokeWidth="15"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <circle cx="26" cy="118" r="11" fill="url(#micasaGrad)" />
-          <circle cx="58" cy="60" r="11" fill="url(#micasaGrad)" />
-          <circle cx="94" cy="118" r="11" fill="url(#micasaGrad)" />
-          <circle cx="130" cy="60" r="11" fill="url(#micasaGrad)" />
-          <circle cx="166" cy="118" r="11" fill="url(#micasaGrad)" />
           <defs>
             <linearGradient
               id="micasaGrad"
-              x1="0"
-              y1="0"
-              x2="220"
-              y2="180"
-              gradientUnits="userSpaceOnUse"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
             >
-              <stop stopColor="#2E8DF5" />
-              <stop offset="1" stopColor="#AC3DF3" />
+              <stop stopColor="#6d8bff" />
+              <stop offset="0.38" stopColor="#3a37fc" />
+              <stop offset="1" stopColor="#ee477a" />
             </linearGradient>
           </defs>
+          <path
+            d={MICASA_MARK_PATH}
+            stroke="url(#micasaGrad)"
+            strokeWidth={MICASA_MARK_STROKE_WIDTH}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {MICASA_MARK_NODES.map(([cx, cy]) => (
+            <circle
+              key={`${cx}-${cy}`}
+              cx={cx}
+              cy={cy}
+              r={MICASA_MARK_NODE_R}
+              fill="url(#micasaGrad)"
+            />
+          ))}
         </svg>
       </div>
     ),
     {
       ...size,
-    }
+    },
   );
 }

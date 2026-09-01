@@ -2,6 +2,13 @@
 
 import { useId } from 'react';
 
+import {
+  MICASA_MARK_NODE_R,
+  MICASA_MARK_NODES,
+  MICASA_MARK_PATH,
+  MICASA_MARK_STROKE_WIDTH,
+  MICASA_MARK_VIEWBOX,
+} from '@/components/brand/micasa-mark-geometry';
 import { cn } from '@/lib/utils';
 
 type MicasaMarkProps = {
@@ -10,37 +17,50 @@ type MicasaMarkProps = {
   title?: string;
 };
 
-/** Brand isotipo: connected nodes in blue→violet gradient. */
+/** Brand isotipo: rooftop zigzag with round nodes, Zigzag/Workia gradient + gloss. */
 export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
   const reactId = useId();
-  const gradientId = `micasaMarkGradient-${reactId.replace(/:/g, '')}`;
+  const uid = reactId.replace(/:/g, '');
+  const fillId = `micasaMarkFill-${uid}`;
+  const glossId = `micasaMarkGloss-${uid}`;
   const isDecorative = !title;
 
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="28 18 182 92"
+      viewBox={MICASA_MARK_VIEWBOX}
       role={isDecorative ? undefined : 'img'}
       aria-hidden={isDecorative ? true : undefined}
       className={cn('shrink-0', className)}
     >
       {title ? <title>{title}</title> : null}
       <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3a37fc" />
+        <linearGradient id={fillId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6d8bff" />
+          <stop offset="38%" stopColor="#3a37fc" />
           <stop offset="100%" stopColor="#ee477a" />
         </linearGradient>
+        <linearGradient id={glossId} x1="0%" y1="0%" x2="55%" y2="90%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
+          <stop offset="42%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <circle cx="48" cy="90" r="13" fill={`url(#${gradientId})`} />
-      <circle cx="82" cy="38" r="13" fill={`url(#${gradientId})`} />
-      <circle cx="118" cy="90" r="13" fill={`url(#${gradientId})`} />
-      <circle cx="154" cy="38" r="13" fill={`url(#${gradientId})`} />
-      <circle cx="190" cy="90" r="13" fill={`url(#${gradientId})`} />
       <path
-        d="M48 90 L82 38 L118 90 L154 38 L190 90"
+        d={MICASA_MARK_PATH}
         fill="none"
-        stroke={`url(#${gradientId})`}
-        strokeWidth="11"
+        stroke={`url(#${fillId})`}
+        strokeWidth={MICASA_MARK_STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {MICASA_MARK_NODES.map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={MICASA_MARK_NODE_R} fill={`url(#${fillId})`} />
+      ))}
+      <path
+        d={MICASA_MARK_PATH}
+        fill="none"
+        stroke={`url(#${glossId})`}
+        strokeWidth={MICASA_MARK_STROKE_WIDTH}
         strokeLinecap="round"
         strokeLinejoin="round"
       />

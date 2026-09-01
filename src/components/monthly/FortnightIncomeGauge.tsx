@@ -5,6 +5,11 @@ import {
   getFortnightIncomeGaugeSegments,
   getIncomeCommitmentTone,
 } from '@/components/monthly/fortnight-income-commitment';
+import {
+  GAUGE_STROKE_WIDTH,
+  describeGaugeTopArc,
+  pointOnGaugeArc,
+} from '@/components/monthly/fortnight-income-gauge-geometry';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightIncomeGaugeProps = {
@@ -23,37 +28,23 @@ const commitmentStrokeClass = (tone: 'ok' | 'warning' | 'danger') => {
   return 'text-emerald-500 dark:text-emerald-400';
 };
 
+const commitmentFillClass = (tone: 'ok' | 'warning' | 'danger') => {
+  if (tone === 'danger') return 'fill-destructive';
+  if (tone === 'warning') return 'fill-amber-500 dark:fill-amber-400';
+  return 'fill-emerald-500 dark:fill-emerald-400';
+};
+
 const commitmentLabelClass = (tone: 'ok' | 'warning' | 'danger') => {
   if (tone === 'danger') return 'text-destructive';
   if (tone === 'warning') return 'text-amber-600 dark:text-amber-400';
   return 'text-emerald-700 dark:text-emerald-300';
 };
 
-/** Presupuesto restante: violet (sky ya es “libre” en este gauge). */
 const BUDGET_STROKE_CLASS = 'text-violet-500 dark:text-violet-400';
-
-const GAUGE_CX = 60;
-const GAUGE_CY = 54;
-const GAUGE_R = 46;
-
-/** Arco superior: 180° = izquierda, 0° = derecha, 90° = arriba. */
-const pointOnArc = (degrees: number) => {
-  const rad = (degrees * Math.PI) / 180;
-  return {
-    x: GAUGE_CX + GAUGE_R * Math.cos(rad),
-    y: GAUGE_CY - GAUGE_R * Math.sin(rad),
-  };
-};
-
-const describeTopArc = (startDeg: number, endDeg: number) => {
-  const start = pointOnArc(startDeg);
-  const end = pointOnArc(endDeg);
-  const delta = Math.abs(startDeg - endDeg);
-  if (delta < 0.01) return '';
-  const largeArc = delta > 180 ? 1 : 0;
-  const sweep = startDeg > endDeg ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${GAUGE_R} ${GAUGE_R} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
-};
+const BUDGET_FILL_CLASS = 'fill-violet-500 dark:fill-violet-400';
+const CAP_R = GAUGE_STROKE_WIDTH / 2;
+/** Tiny overlap so butt joins never show a hairline gap. */
+const JOIN_OVERLAP_DEG = 0.45;
 
 const ratioToDegSpan = (ratio: number) => ratio * 180;
 
@@ -65,7 +56,6 @@ export const FortnightIncomeGauge = ({
 }: FortnightIncomeGaugeProps) => {
   const uid = useId().replace(/:/g, '');
   const freeGradientId = `fortnightFree-${uid}`;
-  const freeGlowId = `fortnightFreeGlow-${uid}`;
   const segments = getFortnightIncomeGaugeSegments(
     periodIncome,
     cashCommitted,
@@ -74,16 +64,47 @@ export const FortnightIncomeGauge = ({
   const { cashRatio, budgetRatio, freeRatio, totalCommittedPercent } = segments;
   const tone = getIncomeCommitmentTone(totalCommittedPercent);
 
-  // Left → right: efectivo comprometido → presupuesto → libre
   const cashEndDeg = 180 - ratioToDegSpan(cashRatio);
   const budgetEndDeg = cashEndDeg - ratioToDegSpan(budgetRatio);
 
-  const cashPath =
-    cashRatio > 0.0001 ? describeTopArc(180, cashEndDeg) : '';
-  const budgetPath =
-    budgetRatio > 0.0001 ? describeTopArc(cashEndDeg, budgetEndDeg) : '';
-  const freePath =
-    freeRatio > 0.0001 ? describeTopArc(budgetEndDeg, 0) : '';
+  const hasCash = cashRatio > 0.0001;
+  const hasBudget = budgetRatio > 0.0001;
+  const hasFree = freeRatio > 0.0001;
+
+  const cashPath = hasCash
+    ? describeGaugeTopArc(
+        180,
+        cashEndDeg - (hasBudget || hasFree ? JOIN_OVERLAP_DEG : 0),
+      )
+    : '';
+  const budgetPath = hasBudget
+    ? describeGaugeTopArc(
+        cashEndDeg + (hasCash ? JOIN_OVERLAP_DEG : 0),
+        budgetEndDeg - (hasFree ? JOIN_OVERLAP_DEG : 0),
+      )
+    : '';
+  const freePath = hasFree
+    ? describeGaugeTopArc(
+        budgetEndDeg + (hasCash || hasBudget ? JOIN_OVERLAP_DEG : 0),
+        0,
+      )
+    : '';
+
+  const startCap = hasCash
+    ? { point: pointOnGaugeArc(180), className: commitmentFillClass(tone) }
+    : hasBudget
+      ? { point: pointOnGaugeArc(180), className: BUDGET_FILL_CLASS }
+      : hasFree
+        ? { point: pointOnGaugeArc(180), fill: `url(#${freeGradientId})` }
+        : null;
+
+  const endCap = hasFree
+    ? { point: pointOnGaugeArc(0), fill: '#ee477a' }
+    : hasBudget
+      ? { point: pointOnGaugeArc(0), className: BUDGET_FILL_CLASS }
+      : hasCash
+        ? { point: pointOnGaugeArc(0), className: commitmentFillClass(tone) }
+        : null;
 
   const showBudgetLegend = budgetRatio > 0.0001;
 
@@ -105,22 +126,22 @@ export const FortnightIncomeGauge = ({
               <stop offset="50%" stopColor="#911efe" />
               <stop offset="100%" stopColor="#ee477a" />
             </linearGradient>
-            <filter id={freeGlowId} x="-20%" y="-40%" width="140%" height="180%">
-              <feGaussianBlur stdDeviation="2.4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
           </defs>
+          <path
+            d={describeGaugeTopArc(180, 0)}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={GAUGE_STROKE_WIDTH}
+            strokeLinecap="round"
+            className="text-muted-foreground/20"
+          />
           {freePath ? (
             <path
               d={freePath}
               fill="none"
               stroke={`url(#${freeGradientId})`}
-              strokeWidth="12"
-              strokeLinecap="round"
-              filter={`url(#${freeGlowId})`}
+              strokeWidth={GAUGE_STROKE_WIDTH}
+              strokeLinecap="butt"
               className="transition-[d] duration-500"
             />
           ) : null}
@@ -129,8 +150,8 @@ export const FortnightIncomeGauge = ({
               d={budgetPath}
               fill="none"
               stroke="currentColor"
-              strokeWidth="12"
-              strokeLinecap="round"
+              strokeWidth={GAUGE_STROKE_WIDTH}
+              strokeLinecap="butt"
               className={cn('transition-[d] duration-500', BUDGET_STROKE_CLASS)}
             />
           ) : null}
@@ -139,12 +160,30 @@ export const FortnightIncomeGauge = ({
               d={cashPath}
               fill="none"
               stroke="currentColor"
-              strokeWidth="12"
-              strokeLinecap="round"
+              strokeWidth={GAUGE_STROKE_WIDTH}
+              strokeLinecap="butt"
               className={cn(
                 'transition-[d] duration-500',
                 commitmentStrokeClass(tone),
               )}
+            />
+          ) : null}
+          {startCap ? (
+            <circle
+              cx={startCap.point.x}
+              cy={startCap.point.y}
+              r={CAP_R}
+              className={startCap.className}
+              fill={startCap.fill}
+            />
+          ) : null}
+          {endCap ? (
+            <circle
+              cx={endCap.point.x}
+              cy={endCap.point.y}
+              r={CAP_R}
+              className={endCap.className}
+              fill={endCap.fill}
             />
           ) : null}
         </svg>
