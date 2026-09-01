@@ -63,7 +63,9 @@ export const FortnightIncomeGauge = ({
   periodIncome,
   className,
 }: FortnightIncomeGaugeProps) => {
-  const freeGradientId = `fortnightFree-${useId().replace(/:/g, '')}`;
+  const uid = useId().replace(/:/g, '');
+  const freeGradientId = `fortnightFree-${uid}`;
+  const freeGlowId = `fortnightFreeGlow-${uid}`;
   const segments = getFortnightIncomeGaugeSegments(
     periodIncome,
     cashCommitted,
@@ -96,20 +98,29 @@ export const FortnightIncomeGauge = ({
       }
     >
       <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
-        <svg viewBox="0 0 120 60" className="h-full w-full" aria-hidden>
+        <svg viewBox="0 0 120 60" className="h-full w-full overflow-visible" aria-hidden>
           <defs>
             <linearGradient id={freeGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#3a37fc" />
+              <stop offset="50%" stopColor="#911efe" />
               <stop offset="100%" stopColor="#ee477a" />
             </linearGradient>
+            <filter id={freeGlowId} x="-20%" y="-40%" width="140%" height="180%">
+              <feGaussianBlur stdDeviation="2.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
           {freePath ? (
             <path
               d={freePath}
               fill="none"
               stroke={`url(#${freeGradientId})`}
-              strokeWidth="10"
+              strokeWidth="12"
               strokeLinecap="round"
+              filter={`url(#${freeGlowId})`}
               className="transition-[d] duration-500"
             />
           ) : null}
@@ -118,7 +129,7 @@ export const FortnightIncomeGauge = ({
               d={budgetPath}
               fill="none"
               stroke="currentColor"
-              strokeWidth="10"
+              strokeWidth="12"
               strokeLinecap="round"
               className={cn('transition-[d] duration-500', BUDGET_STROKE_CLASS)}
             />
@@ -128,7 +139,7 @@ export const FortnightIncomeGauge = ({
               d={cashPath}
               fill="none"
               stroke="currentColor"
-              strokeWidth="10"
+              strokeWidth="12"
               strokeLinecap="round"
               className={cn(
                 'transition-[d] duration-500',
@@ -185,7 +196,7 @@ export const FortnightIncomeGauge = ({
           </span>
           {freeRatio > 0.0001 ? (
             <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a]" />
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-linear-to-r from-[#3a37fc] via-[#911efe] to-[#ee477a]" />
               <span className="text-[9px] text-muted-foreground">Libre</span>
             </span>
           ) : null}

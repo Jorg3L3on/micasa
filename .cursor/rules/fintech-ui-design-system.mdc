@@ -104,7 +104,7 @@ For horizontally scrollable content (e.g. wallet cards), use:
 ## Card Shells
 
 - Use `overflow-hidden border-border/60` on all Card components
-- Dark glass (planner, summaries): reuse `MONTHLY_PANEL_SHELL_CLASS` (`src/components/monthly/monthly-panel-shell.ts`) — `dark:border-white/[0.08] dark:bg-[#0d1327]/80 dark:backdrop-blur-xl` plus the blue glow shadow. Do not invent a second glass recipe.
+- Dark glass (planner, summaries): reuse `MONTHLY_PANEL_SHELL_CLASS` (`src/components/monthly/monthly-panel-shell.ts`) — `.orion-panel-glass` (specular + faint grid in dark) + `dark:backdrop-blur-xl`. Do not invent a second glass recipe.
 - Hero sections get subtle background decoration: `pointer-events-none absolute` blurred circles (`AppAtmosphere` / `LandingAtmosphere` already own page-level orbs)
 - Expandable sections use hover rows: `rounded-md px-2 py-1 -mx-1 transition-colors hover:bg-muted/40`
 

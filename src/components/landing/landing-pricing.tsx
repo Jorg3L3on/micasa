@@ -79,7 +79,13 @@ export const LandingPricing = () => {
                   plan.featured ? 'landing-pro-border shadow-[0_0_48px_-16px_rgba(255,77,0,0.55)]' : 'bg-white/[0.08]'
                 )}
               >
-                <div className="flex h-full flex-col rounded-2xl bg-[#0d1327] px-6 py-7">
+                <div
+                  className={cn(
+                    'flex h-full flex-col rounded-2xl bg-[#0d1327] px-6 py-7',
+                    plan.featured &&
+                      'bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,transparent_36%),#0d1327] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
+                  )}
+                >
                   {plan.featured ? (
                     <span className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-[#090e1d] px-3 py-1 text-[11px] font-medium text-white">
                       Más popular
@@ -109,7 +115,7 @@ export const LandingPricing = () => {
                     className={cn(
                       'mt-8 inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff5733]/60',
                       plan.featured
-                        ? 'bg-white text-[#060914] hover:bg-white/90'
+                        ? 'border border-white/20 bg-white/[0.06] text-white backdrop-blur-sm hover:bg-white/[0.12]'
                         : 'border border-white/15 text-white hover:border-white/30 hover:bg-white/[0.05]'
                     )}
                   >

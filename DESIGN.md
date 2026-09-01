@@ -58,10 +58,11 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 - **Fonts:** Manrope (`--font-landing-display`) + Nunito (`--font-landing-sans`) — scoped on the landing wrapper only. Do not load these on app routes.
 - **Canvas:** `#060914` with `LandingAtmosphere` blue/pink orbs.
+- **Hero panel:** `.landing-hero-wash` — purple → pink gradient wash + faint grid. Headline is white; last words may use `.landing-accent-text`.
 - **Primary CTA:** pill (`rounded-full`) + `.landing-cta` orange gradient + orange glow shadow. Secondary: ghost / hairline glass, not a second orange button.
-- **Product mocks:** glass cards (`border-white/[0.08]`, `bg-[#0d1327]/80`, blur). Money in `font-mono tabular-nums`.
-- **Featured pricing card:** `.landing-pro-border` (orange → purple).
-- **Accent headline wash:** `.landing-accent-text`.
+- **Product mocks / feature cards:** `.landing-glass-card` (specular + navy). Money in `font-mono tabular-nums`.
+- **Featured pricing card:** `.landing-pro-border` (orange → purple). Featured CTA is dark glass, not a white fill.
+- **Accent headline wash:** `.landing-accent-text` (clipped gradient).
 
 ### Logged-in app (and login)
 
@@ -70,14 +71,15 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
 - **Primary labeled buttons in dark** use the **orange gradient** (`Button` `variant="default"`). Do not invent a second primary orange utility; use `<Button>`.
-- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
-- **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts`. Reuse it (or the same class string) for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page.
+- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs + faint grid in dark). Login has its own aurora (`login-stage`).
+- **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page.
 
 ```
-relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]
-dark:border-white/[0.08] dark:bg-[#0d1327]/80
-dark:shadow-[0_24px_80px_-48px_rgba(58,55,252,0.45)] dark:backdrop-blur-xl
+orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 shadow-sm
+dark:backdrop-blur-xl
 ```
+
+Dark specular + grid live in `.orion-panel-glass` (`globals.css`). Metric tiles inside the summary use `.orion-metric-tile`.
 
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/75` plus a soft blue drop shadow.
 
