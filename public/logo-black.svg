@@ -6,69 +6,34 @@
 >
   <title id="micasaLogoBlackTitle">MiCasa</title>
   <desc id="micasaLogoBlackDesc">
-    Logotipo de MiCasa con isotipo de nodos en gradiente azul y morado, versión oscura.
+    Logotipo de MiCasa con isotipo M en cinta redondeada, gradiente azul a magenta.
   </desc>
   <defs>
     <linearGradient id="micasaBrandGradientBlack" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2E8DF5" />
-      <stop offset="100%" stop-color="#AC3DF3" />
+      <stop offset="0%" stop-color="#6d8bff" />
+      <stop offset="38%" stop-color="#3a37fc" />
+      <stop offset="100%" stop-color="#ee477a" />
+    </linearGradient>
+    <linearGradient id="micasaBrandGlossBlack" x1="0%" y1="0%" x2="55%" y2="90%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55" />
+      <stop offset="42%" stop-color="#ffffff" stop-opacity="0" />
     </linearGradient>
   </defs>
 
-  <g transform="translate(40 36)">
-    <circle cx="48" cy="102" r="12" fill="url(#micasaBrandGradientBlack)" />
-    <circle cx="82" cy="46" r="12" fill="url(#micasaBrandGradientBlack)" />
-    <circle cx="118" cy="102" r="12" fill="url(#micasaBrandGradientBlack)" />
-    <circle cx="154" cy="46" r="12" fill="url(#micasaBrandGradientBlack)" />
-    <circle cx="190" cy="102" r="12" fill="url(#micasaBrandGradientBlack)" />
-    <path
-      d="M48 102 L82 46 L118 102 L154 46 L190 102"
-      fill="none"
-      stroke="url(#micasaBrandGradientBlack)"
-      stroke-width="10"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <line
-      x1="82"
-      y1="24"
-      x2="82"
-      y2="8"
-      stroke="#71717A"
-      stroke-width="5"
-      stroke-linecap="round"
-    />
-    <line
-      x1="154"
-      y1="24"
-      x2="154"
-      y2="8"
-      stroke="#71717A"
-      stroke-width="5"
-      stroke-linecap="round"
-    />
-    <line
-      x1="36"
-      y1="34"
-      x2="20"
-      y2="24"
-      stroke="#71717A"
-      stroke-width="5"
-      stroke-linecap="round"
-    />
-    <line
-      x1="202"
-      y1="34"
-      x2="218"
-      y2="24"
-      stroke="#71717A"
-      stroke-width="5"
-      stroke-linecap="round"
-    />
+  <g transform="translate(52 48) scale(2.4)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="url(#micasaBrandGradientBlack)" stroke-width="11">
+      <path d="M12 46 L12 10" />
+      <path d="M52 46 L52 10" />
+      <path d="M12 10 L32 38 L52 10" />
+    </g>
+    <g stroke="url(#micasaBrandGlossBlack)" stroke-width="11">
+      <path d="M12 46 L12 10" />
+      <path d="M12 10 L32 38 L52 10" />
+    </g>
   </g>
 
   <text
-    x="290"
+    x="250"
     y="120"
     fill="#0A0B10"
     font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
@@ -79,7 +44,7 @@
     MiCasa
   </text>
   <text
-    x="290"
+    x="250"
     y="176"
     fill="#71717A"
     font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"

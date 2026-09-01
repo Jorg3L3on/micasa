@@ -46,7 +46,7 @@ Navy canvas, glass cards, **orange pill CTAs**, **blue → magenta** accents. At
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): gradient `#3a37fc` → `#ee477a`. Route progress (`NextTopLoader`): `#FF5733`.
+Brand mark (`MicasaMark`): rounded ribbon **M** (Zigzag/Workia language) with `#3a37fc` → `#ee477a` and a top-left gloss. Route progress (`NextTopLoader`): `#FF5733`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 

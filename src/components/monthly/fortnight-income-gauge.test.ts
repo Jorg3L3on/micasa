@@ -4,6 +4,10 @@ import {
   getFortnightIncomeGaugeSegments,
   getIncomeCommitmentTone,
 } from './fortnight-income-commitment';
+import {
+  gaugeJoinInsetDeg,
+  insetArcJoins,
+} from './fortnight-income-gauge-geometry';
 
 describe('FortnightIncomeGauge data', () => {
   it('computes commitment percent for gauge label', () => {
@@ -34,5 +38,29 @@ describe('FortnightIncomeGauge data', () => {
     expect(segments.budgetRatio).toBe(0);
     expect(segments.freeRatio).toBe(0);
     expect(segments.totalCommittedPercent).toBe(170);
+  });
+});
+
+describe('FortnightIncomeGauge joins', () => {
+  it('insets interior joins so round caps do not overlap', () => {
+    const inset = gaugeJoinInsetDeg();
+    const cash = insetArcJoins(180, 36, false, true, inset);
+    const budget = insetArcJoins(36, 14, true, true, inset);
+    const free = insetArcJoins(14, 0, true, false, inset);
+
+    expect(cash).not.toBeNull();
+    expect(budget).not.toBeNull();
+    expect(free).not.toBeNull();
+    expect(cash!.endDeg).toBeCloseTo(36 + inset);
+    expect(budget!.startDeg).toBeCloseTo(36 - inset);
+    expect(budget!.endDeg).toBeCloseTo(14 + inset);
+    expect(free!.startDeg).toBeCloseTo(14 - inset);
+    expect(free!.endDeg).toBe(0);
+  });
+
+  it('keeps a tiny segment drawable by reducing inset', () => {
+    const arc = insetArcJoins(20, 16, true, true, 8);
+    expect(arc).not.toBeNull();
+    expect(arc!.startDeg).toBeGreaterThan(arc!.endDeg);
   });
 });

@@ -5,6 +5,12 @@ import {
   getFortnightIncomeGaugeSegments,
   getIncomeCommitmentTone,
 } from '@/components/monthly/fortnight-income-commitment';
+import {
+  GAUGE_STROKE_WIDTH,
+  describeGaugeTopArc,
+  gaugeJoinInsetDeg,
+  insetArcJoins,
+} from '@/components/monthly/fortnight-income-gauge-geometry';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type FortnightIncomeGaugeProps = {
@@ -32,29 +38,6 @@ const commitmentLabelClass = (tone: 'ok' | 'warning' | 'danger') => {
 /** Presupuesto restante: violet (sky ya es “libre” en este gauge). */
 const BUDGET_STROKE_CLASS = 'text-violet-500 dark:text-violet-400';
 
-const GAUGE_CX = 60;
-const GAUGE_CY = 54;
-const GAUGE_R = 46;
-
-/** Arco superior: 180° = izquierda, 0° = derecha, 90° = arriba. */
-const pointOnArc = (degrees: number) => {
-  const rad = (degrees * Math.PI) / 180;
-  return {
-    x: GAUGE_CX + GAUGE_R * Math.cos(rad),
-    y: GAUGE_CY - GAUGE_R * Math.sin(rad),
-  };
-};
-
-const describeTopArc = (startDeg: number, endDeg: number) => {
-  const start = pointOnArc(startDeg);
-  const end = pointOnArc(endDeg);
-  const delta = Math.abs(startDeg - endDeg);
-  if (delta < 0.01) return '';
-  const largeArc = delta > 180 ? 1 : 0;
-  const sweep = startDeg > endDeg ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${GAUGE_R} ${GAUGE_R} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
-};
-
 const ratioToDegSpan = (ratio: number) => ratio * 180;
 
 export const FortnightIncomeGauge = ({
@@ -65,7 +48,6 @@ export const FortnightIncomeGauge = ({
 }: FortnightIncomeGaugeProps) => {
   const uid = useId().replace(/:/g, '');
   const freeGradientId = `fortnightFree-${uid}`;
-  const freeGlowId = `fortnightFreeGlow-${uid}`;
   const segments = getFortnightIncomeGaugeSegments(
     periodIncome,
     cashCommitted,
@@ -73,17 +55,34 @@ export const FortnightIncomeGauge = ({
   );
   const { cashRatio, budgetRatio, freeRatio, totalCommittedPercent } = segments;
   const tone = getIncomeCommitmentTone(totalCommittedPercent);
+  const joinInset = gaugeJoinInsetDeg();
 
-  // Left → right: efectivo comprometido → presupuesto → libre
   const cashEndDeg = 180 - ratioToDegSpan(cashRatio);
   const budgetEndDeg = cashEndDeg - ratioToDegSpan(budgetRatio);
 
-  const cashPath =
-    cashRatio > 0.0001 ? describeTopArc(180, cashEndDeg) : '';
-  const budgetPath =
-    budgetRatio > 0.0001 ? describeTopArc(cashEndDeg, budgetEndDeg) : '';
-  const freePath =
-    freeRatio > 0.0001 ? describeTopArc(budgetEndDeg, 0) : '';
+  const hasCash = cashRatio > 0.0001;
+  const hasBudget = budgetRatio > 0.0001;
+  const hasFree = freeRatio > 0.0001;
+
+  const cashArc = hasCash
+    ? insetArcJoins(180, cashEndDeg, false, hasBudget || hasFree, joinInset)
+    : null;
+  const budgetArc = hasBudget
+    ? insetArcJoins(cashEndDeg, budgetEndDeg, hasCash, hasFree, joinInset)
+    : null;
+  const freeArc = hasFree
+    ? insetArcJoins(budgetEndDeg, 0, hasCash || hasBudget, false, joinInset)
+    : null;
+
+  const cashPath = cashArc
+    ? describeGaugeTopArc(cashArc.startDeg, cashArc.endDeg)
+    : '';
+  const budgetPath = budgetArc
+    ? describeGaugeTopArc(budgetArc.startDeg, budgetArc.endDeg)
+    : '';
+  const freePath = freeArc
+    ? describeGaugeTopArc(freeArc.startDeg, freeArc.endDeg)
+    : '';
 
   const showBudgetLegend = budgetRatio > 0.0001;
 
@@ -105,22 +104,14 @@ export const FortnightIncomeGauge = ({
               <stop offset="50%" stopColor="#911efe" />
               <stop offset="100%" stopColor="#ee477a" />
             </linearGradient>
-            <filter id={freeGlowId} x="-20%" y="-40%" width="140%" height="180%">
-              <feGaussianBlur stdDeviation="2.4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
           </defs>
           {freePath ? (
             <path
               d={freePath}
               fill="none"
               stroke={`url(#${freeGradientId})`}
-              strokeWidth="12"
+              strokeWidth={GAUGE_STROKE_WIDTH}
               strokeLinecap="round"
-              filter={`url(#${freeGlowId})`}
               className="transition-[d] duration-500"
             />
           ) : null}
@@ -129,7 +120,7 @@ export const FortnightIncomeGauge = ({
               d={budgetPath}
               fill="none"
               stroke="currentColor"
-              strokeWidth="12"
+              strokeWidth={GAUGE_STROKE_WIDTH}
               strokeLinecap="round"
               className={cn('transition-[d] duration-500', BUDGET_STROKE_CLASS)}
             />
@@ -139,7 +130,7 @@ export const FortnightIncomeGauge = ({
               d={cashPath}
               fill="none"
               stroke="currentColor"
-              strokeWidth="12"
+              strokeWidth={GAUGE_STROKE_WIDTH}
               strokeLinecap="round"
               className={cn(
                 'transition-[d] duration-500',
