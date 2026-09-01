@@ -296,10 +296,10 @@ describe('getMonthlyBudgetPanel', () => {
 
     const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 8);
 
-    // Aug 10–15 = 6 of 11 days → 1100 * 6/11
-    expect(panel.first.totalBudget).toBeCloseTo(600, 5);
-    // Aug 16–20 = 5 of 11 days → 1100 * 5/11
-    expect(panel.second.totalBudget).toBeCloseTo(500, 5);
+    // Aug 10–14 = 5 of 11 days → 1100 * 5/11
+    expect(panel.first.totalBudget).toBeCloseTo(500, 5);
+    // Aug 15–20 = 6 of 11 days → 1100 * 6/11
+    expect(panel.second.totalBudget).toBeCloseTo(600, 5);
   });
 
   it('counts each DAILY period fully when it lies inside the quincena', async () => {

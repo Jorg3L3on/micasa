@@ -6,7 +6,7 @@ import {
   startOfCalendarDay,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -161,13 +161,13 @@ export async function resolveFortnightIdForDate(
   agent: AgentContext,
   ymd: string,
 ): Promise<number> {
-  const [year, month, day] = ymd.split('-').map(Number);
+  const { year, month, period } = getCalendarFortnightRefForYmd(ymd);
   const fortnight = await resolveOrCreateFortnight({
     ownerType: agent.ownerType,
     ownerId: agent.ownerId,
     year,
     month,
-    period: getFortnightPeriodForDay(day),
+    period,
   });
   return fortnight.id;
 }

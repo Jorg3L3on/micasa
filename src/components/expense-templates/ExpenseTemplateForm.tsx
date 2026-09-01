@@ -268,7 +268,7 @@ export function ExpenseTemplateForm({
                                 Primera quincena
                               </FormLabel>
                               <FormDescription className="text-xs">
-                                Dias 1 al 15
+                                Último día del mes anterior al 14
                               </FormDescription>
                             </div>
                           </FormItem>
@@ -280,7 +280,7 @@ export function ExpenseTemplateForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm">
-                              Dia de vencimiento (1-15)
+                              Día de vencimiento (1–14 o último del mes anterior)
                             </FormLabel>
                             <FormControl>
                               <BoundedDayFieldInput
@@ -317,7 +317,7 @@ export function ExpenseTemplateForm({
                                 Segunda quincena
                               </FormLabel>
                               <FormDescription className="text-xs">
-                                Dias 16 al 31
+                                Del 15 al penúltimo día
                               </FormDescription>
                             </div>
                           </FormItem>
@@ -329,7 +329,7 @@ export function ExpenseTemplateForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm">
-                              Dia de vencimiento (16-31)
+                              Día de vencimiento (15–penúltimo)
                             </FormLabel>
                             <FormControl>
                               <BoundedDayFieldInput

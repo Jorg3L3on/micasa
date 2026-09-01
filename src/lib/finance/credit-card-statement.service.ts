@@ -32,6 +32,9 @@ import {
   isCreditWalletType,
 } from '@/lib/finance/wallet-accounting';
 import {
+  dueDayFallsInFortnight,
+  getCurrentCalendarFortnightRef,
+  getDaysInCalendarMonth,
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
@@ -1376,15 +1379,18 @@ export async function getDuePaymentsForCurrentFortnight(
   ownerFilter: OwnerFilter,
 ) {
   const now = new Date();
-  const currentDay = now.getDate();
-  const isFirstFortnight = currentDay <= 15;
+  const current = getCurrentCalendarFortnightRef(now);
   const [items, fortnightId] = await Promise.all([
     getDuePaymentsWithAsOf(
       ownerFilter,
       now,
-      isFirstFortnight
-        ? (dueDay) => dueDay >= 1 && dueDay <= 15
-        : (dueDay) => dueDay >= 16,
+      (dueDay) =>
+        dueDayFallsInFortnight(
+          dueDay,
+          current.year,
+          current.month,
+          current.period,
+        ),
     ),
     resolveFortnightIdForDate(ownerFilter, now),
   ]);
@@ -1403,8 +1409,8 @@ async function getDuePaymentsForPlannerMonthImpl(
   // Fallback only; planner rows use each card's visible due date so cards with
   // due day before cutoff stay on the statement that is actually due this month.
   const asOfFirst = createCalendarDate(year, month, 14);
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const asOfSecond = createCalendarDate(year, month, lastDay);
+  const lastDay = getDaysInCalendarMonth(year, month);
+  const asOfSecond = createCalendarDate(year, month, lastDay - 1);
   const allowFirstDebtFallback =
     isCalendarFortnightCurrent(year, month, 'FIRST') ||
     isCalendarFortnightNext(year, month, 'FIRST');
@@ -1416,7 +1422,7 @@ async function getDuePaymentsForPlannerMonthImpl(
     getDuePaymentsWithAsOf(
       ownerFilter,
       asOfFirst,
-      (dueDay) => dueDay >= 1 && dueDay <= 15,
+      (dueDay) => dueDayFallsInFortnight(dueDay, year, month, 'FIRST'),
       {
         includeZeroObligation: true,
         asOfForCard: asOfForVisibleDueDate,
@@ -1427,7 +1433,7 @@ async function getDuePaymentsForPlannerMonthImpl(
     getDuePaymentsWithAsOf(
       ownerFilter,
       asOfSecond,
-      (dueDay) => dueDay >= 16,
+      (dueDay) => dueDayFallsInFortnight(dueDay, year, month, 'SECOND'),
       {
         includeZeroObligation: true,
         asOfForCard: asOfForVisibleDueDate,

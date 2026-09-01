@@ -32,9 +32,10 @@ npm run validate:metric-strips      # Check metric strip consistency (no tinted 
 - **Vitest 4** for testing
 
 ### Core Domain Concept: Fortnights
-The central planning unit is the **fortnight** — each month is split into two periods:
-- `FIRST`: days 1–15
-- `SECOND`: days 16–end of month
+The central planning unit is the **fortnight** — each month is split into two payday-aligned periods:
+- `FIRST`: last day of the previous month through the 14th
+- `SECOND`: the 15th through the penultimate day of the month
+- The last day of the month belongs to `FIRST` of the next month
 
 Expenses, incomes, budgets, and financial summaries are all organized around fortnights. See `src/lib/fortnights.ts` for calculation utilities.
 

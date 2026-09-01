@@ -12,7 +12,7 @@ import {
   formatCalendarDate,
   parseCalendarDate,
 } from '@/lib/calendar-dates';
-import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd, getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { computeBudgetTemplateDateRange } from '@/lib/finance/budget-template-date-range';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 
@@ -333,8 +333,7 @@ export async function setBudgetActive(
         end_date: parseCalendarDate(weekEnd),
       };
     } else if (frequency === 'BIWEEKLY') {
-      const [year, month, day] = effectiveDate.split('-').map(Number);
-      const period = day <= 15 ? 'FIRST' : 'SECOND';
+      const { year, month, period } = getCalendarFortnightRefForYmd(effectiveDate);
       const fortnight = await prisma.fortnight.findFirst({
         where: { ...ownerFilter, year, month, period },
         select: { id: true },

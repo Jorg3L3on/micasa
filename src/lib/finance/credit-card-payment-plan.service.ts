@@ -10,13 +10,19 @@ import type {
 import {
   resolveCreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
-import { parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
+import { parseCalendarDate, todayCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import {
   applyPlannerLayerToDueItems,
   buildPlannerFieldsFromStatement,
   sumPaymentsAppliedToFortnightByWallet,
   toCreditCardPaymentPlanView,
 } from '@/lib/finance/card-planner-obligation.service';
+import {
+  dueDayFallsInFortnight,
+  getCurrentCalendarFortnightRef,
+  getNextCalendarFortnight,
+  getCalendarFortnightRefForYmd,
+} from '@/lib/fortnight-calendar';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -24,30 +30,6 @@ type PlannerFortnightKey = {
   year: number;
   month: number;
   period: FortnightPeriod;
-};
-
-const plannerPeriodForDueDay = (dueDay: number): FortnightPeriod =>
-  dueDay >= 1 && dueDay <= 15 ? 'FIRST' : 'SECOND';
-
-const dueDayMatchesPlannerPeriod = (
-  dueDay: number,
-  period: FortnightPeriod,
-): boolean =>
-  period === 'FIRST' ? dueDay >= 1 && dueDay <= 15 : dueDay >= 16;
-
-const nextCalendarFortnight = (
-  year: number,
-  month: number,
-  asOf: Date,
-): PlannerFortnightKey => {
-  const isFirst = asOf.getDate() <= 15;
-  if (isFirst) {
-    return { year, month, period: 'SECOND' };
-  }
-  if (month === 12) {
-    return { year: year + 1, month: 1, period: 'FIRST' };
-  }
-  return { year, month: month + 1, period: 'FIRST' };
 };
 
 const fortnightKey = (key: PlannerFortnightKey) =>
@@ -86,26 +68,22 @@ export async function getCreditCardPaymentPlanViews(
   }
 
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
   const dueDay = card.due_day;
-  const currentPeriod: FortnightPeriod = now.getDate() <= 15 ? 'FIRST' : 'SECOND';
+  const current = getCurrentCalendarFortnightRef(now);
+  const next = getNextCalendarFortnight(now);
+  const currentPeriod = current.period;
 
-  const keys: PlannerFortnightKey[] = [
-    { year, month, period: plannerPeriodForDueDay(dueDay) },
-  ];
-
-  const nextCal = nextCalendarFortnight(year, month, now);
-  if (
-    dueDayMatchesPlannerPeriod(dueDay, nextCal.period) &&
-    fortnightKey(nextCal) !== fortnightKey(keys[0]!)
-  ) {
-    keys.push(nextCal);
-  }
+  const keys: PlannerFortnightKey[] = [current, next].filter((key) =>
+    dueDayFallsInFortnight(dueDay, key.year, key.month, key.period),
+  );
 
   const uniqueKeys = Array.from(
     new Map(keys.map((key) => [fortnightKey(key), key])).values(),
   );
+
+  if (uniqueKeys.length === 0) {
+    return [];
+  }
 
   const fortnights = await prisma.fortnight.findMany({
     where: {
@@ -214,8 +192,8 @@ export async function getCreditCardPaymentPlanViews(
       return toCreditCardPaymentPlanView({
         fortnight,
         isCurrentFortnight:
-          fortnight.year === year &&
-          fortnight.month === month &&
+          fortnight.year === current.year &&
+          fortnight.month === current.month &&
           fortnight.period === currentPeriod,
         fields,
       });
@@ -243,9 +221,9 @@ export async function resolveFortnightIdForDate(
   ownerFilter: OwnerFilter,
   asOf: Date,
 ): Promise<number | null> {
-  const year = asOf.getFullYear();
-  const month = asOf.getMonth() + 1;
-  const period = asOf.getDate() <= 15 ? 'FIRST' : 'SECOND';
+  const { year, month, period } = getCalendarFortnightRefForYmd(
+    formatCalendarDate(asOf),
+  );
 
   const fortnight = await prisma.fortnight.findFirst({
     where: {

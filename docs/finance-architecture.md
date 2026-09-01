@@ -16,7 +16,7 @@ Structured overview of the current finance system for consistent future developm
 | label       | String           |                                |
 | month       | Int              | 1–12                           |
 | year        | Int              |                                |
-| period      | FortnightPeriod  | FIRST (1–15) or SECOND (16–EOM) |
+| period      | FortnightPeriod  | FIRST (prev last day–14) or SECOND (15–penultimate) |
 | closed      | Boolean          | default false                  |
 | user_id     | Int? (FK User)   | personal fortnight             |
 | house_id    | Int? (FK House)  | house fortnight                |

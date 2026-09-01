@@ -8,13 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  formatCalendarDate,
-  parseCalendarDate,
-  todayCalendarDate,
-} from '@/lib/calendar-dates';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import { AddExpenseFormValues } from '@/schemas/transaction.schema';
+import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 
 type AddExpenseDialogProps = {
   open: boolean;
@@ -28,31 +24,6 @@ type AddExpenseDialogProps = {
   defaultDate?: string;
   error?: string | null;
 };
-
-function getDefaultDateForFortnight(
-  year: number,
-  month: number,
-  period: 'FIRST' | 'SECOND',
-): string {
-  const todayYmd = todayCalendarDate();
-  const [currentYear, currentMonth, currentDay] = todayYmd.split('-').map(Number);
-
-  if (year === currentYear && month === currentMonth) {
-    if (period === 'FIRST' && currentDay >= 1 && currentDay <= 15) {
-      return todayYmd;
-    }
-    if (period === 'SECOND' && currentDay >= 16) {
-      return todayYmd;
-    }
-  }
-
-  const day = period === 'FIRST' ? 1 : 16;
-  return formatCalendarDate(
-    parseCalendarDate(
-      `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-    ),
-  );
-}
 
 export default function AddExpenseDialog({
   open,

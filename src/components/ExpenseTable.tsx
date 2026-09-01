@@ -38,6 +38,13 @@ import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import type { TransactionRow, WalletListItem } from '@/types/catalog';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import {
+  calendarDayCountInclusive,
+  dueYmdInFortnight,
+  getCalendarFortnightRefForYmd,
+  getCurrentCalendarFortnightRef,
+} from '@/lib/fortnight-calendar';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import {
   sortExpenseListRows,
   type PlannerListSortDir,
   type PlannerListSortMode,
@@ -391,19 +398,16 @@ export default function ExpenseTable({
       };
     }
 
-    const today = new Date();
-    const todayDay = today.getDate();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0-based
-    const currentPeriod: 'FIRST' | 'SECOND' = todayDay <= 15 ? 'FIRST' : 'SECOND';
+    const current = getCurrentCalendarFortnightRef();
+    const currentPeriod = current.period;
 
     // Only show for the current fortnight (current year + month + matching period).
     // When year/month/period are known, require an exact match. Fall back to date-only
     // when props aren't available (e.g. standalone usage without fortnight context).
     if (year != null && month != null && period != null) {
       const isCurrentFortnight =
-        year === currentYear &&
-        month - 1 === currentMonth &&
+        year === current.year &&
+        month === current.month &&
         period === currentPeriod;
       if (!isCurrentFortnight) {
         return {
@@ -415,12 +419,13 @@ export default function ExpenseTable({
         };
       }
     } else if (date) {
-      const expenseDate = new Date(date);
-      if (!Number.isNaN(expenseDate.getTime())) {
-        const isCurrentMonth =
-          expenseDate.getFullYear() === currentYear &&
-          expenseDate.getMonth() === currentMonth;
-        if (!isCurrentMonth) {
+      const expenseYmd = date.slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(expenseYmd)) {
+        const expenseRef = getCalendarFortnightRefForYmd(expenseYmd);
+        if (
+          expenseRef.year !== current.year ||
+          expenseRef.month !== current.month
+        ) {
           return {
             hasDue: false,
             dueDay: null as number | null,
@@ -432,7 +437,19 @@ export default function ExpenseTable({
       }
     }
 
-    const daysRemaining = dueDayValue - todayDay;
+    const dueYmd = dueYmdInFortnight(
+      dueDayValue,
+      current.year,
+      current.month,
+      current.period,
+    );
+    const todayYmd = todayCalendarDate();
+    const daysRemaining =
+      dueYmd == null
+        ? 0
+        : dueYmd >= todayYmd
+          ? calendarDayCountInclusive(todayYmd, dueYmd) - 1
+          : -(calendarDayCountInclusive(dueYmd, todayYmd) - 1);
     const showCountdown = daysRemaining >= 0;
 
     let badgeColor: 'default' | 'destructive' | 'secondary' = 'default';

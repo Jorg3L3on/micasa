@@ -35,6 +35,7 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createCreditCardPurchase } from '@/lib/api/credit-cards';
 import { Skeleton } from '@/components/ui/skeleton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
@@ -65,9 +66,6 @@ const MONTH_SHORT_ES = [
   'Dic',
 ] as const;
 
-const periodForDay = (day: number): FortnightPeriod =>
-  day <= 15 ? 'FIRST' : 'SECOND';
-
 const fortnightSortKey = (f: FortnightCatalogItem): number =>
   f.year * 1000 + f.month * 10 + (f.period === 'FIRST' ? 0 : 1);
 
@@ -81,10 +79,9 @@ const findFortnightForDate = (
   ymd: string,
 ): FortnightCatalogItem | undefined => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return undefined;
-  const [y, m, d] = ymd.split('-').map(Number);
-  const period = periodForDay(d);
+  const { year, month, period } = getCalendarFortnightRefForYmd(ymd);
   return items.find(
-    (f) => f.year === y && f.month === m && f.period === period,
+    (f) => f.year === year && f.month === month && f.period === period,
   );
 };
 

@@ -14,7 +14,7 @@ import {
   getPaidExpenseWalletDelta,
   isCreditWalletType,
 } from '@/lib/finance/wallet-accounting';
-import { getFortnightPeriodForDay } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
@@ -504,12 +504,12 @@ async function runImport(
         continue;
       }
 
-      const period = getFortnightPeriodForDay(mov.paymentDate.getUTCDate());
+      const { year, month, period } = getCalendarFortnightRefForYmd(paymentDateStr);
       const fortnight = await resolveOrCreateFortnight({
         ownerType,
         ownerId,
-        year: mov.paymentDate.getUTCFullYear(),
-        month: mov.paymentDate.getUTCMonth() + 1,
+        year,
+        month,
         period,
         tx,
       });

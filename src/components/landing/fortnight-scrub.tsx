@@ -23,7 +23,7 @@ type Period = {
 };
 
 const FIRST: Period = {
-  label: '1–15',
+  label: 'Último–14',
   title: 'Primera quincena',
   balance: 3370,
   paid: 58,
@@ -39,7 +39,7 @@ const FIRST: Period = {
 };
 
 const SECOND: Period = {
-  label: '16–31',
+  label: '15–penúltimo',
   title: 'Segunda quincena',
   balance: 2140,
   paid: 41,
@@ -125,7 +125,7 @@ export const FortnightScrub = () => {
               Desliza el mes: dos quincenas, una claridad
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/50 sm:mt-3 sm:text-base">
-              Sigue bajando — el balance y los gastos cruzan del 1–15 al 16–fin.
+              Sigue bajando — el balance y los gastos cruzan del último día al 14, y del 15 al penúltimo.
             </p>
           </div>
 

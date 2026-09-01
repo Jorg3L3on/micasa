@@ -5,7 +5,7 @@ import {
   startOfCalendarDay,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
-import { getNextCalendarFortnight } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd, getNextCalendarFortnight } from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { BudgetFrequency } from '@/schemas/budget.schema';
 import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
@@ -402,12 +402,12 @@ async function reconcileBiweeklyCalendarAlignment(
 
     // Keep template window on the current calendar fortnight when it falls in this month.
     const today = todayCalendarDate();
-    const [ty, tm, td] = today.split('-').map(Number);
-    if (ty === year && tm === month) {
+    const current = getCalendarFortnightRefForYmd(today);
+    if (current.year === year && current.month === month) {
       const bounds = getCanonicalFortnightBounds(
         year,
         month,
-        td <= 15 ? 'FIRST' : 'SECOND',
+        current.period,
       );
       await prisma.budget.update({
         where: { id: budget.id },

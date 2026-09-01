@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
-import { getAppHomeHref } from '@/lib/fortnight-calendar';
+import { getAppHomeHref, formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 
 const buildOwnerSuffix = (context: FinanceContextType): string => {
@@ -150,25 +150,10 @@ export function getPageTitle(pathname: string): {
   ) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const period = segments[3].toUpperCase();
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    const monthName = months[month - 1] || '';
-    const periodLabel = period === 'FIRST' ? '1–15' : '16–31';
+    const period = segments[3].toUpperCase() as 'FIRST' | 'SECOND';
+    const periodLabel = formatFortnightDateRangeLabel(year, month, period);
     return {
-      title: `${periodLabel} ${monthName} ${year}`,
+      title: `${periodLabel} · ${year}`,
       isHome: false,
       showBack,
     };

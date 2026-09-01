@@ -16,7 +16,7 @@
 
 | Term | Meaning |
 | ---- | ------- |
-| **Fortnight** | Planning period: `FIRST` (1–15) or `SECOND` (16–EOM) |
+| **Fortnight** | Planning period: `FIRST` (last day of previous month–14th) or `SECOND` (15th–penultimate); last day of month is next month's `FIRST` |
 | **House** | Shared household; resources can be house-scoped |
 | **Owner context** | Active `user` or `house` via finance context + API params |
 | **Wallet** | Account; `PaymentMethodType` drives cash vs credit behavior |

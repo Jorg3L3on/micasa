@@ -30,8 +30,8 @@ enum PaymentMethodType {
 }
 
 enum FortnightPeriod {
-  FIRST // 1–15
-  SECOND // 16–end of month
+  FIRST // last day of previous month through 14th
+  SECOND // 15th through penultimate day
 }
 
 enum HouseRole {

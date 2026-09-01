@@ -13,7 +13,13 @@ import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPan
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { getSuggestedFortnightPeriodForMonth } from '@/lib/fortnight-calendar';
+import {
+  dueDayFallsInFortnight,
+  formatFortnightDateRangeLabel,
+  getCurrentCalendarFortnightRef,
+  getCurrentMonthlyPanelHref,
+  getSuggestedFortnightPeriodForMonth,
+} from '@/lib/fortnight-calendar';
 import { parseMonthlyRouteParams } from '@/lib/planner/monthly-page';
 import { cn } from '@/lib/utils';
 import {
@@ -105,14 +111,11 @@ export default async function MonthlyPage({
   const nextHref = `/monthly/${nextYear}/${nextMonthStr}${ownerQuery}`;
 
   const todayYmd = todayCalendarDate();
-  const [currentYear, currentMonth] = todayYmd
-    .split('-')
-    .map(Number)
-    .slice(0, 2) as [number, number];
+  const currentFn = getCurrentCalendarFortnightRef();
+  const currentYear = currentFn.year;
+  const currentMonth = currentFn.month;
   const isCurrentMonth = year === currentYear && month === currentMonth;
-  const currentMonthHref = `/monthly/${currentYear}/${currentMonth
-    .toString()
-    .padStart(2, '0')}${ownerQuery}`;
+  const currentMonthHref = `${getCurrentMonthlyPanelHref()}${ownerQuery}`;
 
   let shell;
   try {
@@ -175,10 +178,9 @@ export default async function MonthlyPage({
     nextMonth >= currentMonth &&
     !nextMonthAlreadyCreated;
 
-  const firstLabel = firstFortnightInfo?.label || `1-15 ${monthName} ${year}`;
+  const firstLabel = firstFortnightInfo?.label || formatFortnightDateRangeLabel(year, month, 'FIRST');
   const secondLabel =
-    secondFortnightInfo?.label ||
-    `16-${new Date(year, month, 0).getDate()} ${monthName} ${year}`;
+    secondFortnightInfo?.label || formatFortnightDateRangeLabel(year, month, 'SECOND');
   const firstFortnightId = firstFortnightInfo?.id || 0;
   const secondFortnightId = secondFortnightInfo?.id || 0;
   const monthIsMissing = firstFortnightInfo === null || secondFortnightInfo === null;
@@ -277,8 +279,6 @@ export default async function MonthlyPage({
   }
 
   const dueWalletIds = duePayments.map((dp) => dp.walletId);
-  const [, , currentDay] = todayCalendarDate().split('-').map(Number);
-  const isFirstFortnight = currentDay <= 15;
   const paidWalletIds = isCurrentMonth
     ? wallets
         .filter((w) => {
@@ -286,9 +286,12 @@ export default async function MonthlyPage({
             return false;
           }
           if (w.due_day == null) return false;
-          const dueInFortnight = isFirstFortnight
-            ? w.due_day >= 1 && w.due_day <= 15
-            : w.due_day >= 16;
+          const dueInFortnight = dueDayFallsInFortnight(
+            w.due_day,
+            currentFn.year,
+            currentFn.month,
+            currentFn.period,
+          );
           return dueInFortnight && !dueWalletIds.includes(w.id);
         })
         .map((w) => w.id)
