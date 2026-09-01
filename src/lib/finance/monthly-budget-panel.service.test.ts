@@ -147,8 +147,8 @@ describe('getMonthlyBudgetPanel', () => {
       periodFixture({
         id: 1,
         budgetId: 10,
-        start: '2026-06-01',
-        end: '2026-06-15',
+        start: '2026-05-31',
+        end: '2026-06-14',
         total: 1000,
         categoryId: 5,
         categoryName: 'Despensa',
@@ -157,8 +157,8 @@ describe('getMonthlyBudgetPanel', () => {
       periodFixture({
         id: 2,
         budgetId: 11,
-        start: '2026-06-01',
-        end: '2026-06-15',
+        start: '2026-05-31',
+        end: '2026-06-14',
         total: 500,
         frequency: 'BIWEEKLY',
         categoryId: 8,
@@ -198,8 +198,8 @@ describe('getMonthlyBudgetPanel', () => {
       periodFixture({
         id: 1,
         budgetId: 1,
-        start: '2026-08-01',
-        end: '2026-08-15',
+        start: '2026-07-31',
+        end: '2026-08-14',
         total: 2000,
         frequency: 'BIWEEKLY',
         categoryName: 'Comida',
@@ -209,8 +209,8 @@ describe('getMonthlyBudgetPanel', () => {
       periodFixture({
         id: 2,
         budgetId: 1,
-        start: '2026-08-16',
-        end: '2026-08-31',
+        start: '2026-08-15',
+        end: '2026-08-30',
         total: 2000,
         frequency: 'BIWEEKLY',
         categoryName: 'Comida',
@@ -230,8 +230,8 @@ describe('getMonthlyBudgetPanel', () => {
       {
         id: 1,
         budget_id: 20,
-        start_date: startOfCalendarDay('2026-08-01'),
-        end_date: endOfCalendarDay('2026-08-15'),
+        start_date: startOfCalendarDay('2026-07-31'),
+        end_date: endOfCalendarDay('2026-08-14'),
         budget: {
           id: 20,
           total_amount: 3000,

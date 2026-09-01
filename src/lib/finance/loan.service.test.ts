@@ -344,7 +344,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
         id: 2,
         loan_id: 6,
         sequence: 1,
-        due_date: parseCalendarDate('2026-06-15'),
+        due_date: parseCalendarDate('2026-06-14'),
         amount: '2792.73',
         status: 'SCHEDULED',
         paid_at: null,
