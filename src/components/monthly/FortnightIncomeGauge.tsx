@@ -98,7 +98,7 @@ export const FortnightIncomeGauge = ({
       }
     >
       <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
-        <svg viewBox="0 0 120 60" className="h-full w-full overflow-visible" aria-hidden>
+        <svg viewBox="0 0 120 60" className="h-full w-full" aria-hidden>
           <defs>
             <linearGradient id={freeGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#3a37fc" />
