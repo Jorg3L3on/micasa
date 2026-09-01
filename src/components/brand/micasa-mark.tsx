@@ -1,14 +1,13 @@
 'use client';
 
-import { useId, type SVGProps } from 'react';
+import { useId } from 'react';
 
 import {
-  MICASA_MARK_BAR_PALETTE,
-  MICASA_MARK_BARS,
-  MICASA_MARK_SIZE,
+  MICASA_MARK_NODE_R,
+  MICASA_MARK_NODES,
+  MICASA_MARK_PATH,
+  MICASA_MARK_STROKE_WIDTH,
   MICASA_MARK_VIEWBOX,
-  getMicasaMarkBarTransform,
-  getMicasaMarkCapsuleRect,
 } from '@/components/brand/micasa-mark-geometry';
 import { cn } from '@/lib/utils';
 
@@ -16,14 +15,14 @@ type MicasaMarkProps = {
   className?: string;
   /** Accessible name when the mark stands alone. Omit when adjacent text labels it. */
   title?: string;
-} & Omit<SVGProps<SVGSVGElement>, 'viewBox' | 'xmlns' | 'children'>;
+};
 
-/** Rooftop zigzag in the Zigzag Z / Workia W ribbon language. */
-export const MicasaMark = ({ className, title, ...svgProps }: MicasaMarkProps) => {
+/** Brand isotipo: rooftop zigzag with round nodes, Zigzag/Workia gradient + gloss. */
+export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
   const reactId = useId();
   const uid = reactId.replace(/:/g, '');
+  const fillId = `micasaMarkFill-${uid}`;
   const glossId = `micasaMarkGloss-${uid}`;
-  const clipId = `micasaMarkClip-${uid}`;
   const isDecorative = !title;
 
   return (
@@ -32,59 +31,38 @@ export const MicasaMark = ({ className, title, ...svgProps }: MicasaMarkProps) =
       viewBox={MICASA_MARK_VIEWBOX}
       role={isDecorative ? undefined : 'img'}
       aria-hidden={isDecorative ? true : undefined}
-      {...svgProps}
       className={cn('shrink-0', className)}
     >
       {title ? <title>{title}</title> : null}
       <defs>
-        {MICASA_MARK_BARS.map((bar) => {
-          const palette = MICASA_MARK_BAR_PALETTE[bar.index];
-          if (!palette) return null;
-          return (
-            <linearGradient
-              key={bar.index}
-              id={`micasaBarLit-${uid}-${bar.index}`}
-              x1="0"
-              y1="0"
-              x2="0.12"
-              y2="1"
-            >
-              <stop offset="0%" stopColor={palette.highlight} />
-              <stop offset="28%" stopColor={palette.mid} />
-              <stop offset="100%" stopColor={palette.shade} />
-            </linearGradient>
-          );
-        })}
-        <linearGradient id={glossId} x1="12%" y1="0%" x2="78%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.38" />
-          <stop offset="36%" stopColor="#ffffff" stopOpacity="0" />
+        <linearGradient id={fillId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6d8bff" />
+          <stop offset="38%" stopColor="#3a37fc" />
+          <stop offset="100%" stopColor="#ee477a" />
         </linearGradient>
-        <clipPath id={clipId}>
-          {MICASA_MARK_BARS.map((bar) => (
-            <rect
-              key={bar.index}
-              {...getMicasaMarkCapsuleRect(bar.length)}
-              transform={getMicasaMarkBarTransform(bar)}
-            />
-          ))}
-        </clipPath>
+        <linearGradient id={glossId} x1="0%" y1="0%" x2="55%" y2="90%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
+          <stop offset="42%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      {MICASA_MARK_BARS.map((bar) => (
-        <rect
-          key={bar.index}
-          {...getMicasaMarkCapsuleRect(bar.length)}
-          transform={getMicasaMarkBarTransform(bar)}
-          fill={`url(#micasaBarLit-${uid}-${bar.index})`}
-        />
+      <path
+        d={MICASA_MARK_PATH}
+        fill="none"
+        stroke={`url(#${fillId})`}
+        strokeWidth={MICASA_MARK_STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {MICASA_MARK_NODES.map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={MICASA_MARK_NODE_R} fill={`url(#${fillId})`} />
       ))}
-      <rect
-        x="0"
-        y="0"
-        width={MICASA_MARK_SIZE.width}
-        height={MICASA_MARK_SIZE.height}
-        fill={`url(#${glossId})`}
-        clipPath={`url(#${clipId})`}
-        pointerEvents="none"
+      <path
+        d={MICASA_MARK_PATH}
+        fill="none"
+        stroke={`url(#${glossId})`}
+        strokeWidth={MICASA_MARK_STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

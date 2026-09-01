@@ -46,7 +46,7 @@ Navy canvas, glass cards, **orange pill CTAs**, **blue → magenta** accents. At
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): three-peak rooftop zigzag as overlapping rounded capsules — same ribbon language as Zigzag’s Z and Workia’s W (fat round terminals, blue→violet, sheen). Not a node diagram and not a letter M. Route progress (`NextTopLoader`): `#FF5733`.
+Brand mark (`MicasaMark`): original rooftop zigzag (five nodes) with Zigzag/Workia gradient `#3a37fc` → `#ee477a` and a light gloss. Route progress (`NextTopLoader`): `#FF5733`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 

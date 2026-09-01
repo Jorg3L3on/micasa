@@ -1,11 +1,11 @@
 import { ImageResponse } from 'next/og';
 
 import {
-  MICASA_MARK_BAR_PALETTE,
-  MICASA_MARK_BARS,
+  MICASA_MARK_NODE_R,
+  MICASA_MARK_NODES,
+  MICASA_MARK_PATH,
+  MICASA_MARK_STROKE_WIDTH,
   MICASA_MARK_VIEWBOX,
-  getMicasaMarkBarTransform,
-  getMicasaMarkCapsuleRect,
 } from '@/components/brand/micasa-mark-geometry';
 
 export const size = {
@@ -31,47 +31,41 @@ export default function AppleIcon() {
         }}
       >
         <svg
-          width="156"
-          height="62"
+          width="148"
+          height="84"
           viewBox={MICASA_MARK_VIEWBOX}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            {MICASA_MARK_BARS.map((bar) => {
-              const palette = MICASA_MARK_BAR_PALETTE[bar.index];
-              if (!palette) return null;
-              return (
-                <linearGradient
-                  key={bar.index}
-                  id={`micasaAppleBar-${bar.index}`}
-                  x1="0"
-                  y1="0"
-                  x2="0.12"
-                  y2="1"
-                >
-                  <stop stopColor={palette.highlight} />
-                  <stop offset="0.28" stopColor={palette.mid} />
-                  <stop offset="1" stopColor={palette.shade} />
-                </linearGradient>
-              );
-            })}
+            <linearGradient
+              id="micasaGrad"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop stopColor="#6d8bff" />
+              <stop offset="0.38" stopColor="#3a37fc" />
+              <stop offset="1" stopColor="#ee477a" />
+            </linearGradient>
           </defs>
-          {MICASA_MARK_BARS.map((bar) => {
-            const rect = getMicasaMarkCapsuleRect(bar.length);
-            return (
-              <rect
-                key={bar.index}
-                x={rect.x}
-                y={rect.y}
-                width={rect.width}
-                height={rect.height}
-                rx={rect.rx}
-                transform={getMicasaMarkBarTransform(bar)}
-                fill={`url(#micasaAppleBar-${bar.index})`}
-              />
-            );
-          })}
+          <path
+            d={MICASA_MARK_PATH}
+            stroke="url(#micasaGrad)"
+            strokeWidth={MICASA_MARK_STROKE_WIDTH}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {MICASA_MARK_NODES.map(([cx, cy]) => (
+            <circle
+              key={`${cx}-${cy}`}
+              cx={cx}
+              cy={cy}
+              r={MICASA_MARK_NODE_R}
+              fill="url(#micasaGrad)"
+            />
+          ))}
         </svg>
       </div>
     ),
