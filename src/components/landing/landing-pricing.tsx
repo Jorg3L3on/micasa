@@ -82,8 +82,7 @@ export const LandingPricing = () => {
                 <div
                   className={cn(
                     'flex h-full flex-col rounded-2xl bg-[#0d1327] px-6 py-7',
-                    plan.featured &&
-                      'bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,transparent_36%),#0d1327] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
+                    plan.featured && 'landing-pro-inner',
                   )}
                 >
                   {plan.featured ? (
