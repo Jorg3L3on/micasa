@@ -1750,7 +1750,7 @@ export default function LoansPage() {
           <DialogContent className="flex max-h-[92dvh] max-w-[calc(100%-0.75rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(92dvh,44rem)] sm:max-w-3xl lg:max-w-[52rem]">
             <DialogHeader className="border-b border-border/60 px-4 py-3 pr-12 text-left sm:px-5">
               <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-text ring-1 ring-primary/20">
                   <HandCoins className="h-5 w-5" aria-hidden data-icon="inline-start" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -2550,7 +2550,7 @@ export default function LoansPage() {
                                 {isActionOpen && paymentActionDraft ? (
                                   <div className="col-span-2 rounded-xl border border-border/60 bg-background p-3 shadow-sm sm:col-span-3">
                                     <div className="flex items-start gap-3">
-                                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+                                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-text ring-1 ring-primary/20">
                                         <CheckCircle2
                                           className="h-4 w-4"
                                           aria-hidden data-icon="inline-start" />

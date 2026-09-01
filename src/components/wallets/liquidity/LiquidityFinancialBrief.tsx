@@ -59,7 +59,7 @@ const TONE_ICON: Record<LiquidityBriefTone, typeof Sparkles> = {
 
 const TONE_ICON_RING: Record<LiquidityBriefTone, string> = {
   positive: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/25',
-  neutral: 'bg-primary/15 text-primary ring-primary/25',
+  neutral: 'bg-primary/15 text-primary-text ring-primary/25',
   caution: 'bg-amber-500/15 text-amber-300 ring-amber-500/25',
   critical: 'bg-destructive/15 text-destructive ring-destructive/25',
 };
@@ -284,11 +284,11 @@ const BriefBody = ({ brief, data }: BriefBodyProps) => {
       {brief.actionNow ? (
         <div className="relative mt-4 overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#3a37fc]/10 via-transparent to-[#ee477a]/5 px-4 py-3.5">
           <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary-text">
               <ArrowRight className="size-3.5" aria-hidden />
             </span>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary-text">
                 Qué hacer ahora
               </p>
               <p className="mt-1 text-sm font-medium leading-snug text-foreground">

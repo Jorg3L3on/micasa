@@ -41,7 +41,7 @@ export default function StepWelcome() {
             role="listitem"
           >
             <span
-              className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg"
+              className="bg-primary/10 text-primary-text flex size-10 shrink-0 items-center justify-center rounded-lg"
               aria-hidden
             >
               <Icon className="size-5" strokeWidth={2} data-icon="inline-start" />

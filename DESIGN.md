@@ -36,6 +36,7 @@ Navy canvas, glass cards, **orange pill CTAs**, **blue → magenta** accents. At
 | Text | `#f7f8ff` | `--foreground` |
 | Muted text | `#9ca3af` | `--muted-foreground` |
 | Electric blue (primary, brand) | `#3a37fc` | `--primary`, `--chart-1` |
+| Primary text (on canvas) | `#9ea0ff` (dark) | `--primary-text`, `text-primary-text` |
 | Violet glow / ring | `#911efe` | `--ring`, `--landing-glow-purple` |
 | Magenta | `#cf1ae6` | `--landing-glow-magenta` |
 | Pink | `#ee477a` | `--chart-2`, `--landing-glow-pink` |
@@ -57,25 +58,28 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 - **Fonts:** Manrope (`--font-landing-display`) + Nunito (`--font-landing-sans`) — scoped on the landing wrapper only. Do not load these on app routes.
 - **Canvas:** `#060914` with `LandingAtmosphere` blue/pink orbs.
+- **Hero panel:** `.landing-hero-wash` — purple → pink gradient wash + faint grid. Headline is white; last words may use `.landing-accent-text`.
 - **Primary CTA:** pill (`rounded-full`) + `.landing-cta` orange gradient + orange glow shadow. Secondary: ghost / hairline glass, not a second orange button.
-- **Product mocks:** glass cards (`border-white/[0.08]`, `bg-[#0d1327]/80`, blur). Money in `font-mono tabular-nums`.
-- **Featured pricing card:** `.landing-pro-border` (orange → purple).
-- **Accent headline wash:** `.landing-accent-text`.
+- **Product mocks / feature cards:** `.landing-glass-card` (specular + navy). Money in `font-mono tabular-nums`.
+- **Featured pricing card:** `.landing-pro-border` (orange → purple). Featured CTA is dark glass, not a white fill.
+- **Accent headline wash:** `.landing-accent-text` (clipped gradient).
 
 ### Logged-in app (and login)
 
 - **Fonts:** Geist + Geist Mono from the root layout. Money still `font-mono tabular-nums`.
 - **Same navy tokens** as landing (`.dark` in `globals.css`).
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
+- **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
 - **Primary labeled buttons in dark** use the **orange gradient** (`Button` `variant="default"`). Do not invent a second primary orange utility; use `<Button>`.
 - **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
-- **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts`. Reuse it (or the same class string) for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page.
+- **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
 ```
-relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]
-dark:border-white/[0.08] dark:bg-[#0d1327]/80
-dark:shadow-[0_24px_80px_-48px_rgba(58,55,252,0.45)] dark:backdrop-blur-xl
+orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 shadow-sm
+dark:backdrop-blur-xl
 ```
+
+Metric tiles inside the summary use `.orion-metric-tile`.
 
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/75` plus a soft blue drop shadow.
 
@@ -108,7 +112,7 @@ Shared trailing control: `SwipeDeleteAction`. Confirm with `ConfirmDeleteDialog`
 
 | Situation | Pattern |
 | --- | --- |
-| **Responsive form overlay** (Dialog + Sheet) | Header **Cancelar** (`ghost` + `text-primary`, left) replaces the top-right **X**. Centered title. No footer Cancelar. One full-width primary (`h-11 w-full rounded-xl`). At most one dismiss and one primary — no duplicate Cancelar/Guardar. |
+| **Responsive form overlay** (Dialog + Sheet) | Header **Cancelar** (`ghost` + `text-primary-text`, left) replaces the top-right **X**. Centered title. No footer Cancelar. One full-width primary (`h-11 w-full rounded-xl`). At most one dismiss and one primary — no duplicate Cancelar/Guardar. |
 | Page / non-overlay forms | Footer **Cancelar** (`outline`) + primary (**Guardar** / **Crear** / …); optional header **X** whose `sr-only` label is **Cerrar** |
 | Read-only / done / import result | Footer **Cerrar** only (or X alone) |
 | Destructive confirm | `ConfirmDeleteDialog` / `AlertDialog`: **Cancelar** + destructive confirm (same on both breakpoints) |
@@ -168,7 +172,7 @@ Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human
 
 Same language on both surfaces:
 
-1. **Cancelar** — `Button variant="ghost"` + `text-primary`, absolute **left** in the header; `showCloseButton={false}` (no top-right **X**)
+1. **Cancelar** — `Button variant="ghost"` + `text-primary-text`, absolute **left** in the header; `showCloseButton={false}` (no top-right **X**)
 2. **Title** — centered (`text-base font-semibold`); **no** icon beside the title
 3. **Description** — not visible; keep `DialogDescription` / `SheetDescription` as **`sr-only`** for accessibility
 4. **Primary** — one full-width submit (`h-11 w-full rounded-xl`); no second Cancelar or Guardar
@@ -211,7 +215,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 **Do**
 
 - Reuse CSS variables and the shared glass / CTA classes.
-- Put orange on **the** primary action; keep `--primary` blue for selection, icons, and focus.
+- Put orange on **the** primary action; keep `--primary` blue for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy.
 - Match landing mocks and Panel financiero before inventing a new card language.
 - Capture README screenshots from **this** app (see below).
 

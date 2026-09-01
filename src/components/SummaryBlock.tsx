@@ -217,7 +217,7 @@ export default function SummaryBlock({
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <span className={cn('mt-0.5', MONTHLY_ICON_PILL_CLASS)} aria-hidden>
-              <BarChart3 className="h-4 w-4 text-primary" data-icon="inline-start" />
+              <BarChart3 className="h-4 w-4 text-primary-text" data-icon="inline-start" />
             </span>
             <div className="min-w-0 space-y-0.5">
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
@@ -236,7 +236,7 @@ export default function SummaryBlock({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary-text"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded

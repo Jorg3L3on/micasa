@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
+import { MONTHLY_ACCENT_TEXT_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
   formatDayMonthLabelFromYmd,
@@ -42,7 +43,7 @@ type MonthlyChromeHeaderProps = {
   showFortnightToggle?: boolean;
 };
 
-const accentEmphasisClass = 'font-medium text-primary';
+const accentEmphasisClass = cn('font-semibold', MONTHLY_ACCENT_TEXT_CLASS);
 
 const fortnightSegmentClass = (active: boolean) =>
   cn(
@@ -270,7 +271,7 @@ export const MonthlyChromeHeader = ({
               className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 shadow-sm ring-1 ring-primary/30 dark:bg-primary/20 dark:ring-[#911efe]/40 sm:flex"
               aria-hidden
             >
-              <CalendarDays className="h-4 w-4 text-primary" />
+              <CalendarDays className={cn('h-4 w-4', MONTHLY_ACCENT_TEXT_CLASS)} />
             </span>
             <div className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
               <div className="flex min-w-0 items-center gap-1">

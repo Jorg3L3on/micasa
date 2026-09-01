@@ -2,7 +2,7 @@
 export const AppAtmosphere = () => (
   <div
     aria-hidden
-    className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+    className="pointer-events-none absolute inset-0 z-0 overflow-hidden [contain:paint]"
   >
     <div className="absolute -left-24 -top-28 hidden h-[28rem] w-[28rem] rounded-full bg-[#3a37fc]/18 blur-3xl dark:block" />
     <div className="absolute -right-16 top-0 hidden h-[22rem] w-[22rem] rounded-full bg-[#ee477a]/12 blur-3xl dark:block" />

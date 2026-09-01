@@ -165,7 +165,7 @@ function FortnightMonthStepper({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <p className="min-w-0 flex-1 truncate text-center text-sm font-medium capitalize text-primary">
+        <p className="min-w-0 flex-1 truncate text-center text-sm font-medium capitalize text-primary-text">
           {MONTH_SHORT_ES[month - 1]} {year}
         </p>
         <Button
@@ -539,7 +539,7 @@ const CreditCardQuickPurchaseDialog = ({
     <Button
       type="button"
       variant="ghost"
-      className="absolute left-0 h-9 px-2 text-primary"
+      className="absolute left-0 h-9 px-2 text-primary-text"
       onClick={handleCancel}
       disabled={submitting}
     >

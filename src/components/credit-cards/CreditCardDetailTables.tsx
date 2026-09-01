@@ -261,7 +261,7 @@ export const PurchaseTableBlock = ({
                     </p>
                     <Link
                       href={getFortnightHref(purchase, ownerQueryString)}
-                      className="mt-1 inline-block text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                      className="mt-1 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
                     >
                       Ver quincena
                     </Link>

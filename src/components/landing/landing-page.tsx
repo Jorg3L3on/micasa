@@ -223,92 +223,99 @@ export const LandingPage = () => {
           onPointerMove={handleHeroPointerMove}
           className="relative z-10 scroll-mt-20 overflow-hidden pb-16 pt-10 sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16"
         >
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-0"
-            style={{ background: spotlight }}
-          />
+          <div className="relative z-10 mx-auto w-full max-w-6xl px-5 sm:px-6 md:px-8">
+            <div className="landing-hero-wash relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-12 lg:rounded-[2.5rem] lg:px-12 lg:py-14">
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{ background: spotlight }}
+              />
 
-          <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-12 px-5 sm:px-6 md:px-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10">
-            <motion.div
-              initial="hidden"
-              animate="show"
-              variants={{
-                show: {
-                  transition: { staggerChildren: reduceMotion ? 0 : 0.07 },
-                },
-              }}
-              className="relative max-w-xl"
-            >
-              <h1 className="text-balance font-[family-name:var(--font-landing-display)] text-[clamp(2.4rem,6vw,4.35rem)] font-bold leading-[1.05] tracking-[-0.04em] text-white">
-                {HEADLINE_WORDS.map((word, index) => (
-                  <motion.span
-                    key={`${word}-${index}`}
-                    className="mr-[0.28em] inline-block last:mr-0"
+              <div className="relative z-10 grid items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10">
+                <motion.div
+                  initial="hidden"
+                  animate="show"
+                  variants={{
+                    show: {
+                      transition: { staggerChildren: reduceMotion ? 0 : 0.07 },
+                    },
+                  }}
+                  className="relative max-w-xl"
+                >
+                  <h1 className="text-balance font-[family-name:var(--font-landing-display)] text-[clamp(2.4rem,6vw,4.35rem)] font-bold leading-[1.05] tracking-[-0.04em] text-white">
+                    {HEADLINE_WORDS.map((word, index) => (
+                      <motion.span
+                        key={`${word}-${index}`}
+                        className={cn(
+                          'mr-[0.28em] inline-block last:mr-0',
+                          index >= 4 && 'landing-accent-text',
+                        )}
+                        variants={{
+                          hidden: { opacity: 0, y: reduceMotion ? 0 : 18 },
+                          show: { opacity: 1, y: 0 },
+                        }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        {word}
+                      </motion.span>
+                    ))}
+                  </h1>
+
+                  <motion.p
                     variants={{
-                      hidden: { opacity: 0, y: reduceMotion ? 0 : 18 },
+                      hidden: { opacity: 0, y: reduceMotion ? 0 : 14 },
                       show: { opacity: 1, y: 0 },
                     }}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    className="mt-5 max-w-md text-pretty text-base leading-relaxed text-white/70 sm:text-lg"
                   >
-                    {word}
-                  </motion.span>
-                ))}
-              </h1>
+                    Plataforma unificada para ingresos, gastos, tarjetas y liquidez —
+                    al ritmo real de cobrar y pagar en México.
+                  </motion.p>
 
-              <motion.p
-                variants={{
-                  hidden: { opacity: 0, y: reduceMotion ? 0 : 14 },
-                  show: { opacity: 1, y: 0 },
-                }}
-                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-5 max-w-md text-pretty text-base leading-relaxed text-white/55 sm:text-lg"
-              >
-                Plataforma unificada para ingresos, gastos, tarjetas y liquidez —
-                al ritmo real de cobrar y pagar en México.
-              </motion.p>
+                  <motion.div
+                    variants={{
+                      hidden: { opacity: 0, y: reduceMotion ? 0 : 14 },
+                      show: { opacity: 1, y: 0 },
+                    }}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
+                  >
+                    <LandingLink href="/register" variant="primary">
+                      Empezar ahora
+                      <ArrowRight className="size-4" aria-hidden />
+                    </LandingLink>
+                    <LandingLink href="#producto" variant="ghost">
+                      <Play className="size-4" aria-hidden />
+                      Ver producto
+                    </LandingLink>
+                  </motion.div>
 
-              <motion.div
-                variants={{
-                  hidden: { opacity: 0, y: reduceMotion ? 0 : 14 },
-                  show: { opacity: 1, y: 0 },
-                }}
-                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
-              >
-                <LandingLink href="/register" variant="primary">
-                  Empezar ahora
-                  <ArrowRight className="size-4" aria-hidden />
-                </LandingLink>
-                <LandingLink href="#producto" variant="ghost">
-                  <Play className="size-4" aria-hidden />
-                  Ver producto
-                </LandingLink>
-              </motion.div>
+                  <motion.p
+                    variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}
+                    className="mt-6 inline-flex items-center gap-2 text-sm text-white/55"
+                  >
+                    <Star className="size-3.5 fill-amber-300 text-amber-300" aria-hidden />
+                    Hecho para quincenas mexicanas · Gratis, sin tarjeta
+                  </motion.p>
+                </motion.div>
 
-              <motion.p
-                variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}
-                className="mt-6 inline-flex items-center gap-2 text-sm text-white/45"
-              >
-                <Star className="size-3.5 fill-amber-300 text-amber-300" aria-hidden />
-                Hecho para quincenas mexicanas · Gratis, sin tarjeta
-              </motion.p>
-            </motion.div>
-
-            <div className="relative [perspective:1600px]">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -inset-8 rounded-[2rem] bg-[radial-gradient(circle_at_center,rgba(145,30,254,0.28),transparent_68%)] blur-2xl"
-              />
-              <motion.div
-                initial={reduceMotion ? false : { opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.95, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-                className="origin-bottom will-change-transform"
-                style={{ transform: productTransform, transformStyle: 'preserve-3d' }}
-              >
-                <HeroDashboardMock />
-              </motion.div>
+                <div className="relative [perspective:1600px]">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -inset-8 rounded-[2rem] bg-[radial-gradient(circle_at_center,rgba(145,30,254,0.28),transparent_68%)] blur-2xl"
+                  />
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.95, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+                    className="origin-bottom will-change-transform"
+                    style={{ transform: productTransform, transformStyle: 'preserve-3d' }}
+                  >
+                    <HeroDashboardMock />
+                  </motion.div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -352,7 +359,7 @@ export const LandingPage = () => {
 
             <div className="mt-12 grid gap-5 lg:grid-cols-2">
               <Reveal>
-                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d1327]/70 p-5 backdrop-blur-xl sm:p-6">
+                <div className="landing-glass-card overflow-hidden rounded-2xl p-5 sm:p-6">
                   <p className="text-sm font-medium text-white/80">
                     Analítica predictiva que revela el valle antes de llegar a él.
                   </p>
@@ -362,7 +369,7 @@ export const LandingPage = () => {
                 </div>
               </Reveal>
               <Reveal delay={0.06}>
-                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d1327]/70 p-5 backdrop-blur-xl sm:p-6">
+                <div className="landing-glass-card overflow-hidden rounded-2xl p-5 sm:p-6">
                   <p className="text-sm font-medium text-white/80">
                     Inteligencia en tiempo real: pagado, pendiente y crédito en el mismo ritmo.
                   </p>
@@ -374,7 +381,7 @@ export const LandingPage = () => {
             </div>
 
             <Reveal delay={0.08}>
-              <div className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d1327]/70 p-5 backdrop-blur-xl sm:p-8">
+              <div className="landing-glass-card mt-5 overflow-hidden rounded-2xl p-5 sm:p-8">
                 <div className="mx-auto max-w-2xl text-center">
                   <h3 className="font-[family-name:var(--font-landing-display)] text-2xl font-semibold tracking-tight text-white sm:text-3xl">
                     Ve tu casa desde otra perspectiva
@@ -525,7 +532,7 @@ export const LandingPage = () => {
           <div className="mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-3 sm:px-6 md:px-8">
             {BOTTOM_FEATURES.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 0.05}>
-                <div className="rounded-2xl border border-white/[0.07] bg-[#0d1327]/60 p-6">
+                <div className="landing-glass-card rounded-2xl p-6">
                   <h3 className="font-[family-name:var(--font-landing-display)] text-lg font-semibold text-white">
                     {feature.title}
                   </h3>

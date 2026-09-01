@@ -58,7 +58,7 @@ export const FortnightIncomeRing = ({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className="text-primary transition-[stroke-dashoffset] duration-500"
+            className="text-primary-text transition-[stroke-dashoffset] duration-500"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
