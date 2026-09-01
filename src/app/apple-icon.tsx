@@ -1,6 +1,8 @@
 import { ImageResponse } from 'next/og';
 
 import {
+  MICASA_MARK_NODE_R,
+  MICASA_MARK_NODES,
   MICASA_MARK_PATH,
   MICASA_MARK_STROKE_WIDTH,
   MICASA_MARK_VIEWBOX,
@@ -29,8 +31,8 @@ export default function AppleIcon() {
         }}
       >
         <svg
-          width="112"
-          height="98"
+          width="148"
+          height="84"
           viewBox={MICASA_MARK_VIEWBOX}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -55,6 +57,15 @@ export default function AppleIcon() {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+          {MICASA_MARK_NODES.map(([cx, cy]) => (
+            <circle
+              key={`${cx}-${cy}`}
+              cx={cx}
+              cy={cy}
+              r={MICASA_MARK_NODE_R}
+              fill="url(#micasaGrad)"
+            />
+          ))}
         </svg>
       </div>
     ),

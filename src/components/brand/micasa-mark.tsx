@@ -3,6 +3,8 @@
 import { useId } from 'react';
 
 import {
+  MICASA_MARK_NODE_R,
+  MICASA_MARK_NODES,
   MICASA_MARK_PATH,
   MICASA_MARK_STROKE_WIDTH,
   MICASA_MARK_VIEWBOX,
@@ -15,7 +17,7 @@ type MicasaMarkProps = {
   title?: string;
 };
 
-/** Brand isotipo: rounded ribbon M, same language as Zigzag Z / Workia W. */
+/** Brand isotipo: rooftop zigzag with round nodes, Zigzag/Workia gradient + gloss. */
 export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
   const reactId = useId();
   const uid = reactId.replace(/:/g, '');
@@ -39,7 +41,7 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
           <stop offset="100%" stopColor="#ee477a" />
         </linearGradient>
         <linearGradient id={glossId} x1="0%" y1="0%" x2="55%" y2="90%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
           <stop offset="42%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -51,6 +53,9 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {MICASA_MARK_NODES.map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={MICASA_MARK_NODE_R} fill={`url(#${fillId})`} />
+      ))}
       <path
         d={MICASA_MARK_PATH}
         fill="none"
