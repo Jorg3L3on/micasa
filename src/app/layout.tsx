@@ -41,6 +41,11 @@ export const metadata: Metadata = {
     title: 'MiCasa',
     statusBarStyle: 'black-translucent',
   },
+  // Next.js emits `mobile-web-app-capable`; older iOS Safari still reads the
+  // apple-prefixed name for standalone Add to Home Screen.
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+  },
   icons: {
     icon: [
       { url: '/icon.ico', sizes: 'any' },
