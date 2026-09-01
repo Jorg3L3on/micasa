@@ -430,7 +430,7 @@ export default function AddTransactionDialog({
       <Button
         type="button"
         variant="ghost"
-        className="absolute left-0 h-9 px-2 text-primary"
+        className="absolute left-0 h-9 px-2 text-primary-text"
         onClick={handleCancel}
         disabled={isSubmitting}
       >
@@ -450,7 +450,7 @@ export default function AddTransactionDialog({
       <Button
         type="button"
         variant="ghost"
-        className="absolute left-0 h-9 px-2 text-primary"
+        className="absolute left-0 h-9 px-2 text-primary-text"
         onClick={handleCancel}
         disabled={isSubmitting}
       >
@@ -1017,14 +1017,14 @@ function TransactionTypeSwitch({
               className={cn(
                 'h-5 w-5',
                 selected
-                  ? 'fill-primary/15 text-primary'
+                  ? 'fill-primary/15 text-primary-text'
                   : 'text-muted-foreground',
               )}
             />
             <span
               className={cn(
                 'text-xs font-medium leading-none',
-                selected ? 'text-primary' : 'text-muted-foreground',
+                selected ? 'text-primary-text' : 'text-muted-foreground',
               )}
             >
               {label}
@@ -1061,7 +1061,7 @@ function DateStepper({
       </Button>
       <div className="relative min-w-0 flex-1 rounded-md focus-within:ring-2 focus-within:ring-ring/50">
         <span
-          className="pointer-events-none block truncate text-center text-sm font-medium capitalize text-primary"
+          className="pointer-events-none block truncate text-center text-sm font-medium capitalize text-primary-text"
           aria-hidden
         >
           {formatStepperDate(value)}

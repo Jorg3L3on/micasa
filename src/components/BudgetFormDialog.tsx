@@ -831,7 +831,7 @@ export default function BudgetFormDialog({
       <Button
         type="button"
         variant="ghost"
-        className="absolute left-0 h-9 px-2 text-primary"
+        className="absolute left-0 h-9 px-2 text-primary-text"
         onClick={handleCancel}
         disabled={form2.formState.isSubmitting || isPending}
       >

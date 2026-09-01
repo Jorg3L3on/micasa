@@ -155,7 +155,7 @@ export const FortnightSummaryHero = ({
             dotClassName="bg-primary"
             amountClassName={
               incomeRemainder >= 0
-                ? 'text-primary'
+                ? 'text-primary-text'
                 : 'text-destructive'
             }
           />
@@ -180,7 +180,7 @@ export const FortnightSummaryHero = ({
               hint="Resto del presupuesto de esta quincena (asignado menos gastado)"
               amount={budgetRemainingAmount}
               dotClassName="bg-violet-500"
-              amountClassName="text-violet-700 dark:text-violet-300"
+              amountClassName="text-violet-700 dark:text-violet-200"
             />
           ) : null}
         </div>

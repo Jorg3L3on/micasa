@@ -76,7 +76,7 @@ export const LiquidityMonthFocus = ({
               className={cn(
                 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ring-1',
                 isCurrentMonth
-                  ? 'bg-primary/15 text-primary ring-primary/25'
+                  ? 'bg-primary/15 text-primary-text ring-primary/25'
                   : 'bg-muted/40 text-muted-foreground ring-border/40',
               )}
               aria-hidden

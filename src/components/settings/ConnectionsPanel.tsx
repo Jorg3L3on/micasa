@@ -687,7 +687,7 @@ export default function ConnectionsPanel({
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-text">
               <Plug className="size-4" aria-hidden />
             </span>
             <div className="space-y-1">

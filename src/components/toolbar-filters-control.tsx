@@ -126,7 +126,7 @@ export function ToolbarFiltersControl({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 px-2 text-primary"
+                className="h-9 px-2 text-primary-text"
                 onClick={() => filters.onOpenChange(false)}
               >
                 Cancelar
@@ -169,7 +169,7 @@ export function ToolbarFiltersControl({
             <Button
               type="button"
               variant="ghost"
-              className="h-9 px-2 text-primary"
+              className="h-9 px-2 text-primary-text"
               onClick={() => filters.onOpenChange(false)}
             >
               Cancelar

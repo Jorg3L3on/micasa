@@ -12,3 +12,9 @@ export const MONTHLY_ICON_PILL_CLASS = cn(
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
   'bg-primary/15 ring-1 ring-primary/25 dark:bg-primary/20 dark:ring-[#911efe]/35',
 );
+
+/**
+ * Brand-colored labels, dates, and amounts on canvas.
+ * Use instead of `text-primary` — fill blue (#3a37fc) is too dark on navy.
+ */
+export const MONTHLY_ACCENT_TEXT_CLASS = 'text-primary-text';

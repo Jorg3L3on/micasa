@@ -110,7 +110,7 @@ For horizontally scrollable content (e.g. wallet cards), use:
 
 ## CTAs
 
-- **Dark in-app primary:** default `<Button>` (orange gradient). `--primary` stays electric blue for selection, icon pills, toggles, and focus rings.
+- **Dark in-app primary:** default `<Button>` (orange gradient). `--primary` stays electric blue for selection, icon pills, toggles, and focus rings. Brand copy on navy uses `text-primary-text`.
 - **Landing primary:** pill `rounded-full` + `.landing-cta`. One orange control per block.
 - Featured / Pro marketing border: `.landing-pro-border` (`#FF4D00` → `#8A2BE2`).
 
@@ -120,5 +120,5 @@ For horizontally scrollable content (e.g. wallet cards), use:
 - Negative amounts always get `text-destructive`
 - Paid/completed rows: `bg-muted/20 opacity-75`
 - Use `shrink-0` (not `flex-shrink-0`) per Tailwind v4
-- Dark mode: always provide `dark:` variants for accent colors (e.g. `text-blue-600 dark:text-blue-400`, `bg-blue-500/10 dark:bg-blue-500/15`)
+- Dark mode: always provide `dark:` variants for accent colors (e.g. `text-blue-600 dark:text-blue-400`, `bg-blue-500/10 dark:bg-blue-500/15`). Brand emphasis (dates, links, Cancelar, money accents) uses `text-primary-text`, not `text-primary`.
 - Accessibility: always include `aria-label` on interactive elements and `role="region"` with `aria-label` on data sections

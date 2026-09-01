@@ -388,7 +388,7 @@ export const CreditCardRecentMovements = ({
                               </p>
                               <Link
                                 href={getFortnightHref(row.purchase, ownerQueryString)}
-                                className="mt-0.5 inline-block text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                                className="mt-0.5 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
                               >
                                 Ver quincena
                               </Link>
@@ -613,7 +613,7 @@ export const GroupedPurchaseFeed = ({
                         </p>
                         <Link
                           href={getFortnightHref(purchase, ownerQueryString)}
-                          className="mt-0.5 inline-block text-[10px] font-medium text-primary underline-offset-2 hover:underline"
+                          className="mt-0.5 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
                         >
                           Ver quincena
                         </Link>

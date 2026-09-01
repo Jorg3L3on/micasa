@@ -70,7 +70,7 @@ export default function WalletDeleteDialog({
     <Button
       type="button"
       variant="ghost"
-      className="absolute left-0 h-9 px-2 text-primary"
+      className="absolute left-0 h-9 px-2 text-primary-text"
       onClick={handleCancel}
       disabled={isDeleting}
     >

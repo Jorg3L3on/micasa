@@ -23,6 +23,8 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.585 0.233 264);
   --primary-foreground: oklch(1 0 0);
+  /* Brand color used as text/icons on canvas (fills stay --primary). */
+  --primary-text: oklch(0.585 0.233 264);
   --secondary: oklch(0.93 0.008 265);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.92 0.008 265);
@@ -67,6 +69,8 @@
   --popover-foreground: #f7f8ff;
   --primary: #3a37fc;
   --primary-foreground: #ffffff;
+  /* Luminous electric blue — #3a37fc as text fails WCAG on navy (~2.8:1). */
+  --primary-text: #9ea0ff;
   --secondary: #090e1d;
   --secondary-foreground: #f7f8ff;
   --muted: #12183a;
@@ -104,6 +108,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

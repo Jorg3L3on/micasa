@@ -38,7 +38,7 @@ const BudgetSidebarHeader = ({
       className={MONTHLY_ICON_PILL_CLASS}
       aria-hidden
     >
-      <PiggyBank className="h-4 w-4 text-primary" />
+      <PiggyBank className="h-4 w-4 text-primary-text" />
     </span>
     <div className="min-w-0">
       <h2
@@ -199,7 +199,7 @@ function BudgetAllocationRow({
             'font-mono font-semibold tabular-nums',
             overspent
               ? 'text-destructive'
-              : 'text-emerald-600 dark:text-emerald-400',
+              : 'text-emerald-600 dark:text-emerald-300',
           )}
         >
           {remainingLabel}
