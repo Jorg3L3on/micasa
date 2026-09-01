@@ -71,15 +71,15 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
 - **Primary labeled buttons in dark** use the **orange gradient** (`Button` `variant="default"`). Do not invent a second primary orange utility; use `<Button>`.
-- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs + faint grid in dark). Login has its own aurora (`login-stage`).
-- **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page.
+- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
+- **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
 ```
 orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 shadow-sm
 dark:backdrop-blur-xl
 ```
 
-Dark specular + grid live in `.orion-panel-glass` (`globals.css`). Metric tiles inside the summary use `.orion-metric-tile`.
+Metric tiles inside the summary use `.orion-metric-tile`.
 
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/75` plus a soft blue drop shadow.
 

@@ -39,7 +39,7 @@ export default async function AppLayout({
       <AppToolbarShell>
         <SidebarProvider>
           <AppSidebarDynamic />
-          <SidebarInset className="relative min-w-0">
+          <SidebarInset className="relative min-w-0 overflow-x-clip">
             <QuickCaptureHost>
               <AppAtmosphere />
               <header
