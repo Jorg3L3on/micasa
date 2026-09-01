@@ -114,8 +114,6 @@ export async function POST(request: NextRequest) {
 
     if (data.isRecurring && data.applyToBothFortnights) {
       const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
-      const otherDay = otherPeriod === 'FIRST' ? Math.min(day, 15) : 16;
-      const otherDate = `${yearStr}-${monthStr}-${String(otherDay).padStart(2, '0')}`;
       const otherFortnight = await resolveOrCreateFortnight({
         ownerType,
         ownerId,
@@ -146,7 +144,6 @@ export async function POST(request: NextRequest) {
           request,
         );
       }
-      void otherDate;
     }
 
     return NextResponse.json(
