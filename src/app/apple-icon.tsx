@@ -1,10 +1,8 @@
 import { ImageResponse } from 'next/og';
 
 import {
-  MICASA_MARK_LEFT_STEM,
-  MICASA_MARK_RIGHT_STEM,
+  MICASA_MARK_PATH,
   MICASA_MARK_STROKE_WIDTH,
-  MICASA_MARK_VALLEY,
   MICASA_MARK_VIEWBOX,
 } from '@/components/brand/micasa-mark-geometry';
 
@@ -32,7 +30,7 @@ export default function AppleIcon() {
       >
         <svg
           width="112"
-          height="96"
+          height="98"
           viewBox={MICASA_MARK_VIEWBOX}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -50,16 +48,13 @@ export default function AppleIcon() {
               <stop offset="1" stopColor="#ee477a" />
             </linearGradient>
           </defs>
-          <g
+          <path
+            d={MICASA_MARK_PATH}
             stroke="url(#micasaGrad)"
             strokeWidth={MICASA_MARK_STROKE_WIDTH}
             strokeLinecap="round"
             strokeLinejoin="round"
-          >
-            <path d={MICASA_MARK_LEFT_STEM} />
-            <path d={MICASA_MARK_RIGHT_STEM} />
-            <path d={MICASA_MARK_VALLEY} />
-          </g>
+          />
         </svg>
       </div>
     ),

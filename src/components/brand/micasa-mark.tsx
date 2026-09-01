@@ -3,10 +3,8 @@
 import { useId } from 'react';
 
 import {
-  MICASA_MARK_LEFT_STEM,
-  MICASA_MARK_RIGHT_STEM,
+  MICASA_MARK_PATH,
   MICASA_MARK_STROKE_WIDTH,
-  MICASA_MARK_VALLEY,
   MICASA_MARK_VIEWBOX,
 } from '@/components/brand/micasa-mark-geometry';
 import { cn } from '@/lib/utils';
@@ -45,27 +43,22 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
           <stop offset="42%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <g
+      <path
+        d={MICASA_MARK_PATH}
         fill="none"
         stroke={`url(#${fillId})`}
         strokeWidth={MICASA_MARK_STROKE_WIDTH}
         strokeLinecap="round"
         strokeLinejoin="round"
-      >
-        <path d={MICASA_MARK_LEFT_STEM} />
-        <path d={MICASA_MARK_RIGHT_STEM} />
-        <path d={MICASA_MARK_VALLEY} />
-      </g>
-      <g
+      />
+      <path
+        d={MICASA_MARK_PATH}
         fill="none"
         stroke={`url(#${glossId})`}
         strokeWidth={MICASA_MARK_STROKE_WIDTH}
         strokeLinecap="round"
         strokeLinejoin="round"
-      >
-        <path d={MICASA_MARK_LEFT_STEM} />
-        <path d={MICASA_MARK_VALLEY} />
-      </g>
+      />
     </svg>
   );
 };

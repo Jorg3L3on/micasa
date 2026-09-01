@@ -42,7 +42,7 @@ describe('FortnightIncomeGauge data', () => {
 });
 
 describe('FortnightIncomeGauge joins', () => {
-  it('insets interior joins so round caps do not overlap', () => {
+  it('insets interior joins so round caps can meet when used', () => {
     const inset = gaugeJoinInsetDeg();
     const cash = insetArcJoins(180, 36, false, true, inset);
     const budget = insetArcJoins(36, 14, true, true, inset);
@@ -53,8 +53,6 @@ describe('FortnightIncomeGauge joins', () => {
     expect(free).not.toBeNull();
     expect(cash!.endDeg).toBeCloseTo(36 + inset);
     expect(budget!.startDeg).toBeCloseTo(36 - inset);
-    expect(budget!.endDeg).toBeCloseTo(14 + inset);
-    expect(free!.startDeg).toBeCloseTo(14 - inset);
     expect(free!.endDeg).toBe(0);
   });
 

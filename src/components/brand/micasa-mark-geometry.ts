@@ -1,5 +1,4 @@
-export const MICASA_MARK_VIEWBOX = '0 0 64 54';
-export const MICASA_MARK_STROKE_WIDTH = 11;
-export const MICASA_MARK_LEFT_STEM = 'M12 46 L12 10';
-export const MICASA_MARK_RIGHT_STEM = 'M52 46 L52 10';
-export const MICASA_MARK_VALLEY = 'M12 10 L32 38 L52 10';
+export const MICASA_MARK_VIEWBOX = '0 0 64 56';
+export const MICASA_MARK_STROKE_WIDTH = 9;
+/** Single ribbon M — peaks at the top, legs to the baseline. */
+export const MICASA_MARK_PATH = 'M10 48 L10 8 L32 30 L54 8 L54 48';

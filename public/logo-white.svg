@@ -20,16 +20,17 @@
     </linearGradient>
   </defs>
 
-  <g transform="translate(52 48) scale(2.4)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke="url(#micasaBrandGradientWhite)" stroke-width="11">
-      <path d="M12 46 L12 10" />
-      <path d="M52 46 L52 10" />
-      <path d="M12 10 L32 38 L52 10" />
-    </g>
-    <g stroke="url(#micasaBrandGlossWhite)" stroke-width="11">
-      <path d="M12 46 L12 10" />
-      <path d="M12 10 L32 38 L52 10" />
-    </g>
+  <g transform="translate(52 44) scale(2.35)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path
+      d="M10 48 L10 8 L32 30 L54 8 L54 48"
+      stroke="url(#micasaBrandGradientWhite)"
+      stroke-width="9"
+    />
+    <path
+      d="M10 48 L10 8 L32 30 L54 8 L54 48"
+      stroke="url(#micasaBrandGlossWhite)"
+      stroke-width="9"
+    />
   </g>
 
   <text
