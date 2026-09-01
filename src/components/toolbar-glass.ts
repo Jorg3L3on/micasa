@@ -79,7 +79,7 @@ export const TOOLBAR_GLASS_PRIMARY_PILL =
 /** Cancel / tinted text control — frosted tint, not solid fill. */
 export const TOOLBAR_GLASS_CANCEL =
   [
-    'h-10 shrink-0 rounded-full px-3.5 text-[15px] font-medium text-primary',
+    'h-10 shrink-0 rounded-full px-3.5 text-[15px] font-medium text-primary-text',
     'border border-primary/20 bg-primary/10',
     'shadow-[inset_0_1px_1px_rgba(255,255,255,0.55)]',
     'backdrop-blur-xl backdrop-saturate-150',

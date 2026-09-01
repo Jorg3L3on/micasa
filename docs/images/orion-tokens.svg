@@ -27,21 +27,25 @@
   <text x="676" y="148" fill="#f7f8ff" font-size="12" font-family="ui-monospace, monospace">border-white/8 · blur-xl</text>
 
   <!-- Accents -->
-  <rect x="40" y="196" width="168" height="72" rx="14" fill="#3a37fc"/>
-  <text x="52" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Primary</text>
-  <text x="52" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#3a37fc</text>
+  <rect x="40" y="196" width="120" height="72" rx="14" fill="#3a37fc"/>
+  <text x="52" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Primary fill</text>
+  <text x="52" y="244" fill="#ffffff" font-size="13" font-family="ui-monospace, monospace">#3a37fc</text>
 
-  <rect x="224" y="196" width="168" height="72" rx="14" fill="#911efe"/>
-  <text x="236" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Ring / violet</text>
-  <text x="236" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#911efe</text>
+  <rect x="172" y="196" width="120" height="72" rx="14" fill="#9ea0ff"/>
+  <text x="184" y="220" fill="#060914" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Primary text</text>
+  <text x="184" y="244" fill="#060914" font-size="13" font-family="ui-monospace, monospace">#9ea0ff</text>
 
-  <rect x="408" y="196" width="168" height="72" rx="14" fill="#ee477a"/>
-  <text x="420" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Pink</text>
-  <text x="420" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#ee477a</text>
+  <rect x="304" y="196" width="120" height="72" rx="14" fill="#911efe"/>
+  <text x="316" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Ring / violet</text>
+  <text x="316" y="244" fill="#ffffff" font-size="13" font-family="ui-monospace, monospace">#911efe</text>
 
-  <rect x="592" y="196" width="328" height="72" rx="36" fill="url(#cta)"/>
-  <text x="612" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">CTA pill</text>
-  <text x="612" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#FF5733 ’ #FF2E00</text>
+  <rect x="436" y="196" width="120" height="72" rx="14" fill="#ee477a"/>
+  <text x="448" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Pink</text>
+  <text x="448" y="244" fill="#ffffff" font-size="13" font-family="ui-monospace, monospace">#ee477a</text>
+
+  <rect x="568" y="196" width="352" height="72" rx="36" fill="url(#cta)"/>
+  <text x="588" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">CTA pill</text>
+  <text x="588" y="244" fill="#ffffff" font-size="14" font-family="ui-monospace, monospace">#FF5733 ? #FF2E00</text>
 
   <rect x="40" y="292" width="880" height="88" rx="18" fill="url(#brand)"/>
   <text x="56" y="328" fill="#ffffff" font-size="13" font-family="ui-sans-serif, system-ui, sans-serif">Brand / featured border</text>

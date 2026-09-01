@@ -20,7 +20,7 @@ export const LiquidityWelcome = () => {
 
       <div className="relative flex items-start gap-3">
         <span
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#3a37fc]/20 to-[#ee477a]/10 text-primary ring-1 ring-primary/25"
+          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#3a37fc]/20 to-[#ee477a]/10 text-primary-text ring-1 ring-primary/25"
           aria-hidden
         >
           <Waves className="size-4" />

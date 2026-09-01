@@ -180,7 +180,7 @@ These classes recur across canonical pages. Prefer them over inventing new ones.
 
 ```
 rounded-xl border border-border/60 bg-card shadow-sm
-rounded-2xl border border-border/60 bg-card shadow-sm dark:border-white/[0.08] dark:bg-[#0d1327]/80 dark:backdrop-blur-xl
+rounded-2xl border border-border/60 shadow-sm orion-panel-glass dark:backdrop-blur-xl
   /* planner glass — prefer MONTHLY_PANEL_SHELL_CLASS */
 rounded-xl border border-border/60 bg-card p-4 shadow-sm    /* tile */
 rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm  /* StatCard */
@@ -217,12 +217,12 @@ Inline semantic classes — keep these consistent so users recognize them:
 - Success / paid: `text-emerald-600 dark:text-emerald-400` / `bg-emerald-500/10`
 - In-progress / pending: `text-amber-600 dark:text-amber-400` / `bg-amber-500/10`
 - Canceled / destructive: `text-destructive` / `bg-destructive/15`
-- Info / debit: `text-blue-600 dark:text-blue-400` / `bg-blue-500/10`
-- Credit / receipts: `text-violet-600 dark:text-violet-400` / `bg-violet-500/10`
+- Info / debit: `text-primary-text` / `bg-blue-500/10`
+- Credit / receipts: `text-violet-600 dark:text-violet-300` / `bg-violet-500/10`
 
 ### Buttons
 
-- Primary: default `<Button>` — in dark this is the orange gradient (`#FF5733` → `#FF2E00`). `--primary` remains electric blue for selection / icon pills / toggles.
+- Primary: default `<Button>` — in dark this is the orange gradient (`#FF5733` → `#FF2E00`). `--primary` remains electric blue for selection / icon-pill fills / toggles. Brand copy on navy (dates, links, Cancelar): `text-primary-text`.
 - Tall primary on a form: add `h-11`
 - Icon-only: `<Button variant="ghost" size="icon">` with `aria-label`
 - Mobile FAB: `fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden`

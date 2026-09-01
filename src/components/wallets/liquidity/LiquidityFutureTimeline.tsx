@@ -274,7 +274,7 @@ export const LiquidityFutureTimeline = ({
             role="status"
             aria-live="polite"
           >
-            <Loader2 className="size-5 animate-spin text-primary" aria-hidden />
+            <Loader2 className="size-5 animate-spin text-primary-text" aria-hidden />
             <p className="text-xs font-medium text-muted-foreground">
               Actualizando rango…
             </p>

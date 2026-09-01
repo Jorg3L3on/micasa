@@ -277,7 +277,7 @@ export const CreditCardCycleLedger = ({
                         {msi && onGoToCuotas ? (
                           <button
                             type="button"
-                            className="shrink-0 self-center px-2 text-[10px] text-primary hover:underline"
+                            className="shrink-0 self-center px-2 text-[10px] text-primary-text hover:underline"
                             onClick={() => {
                               onGoToCuotas();
                             }}

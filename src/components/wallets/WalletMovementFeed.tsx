@@ -272,7 +272,7 @@ export const WalletMovementsFeed = ({
                         {fortnightLink ? (
                           <Link
                             href={fortnightLink}
-                            className="mt-1 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
+                            className="mt-1 inline-block text-xs font-medium text-primary-text underline-offset-2 hover:underline"
                           >
                             Ver en quincena
                           </Link>

@@ -61,7 +61,7 @@ export default function OAuthConsentForm({
     <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-8">
       <Card>
         <CardHeader className="space-y-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary-text">
             <ShieldCheck className="size-5" aria-hidden />
           </span>
           <div className="space-y-1">
