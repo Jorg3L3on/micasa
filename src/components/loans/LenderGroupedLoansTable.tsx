@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent, ReactNode } from 'react';
+import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { ChevronDown, HandCoins, Landmark } from 'lucide-react';
 import { LenderIdentity } from '@/components/loans/LenderIdentity';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/tooltip';
 import { lenderNextCommitment } from '@/lib/finance/lender-next-commitment';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import type { LenderListItem } from '@/types/lenders';
+import type { LenderListItem, LenderPaymentListItem } from '@/types/lenders';
 import type { LoanListItem } from '@/types/loans';
 
 type LenderGroupedLoansTableProps = {
@@ -70,6 +70,13 @@ const nextHint = (next: ReturnType<typeof lenderNextCommitment>): string => {
   return next.date ? formatDate(next.date) : '';
 };
 
+const nextLine = (next: ReturnType<typeof lenderNextCommitment>): string => {
+  if (next.kind === 'none') return 'Sin próximo pago';
+  const amount = formatCurrency(next.amount);
+  const hint = nextHint(next);
+  return hint ? `Próx. ${amount} · ${hint}` : `Próx. ${amount}`;
+};
+
 const HeaderMetric = ({
   label,
   amount,
@@ -100,21 +107,31 @@ const HeaderMetric = ({
   </div>
 );
 
+const loanIconClass = (isPayroll: boolean) =>
+  cn(
+    'flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1',
+    isPayroll
+      ? 'bg-blue-500/15 text-blue-700 ring-blue-500/25 dark:text-blue-300'
+      : 'bg-violet-500/15 text-violet-700 ring-violet-500/25 dark:text-violet-300',
+  );
+
 const InstitutionActions = ({
   name,
   canPay,
   onPay,
+  compact,
 }: {
   name: string;
   canPay: boolean;
   onPay?: () => void;
+  compact?: boolean;
 }) => (
-  <div className="flex shrink-0 items-center gap-1.5">
+  <div className="flex shrink-0 items-center gap-1">
     {canPay && onPay ? (
       <Button
         type="button"
         size="sm"
-        className="h-8 rounded-xl"
+        className={cn('rounded-xl', compact ? 'h-10 px-3' : 'h-8')}
         onClick={onPay}
       >
         Pagar
@@ -127,7 +144,10 @@ const InstitutionActions = ({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground"
+            className={cn(
+              'text-muted-foreground',
+              compact ? 'h-10 w-10' : 'h-8 w-8',
+            )}
             aria-label={`Mostrar u ocultar contratos de ${name}`}
           >
             <ChevronDown
@@ -160,48 +180,98 @@ const InstitutionCard = ({
   canPay: boolean;
   onPay?: () => void;
   children: ReactNode;
-}) => (
-  <article
-    className={cn(
-      MONTHLY_PANEL_SHELL_CLASS,
-      'overflow-hidden px-4 py-3 sm:px-5 sm:py-3.5',
-    )}
-    aria-label={name}
-  >
-    <Collapsible defaultOpen={false} className="group/collapsible">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-stretch lg:gap-x-4">
-        <LenderIdentity
-          name={name}
-          providerIconKey={providerIconKey}
-          subtitle={subtitle}
-          className="min-w-0 max-w-[16rem] self-center"
-          nameClassName="font-[family-name:var(--font-display)] text-sm"
-          iconClassName="h-9 w-9 rounded-xl"
-          iconInnerClassName="h-4 w-4"
-        />
-        <div className="col-span-2 grid grid-cols-2 gap-2 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-          <HeaderMetric
-            label="Pendiente"
-            amount={formatCurrency(remaining)}
-            accentClassName="border-l-emerald-500/50"
-          />
-          <HeaderMetric
-            label="Próximo"
-            amount={next.kind === 'none' ? '—' : formatCurrency(next.amount)}
-            hint={nextHint(next)}
-            accentClassName="border-l-amber-500/50"
-          />
+}) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <article
+      className={cn(
+        MONTHLY_PANEL_SHELL_CLASS,
+        'overflow-hidden px-4 py-3 sm:px-5 sm:py-3.5',
+      )}
+      aria-label={name}
+    >
+      <Collapsible
+        open={open}
+        onOpenChange={setOpen}
+        className="group/collapsible"
+      >
+        <div className="md:hidden">
+          <div className="flex items-start gap-2">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-start gap-2.5 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                aria-label={`${open ? 'Ocultar' : 'Mostrar'} contratos de ${name}`}
+              >
+                <LenderIdentity
+                  name={name}
+                  providerIconKey={providerIconKey}
+                  subtitle={subtitle}
+                  className="min-w-0 flex-1"
+                  nameClassName="font-[family-name:var(--font-display)] text-sm"
+                  iconClassName="h-9 w-9 rounded-xl"
+                  iconInnerClassName="h-4 w-4"
+                />
+                <span className="shrink-0 pt-1 font-mono text-sm font-bold tabular-nums leading-none">
+                  {formatCurrency(remaining)}
+                </span>
+              </button>
+            </CollapsibleTrigger>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="min-w-0 flex-1 truncate text-left text-[11px] leading-tight text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                {nextLine(next)}
+              </button>
+            </CollapsibleTrigger>
+            <InstitutionActions
+              name={name}
+              canPay={canPay}
+              onPay={onPay}
+              compact
+            />
+          </div>
         </div>
-        <div className="col-start-2 row-start-1 flex items-center self-center lg:col-start-3">
-          <InstitutionActions name={name} canPay={canPay} onPay={onPay} />
+
+        <div className="hidden grid-cols-[auto_minmax(0,1fr)_auto] items-stretch gap-x-4 md:grid">
+          <LenderIdentity
+            name={name}
+            providerIconKey={providerIconKey}
+            subtitle={subtitle}
+            className="min-w-0 max-w-[16rem] self-center"
+            nameClassName="font-[family-name:var(--font-display)] text-sm"
+            iconClassName="h-9 w-9 rounded-xl"
+            iconInnerClassName="h-4 w-4"
+          />
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <HeaderMetric
+              label="Pendiente"
+              amount={formatCurrency(remaining)}
+              accentClassName="border-l-emerald-500/50"
+            />
+            <HeaderMetric
+              label="Próximo"
+              amount={next.kind === 'none' ? '—' : formatCurrency(next.amount)}
+              hint={nextHint(next)}
+              accentClassName="border-l-amber-500/50"
+            />
+          </div>
+          <div className="flex items-center self-center">
+            <InstitutionActions name={name} canPay={canPay} onPay={onPay} />
+          </div>
         </div>
-      </div>
-      <CollapsibleContent className="-mx-4 mt-3 border-t border-border/60 dark:border-white/[0.08] sm:-mx-5">
-        <div className="px-4 py-3 sm:px-5">{children}</div>
-      </CollapsibleContent>
-    </Collapsible>
-  </article>
-);
+
+        <CollapsibleContent className="-mx-4 mt-3 border-t border-border/60 dark:border-white/[0.08] sm:-mx-5">
+          <div className="px-4 py-3 sm:px-5">{children}</div>
+        </CollapsibleContent>
+      </Collapsible>
+    </article>
+  );
+};
 
 export const LenderGroupedLoansTable = ({
   lenders,
@@ -213,7 +283,7 @@ export const LenderGroupedLoansTable = ({
   const unassignedLoans = loans.filter((loan) => loan.lenderId == null);
 
   const handleOpenLoanFromRow = (
-    event: MouseEvent<HTMLTableRowElement>,
+    event: MouseEvent<HTMLElement>,
     loanId: number,
   ) => {
     if (event.target instanceof Element && event.target.closest('button, a')) {
@@ -221,6 +291,60 @@ export const LenderGroupedLoansTable = ({
     }
     onOpenLoan(loanId);
   };
+
+  const handleOpenLoanFromKey = (
+    event: KeyboardEvent<HTMLElement>,
+    loanId: number,
+  ) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onOpenLoan(loanId);
+  };
+
+  const renderMobileLoanRows = (groupLoans: LoanListItem[]) => (
+    <ul className="divide-y divide-border/60 md:hidden" role="list">
+      {groupLoans.map((loan) => {
+        const isPayroll = loan.type === 'PAYROLL';
+        const Icon = isPayroll ? Landmark : HandCoins;
+        return (
+          <li key={loan.id}>
+            <div
+              role="button"
+              tabIndex={0}
+              className={cn(
+                'flex cursor-pointer items-start gap-2.5 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                loan.status === 'PAUSED' && 'opacity-80',
+                loan.status === 'CANCELLED' && 'opacity-70',
+              )}
+              onClick={(event) => handleOpenLoanFromRow(event, loan.id)}
+              onKeyDown={(event) => handleOpenLoanFromKey(event, loan.id)}
+              aria-label={`Ver detalle de ${loan.name}`}
+            >
+              <span className={cn('mt-0.5', loanIconClass(isPayroll))}>
+                <Icon className="h-3 w-3" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 block text-sm font-medium leading-snug text-foreground">
+                  {loan.name}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  {loanOriginShort(loan)} · {loan.paidPayments}/{loan.paymentCount}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block font-mono text-sm font-semibold tabular-nums">
+                  {formatCurrency(loan.remainingAmount)}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  {loan.nextPayment ? formatDate(loan.nextPayment.dueDate) : '—'}
+                </span>
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   const renderLoanRows = (groupLoans: LoanListItem[]) =>
     groupLoans.map((loan) => {
@@ -239,14 +363,7 @@ export const LenderGroupedLoansTable = ({
         >
           <TableCell className="min-w-[12rem] whitespace-normal">
             <span className="flex items-start gap-2">
-              <span
-                className={cn(
-                  'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1',
-                  isPayroll
-                    ? 'bg-blue-500/15 text-blue-700 ring-blue-500/25 dark:text-blue-300'
-                    : 'bg-violet-500/15 text-violet-700 ring-violet-500/25 dark:text-violet-300',
-                )}
-              >
+              <span className={cn('mt-0.5', loanIconClass(isPayroll))}>
                 <Icon className="h-3 w-3" aria-hidden />
               </span>
               <span className="min-w-0">
@@ -304,8 +421,46 @@ export const LenderGroupedLoansTable = ({
       );
     });
 
+  const renderContracts = (
+    groupLoans: LoanListItem[],
+    lastPayment?: LenderPaymentListItem,
+    onUndo?: () => void,
+  ) => (
+    <>
+      {groupLoans.length > 0 ? (
+        <>
+          {renderMobileLoanRows(groupLoans)}
+          <div className="hidden md:block">
+            <ContractTable>{renderLoanRows(groupLoans)}</ContractTable>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Sin contratos en este filtro.
+        </p>
+      )}
+      {lastPayment && onUndo ? (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+          <span>
+            Último {formatDate(lastPayment.paidAt)} ·{' '}
+            {formatCurrency(lastPayment.amount)}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-[11px]"
+            onClick={onUndo}
+          >
+            Deshacer
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {unassignedLoans.length > 0 ? (
         <InstitutionCard
           name="Sin prestamista"
@@ -327,7 +482,7 @@ export const LenderGroupedLoansTable = ({
           )}
           canPay={false}
         >
-          <ContractTable>{renderLoanRows(unassignedLoans)}</ContractTable>
+          {renderContracts(unassignedLoans)}
         </InstitutionCard>
       ) : null}
 
@@ -361,30 +516,13 @@ export const LenderGroupedLoansTable = ({
             canPay={canPay}
             onPay={() => onPayLender(lender.id)}
           >
-            {lenderLoans.length > 0 ? (
-              <ContractTable>{renderLoanRows(lenderLoans)}</ContractTable>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Sin contratos en este filtro.
-              </p>
+            {renderContracts(
+              lenderLoans,
+              lastPayment,
+              lastPayment
+                ? () => onUndoLastPayment(lender.id, lastPayment.id)
+                : undefined,
             )}
-            {lastPayment ? (
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                <span>
-                  Último pago {formatDate(lastPayment.paidAt)} ·{' '}
-                  {formatCurrency(lastPayment.amount)}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[10px]"
-                  onClick={() => onUndoLastPayment(lender.id, lastPayment.id)}
-                >
-                  Deshacer último pago
-                </Button>
-              </div>
-            ) : null}
           </InstitutionCard>
         );
       })}

@@ -54,12 +54,23 @@ export default function LenderPayDialog({
 
   useEffect(() => {
     if (!open) return;
-    setSourceWalletId('');
+    const includedLoanIds = new Set(
+      (lender?.payWindow.included ?? []).map((item) => item.loanId),
+    );
+    const defaultWalletIds = [...new Set(
+      (lender?.loans ?? [])
+        .filter((loan) => includedLoanIds.has(loan.id))
+        .map((loan) => loan.sourceWalletId ?? loan.linkedWalletId)
+        .filter((id): id is number => id != null),
+    )];
+    setSourceWalletId(
+      defaultWalletIds.length === 1 ? String(defaultWalletIds[0]) : '',
+    );
     setPaidAt(todayCalendarDate());
     setExternal(false);
     setNote('');
     setLocalError(null);
-  }, [open, lender?.id]);
+  }, [open, lender]);
 
   const window = lender?.payWindow;
   const selectedSource = fundingWalletOptions.find(
