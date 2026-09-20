@@ -36,7 +36,7 @@ Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** acce
 | Text | `#f7f8ff` | `--foreground` |
 | Muted text | `#9ca3af` | `--muted-foreground` |
 | Electric blue (primary, brand) | `#3a37fc` | `--primary`, `--chart-1` |
-| Primary text (on canvas) | `#9ea0ff` (dark) | `--primary-text`, `text-primary-text` |
+| Primary text (on canvas) | `#f7f8ff` (dark, same as text) | `--primary-text`, `text-primary-text` |
 | Violet glow / ring | `#911efe` | `--ring`, `--landing-glow-purple` |
 | Magenta | `#cf1ae6` | `--landing-glow-magenta` |
 | Pink | `#ee477a` | `--chart-2`, `--landing-glow-pink` |
@@ -70,7 +70,7 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 - **Fonts:** Geist + Geist Mono for body/UI; **Manrope** (`--font-display`) for `h1`–`h3` and brand lockup. Money still `font-mono tabular-nums`.
 - **Same navy tokens** as landing (`.dark` in `globals.css`).
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
-- **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
+- **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. In dark this matches `--foreground` (`#f7f8ff`). Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
 - **Primary labeled buttons in dark** use **electric blue** (`#3a37fc`) with a violet ring (`Button` `variant="default"`). Do not invent a second primary fill. Orange stays on **landing** `.landing-cta` pills only.
 - **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
@@ -80,7 +80,7 @@ orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 s
 dark:backdrop-blur-xl
 ```
 
-Dark glass adds a specular top edge (`inset` highlight) and hairline `white/8` border. Metric tiles inside the summary use `.orion-metric-tile` (same specular language).
+Dark glass adds a specular top edge (`inset` highlight) and hairline `white/8` border. Summary metrics sit on the panel without nested cards.
 
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/75` plus a soft blue drop shadow.
 
@@ -216,7 +216,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 **Do**
 
 - Reuse CSS variables and the shared glass / CTA classes.
-- Put **electric blue** on the in-app primary action; keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy. Orange is landing `.landing-cta` only.
+- Put **electric blue** on the in-app primary action; keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text. Orange is landing `.landing-cta` only.
 - Match landing mocks and Panel financiero before inventing a new card language.
 - Capture README screenshots from **this** app (see below).
 

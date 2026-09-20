@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { CalendarDays, Goal, Hourglass } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Goal, Hourglass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -11,10 +11,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
-import { MONTHLY_ACCENT_TEXT_CLASS } from '@/components/monthly/monthly-panel-shell';
+import {
+  MONTHLY_ACCENT_TEXT_CLASS,
+  MONTHLY_ICON_PILL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
-  formatDayMonthLabelFromYmd,
   getCalendarFortnightRefForYmd,
   getFortnightCalendarBounds,
   getFortnightPeriodPosition,
@@ -50,7 +52,7 @@ const fortnightSegmentClass = (active: boolean) =>
     'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all @min-[42rem]:flex-none @min-[42rem]:px-2.5',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     active
-      ? 'bg-linear-to-r from-[#FF5733] to-[#FF2E00] text-white shadow-[0_8px_20px_-10px_rgba(255,87,51,0.75)]'
+      ? 'bg-primary text-white shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-[#911efe]/40 dark:bg-[#3a37fc]'
       : 'text-foreground/70 hover:text-foreground/90 active:scale-[0.98]',
   );
 
@@ -63,6 +65,204 @@ const ChromeDivider = ({ className }: { className?: string }) => (
     aria-hidden
   />
 );
+
+const MONTH_SHORT_ES_LOWER = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+] as const;
+
+const formatAxisDate = (ymd: string) => {
+  const parts = ymd.split('-');
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  if (!month || !day) return ymd;
+  return `${day} ${MONTH_SHORT_ES_LOWER[month - 1] ?? ''}`;
+};
+
+type ProgressTone = 'active' | 'complete' | 'upcoming';
+
+const chromeTileClass =
+  'flex min-w-0 items-center gap-2.5 @min-[42rem]:flex-1 @min-[42rem]:px-3';
+
+const statusGlyphClass = (tone: ProgressTone) => {
+  if (tone === 'active') return MONTHLY_ICON_PILL_CLASS;
+  if (tone === 'complete') {
+    return cn(
+      'flex size-8 shrink-0 items-center justify-center rounded-xl',
+      'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+    );
+  }
+  return cn(
+    'flex size-8 shrink-0 items-center justify-center rounded-xl',
+    'bg-muted/80 text-muted-foreground',
+  );
+};
+
+const FortnightProgressTrack = ({
+  percent,
+  tone,
+  label,
+}: {
+  percent: number;
+  tone: ProgressTone;
+  label: string;
+}) => {
+  const showKnob = tone === 'active' && percent > 0;
+
+  return (
+    <div className="relative flex h-2.5 items-center">
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-white/[0.08]"
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label}
+      >
+        <div
+          className={cn(
+            'h-full rounded-full bg-primary transition-[width] duration-500 dark:bg-[#3a37fc]',
+            tone === 'upcoming' && 'bg-transparent dark:bg-transparent',
+          )}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      {showKnob ? (
+        <span
+          className="pointer-events-none absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#3a37fc] shadow-[0_0_10px_rgba(58,55,252,0.85)]"
+          style={{ left: `${Math.min(percent, 100)}%` }}
+          aria-hidden
+        />
+      ) : null}
+    </div>
+  );
+};
+
+type FortnightProgressStatusProps = {
+  position: ReturnType<typeof getFortnightPeriodPosition>;
+  todayYmd: string;
+  startYmd: string;
+  endYmd: string;
+};
+
+const FortnightProgressStatus = ({
+  position,
+  todayYmd,
+  startYmd,
+  endYmd,
+}: FortnightProgressStatusProps) => {
+  const tone: ProgressTone =
+    position.kind === 'current'
+      ? 'active'
+      : position.kind === 'past'
+        ? 'complete'
+        : 'upcoming';
+
+  const percent =
+    position.kind === 'current'
+      ? position.elapsedPercent
+      : position.kind === 'past'
+        ? 100
+        : 0;
+
+  const StatusIcon =
+    tone === 'active'
+      ? Hourglass
+      : tone === 'complete'
+        ? CheckCircle2
+        : CalendarClock;
+
+  const progressLabel =
+    position.kind === 'current'
+      ? `Progreso de la quincena: ${percent}%`
+      : position.kind === 'past'
+        ? 'Quincena terminada'
+        : 'Quincena aún no empieza';
+
+  const title =
+    position.kind === 'past'
+      ? 'Terminada'
+      : position.kind === 'future'
+        ? `Empieza ${formatAxisDate(startYmd)}`
+        : position.remainingDays <= 1
+          ? 'Último día'
+          : `${position.remainingDays} días`;
+
+  const titleSr =
+    position.kind === 'current' && position.remainingDays > 1
+      ? `Faltan ${position.remainingDays} días`
+      : title;
+
+  const leftDate =
+    position.kind === 'current'
+      ? formatAxisDate(todayYmd)
+      : formatAxisDate(startYmd);
+
+  return (
+    <div className={chromeTileClass} aria-live="polite">
+      <span
+        className={cn(
+          'flex @min-[42rem]:hidden @min-[62rem]:flex',
+          statusGlyphClass(tone),
+        )}
+        aria-hidden
+      >
+        <StatusIcon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p
+            className="min-w-0 truncate text-sm font-semibold leading-tight tracking-tight"
+            aria-label={titleSr}
+          >
+            {position.kind === 'current' && position.remainingDays > 1 ? (
+              <span className="tabular-nums">{title}</span>
+            ) : (
+              title
+            )}
+          </p>
+          {tone === 'upcoming' ? (
+            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Próxima
+            </span>
+          ) : (
+            <span
+              className={cn(
+                'shrink-0 text-sm font-semibold tabular-nums',
+                MONTHLY_ACCENT_TEXT_CLASS,
+              )}
+            >
+              {percent}%
+            </span>
+          )}
+        </div>
+        <FortnightProgressTrack
+          percent={percent}
+          tone={tone}
+          label={progressLabel}
+        />
+        <div className="flex items-center justify-between gap-2 text-[10px] leading-none text-muted-foreground sm:text-[11px]">
+          <span className={cn('min-w-0 truncate', accentEmphasisClass)}>
+            {leftDate}
+          </span>
+          <span className={cn('shrink-0', accentEmphasisClass)}>
+            {formatAxisDate(endYmd)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const MonthlyChromeHeader = ({
   year,
@@ -90,8 +290,6 @@ export const MonthlyChromeHeader = ({
 
   const position = getFortnightPeriodPosition(year, month, period, todayYmd);
   const bounds = getFortnightCalendarBounds(year, month, period);
-  const startLabel = formatDayMonthLabelFromYmd(bounds.startYmd);
-  const endLabel = formatDayMonthLabelFromYmd(bounds.endYmd);
 
   const fortnightToggle = !showFortnightToggle ? null : !prefsReady ? (
     <Skeleton
@@ -152,97 +350,14 @@ export const MonthlyChromeHeader = ({
     </Tooltip>
   ) : null;
 
-  const remainingLabel =
-    position.kind === 'current' ? (
-      position.remainingDays <= 1 ? (
-        <span className={accentEmphasisClass}>Último día</span>
-      ) : (
-        <span>
-          Faltan{' '}
-          <span className={accentEmphasisClass}>
-            {position.remainingDays} días
-          </span>
-        </span>
-      )
-    ) : null;
-
-  const progressCenter =
-    position.kind === 'current' ? (
-      <div
-        className="flex min-w-0 flex-col gap-1 @min-[42rem]:flex-1 @min-[42rem]:gap-1.5 @min-[42rem]:px-3"
-        aria-live="polite"
-      >
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground sm:text-xs">
-          <span>
-            Hoy es{' '}
-            <span className={accentEmphasisClass}>
-              {formatDayMonthLabelFromYmd(todayYmd)}
-            </span>
-          </span>
-          <span className="text-border/80" aria-hidden>
-            ·
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Hourglass className="size-3 shrink-0 opacity-70" aria-hidden />
-            {remainingLabel}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted/50"
-            role="progressbar"
-            aria-valuenow={position.elapsedPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`Progreso de la quincena: ${position.elapsedPercent}%`}
-          >
-            <div
-              className="h-full rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a] transition-[width] duration-500"
-              style={{ width: `${position.elapsedPercent}%` }}
-            />
-          </div>
-          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-foreground sm:text-xs">
-            {position.elapsedPercent}%
-          </span>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          Termina el <span className={accentEmphasisClass}>{endLabel}</span>
-        </p>
-      </div>
-    ) : (
-      <div
-        className="flex min-w-0 flex-col justify-center gap-1 @min-[42rem]:flex-1 @min-[42rem]:gap-1.5 @min-[42rem]:px-3"
-        aria-live="polite"
-      >
-        <p className="text-[11px] text-muted-foreground sm:text-xs">
-          {position.kind === 'past' ? (
-            'Quincena terminada'
-          ) : (
-            <>
-              Empieza el{' '}
-              <span className="font-medium text-foreground">{startLabel}</span>
-            </>
-          )}
-        </p>
-        <div
-          className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40 @min-[42rem]:max-w-xs"
-          role="progressbar"
-          aria-valuenow={position.kind === 'past' ? 100 : 0}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={
-            position.kind === 'past'
-              ? 'Quincena terminada'
-              : 'Quincena aún no empieza'
-          }
-        >
-          <div
-            className="h-full rounded-full bg-muted-foreground/25"
-            style={{ width: position.kind === 'past' ? '100%' : '0%' }}
-          />
-        </div>
-      </div>
-    );
+  const progressCenter = (
+    <FortnightProgressStatus
+      position={position}
+      todayYmd={todayYmd}
+      startYmd={bounds.startYmd}
+      endYmd={bounds.endYmd}
+    />
+  );
 
   const desktopNextSlot =
     nextNavControl || createNextControl ? (
@@ -263,42 +378,16 @@ export const MonthlyChromeHeader = ({
         <div className="flex min-w-0 items-center gap-1">
           <div className="shrink-0">{prevControl}</div>
 
-          <div
-            className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-border/50 bg-muted/20 px-2.5 py-1.5 dark:border-white/[0.08] dark:bg-white/[0.03] @min-[42rem]:flex-none @min-[42rem]:justify-start"
-            aria-live="polite"
-          >
-            <span
-              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 shadow-sm ring-1 ring-primary/30 dark:bg-primary/20 dark:ring-[#911efe]/40 sm:flex"
-              aria-hidden
-            >
-              <CalendarDays className={cn('h-4 w-4', MONTHLY_ACCENT_TEXT_CLASS)} />
-            </span>
-            <div className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
-              <div className="flex min-w-0 items-center gap-1">
-                <MonthlyMonthPicker
-                  year={year}
-                  month={month}
-                  monthName={monthName}
-                  ownerQuery={ownerQuery}
-                  currentYear={currentYear}
-                  currentMonth={currentMonth}
-                />
-                {jumpToCurrent}
-              </div>
-              {isCurrentMonth ? (
-                <span
-                  className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 text-[10px] font-semibold uppercase tracking-wider text-primary dark:border-[#911efe]/40 dark:bg-[#911efe]/15 dark:text-[#d8b4fe]"
-                  aria-label="Mes actual"
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-primary dark:bg-[#ee477a]"
-                    aria-hidden
-                  />
-                  Actual
-                </span>
-              ) : null}
-            </div>
-          </div>
+          <MonthlyMonthPicker
+            year={year}
+            month={month}
+            monthName={monthName}
+            ownerQuery={ownerQuery}
+            currentYear={currentYear}
+            currentMonth={currentMonth}
+            isCurrentMonth={isCurrentMonth}
+          />
+          {jumpToCurrent}
 
           {nextNavControl ? (
             <div className="shrink-0 @min-[42rem]:hidden">{nextNavControl}</div>

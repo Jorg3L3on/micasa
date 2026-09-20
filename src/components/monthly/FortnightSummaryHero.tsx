@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Info } from 'lucide-react';
 import { FortnightIncomeGauge } from '@/components/monthly/FortnightIncomeGauge';
 import {
@@ -26,29 +27,23 @@ type FortnightSummaryHeroProps = {
   showGauge: boolean;
 };
 
-const subBoxClass = 'orion-metric-tile';
-
 const metricLabelClass =
-  'min-w-0 flex-1 text-[10px] font-semibold uppercase leading-snug tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-wider';
+  'min-w-0 text-[11px] font-semibold leading-snug text-muted-foreground sm:text-xs';
 
-const metricHint = (text: string) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <button
-        type="button"
-        className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-        aria-label={text}
-      >
-        <Info className="h-3 w-3" aria-hidden data-icon="inline-end" />
-      </button>
-    </TooltipTrigger>
-    <TooltipContent side="top" className="max-w-[16rem] text-xs">
-      {text}
-    </TooltipContent>
-  </Tooltip>
-);
+const leftoverHint =
+  'De tus ingresos de esta quincena, esto es lo que todavía no está comprometido en pagos, pendientes ni presupuesto.';
+
+const haveHint =
+  'El efectivo y débito que tienes hoy, menos lo que aún debes pagar esta quincena.';
+
+const budgetHint =
+  'Lo que te queda por gastar del presupuesto de esta quincena.';
+
+type MetricHintKey = 'leftover' | 'have' | 'budget';
 
 type MetricCardProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   label: string;
   hint: string;
   amount: number;
@@ -57,63 +52,125 @@ type MetricCardProps = {
 };
 
 const MetricCard = ({
+  open,
+  onOpenChange,
   label,
   hint,
   amount,
   amountClassName,
   dotClassName,
-}: MetricCardProps) => (
-  <div className={subBoxClass}>
-    <div className="mb-1 flex items-start gap-1.5">
-      <span
-        className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', dotClassName)}
-        aria-hidden
-      />
-      <span className={metricLabelClass}>{label}</span>
-      {metricHint(hint)}
-    </div>
-    <p
-      className={cn(
-        'font-mono text-base font-bold tabular-nums sm:text-lg',
-        amountClassName,
-      )}
+}: MetricCardProps) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const skipClickRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleDocumentPointerDown = (event: globalThis.PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (triggerRef.current?.contains(target)) return;
+      const content = document.querySelector('[data-slot="tooltip-content"]');
+      if (content?.contains(target)) return;
+      onOpenChange(false);
+    };
+
+    document.addEventListener('pointerdown', handleDocumentPointerDown);
+    return () => document.removeEventListener('pointerdown', handleDocumentPointerDown);
+  }, [open, onOpenChange]);
+
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+    event.preventDefault();
+    skipClickRef.current = true;
+    onOpenChange(!open);
+  };
+
+  const handleClick = () => {
+    if (skipClickRef.current) {
+      skipClickRef.current = false;
+      return;
+    }
+    onOpenChange(!open);
+  };
+
+  const handlePointerEnter = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== 'mouse') return;
+    onOpenChange(true);
+  };
+
+  const handlePointerLeave = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== 'mouse') return;
+    onOpenChange(false);
+  };
+
+  return (
+    <Tooltip
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) onOpenChange(true);
+      }}
+      delayDuration={0}
+      disableHoverableContent
     >
-      {formatCurrency(amount)}
-    </p>
-  </div>
-);
+      <TooltipTrigger asChild>
+        <button
+          ref={triggerRef}
+          type="button"
+          className="appearance-none border-0 bg-transparent p-0 cursor-help touch-manipulation text-left shadow-none"
+          aria-expanded={open}
+          onPointerDown={handlePointerDown}
+          onClick={handleClick}
+          onPointerEnter={handlePointerEnter}
+          onPointerLeave={handlePointerLeave}
+        >
+          <div className="mb-1 flex items-start gap-1.5">
+            <span
+              className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', dotClassName)}
+              aria-hidden
+            />
+            <span className={metricLabelClass}>{label}</span>
+            <Info
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+              aria-hidden
+              data-icon="inline-end"
+            />
+          </div>
+          <p
+            className={cn(
+              'font-mono text-base font-bold tabular-nums sm:text-lg',
+              amountClassName,
+            )}
+          >
+            {formatCurrency(amount)}
+          </p>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4} className="max-w-[16rem] text-xs">
+        {hint}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 export const FortnightSummaryHero = ({
   periodIncome,
   incomeRemainder,
   fundingNetInAccounts,
   fundingNetApplies = true,
-  payrollDeductionAmount = 0,
   budgetRemainingAmount = 0,
   cashCommittedAmount = 0,
   showGauge,
 }: FortnightSummaryHeroProps) => {
-  const incomeRemainderHint = (() => {
-    const parts = ['lo pagado', 'lo pendiente planeado'];
-    if (payrollDeductionAmount > 0) parts.push('las deducciones de nómina');
-    if (budgetRemainingAmount > 0) parts.push('el presupuesto restante');
-    if (parts.length === 2) {
-      return 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
-    }
-    const last = parts.pop()!;
-    return `Ingresos menos ${parts.join(', ')} y ${last} de esta quincena`;
-  })();
+  const [openHint, setOpenHint] = useState<MetricHintKey | null>(null);
 
-  const liquidityHint = (() => {
-    const parts = ['pendiente'];
-    if (payrollDeductionAmount > 0) parts.push('nómina');
-    if (budgetRemainingAmount > 0) parts.push('presupuesto restante');
-    if (parts.length === 1) {
-      return 'Saldo en efectivo y débito ahora, menos pendiente de esta quincena';
-    }
-    const last = parts.pop()!;
-    return `Saldo en efectivo y débito ahora, menos ${parts.join(', ')} y ${last} de esta quincena`;
-  })();
+  const handleHintOpenChange = (key: MetricHintKey, nextOpen: boolean) => {
+    setOpenHint((current) => {
+      if (nextOpen) return key;
+      if (current === key) return null;
+      return current;
+    });
+  };
 
   const gauge = showGauge ? (
     <FortnightIncomeGauge
@@ -148,21 +205,25 @@ export const FortnightSummaryHero = ({
           )}
         >
           <MetricCard
-            label="Libre del ingreso"
-            hint={incomeRemainderHint}
+            open={openHint === 'leftover'}
+            onOpenChange={(nextOpen) => handleHintOpenChange('leftover', nextOpen)}
+            label="Lo que te queda"
+            hint={leftoverHint}
             amount={incomeRemainder}
-            dotClassName="bg-primary"
+            dotClassName="bg-teal-500 dark:bg-[#2dd4bf]"
             amountClassName={
               incomeRemainder >= 0
-                ? 'text-primary-text'
+                ? 'text-foreground'
                 : 'text-destructive'
             }
           />
 
           {fundingNetApplies ? (
             <MetricCard
-              label="Liquidez actual"
-              hint={liquidityHint}
+              open={openHint === 'have'}
+              onOpenChange={(nextOpen) => handleHintOpenChange('have', nextOpen)}
+              label="Lo que tienes"
+              hint={haveHint}
               amount={fundingNetInAccounts}
               dotClassName="bg-emerald-500"
               amountClassName={
@@ -175,11 +236,13 @@ export const FortnightSummaryHero = ({
 
           {showBudgetAvailable ? (
             <MetricCard
-              label="Disponible del presupuesto"
-              hint="Resto del presupuesto de esta quincena (asignado menos gastado)"
+              open={openHint === 'budget'}
+              onOpenChange={(nextOpen) => handleHintOpenChange('budget', nextOpen)}
+              label="Del presupuesto"
+              hint={budgetHint}
               amount={budgetRemainingAmount}
-              dotClassName="bg-violet-500"
-              amountClassName="text-violet-700 dark:text-violet-200"
+              dotClassName="bg-violet-500 dark:bg-[#c4b5fd]"
+              amountClassName="text-foreground"
             />
           ) : null}
         </div>

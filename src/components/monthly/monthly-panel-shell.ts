@@ -7,14 +7,14 @@ export const MONTHLY_PANEL_SHELL_CLASS =
 export const MONTHLY_CHROME_PADDING_CLASS =
   'px-2.5 py-2.5 sm:px-4 sm:py-3';
 
-/** Icon pill accent — electric blue via primary token. */
+/** Icon pill accent — solid electric blue, white glyph. */
 export const MONTHLY_ICON_PILL_CLASS = cn(
-  'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
-  'bg-primary/15 ring-1 ring-primary/25 dark:bg-primary/20 dark:ring-[#911efe]/35',
+  'flex size-8 shrink-0 items-center justify-center rounded-xl',
+  'bg-primary text-white shadow-sm dark:bg-[#3a37fc]',
 );
 
 /**
  * Brand-colored labels, dates, and amounts on canvas.
  * Use instead of `text-primary` — fill blue (#3a37fc) is too dark on navy.
  */
-export const MONTHLY_ACCENT_TEXT_CLASS = 'text-primary-text';
+export const MONTHLY_ACCENT_TEXT_CLASS = 'text-foreground';
