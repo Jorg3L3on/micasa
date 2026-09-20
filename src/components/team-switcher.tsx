@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronsUpDown, Home, LogOut, Plus, Settings, User } from 'lucide-react';
@@ -88,8 +88,12 @@ export function TeamSwitcher() {
       const params = new URLSearchParams(searchParams.toString());
       params.set('ownerType', ownerType);
       params.set('ownerId', String(ownerId));
-      router.push(`${pathname}?${params.toString()}`);
-      router.refresh();
+      const href = `${pathname}?${params.toString()}`;
+      // Do not call router.refresh() here: it races with push and can keep
+      // the previous searchParams (and Panel financiero payload) on screen.
+      startTransition(() => {
+        router.push(href);
+      });
     },
     [pathname, router, searchParams],
   );

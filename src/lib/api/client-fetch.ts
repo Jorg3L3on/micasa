@@ -39,6 +39,20 @@ export function buildOwnerQuery(
   });
 }
 
+export const getFinanceOwnerKey = (
+  context: Pick<FinanceContextType, 'type' | 'id'>,
+): string => `${context.type}-${context.id}`;
+
+/**
+ * True when the client already switched house/user but the server page
+ * still has the previous owner (search-param navigation in flight).
+ */
+export const isOwnerContextPending = (
+  context: Pick<FinanceContextType, 'type' | 'id'>,
+  serverOwnerKey: string,
+): boolean =>
+  context.id > 0 && getFinanceOwnerKey(context) !== serverOwnerKey;
+
 /**
  * Inverse of `buildOwnerQuery` for `?ownerType=&ownerId=` (or without `?`).
  * Returns undefined when the query is empty or invalid.

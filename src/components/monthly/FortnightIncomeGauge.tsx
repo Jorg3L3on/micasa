@@ -21,39 +21,20 @@ type FortnightIncomeGaugeProps = {
 /** Compromiso — electric blue: cash already spoken for (same fill as panel CTAs). */
 const COMMITMENT_STROKE = 'text-primary dark:text-[#5b59ff]';
 const COMMITMENT_FILL = 'fill-primary dark:fill-[#5b59ff]';
-const COMMITMENT_DOT = 'bg-primary dark:bg-[#5b59ff]';
 
 /** Presupuesto — luminous violet: remaining allocation (matches budget tiles). */
 const BUDGET_STROKE = 'text-violet-500 dark:text-[#c4b5fd]';
 const BUDGET_FILL = 'fill-violet-500 dark:fill-[#c4b5fd]';
-const BUDGET_DOT = 'bg-violet-500 dark:bg-[#c4b5fd]';
 
 /** Libre — teal: leftover income, distinct from blue commitment and green liquidity. */
 const FREE_STROKE = 'text-teal-500 dark:text-[#2dd4bf]';
 const FREE_FILL = 'fill-teal-500 dark:fill-[#2dd4bf]';
-const FREE_DOT = 'bg-teal-500 dark:bg-[#2dd4bf]';
 
 const CAP_R = GAUGE_STROKE_WIDTH / 2;
 /** Tiny overlap so butt joins never show a hairline gap. */
 const JOIN_OVERLAP_DEG = 0.45;
 
 const ratioToDegSpan = (ratio: number) => ratio * 180;
-
-const LegendSwatch = ({
-  dotClassName,
-  label,
-}: {
-  dotClassName: string;
-  label: string;
-}) => (
-  <span className="flex items-center gap-1.5">
-    <span
-      className={cn('inline-block size-2 shrink-0 rounded-full', dotClassName)}
-      aria-hidden
-    />
-    <span className="text-[10px] font-medium text-foreground/70">{label}</span>
-  </span>
-);
 
 export const FortnightIncomeGauge = ({
   cashCommitted,
@@ -110,16 +91,16 @@ export const FortnightIncomeGauge = ({
         ? { point: pointOnGaugeArc(0), className: COMMITMENT_FILL }
         : null;
 
-  const showBudgetLegend = budgetRatio > 0.0001;
+  const hasBudgetInGauge = budgetRatio > 0.0001;
 
   return (
     <div
       className={cn('flex shrink-0 flex-col items-center', className)}
       role="img"
       aria-label={
-        showBudgetLegend
-          ? `${totalCommittedPercent}% del ingreso comprometido (${formatCurrency(cashCommitted)} en pagado/pendiente/nómina, ${formatCurrency(budgetRemaining)} en presupuesto restante); ingresos ${formatCurrency(periodIncome)}`
-          : `${totalCommittedPercent}% del ingreso de la quincena ya comprometido; ingresos ${formatCurrency(periodIncome)}`
+        hasBudgetInGauge
+          ? `${totalCommittedPercent}% del ingreso comprometido (${formatCurrency(cashCommitted)} compromiso, ${formatCurrency(budgetRemaining)} en presupuesto restante); ingresos ${formatCurrency(periodIncome)}`
+          : `${totalCommittedPercent}% del ingreso de la quincena ya comprometido; ingresos ${formatCurrency(periodIncome)}, compromiso ${formatCurrency(cashCommitted)}`
       }
     >
       <div className="relative h-[5.5rem] w-[8.5rem] sm:h-[6rem] sm:w-[9.5rem]">
@@ -188,28 +169,29 @@ export const FortnightIncomeGauge = ({
           </span>
         </div>
       </div>
-      <p className="mt-1.5 max-w-[11rem] text-center text-muted-foreground">
-        <span className="font-mono text-base font-bold tabular-nums text-foreground sm:text-lg">
-          {formatCurrency(periodIncome)}
-        </span>
-        <span className="mt-0.5 block text-[10px] font-medium sm:text-xs">
-          ingresos del periodo
-        </span>
-      </p>
-      {showBudgetLegend ? (
-        <div
-          className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
-          aria-hidden
-        >
-          {cashRatio > 0.0001 ? (
-            <LegendSwatch dotClassName={COMMITMENT_DOT} label="Compromiso" />
-          ) : null}
-          <LegendSwatch dotClassName={BUDGET_DOT} label="Presupuesto" />
-          {freeRatio > 0.0001 ? (
-            <LegendSwatch dotClassName={FREE_DOT} label="Libre" />
-          ) : null}
-        </div>
-      ) : null}
+      <div className="mt-1.5 flex items-start justify-center gap-4 text-center text-muted-foreground">
+        <p className="min-w-0">
+          <span className="block font-mono text-base font-bold tabular-nums text-foreground sm:text-lg">
+            {formatCurrency(periodIncome)}
+          </span>
+          <span className="mt-0.5 block text-[10px] font-medium sm:text-xs">
+            ingresos del periodo
+          </span>
+        </p>
+        <p className="min-w-0">
+          <span
+            className={cn(
+              'block font-mono text-base font-bold tabular-nums sm:text-lg',
+              COMMITMENT_STROKE,
+            )}
+          >
+            {formatCurrency(cashCommitted)}
+          </span>
+          <span className="mt-0.5 block text-[10px] font-medium sm:text-xs">
+            compromiso
+          </span>
+        </p>
+      </div>
     </div>
   );
 };

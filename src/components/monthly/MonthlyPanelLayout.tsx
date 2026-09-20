@@ -7,6 +7,9 @@ import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useFinanceContext } from '@/context/finance-context';
+import { isOwnerContextPending } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
@@ -46,6 +49,9 @@ export const MonthlyPanelLayout = ({
   createNextControl = null,
   children,
 }: MonthlyPanelLayoutProps) => {
+  const { context } = useFinanceContext();
+  const ownerPending = isOwnerContextPending(context, ownerKey);
+
   return (
     <MonthlyPanelPreferencesProvider
       ownerKey={ownerKey}
@@ -77,10 +83,30 @@ export const MonthlyPanelLayout = ({
         />
       </div>
 
-      {children}
+      {ownerPending ? <MonthlyOwnerSwitchFallback /> : children}
     </MonthlyPanelPreferencesProvider>
   );
 };
+
+const MonthlyOwnerSwitchFallback = () => (
+  <div
+    className={MONTHLY_PANEL_CONTENT_GRID_CLASS}
+    role="status"
+    aria-busy="true"
+    aria-label="Cargando casa"
+  >
+    <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
+      <div className="space-y-4">
+        <Skeleton className="h-24 w-full rounded-lg border border-border/60" />
+        <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
+        <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
+      </div>
+    </div>
+    <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
+      <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+    </div>
+  </div>
+);
 
 export const MONTHLY_PANEL_CONTENT_GRID_CLASS =
   'grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] xl:items-start';
