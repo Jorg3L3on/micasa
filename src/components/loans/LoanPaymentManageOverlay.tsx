@@ -25,9 +25,13 @@ import {
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
 } from '@/components/overlay/overlay-form';
+import { ToggleField } from '@/components/ui/toggle';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { useFinanceContext } from '@/context/finance-context';
-import { applyLoanPaymentAction } from '@/lib/api/loans';
+import {
+  applyLoanPaymentAction,
+  batchUpdateLoanPayments,
+} from '@/lib/api/loans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { isValidCalendarDateString } from '@/lib/calendar-dates';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -41,6 +45,85 @@ const defaultSourceWalletId = (item: LoanDuePaymentItem): string => {
   return walletId ? String(walletId) : '';
 };
 
+const defaultItemWalletIds = (rows: LoanDuePaymentItem[]) =>
+  Object.fromEntries(
+    rows.map((item) => [item.id, defaultSourceWalletId(item)]),
+  ) as Record<number, string>;
+
+type PaymentWalletSelectProps = {
+  value: string;
+  onValueChange: (value: string) => void;
+  fundingWallets: PaymentMethodOption[];
+  allowNone: boolean;
+  invalid?: boolean;
+  ariaLabel: string;
+  onOpenChange?: (open: boolean) => void;
+};
+
+const PaymentWalletSelect = ({
+  value,
+  onValueChange,
+  fundingWallets,
+  allowNone,
+  invalid = false,
+  ariaLabel,
+  onOpenChange,
+}: PaymentWalletSelectProps) => {
+  const selectedWallet = fundingWallets.find(
+    (wallet) => String(wallet.id) === value,
+  );
+
+  return (
+    <Select
+      value={value || (allowNone ? NO_PAYMENT_WALLET_VALUE : undefined)}
+      onOpenChange={onOpenChange}
+      onValueChange={(next) =>
+        onValueChange(next === NO_PAYMENT_WALLET_VALUE ? '' : next)
+      }
+    >
+      <SelectTrigger
+        className={cn(
+          OVERLAY_ROW_TRIGGER_CLASS,
+          invalid && 'border-destructive focus:ring-destructive/30',
+        )}
+        aria-label={ariaLabel}
+        aria-invalid={invalid}
+      >
+        <SelectValue placeholder="Selecciona">
+          {selectedWallet ? (
+            <WalletIdentity
+              name={selectedWallet.name}
+              providerIconKey={selectedWallet.provider_icon_key}
+              iconClassName="h-8 w-8 rounded-lg"
+            />
+          ) : allowNone && !value ? (
+            'Sin billetera'
+          ) : null}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {allowNone ? (
+          <SelectItem value={NO_PAYMENT_WALLET_VALUE}>Sin billetera</SelectItem>
+        ) : null}
+        {fundingWallets.map((wallet) => (
+          <SelectItem key={wallet.id} value={String(wallet.id)}>
+            <span className="flex items-center justify-between gap-3">
+              <WalletIdentity
+                name={wallet.name}
+                providerIconKey={wallet.provider_icon_key}
+                iconClassName="h-5 w-5 rounded-md"
+              />
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {formatCurrency(wallet.amount ?? 0)}
+              </span>
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
 type PaymentActionErrors = Partial<
   Record<'paidAt' | 'sourceWalletId' | 'general', string>
 >;
@@ -48,7 +131,7 @@ type PaymentActionErrors = Partial<
 type LoanPaymentManageOverlayProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  item: LoanDuePaymentItem | null;
+  items: LoanDuePaymentItem[];
   onSuccess?: () => Promise<void> | void;
 };
 
@@ -60,34 +143,58 @@ const paymentActionLabel = (action: LoanPaymentActionValue) => {
   return 'Cancelar pago';
 };
 
-const paymentActionSuccessMessage = (action: LoanPaymentActionValue) => {
+const paymentActionSuccessMessage = (
+  action: LoanPaymentActionValue,
+  count: number,
+) => {
   if (action === 'MARK_PAID' || action === 'MARK_PAID_EXTERNAL') {
-    return 'Préstamo pagado exitosamente';
+    return count > 1
+      ? `${count} préstamos pagados exitosamente`
+      : 'Préstamo pagado exitosamente';
   }
-  if (action === 'MARK_SCHEDULED') return 'Pago deshecho';
-  if (action === 'SKIP') return 'Pago omitido';
-  return 'Pago cancelado';
+  if (action === 'MARK_SCHEDULED') {
+    return count > 1 ? `${count} pagos deshechos` : 'Pago deshecho';
+  }
+  if (action === 'SKIP') {
+    return count > 1 ? `${count} pagos omitidos` : 'Pago omitido';
+  }
+  return count > 1 ? `${count} pagos cancelados` : 'Pago cancelado';
 };
 
 const paymentActionDescription = (
   action: LoanPaymentActionValue,
   paymentSource: LoanDuePaymentItem['paymentSource'],
+  count: number,
 ) => {
+  const plural = count > 1;
   if (action === 'MARK_PAID') {
-    return paymentSource === 'PAYROLL_DEDUCTION'
-      ? 'Se marcará como pagado. Si eliges billetera, se generará un gasto vinculado contra esa billetera.'
+    if (paymentSource === 'PAYROLL_DEDUCTION') {
+      return plural
+        ? 'Se marcarán como pagados. Si eliges billetera, se generará un gasto vinculado contra esa billetera por cada contrato.'
+        : 'Se marcará como pagado. Si eliges billetera, se generará un gasto vinculado contra esa billetera.';
+    }
+    return plural
+      ? 'Se marcarán como pagados y se generará el gasto vinculado contra la billetera seleccionada por cada contrato.'
       : 'Se marcará como pagado y se generará el gasto vinculado contra la billetera seleccionada.';
   }
   if (action === 'MARK_PAID_EXTERNAL') {
-    return 'Se marcará como pagado sin descontar de ninguna billetera ni crear un gasto. Úsalo cuando el pago ya se hizo fuera de MiCasa.';
+    return plural
+      ? 'Se marcarán como pagados sin descontar de ninguna billetera ni crear gastos. Úsalo cuando los pagos ya se hicieron fuera de MiCasa.'
+      : 'Se marcará como pagado sin descontar de ninguna billetera ni crear un gasto. Úsalo cuando el pago ya se hizo fuera de MiCasa.';
   }
   if (action === 'MARK_SCHEDULED') {
-    return 'Se regresará el pago a por pagar y se revertirá el gasto vinculado o el movimiento de billetera asociado.';
+    return plural
+      ? 'Se regresarán los pagos a por pagar y se revertirán los gastos o movimientos de billetera asociados.'
+      : 'Se regresará el pago a por pagar y se revertirá el gasto vinculado o el movimiento de billetera asociado.';
   }
   if (action === 'SKIP') {
-    return 'Omitir mantiene el adeudo pendiente para seguimiento y no genera salida de dinero.';
+    return plural
+      ? 'Omitir mantiene los adeudos pendientes para seguimiento y no genera salida de dinero.'
+      : 'Omitir mantiene el adeudo pendiente para seguimiento y no genera salida de dinero.';
   }
-  return 'Cancelar excluye este pago del calendario pagadero y no genera salida de dinero.';
+  return plural
+    ? 'Cancelar excluye estos pagos del calendario pagadero y no genera salida de dinero.'
+    : 'Cancelar excluye este pago del calendario pagadero y no genera salida de dinero.';
 };
 
 const mapPaymentActionError = (message: string): PaymentActionErrors => {
@@ -110,7 +217,7 @@ const mapPaymentActionError = (message: string): PaymentActionErrors => {
 export const LoanPaymentManageOverlay = ({
   open,
   onOpenChange,
-  item,
+  items,
   onSuccess,
 }: LoanPaymentManageOverlayProps) => {
   const { context } = useFinanceContext();
@@ -119,24 +226,39 @@ export const LoanPaymentManageOverlay = ({
   const [action, setAction] = useState<LoanPaymentActionValue | null>(null);
   const [paidAt, setPaidAt] = useState('');
   const [sourceWalletId, setSourceWalletId] = useState('');
+  const [itemWalletIds, setItemWalletIds] = useState<Record<number, string>>(
+    {},
+  );
+  const [useSameWallet, setUseSameWallet] = useState(true);
   const [errors, setErrors] = useState<PaymentActionErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const primary = items[0] ?? null;
+  const isGroup = items.length > 1;
+  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+  const itemKey = items.map((item) => item.id).join(',');
   const fundingWallets = wallets.filter(
     (wallet) => wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD',
   );
-  const isPayrollDeduction = item?.paymentSource === 'PAYROLL_DEDUCTION';
-  const selectedWallet = fundingWallets.find(
-    (wallet) => String(wallet.id) === sourceWalletId,
-  );
+  const isPayrollDeduction = primary?.paymentSource === 'PAYROLL_DEDUCTION';
+  const allScheduled = items.every((item) => item.status === 'SCHEDULED');
+  const allPaid = items.every((item) => item.status === 'PAID');
+  const showWalletControls =
+    isGroup && allScheduled && (action == null || action === 'MARK_PAID');
 
   useEffect(() => {
-    if (!open || !item) return;
+    if (!open || items.length === 0) return;
 
     setAction(null);
-    setPaidAt(item.paidAt ?? item.dueDate);
-    setSourceWalletId(defaultSourceWalletId(item));
+    setPaidAt(items[0].paidAt ?? items[0].dueDate);
+    setSourceWalletId(defaultSourceWalletId(items[0]));
+    setItemWalletIds(defaultItemWalletIds(items));
+    setUseSameWallet(true);
     setErrors({});
+  }, [open, itemKey]);
+
+  useEffect(() => {
+    if (!open) return;
 
     let cancelled = false;
     setLoadingWallets(true);
@@ -160,7 +282,7 @@ export const LoanPaymentManageOverlay = ({
     return () => {
       cancelled = true;
     };
-  }, [open, item, context]);
+  }, [open, context]);
 
   const handleSelectAction = (next: LoanPaymentActionValue) => {
     setAction(next);
@@ -168,7 +290,7 @@ export const LoanPaymentManageOverlay = ({
   };
 
   const validate = (): PaymentActionErrors => {
-    if (!item || !action) {
+    if (!primary || !action) {
       return { general: 'Selecciona una acción para continuar.' };
     }
 
@@ -177,16 +299,27 @@ export const LoanPaymentManageOverlay = ({
       if (!isValidCalendarDateString(paidAt)) {
         nextErrors.paidAt = 'Selecciona una fecha de pago válida.';
       }
-      if (action === 'MARK_PAID' && !isPayrollDeduction && !sourceWalletId) {
-        nextErrors.sourceWalletId =
-          'Selecciona la billetera que pagará este préstamo.';
+      if (action === 'MARK_PAID') {
+        if (isGroup && !useSameWallet) {
+          if (
+            !isPayrollDeduction &&
+            items.some((item) => !itemWalletIds[item.id])
+          ) {
+            nextErrors.sourceWalletId =
+              'Selecciona una billetera para cada contrato.';
+          }
+        } else if (!isPayrollDeduction && !sourceWalletId) {
+          nextErrors.sourceWalletId = isGroup
+            ? 'Selecciona la billetera que pagará estos préstamos.'
+            : 'Selecciona la billetera que pagará este préstamo.';
+        }
       }
     }
     return nextErrors;
   };
 
   const handleSubmit = async () => {
-    if (!item || !action) return;
+    if (!primary || !action || items.length === 0) return;
     const nextErrors = validate();
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -209,8 +342,55 @@ export const LoanPaymentManageOverlay = ({
         payload.paidAt = paidAt;
       }
 
-      await applyLoanPaymentAction(item.id, payload, context);
-      toast.success(paymentActionSuccessMessage(action));
+      const walletIdForItem = (item: LoanDuePaymentItem) =>
+        useSameWallet ? sourceWalletId : (itemWalletIds[item.id] ?? '');
+
+      if (items.length > 1 && action === 'MARK_PAID') {
+        const resolvedWalletIds = items.map((item) => walletIdForItem(item));
+        const uniqueWalletIds = [...new Set(resolvedWalletIds)];
+        if (uniqueWalletIds.length === 1) {
+          await batchUpdateLoanPayments(
+            {
+              paymentIds: items.map((item) => item.id),
+              action,
+              paidAt,
+              sourceWalletId: uniqueWalletIds[0]
+                ? Number(uniqueWalletIds[0])
+                : undefined,
+            },
+            context,
+          );
+        } else {
+          for (const item of items) {
+            const walletId = walletIdForItem(item);
+            await applyLoanPaymentAction(
+              item.id,
+              {
+                action,
+                paidAt,
+                ...(walletId ? { sourceWalletId: Number(walletId) } : {}),
+              },
+              context,
+            );
+          }
+        }
+      } else if (items.length > 1 && action === 'MARK_PAID_EXTERNAL') {
+        await batchUpdateLoanPayments(
+          {
+            paymentIds: items.map((item) => item.id),
+            action,
+            paidAt: payload.paidAt ?? undefined,
+          },
+          context,
+        );
+      } else if (items.length > 1) {
+        for (const item of items) {
+          await applyLoanPaymentAction(item.id, { action }, context);
+        }
+      } else {
+        await applyLoanPaymentAction(primary.id, payload, context);
+      }
+      toast.success(paymentActionSuccessMessage(action, items.length));
       onOpenChange(false);
       if (onSuccess) await onSuccess();
     } catch (error) {
@@ -225,10 +405,18 @@ export const LoanPaymentManageOverlay = ({
     }
   };
 
-  const title = item?.loanName ?? 'Gestionar préstamo';
-  const description = item
-    ? `${item.lender} · vence ${formatDate(item.dueDate)}`
-    : 'Opciones de este pago de préstamo';
+  const title = !primary
+    ? 'Gestionar préstamo'
+    : isGroup
+      ? isPayrollDeduction
+        ? `Nómina · ${primary.lender}`
+        : `Pagar a ${primary.lender}`
+      : primary.loanName;
+  const description = !primary
+    ? 'Opciones de este pago de préstamo'
+    : isGroup
+      ? `${items.length} contratos · vence ${formatDate(primary.dueDate)}`
+      : `${primary.lender} · vence ${formatDate(primary.dueDate)}`;
 
   return (
     <ResponsiveOverlay
@@ -240,26 +428,115 @@ export const LoanPaymentManageOverlay = ({
       contentClassName="sm:max-w-lg"
     >
       {({ handleSelectOpenChange }) =>
-        item ? (
+        primary ? (
           <div className="flex flex-col gap-3">
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <div className="space-y-1 px-3 py-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Pago #{item.sequence}
+                  {isGroup ? 'Compromiso del periodo' : `Pago #${primary.sequence}`}
                 </p>
                 <p className="font-mono text-2xl font-bold tabular-nums">
-                  {formatCurrency(item.amount)}
+                  {formatCurrency(isGroup ? totalAmount : primary.amount)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {item.lender} · {formatDate(item.dueDate)}
-                  {item.paymentSource === 'PAYROLL_DEDUCTION'
-                    ? ` · Nómina${item.incomeTemplateName ? `: ${item.incomeTemplateName}` : ''}`
-                    : item.sourceWalletName
-                      ? ` · ${item.sourceWalletName}`
+                  {isGroup
+                    ? `${items.length} contratos · ${formatDate(primary.dueDate)}`
+                    : `${primary.lender} · ${formatDate(primary.dueDate)}`}
+                  {!isGroup && primary.paymentSource === 'PAYROLL_DEDUCTION'
+                    ? ` · Nómina${primary.incomeTemplateName ? `: ${primary.incomeTemplateName}` : ''}`
+                    : !isGroup && primary.sourceWalletName
+                      ? ` · ${primary.sourceWalletName}`
                       : ''}
                 </p>
               </div>
             </div>
+
+            {isGroup ? (
+              <>
+                {!loadingWallets && showWalletControls ? (
+                  <>
+                    <ToggleField
+                      label="Pagar con la misma billetera"
+                      helper="Si lo desactivas, elige una billetera por contrato."
+                      checked={useSameWallet}
+                      onCheckedChange={setUseSameWallet}
+                    />
+                    {useSameWallet ? (
+                      <div className={OVERLAY_GROUPED_CARD_CLASS}>
+                        <GroupedRow label="Billetera">
+                          <PaymentWalletSelect
+                            value={sourceWalletId}
+                            onValueChange={setSourceWalletId}
+                            fundingWallets={fundingWallets}
+                            allowNone={isPayrollDeduction}
+                            invalid={Boolean(errors.sourceWalletId)}
+                            ariaLabel="Billetera que pagará estos préstamos"
+                            onOpenChange={handleSelectOpenChange}
+                          />
+                        </GroupedRow>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+                <ul className="space-y-1.5" aria-label="Contratos incluidos">
+                  {items.map((item) => {
+                    const showItemWallet =
+                      !loadingWallets && showWalletControls && !useSameWallet;
+                    return (
+                      <li
+                        key={item.id}
+                        className={
+                          showItemWallet
+                            ? OVERLAY_GROUPED_CARD_CLASS
+                            : 'flex items-center justify-between gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm'
+                        }
+                      >
+                        <div
+                          className={cn(
+                            'flex items-center justify-between gap-2',
+                            showItemWallet ? 'px-3 py-2' : 'contents',
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {item.loanName}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Cuota {item.sequence} · {formatDate(item.dueDate)}
+                            </p>
+                          </div>
+                          <span className="font-mono text-sm font-semibold tabular-nums">
+                            {formatCurrency(item.amount)}
+                          </span>
+                        </div>
+                        {showItemWallet ? (
+                          <GroupedRow label="Billetera">
+                            <PaymentWalletSelect
+                              value={itemWalletIds[item.id] ?? ''}
+                              onValueChange={(value) =>
+                                setItemWalletIds((current) => ({
+                                  ...current,
+                                  [item.id]: value,
+                                }))
+                              }
+                              fundingWallets={fundingWallets}
+                              allowNone={isPayrollDeduction}
+                              invalid={
+                                Boolean(errors.sourceWalletId) &&
+                                !isPayrollDeduction &&
+                                !itemWalletIds[item.id]
+                              }
+                              ariaLabel={`Billetera de ${item.loanName}`}
+                              onOpenChange={handleSelectOpenChange}
+                            />
+                          </GroupedRow>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            ) : null}
 
             {loadingWallets ? (
               <div className="flex justify-center py-6">
@@ -269,7 +546,7 @@ export const LoanPaymentManageOverlay = ({
                 />
               </div>
             ) : action == null ? (
-              item.status === 'SCHEDULED' ? (
+              allScheduled ? (
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
@@ -285,7 +562,11 @@ export const LoanPaymentManageOverlay = ({
                     variant="outline"
                     className="h-11 justify-center gap-1.5"
                     onClick={() => handleSelectAction('MARK_PAID_EXTERNAL')}
-                    aria-label="Registrar pago histórico sin mover billetera"
+                    aria-label={
+                      isGroup
+                        ? 'Registrar pagos históricos sin mover billetera'
+                        : 'Registrar pago histórico sin mover billetera'
+                    }
                   >
                     <History className="h-4 w-4" aria-hidden />
                     Ya pagado
@@ -309,7 +590,7 @@ export const LoanPaymentManageOverlay = ({
                     Cancelar
                   </Button>
                 </div>
-              ) : item.status === 'PAID' ? (
+              ) : allPaid ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -321,7 +602,9 @@ export const LoanPaymentManageOverlay = ({
                 </Button>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Este pago ya no está pendiente.
+                  {isGroup
+                    ? 'Estos pagos ya no están pendientes.'
+                    : 'Este pago ya no está pendiente.'}
                 </p>
               )
             ) : (
@@ -331,7 +614,11 @@ export const LoanPaymentManageOverlay = ({
                     {paymentActionLabel(action)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {paymentActionDescription(action, item.paymentSource)}
+                    {paymentActionDescription(
+                      action,
+                      primary.paymentSource,
+                      items.length,
+                    )}
                   </p>
                 </div>
 
@@ -340,68 +627,17 @@ export const LoanPaymentManageOverlay = ({
                     <GroupedRow label="Fecha">
                       <DateStepper value={paidAt} onChange={setPaidAt} />
                     </GroupedRow>
-                    {action === 'MARK_PAID' ? (
+                    {action === 'MARK_PAID' && !isGroup ? (
                       <GroupedRow label="Billetera">
-                        <Select
-                          value={
-                            sourceWalletId ||
-                            (isPayrollDeduction ? NO_PAYMENT_WALLET_VALUE : undefined)
-                          }
+                        <PaymentWalletSelect
+                          value={sourceWalletId}
+                          onValueChange={setSourceWalletId}
+                          fundingWallets={fundingWallets}
+                          allowNone={isPayrollDeduction}
+                          invalid={Boolean(errors.sourceWalletId)}
+                          ariaLabel="Billetera que pagará el préstamo"
                           onOpenChange={handleSelectOpenChange}
-                          onValueChange={(value) =>
-                            setSourceWalletId(
-                              value === NO_PAYMENT_WALLET_VALUE ? '' : value,
-                            )
-                          }
-                        >
-                          <SelectTrigger
-                            className={cn(
-                              OVERLAY_ROW_TRIGGER_CLASS,
-                              errors.sourceWalletId &&
-                                'border-destructive focus:ring-destructive/30',
-                            )}
-                            aria-label="Billetera que pagará el préstamo"
-                            aria-invalid={Boolean(errors.sourceWalletId)}
-                          >
-                            <SelectValue placeholder="Selecciona">
-                              {selectedWallet ? (
-                                <WalletIdentity
-                                  name={selectedWallet.name}
-                                  providerIconKey={
-                                    selectedWallet.provider_icon_key
-                                  }
-                                  iconClassName="h-8 w-8 rounded-lg"
-                                />
-                              ) : isPayrollDeduction && !sourceWalletId ? (
-                                'Sin billetera'
-                              ) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {isPayrollDeduction ? (
-                              <SelectItem value={NO_PAYMENT_WALLET_VALUE}>
-                                Sin billetera
-                              </SelectItem>
-                            ) : null}
-                            {fundingWallets.map((wallet) => (
-                              <SelectItem
-                                key={wallet.id}
-                                value={String(wallet.id)}
-                              >
-                                <span className="flex items-center justify-between gap-3">
-                                  <WalletIdentity
-                                    name={wallet.name}
-                                    providerIconKey={wallet.provider_icon_key}
-                                    iconClassName="h-5 w-5 rounded-md"
-                                  />
-                                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                                    {formatCurrency(wallet.amount ?? 0)}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </GroupedRow>
                     ) : null}
                   </div>

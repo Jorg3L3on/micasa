@@ -493,12 +493,14 @@ export default function LoansPage() {
     [wallets],
   );
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
     if (context.type === 'user' && context.id === 0) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [loanData, lenderData, walletData, templateData] = await Promise.all([
@@ -959,9 +961,17 @@ export default function LoansPage() {
       }
 
       await applyLoanPaymentAction(paymentActionDraft.paymentId, payload, context);
-      toast.success(`${paymentActionLabel(paymentActionDraft.action)} aplicado`);
-      setPaymentActionDraft(null);
-      await loadData();
+      const action = paymentActionDraft.action;
+      toast.success(`${paymentActionLabel(action)} aplicado`);
+      if (action === 'MARK_PAID' || action === 'MARK_PAID_EXTERNAL') {
+        setSelectedLoanId(null);
+        resetLoanDetailDrafts();
+        clearLoanIdQueryParam();
+      } else {
+        setPaymentActionDraft(null);
+        setPaymentActionErrors({});
+      }
+      await loadData({ silent: true });
     } catch (error) {
       const message =
         error instanceof Error

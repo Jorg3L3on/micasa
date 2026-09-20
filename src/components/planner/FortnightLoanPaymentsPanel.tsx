@@ -1,10 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
+import { toast } from 'sonner';
+import { ArrowRight, HandCoins, Landmark, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
+import type { LenderListItem } from '@/types/lenders';
+import type { PaymentMethodOption } from '@/types/catalog';
+import type { PayLenderInput } from '@/schemas/lender.schema';
 import { groupDuePaymentsByLender } from '@/lib/finance/lender-payment-window';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
@@ -13,9 +16,11 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
+import LenderPayDialog from '@/components/loans/LenderPayDialog';
 import { LoanPaymentManageOverlay } from '@/components/loans/LoanPaymentManageOverlay';
 import { useFinanceContext } from '@/context/finance-context';
-import { buildOwnerQuery } from '@/lib/api/client-fetch';
+import { getLender, payLender } from '@/lib/api/lenders';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
@@ -57,16 +62,20 @@ export default function FortnightLoanPaymentsPanel({
 }: FortnightLoanPaymentsPanelProps) {
   const todayYmd = useHydrationSafeTodayYmd();
   const { context } = useFinanceContext();
-  const [managingItem, setManagingItem] = useState<LoanDuePaymentItem | null>(
-    null,
+  const [managingItems, setManagingItems] = useState<LoanDuePaymentItem[]>(
+    [],
   );
   const [manageOpen, setManageOpen] = useState(false);
-
-  const ownerQueryString = useMemo(() => {
-    const query = buildOwnerQuery(context);
-    const value = query.toString();
-    return value ? `?${value}` : '';
-  }, [context]);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payingLender, setPayingLender] = useState<LenderListItem | null>(null);
+  const [fundingWallets, setFundingWallets] = useState<PaymentMethodOption[]>(
+    [],
+  );
+  const [payLoadingLenderId, setPayLoadingLenderId] = useState<number | null>(
+    null,
+  );
+  const [paySubmitting, setPaySubmitting] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   const rows = useMemo(
     () => sortLoanDuePaymentRows(items, sortMode, sortDir, todayYmd),
@@ -75,21 +84,99 @@ export default function FortnightLoanPaymentsPanel({
 
   const groups = useMemo(() => groupDuePaymentsByLender(rows), [rows]);
 
-  const handleOpenManage = (item: LoanDuePaymentItem) => {
-    setManagingItem(item);
+  const handleOpenManage = (next: LoanDuePaymentItem | LoanDuePaymentItem[]) => {
+    setManagingItems(Array.isArray(next) ? next : [next]);
     setManageOpen(true);
   };
 
-  const lenderHref = (lenderId: number | null, loanId: number) => {
-    const params = new URLSearchParams(
-      ownerQueryString.startsWith('?')
-        ? ownerQueryString.slice(1)
-        : ownerQueryString,
-    );
-    if (lenderId != null) params.set('lenderId', String(lenderId));
-    params.set('loanId', String(loanId));
-    const qs = params.toString();
-    return qs ? `/loans?${qs}` : '/loans';
+  const handleOpenManageGroup = (groupItems: LoanDuePaymentItem[]) => {
+    const scheduled = groupItems.filter((item) => item.status === 'SCHEDULED');
+    handleOpenManage(scheduled.length > 0 ? scheduled : groupItems);
+  };
+
+  const handleOpenPay = (
+    group: ReturnType<typeof groupDuePaymentsByLender<LoanDuePaymentItem>>[number],
+  ) => {
+    if (group.lenderId == null) {
+      handleOpenManageGroup(group.items);
+      return;
+    }
+
+    const scheduled = group.items.filter((item) => item.status === 'SCHEDULED');
+    setPayingLender({
+      id: group.lenderId,
+      name: group.lenderName,
+      providerIconKey: null,
+      notes: null,
+      active: true,
+      remainingPrincipal: 0,
+      activeContractCount: group.items.length,
+      payrollOnly: false,
+      payWindow: {
+        amount: scheduled.reduce((sum, item) => sum + item.amount, 0),
+        commitmentDate: group.dueDate,
+        commitmentDateEnd: group.dueDateEnd,
+        isRange: group.isRange,
+        canPay: scheduled.length > 0,
+        included: scheduled.map((item) => ({
+          id: item.id,
+          loanId: item.loanId,
+          loanName: item.loanName,
+          sequence: item.sequence,
+          dueDate: item.dueDate,
+          amount: item.amount,
+        })),
+      },
+      loans: [],
+    });
+    setPayError(null);
+    setPayOpen(true);
+    setPayLoadingLenderId(group.lenderId);
+
+    void Promise.all([
+      getLender(group.lenderId, context),
+      getPaymentMethodOptions(context),
+    ])
+      .then(([lender, wallets]) => {
+        setPayingLender(lender);
+        setFundingWallets(
+          wallets.filter(
+            (wallet) => wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD',
+          ),
+        );
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'No se pudieron cargar las billeteras',
+        );
+      })
+      .finally(() => {
+        setPayLoadingLenderId(null);
+      });
+  };
+
+  const handlePayLender = async (data: PayLenderInput) => {
+    if (!payingLender) return;
+    setPaySubmitting(true);
+    setPayError(null);
+    try {
+      await payLender(payingLender.id, data, context);
+      toast.success(
+        data.mode === 'EXTERNAL'
+          ? `Registraste el pago a ${payingLender.name}`
+          : `Pagaste a ${payingLender.name}`,
+      );
+      setPayOpen(false);
+      if (onUpdated) await onUpdated();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo registrar el pago';
+      setPayError(message);
+    } finally {
+      setPaySubmitting(false);
+    }
   };
 
   if (groups.length === 0) {
@@ -132,11 +219,12 @@ export default function FortnightLoanPaymentsPanel({
           const canPay =
             !isPayroll &&
             group.items.some((item) => item.status === 'SCHEDULED');
-          const firstLoanId = group.items[0]?.loanId ?? 0;
-          const href = lenderHref(group.lenderId, firstLoanId);
-          const firstScheduled =
-            group.items.find((item) => item.status === 'SCHEDULED') ??
-            group.items[0]!;
+          const scheduledItems = group.items.filter(
+            (item) => item.status === 'SCHEDULED',
+          );
+          const firstScheduled = scheduledItems[0] ?? group.items[0]!;
+          const isPayLoading =
+            group.lenderId != null && payLoadingLenderId === group.lenderId;
 
           return (
             <li
@@ -191,7 +279,7 @@ export default function FortnightLoanPaymentsPanel({
                 <div className="min-w-0 flex-1">
                   <button
                     type="button"
-                    onClick={() => handleOpenManage(firstScheduled)}
+                    onClick={() => handleOpenManageGroup(group.items)}
                     className={cn(
                       'block min-w-0 truncate text-left font-semibold hover:underline',
                       isCompact ? 'text-xs' : 'text-sm',
@@ -225,24 +313,36 @@ export default function FortnightLoanPaymentsPanel({
                   {canPay ? (
                     <Button
                       type="button"
-                      asChild
                       size="sm"
                       variant="outline"
                       className="h-7 gap-1 px-2 text-[10px]"
+                      onClick={() => handleOpenPay(group)}
+                      disabled={isPayLoading || paySubmitting}
+                      aria-label={`Pagar a ${group.lenderName}`}
                     >
-                      <Link href={href}>
+                      {isPayLoading ? (
+                        <Loader2
+                          className="h-3 w-3 animate-spin"
+                          aria-hidden
+                          data-icon="inline-start"
+                        />
+                      ) : (
                         <ArrowRight className="h-3 w-3" aria-hidden />
-                        Pagar
-                      </Link>
+                      )}
+                      Pagar
                     </Button>
-                  ) : firstScheduled.status === 'SCHEDULED' ? (
+                  ) : scheduledItems.length > 0 ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       className="h-7 gap-1 px-2 text-[10px]"
-                      onClick={() => handleOpenManage(firstScheduled)}
-                      aria-label={`Gestionar ${firstScheduled.loanName}`}
+                      onClick={() => handleOpenManage(scheduledItems)}
+                      aria-label={
+                        scheduledItems.length > 1
+                          ? `Gestionar ${group.lenderName}`
+                          : `Gestionar ${firstScheduled.loanName}`
+                      }
                     >
                       <ArrowRight className="h-3 w-3" aria-hidden />
                       Gestionar
@@ -293,8 +393,20 @@ export default function FortnightLoanPaymentsPanel({
       <LoanPaymentManageOverlay
         open={manageOpen}
         onOpenChange={setManageOpen}
-        item={managingItem}
+        items={managingItems}
         onSuccess={onUpdated}
+      />
+      <LenderPayDialog
+        open={payOpen}
+        onOpenChange={(open) => {
+          setPayOpen(open);
+          if (!open) setPayError(null);
+        }}
+        lender={payingLender}
+        fundingWalletOptions={fundingWallets}
+        submitting={paySubmitting}
+        error={payError}
+        onConfirm={handlePayLender}
       />
     </div>
   );
