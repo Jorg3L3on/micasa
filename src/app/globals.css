@@ -81,7 +81,7 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: rgb(255 255 255 / 0.1);
   --input: rgb(255 255 255 / 0.1);
-  --ring: #911efe;
+  --ring: #3a37fc;
   --chart-1: #3a37fc;
   --chart-2: #ee477a;
   --chart-3: #34d399;
@@ -94,7 +94,7 @@
   --sidebar-accent: rgb(58 55 252 / 0.18);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 0.08);
-  --sidebar-ring: #911efe;
+  --sidebar-ring: #3a37fc;
   --shadow-card: 0 18px 40px -24px rgb(0 0 0 / 0.7), 0 28px 80px -36px rgb(58 55 252 / 0.16);
 }
 

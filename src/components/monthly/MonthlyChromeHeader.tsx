@@ -52,7 +52,7 @@ const fortnightSegmentClass = (active: boolean) =>
     'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all @min-[42rem]:flex-none @min-[42rem]:px-2.5',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     active
-      ? 'bg-primary text-white shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-[#911efe]/40 dark:bg-[#3a37fc]'
+      ? 'bg-primary text-white shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35 dark:bg-[#3a37fc]'
       : 'text-foreground/70 hover:text-foreground/90 active:scale-[0.98]',
   );
 
