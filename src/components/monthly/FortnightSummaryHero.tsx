@@ -11,8 +11,8 @@ type FortnightSummaryHeroProps = {
   dueToPay: number;
   /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
   fundingInAccounts: number;
-  /** Resto del presupuesto de la quincena (“cupo para gastar”). */
-  budgetRemainingAmount?: number;
+  /** Resto del presupuesto de la quincena (“lo que te queda”). */
+  leftoverAmount?: number;
 };
 
 const remainderToneClass: Record<
@@ -49,11 +49,11 @@ export const FortnightSummaryHero = ({
   incomeRemainder,
   dueToPay,
   fundingInAccounts,
-  budgetRemainingAmount = 0,
+  leftoverAmount = 0,
 }: FortnightSummaryHeroProps) => {
   const copy = getFortnightRemainderCopy(incomeRemainder);
   const remainderAbs = Math.abs(incomeRemainder);
-  const showBudgetAvailable = budgetRemainingAmount > 0;
+  const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];
 
   return (
@@ -80,9 +80,9 @@ export const FortnightSummaryHero = ({
         />
       </div>
 
-      {showBudgetAvailable ? (
+      {showLeftover ? (
         <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
-          <LedgerRow label="Cupo para gastar" amount={budgetRemainingAmount} />
+          <LedgerRow label="Lo que te queda" amount={leftoverAmount} />
         </div>
       ) : null}
     </div>
