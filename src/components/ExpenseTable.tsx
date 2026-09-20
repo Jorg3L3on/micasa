@@ -5,16 +5,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -904,7 +894,7 @@ export default function ExpenseTable({
 
       {/* Pay Expense Confirmation Dialog */}
       {payingExpense && (
-        <AlertDialog
+        <ConfirmDeleteDialog
           open={payDialogOpen}
           onOpenChange={(open) => {
             setPayDialogOpen(open);
@@ -912,36 +902,18 @@ export default function ExpenseTable({
               setPayingExpense(null);
             }
           }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Pagar gasto</AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Quieres marcar este gasto como pagado? Esta acción actualizará
-                tus totales de la quincena.
-                <span className="mt-2 block font-semibold text-foreground">
-                  {payingExpense.description}
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {formatCurrency(toDisplayAmount(payingExpense.amount))}
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  await handlePaidToggle(payingExpense, true);
-                  setPayDialogOpen(false);
-                  setPayingExpense(null);
-                }}
-                className="bg-emerald-600 text-emerald-50 hover:bg-emerald-700"
-              >
-                Confirmar pago
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          onConfirm={async () => {
+            await handlePaidToggle(payingExpense, true);
+            setPayDialogOpen(false);
+            setPayingExpense(null);
+          }}
+          title="Pagar gasto"
+          description="¿Quieres marcar este gasto como pagado? Esta acción actualizará tus totales de la quincena."
+          itemName={`${payingExpense.description} · ${formatCurrency(toDisplayAmount(payingExpense.amount))}`}
+          confirmLabel="Confirmar pago"
+          loadingLabel="Confirmando…"
+          tone="default"
+        />
       )}
 
     </>
