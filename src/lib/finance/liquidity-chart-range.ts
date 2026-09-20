@@ -4,10 +4,16 @@ export type LiquidityChartRangeId =
   | 'ytd'
   | 'plus_minus_3'
   | 'calendar_year'
-  | 'year_and_half';
+  | 'year_and_half'
+  | 'custom';
+
+export type LiquidityCustomChartRange = {
+  fromMonthKey: string;
+  toMonthKey: string;
+};
 
 export const LIQUIDITY_CHART_RANGE_OPTIONS: Array<{
-  value: LiquidityChartRangeId;
+  value: Exclude<LiquidityChartRangeId, 'custom'>;
   label: string;
   hint: string;
 }> = [
@@ -16,6 +22,64 @@ export const LIQUIDITY_CHART_RANGE_OPTIONS: Array<{
   { value: 'calendar_year', label: 'Todo el año', hint: 'Ene – Dic' },
   { value: 'year_and_half', label: 'Año y medio', hint: 'Ene – Jun sig.' },
 ];
+
+const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export const isMonthKey = (value: string | null | undefined): value is string =>
+  Boolean(value && MONTH_KEY_PATTERN.test(value));
+
+export const normalizeCustomChartRange = (
+  fromMonthKey: string,
+  toMonthKey: string,
+): LiquidityCustomChartRange => {
+  if (compareMonthKeys(fromMonthKey, toMonthKey) <= 0) {
+    return { fromMonthKey, toMonthKey };
+  }
+  return { fromMonthKey: toMonthKey, toMonthKey: fromMonthKey };
+};
+
+export const parseStoredCustomChartRange = (
+  raw: string | null,
+): LiquidityCustomChartRange | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { from?: unknown; to?: unknown };
+    const fromMonthKey = typeof parsed.from === 'string' ? parsed.from : null;
+    const toMonthKey = typeof parsed.to === 'string' ? parsed.to : null;
+    if (!isMonthKey(fromMonthKey) || !isMonthKey(toMonthKey)) return null;
+    return normalizeCustomChartRange(fromMonthKey, toMonthKey);
+  } catch {
+    return null;
+  }
+};
+
+export const clampCustomChartRangeToAvailable = (
+  range: LiquidityCustomChartRange,
+  availableMonthKeys: readonly string[],
+): LiquidityCustomChartRange => {
+  if (availableMonthKeys.length === 0) return range;
+  const sorted = [...availableMonthKeys].filter(isMonthKey).sort(compareMonthKeys);
+  if (sorted.length === 0) return range;
+  const first = sorted[0]!;
+  const last = sorted[sorted.length - 1]!;
+  const fromMonthKey = sorted.includes(range.fromMonthKey) ? range.fromMonthKey : first;
+  const toMonthKey = sorted.includes(range.toMonthKey) ? range.toMonthKey : last;
+  return normalizeCustomChartRange(fromMonthKey, toMonthKey);
+};
+
+export const defaultCustomChartRange = (
+  asOfYmd: string,
+  availableMonthKeys: readonly string[] = [],
+): LiquidityCustomChartRange => {
+  const currentMonthKey = asOfYmd.slice(0, 7);
+  const sorted = [...availableMonthKeys].filter(isMonthKey).sort(compareMonthKeys);
+  const fromMonthKey = sorted.includes(currentMonthKey) ? currentMonthKey : (sorted[0] ?? currentMonthKey);
+  const targetTo = shiftMonthKey(fromMonthKey, 2);
+  const toMonthKey = sorted.includes(targetTo)
+    ? targetTo
+    : (sorted[sorted.length - 1] ?? targetTo);
+  return normalizeCustomChartRange(fromMonthKey, toMonthKey);
+};
 
 export const compareMonthKeys = (a: string, b: string): number => a.localeCompare(b);
 
@@ -65,10 +129,11 @@ export type LiquidityChartRangeBounds = {
   monthKeys: string[];
 };
 
-/** Resolve chart month span from a preset and today's calendar date. */
+/** Resolve chart month span from a preset (or custom from/to) and today's calendar date. */
 export const resolveLiquidityChartRange = (
   rangeId: LiquidityChartRangeId,
   todayYmd: string,
+  custom: LiquidityCustomChartRange | null = null,
 ): LiquidityChartRangeBounds => {
   const [year] = todayYmd.split('-').map(Number);
   const currentMonthKey = todayYmd.slice(0, 7);
@@ -96,6 +161,14 @@ export const resolveLiquidityChartRange = (
       fromMonthKey = yearStart;
       toMonthKey = nextYearMid;
       break;
+    case 'custom': {
+      const resolved = custom
+        ? normalizeCustomChartRange(custom.fromMonthKey, custom.toMonthKey)
+        : defaultCustomChartRange(todayYmd);
+      fromMonthKey = resolved.fromMonthKey;
+      toMonthKey = resolved.toMonthKey;
+      break;
+    }
     default: {
       const _exhaustive: never = rangeId;
       return _exhaustive;
@@ -116,7 +189,8 @@ export const isLiquidityChartRangeId = (value: string | null): value is Liquidit
   value === 'ytd' ||
   value === 'plus_minus_3' ||
   value === 'calendar_year' ||
-  value === 'year_and_half';
+  value === 'year_and_half' ||
+  value === 'custom';
 
 export const asOfYmdForMonthKey = (monthKey: string, todayYmd: string): string => {
   const currentMonthKey = todayYmd.slice(0, 7);
