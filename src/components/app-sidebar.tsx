@@ -6,7 +6,6 @@ import {
   ChartLine,
   Receipt,
   Calendar,
-  Coins,
   Goal,
   HandCoins,
   PiggyBank,
@@ -91,12 +90,6 @@ export function AppSidebar({
       url: '/metas',
       icon: Goal,
       isActive: pathname === '/metas' || pathname.startsWith('/metas/'),
-    },
-    {
-      title: 'Gastos',
-      url: '/expenses',
-      icon: Coins,
-      isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
     },
     {
       title: 'Préstamos',

@@ -71,6 +71,16 @@ const nextConfig: NextConfig = {
         destination: '/settings/income-templates/:id/edit',
         permanent: true,
       },
+      {
+        source: '/expenses',
+        destination: '/transactions',
+        permanent: true,
+      },
+      {
+        source: '/expenses/:path*',
+        destination: '/transactions',
+        permanent: true,
+      },
     ];
   },
 };
