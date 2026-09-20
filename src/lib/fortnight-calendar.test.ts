@@ -3,6 +3,7 @@ import {
   compareCalendarFortnight,
   dueDayFallsInFortnight,
   formatDayMonthLabel,
+  formatFortnightDateRangeCompact,
   formatFortnightDateRangeLabel,
   getAppHomeHref,
   getCalendarFortnightRefForYmd,
@@ -341,6 +342,20 @@ describe('formatDayMonthLabel / formatFortnightDateRangeLabel', () => {
   it('formats SECOND through the penultimate day', () => {
     expect(formatFortnightDateRangeLabel(2026, 6, 'SECOND')).toBe(
       '15 de junio al 29 de junio',
+    );
+  });
+});
+
+describe('formatFortnightDateRangeCompact', () => {
+  it('uses an en-dash and abbreviated month when the range stays in one month', () => {
+    expect(formatFortnightDateRangeCompact(2026, 6, 'SECOND')).toBe(
+      '15–29 jun',
+    );
+  });
+
+  it('shows both abbreviated months when FIRST crosses the month boundary', () => {
+    expect(formatFortnightDateRangeCompact(2026, 6, 'FIRST')).toBe(
+      '31 may–14 jun',
     );
   });
 });

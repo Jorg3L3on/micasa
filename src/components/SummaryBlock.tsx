@@ -15,15 +15,11 @@ import {
   Wallet,
   CheckCircle2,
   Clock,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
   Pencil,
   BarChart3,
   CreditCard,
   Banknote,
-  CircleDollarSign,
-  PiggyBank,
-  Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
@@ -49,6 +45,7 @@ import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
+  formatFortnightDateRangeCompact,
 } from '@/lib/fortnight-calendar';
 
 export type IncomeItemBySource = {
@@ -176,31 +173,20 @@ export default function SummaryBlock({
     ? budgetRemaining
     : 0;
 
-  const cashCommittedAmount = pagado + pendiente + payrollLoanDeduction;
-  const showIncomeRing = tenemos > 0;
+  const dateRange =
+    year != null && month != null && period != null
+      ? formatFortnightDateRangeCompact(year, month, period)
+      : null;
+
+  const handleToggleExpanded = () => {
+    setIsExpanded((current) => !current);
+  };
 
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
     return t;
   };
-
-  const metricHint = (text: string) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-          aria-label={text}
-        >
-          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[14rem] text-sm">
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
 
   return (
     <Card
@@ -213,7 +199,7 @@ export default function SummaryBlock({
     >
       <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
               <BarChart3 className="h-4 w-4" data-icon="inline-start" />
             </span>
@@ -221,6 +207,11 @@ export default function SummaryBlock({
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
                 {headerMeta?.title ?? 'Resumen de la quincena'}
               </CardTitle>
+              {dateRange ? (
+                <p className="mt-0.5 text-[11px] leading-none text-muted-foreground sm:text-xs">
+                  {dateRange}
+                </p>
+              ) : null}
             </div>
           </div>
           <Tooltip>
@@ -228,24 +219,27 @@ export default function SummaryBlock({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsExpanded(!isExpanded)}
+                onClick={handleToggleExpanded}
                 className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary-text"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded
-                    ? 'Ocultar desglose de ingresos y gastos'
-                    : 'Ver desglose de ingresos y gastos'
+                    ? 'Ocultar qué incluye toca pagar'
+                    : 'Ver qué incluye toca pagar'
                 }
               >
-                {isExpanded ? (
-                  <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
-                )}
+                <ChevronRight
+                  className={cn(
+                    'h-4 w-4 transition-transform duration-200',
+                    isExpanded && 'rotate-90',
+                  )}
+                  aria-hidden
+                  data-icon="inline-end"
+                />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6} align="end">
-              {isExpanded ? 'Ocultar desglose' : 'Ingresos, pagado y pendiente'}
+              {isExpanded ? 'Ocultar desglose' : 'Qué incluye toca pagar'}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -253,13 +247,33 @@ export default function SummaryBlock({
         <FortnightSummaryHero
           periodIncome={tenemos}
           incomeRemainder={trasPagarPlaneado}
-          fundingNetInAccounts={displayFundingNet}
+          dueToPay={comprometidoEfectivo}
+          fundingInAccounts={displayFundingWalletTotal}
           fundingNetApplies={billeterasVsPendienteAplica}
-          payrollDeductionAmount={payrollLoanDeduction}
           budgetRemainingAmount={budgetRemaining}
-          cashCommittedAmount={cashCommittedAmount}
-          showGauge={showIncomeRing}
         />
+
+        <button
+          type="button"
+          onClick={handleToggleExpanded}
+          className="flex w-full items-center justify-between gap-2 rounded-lg py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+          aria-expanded={isExpanded}
+          aria-label={
+            isExpanded
+              ? 'Ocultar qué incluye toca pagar'
+              : 'Ver qué incluye toca pagar'
+          }
+        >
+          <span>Qué incluye toca pagar</span>
+          <ChevronRight
+            className={cn(
+              'h-4 w-4 shrink-0 transition-transform duration-200',
+              isExpanded && 'rotate-90',
+            )}
+            aria-hidden
+            data-icon="inline-end"
+          />
+        </button>
 
         {isExpanded && (
           <>
