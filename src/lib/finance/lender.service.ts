@@ -223,7 +223,7 @@ export async function listLendersByOwner(
         source_wallet: { select: { name: true } },
         loan_payments: { select: { id: true } },
       },
-      orderBy: { paid_at: 'desc' },
+      orderBy: [{ paid_at: 'desc' }, { id: 'desc' }],
     }),
   ]);
 
@@ -273,7 +273,7 @@ async function loadLenderDetail(
         source_wallet: { select: { name: true } },
         loan_payments: { select: { id: true } },
       },
-      orderBy: { paid_at: 'desc' },
+      orderBy: [{ paid_at: 'desc' }, { id: 'desc' }],
     }),
   ]);
 
@@ -345,7 +345,7 @@ export async function payLenderForOwner(
 
   const includedIds = window.included.map((row) => row.id);
 
-  await prisma.$transaction(async (tx) => {
+  const createdPaymentId = await prisma.$transaction(async (tx) => {
     const lenderPayment = await tx.lenderPayment.create({
       data: {
         lender_id: lenderId,
@@ -416,11 +416,11 @@ export async function payLenderForOwner(
       });
     }
 
-    return expenseId;
+    return lenderPayment.id;
   });
 
   const updated = await loadLenderDetail(lenderId, ownerFilter);
-  const payment = updated.payments[0];
+  const payment = updated.payments.find((row) => row.id === createdPaymentId);
   if (!payment) {
     throw new Error('No se pudo registrar el pago del prestamista');
   }
