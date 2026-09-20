@@ -248,8 +248,7 @@ export default function SummaryBlock({
           periodIncome={tenemos}
           incomeRemainder={trasPagarPlaneado}
           dueToPay={comprometidoEfectivo}
-          fundingInAccounts={displayFundingWalletTotal}
-          fundingNetApplies={billeterasVsPendienteAplica}
+          fundingInAccounts={fundingWalletBalanceTotal}
           budgetRemainingAmount={budgetRemaining}
         />
 

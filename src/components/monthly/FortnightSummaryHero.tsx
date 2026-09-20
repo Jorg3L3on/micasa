@@ -11,8 +11,6 @@ type FortnightSummaryHeroProps = {
   dueToPay: number;
   /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
   fundingInAccounts: number;
-  /** Si false, se oculta “en cuentas hoy” (solo aplica a quincena actual o siguiente). */
-  fundingNetApplies?: boolean;
   /** Resto del presupuesto de la quincena (“cupo para gastar”). */
   budgetRemainingAmount?: number;
 };
@@ -51,7 +49,6 @@ export const FortnightSummaryHero = ({
   incomeRemainder,
   dueToPay,
   fundingInAccounts,
-  fundingNetApplies = true,
   budgetRemainingAmount = 0,
 }: FortnightSummaryHeroProps) => {
   const copy = getFortnightRemainderCopy(incomeRemainder);
@@ -61,22 +58,17 @@ export const FortnightSummaryHero = ({
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <p
-        className={cn(
-          'font-[family-name:var(--font-display)] text-[1.85rem] font-bold leading-none tracking-tight sm:text-[2.15rem]',
-          remainderClass,
-        )}
-      >
-        {copy.headline}
-        {copy.tone === 'even' ? null : (
-          <>
-            {' '}
-            <span className="font-mono tabular-nums">
-              {formatCurrency(remainderAbs)}
-            </span>
-          </>
-        )}
-      </p>
+      <div>
+        <p className="text-sm text-muted-foreground">Balance actual</p>
+        <p
+          className={cn(
+            'mt-1 font-[family-name:var(--font-display)] font-mono text-[1.85rem] font-bold leading-none tracking-tight tabular-nums sm:text-[2.15rem]',
+            fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground',
+          )}
+        >
+          {formatCurrency(fundingInAccounts)}
+        </p>
+      </div>
 
       <div className="flex flex-col gap-2">
         <LedgerRow label="Entra" amount={periodIncome} />
@@ -88,14 +80,9 @@ export const FortnightSummaryHero = ({
         />
       </div>
 
-      {fundingNetApplies || showBudgetAvailable ? (
+      {showBudgetAvailable ? (
         <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
-          {fundingNetApplies ? (
-            <LedgerRow label="En cuentas hoy" amount={fundingInAccounts} />
-          ) : null}
-          {showBudgetAvailable ? (
-            <LedgerRow label="Cupo para gastar" amount={budgetRemainingAmount} />
-          ) : null}
+          <LedgerRow label="Cupo para gastar" amount={budgetRemainingAmount} />
         </div>
       ) : null}
     </div>

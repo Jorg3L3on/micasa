@@ -19,26 +19,23 @@ describe('getFortnightSummaryHeader', () => {
 });
 
 describe('getFortnightRemainderCopy', () => {
-  it('uses surplus copy when income covers toca pagar', () => {
+  it('uses Queda when income covers toca pagar', () => {
     expect(getFortnightRemainderCopy(2150)).toEqual({
       tone: 'surplus',
-      headline: 'Te sobran',
       rowLabel: 'Queda',
     });
   });
 
-  it('uses shortfall copy when toca pagar exceeds income', () => {
+  it('uses Falta when toca pagar exceeds income', () => {
     expect(getFortnightRemainderCopy(-4800)).toEqual({
       tone: 'shortfall',
-      headline: 'Te faltan',
       rowLabel: 'Falta',
     });
   });
 
-  it('uses even copy when remainder is zero', () => {
+  it('uses Queda when remainder is zero', () => {
     expect(getFortnightRemainderCopy(0)).toEqual({
       tone: 'even',
-      headline: 'Quedas a mano',
       rowLabel: 'Queda',
     });
   });

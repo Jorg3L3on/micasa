@@ -12,19 +12,18 @@ export type FortnightRemainderTone = 'surplus' | 'shortfall' | 'even';
 
 export type FortnightRemainderCopy = {
   tone: FortnightRemainderTone;
-  headline: string;
   rowLabel: string;
 };
 
-/** Headline + row label for ingreso − toca pagar (absolute amount is formatted by the UI). */
+/** Row label for ingreso − toca pagar (absolute amount is formatted by the UI). */
 export const getFortnightRemainderCopy = (
   remainder: number,
 ): FortnightRemainderCopy => {
   if (remainder > 0) {
-    return { tone: 'surplus', headline: 'Te sobran', rowLabel: 'Queda' };
+    return { tone: 'surplus', rowLabel: 'Queda' };
   }
   if (remainder < 0) {
-    return { tone: 'shortfall', headline: 'Te faltan', rowLabel: 'Falta' };
+    return { tone: 'shortfall', rowLabel: 'Falta' };
   }
-  return { tone: 'even', headline: 'Quedas a mano', rowLabel: 'Queda' };
+  return { tone: 'even', rowLabel: 'Queda' };
 };
