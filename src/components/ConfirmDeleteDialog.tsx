@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 
@@ -76,11 +75,8 @@ export default function ConfirmDeleteDialog({
           type="button"
           onClick={() => void handleConfirm()}
           disabled={isDeleting}
-          className={cn(
-            OVERLAY_PRIMARY_BUTTON_CLASS,
-            tone === 'destructive' &&
-              'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-          )}
+          variant={tone === 'destructive' ? 'destructive' : 'default'}
+          className={OVERLAY_PRIMARY_BUTTON_CLASS}
         >
           {isDeleting ? (
             <>
