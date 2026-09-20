@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import '@/lib/polyfills';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Manrope } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -19,6 +19,12 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const display = Manrope({
+  variable: '--font-display',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
   title: {
@@ -29,8 +35,8 @@ export const metadata: Metadata = {
     'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   icons: {
     icon: [
+      { url: '/icon', type: 'image/png', sizes: '32x32' },
       { url: '/icon.ico', sizes: 'any' },
-      { url: '/icon.ico' },
     ],
     apple: [{ url: '/apple-icon', type: 'image/png', sizes: '180x180' }],
     shortcut: ['/icon.ico'],
@@ -59,7 +65,7 @@ export default function RootLayout({
   return (
     <html lang="es-MX" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${display.variable} antialiased`}
       >
         <SessionProvider>
           <FinanceProvider>
@@ -71,7 +77,7 @@ export default function RootLayout({
                 disableTransitionOnChange
               >
                 <NextTopLoader
-                  color="#FF5733"
+                  color="#3a37fc"
                   height={3}
                   showSpinner={false}
                   zIndex={1600}

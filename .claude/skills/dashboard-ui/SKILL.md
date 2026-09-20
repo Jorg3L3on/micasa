@@ -13,7 +13,7 @@ when_to_use:
 
 This skill encodes the conventions already established by the canonical pages: `monthly/[year]/[month]/page.tsx`, `wallets/page.tsx`, `expenses/`, and `credit-cards/`. New pages should match this dialect; existing divergent pages should be aligned with it (not the other way around).
 
-**Visual language** (navy canvas, glass, orange CTAs, blue→magenta): [`DESIGN.md`](../../../DESIGN.md). Do not commit third-party mockups. Tokens live in `src/app/globals.css` (`.dark`). Default theme is dark.
+**Visual language** (navy canvas, glass, electric-blue CTAs, blue→magenta): [`DESIGN.md`](../../../DESIGN.md). Do not commit third-party mockups. Tokens live in `src/app/globals.css` (`.dark`). Default theme is dark.
 
 The app frame (sidebar, sticky header, `AppAtmosphere`, container) is owned by `src/app/(app)/layout.tsx`. **Pages render only their content** — do not re-wrap in another container or set their own background.
 
@@ -119,7 +119,8 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 
 | Color | Gradient | Used for |
 |---|---|---|
-| Orange CTA | `135deg, #FF5733 → #FF2E00` | Primary buttons in dark (use `<Button>`, do not duplicate) |
+| Electric blue CTA | `#3a37fc` + violet ring | Primary buttons in-app (use `<Button>`, do not duplicate) |
+| Orange CTA | `135deg, #FF5733 → #FF2E00` | Landing `.landing-cta` only |
 | Electric blue | `135deg, #3a37fc → #911efe` | Brand, debit, selected, icon pills |
 | Pink / magenta | `135deg, #ee477a → #cf1ae6` | Accent, mark gradient end |
 | Emerald | `135deg, #10b981 → #34d399` | Income, success |
@@ -222,7 +223,7 @@ Inline semantic classes — keep these consistent so users recognize them:
 
 ### Buttons
 
-- Primary: default `<Button>` — in dark this is the orange gradient (`#FF5733` → `#FF2E00`). `--primary` remains electric blue for selection / icon-pill fills / toggles. Brand copy on navy (dates, links, Cancelar): `text-primary-text`.
+- Primary: default `<Button>` — in dark this is electric blue (`#3a37fc`) with a violet ring. `--primary` is that fill, plus selection / icon-pill fills / toggles. Brand copy on navy (dates, links, Cancelar): `text-primary-text`.
 - Tall primary on a form: add `h-11`
 - Icon-only: `<Button variant="ghost" size="icon">` with `aria-label`
 - Mobile FAB: `fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden`

@@ -6,7 +6,7 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 
 | Surface | Route | Code |
 | --- | --- | --- |
-| Marketing landing | `/` | `src/components/landing/*`, fonts in `src/app/page.tsx` |
+| Marketing landing | `/` | `src/components/landing/*`, Nunito in `src/app/page.tsx`, Manrope in `src/app/layout.tsx` |
 | Login | `/login` | `src/components/login/*` |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
@@ -25,7 +25,7 @@ Agent entry points:
 
 ## Visual contract
 
-Navy canvas, glass cards, **orange pill CTAs**, **blue → magenta** accents. Atmosphere is soft blurred orbs, not busy illustration.
+Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** accents. Orange is **landing CTAs only**. Atmosphere is soft blurred orbs, not busy illustration.
 
 | Role | Hex | CSS / class |
 | --- | --- | --- |
@@ -40,13 +40,14 @@ Navy canvas, glass cards, **orange pill CTAs**, **blue → magenta** accents. At
 | Violet glow / ring | `#911efe` | `--ring`, `--landing-glow-purple` |
 | Magenta | `#cf1ae6` | `--landing-glow-magenta` |
 | Pink | `#ee477a` | `--chart-2`, `--landing-glow-pink` |
-| CTA orange | `#FF5733` → `#FF2E00` | `.landing-cta`, `Button` default in `.dark` |
+| CTA orange | `#FF5733` → `#FF2E00` | `.landing-cta` only (marketing) |
+| In-app primary button | `#3a37fc` + violet ring | `Button` `variant="default"` |
 | Featured / Pro border | `#FF4D00` → `#8A2BE2` | `.landing-pro-border` |
 | Hairline | `rgb(255 255 255 / 0.08–0.1)` | `--border`, `dark:border-white/[0.08]` |
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): original rooftop zigzag (five nodes) with Zigzag/Workia gradient `#3a37fc` → `#ee477a` and a light gloss. Route progress (`NextTopLoader`): `#FF5733`.
+Brand mark (`MicasaMark`): original rooftop zigzag (five nodes) with Zigzag/Workia gradient `#3a37fc` → `#ee477a` and a light gloss. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 
@@ -56,7 +57,7 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 ### Marketing landing (`/`)
 
-- **Fonts:** Manrope (`--font-landing-display`) + Nunito (`--font-landing-sans`) — scoped on the landing wrapper only. Do not load these on app routes.
+- **Fonts:** Manrope (`--font-display`, aliased as `--font-landing-display`) + Nunito (`--font-landing-sans`). Nunito stays scoped on the landing wrapper. Manrope loads in the root layout for app headings too.
 - **Canvas:** `#060914` with `LandingAtmosphere` blue/pink orbs.
 - **Hero panel:** `.landing-hero-wash` — purple → pink gradient wash + faint grid. Headline is white; last words may use `.landing-accent-text`.
 - **Primary CTA:** pill (`rounded-full`) + `.landing-cta` orange gradient + orange glow shadow. Secondary: ghost / hairline glass, not a second orange button.
@@ -66,11 +67,11 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 ### Logged-in app (and login)
 
-- **Fonts:** Geist + Geist Mono from the root layout. Money still `font-mono tabular-nums`.
+- **Fonts:** Geist + Geist Mono for body/UI; **Manrope** (`--font-display`) for `h1`–`h3` and brand lockup. Money still `font-mono tabular-nums`.
 - **Same navy tokens** as landing (`.dark` in `globals.css`).
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
-- **Primary labeled buttons in dark** use the **orange gradient** (`Button` `variant="default"`). Do not invent a second primary orange utility; use `<Button>`.
+- **Primary labeled buttons in dark** use **electric blue** (`#3a37fc`) with a violet ring (`Button` `variant="default"`). Do not invent a second primary fill. Orange stays on **landing** `.landing-cta` pills only.
 - **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
@@ -79,7 +80,7 @@ orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 s
 dark:backdrop-blur-xl
 ```
 
-Metric tiles inside the summary use `.orion-metric-tile`.
+Dark glass adds a specular top edge (`inset` highlight) and hairline `white/8` border. Metric tiles inside the summary use `.orion-metric-tile` (same specular language).
 
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/75` plus a soft blue drop shadow.
 
@@ -143,7 +144,7 @@ Fix these when touching light parity (do not leave new hardcoded dark-only chrom
 
 - Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
-- Primary `Button`: blue→purple gradient in light, orange only in `.dark` (intentional; keep documented)
+- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`); orange is landing `.landing-cta` only
 - Landing stays always-dark (`.landing-root`) — out of light scope
 - Card faces that are always “dark plastic” (e.g. wallet list card art) may stay dark by design
 
@@ -215,7 +216,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 **Do**
 
 - Reuse CSS variables and the shared glass / CTA classes.
-- Put orange on **the** primary action; keep `--primary` blue for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy.
+- Put **electric blue** on the in-app primary action; keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy. Orange is landing `.landing-cta` only.
 - Match landing mocks and Panel financiero before inventing a new card language.
 - Capture README screenshots from **this** app (see below).
 
@@ -223,7 +224,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 - Commit Orion/Oriton (or any vendor) mockup PNGs, or chat-attached reference frames.
 - Paint whole panels with `bg-blue-500/5` / `bg-violet-500/5` for “identity.”
-- Mix Manrope/Nunito into the logged-in app.
+- Mix Nunito into the logged-in app (Manrope is for headings/display only).
 - Add a second orange button beside the primary CTA.
 - Use `toISOString().split('T')[0]` for business dates (see `src/lib/calendar-dates.ts`).
 
