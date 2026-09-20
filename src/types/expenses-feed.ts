@@ -16,8 +16,3 @@ export type ExpenseFeedItem = {
   categoryId: number | null;
   walletId: number | null;
 };
-
-export type ExpensesRecentResponse = {
-  items: ExpenseFeedItem[];
-  nextCursor: string | null;
-};

@@ -280,6 +280,11 @@ export default function FortnightColumn({
   }, [year, month, period, context]);
 
   useEffect(() => {
+    setTransactions(initialTransactions);
+    setSummary(initialSummary);
+  }, [initialTransactions, initialSummary]);
+
+  useEffect(() => {
     setCardDueItems(initialCardDueItems);
   }, [initialCardDueItems]);
 

@@ -135,9 +135,7 @@ export default function SummaryBlock({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const headerMeta =
-    year != null && month != null && period != null
-      ? getFortnightSummaryHeader(year, month, period)
-      : null;
+    period != null ? getFortnightSummaryHeader(period) : null;
 
   const hasUserIncome =
     userIncome &&
@@ -215,19 +213,14 @@ export default function SummaryBlock({
     >
       <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <span className={cn('mt-0.5', MONTHLY_ICON_PILL_CLASS)} aria-hidden>
-              <BarChart3 className="h-4 w-4 text-primary-text" data-icon="inline-start" />
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
+              <BarChart3 className="h-4 w-4" data-icon="inline-start" />
             </span>
-            <div className="min-w-0 space-y-0.5">
+            <div className="min-w-0">
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
                 {headerMeta?.title ?? 'Resumen de la quincena'}
               </CardTitle>
-              {headerMeta?.dateRange ? (
-                <p className="text-sm text-muted-foreground">
-                  {headerMeta.dateRange}
-                </p>
-              ) : null}
             </div>
           </div>
           <Tooltip>

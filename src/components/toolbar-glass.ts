@@ -50,12 +50,12 @@ export const TOOLBAR_GLASS_ICON =
     'motion-reduce:transition-none motion-reduce:active:scale-100',
   ].join(' ');
 
-/** Filled primary (Add) with liquid-glass specular rim on the orange CTA. */
+/** Filled primary (Add) with liquid-glass specular rim on the electric-blue CTA. */
 export const TOOLBAR_GLASS_PRIMARY_ICON =
   [
     'size-11 shrink-0 rounded-full',
     'border border-white/30',
-    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_8px_22px_-10px_rgba(255,87,51,0.65)]',
+    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_8px_22px_-10px_rgba(58,55,252,0.65)]',
     'backdrop-blur-md backdrop-saturate-150',
     'transition-[filter,transform,opacity,box-shadow] duration-200 ease-out',
     'hover:brightness-110',
@@ -68,7 +68,7 @@ export const TOOLBAR_GLASS_PRIMARY_PILL =
   [
     'h-11 shrink-0 rounded-full px-4 text-[15px] font-semibold tracking-tight',
     'border border-white/30',
-    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_8px_22px_-10px_rgba(255,87,51,0.65)]',
+    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_8px_22px_-10px_rgba(58,55,252,0.65)]',
     'backdrop-blur-md backdrop-saturate-150',
     'transition-[filter,transform,opacity,box-shadow] duration-200 ease-out',
     'hover:brightness-110',

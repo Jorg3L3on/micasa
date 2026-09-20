@@ -25,6 +25,7 @@ import {
   formatMonthYearLabel,
   formatShortMonthLabel,
   type LiquidityChartRangeId,
+  type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 
@@ -33,6 +34,10 @@ type LiquidityFutureTimelineProps = {
   events: LiquidityProjectionEvent[];
   chartRange: LiquidityChartRangeId;
   onChartRangeChange: (value: LiquidityChartRangeId) => void;
+  customRange: LiquidityCustomChartRange | null;
+  onCustomRangeChange: (range: LiquidityCustomChartRange) => void;
+  availableMonthKeys: readonly string[];
+  asOfYmd: string;
   selectedMonthKey: string;
   onSelectMonth: (monthKey: string) => void;
   isRefreshing?: boolean;
@@ -175,6 +180,10 @@ export const LiquidityFutureTimeline = ({
   events,
   chartRange,
   onChartRangeChange,
+  customRange,
+  onCustomRangeChange,
+  availableMonthKeys,
+  asOfYmd,
   selectedMonthKey,
   onSelectMonth,
   isRefreshing = false,
@@ -256,6 +265,10 @@ export const LiquidityFutureTimeline = ({
             <LiquidityChartRangeMenu
               value={chartRange}
               onChange={onChartRangeChange}
+              customRange={customRange}
+              onCustomRangeChange={onCustomRangeChange}
+              availableMonthKeys={availableMonthKeys}
+              asOfYmd={asOfYmd}
               isLoading={isRefreshing}
             />
           }

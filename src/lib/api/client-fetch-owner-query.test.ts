@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildOwnerQuery, parseOwnerQuery } from './client-fetch';
+import {
+  buildOwnerQuery,
+  getFinanceOwnerKey,
+  isOwnerContextPending,
+  parseOwnerQuery,
+} from './client-fetch';
 
 describe('parseOwnerQuery', () => {
   it('parses user and house owner queries with or without ?', () => {
@@ -25,5 +30,26 @@ describe('parseOwnerQuery', () => {
     expect(parseOwnerQuery(`?${buildOwnerQuery(context).toString()}`)).toEqual(
       context,
     );
+  });
+});
+
+describe('isOwnerContextPending', () => {
+  it('is false before the client context has synced', () => {
+    expect(isOwnerContextPending({ type: 'user', id: 0 }, 'house-5')).toBe(
+      false,
+    );
+  });
+
+  it('is false when the client already matches the server owner', () => {
+    expect(isOwnerContextPending({ type: 'house', id: 5 }, 'house-5')).toBe(
+      false,
+    );
+  });
+
+  it('is true while the sidebar switched house ahead of the page', () => {
+    expect(isOwnerContextPending({ type: 'house', id: 5 }, 'house-3')).toBe(
+      true,
+    );
+    expect(getFinanceOwnerKey({ type: 'house', id: 5 })).toBe('house-5');
   });
 });

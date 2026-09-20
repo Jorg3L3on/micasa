@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Fintech UI Design System
 
-Canonical tokens, glass recipes, and landing-vs-app rules: **`DESIGN.md`**. Dark default is Orion navy (`#060914`), electric blue primary (`#3a37fc`), orange gradient CTAs (`#FF5733` → `#FF2E00`). Do not commit third-party mockup images.
+Canonical tokens, glass recipes, and landing-vs-app rules: **`DESIGN.md`**. Dark default is Orion navy (`#060914`), electric blue primary (`#3a37fc`) for in-app CTAs and selection, orange gradient only on landing `.landing-cta`. Do not commit third-party mockup images.
 
 When building or updating UI components, follow this premium fintech design language consistently.
 
@@ -110,8 +110,8 @@ For horizontally scrollable content (e.g. wallet cards), use:
 
 ## CTAs
 
-- **Dark in-app primary:** default `<Button>` (orange gradient). `--primary` stays electric blue for selection, icon pills, toggles, and focus rings. Brand copy on navy uses `text-primary-text`.
-- **Landing primary:** pill `rounded-full` + `.landing-cta`. One orange control per block.
+- **Dark in-app primary:** default `<Button>` (electric blue `#3a37fc` + violet ring). `--primary` is that fill, plus selection, icon pills, toggles, and focus rings. Brand copy on navy uses `text-primary-text`.
+- **Landing primary:** pill `rounded-full` + `.landing-cta` (orange). One orange control per block.
 - Featured / Pro marketing border: `.landing-pro-border` (`#FF4D00` → `#8A2BE2`).
 
 ## General Principles

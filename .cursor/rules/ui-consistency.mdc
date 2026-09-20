@@ -5,7 +5,7 @@ alwaysApply: true
 
 # UI consistency (MiCasa)
 
-When adding or changing screens, align with **`DESIGN.md`** (repo root) and **`fintech-ui-design-system.mdc`** for **tokens** (Orion navy, orange CTAs, glass, money type, icon pills). This rule adds **layout and control hierarchy** so the app feels cohesive, not “panel of buttons.” Do not commit third-party mockups — encode the look in tokens, shared classes, and live screenshots of this app.
+When adding or changing screens, align with **`DESIGN.md`** (repo root) and **`fintech-ui-design-system.mdc`** for **tokens** (Orion navy, electric-blue primaries, glass, money type, icon pills). This rule adds **layout and control hierarchy** so the app feels cohesive, not “panel of buttons.” Do not commit third-party mockups — encode the look in tokens, shared classes, and live screenshots of this app.
 
 ## Page structure
 

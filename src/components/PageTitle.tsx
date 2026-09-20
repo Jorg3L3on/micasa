@@ -17,7 +17,6 @@ const MODULE_ROOT_SEGMENTS = new Set([
   'budgets',
   'loans',
   'transactions',
-  'expenses',
   'categories',
   'account',
   'house-users',
@@ -197,7 +196,6 @@ export function getPageTitle(pathname: string): {
   const pageTitles: Record<string, string> = {
     account: 'Cuenta',
     categories: 'Categorías',
-    expenses: 'Gastos',
   };
 
   const pageTitle = pageTitles[segments[0]] || segments[0];

@@ -53,11 +53,6 @@ function TransactionsLoadingSkeleton() {
           <Skeleton className="h-5 w-36" />
           <Skeleton className="h-4 w-72 max-w-full" />
         </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[72px] rounded-lg" />
-          ))}
-        </div>
         <Skeleton className="h-[500px] rounded-xl" />
       </div>
     </SkeletonExit>
