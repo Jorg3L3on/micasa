@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   displayIncomingCash,
+  formatCustomChartRangeLabel,
   formatMonthYearLabel,
   monthKeyFromParts,
   resolveInitialMonthKey,
@@ -36,6 +37,11 @@ describe('liquidity month selection helpers', () => {
     expect(displayIncomingCash(-8072.82)).toBe(0);
     expect(displayIncomingCash(0)).toBe(0);
     expect(displayIncomingCash(166400)).toBe(166400);
+  });
+
+  it('formats a custom from/to label', () => {
+    expect(formatCustomChartRangeLabel('2026-07', '2026-09')).toMatch(/jul.*sep/i);
+    expect(formatCustomChartRangeLabel('2026-07', '2026-07')).toMatch(/jul/i);
   });
 
   it('prefers the current month when it is in the chart window', () => {

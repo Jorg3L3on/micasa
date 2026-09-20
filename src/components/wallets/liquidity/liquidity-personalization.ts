@@ -1,9 +1,10 @@
 import {
   LIQUIDITY_CHART_RANGE_OPTIONS,
   type LiquidityChartRangeId,
+  type LiquidityCustomChartRange,
 } from '@/lib/finance/liquidity-chart-range';
 
-export type { LiquidityChartRangeId };
+export type { LiquidityChartRangeId, LiquidityCustomChartRange };
 export { LIQUIDITY_CHART_RANGE_OPTIONS };
 
 export const formatLiquidityDateLabel = (ymd: string): string => {
@@ -36,6 +37,15 @@ export const formatShortMonthLabel = (monthKey: string): string => {
     year: '2-digit',
     timeZone: 'UTC',
   });
+};
+
+/** Compact trigger copy for a custom from/to window, e.g. "jul 26 – sep 26". */
+export const formatCustomChartRangeLabel = (
+  fromMonthKey: string,
+  toMonthKey: string,
+): string => {
+  if (fromMonthKey === toMonthKey) return formatShortMonthLabel(fromMonthKey);
+  return `${formatShortMonthLabel(fromMonthKey)} – ${formatShortMonthLabel(toMonthKey)}`;
 };
 
 export const compareMonthKeys = (a: string, b: string): number => a.localeCompare(b);
