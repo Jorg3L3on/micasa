@@ -18,16 +18,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate, formatCurrencySigned, formatCurrency, cn } from '@/lib/utils';
+import { formatDate, formatCurrencySigned, cn } from '@/lib/utils';
 import type { TransactionRow } from '@/types/catalog';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
   Wallet,
-  Receipt,
-  DollarSign,
   X,
 } from 'lucide-react';
 
@@ -84,21 +80,6 @@ export default function TransactionsDataTable({
     }
     return result;
   }, [transactions, categoryFilter, paymentMethodFilter]);
-
-  const summary = useMemo(() => {
-    const incomeTotal = transactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    const expenseTotal = transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    return {
-      income: incomeTotal,
-      expenses: expenseTotal,
-      net: incomeTotal - expenseTotal,
-      count: transactions.length,
-    };
-  }, [transactions]);
 
   const handleServerFilter = useCallback(
     (field: string, value: string) => {
@@ -355,98 +336,6 @@ export default function TransactionsDataTable({
 
   return (
     <div className="space-y-6">
-      {transactions.length > 0 && (
-        <div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-          role="region"
-          aria-label="Resumen de transacciones"
-        >
-          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
-                <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Ingresos
-              </p>
-            </div>
-            <p className="text-lg font-bold font-mono tabular-nums text-blue-700 dark:text-blue-300">
-              {formatCurrency(summary.income)}
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
-                <TrendingDown className="h-3 w-3 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Gastos
-              </p>
-            </div>
-            <p className="text-lg font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300">
-              {formatCurrency(summary.expenses)}
-            </p>
-          </div>
-
-          <div
-            className={cn(
-              'rounded-lg border border-l-[3px] px-3 py-3',
-              summary.net >= 0
-                ? 'border-l-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/8'
-                : 'border-l-destructive/50 bg-destructive/5 dark:bg-destructive/8',
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-md shrink-0',
-                  summary.net >= 0
-                    ? 'bg-emerald-500/10 dark:bg-emerald-500/15'
-                    : 'bg-destructive/10 dark:bg-destructive/15',
-                )}
-              >
-                <DollarSign
-                  className={cn(
-                    'h-3 w-3',
-                    summary.net >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-destructive',
-                  )}
-                />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Balance
-              </p>
-            </div>
-            <p
-              className={cn(
-                'text-lg font-bold font-mono tabular-nums',
-                summary.net >= 0
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : 'text-destructive',
-              )}
-            >
-              {formatCurrency(summary.net)}
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
-                <Receipt className="h-3 w-3 text-amber-600 dark:text-amber-400" data-icon="inline-start" />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Transacciones
-              </p>
-            </div>
-            <p className="text-lg font-bold font-mono tabular-nums">
-              {summary.count}
-            </p>
-          </div>
-        </div>
-      )}
-
       <Card className="overflow-hidden border-border/60">
         <CardContent className="pt-6">
           <DataTable
