@@ -192,10 +192,6 @@ export default async function FortnightPage({
             summary.planningUnpaidExpenseCount ??
             transactions.filter((t) => !t.is_paid).length
           }
-          cardCharges={summary.cardCharges ?? null}
-          planningOrphanCardPayments={
-            summary.planningOrphanCardPayments ?? null
-          }
           planningCardStatementDue={summary.planningCardStatementDue ?? null}
           planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
           planningPayrollLoanDeduction={
@@ -203,8 +199,6 @@ export default async function FortnightPage({
           }
           planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
           fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
-          fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
-          fundingWalletBreakdown={summary.fundingWalletBreakdown}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}

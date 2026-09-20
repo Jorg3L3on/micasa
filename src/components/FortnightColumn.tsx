@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
+import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
@@ -189,7 +190,7 @@ export default function FortnightColumn({
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
-  const [editingIncomeAmount, setEditingIncomeAmount] = useState(0);
+  const [editingIncomeAmount] = useState(0);
   const [editingIncomeCategoryId, setEditingIncomeCategoryId] = useState<
     number | null
   >(null);
@@ -494,25 +495,6 @@ export default function FortnightColumn({
       toast.error(message);
       throw err;
     }
-  };
-
-  const handleOpenOverrideDialog = () => {
-    setEditingIncomeId(null);
-    setEditingIncomeCategoryId(null);
-    setOverrideError(null);
-    setOverrideDialogOpen(true);
-  };
-
-  const handleOpenEditIncomeSource = (
-    id: number,
-    amount: number,
-    categoryId: number | null,
-  ) => {
-    setEditingIncomeId(id);
-    setEditingIncomeAmount(amount);
-    setEditingIncomeCategoryId(categoryId);
-    setOverrideError(null);
-    setOverrideDialogOpen(true);
   };
 
   const handleAddExpense = async (data: AddExpenseFormValues) => {
@@ -826,12 +808,6 @@ export default function FortnightColumn({
   const pagado = summary.totalPaid;
   const pendiente = summary.totalUnpaid;
 
-  // Filter user income for this specific fortnight
-  const currentFortnightUserIncome =
-    summary.userIncome && summary.userIncome.length > 0
-      ? summary.userIncome.filter((ui) => ui.fortnightId === fortnightId)
-      : undefined;
-
   const sortedTransactions = useMemo(
     () => sortExpenseListRows(transactions, listSortMode, listSortDir),
     [transactions, listSortMode, listSortDir],
@@ -875,21 +851,12 @@ export default function FortnightColumn({
           libre={libre}
           pagado={pagado}
           pendiente={pendiente}
-          userIncome={currentFortnightUserIncome}
-          incomeItems={
-            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
-            []
-          }
           year={year}
           month={month}
           period={period}
           expenseCount={summaryExpenseCount}
           paidExpenseCount={summaryPaidExpenseCount}
           unpaidExpenseCount={summaryUnpaidExpenseCount}
-          cardCharges={summary.cardCharges ?? null}
-          planningOrphanCardPayments={
-            summary.planningOrphanCardPayments ?? null
-          }
           planningCardStatementDue={
             summary.planningCardStatementDue ?? null
           }
@@ -901,25 +868,15 @@ export default function FortnightColumn({
           fundingWalletBalanceTotal={
             summary.fundingWalletBalanceTotal ?? 0
           }
-          fundingNetVsPendingExpense={
-            summary.fundingNetVsPendingExpense ?? 0
-          }
-          fundingWalletBreakdown={(summary.fundingWalletBreakdown ?? []).map(
-            (item) => {
-              const wallet = wallets.find((w) => w.id === item.id);
-              return {
-                ...item,
-                provider_icon_key:
-                  item.provider_icon_key ?? wallet?.provider_icon_key ?? null,
-                assignee: item.assignee ?? wallet?.assignee ?? null,
-              };
-            },
-          )}
-          budgetPanel={budgetPanel}
-          budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
-          onEditIncome={handleOpenOverrideDialog}
-          onEditIncomeSource={handleOpenEditIncomeSource}
         />
+
+        {budgetPanel != null ? (
+          <MonthlyBudgetSidebar
+            panel={budgetPanel}
+            ownerQuery={budgetOwnerQuery || ownerQueryString}
+            className="xl:hidden"
+          />
+        ) : null}
 
         <Tabs
           value={columnTab}
