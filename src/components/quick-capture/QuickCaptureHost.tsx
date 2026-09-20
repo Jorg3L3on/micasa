@@ -60,6 +60,8 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
+  const [blockingOverlayOpen, setBlockingOverlayOpen] = useState(false);
+  const [fabHoldOff, setFabHoldOff] = useState(false);
   const pathname = usePathname() ?? '';
   const router = useRouter();
   const { context } = useFinanceContext();
@@ -67,6 +69,32 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   useEffect(() => {
     setPortalReady(true);
   }, []);
+
+  useEffect(() => {
+    const syncOverlayLock = () => {
+      setBlockingOverlayOpen(
+        document.querySelector('[role="dialog"][data-state="open"]') != null,
+      );
+    };
+    syncOverlayLock();
+    const observer = new MutationObserver(syncOverlayLock);
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (blockingOverlayOpen) {
+      setFabHoldOff(true);
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setFabHoldOff(false), 500);
+    return () => window.clearTimeout(timeoutId);
+  }, [blockingOverlayOpen]);
 
   const openExpense = useCallback(() => {
     setError(null);
@@ -111,11 +139,13 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   const fabBottom = needsRaisedFab(pathname) ? 'bottom-24' : 'bottom-6';
 
-  // Keep FAB below Sheet/Dialog overlays (z-50). Hide while open so it
-  // cannot intercept taps on sheet controls near the bottom edge.
+  // Keep FAB below Sheet/Dialog overlays (z-50). Hide while any overlay is
+  // open so it cannot intercept taps on sheet controls near the bottom edge.
   const fab =
     portalReady &&
     !open &&
+    !blockingOverlayOpen &&
+    !fabHoldOff &&
     createPortal(
       <Button
         type="button"

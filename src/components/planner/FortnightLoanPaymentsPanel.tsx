@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
@@ -13,14 +13,17 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
+import { LoanPaymentManageOverlay } from '@/components/loans/LoanPaymentManageOverlay';
+import { useFinanceContext } from '@/context/finance-context';
+import { buildOwnerQuery } from '@/lib/api/client-fetch';
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
-  ownerQueryString: string;
   fortnightLabel: string;
   isCompact?: boolean;
   sortMode?: PlannerListSortMode;
   sortDir?: PlannerListSortDir;
+  onUpdated?: () => Promise<void> | void;
 };
 
 type VisualStatus = 'paid' | 'overdue' | 'pending' | 'muted';
@@ -46,13 +49,24 @@ const getVisualStatus = (
 
 export default function FortnightLoanPaymentsPanel({
   items,
-  ownerQueryString,
   fortnightLabel,
   isCompact = false,
   sortMode = 'amount',
   sortDir = 'desc',
+  onUpdated,
 }: FortnightLoanPaymentsPanelProps) {
   const todayYmd = useHydrationSafeTodayYmd();
+  const { context } = useFinanceContext();
+  const [managingItem, setManagingItem] = useState<LoanDuePaymentItem | null>(
+    null,
+  );
+  const [manageOpen, setManageOpen] = useState(false);
+
+  const ownerQueryString = useMemo(() => {
+    const query = buildOwnerQuery(context);
+    const value = query.toString();
+    return value ? `?${value}` : '';
+  }, [context]);
 
   const rows = useMemo(
     () => sortLoanDuePaymentRows(items, sortMode, sortDir, todayYmd),
@@ -60,6 +74,11 @@ export default function FortnightLoanPaymentsPanel({
   );
 
   const groups = useMemo(() => groupDuePaymentsByLender(rows), [rows]);
+
+  const handleOpenManage = (item: LoanDuePaymentItem) => {
+    setManagingItem(item);
+    setManageOpen(true);
+  };
 
   const lenderHref = (lenderId: number | null, loanId: number) => {
     const params = new URLSearchParams(
@@ -115,12 +134,16 @@ export default function FortnightLoanPaymentsPanel({
             group.items.some((item) => item.status === 'SCHEDULED');
           const firstLoanId = group.items[0]?.loanId ?? 0;
           const href = lenderHref(group.lenderId, firstLoanId);
+          const firstScheduled =
+            group.items.find((item) => item.status === 'SCHEDULED') ??
+            group.items[0]!;
 
           return (
             <li
               key={group.key}
               className={cn(
                 'group/row relative overflow-hidden rounded-xl border px-3 transition-all',
+                'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                 isCompact ? 'py-2.5' : 'py-3',
                 visual === 'overdue' &&
                   'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
@@ -166,10 +189,11 @@ export default function FortnightLoanPaymentsPanel({
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={href}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenManage(firstScheduled)}
                     className={cn(
-                      'block min-w-0 truncate font-semibold hover:underline',
+                      'block min-w-0 truncate text-left font-semibold hover:underline',
                       isCompact ? 'text-xs' : 'text-sm',
                       visual === 'paid' || visual === 'muted'
                         ? 'text-muted-foreground'
@@ -179,7 +203,7 @@ export default function FortnightLoanPaymentsPanel({
                     {isPayroll
                       ? `Nómina · ${group.lenderName}`
                       : `Pagar a ${group.lenderName}`}
-                  </Link>
+                  </button>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                     <span>
                       {group.items.length} contrato
@@ -211,6 +235,18 @@ export default function FortnightLoanPaymentsPanel({
                         Pagar
                       </Link>
                     </Button>
+                  ) : firstScheduled.status === 'SCHEDULED' ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 px-2 text-[10px]"
+                      onClick={() => handleOpenManage(firstScheduled)}
+                      aria-label={`Gestionar ${firstScheduled.loanName}`}
+                    >
+                      <ArrowRight className="h-3 w-3" aria-hidden />
+                      Gestionar
+                    </Button>
                   ) : null}
                 </div>
               </div>
@@ -222,9 +258,29 @@ export default function FortnightLoanPaymentsPanel({
                       key={item.id}
                       className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
                     >
-                      <span className="truncate">{item.loanName}</span>
-                      <span className="font-mono tabular-nums">
-                        {formatCurrency(item.amount)}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenManage(item)}
+                        className="min-w-0 truncate text-left hover:underline"
+                      >
+                        {item.loanName}
+                      </button>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="font-mono tabular-nums">
+                          {formatCurrency(item.amount)}
+                        </span>
+                        {item.status === 'SCHEDULED' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-1.5 text-[10px]"
+                            onClick={() => handleOpenManage(item)}
+                            aria-label={`Gestionar ${item.loanName}`}
+                          >
+                            Gestionar
+                          </Button>
+                        ) : null}
                       </span>
                     </li>
                   ))}
@@ -234,6 +290,12 @@ export default function FortnightLoanPaymentsPanel({
           );
         })}
       </ul>
+      <LoanPaymentManageOverlay
+        open={manageOpen}
+        onOpenChange={setManageOpen}
+        item={managingItem}
+        onSuccess={onUpdated}
+      />
     </div>
   );
 }
