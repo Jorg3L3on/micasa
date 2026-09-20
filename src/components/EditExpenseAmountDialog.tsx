@@ -1,56 +1,48 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField } from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { CurrencyInput } from '@/components/ui/currency-input'
-import { Button } from '@/components/ui/button'
-import { formatCurrency } from '@/lib/utils'
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
 import {
   expenseAmountSchema,
   ExpenseAmountFormValues,
-} from '@/schemas/expense.schema'
-import type { WalletListItem } from '@/types/catalog'
-import { WalletIdentity } from '@/components/wallets/WalletIdentity'
+} from '@/schemas/expense.schema';
+import type { WalletListItem } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  FormAmountRow,
+  FormGroupedRow,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+} from '@/components/overlay/overlay-form';
 
 type EditExpenseAmountDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSave: (data: ExpenseAmountFormValues) => Promise<void>
-  defaultAmount: number
-  defaultWalletId?: number | null
-  wallets?: WalletListItem[]
-  isPaid?: boolean
-  error?: string | null
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (data: ExpenseAmountFormValues) => Promise<void>;
+  defaultAmount: number;
+  defaultWalletId?: number | null;
+  wallets?: WalletListItem[];
+  isPaid?: boolean;
+  error?: string | null;
+};
 
 const safeAmount = (value: number): number =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
 
-const NULL_WALLET_VALUE = '__none__'
+const NULL_WALLET_VALUE = '__none__';
 
 export default function EditExpenseAmountDialog({
   open,
@@ -62,7 +54,7 @@ export default function EditExpenseAmountDialog({
   isPaid = false,
   error,
 }: EditExpenseAmountDialogProps) {
-  const initialAmount = safeAmount(defaultAmount)
+  const initialAmount = safeAmount(defaultAmount);
 
   const form = useForm<ExpenseAmountFormValues>({
     resolver: zodResolver(expenseAmountSchema),
@@ -70,160 +62,147 @@ export default function EditExpenseAmountDialog({
       amount: initialAmount,
       wallet_id: defaultWalletId ?? null,
     },
-  })
+  });
 
   useEffect(() => {
     if (open) {
       form.reset({
         amount: safeAmount(defaultAmount),
         wallet_id: defaultWalletId ?? null,
-      })
+      });
     }
-  }, [open, defaultAmount, defaultWalletId, form])
+  }, [open, defaultAmount, defaultWalletId, form]);
 
   const handleSubmit = async (data: ExpenseAmountFormValues) => {
     try {
-      await onSave(data)
+      await onSave(data);
     } catch {
       // Parent shows toast; close either way after the attempt.
     } finally {
-      onOpenChange(false)
+      onOpenChange(false);
     }
-  }
+  };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      form.reset()
-    }
-    onOpenChange(newOpen)
-  }
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) form.reset();
+    onOpenChange(nextOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modificar gasto</DialogTitle>
-          <DialogDescription>
-            Monto actual: {formatCurrency(initialAmount)}
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Modificar gasto"
+      description={`Monto actual: ${formatCurrency(initialAmount)}`}
+      busy={form.formState.isSubmitting}
+    >
+      {({ handleSelectOpenChange }) => (
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {error && (
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="flex flex-col gap-3"
+          >
+            {error ? (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {error}
               </div>
-            )}
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto</FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="0.00"
-                      aria-label="Monto"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {wallets.length > 0 && (
+            ) : null}
+            <p className="px-1 text-xs text-muted-foreground">
+              Monto actual:{' '}
+              <span className="font-mono font-semibold tabular-nums text-foreground">
+                {formatCurrency(initialAmount)}
+              </span>
+            </p>
+            <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <FormField
                 control={form.control}
-                name="wallet_id"
-                render={({ field }) => {
-                  const selectedWallet = wallets.find(
-                    (w) => w.id === Number(field.value),
-                  )
-                  return (
-                    <FormItem>
-                      <FormLabel>Método de pago</FormLabel>
-                      <Select
-                        disabled={isPaid}
-                        value={field.value != null ? String(field.value) : NULL_WALLET_VALUE}
-                        onValueChange={(val) => {
-                          field.onChange(val === NULL_WALLET_VALUE ? null : Number(val))
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger
-                            className="h-11 w-full max-w-none"
-                            aria-label="Método de pago"
-                          >
-                            <SelectValue placeholder="Sin cartera (efectivo)">
-                              {selectedWallet ? (
-                                <span className="flex w-full items-center justify-between gap-3">
+                name="amount"
+                render={({ field }) => (
+                  <FormAmountRow
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {wallets.length > 0 ? (
+                <FormField
+                  control={form.control}
+                  name="wallet_id"
+                  render={({ field }) => {
+                    const selectedWallet = wallets.find(
+                      (w) => w.id === Number(field.value),
+                    );
+                    return (
+                      <FormGroupedRow label="Billetera">
+                        <Select
+                          disabled={isPaid}
+                          value={
+                            field.value != null
+                              ? String(field.value)
+                              : NULL_WALLET_VALUE
+                          }
+                          onOpenChange={handleSelectOpenChange}
+                          onValueChange={(val) => {
+                            field.onChange(
+                              val === NULL_WALLET_VALUE ? null : Number(val),
+                            );
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger
+                              className={OVERLAY_ROW_TRIGGER_CLASS}
+                              aria-label="Billetera"
+                            >
+                              <SelectValue placeholder="Sin cartera (efectivo)">
+                                {selectedWallet ? (
                                   <WalletIdentity
                                     name={selectedWallet.name}
-                                    providerIconKey={selectedWallet.provider_icon_key}
+                                    providerIconKey={
+                                      selectedWallet.provider_icon_key
+                                    }
+                                    iconClassName="h-8 w-8 rounded-lg"
+                                  />
+                                ) : null}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={NULL_WALLET_VALUE}>
+                              Sin cartera (efectivo)
+                            </SelectItem>
+                            {wallets.map((w) => (
+                              <SelectItem key={w.id} value={String(w.id)}>
+                                <span className="flex items-center justify-between gap-3">
+                                  <WalletIdentity
+                                    name={w.name}
+                                    providerIconKey={w.provider_icon_key}
                                     iconClassName="h-5 w-5 rounded-md"
                                   />
                                   <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                                    {formatCurrency(selectedWallet.amount ?? 0)}
+                                    {formatCurrency(w.amount ?? 0)}
                                   </span>
                                 </span>
-                              ) : (
-                                'Sin cartera (efectivo)'
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value={NULL_WALLET_VALUE}>
-                            Sin cartera (efectivo)
-                          </SelectItem>
-                          {wallets.map((w) => (
-                            <SelectItem key={w.id} value={String(w.id)}>
-                              <span className="flex items-center justify-between gap-3">
-                                <WalletIdentity
-                                  name={w.name}
-                                  providerIconKey={w.provider_icon_key}
-                                  iconClassName="h-5 w-5 rounded-md"
-                                />
-                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                                  {formatCurrency(w.amount ?? 0)}
-                                </span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {isPaid && (
-                        <p className="text-xs text-muted-foreground">
-                          No se puede cambiar el método de pago de un gasto ya pagado.
-                        </p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
-            )}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={form.formState.isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-                aria-busy={form.formState.isSubmitting}
-              >
-                {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
-              </Button>
-            </DialogFooter>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormGroupedRow>
+                    );
+                  }}
+                />
+              ) : null}
+            </div>
+            <Button
+              type="submit"
+              disabled={form.formState.isSubmitting}
+              aria-busy={form.formState.isSubmitting}
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
+            >
+              {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
+            </Button>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
-  )
+      )}
+    </ResponsiveOverlay>
+  );
 }

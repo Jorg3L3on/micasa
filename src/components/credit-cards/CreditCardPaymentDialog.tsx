@@ -2,16 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -19,12 +9,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleField } from '@/components/ui/toggle';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
-import { CurrencyInput } from '@/components/ui/currency-input';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  AmountRow,
+  DateStepper,
+  GroupedRow,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+} from '@/components/overlay/overlay-form';
 
 /** Persist last category used for “registrar en quincena” (see ui-consistency / micasa.* keys). */
 const LAST_CATEGORY_STORAGE_KEY = 'micasa.creditCardPayment.lastCategoryId';
@@ -68,7 +67,6 @@ const CreditCardPaymentDialog = ({
   const [sourceWalletId, setSourceWalletId] = useState('');
   const [amount, setAmount] = useState(0);
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
-  const [note, setNote] = useState('');
   const [createFortnightExpense, setCreateFortnightExpense] = useState(true);
   const [categoryId, setCategoryId] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -85,7 +83,6 @@ const CreditCardPaymentDialog = ({
           : 0;
     setAmount(suggested);
     setPaidAt(todayCalendarDate());
-    setNote('');
     setCreateFortnightExpense(true);
     setLocalError(null);
 
@@ -104,23 +101,6 @@ const CreditCardPaymentDialog = ({
   const selectedSource = fundingWalletOptions.find(
     (w) => String(w.id) === sourceWalletId,
   );
-  const sourceBalance = selectedSource?.amount ?? 0;
-
-  const handlePayMinimum = () => {
-    if (nextDuePayment <= 0) return;
-    const capped = selectedSource
-      ? Math.min(nextDuePayment, sourceBalance)
-      : nextDuePayment;
-    setAmount(capped);
-  };
-
-  const handlePayFull = () => {
-    if (outstandingBalance <= 0) return;
-    const capped = selectedSource
-      ? Math.min(outstandingBalance, sourceBalance)
-      : outstandingBalance;
-    setAmount(capped);
-  };
 
   const submitPayment = async () => {
     if (submitting) return;
@@ -135,7 +115,7 @@ const CreditCardPaymentDialog = ({
       source_wallet_id: Number(sourceWalletId),
       amount: Number(amount),
       paid_at: paidAt,
-      note: note.trim() || null,
+      note: null,
       create_fortnight_expense: createFortnightExpense,
       ...(createFortnightExpense && categoryId
         ? { category_id: Number(categoryId) }
@@ -155,198 +135,121 @@ const CreditCardPaymentDialog = ({
   };
 
   const displayError = localError ?? error;
-  const isSubmitting = submitting;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>Registrar pago</DialogTitle>
-        </DialogHeader>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Registrar pago"
+      description="Registra un pago de tarjeta desde una billetera de fondeo."
+      busy={submitting}
+    >
+      {({ handleSelectOpenChange }) => (
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void submitPayment();
           }}
-          className="space-y-4"
-          aria-busy={isSubmitting}
+          className="flex flex-col gap-3"
+          aria-busy={submitting}
         >
-          {displayError && (
+          {displayError ? (
             <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
               {displayError}
             </div>
-          )}
+          ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handlePayMinimum}
-              disabled={nextDuePayment <= 0}
-              aria-label={`Pagar mínimo sugerido ${formatCurrency(nextDuePayment)}`}
-            >
-              Mínimo sugerido ({formatCurrency(nextDuePayment)})
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handlePayFull}
-              disabled={outstandingBalance <= 0}
-              aria-label={`Pagar saldo total ${formatCurrency(outstandingBalance)}`}
-            >
-              Saldo total ({formatCurrency(outstandingBalance)})
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Billetera origen</span>
-            <Select
-              value={sourceWalletId || undefined}
-              onValueChange={setSourceWalletId}
-            >
-              <SelectTrigger
-                className="h-11 w-full max-w-none"
-                aria-label="Selecciona la billetera origen"
+          <div className={OVERLAY_GROUPED_CARD_CLASS}>
+            <GroupedRow label="Billetera">
+              <Select
+                value={sourceWalletId || undefined}
+                onOpenChange={handleSelectOpenChange}
+                onValueChange={setSourceWalletId}
               >
-                <SelectValue placeholder="Selecciona una billetera">
-                  {selectedSource ? (
-                    <span className="flex w-full items-center justify-between gap-3">
+                <SelectTrigger
+                  className={OVERLAY_ROW_TRIGGER_CLASS}
+                  aria-label="Selecciona la billetera origen"
+                >
+                  <SelectValue placeholder="Selecciona">
+                    {selectedSource ? (
                       <WalletIdentity
                         name={selectedSource.name}
                         providerIconKey={selectedSource.provider_icon_key}
-                        iconClassName="h-5 w-5 rounded-md"
+                        iconClassName="h-8 w-8 rounded-lg"
                       />
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                        {formatCurrency(selectedSource.amount ?? 0)}
+                    ) : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {fundingWalletOptions.map((wallet) => (
+                    <SelectItem key={wallet.id} value={String(wallet.id)}>
+                      <span className="flex items-center justify-between gap-3">
+                        <WalletIdentity
+                          name={wallet.name}
+                          providerIconKey={wallet.provider_icon_key}
+                          iconClassName="h-5 w-5 rounded-md"
+                        />
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                          {formatCurrency(wallet.amount ?? 0)}
+                        </span>
                       </span>
-                    </span>
-                  ) : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {fundingWalletOptions.map((wallet) => (
-                  <SelectItem key={wallet.id} value={String(wallet.id)}>
-                    <span className="flex items-center justify-between gap-3">
-                      <WalletIdentity
-                        name={wallet.name}
-                        providerIconKey={wallet.provider_icon_key}
-                        iconClassName="h-5 w-5 rounded-md"
-                      />
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                        {formatCurrency(wallet.amount ?? 0)}
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </GroupedRow>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="payment-amount">
-                Monto
-              </label>
-              <CurrencyInput
-                id="payment-amount"
-                value={amount}
-                onChange={setAmount}
-                aria-label="Monto del pago"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="payment-date">
-                Fecha de pago
-              </label>
-              <Input
-                id="payment-date"
-                type="date"
-                value={paidAt}
-                onChange={(event) => setPaidAt(event.target.value)}
-                aria-label="Fecha del pago"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 rounded-md border border-border/60 px-3 py-2.5">
-            <Checkbox
-              id="create-fortnight-expense"
-              checked={createFortnightExpense}
-              onCheckedChange={(v) =>
-                setCreateFortnightExpense(v === true)
-              }
-              aria-describedby="create-fortnight-expense-desc"
+            <AmountRow
+              value={amount}
+              onChange={setAmount}
+              ariaLabel="Monto del pago"
             />
-            <div className="grid gap-1.5 leading-none">
-              <Label
-                htmlFor="create-fortnight-expense"
-                className="text-sm font-medium cursor-pointer"
-              >
-                Registrar en la quincena
-              </Label>
-              <p
-                id="create-fortnight-expense-desc"
-                className="text-xs text-muted-foreground leading-snug"
-              >
-                Crea un gasto pagado desde la billetera origen en la quincena de
-                la fecha de pago (para tu planificación mensual).
-              </p>
-            </div>
+
+            <GroupedRow label="Fecha">
+              <DateStepper value={paidAt} onChange={setPaidAt} />
+            </GroupedRow>
           </div>
+
+          <ToggleField
+            layout="row"
+            className="px-3"
+            label="Registrar en la quincena"
+            checked={createFortnightExpense}
+            onCheckedChange={setCreateFortnightExpense}
+            aria-label="Registrar en la quincena"
+          />
 
           {createFortnightExpense ? (
-            <div className="space-y-2">
-              <span className="text-sm font-medium">Categoría del gasto</span>
-              <CategoryGroupedSelect
-                categories={categoryOptions}
-                value={categoryId ? Number(categoryId) : undefined}
-                onValueChange={(id) => setCategoryId(String(id))}
-                placeholder="Selecciona categoría"
-                ariaLabel="Categoría para el gasto en la quincena"
-                triggerClassName="h-11 w-full max-w-none"
-              />
+            <div className={OVERLAY_GROUPED_CARD_CLASS}>
+              <GroupedRow label="Categoría">
+                <CategoryGroupedSelect
+                  categories={categoryOptions}
+                  value={categoryId ? Number(categoryId) : undefined}
+                  onValueChange={(id) => setCategoryId(String(id))}
+                  onOpenChange={handleSelectOpenChange}
+                  placeholder="Selecciona"
+                  ariaLabel="Categoría para el gasto en la quincena"
+                  triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
+                />
+              </GroupedRow>
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="payment-note">
-              Nota
-            </label>
-            <Input
-              id="payment-note"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              aria-label="Nota del pago"
-              placeholder="Opcional"
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                isSubmitting ||
-                !sourceWalletId ||
-                (createFortnightExpense && !categoryId)
-              }
-              aria-busy={isSubmitting}
-            >
-              {isSubmitting ? 'Guardando...' : 'Registrar pago'}
-            </Button>
-          </DialogFooter>
+          <Button
+            type="submit"
+            disabled={
+              submitting ||
+              !sourceWalletId ||
+              (createFortnightExpense && !categoryId)
+            }
+            aria-busy={submitting}
+            className={OVERLAY_PRIMARY_BUTTON_CLASS}
+          >
+            {submitting ? 'Guardando…' : 'Registrar pago'}
+          </Button>
         </form>
-      </DialogContent>
-    </Dialog>
+      )}
+    </ResponsiveOverlay>
   );
 };
 
