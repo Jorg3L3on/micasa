@@ -181,7 +181,7 @@ These classes recur across canonical pages. Prefer them over inventing new ones.
 
 ```
 rounded-xl border border-border/60 bg-card shadow-sm
-rounded-2xl border border-border/60 shadow-sm orion-panel-glass dark:backdrop-blur-xl
+rounded-2xl border border-border/60 orion-panel-glass dark:border-white/[0.12] dark:backdrop-blur-2xl
   /* planner glass — prefer MONTHLY_PANEL_SHELL_CLASS */
 rounded-xl border border-border/60 bg-card p-4 shadow-sm    /* tile */
 rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm  /* StatCard */

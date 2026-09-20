@@ -76,13 +76,13 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
 ```
-orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 shadow-sm
-dark:backdrop-blur-xl
+orion-panel-glass relative rounded-2xl border border-border/60
+dark:border-white/[0.12] dark:backdrop-blur-2xl dark:backdrop-saturate-120
 ```
 
-Dark glass adds a specular top edge (`inset` highlight) and hairline `white/8` border. Summary metrics sit on the panel without nested cards.
+Dark glass is even translucent navy (`#090e1d` at ~52%) with a luminous hairline and a floating blue-black shadow so atmosphere shows through. Do **not** put a grid overlay or corner sheen on these cards. Summary metrics sit on the panel without nested cards.
 
-Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/75` plus a soft blue drop shadow.
+Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/55` plus saturate so atmosphere shows through the chrome.
 
 ---
 

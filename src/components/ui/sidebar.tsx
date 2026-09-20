@@ -277,7 +277,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm dark:border-r dark:border-white/[0.06]"
+          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm dark:border-r dark:border-white/[0.1] dark:bg-[#090e1d]/78 dark:backdrop-blur-2xl dark:backdrop-saturate-120"
         >
           {children}
         </div>

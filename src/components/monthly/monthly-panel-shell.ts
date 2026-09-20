@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 
 /** Glass shell for Panel financiero chrome, summary, and budget aside. */
 export const MONTHLY_PANEL_SHELL_CLASS =
-  'orion-panel-glass relative overflow-hidden rounded-2xl border border-border/60 shadow-sm dark:backdrop-blur-xl';
+  'orion-panel-glass relative rounded-2xl border border-border/60 dark:border-white/[0.12] dark:backdrop-blur-2xl dark:backdrop-saturate-120';
 
 export const MONTHLY_CHROME_PADDING_CLASS =
   'px-2.5 py-2.5 sm:px-4 sm:py-3';
