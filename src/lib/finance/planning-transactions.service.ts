@@ -14,7 +14,7 @@ import {
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import {
   linkedLoanPaymentExpenseIds,
-  mapLoanDuePaymentToTransactionRow,
+  mapScheduledLoanPaymentsToTransactionRows,
 } from '@/lib/finance/planning-loan-payments';
 
 const decimalToNumber = (value: unknown): number => {
@@ -195,7 +195,7 @@ export const listPlanningTransactions = async (
   const loanPaymentTransactions =
     isPaid === false || type === 'expense'
       ? []
-      : loanPaymentsForPlanning.map(mapLoanDuePaymentToTransactionRow);
+      : mapScheduledLoanPaymentsToTransactionRows(loanPaymentsForPlanning);
 
   const incomeWhere: Record<string, unknown> = {
     ...ownerFilter,

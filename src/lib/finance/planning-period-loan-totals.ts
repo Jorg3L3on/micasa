@@ -18,7 +18,8 @@ export type PlanningExpenseTotals = {
 
 const countsTowardWalletExpense = (payment: LoanPlanningPayment) =>
   payment.paymentSource === 'WALLET' &&
-  (payment.status === 'SCHEDULED' || payment.linkedExpenseId == null);
+  (payment.status === 'SCHEDULED' ||
+    (payment.linkedExpenseId == null && payment.lenderPaymentId == null));
 
 const countsTowardPayrollDeduction = (payment: LoanPlanningPayment) =>
   payment.paymentSource === 'PAYROLL_DEDUCTION' && payment.status === 'SCHEDULED';

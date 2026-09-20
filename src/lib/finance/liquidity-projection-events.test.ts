@@ -136,4 +136,54 @@ describe('liquidity-projection-events', () => {
       expect.objectContaining({ error: 'table missing' }),
     );
   });
+
+  it('groups wallet loans from the same lender into one liquidity track', async () => {
+    findManyLoan.mockResolvedValue([
+      {
+        id: 1,
+        name: 'MSI celular',
+        lender: 'Mercado Libre',
+        lender_id: 7,
+        payment_amount: 100,
+        payment_source: 'WALLET',
+        payments: [
+          { due_date: parseCalendarDate('2026-04-05'), amount: 100 },
+          { due_date: parseCalendarDate('2026-05-05'), amount: 100 },
+        ],
+      },
+      {
+        id: 2,
+        name: 'MSI laptop',
+        lender: 'Mercado Libre',
+        lender_id: 7,
+        payment_amount: 80,
+        payment_source: 'WALLET',
+        payments: [
+          { due_date: parseCalendarDate('2026-04-18'), amount: 80 },
+          { due_date: parseCalendarDate('2026-05-18'), amount: 80 },
+        ],
+      },
+    ]);
+
+    const timeline = await collectLiquidityProjectionTimeline(
+      userOwner,
+      parseCalendarDate('2026-03-10'),
+      '2026-06-10',
+      monthKeys,
+    );
+
+    const loanTracks = timeline.tracks.filter((track) => track.kind === 'loan');
+    expect(loanTracks).toHaveLength(1);
+    expect(loanTracks[0]).toMatchObject({
+      id: 'lender-7',
+      title: 'Mercado Libre',
+    });
+    expect(loanTracks[0]?.schedule).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ month_key: '2026-04', amount: 180 }),
+        expect.objectContaining({ month_key: '2026-05', amount: 180 }),
+      ]),
+    );
+    expect(timeline.events.filter((event) => event.event_type === 'loan_payoff')).toHaveLength(2);
+  });
 });
