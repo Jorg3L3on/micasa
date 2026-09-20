@@ -242,9 +242,41 @@ export default function AppHeaderToolbar() {
 
   const overflowItems = overflow?.items ?? [];
   const hasOverflow = overflowItems.length > 0;
-  /** Filters and overflow share the second slot — pages register one or the other. */
-  const trailingSlot = filters ?? (hasOverflow ? 'overflow' : null);
-  const showActionsGroup = Boolean(primaryAction || trailingSlot);
+  const showActionsGroup = Boolean(primaryAction || filters || hasOverflow);
+
+  const overflowMenu = hasOverflow ? (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={TOOLBAR_GLASS_GROUP_ITEM}
+              aria-label="Más acciones"
+            >
+              <MoreHorizontal data-icon="inline-start" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Más</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" className="w-52">
+        {overflowItems.map((item) => (
+          <DropdownMenuItem
+            key={item.key}
+            onClick={item.onClick}
+            className="cursor-pointer"
+            variant={item.destructive ? 'destructive' : 'default'}
+          >
+            {item.icon}
+            {item.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
 
   const actionsGroup = showActionsGroup ? (
     <div className={TOOLBAR_GLASS_GROUP} role="group" aria-label="Acciones">
@@ -265,7 +297,7 @@ export default function AppHeaderToolbar() {
           <TooltipContent side="bottom">{primaryAction.label}</TooltipContent>
         </Tooltip>
       ) : null}
-      {primaryAction && trailingSlot ? (
+      {primaryAction && (filters || hasOverflow) ? (
         <span className={TOOLBAR_GLASS_GROUP_DIVIDER} aria-hidden />
       ) : null}
       {filters ? (
@@ -275,39 +307,10 @@ export default function AppHeaderToolbar() {
           className={TOOLBAR_GLASS_GROUP_ITEM}
         />
       ) : null}
-      {hasOverflow && !filters ? (
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={TOOLBAR_GLASS_GROUP_ITEM}
-                  aria-label="Más acciones"
-                >
-                  <MoreHorizontal data-icon="inline-start" />
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Más</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="end" className="w-52">
-            {overflowItems.map((item) => (
-              <DropdownMenuItem
-                key={item.key}
-                onClick={item.onClick}
-                className="cursor-pointer"
-                variant={item.destructive ? 'destructive' : 'default'}
-              >
-                {item.icon}
-                {item.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {filters && hasOverflow ? (
+        <span className={TOOLBAR_GLASS_GROUP_DIVIDER} aria-hidden />
       ) : null}
+      {overflowMenu}
     </div>
   ) : null;
 

@@ -13,7 +13,6 @@ import {
   HandCoins,
   Landmark,
   Loader2,
-  MoreHorizontal,
   Pause,
   Pencil,
   Play,
@@ -25,7 +24,6 @@ import {
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import StatCard from '@/components/StatCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -49,6 +47,10 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  ToolbarFiltersPortal,
+  useRegisterToolbarActions,
+} from '@/context/toolbar-actions-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
   applyLoanPaymentAction,
@@ -65,12 +67,6 @@ import {
   undoLenderPayment,
 } from '@/lib/api/lenders';
 import LenderPayDialog from '@/components/loans/LenderPayDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   isValidCalendarDateString,
@@ -437,6 +433,7 @@ export default function LoansPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<LoanStatusFilter>('ALL');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [paymentActionDraft, setPaymentActionDraft] =
     useState<PaymentActionDraft | null>(null);
   const [paymentActionSubmitting, setPaymentActionSubmitting] = useState(false);
@@ -564,11 +561,6 @@ export default function LoansPage() {
   }, [loans, resetLoanDetailDrafts, searchParams, selectedLoanId]);
 
   const activeLoans = loans.filter((loan) => loan.status === 'ACTIVE');
-  const totalDebt = loans.reduce((sum, loan) => sum + loan.remainingAmount, 0);
-  const nextPaymentsTotal = activeLoans.reduce(
-    (sum, loan) => sum + (loan.nextPayment?.amount ?? 0),
-    0,
-  );
   const visibleLoans =
     statusFilter === 'ALL'
       ? loans
@@ -1027,16 +1019,96 @@ export default function LoansPage() {
       .reduce((sum, row) => sum + row.payment.amount, 0);
   }, [batchDraft, monthScheduledPayments]);
 
-  const handleOpenBatchDraft = (action: 'MARK_PAID' | 'MARK_PAID_EXTERNAL') => {
-    setBatchError(null);
-    setBatchDraft({
-      action,
-      paymentIds: monthScheduledPayments.map((row) => row.payment.id),
-      paidAt: todayYmd,
-      sourceWalletId: '',
-      note: '',
-    });
-  };
+  const handleOpenBatchDraft = useCallback(
+    (action: 'MARK_PAID' | 'MARK_PAID_EXTERNAL') => {
+      setBatchError(null);
+      setBatchDraft({
+        action,
+        paymentIds: monthScheduledPayments.map((row) => row.payment.id),
+        paidAt: todayYmd,
+        sourceWalletId: '',
+        note: '',
+      });
+    },
+    [monthScheduledPayments, todayYmd],
+  );
+
+  const openCreateLoan = useCallback(() => {
+    setDialogOpen(true);
+  }, []);
+
+  const openNewLender = useCallback(() => {
+    setNewLenderName('');
+    setNewLenderOpen(true);
+  }, []);
+
+  const handleClearStatusFilter = useCallback(() => {
+    setStatusFilter('ALL');
+  }, []);
+
+  const statusChipCounts = useMemo(() => {
+    const counts: Record<LoanStatusFilter, number> = {
+      ALL: loans.length,
+      ACTIVE: 0,
+      PAID_OFF: 0,
+      PAUSED: 0,
+      CANCELLED: 0,
+    };
+    for (const loan of loans) {
+      counts[loan.status] += 1;
+    }
+    return counts;
+  }, [loans]);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  const overflowItems = useMemo(() => {
+    const monthName = batchMonthLabel.split(' ')[0];
+    const items = [
+      {
+        key: 'new-lender',
+        label: 'Nuevo prestamista',
+        onClick: openNewLender,
+      },
+    ];
+    if (monthScheduledPayments.length > 0) {
+      items.push(
+        {
+          key: 'batch-pay',
+          label: `Pagar ${monthName} (lote)`,
+          onClick: () => handleOpenBatchDraft('MARK_PAID'),
+        },
+        {
+          key: 'batch-paid-external',
+          label: `Ya pagado ${monthName} (lote)`,
+          onClick: () => handleOpenBatchDraft('MARK_PAID_EXTERNAL'),
+        },
+      );
+    }
+    return items;
+  }, [
+    batchMonthLabel,
+    handleOpenBatchDraft,
+    monthScheduledPayments.length,
+    openNewLender,
+  ]);
+
+  useRegisterToolbarActions({
+    filters: {
+      open: filtersOpen,
+      onOpenChange: setFiltersOpen,
+      activeCount: statusFilter === 'ALL' ? 0 : 1,
+    },
+    primaryAction: {
+      label: 'Nuevo préstamo',
+      onClick: openCreateLoan,
+      icon: primaryActionIcon,
+    },
+    overflow: { items: overflowItems },
+  });
 
   const handleBatchSubmit = async () => {
     if (!batchDraft) return;
@@ -1091,126 +1163,54 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-5">
-      <div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
-        <div>
-          <h2 className="text-lg font-semibold leading-tight">Préstamos</h2>
-          <p className="text-xs text-muted-foreground">
-            Préstamos personales y de nómina con calendario de pagos.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" className="h-9 gap-2">
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-                Más
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() => {
-                  setNewLenderName('');
-                  setNewLenderOpen(true);
-                }}
-              >
-                Nuevo prestamista
-              </DropdownMenuItem>
-              {monthScheduledPayments.length > 0 ? (
-                <>
-                  <DropdownMenuItem
-                    onSelect={() => handleOpenBatchDraft('MARK_PAID')}
-                  >
-                    Pagar {batchMonthLabel.split(' ')[0]} (lote)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => handleOpenBatchDraft('MARK_PAID_EXTERNAL')}
-                  >
-                    Ya pagado {batchMonthLabel.split(' ')[0]} (lote)
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
-            <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
-            Nuevo préstamo
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          title="Saldo pendiente"
-          amount={totalDebt}
-          iconKey="circle-dollar"
-          iconGradient="linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%)"
-          subtitle="Capital pendiente"
-        />
-        <StatCard
-          title="Próximos pagos"
-          amount={nextPaymentsTotal}
-          iconKey="trending-down"
-          iconGradient="linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
-          subtitle="Siguiente pago por préstamo activo"
-        />
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Préstamos activos
-          </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-            {activeLoans.length}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">En seguimiento</p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Nómina
-          </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-            {loans.filter((loan) => loan.type === 'PAYROLL').length}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Con deducción o seguimiento
-          </p>
-        </div>
-      </div>
-
-      <div
-        className="flex flex-wrap items-center gap-2"
-        role="group"
-        aria-label="Filtrar préstamos por estado"
-      >
-        {loanStatusFilters.map((filter) => {
-          const count =
-            filter.value === 'ALL'
-              ? loans.length
-              : loans.filter((loan) => loan.status === filter.value).length;
-          const isSelected = statusFilter === filter.value;
-          return (
-            <Button
-              key={filter.value}
-              type="button"
-              variant={isSelected ? 'default' : 'outline'}
-              size="sm"
-              className="h-8 gap-1.5 rounded-full px-3 text-xs"
-              onClick={() => setStatusFilter(filter.value)}
-              aria-pressed={isSelected}
+      <ToolbarFiltersPortal>
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Estado
+            </p>
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label="Filtrar préstamos por estado"
             >
-              {filter.label}
-              <span
-                className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
-                  isSelected
-                    ? 'bg-primary-foreground/20 text-primary-foreground'
-                    : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {count}
-              </span>
+              {loanStatusFilters.map((filter) => {
+                const count = statusChipCounts[filter.value];
+                const isSelected = statusFilter === filter.value;
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setStatusFilter(filter.value)}
+                    className={cn(
+                      'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {filter.label}{' '}
+                    <span className="tabular-nums opacity-80">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {statusFilter !== 'ALL' ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 w-fit shrink-0 text-muted-foreground"
+              onClick={handleClearStatusFilter}
+              aria-label="Limpiar filtro de estado"
+            >
+              Limpiar filtros
             </Button>
-          );
-        })}
-      </div>
+          ) : null}
+        </div>
+      </ToolbarFiltersPortal>
 
       <div className="rounded-xl border border-border/60 bg-card shadow-sm">
         {loading ? (
@@ -1244,7 +1244,7 @@ export default function LoansPage() {
             description="Crea un préstamo para ver sus pagos en el inicio."
             action={{
               label: 'Crear préstamo',
-              onClick: () => setDialogOpen(true),
+              onClick: openCreateLoan,
             }}
           />
         ) : visibleLoans.length === 0 ? (

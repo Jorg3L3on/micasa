@@ -6,7 +6,7 @@ import { Pool } from 'pg'
 
 const LOCAL_TIMESTAMP_WRITES = Symbol.for('micasa.localTimestampWrites')
 /** Bump when adding models so long-lived `npm run dev` drops a stale singleton. */
-const PRISMA_CLIENT_GENERATION = 4
+const PRISMA_CLIENT_GENERATION = 5
 
 type TaggedPrismaClient = PrismaClient & {
   [LOCAL_TIMESTAMP_WRITES]?: true
@@ -42,9 +42,9 @@ function isCurrentPrismaClient(
   // Guard against HMR keeping a client generated before a new model existed.
   const delegate = (
     client as TaggedPrismaClient & {
-      creditCardScheduledPayment?: { findMany?: unknown }
+      lender?: { findMany?: unknown }
     }
-  ).creditCardScheduledPayment
+  ).lender
   return typeof delegate?.findMany === 'function'
 }
 
