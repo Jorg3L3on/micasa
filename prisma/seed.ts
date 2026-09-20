@@ -43,8 +43,10 @@ async function main() {
   await prisma.transfer.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.income.deleteMany();
+  await prisma.lenderPayment.deleteMany();
   await prisma.loanPayment.deleteMany();
   await prisma.loan.deleteMany();
+  await prisma.lender.deleteMany();
   await prisma.expenseTemplate.deleteMany();
   await prisma.incomeTemplate.deleteMany();
   await prisma.wallet.deleteMany();
@@ -764,10 +766,24 @@ async function main() {
     frequency: 'MONTHLY',
   });
 
+  const lenderBanamex = await prisma.lender.create({
+    data: {
+      name: 'Banamex',
+      house_id: leonSolorzano.id,
+    },
+  });
+  const lenderFonacot = await prisma.lender.create({
+    data: {
+      name: 'FONACOT',
+      house_id: leonSolorzano.id,
+    },
+  });
+
   await prisma.loan.create({
     data: {
       name: 'Crédito personal Banamex',
       lender: 'Banamex',
+      lender_id: lenderBanamex.id,
       type: 'PERSONAL',
       status: 'ACTIVE',
       principal_amount: 35000,
@@ -781,6 +797,40 @@ async function main() {
       notes: 'Préstamo demo para proyección mes a mes',
       payments: {
         create: personalLoanSchedule.map((payment) => ({
+          sequence: payment.sequence,
+          due_date: payment.dueDate,
+          amount: payment.amount.toString(),
+          source_wallet_id: walletBanamex.id,
+        })),
+      },
+    },
+  });
+
+  const personalLoanScheduleB = generateLoanPaymentSchedule({
+    startDate: parseCalendarDate('2026-03-18'),
+    paymentAmount: 1800,
+    paymentCount: 8,
+    frequency: 'MONTHLY',
+  });
+
+  await prisma.loan.create({
+    data: {
+      name: 'Crédito auto Banamex',
+      lender: 'Banamex',
+      lender_id: lenderBanamex.id,
+      type: 'PERSONAL',
+      status: 'ACTIVE',
+      principal_amount: 14400,
+      payment_amount: 1800,
+      payment_count: 8,
+      frequency: 'MONTHLY',
+      start_date: parseCalendarDate('2026-03-18'),
+      payment_source: 'WALLET',
+      house_id: leonSolorzano.id,
+      source_wallet_id: walletBanamex.id,
+      notes: 'Segundo contrato del mismo prestamista para pago consolidado',
+      payments: {
+        create: personalLoanScheduleB.map((payment) => ({
           sequence: payment.sequence,
           due_date: payment.dueDate,
           amount: payment.amount.toString(),
@@ -807,6 +857,7 @@ async function main() {
     data: {
       name: 'Fonacot Carmen',
       lender: 'FONACOT',
+      lender_id: lenderFonacot.id,
       type: 'PAYROLL',
       status: 'ACTIVE',
       principal_amount: 1243.68 * 16,
@@ -831,6 +882,7 @@ async function main() {
     data: {
       name: 'Fonacot Jorge',
       lender: 'FONACOT',
+      lender_id: lenderFonacot.id,
       type: 'PAYROLL',
       status: 'ACTIVE',
       principal_amount: 2792.73 * 18,

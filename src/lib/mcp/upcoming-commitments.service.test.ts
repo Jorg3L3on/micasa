@@ -221,6 +221,7 @@ describe('listUpcomingCommitmentsForMonth', () => {
           amount: 2500,
           dueDate: '2026-07-10',
           status: 'SCHEDULED',
+          lenderId: 4,
         },
       ],
       second: [],

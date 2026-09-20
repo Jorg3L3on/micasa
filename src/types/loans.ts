@@ -25,6 +25,7 @@ export type LoanPaymentListItem = {
   sourceWalletId: number | null;
   sourceWalletName: string | null;
   linkedExpenseId: number | null;
+  lenderPaymentId: number | null;
   note: string | null;
 };
 
@@ -32,6 +33,7 @@ export type LoanListItem = {
   id: number;
   name: string;
   lender: string;
+  lenderId: number | null;
   type: LoanTypeValue;
   status: LoanStatusValue;
   principalAmount: number;
@@ -59,6 +61,7 @@ export type LoanListItem = {
 export type LoanDuePaymentItem = LoanPaymentListItem & {
   loanName: string;
   lender: string;
+  lenderId: number | null;
   loanType: LoanTypeValue;
   paymentSource: LoanPaymentSourceValue;
   linkedWalletId: number | null;

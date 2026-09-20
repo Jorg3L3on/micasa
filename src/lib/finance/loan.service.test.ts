@@ -68,6 +68,20 @@ vi.mock('@/lib/finance/expense.service', () => ({
   createExpenseInTransaction,
 }));
 
+vi.mock('@/lib/finance/lender-resolve', () => ({
+  resolveLenderForLoanInput: vi.fn(
+    async (
+      _ownerType: string,
+      _ownerId: number,
+      _ownerFilter: unknown,
+      input: { lender?: string | null; lenderId?: number | null },
+    ) => ({
+      id: 99,
+      name: input.lender?.trim() || 'DiDi',
+    }),
+  ),
+}));
+
 import {
   aggregateLoanPaymentsForFortnights,
   createLoanForOwner,
@@ -102,6 +116,7 @@ const baseLoanRecord = {
   id: 5,
   name: 'Préstamo DiDi',
   lender: 'DiDi',
+  lender_id: 99,
   type: 'PERSONAL',
   status: 'ACTIVE',
   principal_amount: '3000',
@@ -152,6 +167,7 @@ describe('createLoanForOwner', () => {
       id: 1,
       name: args.data.name,
       lender: args.data.lender,
+      lender_id: args.data.lender_id ?? 99,
       type: args.data.type,
       status: 'ACTIVE',
       principal_amount: args.data.principal_amount,
@@ -195,6 +211,8 @@ describe('createLoanForOwner', () => {
         data: expect.objectContaining({
           user_id: 1,
           house_id: null,
+          lender: 'DiDi',
+          lender_id: 99,
           source_wallet_id: 10,
           payments: {
             create: expect.arrayContaining([
@@ -492,6 +510,44 @@ describe('aggregateLoanPaymentsForFortnights', () => {
       pendingCount: 0,
     });
     expect(aggregate.upcoming).toEqual([]);
+  });
+
+  it('does not add paid lender-batch loan payments to planning totals', async () => {
+    findManyLoanPayment.mockResolvedValueOnce([
+      {
+        id: 22,
+        loan_id: 5,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-10'),
+        amount: '150',
+        status: 'PAID',
+        paid_at: parseCalendarDate('2026-06-10'),
+        source_wallet_id: 10,
+        source_wallet: { name: 'BBVA' },
+        linked_expense: null,
+        lender_payment_id: 70,
+        note: null,
+        loan: {
+          id: 5,
+          name: 'Préstamo DiDi',
+          lender: 'DiDi',
+          payment_source: 'WALLET',
+        },
+      },
+    ]);
+
+    const aggregate = await aggregateLoanPaymentsForFortnights(
+      ownerFilter,
+      currentFortnight,
+    );
+
+    expect(aggregate).toMatchObject({
+      total: 0,
+      paidTotal: 0,
+      pendingTotal: 0,
+      count: 1,
+      pendingCount: 0,
+    });
   });
 });
 
