@@ -43,7 +43,6 @@ import {
   Banknote,
   Loader2,
   MoreVertical,
-  Plus,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -1090,34 +1089,6 @@ export default function FortnightColumn({
                   })}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAddExpenseDialogOpen(true)}
-                    disabled={!fortnightId || fortnightId <= 0}
-                    className={cn(
-                      'h-9 w-9 shrink-0 gap-1.5 border-primary/35 bg-background/80 p-0 text-primary-text shadow-sm hover:bg-primary/8 sm:h-8',
-                      !compactTabs && 'xl:w-auto xl:px-3',
-                    )}
-                    aria-label="Agregar transacción a esta quincena"
-                    title={
-                      !fortnightId || fortnightId <= 0
-                        ? 'La quincena no está disponible. Recarga la página.'
-                        : undefined
-                    }
-                  >
-                    <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                    <span className={cn('hidden', !compactTabs && 'xl:inline')}>
-                      Agregar transacción
-                    </span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={4}>
-                  Agregar transacción · A
-                </TooltipContent>
-              </Tooltip>
               <DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>

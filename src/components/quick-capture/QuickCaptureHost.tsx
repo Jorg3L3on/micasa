@@ -4,17 +4,12 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
-import { usePathname, useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { QuickExpenseSheet } from '@/components/quick-capture/QuickExpenseSheet';
 import type { QuickExpenseFormValues } from '@/schemas/transaction.schema';
 import { useFinanceContext } from '@/context/finance-context';
@@ -41,60 +36,19 @@ export function useOptionalQuickCapture(): QuickCaptureContextValue | null {
   return useContext(QuickCaptureContext);
 }
 
-const needsRaisedFab = (pathname: string): boolean => {
-  if (pathname === '/wallets' || pathname.startsWith('/wallets/')) return true;
-  if (pathname === '/metas' || pathname.startsWith('/metas/')) return true;
-  if (/^\/credit-cards\/[^/]+/.test(pathname)) return true;
-  return false;
-};
-
 type QuickCaptureHostProps = {
   children?: ReactNode;
 };
 
 /**
- * Provides quick-expense open API, mobile FAB (path-aware offset), and sheet.
+ * Provides quick-expense open API and overlay.
  * Mount once under the authenticated app shell.
  */
 export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [portalReady, setPortalReady] = useState(false);
-  const [blockingOverlayOpen, setBlockingOverlayOpen] = useState(false);
-  const [fabHoldOff, setFabHoldOff] = useState(false);
-  const pathname = usePathname() ?? '';
   const router = useRouter();
   const { context } = useFinanceContext();
-
-  useEffect(() => {
-    setPortalReady(true);
-  }, []);
-
-  useEffect(() => {
-    const syncOverlayLock = () => {
-      setBlockingOverlayOpen(
-        document.querySelector('[role="dialog"][data-state="open"]') != null,
-      );
-    };
-    syncOverlayLock();
-    const observer = new MutationObserver(syncOverlayLock);
-    observer.observe(document.body, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ['data-state'],
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (blockingOverlayOpen) {
-      setFabHoldOff(true);
-      return;
-    }
-    const timeoutId = window.setTimeout(() => setFabHoldOff(false), 500);
-    return () => window.clearTimeout(timeoutId);
-  }, [blockingOverlayOpen]);
 
   const openExpense = useCallback(() => {
     setError(null);
@@ -137,35 +91,9 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
     }
   };
 
-  const fabBottom = needsRaisedFab(pathname) ? 'bottom-24' : 'bottom-6';
-
-  // Keep FAB below Sheet/Dialog overlays (z-50). Hide while any overlay is
-  // open so it cannot intercept taps on sheet controls near the bottom edge.
-  const fab =
-    portalReady &&
-    !open &&
-    !blockingOverlayOpen &&
-    !fabHoldOff &&
-    createPortal(
-      <Button
-        type="button"
-        size="icon"
-        aria-label="Agregar gasto"
-        className={cn(
-          'pointer-events-auto fixed right-6 z-40 h-14 w-14 rounded-full shadow-lg sm:hidden',
-          fabBottom,
-        )}
-        onClick={openExpense}
-      >
-        <Plus className="h-6 w-6" data-icon="inline-start" />
-      </Button>,
-      document.body,
-    );
-
   return (
     <QuickCaptureContext.Provider value={value}>
       {children}
-      {fab}
       <QuickExpenseSheet
         open={open}
         onOpenChange={(next) => {

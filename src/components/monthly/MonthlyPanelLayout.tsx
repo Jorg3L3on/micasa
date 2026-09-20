@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { Plus } from 'lucide-react';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import {
@@ -8,7 +9,9 @@ import {
   MONTHLY_PANEL_SHELL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { useFinanceContext } from '@/context/finance-context';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 import { isOwnerContextPending } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +54,21 @@ export const MonthlyPanelLayout = ({
 }: MonthlyPanelLayoutProps) => {
   const { context } = useFinanceContext();
   const ownerPending = isOwnerContextPending(context, ownerKey);
+  const quickCapture = useOptionalQuickCapture();
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    primaryAction: quickCapture
+      ? {
+          label: 'Agregar gasto',
+          onClick: quickCapture.openExpense,
+          icon: primaryActionIcon,
+        }
+      : null,
+  });
 
   return (
     <MonthlyPanelPreferencesProvider
