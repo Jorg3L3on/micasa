@@ -117,7 +117,7 @@ export type LenderDueGroupItem = {
   paymentSource?: LenderWindowPaymentSource;
 };
 
-export type LenderDueGroup = {
+export type LenderDueGroup<T extends LenderDueGroupItem = LenderDueGroupItem> = {
   key: string;
   lenderId: number | null;
   lenderName: string;
@@ -127,13 +127,13 @@ export type LenderDueGroup = {
   isRange: boolean;
   paymentSource: LenderWindowPaymentSource | 'MIXED';
   itemIds: number[];
-  items: LenderDueGroupItem[];
+  items: T[];
 };
 
 /** Group scheduled dues already in a period by prestamista (no extra window filter). */
 export const groupDuePaymentsByLender = <T extends LenderDueGroupItem>(
   items: readonly T[],
-): Array<LenderDueGroup & { items: T[] }> => {
+): Array<LenderDueGroup<T>> => {
   const groups = new Map<string, T[]>();
   for (const item of items) {
     const sourceKey = item.paymentSource ?? 'WALLET';

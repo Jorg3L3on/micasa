@@ -3,7 +3,10 @@
  * sin duplicar gastos ya vinculados al marcar un pago como pagado.
  */
 
-import { groupDuePaymentsByLender } from '@/lib/finance/lender-payment-window';
+import {
+  groupDuePaymentsByLender,
+  type LenderDueGroup,
+} from '@/lib/finance/lender-payment-window';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { TransactionRow } from '@/types/catalog';
@@ -65,7 +68,7 @@ export const mapLoanDuePaymentToTransactionRow = (
 };
 
 export const mapLenderDueGroupToTransactionRow = (
-  group: ReturnType<typeof groupDuePaymentsByLender<LoanDuePaymentItem>>[number],
+  group: LenderDueGroup<LoanDuePaymentItem>,
 ): TransactionRow => {
   const isPayroll = group.paymentSource === 'PAYROLL_DEDUCTION';
   const first = group.items[0]!;
