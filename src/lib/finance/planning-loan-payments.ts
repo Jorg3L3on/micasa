@@ -3,6 +3,10 @@
  * sin duplicar gastos ya vinculados al marcar un pago como pagado.
  */
 
+import {
+  groupDuePaymentsByLender,
+  type LenderDueGroup,
+} from '@/lib/finance/lender-payment-window';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { TransactionRow } from '@/types/catalog';
@@ -62,6 +66,48 @@ export const mapLoanDuePaymentToTransactionRow = (
     due_day: Number.isFinite(dueDay) ? dueDay : null,
   };
 };
+
+export const mapLenderDueGroupToTransactionRow = (
+  group: LenderDueGroup<LoanDuePaymentItem>,
+): TransactionRow => {
+  const isPayroll = group.paymentSource === 'PAYROLL_DEDUCTION';
+  const first = group.items[0]!;
+  const dueDay = Number(group.dueDate.slice(8, 10));
+  const contractLabel =
+    group.items.length === 1
+      ? first.loanName
+      : `${group.items.length} contratos`;
+
+  return {
+    id: first.id,
+    date: group.dueDate,
+    description: isPayroll
+      ? `Deducción nómina: ${contractLabel} (${group.lenderName})`
+      : `Pagar a ${group.lenderName}`,
+    amount: group.amount,
+    category: LOAN_PAYMENT_PLANNING_CATEGORY,
+    categoryIcon: LOAN_PAYMENT_PLANNING_CATEGORY_ICON,
+    paymentMethod: isPayroll
+      ? first.incomeTemplateName
+        ? `Nómina: ${first.incomeTemplateName}`
+        : 'Deducción de nómina'
+      : (first.sourceWalletName ?? first.linkedWalletName ?? 'Billetera'),
+    wallet_id: first.sourceWalletId ?? first.linkedWalletId,
+    wallet_type: null,
+    planning_row_kind: 'loan_payment',
+    loan_payment_source: isPayroll ? 'PAYROLL_DEDUCTION' : 'WALLET',
+    type: 'expense',
+    is_paid: false,
+    due_day: Number.isFinite(dueDay) ? dueDay : null,
+  };
+};
+
+export const mapScheduledLoanPaymentsToTransactionRows = (
+  payments: LoanDuePaymentItem[],
+): TransactionRow[] =>
+  groupDuePaymentsByLender(payments).map((group) =>
+    mapLenderDueGroupToTransactionRow(group),
+  );
 
 export const linkedLoanPaymentExpenseIds = (
   payments: ReadonlyArray<{ linkedExpenseId: number | null }>,

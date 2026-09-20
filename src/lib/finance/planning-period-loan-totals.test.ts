@@ -18,6 +18,7 @@ const walletScheduled: LoanPlanningPayment = {
   sourceWalletId: 5,
   sourceWalletName: 'BBVA',
   linkedExpenseId: null,
+  lenderPaymentId: null,
 };
 
 const payrollScheduled: LoanPlanningPayment = {
@@ -33,6 +34,7 @@ const payrollScheduled: LoanPlanningPayment = {
   sourceWalletId: null,
   sourceWalletName: null,
   linkedExpenseId: null,
+  lenderPaymentId: null,
 };
 
 describe('planning-period-loan-totals', () => {
@@ -53,6 +55,20 @@ describe('planning-period-loan-totals', () => {
         status: 'PAID',
         paidAt: '2026-06-10',
         linkedExpenseId: 99,
+      },
+    ]);
+
+    expect(result.walletDue).toEqual({ total: 0, count: 0 });
+  });
+
+  it('does not count paid wallet payments covered by a consolidated lender payment', () => {
+    const result = partitionLoanPaymentsForPlanningTotals([
+      {
+        ...walletScheduled,
+        status: 'PAID',
+        paidAt: '2026-06-10',
+        linkedExpenseId: null,
+        lenderPaymentId: 44,
       },
     ]);
 

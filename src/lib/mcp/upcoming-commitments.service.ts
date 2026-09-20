@@ -17,6 +17,7 @@ import {
   getLiquidityProjection,
 } from '@/lib/finance/liquidity-projection.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
+import { groupDuePaymentsByLender } from '@/lib/finance/lender-payment-window';
 import {
   getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
@@ -321,16 +322,22 @@ export async function listUpcomingCommitmentsForMonth(
     });
   }
 
-  for (const payment of [...loanPayments.first, ...loanPayments.second]) {
-    if (payment.status !== 'SCHEDULED') continue;
+  for (const group of groupDuePaymentsByLender(
+    [...loanPayments.first, ...loanPayments.second].filter(
+      (payment) => payment.status === 'SCHEDULED',
+    ),
+  )) {
     items.push({
-      date: payment.dueDate,
+      date: group.dueDate,
       type: 'loan',
-      name: payment.loanName,
-      amount: payment.amount,
+      name:
+        group.paymentSource === 'PAYROLL_DEDUCTION'
+          ? `Nómina · ${group.lenderName}`
+          : `Pagar a ${group.lenderName}`,
+      amount: group.amount,
       is_paid: false,
-      source_id: payment.id,
-      wallet_or_loan: payment.lender,
+      source_id: group.lenderId ?? group.itemIds[0] ?? 0,
+      wallet_or_loan: group.lenderName,
     });
   }
 

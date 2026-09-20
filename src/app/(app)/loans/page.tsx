@@ -5,10 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
-  CalendarDays,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   CircleSlash,
   Clock,
   Eye,
@@ -16,6 +13,7 @@ import {
   HandCoins,
   Landmark,
   Loader2,
+  MoreHorizontal,
   Pause,
   Pencil,
   Play,
@@ -60,6 +58,19 @@ import {
   listLoans,
   updateLoan,
 } from '@/lib/api/loans';
+import {
+  createLender,
+  listLenders,
+  payLender,
+  undoLenderPayment,
+} from '@/lib/api/lenders';
+import LenderPayDialog from '@/components/loans/LenderPayDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   isValidCalendarDateString,
@@ -73,6 +84,7 @@ import {
   type CreateLoanInput,
   type UpdateLoanInput,
 } from '@/schemas/loan.schema';
+import type { LenderListItem } from '@/types/lenders';
 import type {
   LoanListItem,
   LoanPaymentActionValue,
@@ -82,6 +94,7 @@ import type {
 type LoanFormState = {
   name: string;
   lender: string;
+  lenderId: string;
   type: 'PERSONAL' | 'PAYROLL';
   principalAmount: string;
   paymentAmount: string;
@@ -138,6 +151,7 @@ const defaultStartDate = () => todayCalendarDate();
 const defaultForm = (): LoanFormState => ({
   name: '',
   lender: '',
+  lenderId: '',
   type: 'PERSONAL',
   principalAmount: '',
   paymentAmount: '',
@@ -154,6 +168,7 @@ const defaultForm = (): LoanFormState => ({
 const loanFormErrorFields = new Set<keyof LoanFormState>([
   'name',
   'lender',
+  'lenderId',
   'type',
   'principalAmount',
   'paymentAmount',
@@ -412,6 +427,7 @@ export default function LoansPage() {
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
   const [loans, setLoans] = useState<LoanListItem[]>([]);
+  const [lenders, setLenders] = useState<LenderListItem[]>([]);
   const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateListItem[]>(
     [],
@@ -447,6 +463,12 @@ export default function LoansPage() {
   const [batchDraft, setBatchDraft] = useState<BatchPaymentDraft | null>(null);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [payLenderId, setPayLenderId] = useState<number | null>(null);
+  const [paySubmitting, setPaySubmitting] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [newLenderOpen, setNewLenderOpen] = useState(false);
+  const [newLenderName, setNewLenderName] = useState('');
+  const [newLenderSubmitting, setNewLenderSubmitting] = useState(false);
 
   const resetLoanDetailDrafts = useCallback(() => {
     setPaymentActionDraft(null);
@@ -482,8 +504,9 @@ export default function LoansPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [loanData, walletData, templateData] = await Promise.all([
+      const [loanData, lenderData, walletData, templateData] = await Promise.all([
         listLoans(context),
+        listLenders(context),
         getPaymentMethodOptions(context),
         clientFetchFromApi<IncomeTemplateListItem[]>(
           '/api/income-templates',
@@ -492,6 +515,7 @@ export default function LoansPage() {
         ),
       ]);
       setLoans(loanData);
+      setLenders(lenderData);
       setWallets(walletData);
       setIncomeTemplates(templateData.filter((template) => template.active));
     } catch (error) {
@@ -515,6 +539,16 @@ export default function LoansPage() {
       resetLoanDetailDrafts();
     }
   }, [loans, resetLoanDetailDrafts, selectedLoanId]);
+
+  useEffect(() => {
+    const lenderIdParam = searchParams.get('lenderId');
+    if (!lenderIdParam) return;
+    const lenderId = Number(lenderIdParam);
+    if (!Number.isInteger(lenderId) || lenderId <= 0) return;
+    const lender = lenders.find((item) => item.id === lenderId);
+    if (!lender?.payWindow.canPay) return;
+    setPayLenderId(lenderId);
+  }, [lenders, searchParams]);
 
   useEffect(() => {
     const loanIdParam = searchParams.get('loanId');
@@ -621,6 +655,7 @@ export default function LoansPage() {
     const parsed = createLoanSchema.safeParse({
       name: form.name,
       lender: form.lender,
+      lenderId: form.lenderId || null,
       type: form.type,
       principalAmount: form.principalAmount,
       paymentAmount: form.paymentAmount,
@@ -658,6 +693,75 @@ export default function LoansPage() {
       setIsSubmitting(false);
     }
   };
+
+  const payingLender = useMemo(
+    () => lenders.find((lender) => lender.id === payLenderId) ?? null,
+    [lenders, payLenderId],
+  );
+
+  const handlePayLender = async (data: {
+    mode: 'WALLET' | 'EXTERNAL';
+    paidAt?: string;
+    sourceWalletId?: number | null;
+    note?: string | null;
+  }) => {
+    if (!payLenderId) return;
+    setPaySubmitting(true);
+    setPayError(null);
+    try {
+      await payLender(payLenderId, data, context);
+      toast.success(
+        data.mode === 'EXTERNAL'
+          ? `Registraste el pago a ${payingLender?.name ?? 'prestamista'}`
+          : `Pagaste a ${payingLender?.name ?? 'prestamista'}`,
+      );
+      setPayLenderId(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo registrar el pago';
+      setPayError(message);
+    } finally {
+      setPaySubmitting(false);
+    }
+  };
+
+  const handleCreateLender = async () => {
+    const name = newLenderName.trim();
+    if (!name) return;
+    setNewLenderSubmitting(true);
+    try {
+      const created = await createLender({ name }, context);
+      toast.success(`Prestamista ${created.name} creado`);
+      setNewLenderOpen(false);
+      setNewLenderName('');
+      setForm((current) => ({
+        ...current,
+        lender: created.name,
+        lenderId: String(created.id),
+      }));
+      await loadData();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo crear el prestamista',
+      );
+    } finally {
+      setNewLenderSubmitting(false);
+    }
+  };
+
+  const visibleLenders = useMemo(() => {
+    const visibleIds = new Set(visibleLoans.map((loan) => loan.lenderId));
+    return lenders.filter((lender) => {
+      const loansForLender = visibleLoans.filter(
+        (loan) => loan.lenderId === lender.id,
+      );
+      if (statusFilter === 'ALL') {
+        return loansForLender.length > 0 || lender.loans.length === 0;
+      }
+      return visibleIds.has(lender.id);
+    });
+  }, [lenders, statusFilter, visibleLoans]);
 
   const setPaymentActionField = <K extends keyof PaymentActionDraft>(
     key: K,
@@ -923,13 +1027,6 @@ export default function LoansPage() {
       .reduce((sum, row) => sum + row.payment.amount, 0);
   }, [batchDraft, monthScheduledPayments]);
 
-  const handleShiftBatchMonth = (delta: number) => {
-    setBatchMonth((current) => {
-      const date = new Date(Date.UTC(current.year, current.month - 1 + delta, 1));
-      return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
-    });
-  };
-
   const handleOpenBatchDraft = (action: 'MARK_PAID' | 'MARK_PAID_EXTERNAL') => {
     setBatchError(null);
     setBatchDraft({
@@ -1001,10 +1098,44 @@ export default function LoansPage() {
             Préstamos personales y de nómina con calendario de pagos.
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
-          Nuevo préstamo
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" className="h-9 gap-2">
+                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                Más
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setNewLenderName('');
+                  setNewLenderOpen(true);
+                }}
+              >
+                Nuevo prestamista
+              </DropdownMenuItem>
+              {monthScheduledPayments.length > 0 ? (
+                <>
+                  <DropdownMenuItem
+                    onSelect={() => handleOpenBatchDraft('MARK_PAID')}
+                  >
+                    Pagar {batchMonthLabel.split(' ')[0]} (lote)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => handleOpenBatchDraft('MARK_PAID_EXTERNAL')}
+                  >
+                    Ya pagado {batchMonthLabel.split(' ')[0]} (lote)
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
+            Nuevo préstamo
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -1043,67 +1174,6 @@ export default function LoansPage() {
           </p>
         </div>
       </div>
-
-      {monthScheduledPayments.length > 0 ? (
-        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => handleShiftBatchMonth(-1)}
-                aria-label="Mes anterior"
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-              </Button>
-              <div className="min-w-0 text-center sm:text-left">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Pagos del mes
-                </p>
-                <p className="text-sm font-semibold capitalize text-foreground">
-                  {batchMonthLabel}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => handleShiftBatchMonth(1)}
-                aria-label="Mes siguiente"
-              >
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 rounded-xl"
-                onClick={() => handleOpenBatchDraft('MARK_PAID')}
-              >
-                Pagar {batchMonthLabel.split(' ')[0]}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 rounded-xl"
-                onClick={() => handleOpenBatchDraft('MARK_PAID_EXTERNAL')}
-              >
-                Ya pagado {batchMonthLabel.split(' ')[0]}
-              </Button>
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {monthScheduledPayments.length} cuota
-            {monthScheduledPayments.length === 1 ? '' : 's'} pendiente
-            {monthScheduledPayments.length === 1 ? '' : 's'} en activos
-          </p>
-        </div>
-      ) : null}
 
       <div
         className="flex flex-wrap items-center gap-2"
@@ -1184,27 +1254,140 @@ export default function LoansPage() {
           />
         ) : (
           <ul className="divide-y divide-border/60">
-            {visibleLoans.map((loan) => {
-              const Icon = loan.type === 'PAYROLL' ? Landmark : HandCoins;
-              return (
-                <li
-                  key={loan.id}
-                  className={cn(
-                    'grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-center',
-                    loan.status === 'PAUSED' && 'bg-amber-500/5',
-                    loan.status === 'CANCELLED' && 'bg-muted/40 opacity-80',
-                  )}
-                >
-                  <div className="flex min-w-0 gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
-                      <Icon className="h-4 w-4" aria-hidden data-icon="inline-start" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                        <h3 className="min-w-0 max-w-full truncate text-sm font-semibold text-foreground">
+            {visibleLoans.some((loan) => loan.lenderId == null) ? (
+              <li className="space-y-3 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Sin prestamista
+                </p>
+                <ul className="space-y-1.5">
+                  {visibleLoans
+                    .filter((loan) => loan.lenderId == null)
+                    .map((loan) => (
+                      <li
+                        key={loan.id}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-border/50 px-3 py-2"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-sm">
                           {loan.name}
+                        </span>
+                        <span className="font-mono text-xs font-semibold tabular-nums">
+                          {formatCurrency(loan.remainingAmount)}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={() => {
+                            resetLoanDetailDrafts();
+                            setSelectedLoanId(loan.id);
+                          }}
+                          aria-label={`Ver detalle de ${loan.name}`}
+                        >
+                          Detalle
+                        </Button>
+                      </li>
+                    ))}
+                </ul>
+              </li>
+            ) : null}
+            {visibleLenders.map((lender) => {
+              const lenderLoans = visibleLoans.filter(
+                (loan) => loan.lenderId === lender.id,
+              );
+              const canPay = lender.payWindow.canPay;
+              return (
+                <li key={lender.id} className="space-y-3 p-4">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                    <div className="flex min-w-0 flex-1 gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
+                        <Landmark className="h-4 w-4" aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {lender.name}
                         </h3>
-                        <div className="flex flex-wrap gap-1.5">
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {lender.activeContractCount} contrato
+                          {lender.activeContractCount === 1 ? '' : 's'}
+                          {lender.payrollOnly ? ' · Nómina' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 xl:min-w-[24rem]">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Pendiente
+                        </p>
+                        <p className="font-mono text-sm font-bold tabular-nums">
+                          {formatCurrency(lender.remainingPrincipal)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Próximo
+                        </p>
+                        <p className="font-mono text-sm font-bold tabular-nums">
+                          {formatCurrency(lender.payWindow.amount)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {lender.payWindow.isRange
+                            ? 'Varios vencimientos'
+                            : lender.payWindow.commitmentDate
+                              ? formatDate(lender.payWindow.commitmentDate)
+                              : lender.payrollOnly
+                                ? 'Se descuenta del ingreso'
+                                : 'Sin pago de caja'}
+                        </p>
+                      </div>
+                      <div className="col-span-2 flex justify-end sm:col-span-1">
+                        {canPay ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={() => {
+                              setPayError(null);
+                              setPayLenderId(lender.id);
+                            }}
+                          >
+                            Pagar a {lender.name}
+                          </Button>
+                        ) : (
+                          <p className="self-center text-[10px] text-muted-foreground">
+                            {lender.payrollOnly
+                              ? 'Sin Pagar de caja'
+                              : 'Sin cuotas de billetera'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {lenderLoans.map((loan) => {
+                      const Icon =
+                        loan.type === 'PAYROLL' ? Landmark : HandCoins;
+                      return (
+                        <li
+                          key={loan.id}
+                          className={cn(
+                            'flex flex-wrap items-center gap-2 rounded-lg border border-border/50 px-3 py-2',
+                            loan.status === 'PAUSED' && 'bg-amber-500/5',
+                            loan.status === 'CANCELLED' && 'bg-muted/40 opacity-80',
+                          )}
+                        >
+                          <Icon
+                            className="h-3.5 w-3.5 text-muted-foreground"
+                            aria-hidden
+                          />
+                          <span className="min-w-0 flex-1 truncate text-sm">
+                            {loan.name}
+                          </span>
+                          {loan.paymentSource === 'PAYROLL_DEDUCTION' ? (
+                            <Badge variant="secondary" className="h-5 text-[10px]">
+                              Nómina
+                            </Badge>
+                          ) : null}
                           <Badge
                             variant={
                               loan.status === 'ACTIVE' ? 'default' : 'secondary'
@@ -1213,82 +1396,61 @@ export default function LoansPage() {
                           >
                             {statusLabel(loan.status)}
                           </Badge>
-                          <Badge variant="outline" className="h-5 text-[10px]">
-                            {typeLabel(loan.type)}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <span>{loan.lender}</span>
-                        <span>Pago {frequencyLabel(loan.frequency).toLowerCase()}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {loan.paidPayments}/{loan.paymentCount}
+                          </span>
+                          <span className="font-mono text-xs font-semibold tabular-nums">
+                            {formatCurrency(loan.remainingAmount)}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[10px]"
+                            onClick={() => {
+                              resetLoanDetailDrafts();
+                              setSelectedLoanId(loan.id);
+                            }}
+                            aria-label={`Ver detalle de ${loan.name}`}
+                          >
+                            Detalle
+                          </Button>
+                        </li>
+                      );
+                    })}
+                    {lender.recentPayments && lender.recentPayments[0] ? (
+                      <li className="flex items-center justify-between px-1 pt-1 text-[10px] text-muted-foreground">
                         <span>
-                          {loan.paymentSource === 'PAYROLL_DEDUCTION'
-                            ? loan.incomeTemplateName
-                              ? `Nómina: ${loan.incomeTemplateName}`
-                              : 'Nómina (sin plantilla vinculada)'
-                            : loan.sourceWalletName ?? 'Billetera'}
+                          Último pago {formatDate(lender.recentPayments[0].paidAt)} ·{' '}
+                          {formatCurrency(lender.recentPayments[0].amount)}
                         </span>
-                        {loan.linkedWalletName ? (
-                          <span>Reflejado en {loan.linkedWalletName}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-left sm:grid-cols-4 sm:text-right xl:min-w-[30rem]">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Pendiente
-                      </p>
-                      <p className="whitespace-nowrap font-mono text-sm font-bold tabular-nums">
-                        {formatCurrency(loan.remainingAmount)}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Pago
-                      </p>
-                      <p className="whitespace-nowrap font-mono text-sm font-bold tabular-nums">
-                        {formatCurrency(loan.paymentAmount)}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Pagos
-                      </p>
-                      <p className="whitespace-nowrap font-mono text-sm font-bold tabular-nums">
-                        {loan.paidPayments}/{loan.paymentCount}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Próximo
-                      </p>
-                      <p className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium sm:justify-end">
-                        <CalendarDays className="h-3 w-3" aria-hidden data-icon="inline-start" />
-                        {loan.nextPayment
-                          ? formatDate(loan.nextPayment.dueDate)
-                          : 'Sin pagos'}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-center gap-1.5 sm:w-fit xl:justify-self-end"
-                    onClick={() => {
-                      resetLoanDetailDrafts();
-                      setSelectedLoanId(loan.id);
-                    }}
-                    aria-label={`Ver detalle de ${loan.name}`}
-                  >
-                    <Eye
-                      className="h-3.5 w-3.5"
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                    Detalle
-                  </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={() => {
+                            void undoLenderPayment(
+                              lender.id,
+                              lender.recentPayments![0]!.id,
+                              context,
+                            ).then(async () => {
+                              toast.success('Se deshizo el pago consolidado');
+                              await loadData();
+                            }).catch((error: unknown) => {
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : 'No se pudo deshacer el pago',
+                              );
+                            });
+                          }}
+                        >
+                          Deshacer último pago
+                        </Button>
+                      </li>
+                    ) : null}
+                  </ul>
                 </li>
               );
             })}
@@ -1351,20 +1513,60 @@ export default function LoansPage() {
                 ) : null}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="loan-lender">Entidad</Label>
-                <Input
-                  id="loan-lender"
-                  value={form.lender}
-                  onChange={(e) => setField('lender', e.target.value)}
-                  placeholder="DiDi, banco, empresa"
-                  aria-invalid={Boolean(formErrors.lender)}
-                  aria-describedby={formErrors.lender ? 'loan-lender-error' : undefined}
-                  className={cn(
-                    formErrors.lender &&
-                      'border-destructive focus-visible:ring-destructive/30',
-                  )}
-                  required
-                />
+                <Label htmlFor="loan-lender">Prestamista</Label>
+                <Select
+                  value={form.lenderId || (form.lender ? '__new__' : undefined)}
+                  onValueChange={(value) => {
+                    if (value === '__new__') {
+                      setField('lenderId', '');
+                      return;
+                    }
+                    const selected = lenders.find(
+                      (lender) => String(lender.id) === value,
+                    );
+                    setForm((current) => ({
+                      ...current,
+                      lenderId: value,
+                      lender: selected?.name ?? current.lender,
+                    }));
+                    setFormErrors((current) => ({
+                      ...current,
+                      lender: undefined,
+                      lenderId: undefined,
+                    }));
+                  }}
+                >
+                  <SelectTrigger
+                    id="loan-lender"
+                    aria-invalid={Boolean(formErrors.lender)}
+                    className={cn(
+                      formErrors.lender &&
+                        'border-destructive focus:ring-destructive/30',
+                    )}
+                  >
+                    <SelectValue placeholder="Elige o crea uno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lenders.map((lender) => (
+                      <SelectItem key={lender.id} value={String(lender.id)}>
+                        {lender.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__new__">Nuevo prestamista…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!form.lenderId ? (
+                  <Input
+                    value={form.lender}
+                    onChange={(e) => setField('lender', e.target.value)}
+                    placeholder="Nombre del prestamista"
+                    aria-label="Nombre del nuevo prestamista"
+                    className={cn(
+                      formErrors.lender &&
+                        'border-destructive focus-visible:ring-destructive/30',
+                    )}
+                  />
+                ) : null}
                 {formErrors.lender ? (
                   <p id="loan-lender-error" className="text-xs text-destructive" role="alert">{formErrors.lender}</p>
                 ) : null}
@@ -2960,6 +3162,64 @@ export default function LoansPage() {
               className="rounded-xl"
             >
               {batchSubmitting ? 'Guardando…' : 'Confirmar lote'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <LenderPayDialog
+        open={payLenderId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPayLenderId(null);
+            setPayError(null);
+          }
+        }}
+        lender={payingLender}
+        fundingWalletOptions={fundingWallets}
+        submitting={paySubmitting}
+        error={payError}
+        onConfirm={handlePayLender}
+      />
+
+      <Dialog
+        open={newLenderOpen}
+        onOpenChange={(open) => {
+          setNewLenderOpen(open);
+          if (!open) setNewLenderName('');
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo prestamista</DialogTitle>
+            <DialogDescription>
+              Identidad a la que le debes. Luego puedes agregar contratos debajo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="new-lender-name">Nombre</Label>
+            <Input
+              id="new-lender-name"
+              value={newLenderName}
+              onChange={(event) => setNewLenderName(event.target.value)}
+              placeholder="Mercado Libre, FONACOT…"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setNewLenderOpen(false)}
+              disabled={newLenderSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCreateLender()}
+              disabled={newLenderSubmitting || !newLenderName.trim()}
+            >
+              {newLenderSubmitting ? 'Creando…' : 'Crear prestamista'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -127,6 +127,7 @@ const collectLoanTimeline = async (
       id: true,
       name: true,
       lender: true,
+      lender_id: true,
       payment_amount: true,
       payment_source: true,
       payments: {
@@ -141,81 +142,119 @@ const collectLoanTimeline = async (
   const tracks: LiquidityProjectionTrack[] = [];
   const payrollLineItems: PayrollDebtLineItem[] = [];
 
+  const grouped = new Map<string, typeof loans>();
   for (const loan of loans) {
     if (loan.payments.length === 0) continue;
-    const firstDue = toUtcDateOnlyString(loan.payments[0]!.due_date);
-    const lastPayment = loan.payments[loan.payments.length - 1]!;
-    const lastDue = toUtcDateOnlyString(lastPayment.due_date);
-    const lastMonth = toMonthKey(lastDue);
-    const startMonth =
-      compareMonthKeys(toMonthKey(firstDue), horizonStart) < 0
-        ? horizonStart
-        : toMonthKey(firstDue);
-    const finishesInHorizon = monthKeySet.has(lastMonth);
-    const visibleEnd = finishesInHorizon
-      ? lastMonth
-      : compareMonthKeys(lastMonth, horizonEnd) < 0
+    const key =
+      loan.lender_id != null ? `lender-${loan.lender_id}` : `loan-${loan.id}`;
+    const rows = grouped.get(key) ?? [];
+    rows.push(loan);
+    grouped.set(key, rows);
+  }
+
+  for (const [groupKey, groupLoans] of grouped) {
+    const scheduleByMonth = new Map<string, number>();
+    let monthlyAmount = 0;
+    let remainingCount = 0;
+    let startMonth: string | null = null;
+    let visibleEnd: string | null = null;
+    let finishesInHorizon = false;
+
+    for (const loan of groupLoans) {
+      const firstDue = toUtcDateOnlyString(loan.payments[0]!.due_date);
+      const lastPayment = loan.payments[loan.payments.length - 1]!;
+      const lastDue = toUtcDateOnlyString(lastPayment.due_date);
+      const lastMonth = toMonthKey(lastDue);
+      const loanStart =
+        compareMonthKeys(toMonthKey(firstDue), horizonStart) < 0
+          ? horizonStart
+          : toMonthKey(firstDue);
+      const loanFinishes = monthKeySet.has(lastMonth);
+      const loanEnd = loanFinishes
         ? lastMonth
-        : horizonEnd;
+        : compareMonthKeys(lastMonth, horizonEnd) < 0
+          ? lastMonth
+          : horizonEnd;
 
-    if (compareMonthKeys(startMonth, horizonEnd) > 0) continue;
-    if (compareMonthKeys(visibleEnd, horizonStart) < 0) continue;
+      if (compareMonthKeys(loanStart, horizonEnd) > 0) continue;
+      if (compareMonthKeys(loanEnd, horizonStart) < 0) continue;
 
-    const remainingPayments = loan.payments.filter(
-      (payment) => payment.due_date >= asOf,
-    );
-    const remainingCount = remainingPayments.length;
-    const isPayroll = loan.payment_source === 'PAYROLL_DEDUCTION';
-    const schedule = remainingPayments.map((payment) => ({
-      month_key: toMonthKey(toUtcDateOnlyString(payment.due_date)),
-      amount: Number(payment.amount),
-    }));
+      const remainingPayments = loan.payments.filter(
+        (payment) => payment.due_date >= asOf,
+      );
+      remainingCount += remainingPayments.length;
+      monthlyAmount += Number(loan.payment_amount);
+      startMonth =
+        startMonth == null || compareMonthKeys(loanStart, startMonth) < 0
+          ? loanStart
+          : startMonth;
+      visibleEnd =
+        visibleEnd == null || compareMonthKeys(loanEnd, visibleEnd) > 0
+          ? loanEnd
+          : visibleEnd;
+      finishesInHorizon = finishesInHorizon || loanFinishes;
 
-    if (isPayroll) {
+      const isPayroll = loan.payment_source === 'PAYROLL_DEDUCTION';
       for (const payment of remainingPayments) {
         const monthKey = toMonthKey(toUtcDateOnlyString(payment.due_date));
-        if (!monthKeySet.has(monthKey)) continue;
         const amount = Number(payment.amount);
-        payrollPaymentsByMonth.set(
-          monthKey,
-          (payrollPaymentsByMonth.get(monthKey) ?? 0) + amount,
-        );
-        payrollLineItems.push({
-          month_key: monthKey,
+        scheduleByMonth.set(monthKey, (scheduleByMonth.get(monthKey) ?? 0) + amount);
+        if (isPayroll && monthKeySet.has(monthKey)) {
+          payrollPaymentsByMonth.set(
+            monthKey,
+            (payrollPaymentsByMonth.get(monthKey) ?? 0) + amount,
+          );
+          payrollLineItems.push({
+            month_key: monthKey,
+            loan_id: loan.id,
+            title: loan.name,
+            subtitle: `Nómina · ${loan.lender}`,
+            amount,
+          });
+        }
+      }
+
+      if (loanFinishes && lastPayment.due_date >= asOf) {
+        events.push({
+          event_type: 'loan_payoff',
+          event_date: lastDue,
+          month_key: lastMonth,
+          title: `Terminas de pagar ${loan.name}`,
+          subtitle: isPayroll
+            ? `Último descuento de nómina · ${loan.lender}`
+            : `Última mensualidad con ${loan.lender}`,
           loan_id: loan.id,
-          title: loan.name,
-          subtitle: `Nómina · ${loan.lender}`,
-          amount,
+          amount: Number(lastPayment.amount),
         });
       }
     }
 
+    if (startMonth == null || visibleEnd == null || remainingCount === 0) {
+      continue;
+    }
+
+    const firstLoan = groupLoans[0]!;
+    const title =
+      groupLoans.length === 1 ? firstLoan.name : firstLoan.lender;
+    const subtitle =
+      groupLoans.length === 1
+        ? `${firstLoan.lender} · ${remainingCount} pago${remainingCount === 1 ? '' : 's'}`
+        : `${groupLoans.length} contratos · ${remainingCount} pago${remainingCount === 1 ? '' : 's'}`;
+
     tracks.push({
-      id: `loan-${loan.id}`,
+      id: groupKey,
       kind: 'loan',
-      title: loan.name,
-      subtitle: `${loan.lender} · ${remainingCount} pago${remainingCount === 1 ? '' : 's'}`,
+      title,
+      subtitle,
       start_month_key: startMonth,
       end_month_key: visibleEnd,
       finishes_in_horizon: finishesInHorizon,
-      monthly_amount: Number(loan.payment_amount),
-      schedule,
-      loan_id: loan.id,
+      monthly_amount: monthlyAmount,
+      schedule: [...scheduleByMonth.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month_key, amount]) => ({ month_key, amount })),
+      loan_id: groupLoans.length === 1 ? firstLoan.id : undefined,
     });
-
-    if (finishesInHorizon && lastPayment.due_date >= asOf) {
-      events.push({
-        event_type: 'loan_payoff',
-        event_date: lastDue,
-        month_key: lastMonth,
-        title: `Terminas de pagar ${loan.name}`,
-        subtitle: isPayroll
-          ? `Último descuento de nómina · ${loan.lender}`
-          : `Última mensualidad con ${loan.lender}`,
-        loan_id: loan.id,
-        amount: Number(lastPayment.amount),
-      });
-    }
   }
 
   return { events, tracks, payrollPaymentsByMonth, payrollLineItems };

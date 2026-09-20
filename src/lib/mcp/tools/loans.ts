@@ -9,6 +9,7 @@ import {
   updateLoanPaymentForOwner,
   updateLoanScheduleForOwner,
 } from '@/lib/finance/loan.service';
+import { listLendersByOwner } from '@/lib/finance/lender.service';
 import { createLoanSchema, updateLoanPaymentSchema } from '@/schemas/loan.schema';
 import {
   confirmSchema,
@@ -77,6 +78,7 @@ export function registerLoanTools(server: McpServer) {
             id: loan.id,
             name: loan.name,
             lender: loan.lender,
+            lenderId: loan.lenderId,
             type: loan.type,
             status: loan.status,
             frequency: loan.frequency,
@@ -97,6 +99,44 @@ export function registerLoanTools(server: McpServer) {
           ...(monthPrefix
             ? { month: monthPrefix, monthScheduledTotal: monthTotalDue }
             : {}),
+        };
+      }),
+  );
+
+  server.registerTool(
+    'list_lenders',
+    {
+      title: 'Listar prestamistas',
+      description:
+        'Prestamistas del contexto con capital pendiente y próximo pago consolidado. Los contratos siguen vivos debajo de cada identidad.',
+      inputSchema: z.object({
+        ownerType: ownerTypeSchema,
+        ownerId: ownerIdSchema,
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async (args, ctx) =>
+      runAgentTool('list_lenders', ctx as McpToolContext, args, 'read', async (agent) => {
+        const lenders = await listLendersByOwner(agent.ownerFilter);
+        return {
+          lenders: lenders.map((lender) => ({
+            id: lender.id,
+            name: lender.name,
+            remainingPrincipal: lender.remainingPrincipal,
+            activeContractCount: lender.activeContractCount,
+            payrollOnly: lender.payrollOnly,
+            nextPaymentAmount: lender.payWindow.amount,
+            nextPaymentDate: lender.payWindow.commitmentDate,
+            nextPaymentDateEnd: lender.payWindow.commitmentDateEnd,
+            canPay: lender.payWindow.canPay,
+            loans: lender.loans.map((loan) => ({
+              id: loan.id,
+              name: loan.name,
+              status: loan.status,
+              remainingAmount: loan.remainingAmount,
+              paymentSource: loan.paymentSource,
+            })),
+          })),
         };
       }),
   );
@@ -132,6 +172,7 @@ export function registerLoanTools(server: McpServer) {
             id: loan.id,
             name: loan.name,
             lender: loan.lender,
+            lenderId: loan.lenderId,
             status: loan.status,
             paymentAmount: loan.paymentAmount,
             paymentCount: loan.paymentCount,

@@ -4,6 +4,7 @@ import {
   formatLoanPaymentLabel,
   linkedLoanPaymentExpenseIds,
   mapLoanDuePaymentToTransactionRow,
+  mapScheduledLoanPaymentsToTransactionRows,
 } from '@/lib/finance/planning-loan-payments';
 import type { LoanDuePaymentItem } from '@/types/loans';
 
@@ -20,9 +21,11 @@ const basePayment = (
   sourceWalletId: 2,
   sourceWalletName: 'Débito BBVA',
   linkedExpenseId: null,
+  lenderPaymentId: null,
   note: null,
   loanName: 'FONACOT',
   lender: 'FONACOT',
+  lenderId: 4,
   loanType: 'PAYROLL',
   paymentSource: 'WALLET',
   linkedWalletId: null,
@@ -116,6 +119,33 @@ describe('mapLoanDuePaymentToTransactionRow', () => {
       planning_row_kind: 'loan_payment',
       loan_payment_source: 'PAYROLL_DEDUCTION',
       is_paid: false,
+    });
+  });
+});
+
+describe('mapScheduledLoanPaymentsToTransactionRows', () => {
+  it('groups same-lender dues into one planning row', () => {
+    const rows = mapScheduledLoanPaymentsToTransactionRows([
+      basePayment({ id: 1, loanName: 'MSI 1', amount: 100 }),
+      basePayment({ id: 2, loanName: 'MSI 2', amount: 80 }),
+      basePayment({
+        id: 3,
+        lenderId: 8,
+        lender: 'Banamex',
+        loanName: 'Personal',
+        amount: 50,
+        dueDate: '2026-06-20',
+      }),
+    ]);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      description: 'Pagar a FONACOT',
+      amount: 180,
+    });
+    expect(rows[1]).toMatchObject({
+      description: 'Pagar a Banamex',
+      amount: 50,
     });
   });
 });
