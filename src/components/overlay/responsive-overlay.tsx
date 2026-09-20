@@ -22,6 +22,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 type OverlaySelectApi = {
   handleSelectOpenChange: (nextOpen: boolean) => void;
@@ -43,6 +44,7 @@ type ResponsiveOverlayProps = {
   children: ReactNode | ((api: OverlaySelectApi) => ReactNode);
   /** Blocks dismiss while a mutation is in flight. */
   busy?: boolean;
+  contentClassName?: string;
 };
 
 /**
@@ -56,6 +58,7 @@ export const ResponsiveOverlay = ({
   description,
   children,
   busy = false,
+  contentClassName,
 }: ResponsiveOverlayProps) => {
   const isMobile = useIsMobile();
   const nestedSelectOpenRef = useRef(false);
@@ -127,7 +130,7 @@ export const ResponsiveOverlay = ({
 
   const body = (
     <OverlaySelectContext.Provider value={selectApi}>
-      {open ? rendered : null}
+      {rendered}
     </OverlaySelectContext.Provider>
   );
 
@@ -137,7 +140,10 @@ export const ResponsiveOverlay = ({
         <SheetContent
           side="bottom"
           showCloseButton={false}
-          className="flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0"
+          className={cn(
+            'flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0',
+            contentClassName,
+          )}
           onPointerDownOutside={preventDismissWhileSelectOpen}
           onFocusOutside={preventDismissWhileSelectOpen}
           onInteractOutside={preventDismissWhileSelectOpen}
@@ -155,7 +161,7 @@ export const ResponsiveOverlay = ({
     <Dialog open={open} onOpenChange={handleRootOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-md w-full gap-4 p-5"
+        className={cn('max-w-md w-full gap-4 p-5', contentClassName)}
         onPointerDownOutside={preventDismissWhileSelectOpen}
         onFocusOutside={preventDismissWhileSelectOpen}
         onInteractOutside={preventDismissWhileSelectOpen}

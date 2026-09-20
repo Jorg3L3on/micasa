@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
@@ -12,14 +11,15 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
+import { LoanPaymentManageOverlay } from '@/components/loans/LoanPaymentManageOverlay';
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
-  ownerQueryString: string;
   fortnightLabel: string;
   isCompact?: boolean;
   sortMode?: PlannerListSortMode;
   sortDir?: PlannerListSortDir;
+  onUpdated?: () => Promise<void> | void;
 };
 
 type VisualStatus = 'paid' | 'overdue' | 'pending' | 'muted';
@@ -46,25 +46,27 @@ const getVisualStatus = (
 
 export default function FortnightLoanPaymentsPanel({
   items,
-  ownerQueryString,
   fortnightLabel,
   isCompact = false,
   sortMode = 'amount',
   sortDir = 'desc',
+  onUpdated,
 }: FortnightLoanPaymentsPanelProps) {
   const todayYmd = useHydrationSafeTodayYmd();
+  const [managingItem, setManagingItem] = useState<LoanDuePaymentItem | null>(
+    null,
+  );
+  const [manageOpen, setManageOpen] = useState(false);
 
   const rows = useMemo(
     () => sortLoanDuePaymentRows(items, sortMode, sortDir, todayYmd),
     [items, sortMode, sortDir, todayYmd],
   );
 
-  const loanHref = (item: LoanDuePaymentItem) =>
-    `/loans${
-      ownerQueryString
-        ? `${ownerQueryString}&loanId=${item.loanId}`
-        : `?loanId=${item.loanId}`
-    }`;
+  const handleOpenManage = (item: LoanDuePaymentItem) => {
+    setManagingItem(item);
+    setManageOpen(true);
+  };
 
   if (rows.length === 0) {
     return (
@@ -148,10 +150,11 @@ export default function FortnightLoanPaymentsPanel({
               </span>
 
               <div className="min-w-0 flex-1">
-                <Link
-                  href={loanHref(item)}
+                <button
+                  type="button"
+                  onClick={() => handleOpenManage(item)}
                   className={cn(
-                    'block min-w-0 truncate font-semibold hover:underline',
+                    'block min-w-0 truncate text-left font-semibold hover:underline',
                     isCompact ? 'text-xs' : 'text-sm',
                     visual === 'paid' || visual === 'muted'
                       ? 'text-muted-foreground'
@@ -159,7 +162,7 @@ export default function FortnightLoanPaymentsPanel({
                   )}
                 >
                   {item.loanName}
-                </Link>
+                </button>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                   <span>{item.lender}</span>
                   <span className="text-muted-foreground/30">·</span>
@@ -180,15 +183,14 @@ export default function FortnightLoanPaymentsPanel({
                 {item.status === 'SCHEDULED' ? (
                   <Button
                     type="button"
-                    asChild
                     size="sm"
                     variant="outline"
                     className="h-7 gap-1 px-2 text-[10px]"
+                    onClick={() => handleOpenManage(item)}
+                    aria-label={`Gestionar ${item.loanName}`}
                   >
-                    <Link href={loanHref(item)}>
-                      <ArrowRight className="h-3 w-3" aria-hidden />
-                      Gestionar
-                    </Link>
+                    <ArrowRight className="h-3 w-3" aria-hidden />
+                    Gestionar
                   </Button>
                 ) : null}
               </div>
@@ -196,6 +198,12 @@ export default function FortnightLoanPaymentsPanel({
           );
         })}
       </ul>
+      <LoanPaymentManageOverlay
+        open={manageOpen}
+        onOpenChange={setManageOpen}
+        item={managingItem}
+        onSuccess={onUpdated}
+      />
     </div>
   );
 }

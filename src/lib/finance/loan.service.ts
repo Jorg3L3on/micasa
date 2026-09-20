@@ -850,6 +850,7 @@ async function listLoanPaymentsForPlannerMonthImpl(
       linked_expense: { select: { id: true } },
       loan: {
         include: {
+          source_wallet: { select: { name: true } },
           linked_wallet: { select: { name: true } },
           income_template: { select: { name: true } },
         },
@@ -860,6 +861,10 @@ async function listLoanPaymentsForPlannerMonthImpl(
 
   const mapped: LoanDuePaymentItem[] = payments.map((payment) => ({
     ...mapPayment(payment),
+    sourceWalletId:
+      payment.source_wallet_id ?? payment.loan.source_wallet_id,
+    sourceWalletName:
+      payment.source_wallet?.name ?? payment.loan.source_wallet?.name ?? null,
     loanName: payment.loan.name,
     lender: payment.loan.lender,
     loanType: payment.loan.type as LoanDuePaymentItem['loanType'],

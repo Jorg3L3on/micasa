@@ -1243,11 +1243,11 @@ export default function FortnightColumn({
             >
               <FortnightLoanPaymentsPanel
                 items={loanDueItems}
-                ownerQueryString={ownerQueryString}
                 fortnightLabel={label}
                 isCompact={tableDensity === 'compact'}
                 sortMode={listSortMode}
                 sortDir={listSortDir}
+                onUpdated={refreshData}
               />
             </div>
           </TabsContent>
