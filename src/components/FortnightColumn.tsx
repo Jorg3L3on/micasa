@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
+import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
@@ -826,7 +827,6 @@ export default function FortnightColumn({
   const pagado = summary.totalPaid;
   const pendiente = summary.totalUnpaid;
 
-  // Filter user income for this specific fortnight
   const currentFortnightUserIncome =
     summary.userIncome && summary.userIncome.length > 0
       ? summary.userIncome.filter((ui) => ui.fortnightId === fortnightId)
@@ -915,11 +915,17 @@ export default function FortnightColumn({
               };
             },
           )}
-          budgetPanel={budgetPanel}
-          budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
           onEditIncome={handleOpenOverrideDialog}
           onEditIncomeSource={handleOpenEditIncomeSource}
         />
+
+        {budgetPanel != null ? (
+          <MonthlyBudgetSidebar
+            panel={budgetPanel}
+            ownerQuery={budgetOwnerQuery || ownerQueryString}
+            className="xl:hidden"
+          />
+        ) : null}
 
         <Tabs
           value={columnTab}

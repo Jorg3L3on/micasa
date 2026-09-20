@@ -282,6 +282,21 @@ const MONTH_NAMES_ES_LOWER = [
   'diciembre',
 ] as const;
 
+const MONTH_ABBR_ES_LOWER = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+] as const;
+
 export type FortnightCalendarBounds = {
   startYmd: string;
   endYmd: string;
@@ -371,4 +386,23 @@ export function formatFortnightDateRangeLabel(
 ): string {
   const { startYmd, endYmd } = getFortnightYmdBounds(year, month, period);
   return `${formatDayMonthLabelFromYmd(startYmd)} al ${formatDayMonthLabelFromYmd(endYmd)}`;
+}
+
+/** Compact Spanish range for summary chrome, e.g. `15–29 jun` or `31 may–14 jun`. */
+export function formatFortnightDateRangeCompact(
+  year: number,
+  month: number,
+  period: CalendarFortnightPeriod,
+): string {
+  const { startYmd, endYmd } = getFortnightYmdBounds(year, month, period);
+  const start = parseYmdParts(startYmd);
+  const end = parseYmdParts(endYmd);
+  const startAbbr = MONTH_ABBR_ES_LOWER[start.month - 1] ?? '';
+  const endAbbr = MONTH_ABBR_ES_LOWER[end.month - 1] ?? '';
+
+  if (start.month === end.month && start.year === end.year) {
+    return `${start.day}–${end.day} ${startAbbr}`;
+  }
+
+  return `${start.day} ${startAbbr}–${end.day} ${endAbbr}`;
 }
