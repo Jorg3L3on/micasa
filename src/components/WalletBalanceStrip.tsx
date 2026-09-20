@@ -1,8 +1,18 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { DragEvent } from 'react';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  applyWalletStripOrder,
+  defaultWalletStripOrder,
+  isPointerNearWalletStrip,
+  moveWalletStripId,
+  readWalletStripOrder,
+  walletStripAutoScrollDelta,
+  writeWalletStripOrder,
+} from '@/lib/ui/wallet-strip-order';
 import {
   getProviderCardStyle,
   isProviderCardDarkSurface,
@@ -40,8 +50,10 @@ const WalletBalanceStrip = ({
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
   const [balanceOverrides, setBalanceOverrides] = useState<Record<number, number>>({});
 
-  const getEffectiveAmount = (wallet: WalletListItem) =>
-    balanceOverrides[wallet.id] ?? wallet.amount;
+  const getEffectiveAmount = useCallback(
+    (wallet: WalletListItem) => balanceOverrides[wallet.id] ?? wallet.amount,
+    [balanceOverrides],
+  );
 
   const isCreditType = (type: string) =>
     type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
@@ -51,34 +63,136 @@ const WalletBalanceStrip = ({
     setSelectedWallet({ ...wallet, amount: effectiveAmount });
   }, [balanceOverrides]);
 
-  const sortedWallets = [...wallets].sort((a, b) => {
-    const getTypeRank = (type: string) => {
-      if (type === 'CASH') return 0;
-      if (type === 'DEBIT_CARD') return 1;
-      if (type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD') return 2;
-      return 3;
-    };
+  const defaultSortedWallets = useMemo(
+    () => defaultWalletStripOrder(wallets, getEffectiveAmount),
+    [wallets, getEffectiveAmount],
+  );
 
-    const rankDiff = getTypeRank(a.type) - getTypeRank(b.type);
-    if (rankDiff !== 0) return rankDiff;
+  const [savedOrderIds, setSavedOrderIds] = useState<number[] | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const draggingIdRef = useRef<number | null>(null);
+  const orderedIdsRef = useRef<number[]>([]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const dragPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const autoScrollIntervalRef = useRef<number | null>(null);
+  const lastAutoScrollAtRef = useRef(0);
 
-    const bothCreditTypes =
-      (a.type === 'CREDIT_CARD' || a.type === 'DEPARTMENT_STORE_CARD') &&
-      (b.type === 'CREDIT_CARD' || b.type === 'DEPARTMENT_STORE_CARD');
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current != null) {
+      window.clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+    dragPointerRef.current = null;
+    lastAutoScrollAtRef.current = 0;
+  }, []);
 
-    if (bothCreditTypes) {
-      const getUsedPct = (wallet: WalletListItem) => {
-        const limit = Number(wallet.credit_limit ?? 0);
-        if (limit <= 0) return Number.POSITIVE_INFINITY;
-        return Math.max(0, Number(getEffectiveAmount(wallet))) / limit;
-      };
-
-      const usedPctDiff = getUsedPct(a) - getUsedPct(b);
-      if (usedPctDiff !== 0) return usedPctDiff;
+  const scrollStripTowardPointer = useCallback(() => {
+    const list = listRef.current;
+    const pointer = dragPointerRef.current;
+    if (list == null || pointer == null || draggingIdRef.current == null) {
+      return;
     }
 
-    return a.name.localeCompare(b.name);
-  });
+    const now = performance.now();
+    if (now - lastAutoScrollAtRef.current < 16) return;
+    lastAutoScrollAtRef.current = now;
+
+    const rect = list.getBoundingClientRect();
+    if (!isPointerNearWalletStrip(pointer.y, rect.top, rect.bottom)) return;
+
+    const delta = walletStripAutoScrollDelta(pointer.x, rect.left, rect.right);
+    if (delta !== 0) {
+      list.scrollLeft += delta;
+    }
+  }, []);
+
+  const applyDragAutoScroll = useCallback(
+    (clientX: number, clientY: number) => {
+      if (draggingIdRef.current == null) return;
+      if (clientX === 0 && clientY === 0) return;
+      dragPointerRef.current = { x: clientX, y: clientY };
+      scrollStripTowardPointer();
+    },
+    [scrollStripTowardPointer],
+  );
+
+  const startAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current != null) return;
+    autoScrollIntervalRef.current = window.setInterval(
+      scrollStripTowardPointer,
+      16,
+    );
+  }, [scrollStripTowardPointer]);
+
+  useEffect(() => {
+    const handleWindowDragOver = (event: globalThis.DragEvent) => {
+      applyDragAutoScroll(event.clientX, event.clientY);
+    };
+
+    window.addEventListener('dragover', handleWindowDragOver, true);
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver, true);
+      stopAutoScroll();
+    };
+  }, [applyDragAutoScroll, stopAutoScroll]);
+
+  useLayoutEffect(() => {
+    setSavedOrderIds(readWalletStripOrder(context.type, context.id));
+  }, [context.type, context.id]);
+
+  const orderedWallets = applyWalletStripOrder(
+    defaultSortedWallets,
+    savedOrderIds,
+  );
+  const orderedIds = orderedWallets.map((wallet) => wallet.id);
+  orderedIdsRef.current = orderedIds;
+
+  const handleReorder = (nextIds: number[]) => {
+    setSavedOrderIds(nextIds);
+    writeWalletStripOrder(context.type, context.id, nextIds);
+  };
+
+  const handleDragStart =
+    (walletId: number) => (event: DragEvent<HTMLDivElement>) => {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(walletId));
+      draggingIdRef.current = walletId;
+      setDraggingId(walletId);
+      startAutoScroll();
+    };
+
+  const handleListDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    applyDragAutoScroll(event.clientX, event.clientY);
+  };
+
+  const handleDragOver =
+    (overId: number) => (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      applyDragAutoScroll(event.clientX, event.clientY);
+      const activeId = draggingIdRef.current;
+      if (activeId == null || activeId === overId) return;
+      const toIndex = orderedIdsRef.current.indexOf(overId);
+      if (toIndex < 0) return;
+      const nextIds = moveWalletStripId(
+        orderedIdsRef.current,
+        activeId,
+        toIndex,
+      );
+      if (nextIds.every((id, index) => id === orderedIdsRef.current[index])) {
+        return;
+      }
+      orderedIdsRef.current = nextIds;
+      handleReorder(nextIds);
+    };
+
+  const handleDragEnd = () => {
+    draggingIdRef.current = null;
+    setDraggingId(null);
+    stopAutoScroll();
+  };
 
   if (wallets.length === 0) return null;
 
@@ -91,9 +205,13 @@ const WalletBalanceStrip = ({
       >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-linear-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-linear-to-l from-background to-transparent" />
-          <div className="overflow-x-auto scrollbar-hide px-1">
-            <div className="flex gap-2 py-0.5 pr-1">
-              {sortedWallets.map((wallet) => {
+          <div
+            ref={listRef}
+            className="flex items-stretch gap-2 overflow-x-auto py-0.5 pr-1 scrollbar-hide px-1"
+            onDragOver={handleListDragOver}
+            onDrop={(event) => event.preventDefault()}
+          >
+              {orderedWallets.map((wallet) => {
                 const isCreditType =
                   wallet.type === 'CREDIT_CARD' ||
                   wallet.type === 'DEPARTMENT_STORE_CARD';
@@ -281,61 +399,67 @@ const WalletBalanceStrip = ({
                       >
                         {formatCurrency(effectiveAmount)}
                       </p>
-                      {isCreditType && (
-                        <div className="mt-1 flex items-center gap-1.5">
+                      <div
+                        className={cn(
+                          'mt-1 flex h-3.5 items-center gap-1.5',
+                          !isCreditType && 'invisible',
+                        )}
+                        aria-hidden={!isCreditType}
+                      >
+                        <div
+                          className={cn(
+                            'relative h-1 w-10 overflow-hidden rounded-full sm:w-12',
+                            onDarkSurface ? 'bg-white/25' : 'bg-muted/50',
+                          )}
+                        >
                           <div
                             className={cn(
-                              'relative h-1 w-10 overflow-hidden rounded-full sm:w-12',
-                              onDarkSurface ? 'bg-white/25' : 'bg-muted/50',
+                              'h-full rounded-full transition-all',
+                              onDarkSurface
+                                ? 'bg-white/85'
+                                : 'bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
+                            )}
+                            style={{
+                              width: `${isCreditType ? percentUsed : 0}%`,
+                            }}
+                            aria-hidden
+                          />
+                        </div>
+                        {isCreditType && wallet.due_day != null ? (
+                          <span
+                            className={cn(
+                              'whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tabular-nums',
+                              walletAlreadyPaid
+                                ? onDarkSurface
+                                  ? 'bg-emerald-500/25 text-emerald-50'
+                                  : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                : !isCurrentMonth
+                                  ? onDarkSurface
+                                    ? 'text-white/75'
+                                    : 'text-muted-foreground/70'
+                                  : isDuePast
+                                    ? onDarkSurface
+                                      ? 'text-red-100'
+                                      : 'text-destructive'
+                                    : isDueNear
+                                      ? onDarkSurface
+                                        ? 'text-amber-100'
+                                        : 'text-amber-600 dark:text-amber-400'
+                                      : onDarkSurface
+                                        ? 'text-white/75'
+                                        : 'text-muted-foreground/70',
                             )}
                           >
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all',
-                                onDarkSurface
-                                  ? 'bg-white/85'
-                                  : 'bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
-                              )}
-                              style={{ width: `${percentUsed}%` }}
-                              aria-hidden
-                            />
-                          </div>
-                          {wallet.due_day != null && (
-                            <span
-                              className={cn(
-                                'whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tabular-nums',
-                                walletAlreadyPaid
-                                  ? onDarkSurface
-                                    ? 'bg-emerald-500/25 text-emerald-50'
-                                    : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                                  : !isCurrentMonth
-                                    ? onDarkSurface
-                                      ? 'text-white/75'
-                                      : 'text-muted-foreground/70'
-                                    : isDuePast
-                                      ? onDarkSurface
-                                        ? 'text-red-100'
-                                        : 'text-destructive'
-                                      : isDueNear
-                                        ? onDarkSurface
-                                          ? 'text-amber-100'
-                                          : 'text-amber-600 dark:text-amber-400'
-                                        : onDarkSurface
-                                          ? 'text-white/75'
-                                          : 'text-muted-foreground/70',
-                              )}
-                            >
-                              {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                            {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 );
 
                 const cardClasses = cn(
-                  'group relative min-w-[136px] shrink-0 overflow-hidden rounded-xl border px-2 py-1.5 sm:min-w-[164px] sm:px-2.5 sm:py-2',
+                  'group relative flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2',
                   'backdrop-blur-sm ring-1 ring-inset transition-all duration-300',
                   onDarkSurface ? 'ring-white/5' : 'ring-black/5',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
@@ -353,7 +477,9 @@ const WalletBalanceStrip = ({
                     'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
                   (isCreditType || isFunding) &&
                     cn(
-                      'cursor-pointer hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
+                      'cursor-grab select-none active:cursor-grabbing',
+                      draggingId !== wallet.id &&
+                        'hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
                       useProviderGradient &&
                         (onDarkSurface
                           ? 'border-white/25 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.9)] hover:border-white/40 hover:shadow-[0_16px_34px_-14px_rgba(15,23,42,0.95)] hover:after:opacity-70'
@@ -374,35 +500,48 @@ const WalletBalanceStrip = ({
                 );
 
                 return (
-                  <button
+                  <div
                     key={wallet.id}
-                    type="button"
-                    onClick={() => handleOpenWalletModal(wallet)}
-                    className={cardClasses}
-                    style={providerCardStyle}
-                    aria-label={`Abrir detalles de ${wallet.name}`}
+                    draggable
+                    data-wallet-strip-id={wallet.id}
+                    onDragStart={handleDragStart(wallet.id)}
+                    onDragOver={handleDragOver(wallet.id)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(event) => event.preventDefault()}
+                    className={cn(
+                      'flex shrink-0',
+                      draggingId === wallet.id && 'opacity-60',
+                    )}
+                    aria-grabbed={draggingId === wallet.id}
                   >
-                    {useProviderGradient ? (
-                      <>
-                        <span
-                          className={cn(
-                            'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
-                            onDarkSurface ? 'bg-white/8' : 'bg-white/70',
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
-                            onDarkSurface ? 'bg-black/20' : 'bg-black/5',
-                          )}
-                        />
-                      </>
-                    ) : null}
-                    {cardContent}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWalletModal(wallet)}
+                      className={cardClasses}
+                      style={providerCardStyle}
+                      aria-label={`Abrir detalles de ${wallet.name}. Arrastra para reordenar.`}
+                    >
+                      {useProviderGradient ? (
+                        <>
+                          <span
+                            className={cn(
+                              'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
+                              onDarkSurface ? 'bg-white/8' : 'bg-white/70',
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
+                              onDarkSurface ? 'bg-black/20' : 'bg-black/5',
+                            )}
+                          />
+                        </>
+                      ) : null}
+                      {cardContent}
+                    </button>
+                  </div>
                 );
               })}
-            </div>
           </div>
       </div>
 
