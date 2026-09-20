@@ -25,9 +25,9 @@ const typeRank = (type: string): number => {
 const isCreditType = (type: string): boolean =>
   type === 'CREDIT_CARD' || type === 'DEPARTMENT_STORE_CARD';
 
-const usedPct = (
-  wallet: WalletStripSortable,
-  amountOf: (wallet: WalletStripSortable) => number,
+const usedPct = <T extends WalletStripSortable>(
+  wallet: T,
+  amountOf: (wallet: T) => number,
 ): number => {
   const limit = Number(wallet.credit_limit ?? 0);
   if (limit <= 0) return Number.POSITIVE_INFINITY;
