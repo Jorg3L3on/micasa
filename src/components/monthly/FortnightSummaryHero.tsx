@@ -22,6 +22,13 @@ type FortnightSummaryHeroProps = {
   dueToPay: number;
   /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
   fundingInAccounts: number;
+  /**
+   * Efectivo/débito menos pendiente, nómina y resto de presupuesto
+   * (“Liquidez actual” / billeteras vs pendiente).
+   */
+  fundingLiquidity?: number;
+  /** Si false, se oculta Liquidez actual (solo quincena actual o siguiente). */
+  fundingLiquidityApplies?: boolean;
   paidAmount: number;
   pendingAmount: number;
   /** Pagado + pendiente + nómina (segmento de efectivo del compromiso). */
@@ -203,6 +210,8 @@ export const FortnightSummaryHero = ({
   incomeRemainder,
   dueToPay,
   fundingInAccounts,
+  fundingLiquidity = 0,
+  fundingLiquidityApplies = true,
   paidAmount,
   pendingAmount,
   cashCommittedAmount,
@@ -237,6 +246,23 @@ export const FortnightSummaryHero = ({
           >
             {formatCurrency(fundingInAccounts)}
           </p>
+          {fundingLiquidityApplies ? (
+            <div className="mt-2.5">
+              <p className="text-[11px] text-muted-foreground sm:text-xs">
+                Liquidez actual
+              </p>
+              <p
+                className={cn(
+                  'mt-0.5 font-mono text-base font-semibold tabular-nums sm:text-lg',
+                  fundingLiquidity < 0
+                    ? 'text-destructive'
+                    : 'text-emerald-700 dark:text-emerald-300',
+                )}
+              >
+                {formatCurrency(fundingLiquidity)}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <CommitmentBar

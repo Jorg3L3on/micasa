@@ -868,6 +868,9 @@ export default function FortnightColumn({
           fundingWalletBalanceTotal={
             summary.fundingWalletBalanceTotal ?? 0
           }
+          fundingNetVsPendingExpense={
+            summary.fundingNetVsPendingExpense ?? 0
+          }
         />
 
         {budgetPanel != null ? (

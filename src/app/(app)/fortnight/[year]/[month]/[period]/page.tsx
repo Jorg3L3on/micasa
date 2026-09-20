@@ -199,6 +199,7 @@ export default async function FortnightPage({
           }
           planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
           fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
+          fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
         />
 
         {/* BOTTOM SECTION - Expense Tables */}

@@ -12,7 +12,11 @@ import {
   getFortnightSummaryHeader,
 } from '@/components/monthly/fortnight-summary-header';
 import { cn } from '@/lib/utils';
-import { formatFortnightDateRangeCompact } from '@/lib/fortnight-calendar';
+import {
+  formatFortnightDateRangeCompact,
+  isCalendarFortnightCurrent,
+  isCalendarFortnightNext,
+} from '@/lib/fortnight-calendar';
 import { BarChart3 } from 'lucide-react';
 import type {
   PlannerCardStatementDueSummary,
@@ -42,6 +46,8 @@ type SummaryBlockProps = {
   planningBudgetRemaining?: number;
   /** Saldos activos Efectivo + Débito (API resumen). */
   fundingWalletBalanceTotal?: number;
+  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto. */
+  fundingNetVsPendingExpense?: number;
 };
 
 const statusPillClass: Record<
@@ -70,6 +76,7 @@ export default function SummaryBlock({
   planningPayrollLoanDeduction = null,
   planningBudgetRemaining = 0,
   fundingWalletBalanceTotal = 0,
+  fundingNetVsPendingExpense = 0,
 }: SummaryBlockProps) {
   const headerMeta =
     period != null ? getFortnightSummaryHeader(period) : null;
@@ -87,6 +94,16 @@ export default function SummaryBlock({
   /** Ingreso menos compromiso (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
   const statusPill = getFortnightStatusPill(trasPagarPlaneado);
+
+  /**
+   * Liquidez (billeteras vs pendiente) solo en la quincena calendario en curso
+   * o la inmediata siguiente.
+   */
+  const fundingNetApplies =
+    year != null && month != null && period != null
+      ? isCalendarFortnightCurrent(year, month, period) ||
+        isCalendarFortnightNext(year, month, period)
+      : true;
 
   const compositionRows = getDueToPayComposition({
     pagado,
@@ -140,6 +157,8 @@ export default function SummaryBlock({
           incomeRemainder={trasPagarPlaneado}
           dueToPay={comprometidoEfectivo}
           fundingInAccounts={fundingWalletBalanceTotal}
+          fundingLiquidity={fundingNetVsPendingExpense}
+          fundingLiquidityApplies={fundingNetApplies}
           paidAmount={pagado}
           pendingAmount={pendiente}
           cashCommittedAmount={cashCommitted}
