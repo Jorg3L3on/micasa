@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -8,11 +15,11 @@ import {
   CheckCircle2,
   CircleSlash,
   Clock,
-  Eye,
   History,
   HandCoins,
   Landmark,
   Loader2,
+  MoreVertical,
   Pause,
   Pencil,
   Play,
@@ -27,6 +34,20 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -67,7 +88,13 @@ import {
   undoLenderPayment,
 } from '@/lib/api/lenders';
 import LenderPayDialog from '@/components/loans/LenderPayDialog';
+import { LenderGroupedLoansTable } from '@/components/loans/LenderGroupedLoansTable';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import { inferLenderProviderIconKey } from '@/lib/finance/lender-identity';
+import {
+  MONTHLY_ICON_PILL_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import {
   isValidCalendarDateString,
   todayCalendarDate,
@@ -725,7 +752,14 @@ export default function LoansPage() {
     if (!name) return;
     setNewLenderSubmitting(true);
     try {
-      const created = await createLender({ name }, context);
+      const providerIconKey = inferLenderProviderIconKey(name);
+      const created = await createLender(
+        {
+          name,
+          ...(providerIconKey ? { providerIconKey } : {}),
+        },
+        context,
+      );
       toast.success(`Prestamista ${created.name} creado`);
       setNewLenderOpen(false);
       setNewLenderName('');
@@ -1222,13 +1256,15 @@ export default function LoansPage() {
         </div>
       </ToolbarFiltersPortal>
 
-      <div className="rounded-xl border border-border/60 bg-card shadow-sm">
-        {loading ? (
+      {loading ? (
+        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
           <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden data-icon="inline-start" />
             Cargando préstamos...
           </div>
-        ) : loadError ? (
+        </div>
+      ) : loadError ? (
+        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
           <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
               <AlertTriangle className="h-5 w-5" aria-hidden data-icon="inline-start" />
@@ -1248,7 +1284,9 @@ export default function LoansPage() {
               Reintentar
             </Button>
           </div>
-        ) : loans.length === 0 ? (
+        </div>
+      ) : loans.length === 0 ? (
+        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
           <EmptyState
             message="No tienes préstamos registrados."
             description="Crea un préstamo para ver sus pagos en el inicio."
@@ -1257,216 +1295,42 @@ export default function LoansPage() {
               onClick: openCreateLoan,
             }}
           />
-        ) : visibleLoans.length === 0 ? (
+        </div>
+      ) : visibleLoans.length === 0 ? (
+        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
           <EmptyState
             message="No hay préstamos en este filtro."
             description="Cambia el estado seleccionado para revisar el resto del historial."
           />
-        ) : (
-          <ul className="divide-y divide-border/60">
-            {visibleLoans.some((loan) => loan.lenderId == null) ? (
-              <li className="space-y-3 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Sin prestamista
-                </p>
-                <ul className="space-y-1.5">
-                  {visibleLoans
-                    .filter((loan) => loan.lenderId == null)
-                    .map((loan) => (
-                      <li
-                        key={loan.id}
-                        className="flex flex-wrap items-center gap-2 rounded-lg border border-border/50 px-3 py-2"
-                      >
-                        <span className="min-w-0 flex-1 truncate text-sm">
-                          {loan.name}
-                        </span>
-                        <span className="font-mono text-xs font-semibold tabular-nums">
-                          {formatCurrency(loan.remainingAmount)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-[10px]"
-                          onClick={() => {
-                            resetLoanDetailDrafts();
-                            setSelectedLoanId(loan.id);
-                          }}
-                          aria-label={`Ver detalle de ${loan.name}`}
-                        >
-                          Detalle
-                        </Button>
-                      </li>
-                    ))}
-                </ul>
-              </li>
-            ) : null}
-            {visibleLenders.map((lender) => {
-              const lenderLoans = visibleLoans.filter(
-                (loan) => loan.lenderId === lender.id,
-              );
-              const canPay = lender.payWindow.canPay;
-              return (
-                <li key={lender.id} className="space-y-3 p-4">
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                    <div className="flex min-w-0 flex-1 gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/25 dark:text-sky-300">
-                        <Landmark className="h-4 w-4" aria-hidden />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-semibold text-foreground">
-                          {lender.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {lender.activeContractCount} contrato
-                          {lender.activeContractCount === 1 ? '' : 's'}
-                          {lender.payrollOnly ? ' · Nómina' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 xl:min-w-[24rem]">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Pendiente
-                        </p>
-                        <p className="font-mono text-sm font-bold tabular-nums">
-                          {formatCurrency(lender.remainingPrincipal)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Próximo
-                        </p>
-                        <p className="font-mono text-sm font-bold tabular-nums">
-                          {formatCurrency(lender.payWindow.amount)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {lender.payWindow.isRange
-                            ? 'Varios vencimientos'
-                            : lender.payWindow.commitmentDate
-                              ? formatDate(lender.payWindow.commitmentDate)
-                              : lender.payrollOnly
-                                ? 'Se descuenta del ingreso'
-                                : 'Sin pago de caja'}
-                        </p>
-                      </div>
-                      <div className="col-span-2 flex justify-end sm:col-span-1">
-                        {canPay ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                            onClick={() => {
-                              setPayError(null);
-                              setPayLenderId(lender.id);
-                            }}
-                          >
-                            Pagar a {lender.name}
-                          </Button>
-                        ) : (
-                          <p className="self-center text-[10px] text-muted-foreground">
-                            {lender.payrollOnly
-                              ? 'Sin Pagar de caja'
-                              : 'Sin cuotas de billetera'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {lenderLoans.map((loan) => {
-                      const Icon =
-                        loan.type === 'PAYROLL' ? Landmark : HandCoins;
-                      return (
-                        <li
-                          key={loan.id}
-                          className={cn(
-                            'flex flex-wrap items-center gap-2 rounded-lg border border-border/50 px-3 py-2',
-                            loan.status === 'PAUSED' && 'bg-amber-500/5',
-                            loan.status === 'CANCELLED' && 'bg-muted/40 opacity-80',
-                          )}
-                        >
-                          <Icon
-                            className="h-3.5 w-3.5 text-muted-foreground"
-                            aria-hidden
-                          />
-                          <span className="min-w-0 flex-1 truncate text-sm">
-                            {loan.name}
-                          </span>
-                          {loan.paymentSource === 'PAYROLL_DEDUCTION' ? (
-                            <Badge variant="secondary" className="h-5 text-[10px]">
-                              Nómina
-                            </Badge>
-                          ) : null}
-                          <Badge
-                            variant={
-                              loan.status === 'ACTIVE' ? 'default' : 'secondary'
-                            }
-                            className="h-5 text-[10px]"
-                          >
-                            {statusLabel(loan.status)}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground">
-                            {loan.paidPayments}/{loan.paymentCount}
-                          </span>
-                          <span className="font-mono text-xs font-semibold tabular-nums">
-                            {formatCurrency(loan.remainingAmount)}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[10px]"
-                            onClick={() => {
-                              resetLoanDetailDrafts();
-                              setSelectedLoanId(loan.id);
-                            }}
-                            aria-label={`Ver detalle de ${loan.name}`}
-                          >
-                            Detalle
-                          </Button>
-                        </li>
-                      );
-                    })}
-                    {lender.recentPayments && lender.recentPayments[0] ? (
-                      <li className="flex items-center justify-between px-1 pt-1 text-[10px] text-muted-foreground">
-                        <span>
-                          Último pago {formatDate(lender.recentPayments[0].paidAt)} ·{' '}
-                          {formatCurrency(lender.recentPayments[0].amount)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-[10px]"
-                          onClick={() => {
-                            void undoLenderPayment(
-                              lender.id,
-                              lender.recentPayments![0]!.id,
-                              context,
-                            ).then(async () => {
-                              toast.success('Se deshizo el pago consolidado');
-                              await loadData();
-                            }).catch((error: unknown) => {
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : 'No se pudo deshacer el pago',
-                              );
-                            });
-                          }}
-                        >
-                          Deshacer último pago
-                        </Button>
-                      </li>
-                    ) : null}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+        </div>
+      ) : (
+        <LenderGroupedLoansTable
+          lenders={visibleLenders}
+          loans={visibleLoans}
+          onOpenLoan={(loanId) => {
+            resetLoanDetailDrafts();
+            setSelectedLoanId(loanId);
+          }}
+          onPayLender={(lenderId) => {
+            setPayError(null);
+            setPayLenderId(lenderId);
+          }}
+          onUndoLastPayment={(lenderId, paymentId) => {
+            void undoLenderPayment(lenderId, paymentId, context)
+              .then(async () => {
+                toast.success('Se deshizo el pago consolidado');
+                await loadData();
+              })
+              .catch((error: unknown) => {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : 'No se pudo deshacer el pago',
+                );
+              });
+          }}
+        />
+      )}
 
       <Dialog
         open={dialogOpen}
@@ -1962,12 +1826,12 @@ export default function LoansPage() {
           <DialogContent className="flex max-h-[92dvh] max-w-[calc(100%-0.75rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(92dvh,44rem)] sm:max-w-3xl lg:max-w-[52rem]">
             <DialogHeader className="border-b border-border/60 px-4 py-3 pr-12 text-left sm:px-5">
               <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-text ring-1 ring-primary/20">
-                  <HandCoins className="h-5 w-5" aria-hidden data-icon="inline-start" />
+                <span className={MONTHLY_ICON_PILL_CLASS}>
+                  <HandCoins className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <DialogTitle className="truncate text-base font-semibold sm:text-lg">
+                    <DialogTitle className="truncate font-[family-name:var(--font-display)] text-base font-semibold sm:text-lg">
                       {selectedLoan.name}
                     </DialogTitle>
                     <Badge
@@ -1994,7 +1858,7 @@ export default function LoansPage() {
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
               <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
                 <aside className="order-2 space-y-3 lg:sticky lg:top-0 lg:order-1 lg:max-h-[calc(min(92dvh,44rem)-5.5rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-                  <section className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                  <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-3')}>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Acciones
                     </p>
@@ -2108,7 +1972,7 @@ export default function LoansPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                  <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-4')}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2118,7 +1982,7 @@ export default function LoansPage() {
                           {formatCurrency(selectedLoan.remainingAmount)}
                         </p>
                       </div>
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+                      <span className={MONTHLY_ICON_PILL_CLASS}>
                         <Landmark className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </span>
                     </div>
@@ -2142,8 +2006,8 @@ export default function LoansPage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <div className="rounded-lg bg-muted/35 p-2.5">
+                    <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3">
+                      <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Pagado
                         </p>
@@ -2151,7 +2015,7 @@ export default function LoansPage() {
                           {formatCurrency(selectedLoan.paidAmount)}
                         </p>
                       </div>
-                      <div className="rounded-lg bg-muted/35 p-2.5">
+                      <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Total
                         </p>
@@ -2159,7 +2023,7 @@ export default function LoansPage() {
                           {formatCurrency(selectedLoan.totalPayable)}
                         </p>
                       </div>
-                      <div className="rounded-lg bg-muted/35 p-2.5">
+                      <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Pago
                         </p>
@@ -2167,7 +2031,7 @@ export default function LoansPage() {
                           {formatCurrency(selectedLoan.paymentAmount)}
                         </p>
                       </div>
-                      <div className="rounded-lg bg-muted/35 p-2.5">
+                      <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Inicio
                         </p>
@@ -2208,7 +2072,7 @@ export default function LoansPage() {
                   </section>
 
                   {lifecycleDraft ? (
-                    <section className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                    <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-3')}>
                       <div className="flex gap-3">
                         <span
                           className={cn(
@@ -2279,7 +2143,7 @@ export default function LoansPage() {
 
                 <section className="order-1 min-w-0 space-y-4 lg:order-2">
                   {loanEditOpen && loanEditForm ? (
-                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                    <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-4')}>
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-foreground">
@@ -2535,11 +2399,11 @@ export default function LoansPage() {
                     </div>
                   ) : null}
 
-                  <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+                  <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
                     <div className="border-b border-border/60 p-3 sm:p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h3 className="text-sm font-semibold text-foreground">
+                          <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold text-foreground">
                             Calendario de pagos
                           </h3>
                           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -2567,7 +2431,7 @@ export default function LoansPage() {
                         ).map(([status, label]) => (
                           <span
                             key={status}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-muted-foreground"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground"
                           >
                             {label}
                             <span className="font-mono font-semibold tabular-nums text-foreground">
@@ -2578,50 +2442,71 @@ export default function LoansPage() {
                       </div>
                     </div>
 
-                    <div className="p-3 sm:p-4">
+                    <div className="p-0 sm:p-0">
                       {selectedLoanPayments.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+                        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                           Este préstamo todavía no tiene pagos programados.
                         </div>
                       ) : (
-                        <ul className="space-y-2" role="list">
-                          {selectedLoanPayments.map((payment) => {
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead className="w-12">#</TableHead>
+                              <TableHead>Vence</TableHead>
+                              <TableHead>Estado</TableHead>
+                              <TableHead>Origen</TableHead>
+                              <TableHead className="text-right">Monto</TableHead>
+                              <TableHead className="text-right">
+                                <span className="sr-only">Acciones</span>
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {selectedLoanPayments.map((payment) => {
                             const visualStatus = getPaymentVisualStatus(
                               payment,
                               todayYmd,
                             );
                             const tone = paymentStatusTone(visualStatus);
-                            const StatusIcon = tone.icon;
                             const isActionOpen =
                               paymentActionDraft?.paymentId === payment.id;
-                            const paymentSource =
-                              payment.sourceWalletName ??
-                              selectedLoanPaymentSource;
                             const isPayrollDeductionLoan =
                               selectedLoan.paymentSource === 'PAYROLL_DEDUCTION';
+                            const originShort = isPayrollDeductionLoan
+                              ? selectedLoan.incomeTemplateName ?? 'Nómina'
+                              : payment.sourceWalletName ??
+                                selectedLoan.sourceWalletName ??
+                                'Billetera';
 
                             return (
-                              <li
-                                key={payment.id}
-                                className={cn(
-                                  'grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start',
-                                  tone.row,
-                                )}
-                              >
-                                <span
+                              <Fragment key={payment.id}>
+                                <TableRow
                                   className={cn(
-                                    'flex h-9 w-9 items-center justify-center rounded-xl ring-1',
-                                    tone.iconBox,
+                                    visualStatus === 'paid' &&
+                                      'bg-muted/20 opacity-90',
+                                    visualStatus === 'overdue' &&
+                                      'bg-destructive/5',
                                   )}
                                 >
-                                  <StatusIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
-                                </span>
-
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="text-sm font-semibold text-foreground">
-                                      Pago #{payment.sequence}
-                                    </p>
+                                  <TableCell className="font-medium tabular-nums">
+                                    {payment.sequence}
+                                  </TableCell>
+                                  <TableCell className="whitespace-normal">
+                                    <span className="block text-foreground">
+                                      {formatDate(payment.dueDate)}
+                                    </span>
+                                    {payment.paidAt ? (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Pagado {formatDate(payment.paidAt)}
+                                      </span>
+                                    ) : null}
+                                    {payment.note ? (
+                                      <span className="mt-0.5 block text-[10px] text-foreground/80">
+                                        {payment.note}
+                                      </span>
+                                    ) : null}
+                                  </TableCell>
+                                  <TableCell className="whitespace-normal">
                                     <span
                                       className={cn(
                                         'inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-bold uppercase tracking-wider',
@@ -2630,137 +2515,133 @@ export default function LoansPage() {
                                     >
                                       {paymentStatusLabel(visualStatus)}
                                     </span>
-                                  </div>
-                                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                                    <span>Vence {formatDate(payment.dueDate)}</span>
-                                    {payment.paidAt ? (
-                                      <span>
-                                        Pagado {formatDate(payment.paidAt)}
-                                      </span>
-                                    ) : null}
-                                    <span>{paymentSource}</span>
-                                    <span className="inline-flex items-center gap-1">
-                                      <ReceiptText
-                                        className="h-3 w-3"
-                                        aria-hidden data-icon="inline-start" />
-                                      {payment.linkedExpenseId
-                                        ? `Gasto #${payment.linkedExpenseId}`
-                                        : 'Sin gasto vinculado'}
-                                    </span>
-                                  </div>
-                                  {payment.note ? (
-                                    <p className="mt-1 text-xs text-foreground/80">
-                                      {payment.note}
-                                    </p>
-                                  ) : null}
-                                </div>
-
-                                <div className="col-span-2 flex items-center justify-between gap-3 border-t border-border/50 pt-2 sm:col-span-1 sm:block sm:border-t-0 sm:pt-0 sm:text-right">
-                                  <p className="font-mono text-sm font-bold tabular-nums text-foreground">
-                                    {formatCurrency(payment.amount)}
-                                  </p>
-                                  {payment.status === 'SCHEDULED' ? (
-                                    <div className="grid grid-cols-2 gap-1 sm:mt-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-1.5">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px]"
-                                        onClick={() =>
-                                          startPaymentAction(payment, 'MARK_PAID')
-                                        }
-                                        disabled={paymentActionSubmitting}
-                                      >
-                                        <CheckCircle2
+                                    {payment.linkedExpenseId ? (
+                                      <span className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                                        <ReceiptText
                                           className="h-3 w-3"
                                           aria-hidden
                                           data-icon="inline-start"
                                         />
-                                        Pagar
-                                      </Button>
+                                        Gasto #{payment.linkedExpenseId}
+                                      </span>
+                                    ) : null}
+                                  </TableCell>
+                                  <TableCell className="min-w-[6.5rem] max-w-[11rem] whitespace-normal text-muted-foreground">
+                                    {originShort}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <span className="font-mono text-sm font-semibold tabular-nums">
+                                      {formatCurrency(payment.amount)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {payment.status === 'SCHEDULED' ? (
+                                      <div className="inline-flex items-center justify-end gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 gap-1 px-2 text-[11px]"
+                                          onClick={() =>
+                                            startPaymentAction(
+                                              payment,
+                                              'MARK_PAID',
+                                            )
+                                          }
+                                          disabled={paymentActionSubmitting}
+                                        >
+                                          <CheckCircle2
+                                            className="h-3 w-3"
+                                            aria-hidden
+                                            data-icon="inline-start"
+                                          />
+                                          Pagar
+                                        </Button>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8"
+                                              aria-label={`Más acciones para el pago ${payment.sequence}`}
+                                              disabled={paymentActionSubmitting}
+                                            >
+                                              <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="w-44">
+                                            <DropdownMenuItem
+                                              disabled={paymentActionSubmitting}
+                                              onClick={() =>
+                                                startPaymentAction(
+                                                  payment,
+                                                  'MARK_PAID_EXTERNAL',
+                                                )
+                                              }
+                                            >
+                                              <History className="h-4 w-4" />
+                                              Ya pagado
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                              disabled={paymentActionSubmitting}
+                                              onClick={() =>
+                                                startPaymentAction(
+                                                  payment,
+                                                  'SKIP',
+                                                )
+                                              }
+                                            >
+                                              <CircleSlash className="h-4 w-4" />
+                                              Omitir
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                              variant="destructive"
+                                              disabled={paymentActionSubmitting}
+                                              onClick={() =>
+                                                startPaymentAction(
+                                                  payment,
+                                                  'CANCEL',
+                                                )
+                                              }
+                                            >
+                                              <CircleSlash className="h-4 w-4" />
+                                              Cancelar
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    ) : null}
+                                    {payment.status === 'PAID' ? (
                                       <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px]"
+                                        className="h-8 gap-1 px-2 text-[11px]"
                                         onClick={() =>
                                           startPaymentAction(
                                             payment,
-                                            'MARK_PAID_EXTERNAL',
+                                            'MARK_SCHEDULED',
                                           )
                                         }
                                         disabled={paymentActionSubmitting}
-                                        aria-label="Registrar pago histórico sin mover billetera"
                                       >
-                                        <History
+                                        <Undo2
                                           className="h-3 w-3"
                                           aria-hidden
                                           data-icon="inline-start"
                                         />
-                                        Ya pagado
+                                        Deshacer
                                       </Button>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px] text-muted-foreground"
-                                        onClick={() =>
-                                          startPaymentAction(payment, 'SKIP')
-                                        }
-                                        disabled={paymentActionSubmitting}
-                                      >
-                                        <CircleSlash
-                                          className="h-3 w-3"
-                                          aria-hidden
-                                          data-icon="inline-start"
-                                        />
-                                        Omitir
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 min-w-0 justify-center gap-1 px-1.5 text-[10px] text-destructive hover:text-destructive"
-                                        onClick={() =>
-                                          startPaymentAction(payment, 'CANCEL')
-                                        }
-                                        disabled={paymentActionSubmitting}
-                                      >
-                                        <CircleSlash
-                                          className="h-3 w-3"
-                                          aria-hidden
-                                          data-icon="inline-start"
-                                        />
-                                        Cancelar
-                                      </Button>
-                                    </div>
-                                  ) : null}
-                                  {payment.status === 'PAID' ? (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 gap-1 px-2 text-[10px] sm:mt-2"
-                                      onClick={() =>
-                                        startPaymentAction(
-                                          payment,
-                                          'MARK_SCHEDULED',
-                                        )
-                                      }
-                                      disabled={paymentActionSubmitting}
-                                    >
-                                      <Undo2
-                                        className="h-3 w-3"
-                                        aria-hidden
-                                        data-icon="inline-start"
-                                      />
-                                      Deshacer
-                                    </Button>
-                                  ) : null}
-                                </div>
-
+                                    ) : null}
+                                  </TableCell>
+                                </TableRow>
                                 {isActionOpen && paymentActionDraft ? (
-                                  <div className="col-span-2 rounded-xl border border-border/60 bg-background p-3 shadow-sm sm:col-span-3">
+                                  <TableRow className="hover:bg-transparent">
+                                    <TableCell
+                                      colSpan={6}
+                                      className="whitespace-normal bg-muted/20"
+                                    >
                                     <div className="flex items-start gap-3">
                                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-text ring-1 ring-primary/20">
                                         <CheckCircle2
@@ -3003,12 +2884,14 @@ export default function LoansPage() {
                                         )}
                                       </Button>
                                     </div>
-                                  </div>
+                                    </TableCell>
+                                  </TableRow>
                                 ) : null}
-                              </li>
+                              </Fragment>
                             );
                           })}
-                        </ul>
+                          </TableBody>
+                        </Table>
                       )}
                     </div>
                   </div>
