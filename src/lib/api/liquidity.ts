@@ -1,7 +1,10 @@
 'use client';
 
 import type { FinanceContextType } from '@/types/finance-context';
-import type { LiquidityProjectionResponse } from '@/types/catalog';
+import type {
+  LiquidityDebtBreakdown,
+  LiquidityProjectionResponse,
+} from '@/types/catalog';
 import {
   buildOwnerQuery,
   getClientApiBaseUrl,
@@ -43,6 +46,27 @@ const appendLiquiditySearchParams = (
     search.set('includeTemplates', 'true');
   }
 };
+
+export const emptyLiquidityDebtBreakdown = (): LiquidityDebtBreakdown => ({
+  debtTotal: 0,
+  plazosTotal: 0,
+  restoTotal: 0,
+  loansTotal: 0,
+  cardCount: 0,
+  loanCount: 0,
+  topConcepts: [],
+  accounts: [],
+});
+
+export async function fetchLiquidityDebtBreakdown(
+  context?: FinanceContextType,
+): Promise<LiquidityDebtBreakdown> {
+  return clientFetchFromApi<LiquidityDebtBreakdown>(
+    '/api/wallets/liquidity-debt-breakdown',
+    undefined,
+    context,
+  );
+}
 
 export async function fetchLiquidityProjection(
   params: FetchLiquidityProjectionParams,

@@ -649,3 +649,12 @@ export type CreditCardInstallmentPlanItem = {
 export type CreditCardInstallmentPlansResponse = {
   items: CreditCardInstallmentPlanItem[];
 };
+
+export type {
+  DebtAccountBreakdown,
+  DebtBreakdownConcept,
+  DebtWhyBlock,
+  DebtWhyLine,
+  LiquidityDebtBreakdown,
+} from '@/lib/finance/liquidity-debt-breakdown';
+
