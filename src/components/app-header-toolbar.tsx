@@ -267,6 +267,7 @@ export default function AppHeaderToolbar() {
           <DropdownMenuItem
             key={item.key}
             onClick={item.onClick}
+            disabled={item.disabled}
             className="cursor-pointer"
             variant={item.destructive ? 'destructive' : 'default'}
           >

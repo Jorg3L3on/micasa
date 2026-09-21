@@ -42,6 +42,7 @@ export type ToolbarOverflowItem = {
   onClick: () => void;
   icon?: ReactNode;
   destructive?: boolean;
+  disabled?: boolean;
 };
 
 export type ToolbarOverflowConfig = {
@@ -70,6 +71,7 @@ type ToolbarActionsDispatch = {
   setSearchMode: (open: boolean) => void;
   setFiltersMountNode: (node: HTMLElement | null) => void;
   register: (next: ToolbarActionsRegistration) => void;
+  registerOverflow: (next: ToolbarOverflowConfig | null) => void;
   clear: () => void;
 };
 
@@ -146,7 +148,8 @@ function sameOverflow(
       item.label === other.label &&
       item.onClick === other.onClick &&
       item.icon === other.icon &&
-      item.destructive === other.destructive
+      item.destructive === other.destructive &&
+      item.disabled === other.disabled
     );
   });
 }
@@ -168,15 +171,31 @@ export function ToolbarActionsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const registerOverflow = useCallback((next: ToolbarOverflowConfig | null) => {
+    const nextOverflow =
+      next && next.items.length > 0 ? next : null;
+    setState((prev) => {
+      if (sameOverflow(prev.overflow, nextOverflow)) return prev;
+      return { ...prev, overflow: nextOverflow };
+    });
+  }, []);
+
   const register = useCallback((next: ToolbarActionsRegistration) => {
     const nextSearch = next.search ?? null;
     const nextFilters = next.filters ?? null;
     const nextPrimary = next.primaryAction ?? null;
     const nextLeading = next.leadingAction ?? null;
-    const nextOverflow =
+    const overflowProvided = Object.prototype.hasOwnProperty.call(
+      next,
+      'overflow',
+    );
+    const providedOverflow =
       next.overflow && next.overflow.items.length > 0 ? next.overflow : null;
 
     setState((prev) => {
+      const nextOverflow = overflowProvided
+        ? providedOverflow
+        : prev.overflow;
       if (
         sameSearch(prev.search, nextSearch) &&
         sameFilters(prev.filters, nextFilters) &&
@@ -206,8 +225,14 @@ export function ToolbarActionsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const dispatch = useMemo<ToolbarActionsDispatch>(
-    () => ({ setSearchMode, setFiltersMountNode, register, clear }),
-    [setSearchMode, setFiltersMountNode, register, clear],
+    () => ({
+      setSearchMode,
+      setFiltersMountNode,
+      register,
+      registerOverflow,
+      clear,
+    }),
+    [setSearchMode, setFiltersMountNode, register, registerOverflow, clear],
   );
 
   return (
@@ -260,6 +285,10 @@ export function useRegisterToolbarActions(
   const leadingHref = registration.leadingAction?.href;
   const leadingIcon = registration.leadingAction?.icon;
   const overflowItems = registration.overflow?.items;
+  const overflowProvided = Object.prototype.hasOwnProperty.call(
+    registration,
+    'overflow',
+  );
   const hasSearch = registration.search != null;
   const hasFilters = registration.filters != null;
   const hasPrimary = registration.primaryAction != null;
@@ -267,7 +296,7 @@ export function useRegisterToolbarActions(
   const hasOverflow = Boolean(overflowItems && overflowItems.length > 0);
 
   useLayoutEffect(() => {
-    register({
+    const next: ToolbarActionsRegistration = {
       search:
         hasSearch && searchOnChange
           ? {
@@ -300,8 +329,12 @@ export function useRegisterToolbarActions(
               icon: leadingIcon,
             }
           : null,
-      overflow: hasOverflow && overflowItems ? { items: overflowItems } : null,
-    });
+    };
+    if (overflowProvided) {
+      next.overflow =
+        hasOverflow && overflowItems ? { items: overflowItems } : null;
+    }
+    register(next);
   }, [
     register,
     hasSearch,
@@ -322,11 +355,35 @@ export function useRegisterToolbarActions(
     leadingHref,
     leadingIcon,
     overflowItems,
+    overflowProvided,
   ]);
 
   useLayoutEffect(() => {
     return () => clear();
   }, [clear]);
+}
+
+/**
+ * Register overflow items without replacing primary/search/filters.
+ * Clears only overflow on unmount so nested pages can keep the parent CTA.
+ */
+export function useRegisterToolbarOverflow(items: ToolbarOverflowItem[]) {
+  const dispatch = useContext(ToolbarDispatchContext);
+  if (!dispatch) {
+    throw new Error(
+      'useRegisterToolbarOverflow must be used within a ToolbarActionsProvider',
+    );
+  }
+
+  const { registerOverflow } = dispatch;
+
+  useLayoutEffect(() => {
+    registerOverflow(items.length > 0 ? { items } : null);
+  }, [registerOverflow, items]);
+
+  useLayoutEffect(() => {
+    return () => registerOverflow(null);
+  }, [registerOverflow]);
 }
 
 /** Renders filter UI into the open toolbar filters sheet/dropdown slot. */

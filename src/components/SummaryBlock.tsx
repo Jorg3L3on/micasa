@@ -4,11 +4,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Wallet,
@@ -31,9 +26,9 @@ import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentM
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import {
   getDueToPayComposition,
-  getFortnightStatusPill,
   getFortnightSummaryHeader,
 } from '@/components/monthly/fortnight-summary-header';
+import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import type {
   FundingWalletBreakdownItem,
@@ -43,6 +38,7 @@ import type {
   PlannerPayrollLoanDeductionSummary,
   PlannerWalletLoanDueSummary,
 } from '@/types/catalog';
+import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import {
   formatFortnightDateRangeCompact,
   isCalendarFortnightCurrent,
@@ -93,23 +89,15 @@ type SummaryBlockProps = {
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
+  /** Presupuesto de la quincena; en móvil se muestra dentro del desglose. */
+  budgetPanel?: MonthlyBudgetPanelResult | null;
+  budgetOwnerQuery?: string;
   onEditIncome?: () => void;
   onEditIncomeSource?: (
     id: number,
     amount: number,
     categoryId: number | null,
   ) => void;
-};
-
-const statusPillClass: Record<
-  ReturnType<typeof getFortnightStatusPill>['tone'],
-  string
-> = {
-  shortfall:
-    'border-destructive/40 bg-destructive/10 text-destructive dark:bg-destructive/15',
-  surplus:
-    'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  even: 'border-border/60 bg-muted/40 text-muted-foreground',
 };
 
 export default function SummaryBlock({
@@ -133,6 +121,8 @@ export default function SummaryBlock({
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
+  budgetPanel = null,
+  budgetOwnerQuery = '',
   onEditIncome,
   onEditIncomeSource,
 }: SummaryBlockProps) {
@@ -158,7 +148,6 @@ export default function SummaryBlock({
 
   /** Ingreso menos compromiso (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
-  const statusPill = getFortnightStatusPill(trasPagarPlaneado);
 
   /**
    * Liquidez actual solo en la quincena calendario en curso
@@ -212,59 +201,19 @@ export default function SummaryBlock({
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
       <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
-              <BarChart3 className="h-4 w-4" data-icon="inline-start" />
-            </span>
-            <div className="min-w-0">
-              <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
-                {headerMeta?.title ?? 'Resumen de la quincena'}
-              </CardTitle>
-              {dateRange ? (
-                <p className="mt-0.5 text-[11px] leading-none text-muted-foreground sm:text-xs">
-                  {dateRange}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide',
-                statusPillClass[statusPill.tone],
-              )}
-            >
-              {statusPill.label}
-            </span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleToggleExpanded}
-                  className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary-text"
-                  aria-expanded={isExpanded}
-                  aria-label={
-                    isExpanded
-                      ? 'Ocultar qué incluye toca pagar'
-                      : 'Ver qué incluye toca pagar'
-                  }
-                >
-                  <ChevronRight
-                    className={cn(
-                      'h-4 w-4 transition-transform duration-200',
-                      isExpanded && 'rotate-90',
-                    )}
-                    aria-hidden
-                    data-icon="inline-end"
-                  />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6} align="end">
-                {isExpanded ? 'Ocultar desglose' : 'Qué incluye toca pagar'}
-              </TooltipContent>
-            </Tooltip>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
+            <BarChart3 className="h-4 w-4" data-icon="inline-start" />
+          </span>
+          <div className="min-w-0">
+            <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
+              {headerMeta?.title ?? 'Resumen de la quincena'}
+            </CardTitle>
+            {dateRange ? (
+              <p className="mt-0.5 text-[11px] leading-none text-muted-foreground sm:text-xs">
+                {dateRange}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -290,13 +239,9 @@ export default function SummaryBlock({
           onClick={handleToggleExpanded}
           className="flex w-full items-center justify-between gap-2 rounded-lg py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
           aria-expanded={isExpanded}
-          aria-label={
-            isExpanded
-              ? 'Ocultar qué incluye toca pagar'
-              : 'Ver qué incluye toca pagar'
-          }
+          aria-label={isExpanded ? 'Ocultar desglose' : 'Ver desglose'}
         >
-          <span>Qué incluye toca pagar</span>
+          <span>{isExpanded ? 'Ocultar desglose' : 'Ver desglose'}</span>
           <ChevronRight
             className={cn(
               'h-4 w-4 shrink-0 transition-transform duration-200',
@@ -444,6 +389,16 @@ export default function SummaryBlock({
                 quincena (lo aún no gastado del sobre); lo ya gastado entra en
                 Pagado.
               </p>
+            ) : null}
+
+            {budgetPanel != null ? (
+              <div className="xl:hidden">
+                <MonthlyBudgetSidebar
+                  panel={budgetPanel}
+                  ownerQuery={budgetOwnerQuery}
+                  variant="embedded"
+                />
+              </div>
             ) : null}
 
             {planningOrphanCardPayments != null &&

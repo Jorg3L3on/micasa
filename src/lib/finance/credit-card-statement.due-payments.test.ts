@@ -246,6 +246,41 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toEqual([]);
   });
 
+  it('keeps same-day corte/pago due in the planner month (Liverpool Jorge)', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 8, 20, 15, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 30,
+        name: 'Liverpool Jorge',
+        type: 'DEPARTMENT_STORE_CARD',
+        amount: 5666.01,
+        cutoff_day: 13,
+        due_day: 13,
+      },
+    ]);
+    queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    findFirstFortnight
+      .mockResolvedValueOnce({ id: 41 })
+      .mockResolvedValueOnce({ id: 42 });
+    findManyPaymentPlans.mockResolvedValue([]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 10);
+
+    expect(result.first).toHaveLength(1);
+    expect(result.first[0]).toMatchObject({
+      walletId: 30,
+      statementDueDate: '2026-10-13',
+      visibleDueDate: '2026-10-13',
+    });
+    expect(result.second).toEqual([]);
+  });
+
   it('keeps a fully paid planner statement visible when the card balance is zero', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 16, 15, 0, 0)));
     findManyWallets.mockResolvedValue([

@@ -25,6 +25,22 @@ describe('resolveCreditCardStatementWindow', () => {
   });
 });
 
+describe('due on cutoff: same-day corte and pago', () => {
+  it('asOf on the cutoff rolls the due date into next month', () => {
+    const asOf = parseCalendarDate('2026-10-13');
+    const w = resolveCreditCardStatementWindow(asOf, 13, 13);
+    expect(toYmd(w.statementEnd)).toBe('2026-10-13');
+    expect(toYmd(w.statementDueDate)).toBe('2026-11-13');
+  });
+
+  it('asOf the day before cutoff keeps the due date in this month', () => {
+    const asOf = parseCalendarDate('2026-10-12');
+    const w = resolveCreditCardStatementWindow(asOf, 13, 13);
+    expect(toYmd(w.statementEnd)).toBe('2026-09-13');
+    expect(toYmd(w.statementDueDate)).toBe('2026-10-13');
+  });
+});
+
 describe('due before cutoff: open-cycle projection (doc)', () => {
   it('corte 15 / pago 8: while asOf is inside currentCycle, due date precedes the next cutoff in the month', () => {
     const asOf = parseCalendarDate('2026-05-04');
