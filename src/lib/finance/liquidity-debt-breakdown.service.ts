@@ -94,6 +94,7 @@ export const getLiquidityDebtBreakdown = async (
         installment_amount: true,
         total_installments: true,
         paid_installments: true,
+        already_in_card_balance: true,
         payments: {
           where: { status: 'SCHEDULED' },
           select: { amount: true },
@@ -146,6 +147,7 @@ export const getLiquidityDebtBreakdown = async (
           0,
         ),
         monthlyAmount: toMoney(plan.installment_amount),
+        alreadyInCardBalance: plan.already_in_card_balance,
       }),
     );
 

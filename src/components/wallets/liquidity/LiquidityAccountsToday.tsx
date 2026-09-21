@@ -256,6 +256,7 @@ export const LiquidityAccountsToday = ({
   const [breakdown, setBreakdown] = useState<LiquidityDebtBreakdown>(
     emptyLiquidityDebtBreakdown(),
   );
+  const [breakdownError, setBreakdownError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
   const [openWhyIds, setOpenWhyIds] = useState<string[]>([]);
@@ -267,18 +268,33 @@ export const LiquidityAccountsToday = ({
       return;
     }
     try {
-      const [walletList, loanList, debtBreakdown] = await Promise.all([
+      const [walletResult, loanResult, breakdownResult] = await Promise.allSettled([
         clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
         listLoans(context),
-        fetchLiquidityDebtBreakdown(context).catch(() => emptyLiquidityDebtBreakdown()),
+        fetchLiquidityDebtBreakdown(context),
       ]);
-      setWallets(Array.isArray(walletList) ? walletList : []);
-      setLoans(Array.isArray(loanList) ? loanList : []);
-      setBreakdown(debtBreakdown);
+      setWallets(
+        walletResult.status === 'fulfilled' && Array.isArray(walletResult.value)
+          ? walletResult.value
+          : [],
+      );
+      setLoans(
+        loanResult.status === 'fulfilled' && Array.isArray(loanResult.value)
+          ? loanResult.value
+          : [],
+      );
+      if (breakdownResult.status === 'fulfilled') {
+        setBreakdown(breakdownResult.value);
+        setBreakdownError(false);
+      } else {
+        setBreakdown(emptyLiquidityDebtBreakdown());
+        setBreakdownError(true);
+      }
     } catch {
       setWallets([]);
       setLoans([]);
       setBreakdown(emptyLiquidityDebtBreakdown());
+      setBreakdownError(true);
     } finally {
       setLoading(false);
     }
@@ -313,12 +329,25 @@ export const LiquidityAccountsToday = ({
     router.push(`/loans?${params.toString()}`);
   };
 
+  const handleOpenCard = (walletId: number) => {
+    const params = buildOwnerQuery(context);
+    router.push(`/credit-cards/${walletId}?${params.toString()}`);
+  };
+
   const handleEditOrOpen = (row: AccountTodayRow) => {
     if (row.kind === 'wallet') {
       handleEditWallet(row.wallet);
       return;
     }
     handleOpenLoan(row.loan.id);
+  };
+
+  const handleWhyMore = (account: DebtAccountBreakdown) => {
+    if (account.kind === 'loan') {
+      handleOpenLoan(account.accountId);
+      return;
+    }
+    handleOpenCard(account.accountId);
   };
 
   const handleMobileSelect = (row: AccountTodayRow) => {
@@ -418,6 +447,10 @@ export const LiquidityAccountsToday = ({
           <>
             <LiquidityDebtSummaryStrip
               breakdown={breakdown}
+              error={breakdownError}
+              onRetry={() => {
+                void load();
+              }}
               className="mx-4 mb-3 sm:mx-5"
             />
 
@@ -569,7 +602,10 @@ export const LiquidityAccountsToday = ({
                           </div>
                           <CollapsibleContent>
                             <div className="px-5 pb-4 pl-[3.25rem]">
-                              <LiquidityAccountDebtWhy account={account} />
+                              <LiquidityAccountDebtWhy
+                                account={account}
+                                onMore={() => handleWhyMore(account)}
+                              />
                             </div>
                           </CollapsibleContent>
                         </Collapsible>
@@ -626,7 +662,10 @@ export const LiquidityAccountsToday = ({
                   {mobileWhyAccount.preview || 'De qué está hecha esta deuda'}
                 </SheetDescription>
               </SheetHeader>
-              <LiquidityAccountDebtWhy account={mobileWhyAccount} />
+              <LiquidityAccountDebtWhy
+                account={mobileWhyAccount}
+                onMore={() => handleWhyMore(mobileWhyAccount)}
+              />
               <SheetFooter className="px-0 pt-4">
                 <Button
                   type="button"

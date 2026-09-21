@@ -6,13 +6,17 @@ export const DEBT_TOP_CONCEPT_CAP = 3;
 
 export type DebtWhyKind = 'msi' | 'plan' | 'cycle' | 'prior' | 'loan_payment';
 
+export type DebtWhyAmountKind = 'balance' | 'monthly';
+
 export type DebtWhyLine = {
   id: string;
   kind: DebtWhyKind;
   title: string;
   subtitle: string;
   amount: number;
+  amountKind?: DebtWhyAmountKind;
   monthlyAmount?: number;
+  remainingAmount?: number;
   current?: number;
   total?: number;
   dueDate?: string;
@@ -25,6 +29,8 @@ export type DebtWhyBlock = {
   key: DebtWhyBlockKey;
   title: string;
   total: number;
+  /** Remaining plazos not sitting in today's card saldo. */
+  beyondBalance: number;
   lines: DebtWhyLine[];
   moreCount: number;
   moreAmount: number;
@@ -60,14 +66,20 @@ export type LiquidityDebtBreakdown = {
   accounts: DebtAccountBreakdown[];
 };
 
+export type DebtCompositionPart = {
+  key: 'plazos' | 'resto' | 'loans';
+  label: string;
+  amount: number;
+};
+
 export const roundMoney = (value: number): number =>
   Math.round((Number(value) || 0) * 100) / 100;
 
-/** Cuotas que faltan, incluyendo la cuota en curso (4 de 12 → 9). */
+/** Remaining cuotas after the current one, matching statement projection (`total - current`). */
 export const remainingInstallments = (current: number, total: number): number => {
   if (!Number.isFinite(current) || !Number.isFinite(total) || total <= 0) return 0;
   if (current >= total) return 0;
-  return total - Math.max(0, current) + (current > 0 ? 1 : 0);
+  return Math.max(0, total - current);
 };
 
 export const remainingInstallmentAmount = (
@@ -88,7 +100,9 @@ export const capWhyLines = (
   return {
     lines: lines.slice(0, cap),
     moreCount: hidden.length,
-    moreAmount: roundMoney(hidden.reduce((sum, line) => sum + line.amount, 0)),
+    moreAmount: roundMoney(
+      hidden.reduce((sum, line) => sum + (line.remainingAmount ?? line.amount), 0),
+    ),
   };
 };
 
@@ -106,26 +120,58 @@ export const formatCardDebtPreview = (
   return parts.join(' · ');
 };
 
-export const formatLoanDebtPreview = (
-  remainingPayments: number,
-  nextDueDate: string | null,
-  nextAmount: number | null,
-): string => {
+export const formatLoanDebtPreview = (input: {
+  remainingPayments: number;
+  overdueCount: number;
+  nextDueDate: string | null;
+  nextAmount: number | null;
+  nextIsOverdue: boolean;
+}): string => {
   const parts: string[] = [];
-  if (remainingPayments > 0) {
-    parts.push(remainingPayments === 1 ? '1 cuota' : `${remainingPayments} cuotas`);
+  if (input.remainingPayments > 0) {
+    parts.push(
+      input.remainingPayments === 1 ? '1 cuota' : `${input.remainingPayments} cuotas`,
+    );
   }
-  if (nextDueDate) {
-    parts.push(`próxima ${formatDate(nextDueDate)}`);
+  if (input.overdueCount > 0) {
+    parts.push(
+      input.overdueCount === 1 ? '1 vencida' : `${input.overdueCount} vencidas`,
+    );
   }
-  if (nextAmount != null && nextAmount > 0) {
-    parts.push(formatCurrency(nextAmount));
+  if (input.nextDueDate && !input.nextIsOverdue) {
+    parts.push(`siguiente ${formatDate(input.nextDueDate)}`);
+  }
+  if (input.nextAmount != null && input.nextAmount > 0) {
+    parts.push(formatCurrency(input.nextAmount));
   }
   return parts.join(' · ');
 };
 
+export const formatPlazosFootnote = (
+  inSaldo: number,
+  beyondBalance: number,
+): string | null => {
+  if (beyondBalance <= 0) return null;
+  return `En el saldo de hoy ${formatCurrency(inSaldo)}. A meses quedan ${formatCurrency(roundMoney(inSaldo + beyondBalance))}.`;
+};
+
+export const debtCompositionParts = (
+  breakdown: Pick<LiquidityDebtBreakdown, 'plazosTotal' | 'restoTotal' | 'loansTotal'>,
+): DebtCompositionPart[] =>
+  (
+    [
+      { key: 'plazos', label: 'Plazos', amount: breakdown.plazosTotal },
+      { key: 'resto', label: 'Resto de tarjetas', amount: breakdown.restoTotal },
+      { key: 'loans', label: 'Préstamos', amount: breakdown.loansTotal },
+    ] as const
+  ).filter((part) => part.amount > 0);
+
 const sortLinesByAmount = (lines: DebtWhyLine[]): DebtWhyLine[] =>
-  [...lines].sort((a, b) => b.amount - a.amount || a.title.localeCompare(b.title, 'es'));
+  [...lines].sort(
+    (a, b) =>
+      (b.remainingAmount ?? b.amount) - (a.remainingAmount ?? a.amount) ||
+      a.title.localeCompare(b.title, 'es'),
+  );
 
 export type CardMsiInput = {
   id: number;
@@ -142,6 +188,8 @@ export type CardPlanInput = {
   total: number;
   remainingAmount: number;
   monthlyAmount: number;
+  /** False when the plan was added without raising wallet.amount. */
+  alreadyInCardBalance?: boolean;
 };
 
 export type CardCycleInput = {
@@ -150,6 +198,21 @@ export type CardCycleInput = {
   amount: number;
   date: string;
 };
+
+const emptyCardAccount = (
+  walletId: number,
+  name: string,
+): DebtAccountBreakdown => ({
+  id: `wallet-${walletId}`,
+  kind: 'card',
+  accountId: walletId,
+  name,
+  debt: 0,
+  plazosTotal: 0,
+  restoTotal: 0,
+  preview: '',
+  blocks: [],
+});
 
 export const composeCardDebtAccount = (input: {
   walletId: number;
@@ -160,21 +223,10 @@ export const composeCardDebtAccount = (input: {
   cycle: readonly CardCycleInput[];
 }): DebtAccountBreakdown => {
   const outstanding = roundMoney(Math.max(0, input.outstanding));
-  if (outstanding <= 0) {
-    return {
-      id: `wallet-${input.walletId}`,
-      kind: 'card',
-      accountId: input.walletId,
-      name: input.name,
-      debt: 0,
-      plazosTotal: 0,
-      restoTotal: 0,
-      preview: '',
-      blocks: [],
-    };
-  }
+  if (outstanding <= 0) return emptyCardAccount(input.walletId, input.name);
 
   const plazosLines: DebtWhyLine[] = [];
+  let inBalanceRemaining = 0;
 
   for (const item of input.msi) {
     if (item.current >= item.total) continue;
@@ -184,13 +236,16 @@ export const composeCardDebtAccount = (input: {
       item.monthlyAmount,
     );
     if (remaining <= 0) continue;
+    inBalanceRemaining = roundMoney(inBalanceRemaining + remaining);
     plazosLines.push({
       id: `msi-${item.id}`,
       kind: 'msi',
       title: item.title.trim() || 'Compra a meses',
       subtitle: `${item.current} de ${item.total} · ${formatCurrency(item.monthlyAmount)}/mes`,
       amount: remaining,
+      amountKind: 'balance',
       monthlyAmount: roundMoney(item.monthlyAmount),
+      remainingAmount: remaining,
       current: item.current,
       total: item.total,
     });
@@ -199,6 +254,10 @@ export const composeCardDebtAccount = (input: {
   for (const plan of input.plans) {
     const remaining = roundMoney(plan.remainingAmount);
     if (remaining <= 0) continue;
+    const inBalance = plan.alreadyInCardBalance !== false;
+    if (inBalance) {
+      inBalanceRemaining = roundMoney(inBalanceRemaining + remaining);
+    }
     const leftLabel =
       plan.total > 0 && plan.current > 0
         ? `${plan.current} de ${plan.total}`
@@ -207,16 +266,30 @@ export const composeCardDebtAccount = (input: {
       id: `plan-${plan.id}`,
       kind: 'plan',
       title: plan.title.trim() || 'Plan a meses',
-      subtitle: `${leftLabel} · ${formatCurrency(plan.monthlyAmount)}/mes`,
-      amount: remaining,
+      subtitle: inBalance
+        ? `${leftLabel} · ${formatCurrency(plan.monthlyAmount)}/mes`
+        : `${leftLabel} · ${formatCurrency(plan.monthlyAmount)}/mes · aún no está en el saldo`,
+      amount: inBalance ? remaining : roundMoney(plan.monthlyAmount),
+      amountKind: inBalance ? 'balance' : 'monthly',
       monthlyAmount: roundMoney(plan.monthlyAmount),
+      remainingAmount: remaining,
       current: plan.current,
       total: plan.total,
     });
   }
 
-  const plazosAmount = roundMoney(plazosLines.reduce((sum, line) => sum + line.amount, 0));
-  const restoTotal = roundMoney(Math.max(0, outstanding - plazosAmount));
+  const plazosInSaldo = roundMoney(Math.min(inBalanceRemaining, outstanding));
+  const beyondBalance = roundMoney(Math.max(0, inBalanceRemaining - outstanding));
+  const restoTotal = roundMoney(Math.max(0, outstanding - plazosInSaldo));
+  const overshoot = beyondBalance > 0;
+
+  if (overshoot) {
+    for (const line of plazosLines) {
+      if (line.amountKind === 'monthly') continue;
+      line.amountKind = 'monthly';
+      line.amount = line.monthlyAmount ?? line.amount;
+    }
+  }
 
   const cycleLines: DebtWhyLine[] = input.cycle
     .filter((item) => item.amount > 0)
@@ -226,6 +299,7 @@ export const composeCardDebtAccount = (input: {
       title: item.title.trim() || 'Cargo',
       subtitle: item.date ? formatDate(item.date) : 'Ciclo actual',
       amount: roundMoney(item.amount),
+      amountKind: 'balance' as const,
       dueDate: item.date || undefined,
     }));
 
@@ -238,6 +312,7 @@ export const composeCardDebtAccount = (input: {
       title: 'Saldo anterior',
       subtitle: 'Adeudo que no está en el ciclo abierto',
       amount: roundMoney(restoTotal - cycleSum),
+      amountKind: 'balance',
     });
   }
 
@@ -246,7 +321,8 @@ export const composeCardDebtAccount = (input: {
     blocks.push({
       key: 'plazos',
       title: 'En plazos',
-      total: Math.min(plazosAmount, outstanding) || plazosAmount,
+      total: plazosInSaldo,
+      beyondBalance,
       ...capWhyLines(sortLinesByAmount(plazosLines)),
     });
   }
@@ -255,6 +331,7 @@ export const composeCardDebtAccount = (input: {
       key: 'resto',
       title: 'El resto',
       total: restoTotal,
+      beyondBalance: 0,
       ...capWhyLines(restoLines),
     });
   } else if (restoTotal > 0) {
@@ -262,6 +339,7 @@ export const composeCardDebtAccount = (input: {
       key: 'resto',
       title: 'El resto',
       total: restoTotal,
+      beyondBalance: 0,
       lines: [
         {
           id: `prior-${input.walletId}`,
@@ -269,6 +347,7 @@ export const composeCardDebtAccount = (input: {
           title: 'Saldo anterior',
           subtitle: 'Adeudo revolvente de la tarjeta',
           amount: restoTotal,
+          amountKind: 'balance',
         },
       ],
       moreCount: 0,
@@ -282,7 +361,7 @@ export const composeCardDebtAccount = (input: {
     accountId: input.walletId,
     name: input.name,
     debt: outstanding,
-    plazosTotal: Math.min(plazosAmount, outstanding),
+    plazosTotal: plazosInSaldo,
     restoTotal,
     preview: formatCardDebtPreview(plazosLines.length, restoTotal),
     blocks,
@@ -311,6 +390,11 @@ export const composeLoanDebtAccount = (input: {
     .filter((payment) => payment.status === 'SCHEDULED' || payment.status === 'SKIPPED')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
+  const overdueCount = upcoming.filter((payment) => payment.dueDate < input.todayYmd).length;
+  const nextFuture = upcoming.find((payment) => payment.dueDate >= input.todayYmd);
+  const next = nextFuture ?? upcoming[0];
+  const nextIsOverdue = Boolean(next && next.dueDate < input.todayYmd);
+
   const lines: DebtWhyLine[] = upcoming.map((payment) => {
     const overdue = payment.dueDate < input.todayYmd;
     return {
@@ -319,6 +403,7 @@ export const composeLoanDebtAccount = (input: {
       title: overdue ? 'Cuota vencida' : 'Por pagar',
       subtitle: formatDate(payment.dueDate),
       amount: roundMoney(payment.amount),
+      amountKind: 'balance' as const,
       dueDate: payment.dueDate,
       status: overdue ? 'overdue' : 'scheduled',
     };
@@ -326,13 +411,20 @@ export const composeLoanDebtAccount = (input: {
 
   const visible = lines.slice(0, DEBT_LOAN_UPCOMING_CAP);
   const hidden = lines.slice(DEBT_LOAN_UPCOMING_CAP);
+  const title =
+    overdueCount === 0
+      ? 'Próximas cuotas'
+      : nextFuture
+        ? 'Vencidas y próximas'
+        : 'Cuotas vencidas';
   const blocks: DebtWhyBlock[] =
     lines.length > 0
       ? [
           {
             key: 'cuotas',
-            title: 'Próximas cuotas',
+            title,
             total: debt,
+            beyondBalance: 0,
             lines: visible,
             moreCount: hidden.length,
             moreAmount: roundMoney(hidden.reduce((sum, line) => sum + line.amount, 0)),
@@ -348,11 +440,13 @@ export const composeLoanDebtAccount = (input: {
     debt,
     plazosTotal: 0,
     restoTotal: 0,
-    preview: formatLoanDebtPreview(
-      input.remainingPayments,
-      input.nextDueDate,
-      input.nextAmount,
-    ),
+    preview: formatLoanDebtPreview({
+      remainingPayments: input.remainingPayments,
+      overdueCount,
+      nextDueDate: next?.dueDate ?? input.nextDueDate,
+      nextAmount: next ? roundMoney(next.amount) : input.nextAmount,
+      nextIsOverdue,
+    }),
     blocks,
   };
 };

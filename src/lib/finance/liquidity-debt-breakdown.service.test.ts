@@ -85,6 +85,7 @@ describe('getLiquidityDebtBreakdown', () => {
         total_installments: 6,
         paid_installments: 1,
         payments: [{ amount: 600 }],
+        already_in_card_balance: true,
       },
     ]);
     listLoansByOwner.mockResolvedValue([
@@ -125,8 +126,9 @@ describe('getLiquidityDebtBreakdown', () => {
     ]);
 
     const didi = breakdown.accounts.find((account) => account.id === 'wallet-7');
-    expect(didi?.plazosTotal).toBe(2400);
-    expect(didi?.restoTotal).toBe(3444);
+    expect(didi?.plazosTotal).toBe(2200);
+    expect(didi?.restoTotal).toBe(3644);
+    expect(didi?.plazosTotal + didi!.restoTotal).toBe(didi?.debt);
     expect(didi?.blocks.map((block) => block.key)).toEqual(['plazos', 'resto']);
     expect(didi?.preview).toContain('2 plazos');
 
