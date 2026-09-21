@@ -143,6 +143,7 @@ describe('composeCardDebtAccount', () => {
     expect(plazos?.beyondBalance).toBe(8500 + 3600 - 1179.43);
     expect(plazos?.lines.every((line) => line.amountKind === 'monthly')).toBe(true);
     expect(plazos?.lines.map((line) => line.amount)).toEqual([850, 1200]);
+    expect(plazos?.lines.map((line) => line.subtitle)).toEqual(['2 de 12', '3 de 6']);
     expect(formatPlazosFootnote(plazos!.total, plazos!.beyondBalance)).toContain(
       'saldo de hoy',
     );

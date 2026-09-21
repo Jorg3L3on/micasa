@@ -268,7 +268,7 @@ export const composeCardDebtAccount = (input: {
       title: plan.title.trim() || 'Plan a meses',
       subtitle: inBalance
         ? `${leftLabel} · ${formatCurrency(plan.monthlyAmount)}/mes`
-        : `${leftLabel} · ${formatCurrency(plan.monthlyAmount)}/mes · aún no está en el saldo`,
+        : `${leftLabel} · aún no está en el saldo`,
       amount: inBalance ? remaining : roundMoney(plan.monthlyAmount),
       amountKind: inBalance ? 'balance' : 'monthly',
       monthlyAmount: roundMoney(plan.monthlyAmount),
@@ -281,10 +281,14 @@ export const composeCardDebtAccount = (input: {
   const plazosInSaldo = roundMoney(Math.min(inBalanceRemaining, outstanding));
   const beyondBalance = roundMoney(Math.max(0, inBalanceRemaining - outstanding));
   const restoTotal = roundMoney(Math.max(0, outstanding - plazosInSaldo));
-  const overshoot = beyondBalance > 0;
 
-  if (overshoot) {
+  if (beyondBalance > 0) {
     for (const line of plazosLines) {
+      if (line.current != null && line.total != null) {
+        line.subtitle = line.subtitle.includes('aún no está en el saldo')
+          ? `${line.current} de ${line.total} · aún no está en el saldo`
+          : `${line.current} de ${line.total}`;
+      }
       if (line.amountKind === 'monthly') continue;
       line.amountKind = 'monthly';
       line.amount = line.monthlyAmount ?? line.amount;
