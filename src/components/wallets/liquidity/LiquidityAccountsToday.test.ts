@@ -203,4 +203,43 @@ describe('buildAccountsToday', () => {
       badge: { label: '8 cuotas', tone: 'amber' },
     });
   });
+
+  it('infers card logos from the wallet name when provider_icon_key is missing', () => {
+    expect(
+      toAccountTodayView({
+        kind: 'wallet',
+        wallet: wallet({ id: 1, name: 'BBVA Jorge', type: 'CASH', amount: 10 }),
+      }).providerIconKey,
+    ).toBe('BBVA');
+    expect(
+      toAccountTodayView({
+        kind: 'wallet',
+        wallet: wallet({ id: 2, name: 'DIDI Card', type: 'CREDIT_CARD', amount: 10 }),
+      }).providerIconKey,
+    ).toBe('DIDI');
+    expect(
+      toAccountTodayView({
+        kind: 'wallet',
+        wallet: wallet({ id: 3, name: 'C&A Departamental', type: 'DEPARTMENT_STORE_CARD', amount: 10 }),
+      }).providerIconKey,
+    ).toBe('CA');
+    expect(
+      toAccountTodayView({
+        kind: 'wallet',
+        wallet: wallet({ id: 4, name: 'Efectivo', type: 'CASH', amount: 10 }),
+      }).providerIconKey,
+    ).toBe('CASH_GENERIC');
+    expect(
+      toAccountTodayView({
+        kind: 'wallet',
+        wallet: wallet({
+          id: 5,
+          name: 'Otro',
+          type: 'CREDIT_CARD',
+          amount: 10,
+          provider_icon_key: 'NU_BANK',
+        }),
+      }).providerIconKey,
+    ).toBe('NU_BANK');
+  });
 });

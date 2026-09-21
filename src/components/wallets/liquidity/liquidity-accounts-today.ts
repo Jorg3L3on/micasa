@@ -186,6 +186,16 @@ export const buildAccountsToday = (
   ...sortLoansToday(loans).map((loan) => ({ kind: 'loan' as const, loan })),
 ];
 
+const resolveWalletProviderIconKey = (wallet: WalletListItem): string | null => {
+  const fromNameOrStored = inferLenderProviderIconKey(
+    wallet.name,
+    wallet.provider_icon_key,
+  );
+  if (fromNameOrStored) return fromNameOrStored;
+  if (wallet.type === 'CASH') return 'CASH_GENERIC';
+  return null;
+};
+
 export const toAccountTodayView = (row: AccountTodayRow): AccountTodayView => {
   if (row.kind === 'wallet') {
     const figures = getAccountLiveFigures(row.wallet);
@@ -196,7 +206,7 @@ export const toAccountTodayView = (row: AccountTodayRow): AccountTodayView => {
       typeLabel:
         PAYMENT_METHOD_LABELS[row.wallet.type as keyof typeof PAYMENT_METHOD_LABELS] ??
         row.wallet.type,
-      providerIconKey: row.wallet.provider_icon_key ?? null,
+      providerIconKey: resolveWalletProviderIconKey(row.wallet),
       isFonacot: false,
       figures,
       badge: figures.isCredit
