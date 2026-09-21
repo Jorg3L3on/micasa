@@ -69,6 +69,7 @@ describe('planning loan surface parity', () => {
       sourceWalletId: null,
       sourceWalletName: null,
       linkedExpenseId: null,
+      lenderPaymentId: null,
     };
     const wallet: LoanPlanningPayment = {
       id: 2,
@@ -83,6 +84,7 @@ describe('planning loan surface parity', () => {
       sourceWalletId: 3,
       sourceWalletName: 'BBVA',
       linkedExpenseId: null,
+      lenderPaymentId: null,
     };
 
     const parts = partitionLoanPaymentsForPlanningTotals([payroll, wallet]);
@@ -138,6 +140,7 @@ describe('planning loan surface parity', () => {
         sourceWalletId: 3,
         sourceWalletName: 'BBVA',
         linkedExpenseId: 99,
+        lenderPaymentId: null,
       },
     ]);
 

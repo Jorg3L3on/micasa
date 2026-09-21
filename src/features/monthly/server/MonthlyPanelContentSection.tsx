@@ -96,6 +96,7 @@ export const MonthlyPanelContentSection = async ({
     <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
       <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
         <MonthlyFortnightView
+          key={ownerKey}
           ownerKey={ownerKey}
           year={year}
           month={month}
@@ -179,6 +180,7 @@ export const MonthlyPanelContentSuspense = (
   props: MonthlyPanelContentSectionProps,
 ) => (
   <Suspense
+    key={props.ownerKey}
     fallback={
       <MonthlyPanelContentFallback
         wallets={props.shell.wallets}

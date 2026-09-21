@@ -20,7 +20,7 @@ export type FortnightIncomeGaugeSegments = {
 };
 
 /**
- * Segmentos del gauge: efectivo → presupuesto (violet) → libre (sky).
+ * Segmentos del gauge: compromiso (electric blue) → presupuesto (violet) → libre (teal).
  * Si efectivo + presupuesto > 100 %, se recorta el presupuesto en pantalla.
  */
 export const getFortnightIncomeGaugeSegments = (

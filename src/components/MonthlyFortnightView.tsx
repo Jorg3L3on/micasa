@@ -7,7 +7,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import { useFinanceContext } from '@/context/finance-context';
 import { isGoalWalletType } from '@/domain/payment-method';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import {
+  clientFetchFromApi,
+  isOwnerContextPending,
+} from '@/lib/api/client-fetch';
 import type {
   DuePaymentItem,
   PlannerCardChargesSummary,
@@ -115,6 +118,7 @@ export default function MonthlyFortnightView({
 }: MonthlyFortnightViewProps) {
   const { period } = useMonthlyPanelPreferences();
   const { context } = useFinanceContext();
+  const ownerPending = isOwnerContextPending(context, ownerKey);
 
   const [firstBundle, setFirstBundle] = useState(first);
   const [secondBundle, setSecondBundle] = useState(second);
@@ -128,7 +132,7 @@ export default function MonthlyFortnightView({
   useEffect(() => {
     setFirstBundle(first);
     setSecondBundle(second);
-  }, [first, second]);
+  }, [first, second, ownerKey]);
 
   const prefetchInactivePeriod = useCallback(
     async (inactivePeriod: FortnightPeriod) => {
@@ -168,16 +172,23 @@ export default function MonthlyFortnightView({
   }, [ownerKey, year, month, serverLoadedPeriod]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || ownerPending) return;
 
     const bundle = period === 'FIRST' ? firstBundle : secondBundle;
     if (bundle.summary == null) {
       void prefetchInactivePeriod(period);
     }
-  }, [period, firstBundle, secondBundle, loading, prefetchInactivePeriod]);
+  }, [
+    period,
+    firstBundle,
+    secondBundle,
+    loading,
+    ownerPending,
+    prefetchInactivePeriod,
+  ]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || ownerPending) return;
     if (inactivePrefetchedRef.current) return;
 
     const inactiveBundle =
@@ -197,6 +208,7 @@ export default function MonthlyFortnightView({
     firstBundle,
     inactivePeriod,
     loading,
+    ownerPending,
     prefetchInactivePeriod,
     secondBundle,
   ]);
@@ -215,7 +227,7 @@ export default function MonthlyFortnightView({
   );
 
   const walletStripSection =
-    stripWallets.length > 0 ? (
+    !ownerPending && stripWallets.length > 0 ? (
       <div className="mb-7 min-w-0">
         <WalletBalanceStrip
           wallets={stripWallets}
@@ -227,7 +239,10 @@ export default function MonthlyFortnightView({
     ) : null;
 
   const columnLoading =
-    loading || loadingPeriod === period || activeBundle.summary == null;
+    loading ||
+    ownerPending ||
+    loadingPeriod === period ||
+    activeBundle.summary == null;
 
   if (columnLoading || activeBundle.summary == null) {
     return (
@@ -255,7 +270,7 @@ export default function MonthlyFortnightView({
       {walletStripSection}
 
       <FortnightColumn
-        key={`${ownerKey}-${year}-${month}-${period}`}
+        key={`${ownerKey}-${year}-${month}-${period}-${activeBundle.fortnightId}`}
         label={activeBundle.label}
         transactions={activeBundle.transactions}
         summary={activeSummary}

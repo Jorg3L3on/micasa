@@ -1,188 +1,347 @@
 'use client';
 
-import { Info } from 'lucide-react';
-import { FortnightIncomeGauge } from '@/components/monthly/FortnightIncomeGauge';
+import {
+  getFortnightRemainderCopy,
+  type DueToPayCompositionRow,
+} from '@/components/monthly/fortnight-summary-header';
+import { getFortnightIncomeGaugeSegments } from '@/components/monthly/fortnight-income-commitment';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn, formatCurrency } from '@/lib/utils';
+import { Info } from 'lucide-react';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
-  /** Ingresos menos pagado, pendiente y resto de presupuesto (vista planificación). */
+  /** Ingresos menos pagado, pendiente, nómina y resto de presupuesto. */
   incomeRemainder: number;
-  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto. */
-  fundingNetInAccounts: number;
-  /** Si false, se oculta la tarjeta de liquidez (solo aplica a quincena actual o siguiente). */
-  fundingNetApplies?: boolean;
-  /** Deducciones de nómina pendientes incluidas en incomeRemainder. */
-  payrollDeductionAmount?: number;
-  /** Resto del presupuesto de la quincena incluido en incomeRemainder / liquidez. */
-  budgetRemainingAmount?: number;
-  /** Pagado + pendiente + nómina (segmento del gauge distinto al presupuesto). */
-  cashCommittedAmount?: number;
-  showGauge: boolean;
+  /** Pagado + pendiente + nómina + presupuesto restante. */
+  dueToPay: number;
+  /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
+  fundingInAccounts: number;
+  /**
+   * Efectivo/débito menos pendiente, nómina y resto de presupuesto
+   * (“Liquidez actual” / billeteras vs pendiente).
+   */
+  fundingLiquidity?: number;
+  /** Si false, se oculta Liquidez actual (solo quincena actual o siguiente). */
+  fundingLiquidityApplies?: boolean;
+  paidAmount: number;
+  pendingAmount: number;
+  /** Pagado + pendiente + nómina (segmento de efectivo del compromiso). */
+  cashCommittedAmount: number;
+  expenseCount?: number;
+  paidExpenseCount?: number;
+  unpaidExpenseCount?: number;
+  compositionRows?: DueToPayCompositionRow[];
+  /** Resto del presupuesto de la quincena (“Del presupuesto”). */
+  leftoverAmount?: number;
 };
 
-const subBoxClass = 'orion-metric-tile';
+const remainderToneClass: Record<
+  ReturnType<typeof getFortnightRemainderCopy>['tone'],
+  string
+> = {
+  surplus: 'text-emerald-600 dark:text-emerald-400',
+  shortfall: 'text-destructive',
+  even: 'text-foreground',
+};
 
-const metricLabelClass =
-  'min-w-0 flex-1 text-[10px] font-semibold uppercase leading-snug tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-wider';
+const ratioToPercent = (ratio: number) =>
+  `${Math.max(0, Math.min(100, ratio * 100)).toFixed(4)}%`;
 
-const metricHint = (text: string) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <button
-        type="button"
-        className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-        aria-label={text}
+type CommitmentBarProps = {
+  periodIncome: number;
+  paidAmount: number;
+  cashCommittedAmount: number;
+  leftoverAmount: number;
+};
+
+const CommitmentBar = ({
+  periodIncome,
+  paidAmount,
+  cashCommittedAmount,
+  leftoverAmount,
+}: CommitmentBarProps) => {
+  const { cashRatio, budgetRatio, freeRatio, totalCommittedPercent } =
+    getFortnightIncomeGaugeSegments(
+      periodIncome,
+      cashCommittedAmount,
+      leftoverAmount,
+    );
+
+  const cashTotal = Math.max(0, cashCommittedAmount);
+  const paidShare = cashTotal > 0 ? Math.max(0, paidAmount) / cashTotal : 0;
+  const pendingShare = cashTotal > 0 ? 1 - paidShare : 0;
+  const paidRatio = cashRatio * paidShare;
+  const pendingRatio = cashRatio * pendingShare + budgetRatio;
+
+  if (periodIncome <= 0 && totalCommittedPercent === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div
+        className="flex h-2 w-full overflow-hidden rounded-full bg-muted/50"
+        role="progressbar"
+        aria-valuenow={totalCommittedPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${totalCommittedPercent}% del ingreso comprometido`}
       >
-        <Info className="h-3 w-3" aria-hidden data-icon="inline-end" />
-      </button>
-    </TooltipTrigger>
-    <TooltipContent side="top" className="max-w-[16rem] text-xs">
-      {text}
-    </TooltipContent>
-  </Tooltip>
-);
+        {paidRatio > 0.0001 ? (
+          <div
+            className="h-full bg-emerald-500 transition-[width] duration-500 dark:bg-emerald-400"
+            style={{ width: ratioToPercent(paidRatio) }}
+          />
+        ) : null}
+        {pendingRatio > 0.0001 ? (
+          <div
+            className="h-full bg-amber-400 transition-[width] duration-500 dark:bg-amber-500"
+            style={{ width: ratioToPercent(pendingRatio) }}
+          />
+        ) : null}
+        {freeRatio > 0.0001 ? (
+          <div
+            className="h-full bg-teal-500/80 transition-[width] duration-500 dark:bg-[#2dd4bf]/80"
+            style={{ width: ratioToPercent(freeRatio) }}
+          />
+        ) : null}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        <span className="font-mono font-semibold tabular-nums text-foreground">
+          {totalCommittedPercent}%
+        </span>{' '}
+        comprometido
+      </p>
+    </div>
+  );
+};
 
-type MetricCardProps = {
+type DueToPayLabelProps = {
+  compositionRows: DueToPayCompositionRow[];
+};
+
+const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
+  if (compositionRows.length === 0) {
+    return <span>Toca pagar</span>;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span>Toca pagar</span>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
+            aria-label="Qué incluye toca pagar"
+          >
+            <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          sideOffset={6}
+          className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-background/70">
+            Qué incluye
+          </p>
+          <ul className="space-y-1">
+            {compositionRows.map((row) => (
+              <li
+                key={row.label}
+                className="flex items-baseline justify-between gap-3 text-xs"
+              >
+                <span className="text-background/85">{row.label}</span>
+                <span className="font-mono tabular-nums">
+                  {formatCurrency(row.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
+    </span>
+  );
+};
+
+type MetricTileProps = {
   label: string;
-  hint: string;
   amount: number;
-  amountClassName: string;
+  subtitle: string;
+  borderClassName: string;
   dotClassName: string;
 };
 
-const MetricCard = ({
+const MetricTile = ({
   label,
-  hint,
   amount,
-  amountClassName,
+  subtitle,
+  borderClassName,
   dotClassName,
-}: MetricCardProps) => (
-  <div className={subBoxClass}>
-    <div className="mb-1 flex items-start gap-1.5">
+}: MetricTileProps) => (
+  <div
+    className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] px-2.5 py-2', borderClassName)}
+  >
+    <div className="mb-1 flex items-center gap-1.5">
       <span
-        className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', dotClassName)}
+        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
         aria-hidden
       />
-      <span className={metricLabelClass}>{label}</span>
-      {metricHint(hint)}
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
     </div>
-    <p
-      className={cn(
-        'font-mono text-base font-bold tabular-nums sm:text-lg',
-        amountClassName,
-      )}
-    >
+    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
       {formatCurrency(amount)}
     </p>
+    <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitle}</p>
   </div>
 );
 
 export const FortnightSummaryHero = ({
   periodIncome,
   incomeRemainder,
-  fundingNetInAccounts,
-  fundingNetApplies = true,
-  payrollDeductionAmount = 0,
-  budgetRemainingAmount = 0,
-  cashCommittedAmount = 0,
-  showGauge,
+  dueToPay,
+  fundingInAccounts,
+  fundingLiquidity = 0,
+  fundingLiquidityApplies = true,
+  paidAmount,
+  pendingAmount,
+  cashCommittedAmount,
+  expenseCount = 0,
+  paidExpenseCount = 0,
+  unpaidExpenseCount = 0,
+  compositionRows = [],
+  leftoverAmount = 0,
 }: FortnightSummaryHeroProps) => {
-  const incomeRemainderHint = (() => {
-    const parts = ['lo pagado', 'lo pendiente planeado'];
-    if (payrollDeductionAmount > 0) parts.push('las deducciones de nómina');
-    if (budgetRemainingAmount > 0) parts.push('el presupuesto restante');
-    if (parts.length === 2) {
-      return 'Ingresos de la quincena menos lo pagado y lo pendiente planeado';
-    }
-    const last = parts.pop()!;
-    return `Ingresos menos ${parts.join(', ')} y ${last} de esta quincena`;
-  })();
+  const copy = getFortnightRemainderCopy(incomeRemainder);
+  const remainderAbs = Math.abs(incomeRemainder);
+  const showLeftover = leftoverAmount > 0;
+  const remainderClass = remainderToneClass[copy.tone];
 
-  const liquidityHint = (() => {
-    const parts = ['pendiente'];
-    if (payrollDeductionAmount > 0) parts.push('nómina');
-    if (budgetRemainingAmount > 0) parts.push('presupuesto restante');
-    if (parts.length === 1) {
-      return 'Saldo en efectivo y débito ahora, menos pendiente de esta quincena';
-    }
-    const last = parts.pop()!;
-    return `Saldo en efectivo y débito ahora, menos ${parts.join(', ')} y ${last} de esta quincena`;
-  })();
-
-  const gauge = showGauge ? (
-    <FortnightIncomeGauge
-      cashCommitted={cashCommittedAmount}
-      budgetRemaining={budgetRemainingAmount}
-      periodIncome={periodIncome}
-      className="mx-auto shrink-0 lg:mx-0"
-    />
-  ) : null;
-
-  const showBudgetAvailable = budgetRemainingAmount > 0;
-  const metricCount =
-    1 + (fundingNetApplies ? 1 : 0) + (showBudgetAvailable ? 1 : 0);
+  const paidSubtitle =
+    expenseCount > 0 ? `${paidExpenseCount}/${expenseCount}` : '—';
+  const pendingSubtitle =
+    expenseCount > 0
+      ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
+      : '—';
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
-      {gauge ? <div className="flex justify-center lg:hidden">{gauge}</div> : null}
-
-      <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
-        {gauge ? (
-          <div className="hidden shrink-0 lg:block">{gauge}</div>
-        ) : null}
-
-        <div
-          className={cn(
-            'grid min-w-0 flex-1 gap-2 sm:gap-3',
-            metricCount >= 3
-              ? 'grid-cols-2 sm:grid-cols-3'
-              : metricCount === 2
-                ? 'grid-cols-2'
-                : 'grid-cols-1',
-          )}
-        >
-          <MetricCard
-            label="Libre del ingreso"
-            hint={incomeRemainderHint}
-            amount={incomeRemainder}
-            dotClassName="bg-primary"
-            amountClassName={
-              incomeRemainder >= 0
-                ? 'text-primary-text'
-                : 'text-destructive'
-            }
-          />
-
-          {fundingNetApplies ? (
-            <MetricCard
-              label="Liquidez actual"
-              hint={liquidityHint}
-              amount={fundingNetInAccounts}
-              dotClassName="bg-emerald-500"
-              amountClassName={
-                fundingNetInAccounts < 0
-                  ? 'text-destructive'
-                  : 'text-emerald-700 dark:text-emerald-300'
-              }
-            />
-          ) : null}
-
-          {showBudgetAvailable ? (
-            <MetricCard
-              label="Disponible del presupuesto"
-              hint="Resto del presupuesto de esta quincena (asignado menos gastado)"
-              amount={budgetRemainingAmount}
-              dotClassName="bg-violet-500"
-              amountClassName="text-violet-700 dark:text-violet-200"
-            />
+    <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">Balance actual</p>
+          <p
+            className={cn(
+              'mt-1 font-[family-name:var(--font-display)] font-mono text-[1.85rem] font-bold leading-none tracking-tight tabular-nums sm:text-[2.15rem]',
+              fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground',
+            )}
+          >
+            {formatCurrency(fundingInAccounts)}
+          </p>
+          {fundingLiquidityApplies ? (
+            <div className="mt-2.5">
+              <p className="text-[11px] text-muted-foreground sm:text-xs">
+                Liquidez actual
+              </p>
+              <p
+                className={cn(
+                  'mt-0.5 font-mono text-base font-semibold tabular-nums sm:text-lg',
+                  fundingLiquidity < 0
+                    ? 'text-destructive'
+                    : 'text-emerald-700 dark:text-emerald-300',
+                )}
+              >
+                {formatCurrency(fundingLiquidity)}
+              </p>
+            </div>
           ) : null}
         </div>
+
+        <CommitmentBar
+          periodIncome={periodIncome}
+          paidAmount={paidAmount}
+          cashCommittedAmount={cashCommittedAmount}
+          leftoverAmount={leftoverAmount}
+        />
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <dl className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-4">
+            <dt className="text-sm text-muted-foreground">Entra</dt>
+            <dd className="font-mono text-sm font-medium tabular-nums text-foreground sm:text-[15px]">
+              {formatCurrency(periodIncome)}
+            </dd>
+          </div>
+
+          <div className="flex items-baseline justify-between gap-4">
+            <dt className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+              <span className="font-medium text-muted-foreground/80" aria-hidden>
+                −
+              </span>
+              <DueToPayLabel compositionRows={compositionRows} />
+            </dt>
+            <dd className="font-mono text-sm font-medium tabular-nums text-foreground sm:text-[15px]">
+              {formatCurrency(dueToPay)}
+            </dd>
+          </div>
+
+          <div className="border-t border-border/50 pt-2">
+            <div className="flex items-baseline justify-between gap-4">
+              <dt
+                className={cn(
+                  'flex items-center gap-1 text-sm font-semibold',
+                  remainderClass,
+                )}
+              >
+                <span aria-hidden>=</span>
+                <span>{copy.rowLabel}</span>
+              </dt>
+              <dd
+                className={cn(
+                  'font-mono text-sm font-bold tabular-nums sm:text-[15px]',
+                  remainderClass,
+                )}
+              >
+                {formatCurrency(remainderAbs)}
+              </dd>
+            </div>
+          </div>
+        </dl>
+
+        <div className="grid grid-cols-2 gap-2">
+          <MetricTile
+            label="Pagado"
+            amount={paidAmount}
+            subtitle={paidSubtitle}
+            borderClassName="border-l-emerald-500/50"
+            dotClassName="bg-emerald-500 dark:bg-emerald-400"
+          />
+          <MetricTile
+            label="Pendiente"
+            amount={pendingAmount}
+            subtitle={pendingSubtitle}
+            borderClassName="border-l-amber-500/50"
+            dotClassName="bg-amber-400 dark:bg-amber-500"
+          />
+        </div>
+
+        {showLeftover ? (
+          <div className="flex items-baseline justify-between gap-4 border-t border-border/50 pt-3">
+            <span className="text-sm text-muted-foreground">Del presupuesto</span>
+            <span className="font-mono text-sm font-medium tabular-nums text-foreground sm:text-[15px]">
+              {formatCurrency(leftoverAmount)}
+            </span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

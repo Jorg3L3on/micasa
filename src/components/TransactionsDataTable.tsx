@@ -18,20 +18,33 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate, formatCurrencySigned, formatCurrency, cn } from '@/lib/utils';
+import {
+  ToolbarFiltersPortal,
+  useRegisterToolbarActions,
+} from '@/context/toolbar-actions-context';
+import { formatDate, formatCurrencySigned, cn } from '@/lib/utils';
 import type { TransactionRow } from '@/types/catalog';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
   Wallet,
-  Receipt,
-  DollarSign,
-  X,
 } from 'lucide-react';
 
 const ALL_VALUE = '__all__';
+
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i + 1),
+  label: new Date(2000, i).toLocaleString('es-MX', { month: 'long' }),
+}));
+
+const TYPE_FILTER_CHIPS = [
+  { value: ALL_VALUE, label: 'Todos' },
+  { value: 'income', label: 'Ingreso' },
+  { value: 'expense', label: 'Gasto' },
+] as const;
+
+const FILTER_CHIP_CLASS =
+  'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors';
 
 type TransactionsDataTableProps = {
   transactions: TransactionRow[];
@@ -50,8 +63,14 @@ export default function TransactionsDataTable({
 
   const [categoryFilter, setCategoryFilter] = useState(ALL_VALUE);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState(ALL_VALUE);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(
+    () => Array.from({ length: 5 }, (_, i) => currentYear - 2 + i),
+    [currentYear],
+  );
 
   const categories = useMemo(
     () =>
@@ -76,6 +95,12 @@ export default function TransactionsDataTable({
 
   const filteredTransactions = useMemo(() => {
     let result = transactions;
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      result = result.filter((t) =>
+        t.description.toLowerCase().includes(query),
+      );
+    }
     if (categoryFilter !== ALL_VALUE) {
       result = result.filter((t) => t.category === categoryFilter);
     }
@@ -83,22 +108,7 @@ export default function TransactionsDataTable({
       result = result.filter((t) => t.paymentMethod === paymentMethodFilter);
     }
     return result;
-  }, [transactions, categoryFilter, paymentMethodFilter]);
-
-  const summary = useMemo(() => {
-    const incomeTotal = transactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    const expenseTotal = transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    return {
-      income: incomeTotal,
-      expenses: expenseTotal,
-      net: incomeTotal - expenseTotal,
-      count: transactions.length,
-    };
-  }, [transactions]);
+  }, [transactions, searchQuery, categoryFilter, paymentMethodFilter]);
 
   const handleServerFilter = useCallback(
     (field: string, value: string) => {
@@ -107,6 +117,9 @@ export default function TransactionsDataTable({
         newParams.set(field, value);
       } else {
         newParams.delete(field);
+        if (field === 'month' || field === 'year') {
+          newParams.delete('period');
+        }
       }
       router.push(
         `/transactions${newParams.toString() ? `?${newParams.toString()}` : ''}`,
@@ -115,14 +128,54 @@ export default function TransactionsDataTable({
     [router, searchParams],
   );
 
-  const hasActiveFilters =
-    month || year || period || type || categoryFilter !== ALL_VALUE || paymentMethodFilter !== ALL_VALUE;
+  const activeFilterDimensionCount = useMemo(() => {
+    let n = 0;
+    if (searchQuery.trim()) n += 1;
+    if (month) n += 1;
+    if (year) n += 1;
+    if (period) n += 1;
+    if (type) n += 1;
+    if (categoryFilter !== ALL_VALUE) n += 1;
+    if (paymentMethodFilter !== ALL_VALUE) n += 1;
+    return n;
+  }, [
+    searchQuery,
+    month,
+    year,
+    period,
+    type,
+    categoryFilter,
+    paymentMethodFilter,
+  ]);
+
+  const hasActiveFilters = activeFilterDimensionCount > 0;
 
   const handleClearAllFilters = useCallback(() => {
+    setSearchQuery('');
     setCategoryFilter(ALL_VALUE);
     setPaymentMethodFilter(ALL_VALUE);
-    router.push('/transactions');
-  }, [router]);
+    const next = new URLSearchParams();
+    const ownerType = searchParams.get('ownerType');
+    const ownerId = searchParams.get('ownerId');
+    if (ownerType) next.set('ownerType', ownerType);
+    if (ownerId) next.set('ownerId', ownerId);
+    router.push(
+      `/transactions${next.toString() ? `?${next.toString()}` : ''}`,
+    );
+  }, [router, searchParams]);
+
+  useRegisterToolbarActions({
+    search: {
+      value: searchQuery,
+      onChange: setSearchQuery,
+      placeholder: 'Buscar por descripción',
+    },
+    filters: {
+      open: filtersOpen,
+      onOpenChange: setFiltersOpen,
+      activeCount: activeFilterDimensionCount,
+    },
+  });
 
   const columns = useMemo<ColumnDef<TransactionRow>[]>(
     () => [
@@ -240,226 +293,181 @@ export default function TransactionsDataTable({
     [],
   );
 
-  const filterSlot = (
-    <>
-      <Select
-        value={month || ALL_VALUE}
-        onValueChange={(v) => handleServerFilter('month', v)}
-      >
-        <SelectTrigger className="w-[140px]" size="sm" aria-label="Filtrar por mes">
-          <SelectValue placeholder="Mes" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_VALUE}>Todos los meses</SelectItem>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-            <SelectItem key={m} value={String(m)}>
-              {new Date(2000, m - 1).toLocaleString('es-MX', { month: 'long' })}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={year || ALL_VALUE}
-        onValueChange={(v) => handleServerFilter('year', v)}
-      >
-        <SelectTrigger className="w-[100px]" size="sm" aria-label="Filtrar por año">
-          <SelectValue placeholder="Año" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-          {Array.from({ length: 5 }, (_, i) => currentYear - 2 + i).map((y) => (
-            <SelectItem key={y} value={String(y)}>
-              {y}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {month && year && (
-        <Select
-          value={period || ALL_VALUE}
-          onValueChange={(v) => handleServerFilter('period', v)}
-        >
-          <SelectTrigger className="w-[160px]" size="sm" aria-label="Filtrar por quincena">
-            <SelectValue placeholder="Quincena" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Ambas quincenas</SelectItem>
-            <SelectItem value="FIRST">Primera quincena</SelectItem>
-            <SelectItem value="SECOND">Segunda quincena</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
-
-      <Select
-        value={type || ALL_VALUE}
-        onValueChange={(v) => handleServerFilter('type', v)}
-      >
-        <SelectTrigger className="w-[120px]" size="sm" aria-label="Filtrar por tipo">
-          <SelectValue placeholder="Tipo" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-          <SelectItem value="income">Ingreso</SelectItem>
-          <SelectItem value="expense">Gasto</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {categories.length > 0 && (
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[150px]" size="sm" aria-label="Filtrar por categoría">
-            <SelectValue placeholder="Categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Todas las categorías</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {formatCategoryLabel(cat, categoryIcons.get(cat))}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
-      {paymentMethods.length > 0 && (
-        <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-          <SelectTrigger className="w-[160px]" size="sm" aria-label="Filtrar por método de pago">
-            <SelectValue placeholder="Método de pago" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Todos los métodos</SelectItem>
-            {paymentMethods.map((pm) => (
-              <SelectItem key={pm} value={pm}>
-                {pm}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
-      {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClearAllFilters}
-          className="h-8 px-2 text-muted-foreground hover:text-foreground"
-          aria-label="Limpiar todos los filtros"
-        >
-          <X className="h-4 w-4 mr-1" data-icon="inline-start" />
-          Limpiar
-        </Button>
-      )}
-    </>
-  );
-
   return (
     <div className="space-y-6">
-      {transactions.length > 0 && (
-        <div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-          role="region"
-          aria-label="Resumen de transacciones"
-        >
-          <div className="rounded-lg border border-l-[3px] border-l-blue-500/50 bg-blue-500/5 dark:bg-blue-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 dark:bg-blue-500/15 shrink-0">
-                <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Ingresos
-              </p>
-            </div>
-            <p className="text-lg font-bold font-mono tabular-nums text-blue-700 dark:text-blue-300">
-              {formatCurrency(summary.income)}
+      <ToolbarFiltersPortal>
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Tipo
             </p>
-          </div>
-
-          <div className="rounded-lg border border-l-[3px] border-l-violet-500/50 bg-violet-500/5 dark:bg-violet-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-violet-500/10 dark:bg-violet-500/15 shrink-0">
-                <TrendingDown className="h-3 w-3 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Gastos
-              </p>
-            </div>
-            <p className="text-lg font-bold font-mono tabular-nums text-violet-700 dark:text-violet-300">
-              {formatCurrency(summary.expenses)}
-            </p>
-          </div>
-
-          <div
-            className={cn(
-              'rounded-lg border border-l-[3px] px-3 py-3',
-              summary.net >= 0
-                ? 'border-l-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/8'
-                : 'border-l-destructive/50 bg-destructive/5 dark:bg-destructive/8',
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-md shrink-0',
-                  summary.net >= 0
-                    ? 'bg-emerald-500/10 dark:bg-emerald-500/15'
-                    : 'bg-destructive/10 dark:bg-destructive/15',
-                )}
-              >
-                <DollarSign
-                  className={cn(
-                    'h-3 w-3',
-                    summary.net >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-destructive',
-                  )}
-                />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Balance
-              </p>
-            </div>
-            <p
-              className={cn(
-                'text-lg font-bold font-mono tabular-nums',
-                summary.net >= 0
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : 'text-destructive',
-              )}
+            <div
+              className="flex flex-wrap gap-2"
+              role="tablist"
+              aria-label="Filtrar por tipo"
             >
-              {formatCurrency(summary.net)}
-            </p>
+              {TYPE_FILTER_CHIPS.map(({ value, label }) => {
+                const selected = (type || ALL_VALUE) === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => handleServerFilter('type', value)}
+                    className={cn(
+                      FILTER_CHIP_CLASS,
+                      selected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="rounded-lg border border-l-[3px] border-l-amber-500/50 bg-amber-500/5 dark:bg-amber-500/8 px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 dark:bg-amber-500/15 shrink-0">
-                <Receipt className="h-3 w-3 text-amber-600 dark:text-amber-400" data-icon="inline-start" />
-              </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Transacciones
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Mes
               </p>
+              <Select
+                value={month || ALL_VALUE}
+                onValueChange={(v) => handleServerFilter('month', v)}
+              >
+                <SelectTrigger className="w-full" aria-label="Filtrar por mes">
+                  <SelectValue placeholder="Mes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Todos los meses</SelectItem>
+                  {MONTH_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-lg font-bold font-mono tabular-nums">
-              {summary.count}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Año
+              </p>
+              <Select
+                value={year || ALL_VALUE}
+                onValueChange={(v) => handleServerFilter('year', v)}
+              >
+                <SelectTrigger className="w-full" aria-label="Filtrar por año">
+                  <SelectValue placeholder="Año" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Todos</SelectItem>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {month && year ? (
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Quincena
+              </p>
+              <Select
+                value={period || ALL_VALUE}
+                onValueChange={(v) => handleServerFilter('period', v)}
+              >
+                <SelectTrigger className="w-full" aria-label="Filtrar por quincena">
+                  <SelectValue placeholder="Quincena" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Ambas quincenas</SelectItem>
+                  <SelectItem value="FIRST">Primera quincena</SelectItem>
+                  <SelectItem value="SECOND">Segunda quincena</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          {categories.length > 0 ? (
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Categoría
+              </p>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full" aria-label="Filtrar por categoría">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Todas las categorías</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {formatCategoryLabel(cat, categoryIcons.get(cat))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          {paymentMethods.length > 0 ? (
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Método de pago
+              </p>
+              <Select
+                value={paymentMethodFilter}
+                onValueChange={setPaymentMethodFilter}
+              >
+                <SelectTrigger
+                  className="w-full"
+                  aria-label="Filtrar por método de pago"
+                >
+                  <SelectValue placeholder="Método de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Todos los métodos</SelectItem>
+                  {paymentMethods.map((pm) => (
+                    <SelectItem key={pm} value={pm}>
+                      {pm}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          {hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 shrink-0 self-start text-muted-foreground"
+              onClick={handleClearAllFilters}
+              aria-label="Limpiar filtros de transacciones"
+            >
+              Limpiar filtros
+            </Button>
+          ) : null}
         </div>
-      )}
+      </ToolbarFiltersPortal>
 
       <Card className="overflow-hidden border-border/60">
         <CardContent className="pt-6">
           <DataTable
             data={filteredTransactions}
             columns={columns}
-            filterColumn="description"
-            filterPlaceholder="Buscar por descripción..."
             emptyMessage={
               hasActiveFilters
                 ? 'No se encontraron transacciones con los filtros seleccionados.'
                 : 'No hay transacciones registradas.'
             }
-            filterSlot={filterSlot}
             columnVisibility
           />
         </CardContent>

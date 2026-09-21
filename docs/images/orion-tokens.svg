@@ -31,9 +31,9 @@
   <text x="52" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Primary fill</text>
   <text x="52" y="244" fill="#ffffff" font-size="13" font-family="ui-monospace, monospace">#3a37fc</text>
 
-  <rect x="172" y="196" width="120" height="72" rx="14" fill="#9ea0ff"/>
+  <rect x="172" y="196" width="120" height="72" rx="14" fill="#f7f8ff"/>
   <text x="184" y="220" fill="#060914" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Primary text</text>
-  <text x="184" y="244" fill="#060914" font-size="13" font-family="ui-monospace, monospace">#9ea0ff</text>
+  <text x="184" y="244" fill="#060914" font-size="13" font-family="ui-monospace, monospace">#f7f8ff</text>
 
   <rect x="304" y="196" width="120" height="72" rx="14" fill="#911efe"/>
   <text x="316" y="220" fill="#ffffff" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">Ring / violet</text>

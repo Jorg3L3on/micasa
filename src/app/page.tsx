@@ -1,17 +1,11 @@
 import type { Metadata } from 'next';
-import { Manrope, Nunito } from 'next/font/google';
+import { Nunito } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { LandingPage } from '@/components/landing/landing-page';
 import { auth } from '@/lib/auth';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
-
-const landingDisplay = Manrope({
-  subsets: ['latin'],
-  variable: '--font-landing-display',
-  display: 'swap',
-});
 
 const landingSans = Nunito({
   subsets: ['latin'],
@@ -59,7 +53,7 @@ export default async function Home() {
   }
 
   return (
-    <div className={`${landingDisplay.variable} ${landingSans.variable}`}>
+    <div className={landingSans.variable}>
       <LandingPage />
     </div>
   );

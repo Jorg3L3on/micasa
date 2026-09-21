@@ -8,6 +8,7 @@ import type {
   UpdateLoanPaymentInput,
   BatchUpdateLoanPaymentsInput,
 } from '@/schemas/loan.schema';
+import { resolveLenderForLoanInput } from '@/lib/finance/lender-resolve';
 import {
   calculateLoanProgress,
   deriveLoanStatusFromPayments,
@@ -122,6 +123,7 @@ function mapPayment(
     source_wallet_id: number | null;
     source_wallet?: { name: string } | null;
     linked_expense?: { id: number } | null;
+    lender_payment_id?: number | null;
     note: string | null;
   },
 ): LoanPaymentListItem {
@@ -136,6 +138,7 @@ function mapPayment(
     sourceWalletId: payment.source_wallet_id,
     sourceWalletName: payment.source_wallet?.name ?? null,
     linkedExpenseId: payment.linked_expense?.id ?? null,
+    lenderPaymentId: payment.lender_payment_id ?? null,
     note: payment.note,
   };
 }
@@ -145,6 +148,7 @@ function mapLoan(
     id: number;
     name: string;
     lender: string;
+    lender_id?: number | null;
     type: string;
     status: string;
     principal_amount: unknown;
@@ -177,6 +181,7 @@ function mapLoan(
     id: loan.id,
     name: loan.name,
     lender: loan.lender,
+    lenderId: loan.lender_id ?? null,
     type: loan.type as LoanListItem['type'],
     status: loan.status as LoanListItem['status'],
     principalAmount: decimalToNumber(loan.principal_amount),
@@ -361,6 +366,13 @@ export async function createLoanForOwner(
     assertOwnedIncomeTemplate(input.incomeTemplateId, ownerFilter),
   ]);
 
+  const lender = await resolveLenderForLoanInput(
+    ownerType,
+    ownerId,
+    ownerFilter,
+    input,
+  );
+
   const startDate = parseYmdAsUtcDate(input.startDate);
   const schedule = generateLoanPaymentSchedule({
     startDate,
@@ -373,7 +385,8 @@ export async function createLoanForOwner(
     data: {
       ...ownerData(ownerType, ownerId),
       name: input.name,
-      lender: input.lender,
+      lender: lender.name,
+      lender_id: lender.id,
       type: input.type,
       principal_amount: input.principalAmount.toString(),
       payment_amount: input.paymentAmount.toString(),
@@ -436,7 +449,20 @@ export async function updateLoanForOwner(
 
   const data: Prisma.LoanUncheckedUpdateInput = {};
   if (input.name !== undefined) data.name = input.name;
-  if (input.lender !== undefined) data.lender = input.lender;
+  if (input.lender !== undefined || input.lenderId !== undefined) {
+    const owner = ownerFromFilter(ownerFilter);
+    const lender = await resolveLenderForLoanInput(
+      owner.ownerType,
+      owner.ownerId,
+      ownerFilter,
+      {
+        lender: input.lender,
+        lenderId: input.lenderId,
+      },
+    );
+    data.lender = lender.name;
+    data.lender_id = lender.id;
+  }
   if (input.linkedWalletId !== undefined) {
     data.linked_wallet_id = input.linkedWalletId;
   }
@@ -487,6 +513,7 @@ export async function deleteLoanForOwner(
             status: true,
             amount: true,
             source_wallet_id: true,
+            lender_payment_id: true,
             linked_expense: {
               select: {
                 id: true,
@@ -522,7 +549,8 @@ export async function deleteLoanForOwner(
       if (
         payment.status === 'PAID' &&
         loan.payment_source === 'WALLET' &&
-        payment.source_wallet_id != null
+        payment.source_wallet_id != null &&
+        payment.lender_payment_id == null
       ) {
         await tx.wallet.update({
           where: { id: payment.source_wallet_id },
@@ -850,6 +878,7 @@ async function listLoanPaymentsForPlannerMonthImpl(
       linked_expense: { select: { id: true } },
       loan: {
         include: {
+          source_wallet: { select: { name: true } },
           linked_wallet: { select: { name: true } },
           income_template: { select: { name: true } },
         },
@@ -860,8 +889,13 @@ async function listLoanPaymentsForPlannerMonthImpl(
 
   const mapped: LoanDuePaymentItem[] = payments.map((payment) => ({
     ...mapPayment(payment),
+    sourceWalletId:
+      payment.source_wallet_id ?? payment.loan.source_wallet_id,
+    sourceWalletName:
+      payment.source_wallet?.name ?? payment.loan.source_wallet?.name ?? null,
     loanName: payment.loan.name,
     lender: payment.loan.lender,
+    lenderId: payment.loan.lender_id ?? null,
     loanType: payment.loan.type as LoanDuePaymentItem['loanType'],
     paymentSource:
       payment.loan.payment_source as LoanDuePaymentItem['paymentSource'],
@@ -972,6 +1006,7 @@ export type LoanPlanningPayment = {
   sourceWalletId: number | null;
   sourceWalletName: string | null;
   linkedExpenseId: number | null;
+  lenderPaymentId: number | null;
 };
 
 export type LoanPlanningAggregate = {
@@ -1053,11 +1088,13 @@ export async function aggregateLoanPaymentsForFortnights(
         sourceWalletId: mapped.sourceWalletId,
         sourceWalletName: mapped.sourceWalletName,
         linkedExpenseId: mapped.linkedExpenseId,
+        lenderPaymentId: mapped.lenderPaymentId,
       };
     });
 
   const shouldAddToPlanningTotals = (payment: LoanPlanningPayment) =>
-    payment.status === 'SCHEDULED' || payment.linkedExpenseId == null;
+    payment.status === 'SCHEDULED' ||
+    (payment.linkedExpenseId == null && payment.lenderPaymentId == null);
 
   const total = payments
     .filter(shouldAddToPlanningTotals)

@@ -52,7 +52,8 @@ export const loanStatusSchema = z.enum([
 export const createLoanSchema = z
   .object({
     name: z.string().trim().min(1, 'El nombre es obligatorio'),
-    lender: z.string().trim().min(1, 'La entidad es obligatoria'),
+    lender: z.string().trim().min(1, 'El prestamista es obligatorio').optional(),
+    lenderId: nullablePositiveIntFromForm.optional(),
     type: loanTypeSchema,
     principalAmount: positiveAmountFromForm,
     paymentAmount: positiveAmountFromForm,
@@ -66,6 +67,14 @@ export const createLoanSchema = z
     notes: z.string().trim().max(500).optional().nullable(),
   })
   .superRefine((data, ctx) => {
+    if (!data.lender && !data.lenderId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lender'],
+        message: 'El prestamista es obligatorio',
+      });
+    }
+
     if (data.paymentSource === 'WALLET' && !data.sourceWalletId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -104,7 +113,8 @@ export const updateLoanPaymentSchema = z
 
 export const updateLoanSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio').optional(),
-  lender: z.string().trim().min(1, 'La entidad es obligatoria').optional(),
+  lender: z.string().trim().min(1, 'El prestamista es obligatorio').optional(),
+  lenderId: nullablePositiveIntFromForm.optional(),
   linkedWalletId: nullablePositiveIntFromForm.optional(),
   incomeTemplateId: nullablePositiveIntFromForm.optional(),
   notes: z.string().trim().max(500).optional().nullable(),

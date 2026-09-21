@@ -9,24 +9,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import {
   Wallet,
   CheckCircle2,
   Clock,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
   Pencil,
   BarChart3,
   CreditCard,
   Banknote,
-  CircleDollarSign,
-  PiggyBank,
-  Info,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
-import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import {
   MONTHLY_ICON_PILL_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
@@ -35,7 +29,11 @@ import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
-import { getFortnightSummaryHeader } from '@/components/monthly/fortnight-summary-header';
+import {
+  getDueToPayComposition,
+  getFortnightStatusPill,
+  getFortnightSummaryHeader,
+} from '@/components/monthly/fortnight-summary-header';
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import type {
   FundingWalletBreakdownItem,
@@ -45,8 +43,8 @@ import type {
   PlannerPayrollLoanDeductionSummary,
   PlannerWalletLoanDueSummary,
 } from '@/types/catalog';
-import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import {
+  formatFortnightDateRangeCompact,
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
@@ -62,8 +60,8 @@ export type IncomeItemBySource = {
 
 type SummaryBlockProps = {
   tenemos: number;
-  /** Kept for compatibilidad con el API; el héroe usa `tenemos − pagado − pendiente − resto de presupuesto`. */
-  libre: number;
+  /** Kept for API compatibility with callers; not shown in the ledger. */
+  libre?: number;
   pagado: number;
   pendiente: number;
   userIncome?: Array<{
@@ -81,29 +79,37 @@ type SummaryBlockProps = {
   cardCharges?: PlannerCardChargesSummary | null;
   /** Pagos a tarjeta sin fila de gasto, ya incluidos en totales de efectivo. */
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
-  /** Adeudo al estado de cuenta (próximo pago) dentro del período; suma al pendiente planificado. */
+  /** Adeudo al estado de cuenta (próximo pago) dentro del período; parte del pendiente. */
   planningCardStatementDue?: PlannerCardStatementDueSummary | null;
-  /** Cuotas de préstamo desde billetera pendientes en el período. */
+  /** Cuotas de préstamo desde billetera pendientes en el período; parte del pendiente. */
   planningWalletLoanDue?: PlannerWalletLoanDueSummary | null;
   /** Deducciones de nómina pendientes; reducen el ingreso disponible de la quincena. */
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
   /** Resto del presupuesto de la quincena (total − spent); suma al compromiso. */
   planningBudgetRemaining?: number;
-  /** Saldos activos Efectivo + Débito (API resumen). */
+  /** Saldos activos Efectivo + Débito (API resumen) — Balance actual. */
   fundingWalletBalanceTotal?: number;
-  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto (API resumen). */
+  /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto — Liquidez actual. */
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
-  /** Presupuesto de la quincena — mostrado en el desglose en móvil. */
-  budgetPanel?: MonthlyBudgetPanelResult | null;
-  budgetOwnerQuery?: string;
   onEditIncome?: () => void;
   onEditIncomeSource?: (
     id: number,
     amount: number,
     categoryId: number | null,
   ) => void;
+};
+
+const statusPillClass: Record<
+  ReturnType<typeof getFortnightStatusPill>['tone'],
+  string
+> = {
+  shortfall:
+    'border-destructive/40 bg-destructive/10 text-destructive dark:bg-destructive/15',
+  surplus:
+    'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  even: 'border-border/60 bg-muted/40 text-muted-foreground',
 };
 
 export default function SummaryBlock({
@@ -127,17 +133,13 @@ export default function SummaryBlock({
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
-  budgetPanel = null,
-  budgetOwnerQuery = '',
   onEditIncome,
   onEditIncomeSource,
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const headerMeta =
-    year != null && month != null && period != null
-      ? getFortnightSummaryHeader(year, month, period)
-      : null;
+    period != null ? getFortnightSummaryHeader(period) : null;
 
   const hasUserIncome =
     userIncome &&
@@ -148,38 +150,54 @@ export default function SummaryBlock({
   const budgetRemaining =
     planningBudgetRemaining > 0 ? planningBudgetRemaining : 0;
 
-  /** Compromiso: efectivo/débito + deducciones de nómina + resto del presupuesto. */
-  const comprometidoEfectivo =
-    pagado + pendiente + payrollLoanDeduction + budgetRemaining;
+  /** Compromiso de efectivo (sin presupuesto): pagado + pendiente + nómina. */
+  const cashCommitted = pagado + pendiente + payrollLoanDeduction;
 
-  /** Ingreso menos pagado, pendiente, nómina y resto de presupuesto (mismo criterio que el API). */
+  /** Compromiso total: efectivo + resto del presupuesto. */
+  const comprometidoEfectivo = cashCommitted + budgetRemaining;
+
+  /** Ingreso menos compromiso (mismo criterio que el API). */
   const trasPagarPlaneado = tenemos - comprometidoEfectivo;
+  const statusPill = getFortnightStatusPill(trasPagarPlaneado);
 
   /**
-   * Billeteras vs pendiente cuando la página es la quincena calendario en curso
-   * o la inmediata siguiente (mismo mes u otro mes).
+   * Liquidez actual solo en la quincena calendario en curso
+   * o la inmediata siguiente.
    */
-  const billeterasVsPendienteAplica =
+  const fundingLiquidityApplies =
     year != null && month != null && period != null
       ? isCalendarFortnightCurrent(year, month, period) ||
         isCalendarFortnightNext(year, month, period)
       : true;
 
-  const displayFundingNet = billeterasVsPendienteAplica
+  const displayFundingNet = fundingLiquidityApplies
     ? fundingNetVsPendingExpense
     : 0;
-  const displayFundingWalletTotal = billeterasVsPendienteAplica
+  const displayFundingWalletTotal = fundingLiquidityApplies
     ? fundingWalletBalanceTotal
     : 0;
-  const displayPendienteFundingRow = billeterasVsPendienteAplica
-    ? pendiente
-    : 0;
-  const displayBudgetFundingRow = billeterasVsPendienteAplica
+  const displayPendienteFundingRow = fundingLiquidityApplies ? pendiente : 0;
+  const displayBudgetFundingRow = fundingLiquidityApplies
     ? budgetRemaining
     : 0;
 
-  const cashCommittedAmount = pagado + pendiente + payrollLoanDeduction;
-  const showIncomeRing = tenemos > 0;
+  const compositionRows = getDueToPayComposition({
+    pagado,
+    pendiente,
+    statementDue: planningCardStatementDue?.total ?? 0,
+    walletLoanDue: planningWalletLoanDue?.total ?? 0,
+    payrollDeduction: payrollLoanDeduction,
+    budgetRemaining,
+  });
+
+  const dateRange =
+    year != null && month != null && period != null
+      ? formatFortnightDateRangeCompact(year, month, period)
+      : null;
+
+  const handleToggleExpanded = () => {
+    setIsExpanded((current) => !current);
+  };
 
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
@@ -187,104 +205,132 @@ export default function SummaryBlock({
     return t;
   };
 
-  const metricHint = (text: string) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-          aria-label={text}
-        >
-          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[14rem] text-sm">
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
-
   return (
     <Card
-      className={cn(
-        MONTHLY_PANEL_SHELL_CLASS,
-        'gap-0 py-0',
-      )}
+      className={cn(MONTHLY_PANEL_SHELL_CLASS, 'gap-0 py-0')}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
       <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <span className={cn('mt-0.5', MONTHLY_ICON_PILL_CLASS)} aria-hidden>
-              <BarChart3 className="h-4 w-4 text-primary-text" data-icon="inline-start" />
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
+              <BarChart3 className="h-4 w-4" data-icon="inline-start" />
             </span>
-            <div className="min-w-0 space-y-0.5">
+            <div className="min-w-0">
               <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
                 {headerMeta?.title ?? 'Resumen de la quincena'}
               </CardTitle>
-              {headerMeta?.dateRange ? (
-                <p className="text-sm text-muted-foreground">
-                  {headerMeta.dateRange}
+              {dateRange ? (
+                <p className="mt-0.5 text-[11px] leading-none text-muted-foreground sm:text-xs">
+                  {dateRange}
                 </p>
               ) : null}
             </div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary-text"
-                aria-expanded={isExpanded}
-                aria-label={
-                  isExpanded
-                    ? 'Ocultar desglose de ingresos y gastos'
-                    : 'Ver desglose de ingresos y gastos'
-                }
-              >
-                {isExpanded ? (
-                  <ChevronUp className="h-4 w-4" aria-hidden data-icon="inline-end" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" aria-hidden data-icon="inline-end" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6} align="end">
-              {isExpanded ? 'Ocultar desglose' : 'Ingresos, pagado y pendiente'}
-            </TooltipContent>
-          </Tooltip>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide',
+                statusPillClass[statusPill.tone],
+              )}
+            >
+              {statusPill.label}
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleToggleExpanded}
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary-text"
+                  aria-expanded={isExpanded}
+                  aria-label={
+                    isExpanded
+                      ? 'Ocultar qué incluye toca pagar'
+                      : 'Ver qué incluye toca pagar'
+                  }
+                >
+                  <ChevronRight
+                    className={cn(
+                      'h-4 w-4 transition-transform duration-200',
+                      isExpanded && 'rotate-90',
+                    )}
+                    aria-hidden
+                    data-icon="inline-end"
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6} align="end">
+                {isExpanded ? 'Ocultar desglose' : 'Qué incluye toca pagar'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         <FortnightSummaryHero
           periodIncome={tenemos}
           incomeRemainder={trasPagarPlaneado}
-          fundingNetInAccounts={displayFundingNet}
-          fundingNetApplies={billeterasVsPendienteAplica}
-          payrollDeductionAmount={payrollLoanDeduction}
-          budgetRemainingAmount={budgetRemaining}
-          cashCommittedAmount={cashCommittedAmount}
-          showGauge={showIncomeRing}
+          dueToPay={comprometidoEfectivo}
+          fundingInAccounts={fundingWalletBalanceTotal}
+          fundingLiquidity={fundingNetVsPendingExpense}
+          fundingLiquidityApplies={fundingLiquidityApplies}
+          paidAmount={pagado}
+          pendingAmount={pendiente}
+          cashCommittedAmount={cashCommitted}
+          expenseCount={expenseCount}
+          paidExpenseCount={paidExpenseCount}
+          unpaidExpenseCount={unpaidExpenseCount}
+          compositionRows={compositionRows}
+          leftoverAmount={budgetRemaining}
         />
 
-        {isExpanded && (
+        <button
+          type="button"
+          onClick={handleToggleExpanded}
+          className="flex w-full items-center justify-between gap-2 rounded-lg py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+          aria-expanded={isExpanded}
+          aria-label={
+            isExpanded
+              ? 'Ocultar qué incluye toca pagar'
+              : 'Ver qué incluye toca pagar'
+          }
+        >
+          <span>Qué incluye toca pagar</span>
+          <ChevronRight
+            className={cn(
+              'h-4 w-4 shrink-0 transition-transform duration-200',
+              isExpanded && 'rotate-90',
+            )}
+            aria-hidden
+            data-icon="inline-end"
+          />
+        </button>
+
+        {isExpanded ? (
           <>
             <Separator className="bg-border/50" />
-            {/* Three metric cards */}
+
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-              {/* Ingresos */}
-              <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-blue-500/50 px-2 py-2 sm:px-3 sm:py-3')}>
+              <div
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px] border-l-blue-500/50 px-2 py-2 sm:px-3 sm:py-3',
+                )}
+              >
                 <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
                   <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20 sm:h-6 sm:w-6">
-                      <Wallet className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
+                      <Wallet
+                        className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5"
+                        data-icon="inline-start"
+                      />
                     </span>
-                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 sm:text-[10px]">
+                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80">
                       Ingresos
                     </span>
                   </div>
-                  {onEditIncome && incomeItems.length === 0 && (
+                  {onEditIncome && incomeItems.length === 0 ? (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -293,56 +339,73 @@ export default function SummaryBlock({
                       aria-label="Modificar ingresos de la quincena"
                       tabIndex={0}
                     >
-                      <Pencil className="h-2.5 w-2.5" data-icon="inline-start" />
+                      <Pencil
+                        className="h-2.5 w-2.5"
+                        data-icon="inline-start"
+                      />
                     </Button>
-                  )}
+                  ) : null}
                 </div>
                 <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(tenemos)}
                 </p>
-                {(hasUserIncome || incomeItems.length > 0) && (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[10px]">
+                {hasUserIncome || incomeItems.length > 0 ? (
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {incomeItems.length > 0
                       ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
                       : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              {/* Pagado */}
-              <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50 px-2 py-2 sm:px-3 sm:py-3')}>
+              <div
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px] border-l-emerald-500/50 px-2 py-2 sm:px-3 sm:py-3',
+                )}
+              >
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20 sm:h-6 sm:w-6">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
+                    <CheckCircle2
+                      className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5"
+                      data-icon="inline-start"
+                    />
                   </span>
-                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 sm:text-[10px]">
+                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80">
                     Pagado
                   </span>
                 </div>
                 <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(pagado)}
                 </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[10px]">
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {expenseCount > 0
                     ? `${paidExpenseCount}/${expenseCount}`
                     : '—'}
                 </p>
               </div>
 
-              {/* Pendiente */}
-              <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-amber-500/50 px-2 py-2 sm:px-3 sm:py-3')}>
+              <div
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px] border-l-amber-500/50 px-2 py-2 sm:px-3 sm:py-3',
+                )}
+              >
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20 sm:h-6 sm:w-6">
-                    <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5" data-icon="inline-start" />
+                    <Clock
+                      className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5"
+                      data-icon="inline-start"
+                    />
                   </span>
-                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 sm:text-[10px]">
+                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80">
                     Pendiente
                   </span>
                 </div>
                 <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
                   {formatCurrency(pendiente)}
                 </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[10px]">
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {expenseCount > 0
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}
@@ -370,15 +433,16 @@ export default function SummaryBlock({
                 Incluye {formatCurrency(planningPayrollLoanDeduction.total)} en{' '}
                 {planningPayrollLoanDeduction.count} deducción
                 {planningPayrollLoanDeduction.count !== 1 ? 'es' : ''} de nómina
-                (préstamos); reduce el ingreso disponible sin salida de billetera.
+                (préstamos); reduce el ingreso disponible sin salida de
+                billetera.
               </p>
             ) : null}
 
             {budgetRemaining > 0 ? (
               <p className="text-[10px] leading-snug text-muted-foreground">
-                Incluye {formatCurrency(budgetRemaining)} de presupuesto
-                restante de la quincena (lo aún no gastado del sobre); lo ya
-                gastado entra en Pagado.
+                Incluye {formatCurrency(budgetRemaining)} del presupuesto de la
+                quincena (lo aún no gastado del sobre); lo ya gastado entra en
+                Pagado.
               </p>
             ) : null}
 
@@ -403,7 +467,10 @@ export default function SummaryBlock({
               >
                 <div className="mb-2 flex items-center gap-1.5">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                    <CreditCard className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
+                    <CreditCard
+                      className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
+                      data-icon="inline-start"
+                    />
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
                     Cargos a tarjeta
@@ -413,9 +480,9 @@ export default function SummaryBlock({
                   {formatCurrency(cardCharges.total)}
                 </p>
                 <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                  Son compras cargadas a la tarjeta; no son salida de efectivo hasta
-                  que pagues el estado de cuenta (los pagos a la tarjeta sí cuentan
-                  arriba como efectivo/débito).
+                  Son compras cargadas a la tarjeta; no son salida de efectivo
+                  hasta que pagues el estado de cuenta (los pagos a la tarjeta
+                  sí cuentan arriba como efectivo/débito).
                   {cardCharges.expenseCount > 0 ? (
                     <>
                       {' '}
@@ -429,10 +496,12 @@ export default function SummaryBlock({
               </div>
             ) : null}
 
-            {/* Income breakdown */}
-            {(incomeItems.length > 0 || hasUserIncome) && (
+            {incomeItems.length > 0 || hasUserIncome ? (
               <div
-                className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-blue-500/50 px-3 py-2.5')}
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px] border-l-blue-500/50 px-3 py-2.5',
+                )}
                 role="region"
                 aria-label="Desglose de ingresos"
               >
@@ -465,10 +534,10 @@ export default function SummaryBlock({
                             {displayLabel}
                           </span>
                           <div className="flex shrink-0 items-center gap-1">
-                            <span className="text-sm font-semibold font-mono tabular-nums text-foreground">
+                            <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(item.amount)}
                             </span>
-                            {onEditIncomeSource && (
+                            {onEditIncomeSource ? (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -483,9 +552,12 @@ export default function SummaryBlock({
                                 aria-label={`Modificar ${displayLabel}`}
                                 tabIndex={0}
                               >
-                                <Pencil className="h-3 w-3" data-icon="inline-start" />
+                                <Pencil
+                                  className="h-3 w-3"
+                                  data-icon="inline-start"
+                                />
                               </Button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -503,7 +575,7 @@ export default function SummaryBlock({
                             <span className="truncate text-sm text-foreground/90">
                               {userInc.userName}
                             </span>
-                            <span className="shrink-0 text-sm font-semibold font-mono tabular-nums text-foreground">
+                            <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(userInc.income)}
                             </span>
                           </div>
@@ -513,152 +585,145 @@ export default function SummaryBlock({
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
 
-            {/* Desglose billeteras vs pendiente (mismo criterio que la tarjeta héroe) */}
-            {billeterasVsPendienteAplica ? (
-            <div
-              className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-emerald-500/50 px-3 py-2.5')}
-              role="region"
-              aria-label="Desglose de billeteras frente al pendiente de la quincena"
-            >
-              <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700/90 dark:text-emerald-400/90">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 ring-1 ring-emerald-500/25">
-                  <Banknote
-                    className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
-                    aria-hidden
-                    data-icon="inline-start"
-                  />
-                </span>
-                Desglose de billeteras vs pendiente
-              </h4>
-              {fundingWalletBreakdown.length > 0 ? (
-                <div className="space-y-1">
-                  {fundingWalletBreakdown.map((w) => {
-                    const provider = getWalletProviderOption(w.provider_icon_key);
-                    const showProviderLogo = Boolean(provider?.logoPath);
+            {fundingLiquidityApplies ? (
+              <div
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'border-l-[3px] border-l-emerald-500/50 px-3 py-2.5',
+                )}
+                role="region"
+                aria-label="Desglose de liquidez actual"
+              >
+                <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700/90 dark:text-emerald-400/90">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 ring-1 ring-emerald-500/25">
+                    <Banknote
+                      className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                  </span>
+                  Desglose de liquidez actual
+                </h4>
+                {fundingWalletBreakdown.length > 0 ? (
+                  <div className="space-y-1">
+                    {fundingWalletBreakdown.map((w) => {
+                      const provider = getWalletProviderOption(
+                        w.provider_icon_key,
+                      );
+                      const showProviderLogo = Boolean(provider?.logoPath);
 
-                    return (
-                    <div
-                      key={w.id}
-                      className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted/40"
-                    >
-                      <span className="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
-                        {showProviderLogo ? (
-                          <WalletProviderIcon
-                            providerIconKey={w.provider_icon_key}
-                            className="h-4 w-4 border-border/40"
-                            iconClassName="h-2.5 w-2.5"
-                            showTooltipLabel={false}
-                          />
-                        ) : (
-                          <span
-                            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted/70"
-                            aria-hidden
-                          >
-                            <WalletPaymentMethodTypeIcon
-                              type={w.type}
-                              className="h-2.5 w-2.5"
-                            />
+                      return (
+                        <div
+                          key={w.id}
+                          className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted/40"
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
+                            {showProviderLogo ? (
+                              <WalletProviderIcon
+                                providerIconKey={w.provider_icon_key}
+                                className="h-4 w-4 border-border/40"
+                                iconClassName="h-2.5 w-2.5"
+                                showTooltipLabel={false}
+                              />
+                            ) : (
+                              <span
+                                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted/70"
+                                aria-hidden
+                              >
+                                <WalletPaymentMethodTypeIcon
+                                  type={w.type}
+                                  className="h-2.5 w-2.5"
+                                />
+                              </span>
+                            )}
+                            <span className="flex min-w-0 items-center gap-1.5 truncate">
+                              <span className="truncate text-foreground/90">
+                                {w.name}
+                              </span>
+                              {w.assignee ? (
+                                <AssigneeAvatar
+                                  name={w.assignee.name}
+                                  size="sm"
+                                  className="size-5 text-[10px]"
+                                />
+                              ) : null}
+                              <span className="shrink-0 text-[10px] text-muted-foreground/80">
+                                ({fundingWalletTypeLabel(w.type)})
+                              </span>
+                            </span>
                           </span>
-                        )}
-                        <span className="flex min-w-0 items-center gap-1.5 truncate">
-                          <span className="truncate text-foreground/90">
-                            {w.name}
+                          <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
+                            {formatCurrency(w.amount)}
                           </span>
-                          {w.assignee ? (
-                            <AssigneeAvatar
-                              name={w.assignee.name}
-                              size="sm"
-                              className="size-5 text-[10px]"
-                            />
-                          ) : null}
-                          <span className="shrink-0 text-[10px] text-muted-foreground/80">
-                            ({fundingWalletTypeLabel(w.type)})
-                          </span>
-                        </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mb-2 text-[10px] leading-snug text-muted-foreground">
+                    No hay billeteras activas de efectivo o débito.
+                  </p>
+                )}
+                <Separator className="my-2 bg-emerald-500/15" />
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Balance actual (efectivo + débito)
+                    </span>
+                    <span className="font-mono font-semibold tabular-nums text-foreground">
+                      {formatCurrency(displayFundingWalletTotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Menos pendiente de la quincena (no pagado)
+                    </span>
+                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                      −{formatCurrency(displayPendienteFundingRow)}
+                    </span>
+                  </div>
+                  {payrollLoanDeduction > 0 ? (
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground">
+                        Menos deducciones de nómina (préstamos)
                       </span>
-                      <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
-                        {formatCurrency(w.amount)}
+                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                        −{formatCurrency(payrollLoanDeduction)}
                       </span>
                     </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="mb-2 text-[10px] leading-snug text-muted-foreground">
-                  No hay billeteras activas de efectivo o débito.
-                </p>
-              )}
-              <Separator className="my-2 bg-emerald-500/15" />
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-muted-foreground">
-                    Total billeteras (efectivo + débito)
-                  </span>
-                  <span className="font-mono font-semibold tabular-nums text-foreground">
-                    {formatCurrency(displayFundingWalletTotal)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-muted-foreground">
-                    Menos pendiente de la quincena (no pagado)
-                  </span>
-                  <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                    −{formatCurrency(displayPendienteFundingRow)}
-                  </span>
-                </div>
-                {payrollLoanDeduction > 0 ? (
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-muted-foreground">
-                      Menos deducciones de nómina (préstamos)
+                  ) : null}
+                  {displayBudgetFundingRow > 0 ? (
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground">
+                        Menos del presupuesto de la quincena
+                      </span>
+                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                        −{formatCurrency(displayBudgetFundingRow)}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-2 text-xs font-semibold">
+                    <span className="text-emerald-800 dark:text-emerald-300">
+                      = Liquidez actual
                     </span>
-                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                      −{formatCurrency(payrollLoanDeduction)}
+                    <span
+                      className={cn(
+                        'font-mono tabular-nums',
+                        displayFundingNet >= 0
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-destructive',
+                      )}
+                    >
+                      {formatCurrency(displayFundingNet)}
                     </span>
                   </div>
-                ) : null}
-                {displayBudgetFundingRow > 0 ? (
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-muted-foreground">
-                      Menos presupuesto restante de la quincena
-                    </span>
-                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                      −{formatCurrency(displayBudgetFundingRow)}
-                    </span>
-                  </div>
-                ) : null}
-                <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-2 text-xs font-semibold">
-                  <span className="text-emerald-800 dark:text-emerald-300">
-                    = Billeteras vs pendiente
-                  </span>
-                  <span
-                    className={cn(
-                      'font-mono tabular-nums',
-                      displayFundingNet >= 0
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-destructive',
-                    )}
-                  >
-                    {formatCurrency(displayFundingNet)}
-                  </span>
                 </div>
               </div>
-            </div>
-            ) : null}
-
-            {budgetPanel != null ? (
-              <>
-                <Separator className="bg-border/50 xl:hidden" />
-                <MonthlyBudgetSidebar
-                  panel={budgetPanel}
-                  ownerQuery={budgetOwnerQuery}
-                  className="xl:hidden"
-                />
-              </>
             ) : null}
           </>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

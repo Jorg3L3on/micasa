@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronsUpDown, Home, LogOut, Plus, Settings, User } from 'lucide-react';
@@ -10,6 +10,7 @@ import {
   CreateHouseDialog,
   type CreatedHouse,
 } from '@/components/create-house-dialog';
+import { SidebarGlyph } from '@/components/sidebar-glyph';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
 import {
@@ -35,10 +36,10 @@ const TeamSwitcherShell = () => (
   <SidebarMenu>
     <SidebarMenuItem>
       <div
-        className="peer/menu-button flex h-12 w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2"
+        className="peer/menu-button flex h-12 w-full items-center gap-2.5 overflow-hidden rounded-xl border border-transparent p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2"
         aria-hidden
       >
-        <div className="size-8 shrink-0 animate-pulse rounded-lg bg-sidebar-primary/25" />
+        <div className="size-7 shrink-0 animate-pulse rounded-lg bg-black/[0.06] dark:bg-white/[0.08]" />
         <div className="grid min-w-0 flex-1 gap-1 group-data-[collapsible=icon]:hidden">
           <div className="h-3.5 w-30 max-w-full animate-pulse rounded bg-muted" />
           <div className="h-3 w-24 max-w-full animate-pulse rounded bg-muted" />
@@ -50,9 +51,23 @@ const TeamSwitcherShell = () => (
 
 const contextItemClass = (active: boolean) =>
   cn(
-    'gap-2 p-2',
-    active && 'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
+    'gap-2 rounded-lg p-2',
+    active &&
+      'bg-primary/10 font-medium text-foreground dark:bg-white/[0.07] dark:text-white',
   );
+
+const TEAM_SWITCHER_TRIGGER_CLASS = [
+  'border border-transparent bg-transparent shadow-none',
+  'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+  'dark:hover:bg-white/[0.05] dark:hover:text-white',
+  'data-[state=open]:border-black/[0.08] data-[state=open]:bg-white/80',
+  'data-[state=open]:shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+  'dark:data-[state=open]:border-white/20 dark:data-[state=open]:bg-white/[0.10]',
+  'dark:data-[state=open]:text-white',
+  'dark:data-[state=open]:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+  'ring-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0',
+  'group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1!',
+].join(' ');
 
 export function TeamSwitcher() {
   const [clientReady, setClientReady] = useState(false);
@@ -73,8 +88,12 @@ export function TeamSwitcher() {
       const params = new URLSearchParams(searchParams.toString());
       params.set('ownerType', ownerType);
       params.set('ownerId', String(ownerId));
-      router.push(`${pathname}?${params.toString()}`);
-      router.refresh();
+      const href = `${pathname}?${params.toString()}`;
+      // Do not call router.refresh() here: it races with push and can keep
+      // the previous searchParams (and Panel financiero payload) on screen.
+      startTransition(() => {
+        router.push(href);
+      });
     },
     [pathname, router, searchParams],
   );
@@ -150,26 +169,29 @@ export function TeamSwitcher() {
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className={TEAM_SWITCHER_TRIGGER_CLASS}
                 aria-label={`Contexto: ${displayLabel}`}
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-linear-to-br from-[#3a37fc] to-[#ee477a] text-white shadow-[0_8px_20px_-10px_rgba(58,55,252,0.8)]">
-                  <DisplayIcon className="size-4" data-icon="inline-start" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{displayLabel}</span>
-                  <span className="truncate text-xs">
+                <SidebarGlyph icon={DisplayIcon} />
+                <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-[family-name:var(--font-display)] text-sm font-semibold tracking-tight">
+                    {displayLabel}
+                  </span>
+                  <span className="truncate text-[11px] text-muted-foreground">
                     {context.type === 'user' ? 'Finanzas personales' : 'Casa'}
                   </span>
                 </div>
-                <ChevronsUpDown className="ml-auto" />
+                <ChevronsUpDown className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-[#0d1327]/95 dark:backdrop-blur-xl"
               align="start"
               side={isMobile ? 'bottom' : 'right'}
               sideOffset={4}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+              }}
             >
               <DropdownMenuLabel className="text-muted-foreground text-xs">
                 Personal
@@ -182,9 +204,7 @@ export function TeamSwitcher() {
                   pushUrlWithOwnerContext('user', userId);
                 }}
               >
-                <div className="flex size-6 items-center justify-center rounded-md border">
-                  <User className="size-3.5 shrink-0" data-icon="inline-start" />
-                </div>
+                <SidebarGlyph icon={User} active={isPersonalActive} size="sm" />
                 {session.user.name}
               </DropdownMenuItem>
 
@@ -205,9 +225,11 @@ export function TeamSwitcher() {
                       pushUrlWithOwnerContext('house', house.id);
                     }}
                   >
-                    <div className="flex size-6 items-center justify-center rounded-md border">
-                      <Home className="size-3.5 shrink-0" data-icon="inline-start" />
-                    </div>
+                    <SidebarGlyph
+                      icon={Home}
+                      active={isHouseActive}
+                      size="sm"
+                    />
                     {house.name}
                   </DropdownMenuItem>
                 );
@@ -216,9 +238,7 @@ export function TeamSwitcher() {
                 className="gap-2 p-2"
                 onClick={handleCreateHouse}
               >
-                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" data-icon="inline-start" />
-                </div>
+                <SidebarGlyph icon={Plus} size="sm" />
                 <div className="text-muted-foreground font-medium">
                   Crear casa
                 </div>

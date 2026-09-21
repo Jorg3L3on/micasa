@@ -6,41 +6,17 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  CircleX,
-} from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
   FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -61,16 +37,21 @@ import {
   type AddIncomeFormValues,
 } from '@/schemas/transaction.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
-import {
-  addCalendarDays,
-  APP_TIMEZONE,
-  todayCalendarDate,
-} from '@/lib/calendar-dates';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { isGoalWalletType, isTransferableWalletType } from '@/domain/payment-method';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  DateStepper,
+  FieldClearButton,
+  FormAmountRow,
+  FormGroupedRow,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+} from '@/components/overlay/overlay-form';
 
 export type TransactionTab = 'expense' | 'income';
 
@@ -87,106 +68,6 @@ type AddTransactionDialogProps = {
   expenseError?: string | null;
   incomeError?: string | null;
 };
-
-const rowTriggerClass =
-  'h-11 w-full max-w-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent';
-
-const groupedLabelClass =
-  'w-[5rem] shrink-0 text-sm font-medium leading-none text-foreground';
-
-function GroupedRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <FormItem className="space-y-1 px-3 py-1.5">
-      <div className="flex min-h-11 items-center gap-3">
-        <FormLabel className={groupedLabelClass}>{label}</FormLabel>
-        <div className="min-w-0 flex-1">{children}</div>
-      </div>
-      <FormMessage />
-    </FormItem>
-  );
-}
-
-function FieldClearButton({
-  label,
-  onClear,
-}: {
-  label: string;
-  onClear: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      tabIndex={-1}
-      aria-label={label}
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClear}
-    >
-      <CircleX className="h-4 w-4" aria-hidden />
-    </button>
-  );
-}
-
-function AmountRow({
-  value,
-  onChange,
-}: {
-  value: unknown;
-  onChange: (val: number) => void;
-}) {
-  return (
-    <FormItem className="space-y-1 px-3 py-2">
-      <FormLabel className="text-sm font-medium text-foreground">
-        Monto
-      </FormLabel>
-      <div className="flex items-center gap-2">
-        <span
-          className="mr-[2.5rem] inline-flex h-7 shrink-0 items-center rounded-md bg-muted px-2 text-xs font-semibold tracking-wide text-muted-foreground"
-          aria-hidden
-        >
-          MXN
-        </span>
-        <FormControl>
-          <CurrencyInput
-            hideSymbol
-            clearable
-            value={value}
-            onChange={onChange}
-            placeholder="0.00"
-            enterKeyHint="next"
-            className="h-10 border-0 bg-transparent px-0 font-mono text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl"
-          />
-        </FormControl>
-      </div>
-      <FormMessage />
-    </FormItem>
-  );
-}
-
-const dateStepperFormatter = new Intl.DateTimeFormat('es-MX', {
-  weekday: 'long',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: APP_TIMEZONE,
-});
-
-function formatStepperDate(ymd: string): string {
-  try {
-    const [year, month, day] = ymd.split('-').map(Number);
-    return dateStepperFormatter.format(
-      new Date(Date.UTC(year, month - 1, day, 12)),
-    );
-  } catch {
-    return ymd;
-  }
-}
 
 function emptyExpense(date: string): AddExpenseFormValues {
   return {
@@ -224,7 +105,6 @@ export default function AddTransactionDialog({
   expenseError,
   incomeError,
 }: AddTransactionDialogProps) {
-  const isMobile = useIsMobile();
   const { context } = useFinanceContext();
   const [tab, setTab] = useState<TransactionTab>('expense');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -236,28 +116,6 @@ export default function AddTransactionDialog({
   );
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const nestedSelectOpenRef = useRef(false);
-  const blockDismissUntilRef = useRef(0);
-
-  const handleSelectOpenChange = (nextOpen: boolean) => {
-    nestedSelectOpenRef.current = nextOpen;
-    if (!nextOpen) {
-      // Swallow the same touch that dismissed the list (iOS ghost click).
-      blockDismissUntilRef.current = Date.now() + 500;
-    }
-  };
-
-  const shouldBlockDismiss = () =>
-    nestedSelectOpenRef.current || Date.now() < blockDismissUntilRef.current;
-
-  const handleRootOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && shouldBlockDismiss()) return;
-    onOpenChange(nextOpen);
-  };
-
-  const preventDismissWhileSelectOpen = (event: { preventDefault: () => void }) => {
-    if (shouldBlockDismiss()) event.preventDefault();
-  };
 
   const resolvedDate = defaultDate ?? todayCalendarDate();
 
@@ -395,8 +253,6 @@ export default function AddTransactionDialog({
     }
   }, [expenseForm, isCreditCardPaymentMethod]);
 
-  const handleCancel = () => onOpenChange(false);
-
   const submitExpense = expenseForm.handleSubmit(async (values) => {
     try {
       setIsSubmitting(true);
@@ -425,48 +281,16 @@ export default function AddTransactionDialog({
     loading ||
     (tab === 'expense' && (exceedsCreditLimit || exceedsFundingBalance));
 
-  const header = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      <Button
-        type="button"
-        variant="ghost"
-        className="absolute left-0 h-9 px-2 text-primary-text"
-        onClick={handleCancel}
-        disabled={isSubmitting}
-      >
-        Cancelar
-      </Button>
-      <DialogTitle className="text-base font-semibold">
-        Agregar transacción
-      </DialogTitle>
-      <DialogDescription className="sr-only">
-        Elige gasto o ingreso. Solo se guarda la pestaña activa.
-      </DialogDescription>
-    </div>
-  );
-
-  const sheetHeader = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      <Button
-        type="button"
-        variant="ghost"
-        className="absolute left-0 h-9 px-2 text-primary-text"
-        onClick={handleCancel}
-        disabled={isSubmitting}
-      >
-        Cancelar
-      </Button>
-      <SheetTitle className="text-base font-semibold">
-        Agregar transacción
-      </SheetTitle>
-      <SheetDescription className="sr-only">
-        Elige gasto o ingreso. Solo se guarda la pestaña activa.
-      </SheetDescription>
-    </div>
-  );
-
-  const formBody = (
-    <div className="flex flex-col gap-4">
+  return (
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Agregar transacción"
+      description="Elige gasto o ingreso. Solo se guarda la pestaña activa."
+      busy={isSubmitting}
+    >
+      {({ handleSelectOpenChange }) => (
+        <div className="flex flex-col gap-4">
       <TransactionTypeSwitch value={tab} onChange={setTab} />
       <Tabs
         value={tab}
@@ -486,7 +310,7 @@ export default function AddTransactionDialog({
                   {expenseError}
                 </div>
               ) : null}
-              <div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+              <div className={OVERLAY_GROUPED_CARD_CLASS}>
                 <FormField
                   control={expenseForm.control}
                   name="paymentMethodId"
@@ -495,7 +319,7 @@ export default function AddTransactionDialog({
                       (pm) => pm.id === Number(field.value),
                     );
                     return (
-                      <GroupedRow label="Billetera">
+                      <FormGroupedRow label="Billetera">
                         <Select
                           value={field.value ? String(field.value) : undefined}
                           onOpenChange={handleSelectOpenChange}
@@ -505,7 +329,7 @@ export default function AddTransactionDialog({
                           disabled={loading}
                         >
                           <FormControl>
-                            <SelectTrigger className={rowTriggerClass}>
+                            <SelectTrigger className={OVERLAY_ROW_TRIGGER_CLASS}>
                               <SelectValue placeholder="Selecciona">
                                 {selected ? (
                                   <WalletIdentity
@@ -534,7 +358,7 @@ export default function AddTransactionDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                      </GroupedRow>
+                      </FormGroupedRow>
                     );
                   }}
                 />
@@ -543,7 +367,7 @@ export default function AddTransactionDialog({
                   control={expenseForm.control}
                   name="amount"
                   render={({ field }) => (
-                    <AmountRow value={field.value} onChange={field.onChange} />
+                    <FormAmountRow value={field.value} onChange={field.onChange} />
                   )}
                 />
 
@@ -551,7 +375,7 @@ export default function AddTransactionDialog({
                   control={expenseForm.control}
                   name="categoryId"
                   render={({ field }) => (
-                    <GroupedRow label="Categoría">
+                    <FormGroupedRow label="Categoría">
                       <CategoryGroupedSelect
                         categories={categories}
                         value={field.value ? Number(field.value) : undefined}
@@ -563,9 +387,9 @@ export default function AddTransactionDialog({
                         }
                         placeholder="Selecciona"
                         ariaLabel="Categoría"
-                        triggerClassName={rowTriggerClass}
+                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
                       />
-                    </GroupedRow>
+                    </FormGroupedRow>
                   )}
                 />
 
@@ -573,7 +397,7 @@ export default function AddTransactionDialog({
                   control={expenseForm.control}
                   name="name"
                   render={({ field }) => (
-                    <GroupedRow label="Nombre">
+                    <FormGroupedRow label="Nombre">
                       <div className="flex items-center gap-1">
                         <FormControl>
                           <Input
@@ -593,7 +417,7 @@ export default function AddTransactionDialog({
                           />
                         ) : null}
                       </div>
-                    </GroupedRow>
+                    </FormGroupedRow>
                   )}
                 />
 
@@ -601,12 +425,12 @@ export default function AddTransactionDialog({
                   control={expenseForm.control}
                   name="date"
                   render={({ field }) => (
-                    <GroupedRow label="Fecha">
+                    <FormGroupedRow label="Fecha">
                       <DateStepper
                         value={field.value}
                         onChange={field.onChange}
                       />
-                    </GroupedRow>
+                    </FormGroupedRow>
                   )}
                 />
               </div>
@@ -667,7 +491,7 @@ export default function AddTransactionDialog({
                   {incomeError}
                 </div>
               ) : null}
-              <div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+              <div className={OVERLAY_GROUPED_CARD_CLASS}>
                 <FormField
                   control={incomeForm.control}
                   name="walletId"
@@ -676,7 +500,7 @@ export default function AddTransactionDialog({
                       (pm) => pm.id === Number(field.value),
                     );
                     return (
-                      <GroupedRow label="Billetera">
+                      <FormGroupedRow label="Billetera">
                         <Select
                           value={field.value ? String(field.value) : undefined}
                           onOpenChange={handleSelectOpenChange}
@@ -686,7 +510,7 @@ export default function AddTransactionDialog({
                           disabled={loading}
                         >
                           <FormControl>
-                            <SelectTrigger className={rowTriggerClass}>
+                            <SelectTrigger className={OVERLAY_ROW_TRIGGER_CLASS}>
                               <SelectValue placeholder="Selecciona">
                                 {selected ? (
                                   <WalletIdentity
@@ -715,7 +539,7 @@ export default function AddTransactionDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                      </GroupedRow>
+                      </FormGroupedRow>
                     );
                   }}
                 />
@@ -724,7 +548,7 @@ export default function AddTransactionDialog({
                   control={incomeForm.control}
                   name="amount"
                   render={({ field }) => (
-                    <AmountRow value={field.value} onChange={field.onChange} />
+                    <FormAmountRow value={field.value} onChange={field.onChange} />
                   )}
                 />
 
@@ -732,7 +556,7 @@ export default function AddTransactionDialog({
                   control={incomeForm.control}
                   name="categoryId"
                   render={({ field }) => (
-                    <GroupedRow label="Categoría">
+                    <FormGroupedRow label="Categoría">
                       <CategoryGroupedSelect
                         categories={incomeCategories}
                         value={field.value ? Number(field.value) : undefined}
@@ -744,9 +568,9 @@ export default function AddTransactionDialog({
                         }
                         placeholder="Selecciona"
                         ariaLabel="Categoría"
-                        triggerClassName={rowTriggerClass}
+                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
                       />
-                    </GroupedRow>
+                    </FormGroupedRow>
                   )}
                 />
 
@@ -754,7 +578,7 @@ export default function AddTransactionDialog({
                   control={incomeForm.control}
                   name="name"
                   render={({ field }) => (
-                    <GroupedRow label="Nombre">
+                    <FormGroupedRow label="Nombre">
                       <div className="flex items-center gap-1">
                         <FormControl>
                           <Input
@@ -774,7 +598,7 @@ export default function AddTransactionDialog({
                           />
                         ) : null}
                       </div>
-                    </GroupedRow>
+                    </FormGroupedRow>
                   )}
                 />
 
@@ -782,12 +606,12 @@ export default function AddTransactionDialog({
                   control={incomeForm.control}
                   name="date"
                   render={({ field }) => (
-                    <GroupedRow label="Fecha">
+                    <FormGroupedRow label="Fecha">
                       <DateStepper
                         value={field.value}
                         onChange={field.onChange}
                       />
-                    </GroupedRow>
+                    </FormGroupedRow>
                   )}
                 />
               </div>
@@ -800,46 +624,13 @@ export default function AddTransactionDialog({
         type="button"
         onClick={handleSave}
         disabled={saveDisabled}
-        className="h-11 w-full rounded-xl"
+        className={OVERLAY_PRIMARY_BUTTON_CLASS}
       >
         {isSubmitting ? 'Guardando…' : 'Guardar'}
       </Button>
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <Sheet open={open} onOpenChange={handleRootOpenChange}>
-        <SheetContent
-          side="bottom"
-          showCloseButton={false}
-          className="flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0"
-          onPointerDownOutside={preventDismissWhileSelectOpen}
-          onFocusOutside={preventDismissWhileSelectOpen}
-          onInteractOutside={preventDismissWhileSelectOpen}
-        >
-          <div className="border-b border-border/50 px-4 py-3">{sheetHeader}</div>
-          <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {open ? formBody : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleRootOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="max-w-md w-full gap-4 p-5"
-        onPointerDownOutside={preventDismissWhileSelectOpen}
-        onFocusOutside={preventDismissWhileSelectOpen}
-        onInteractOutside={preventDismissWhileSelectOpen}
-      >
-        {header}
-        {open ? formBody : null}
-      </DialogContent>
-    </Dialog>
+        </div>
+      )}
+    </ResponsiveOverlay>
   );
 }
 
@@ -1032,60 +823,6 @@ function TransactionTypeSwitch({
           </span>
         );
       })}
-    </div>
-  );
-}
-
-function DateStepper({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <CalendarDays
-        className="h-4 w-4 shrink-0 text-muted-foreground"
-        aria-hidden
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="shrink-0"
-        aria-label="Día anterior"
-        onClick={() => onChange(addCalendarDays(value, -1))}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <div className="relative min-w-0 flex-1 rounded-md focus-within:ring-2 focus-within:ring-ring/50">
-        <span
-          className="pointer-events-none block truncate text-center text-sm font-medium capitalize text-primary-text"
-          aria-hidden
-        >
-          {formatStepperDate(value)}
-        </span>
-        <input
-          type="date"
-          value={value}
-          onChange={(event) => {
-            if (event.target.value) onChange(event.target.value);
-          }}
-          aria-label={`Fecha, ${formatStepperDate(value)}`}
-          className="absolute inset-0 cursor-pointer opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-        />
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="shrink-0"
-        aria-label="Día siguiente"
-        onClick={() => onChange(addCalendarDays(value, 1))}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
     </div>
   );
 }

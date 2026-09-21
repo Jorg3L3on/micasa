@@ -6,7 +6,6 @@ import {
   ChartLine,
   Receipt,
   Calendar,
-  Coins,
   Goal,
   HandCoins,
   PiggyBank,
@@ -16,7 +15,6 @@ import { usePathname, useSearchParams } from 'next/navigation';
 
 import { TeamSwitcher } from '@/components/team-switcher';
 import { NavMain } from '@/components/nav-main';
-import { MicasaMark } from '@/components/brand/micasa-mark';
 import {
   Sidebar,
   SidebarContent,
@@ -93,12 +91,6 @@ export function AppSidebar({
       isActive: pathname === '/metas' || pathname.startsWith('/metas/'),
     },
     {
-      title: 'Gastos',
-      url: '/expenses',
-      icon: Coins,
-      isActive: pathname === '/expenses' || pathname.startsWith('/expenses/'),
-    },
-    {
       title: 'Préstamos',
       url: '/loans',
       icon: HandCoins,
@@ -123,13 +115,7 @@ export function AppSidebar({
     <>
       <MobileSidebarCloseOnRoute />
       <Sidebar collapsible="icon" {...props}>
-        <SidebarHeader className="gap-3">
-          <div className="flex items-center gap-2 px-2 pt-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-            <MicasaMark className="h-6 w-auto" />
-            <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-              MiCasa
-            </span>
-          </div>
+        <SidebarHeader>
           <TeamSwitcher />
         </SidebarHeader>
         <SidebarContent>

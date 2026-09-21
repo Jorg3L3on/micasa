@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { MONTHLY_ICON_PILL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { parseOwnerQuery } from '@/lib/api/client-fetch';
 import { getCreatedMonths } from '@/lib/api/fortnights';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ type MonthlyMonthPickerProps = {
   /** Calendar current month (1–12) for highlight. */
   currentYear: number;
   currentMonth: number;
+  isCurrentMonth: boolean;
 };
 
 export const MonthlyMonthPicker = ({
@@ -45,6 +47,7 @@ export const MonthlyMonthPicker = ({
   ownerQuery,
   currentYear,
   currentMonth,
+  isCurrentMonth,
 }: MonthlyMonthPickerProps) => {
   const router = useRouter();
   // Prefer the page's owner query over FinanceProvider — avoids SSR crashes when
@@ -89,21 +92,43 @@ export const MonthlyMonthPicker = ({
         <button
           type="button"
           className={cn(
-            'inline-flex max-w-full items-center gap-1 rounded-md text-left',
+            'flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 px-2.5 py-1.5 text-left',
+            'transition-colors hover:bg-muted/20 dark:hover:bg-white/[0.04]',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            '@min-[42rem]:flex-none @min-[42rem]:justify-start',
           )}
           aria-label={`Elegir mes: ${monthName} ${year}`}
+          aria-live="polite"
         >
-          <span className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">
-            {monthName}
-            {year !== currentYear ? (
-              <span className="font-medium text-muted-foreground"> {year}</span>
+          <span
+            className={cn('hidden sm:flex', MONTHLY_ICON_PILL_CLASS)}
+            aria-hidden
+          >
+            <CalendarDays className="h-4 w-4" />
+          </span>
+          <span className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
+            <span className="flex min-w-0 items-center gap-1">
+              <span className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">
+                {monthName}
+                {year !== currentYear ? (
+                  <span className="font-medium text-muted-foreground"> {year}</span>
+                ) : null}
+              </span>
+              <ChevronDown
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+            </span>
+            {isCurrentMonth ? (
+              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+                <span
+                  className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  aria-hidden
+                />
+                Actual
+              </span>
             ) : null}
           </span>
-          <ChevronDown
-            className="size-4 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[17.5rem] p-2">

@@ -112,11 +112,11 @@ export function LoginForm({
           type="submit"
           disabled={isLoading}
           className={cn(
-            'group relative mt-1.5 w-full overflow-hidden rounded-full border-0 bg-linear-to-r from-[#FF5733] to-[#FF2E00] px-4 py-3.5 text-sm font-semibold text-white',
-            'shadow-[0_8px_24px_-8px_rgba(255,87,51,0.7)] transition-[transform,box-shadow,filter] duration-200',
-            'hover:-translate-y-px hover:brightness-110 hover:shadow-[0_12px_28px_-8px_rgba(255,87,51,0.85)]',
+            'group relative mt-1.5 w-full overflow-hidden rounded-full border-0 bg-[#3a37fc] px-4 py-3.5 text-sm font-semibold text-white',
+            'shadow-[0_8px_24px_-8px_rgba(58,55,252,0.7)] ring-1 ring-[#911efe]/40 transition-[transform,box-shadow,filter] duration-200',
+            'hover:-translate-y-px hover:brightness-110 hover:shadow-[0_12px_28px_-8px_rgba(58,55,252,0.85)]',
             'active:translate-y-0',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5733]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#060914]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#911efe]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#060914]',
             'disabled:pointer-events-none disabled:opacity-60',
           )}
         >
