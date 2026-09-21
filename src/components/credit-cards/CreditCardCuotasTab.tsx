@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, ChevronDown, CreditCard, Plus } from 'lucide-react';
+import { ChevronDown, CreditCard, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,16 +11,25 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CreditCardInstallmentPlansSection } from '@/components/credit-cards/CreditCardInstallmentPlansSection';
-import { CreditCardInstallmentPortfolio } from '@/components/credit-cards/CreditCardInstallmentPortfolio';
-import { CreditCardScheduledPaymentsSection } from '@/components/credit-cards/CreditCardScheduledPaymentsSection';
+import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
+import { CreditCardScheduledPaymentDialog } from '@/components/credit-cards/CreditCardScheduledPaymentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { listCreditCardInstallmentPlans } from '@/lib/api/credit-cards';
+import {
+  deleteCreditCardScheduledPayment,
+  listCreditCardInstallmentPlans,
+  listCreditCardScheduledPayments,
+} from '@/lib/api/credit-cards';
 import {
   buildInstallmentPortfolio,
   sumInstallmentExposure,
 } from '@/lib/finance/credit-card-installment-portfolio';
 import type { FinanceContextType } from '@/types/finance-context';
-import type { CreditCardStatementPurchaseItem } from '@/types/catalog';
+import type {
+  CreditCardInstallmentPlanItem,
+  CreditCardPaymentListItem,
+  CreditCardScheduledPaymentItem,
+  CreditCardStatementPurchaseItem,
+} from '@/types/catalog';
 import { formatCurrency } from '@/lib/utils';
 
 type CreditCardCuotasTabProps = {
@@ -27,6 +37,8 @@ type CreditCardCuotasTabProps = {
   context: FinanceContextType;
   defaultDueDay?: number | null;
   purchases: CreditCardStatementPurchaseItem[];
+  paymentHistory: CreditCardPaymentListItem[];
+  statementEnd: string;
   ownerQueryString: string;
   onChanged?: () => void | Promise<void>;
   createPlanDialogOpen?: boolean;
@@ -39,39 +51,56 @@ export const CreditCardCuotasTab = ({
   context,
   defaultDueDay,
   purchases,
+  paymentHistory,
+  statementEnd,
   ownerQueryString,
   onChanged,
   createPlanDialogOpen,
   onCreatePlanDialogOpenChange,
   cycleLoading = false,
 }: CreditCardCuotasTabProps) => {
-  const [plansExposure, setPlansExposure] = useState(0);
-  const [planCount, setPlanCount] = useState(0);
+  const [plans, setPlans] = useState<CreditCardInstallmentPlanItem[]>([]);
+  const [scheduledPayments, setScheduledPayments] = useState<
+    CreditCardScheduledPaymentItem[]
+  >([]);
+  const [commitmentsReady, setCommitmentsReady] = useState(false);
   const [scheduledDialogOpen, setScheduledDialogOpen] = useState(false);
+  const [editingScheduled, setEditingScheduled] =
+    useState<CreditCardScheduledPaymentItem | null>(null);
 
   const msiExposure = useMemo(() => {
     const portfolio = buildInstallmentPortfolio(purchases);
     return sumInstallmentExposure(portfolio);
   }, [purchases]);
 
+  const plansExposure = useMemo(
+    () =>
+      plans.reduce(
+        (sum, item) =>
+          sum + item.installmentAmount * item.remainingInstallments,
+        0,
+      ),
+    [plans],
+  );
+  const planCount = plans.length;
+
   const loadPlansSummary = useCallback(async () => {
-    if (context.id === 0) return;
+    if (context.id === 0) {
+      setCommitmentsReady(true);
+      return;
+    }
     try {
-      const response = await listCreditCardInstallmentPlans(
-        creditCardId,
-        context,
-      );
-      setPlanCount(response.items.length);
-      setPlansExposure(
-        response.items.reduce(
-          (sum, item) =>
-            sum + item.installmentAmount * item.remainingInstallments,
-          0,
-        ),
-      );
+      const [plansResponse, scheduledResponse] = await Promise.all([
+        listCreditCardInstallmentPlans(creditCardId, context),
+        listCreditCardScheduledPayments(creditCardId, context),
+      ]);
+      setPlans(plansResponse.items);
+      setScheduledPayments(scheduledResponse.items);
     } catch {
-      setPlanCount(0);
-      setPlansExposure(0);
+      setPlans([]);
+      setScheduledPayments([]);
+    } finally {
+      setCommitmentsReady(true);
     }
   }, [context, creditCardId]);
 
@@ -82,6 +111,31 @@ export const CreditCardCuotasTab = ({
   const handleChanged = async () => {
     await loadPlansSummary();
     await onChanged?.();
+  };
+
+  const handleOpenCreateScheduled = () => {
+    setEditingScheduled(null);
+    setScheduledDialogOpen(true);
+  };
+
+  const handleEditScheduled = (item: CreditCardScheduledPaymentItem) => {
+    setEditingScheduled(item);
+    setScheduledDialogOpen(true);
+  };
+
+  const handleDeleteScheduled = async (item: CreditCardScheduledPaymentItem) => {
+    try {
+      await deleteCreditCardScheduledPayment(creditCardId, item.id, context);
+      toast.success('Cuota eliminada');
+      await handleChanged();
+    } catch {
+      toast.error('No se pudo eliminar la cuota');
+    }
+  };
+
+  const handleScheduledDialogOpenChange = (open: boolean) => {
+    if (!open) setEditingScheduled(null);
+    setScheduledDialogOpen(open);
   };
 
   const showSummary = msiExposure > 0 || plansExposure > 0;
@@ -124,12 +178,30 @@ export const CreditCardCuotasTab = ({
             >
               Nuevo plan a meses
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setScheduledDialogOpen(true)}>
+            <DropdownMenuItem onClick={handleOpenCreateScheduled}>
               Cuota futura programada
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {cycleLoading || !commitmentsReady ? (
+        <Skeleton
+          className="h-56 w-full rounded-2xl"
+          aria-label="Cargando pagos y cuotas futuras"
+        />
+      ) : (
+        <CreditCardPaymentsChart
+          paymentHistory={paymentHistory}
+          installmentActivePurchases={purchases}
+          statementEnd={statementEnd}
+          scheduledPayments={scheduledPayments}
+          installmentPlans={plans}
+          ownerQueryString={ownerQueryString}
+          onEditScheduled={handleEditScheduled}
+          onDeleteScheduled={handleDeleteScheduled}
+        />
+      )}
 
       {showSummary ? (
         <div
@@ -169,38 +241,17 @@ export const CreditCardCuotasTab = ({
         createDialogOpen={createPlanDialogOpen}
         onCreateDialogOpenChange={onCreatePlanDialogOpenChange}
         embedded
+        hideWhenEmpty
       />
 
-      <CreditCardScheduledPaymentsSection
+      <CreditCardScheduledPaymentDialog
+        open={scheduledDialogOpen}
+        onOpenChange={handleScheduledDialogOpenChange}
         creditCardId={creditCardId}
         context={context}
-        onChanged={handleChanged}
-        embedded
-        createDialogOpen={scheduledDialogOpen}
-        onCreateDialogOpenChange={setScheduledDialogOpen}
+        editingItem={editingScheduled}
+        onSuccess={handleChanged}
       />
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 px-0.5">
-          <CalendarClock
-            className="h-3.5 w-3.5 text-muted-foreground"
-            aria-hidden
-          />
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Compras a meses vigentes
-          </h4>
-        </div>
-        {cycleLoading ? (
-          <Skeleton className="h-32 w-full rounded-2xl" aria-label="Cargando compras a meses" />
-        ) : (
-          <CreditCardInstallmentPortfolio
-            purchases={purchases}
-            ownerQueryString={ownerQueryString}
-            onCreateInstallmentPlan={() => onCreatePlanDialogOpenChange?.(true)}
-            embedded
-          />
-        )}
-      </div>
     </div>
   );
 };

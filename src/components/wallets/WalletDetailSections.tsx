@@ -76,7 +76,10 @@ export const WalletPeriodWorkspaceShell = ({
 
 export const WalletDetailTabsList = ({ children }: { children: ReactNode }) => (
   <div className={creditCardSegmentedTabChromeClass}>
-    <TabsList variant="line" className={creditCardSegmentedTabListClass}>
+    <TabsList
+      variant="line"
+      className={cn(creditCardSegmentedTabListClass, '!grid-cols-3')}
+    >
       {children}
     </TabsList>
   </div>

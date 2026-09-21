@@ -21,24 +21,24 @@ describe('getFortnightSummaryHeader', () => {
 });
 
 describe('getFortnightRemainderCopy', () => {
-  it('uses Queda when income covers toca pagar', () => {
+  it('uses Te queda when income covers toca pagar', () => {
     expect(getFortnightRemainderCopy(2150)).toEqual({
       tone: 'surplus',
-      rowLabel: 'Queda',
+      rowLabel: 'Te queda',
     });
   });
 
-  it('uses Falta when toca pagar exceeds income', () => {
+  it('uses Te falta when toca pagar exceeds income', () => {
     expect(getFortnightRemainderCopy(-4800)).toEqual({
       tone: 'shortfall',
-      rowLabel: 'Falta',
+      rowLabel: 'Te falta',
     });
   });
 
-  it('uses Queda when remainder is zero', () => {
+  it('uses Te queda when remainder is zero', () => {
     expect(getFortnightRemainderCopy(0)).toEqual({
       tone: 'even',
-      rowLabel: 'Queda',
+      rowLabel: 'Te queda',
     });
   });
 });

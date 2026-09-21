@@ -20,12 +20,12 @@ export const getFortnightRemainderCopy = (
   remainder: number,
 ): FortnightRemainderCopy => {
   if (remainder > 0) {
-    return { tone: 'surplus', rowLabel: 'Queda' };
+    return { tone: 'surplus', rowLabel: 'Te queda' };
   }
   if (remainder < 0) {
-    return { tone: 'shortfall', rowLabel: 'Falta' };
+    return { tone: 'shortfall', rowLabel: 'Te falta' };
   }
-  return { tone: 'even', rowLabel: 'Queda' };
+  return { tone: 'even', rowLabel: 'Te queda' };
 };
 
 export type FortnightStatusPillTone = 'shortfall' | 'surplus' | 'even';

@@ -26,6 +26,7 @@ import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentM
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import {
   getDueToPayComposition,
+  getFortnightStatusPill,
   getFortnightSummaryHeader,
 } from '@/components/monthly/fortnight-summary-header';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
@@ -178,6 +179,8 @@ export default function SummaryBlock({
     payrollDeduction: payrollLoanDeduction,
   });
 
+  const statusPill = getFortnightStatusPill(trasPagarPlaneado);
+
   const dateRange =
     year != null && month != null && period != null
       ? formatFortnightDateRangeCompact(year, month, period)
@@ -204,7 +207,7 @@ export default function SummaryBlock({
           <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
             <BarChart3 className="h-4 w-4" data-icon="inline-start" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
               {headerMeta?.title ?? 'Resumen de la quincena'}
             </CardTitle>
@@ -214,6 +217,19 @@ export default function SummaryBlock({
               </p>
             ) : null}
           </div>
+          <span
+            className={cn(
+              'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+              statusPill.tone === 'shortfall' &&
+                'border-destructive/40 text-destructive',
+              statusPill.tone === 'surplus' &&
+                'border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+              statusPill.tone === 'even' &&
+                'border-border/50 text-muted-foreground',
+            )}
+          >
+            {statusPill.label}
+          </span>
         </div>
 
         <FortnightSummaryHero
@@ -231,6 +247,7 @@ export default function SummaryBlock({
           unpaidExpenseCount={unpaidExpenseCount}
           compositionRows={compositionRows}
           leftoverAmount={budgetRemaining}
+          payrollDeductionAmount={payrollLoanDeduction}
         />
 
         <button

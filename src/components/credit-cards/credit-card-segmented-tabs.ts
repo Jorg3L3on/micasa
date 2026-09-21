@@ -5,7 +5,7 @@ export const creditCardSegmentedTabChromeClass =
   'rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:p-1.5';
 
 export const creditCardSegmentedTabListClass = cn(
-  '!grid h-auto w-full grid-cols-3 gap-1 rounded-none bg-transparent p-0',
+  '!grid h-auto w-full grid-cols-2 gap-1 rounded-none bg-transparent p-0',
   '[&_[data-slot=tabs-trigger]]:rounded-full',
   '[&_[data-slot=tabs-trigger]]:transition-all',
   '[&_[data-slot=tabs-trigger][data-state=active]]:border-transparent',

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getFortnightCommitmentBar,
   getFortnightIncomeCommittedPercent,
-  getFortnightIncomeGaugeSegments,
   getIncomeCommitmentTone,
 } from './fortnight-income-commitment';
 
@@ -19,20 +19,39 @@ describe('FortnightIncomeGauge data', () => {
     expect(getIncomeCommitmentTone(98)).toBe('danger');
   });
 
-  it('splits cash, budget, and free ratios for the gauge arc', () => {
+  it('splits paid, pending, budget, and free percents without clipping', () => {
     // $21k income, $10.5k cash, $3.15k budget remaining → 50% / 15% / 35%
-    const segments = getFortnightIncomeGaugeSegments(21_000, 10_500, 3_150);
-    expect(segments.cashRatio).toBeCloseTo(0.5);
-    expect(segments.budgetRatio).toBeCloseTo(0.15);
-    expect(segments.freeRatio).toBeCloseTo(0.35);
-    expect(segments.totalCommittedPercent).toBe(65);
+    const bar = getFortnightCommitmentBar(21_000, 10_500, 10_500, 3_150);
+    expect(bar.paidPercent).toBeCloseTo(50);
+    expect(bar.pendingPercent).toBeCloseTo(0);
+    expect(bar.budgetPercent).toBeCloseTo(15);
+    expect(bar.freePercent).toBeCloseTo(35);
+    expect(bar.incomeMarkerPercent).toBeNull();
+    expect(bar.totalCommittedPercent).toBe(65);
+    expect(bar.tone).toBe('ok');
   });
 
-  it('clips budget segment when cash already fills the arc', () => {
-    const segments = getFortnightIncomeGaugeSegments(1_000, 1_200, 500);
-    expect(segments.cashRatio).toBe(1);
-    expect(segments.budgetRatio).toBe(0);
-    expect(segments.freeRatio).toBe(0);
-    expect(segments.totalCommittedPercent).toBe(170);
+  it('scales the bar and marks income when commitment exceeds 100%', () => {
+    // $21k income, $0 paid, $22,861.77 cash, $2,600 budget → 121%
+    const bar = getFortnightCommitmentBar(21_000, 0, 22_861.77, 2_600);
+    expect(bar.totalCommittedPercent).toBe(121);
+    expect(bar.tone).toBe('danger');
+    expect(bar.freePercent).toBe(0);
+    expect(bar.incomeMarkerPercent).toBeCloseTo(100 / (25_461.77 / 21_000));
+    expect(bar.paidPercent + bar.pendingPercent + bar.budgetPercent).toBeCloseTo(
+      100,
+    );
+    expect(bar.pendingPercent).toBeCloseTo((22_861.77 / 25_461.77) * 100);
+    expect(bar.budgetPercent).toBeCloseTo((2_600 / 25_461.77) * 100);
+  });
+
+  it('returns empty percents when income is zero', () => {
+    const bar = getFortnightCommitmentBar(0, 100, 200, 50);
+    expect(bar.paidPercent).toBe(0);
+    expect(bar.pendingPercent).toBe(0);
+    expect(bar.budgetPercent).toBe(0);
+    expect(bar.freePercent).toBe(0);
+    expect(bar.incomeMarkerPercent).toBeNull();
+    expect(bar.totalCommittedPercent).toBe(0);
   });
 });
