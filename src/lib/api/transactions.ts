@@ -31,14 +31,29 @@ export async function updateFortnightOverrideAmount(
 
 export async function updateExpenseAmount(
   id: number,
-  amount: number,
+  data: {
+    amount: number;
+    wallet_id?: number | null;
+    description?: string;
+    payment_date?: string | null;
+  },
   context?: FinanceContextType,
-  wallet_id?: number | null,
 ) {
-  return clientFetchFromApi(`/api/transactions?id=${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ amount, ...(wallet_id !== undefined ? { wallet_id } : {}) }),
-  }, context);
+  return clientFetchFromApi(
+    `/api/transactions?id=${id}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        amount: data.amount,
+        ...(data.wallet_id !== undefined ? { wallet_id: data.wallet_id } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.payment_date !== undefined
+          ? { payment_date: data.payment_date }
+          : {}),
+      }),
+    },
+    context,
+  );
 }
 
 export async function deleteTransaction(

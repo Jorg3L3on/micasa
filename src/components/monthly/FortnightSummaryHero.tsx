@@ -225,6 +225,7 @@ export const FortnightSummaryHero = ({
   const remainderAbs = Math.abs(incomeRemainder);
   const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];
+  const dueToPayCash = dueToPay - leftoverAmount;
 
   const paidSubtitle =
     expenseCount > 0 ? `${paidExpenseCount}/${expenseCount}` : '—';
@@ -290,9 +291,23 @@ export const FortnightSummaryHero = ({
               <DueToPayLabel compositionRows={compositionRows} />
             </dt>
             <dd className="font-mono text-sm font-medium tabular-nums text-foreground sm:text-[15px]">
-              {formatCurrency(dueToPay)}
+              {formatCurrency(dueToPayCash)}
             </dd>
           </div>
+
+          {showLeftover ? (
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+                <span className="font-medium text-muted-foreground/80" aria-hidden>
+                  −
+                </span>
+                <span>Presupuesto</span>
+              </dt>
+              <dd className="font-mono text-sm font-medium tabular-nums text-foreground sm:text-[15px]">
+                {formatCurrency(leftoverAmount)}
+              </dd>
+            </div>
+          ) : null}
 
           <div className="border-t border-border/50 pt-2">
             <div className="flex items-baseline justify-between gap-4">
@@ -333,15 +348,6 @@ export const FortnightSummaryHero = ({
             dotClassName="bg-amber-400 dark:bg-amber-500"
           />
         </div>
-
-        {showLeftover ? (
-          <div className="flex items-baseline justify-between gap-4 border-t border-border/50 pt-3">
-            <span className="text-sm text-muted-foreground">Del presupuesto</span>
-            <span className="font-mono text-sm font-medium tabular-nums text-foreground sm:text-[15px]">
-              {formatCurrency(leftoverAmount)}
-            </span>
-          </div>
-        ) : null}
       </div>
     </div>
   );

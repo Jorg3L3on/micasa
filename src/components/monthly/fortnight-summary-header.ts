@@ -59,11 +59,11 @@ export type DueToPayCompositionInput = {
   statementDue?: number;
   walletLoanDue?: number;
   payrollDeduction?: number;
-  budgetRemaining?: number;
 };
 
 /**
  * Non-zero breakdown rows for the “Toca pagar” tooltip.
+ * Budget remaining is a sibling ledger line, not part of this composition.
  * Order matches how commitment is explained in the planner.
  */
 export const getDueToPayComposition = (
@@ -93,12 +93,6 @@ export const getDueToPayComposition = (
     rows.push({
       label: 'Deducciones de nómina',
       amount: input.payrollDeduction ?? 0,
-    });
-  }
-  if ((input.budgetRemaining ?? 0) > 0) {
-    rows.push({
-      label: 'Presupuesto restante',
-      amount: input.budgetRemaining ?? 0,
     });
   }
 

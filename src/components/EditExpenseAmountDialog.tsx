@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -14,6 +15,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import {
+  isValidCalendarDateString,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
+import {
   expenseAmountSchema,
   ExpenseAmountFormValues,
 } from '@/schemas/expense.schema';
@@ -21,6 +26,8 @@ import type { WalletListItem } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
+  DateStepper,
+  FieldClearButton,
   FormAmountRow,
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
@@ -33,6 +40,8 @@ type EditExpenseAmountDialogProps = {
   onOpenChange: (open: boolean) => void;
   onSave: (data: ExpenseAmountFormValues) => Promise<void>;
   defaultAmount: number;
+  defaultDescription: string;
+  defaultPaymentDate?: string | null;
   defaultWalletId?: number | null;
   wallets?: WalletListItem[];
   isPaid?: boolean;
@@ -42,6 +51,11 @@ type EditExpenseAmountDialogProps = {
 const safeAmount = (value: number): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
 
+const resolvePaymentDate = (value?: string | null): string => {
+  const ymd = value?.slice(0, 10) ?? '';
+  return isValidCalendarDateString(ymd) ? ymd : todayCalendarDate();
+};
+
 const NULL_WALLET_VALUE = '__none__';
 
 export default function EditExpenseAmountDialog({
@@ -49,6 +63,8 @@ export default function EditExpenseAmountDialog({
   onOpenChange,
   onSave,
   defaultAmount,
+  defaultDescription,
+  defaultPaymentDate,
   defaultWalletId,
   wallets = [],
   isPaid = false,
@@ -61,6 +77,8 @@ export default function EditExpenseAmountDialog({
     defaultValues: {
       amount: initialAmount,
       wallet_id: defaultWalletId ?? null,
+      description: defaultDescription,
+      payment_date: resolvePaymentDate(defaultPaymentDate),
     },
   });
 
@@ -69,17 +87,17 @@ export default function EditExpenseAmountDialog({
       form.reset({
         amount: safeAmount(defaultAmount),
         wallet_id: defaultWalletId ?? null,
+        description: defaultDescription,
+        payment_date: resolvePaymentDate(defaultPaymentDate),
       });
     }
-  }, [open, defaultAmount, defaultWalletId, form]);
+  }, [open, defaultAmount, defaultDescription, defaultPaymentDate, defaultWalletId, form]);
 
   const handleSubmit = async (data: ExpenseAmountFormValues) => {
     try {
       await onSave(data);
     } catch {
-      // Parent shows toast; close either way after the attempt.
-    } finally {
-      onOpenChange(false);
+      // Parent shows toast and keeps the overlay open.
     }
   };
 
@@ -114,6 +132,46 @@ export default function EditExpenseAmountDialog({
               </span>
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormGroupedRow label="Nombre">
+                    <div className="flex items-center gap-1">
+                      <FormControl>
+                        <Input
+                          placeholder="Ej. café, súper"
+                          autoCapitalize="sentences"
+                          autoComplete="off"
+                          enterKeyHint="next"
+                          spellCheck
+                          className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                          aria-label="Nombre del gasto"
+                          {...field}
+                        />
+                      </FormControl>
+                      {field.value ? (
+                        <FieldClearButton
+                          label="Borrar nombre"
+                          onClear={() => field.onChange('')}
+                        />
+                      ) : null}
+                    </div>
+                  </FormGroupedRow>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="payment_date"
+                render={({ field }) => (
+                  <FormGroupedRow label="Fecha">
+                    <DateStepper
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormGroupedRow>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="amount"

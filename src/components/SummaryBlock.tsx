@@ -176,7 +176,6 @@ export default function SummaryBlock({
     statementDue: planningCardStatementDue?.total ?? 0,
     walletLoanDue: planningWalletLoanDue?.total ?? 0,
     payrollDeduction: payrollLoanDeduction,
-    budgetRemaining,
   });
 
   const dateRange =

@@ -75,14 +75,12 @@ describe('getDueToPayComposition', () => {
         statementDue: 850,
         walletLoanDue: 1_800,
         payrollDeduction: 4_036.41,
-        budgetRemaining: 3_500,
       }),
     ).toEqual([
       { label: 'Pendiente de gastos', amount: 25_671.62 },
       { label: 'De eso, estado de cuenta', amount: 850 },
       { label: 'De eso, cuotas de préstamo', amount: 1_800 },
       { label: 'Deducciones de nómina', amount: 4_036.41 },
-      { label: 'Presupuesto restante', amount: 3_500 },
     ]);
   });
 
