@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { listLoans } from '@/lib/api/loans';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -205,7 +205,9 @@ export const LiquidityAccountsToday = ({
       setSelectedCard(row.wallet);
       return;
     }
-    router.push(`/loans?loanId=${row.loan.id}`);
+    const params = buildOwnerQuery(context);
+    params.set('loanId', String(row.loan.id));
+    router.push(`/loans?${params.toString()}`);
   };
 
   const countLabel =
