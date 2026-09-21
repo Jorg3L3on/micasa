@@ -178,3 +178,39 @@ export const isPointerNearWalletStrip = (
   slackPx: number = WALLET_STRIP_AUTO_SCROLL_VERTICAL_SLACK_PX,
 ): boolean =>
   pointerY >= containerTop - slackPx && pointerY <= containerBottom + slackPx;
+
+/** Hold duration before a touch/pen press on the card body starts a reorder. */
+export const WALLET_STRIP_LONG_PRESS_MS = 300;
+/** Finger travel that cancels a pending long-press so the strip can scroll. */
+export const WALLET_STRIP_TOUCH_CANCEL_PX = 10;
+/** Mouse travel on the card that starts a reorder without a long-press. */
+export const WALLET_STRIP_MOUSE_ACTIVATE_PX = 6;
+
+export const walletStripPointerDistance = (dx: number, dy: number): number =>
+  Math.hypot(dx, dy);
+
+export const walletStripHoldShouldCancel = (
+  distancePx: number,
+  cancelPx: number = WALLET_STRIP_TOUCH_CANCEL_PX,
+): boolean => distancePx > cancelPx;
+
+export const walletStripMouseShouldActivate = (
+  distancePx: number,
+  activatePx: number = WALLET_STRIP_MOUSE_ACTIVATE_PX,
+): boolean => distancePx > activatePx;
+
+export const isWalletStripTouchPointer = (pointerType: string): boolean =>
+  pointerType === 'touch' || pointerType === 'pen';
+
+/** Insertion slot: before the first card whose center is to the right of the pointer. */
+export const walletStripInsertIndexAtPointerX = (
+  pointerX: number,
+  cardCenterXs: number[],
+): number => {
+  if (cardCenterXs.length === 0) return 0;
+
+  for (let index = 0; index < cardCenterXs.length; index += 1) {
+    if (pointerX < cardCenterXs[index]) return index;
+  }
+  return cardCenterXs.length;
+};

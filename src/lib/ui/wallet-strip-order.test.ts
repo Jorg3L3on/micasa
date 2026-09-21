@@ -3,10 +3,15 @@ import {
   applyWalletStripOrder,
   defaultWalletStripOrder,
   isPointerNearWalletStrip,
+  isWalletStripTouchPointer,
   moveWalletStripId,
   parseWalletStripOrder,
   walletStripAutoScrollDelta,
+  walletStripHoldShouldCancel,
+  walletStripInsertIndexAtPointerX,
+  walletStripMouseShouldActivate,
   walletStripOrderStorageKey,
+  walletStripPointerDistance,
 } from './wallet-strip-order';
 
 const wallet = (
@@ -72,6 +77,10 @@ describe('moveWalletStripId', () => {
   it('no-ops when the slot does not change', () => {
     expect(moveWalletStripId([1, 2, 3], 2, 1)).toEqual([1, 2, 3]);
   });
+
+  it('moves one slot right when dropping past the next card midpoint', () => {
+    expect(moveWalletStripId([1, 2, 3, 4], 1, 2)).toEqual([2, 1, 3, 4]);
+  });
 });
 
 describe('parseWalletStripOrder', () => {
@@ -117,5 +126,36 @@ describe('isPointerNearWalletStrip', () => {
     expect(isPointerNearWalletStrip(60, 100, 160, 50)).toBe(true);
     expect(isPointerNearWalletStrip(200, 100, 160, 50)).toBe(true);
     expect(isPointerNearWalletStrip(220, 100, 160, 50)).toBe(false);
+  });
+});
+
+describe('wallet strip pointer reorder helpers', () => {
+  it('measures pointer travel', () => {
+    expect(walletStripPointerDistance(3, 4)).toBe(5);
+  });
+
+  it('cancels a long-press after enough travel so the strip can scroll', () => {
+    expect(walletStripHoldShouldCancel(10)).toBe(false);
+    expect(walletStripHoldShouldCancel(11)).toBe(true);
+  });
+
+  it('activates mouse drag after a short travel', () => {
+    expect(walletStripMouseShouldActivate(6)).toBe(false);
+    expect(walletStripMouseShouldActivate(7)).toBe(true);
+  });
+
+  it('treats touch and pen as press-and-hold pointers', () => {
+    expect(isWalletStripTouchPointer('touch')).toBe(true);
+    expect(isWalletStripTouchPointer('pen')).toBe(true);
+    expect(isWalletStripTouchPointer('mouse')).toBe(false);
+  });
+
+  it('picks the insert slot before the first center to the right of the pointer', () => {
+    expect(walletStripInsertIndexAtPointerX(10, [0, 100, 200])).toBe(1);
+    expect(walletStripInsertIndexAtPointerX(-10, [0, 100, 200])).toBe(0);
+    expect(walletStripInsertIndexAtPointerX(80, [0, 100, 200])).toBe(1);
+    expect(walletStripInsertIndexAtPointerX(150, [0, 100, 200])).toBe(2);
+    expect(walletStripInsertIndexAtPointerX(250, [0, 100, 200])).toBe(3);
+    expect(walletStripInsertIndexAtPointerX(0, [])).toBe(0);
   });
 });
