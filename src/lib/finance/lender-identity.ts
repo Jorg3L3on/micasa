@@ -18,6 +18,8 @@ const NAME_RULES: Array<{
   { match: (key) => key.includes('paypal'), icon: 'PAYPAL' },
   { match: (key) => key.includes('liverpool'), icon: 'LIVERPOOL' },
   { match: (key) => key.includes('amex') || key.includes('american express'), icon: 'AMEX' },
+  { match: (key) => key.includes('c&a') || key.includes('c y a'), icon: 'CA' },
+  { match: (key) => key.includes('sears'), icon: 'SEARS' },
   { match: (key) => key.includes('banco') || key.includes('bank'), icon: 'GENERIC_BANK' },
 ];
 

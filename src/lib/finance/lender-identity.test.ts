@@ -23,5 +23,7 @@ describe('lender-identity', () => {
     expect(inferLenderProviderIconKey('  mercado   pago ')).toBe('MERCADO_PAGO');
     expect(inferLenderProviderIconKey('Banco')).toBe('GENERIC_BANK');
     expect(inferLenderProviderIconKey('Santander')).toBe('SANTANDER');
+    expect(inferLenderProviderIconKey('C&A Departamental')).toBe('CA');
+    expect(inferLenderProviderIconKey('Sears')).toBe('SEARS');
   });
 });
