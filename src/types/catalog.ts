@@ -321,7 +321,7 @@ export type DuePaymentItem = {
   visibleDueDate?: string;
   /** Monto objetivo de la quincena (plan o sugerido). */
   targetAmount?: number;
-  /** Deuda actual en la billetera tarjeta (para tope de pago y “saldo total”). */
+  /** Deuda total de la tarjeta (utilización). No es el pago del corte. */
   outstandingBalance: number;
   /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
   plannedPayment?: number | null;
@@ -561,6 +561,8 @@ export type CreditCardStatementPurchaseItem = {
   fortnight_period: 'FIRST' | 'SECOND';
   credit_installment_current: number | null;
   credit_installment_total: number | null;
+  /** Issuer-stated remaining plan balance when it is not cuota × months. */
+  issuer_remaining_balance?: number | null;
 };
 
 export type InstallmentProjectionMonthItem = {
@@ -638,6 +640,8 @@ export type CreditCardInstallmentPlanItem = {
   paidInstallments: number;
   currentInstallment: number;
   remainingInstallments: number;
+  /** Sum of unpaid cuotas. Informative saldo del plan, not this period's payment. */
+  remainingBalance: number;
   progressPct: number;
   alreadyInCardBalance: boolean;
   status: 'ACTIVE' | 'COMPLETED';

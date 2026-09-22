@@ -75,11 +75,7 @@ export const CreditCardCuotasTab = ({
 
   const plansExposure = useMemo(
     () =>
-      plans.reduce(
-        (sum, item) =>
-          sum + item.installmentAmount * item.remainingInstallments,
-        0,
-      ),
+      plans.reduce((sum, item) => sum + item.remainingBalance, 0),
     [plans],
   );
   const planCount = plans.length;
@@ -207,11 +203,11 @@ export const CreditCardCuotasTab = ({
         <div
           className="grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-card px-3 py-2.5 sm:gap-3 sm:px-4"
           role="group"
-          aria-label="Exposición en cuotas"
+          aria-label="Saldo del plan, informativo"
         >
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              MSI en tarjeta
+              Saldo MSI
             </p>
             <p className="font-mono text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(msiExposure)}
@@ -219,7 +215,7 @@ export const CreditCardCuotasTab = ({
           </div>
           <div className="min-w-0 border-l border-border/50 pl-2 sm:pl-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              En planes
+              Saldo del plan
             </p>
             <p className="font-mono text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(plansExposure)}
@@ -231,6 +227,11 @@ export const CreditCardCuotasTab = ({
             ) : null}
           </div>
         </div>
+      ) : null}
+      {showSummary ? (
+        <p className="text-[10px] text-muted-foreground">
+          Saldo restante informativo. Este corte solo incluye la mensualidad.
+        </p>
       ) : null}
 
       <CreditCardInstallmentPlansSection

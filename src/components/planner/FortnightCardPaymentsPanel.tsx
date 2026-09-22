@@ -321,6 +321,14 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
+                    {status === 'sin_cargo' && item.outstandingBalance > 0 ? (
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="text-muted-foreground/70">
+                          Deuda total {formatCurrency(item.outstandingBalance)}
+                        </span>
+                      </>
+                    ) : null}
                     {hasCustomPlan && isPendingPlannerCardPayment(status, effectiveAmount) ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
@@ -385,7 +393,8 @@ const FortnightCardPaymentsPanel = ({
                     ) : null}
                   </div>
 
-                  {onPlanUpdated && status !== 'sin_cargo' ? (
+                  {onPlanUpdated &&
+                  (status !== 'sin_cargo' || item.outstandingBalance > 0) ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button

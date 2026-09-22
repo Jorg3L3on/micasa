@@ -236,7 +236,7 @@ export const CreditCardVisualHero = ({
           <div className="space-y-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                {isCurrentCycle ? 'Deuda actual' : 'Deuda hoy'}
+                Deuda total
               </p>
               <p className="text-3xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(statement.outstanding_balance)}
@@ -324,11 +324,14 @@ export const CreditCardDuePaymentStrip = ({
               : 'border-border/50 bg-card/50 dark:bg-card/30',
       )}
       role="status"
-      aria-label="Próximo pago"
+      aria-label="Toca pagar este corte"
     >
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Pago próximo
+          Toca pagar este corte
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          No es la deuda total ni el saldo del plan.
         </p>
         <p className="font-mono text-lg font-bold tabular-nums leading-tight">
           {formatCurrency(statement.next_due_payment)}
@@ -505,7 +508,7 @@ export const CreditCardStatementSummaryCard = ({
                   : 'bg-muted/30',
           )}
         >
-          <span>Por pagar</span>
+          <span>Toca pagar este corte</span>
           <span className="font-mono tabular-nums">
             {formatCurrency(statement.next_due_payment)}
           </span>

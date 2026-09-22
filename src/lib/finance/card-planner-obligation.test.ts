@@ -131,7 +131,8 @@ describe('Liverpool fixtures (planner vs statement)', () => {
       statementPayments: 0,
     });
     expect(statement.paymentsAppliedToStatement).toBe(0);
-    expect(statement.remainingStatementDue).toBeGreaterThan(0);
+    expect(statement.outstandingBalance).toBe(3190.02);
+    expect(statement.remainingStatementDue).toBe(0);
 
     const planner = buildCardPlannerObligation({
       fortnightId: 37,
@@ -210,10 +211,11 @@ describe('Liverpool fixtures (planner vs statement)', () => {
       todayYmd: '2026-07-24',
     });
 
-    // $0 plan is ignored; suggested falls back to wallet debt.
+    // $0 plan is ignored. Deuda total is not the pago del corte.
     expect(planner.plannedPayment).toBeNull();
-    expect(planner.targetAmount).toBe(2913.07);
-    expect(planner.plannerStatus).toBe('vencido');
+    expect(planner.targetAmount).toBe(0);
+    expect(planner.plannerStatus).toBe('sin_cargo');
+    expect(planner.plannerStatus).not.toBe('pagado');
     expect(planner.outstandingBalance).toBe(2913.07);
   });
 });

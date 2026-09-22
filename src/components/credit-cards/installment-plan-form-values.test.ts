@@ -21,6 +21,7 @@ const loadedPlan = (
   status: 'ACTIVE',
   endMonthLabel: 'ago 2027',
   nextDueDate: '2026-09-15',
+  remainingBalance: 4495.5,
   payments: [],
   ...overrides,
 });

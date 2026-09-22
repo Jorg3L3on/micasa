@@ -95,7 +95,7 @@ describe('buildCardStatementObligation', () => {
     expect(dto.importedAmount).toBe(4494.74);
   });
 
-  it('uses wallet debt fallback when ledger is empty', () => {
+  it('does not bill total debt when the statement payoff is unknown', () => {
     const window = resolveCreditCardStatementWindow(
       parseCalendarDate('2026-03-10'),
       6,
@@ -112,9 +112,11 @@ describe('buildCardStatementObligation', () => {
       outstandingBalance: 4579.54,
     });
 
-    expect(dto.remainingStatementDue).toBe(4579.54);
-    expect(dto.obligationAmountSource).toBe('wallet_debt');
-    expect(dto.isEstimate).toBe(true);
+    expect(dto.outstandingBalance).toBe(4579.54);
+    expect(dto.remainingStatementDue).toBe(0);
+    expect(dto.suggestedStatementAmount).toBe(0);
+    expect(dto.obligationAmountSource).toBe('none');
+    expect(dto.isEstimate).toBe(false);
   });
 
   it('projects open-cycle purchases for due-before-cutoff cards', () => {

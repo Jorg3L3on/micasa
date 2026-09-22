@@ -1328,9 +1328,10 @@ async function getDuePaymentsWithAsOf(
     const outstandingBalance = Number(card.amount);
     const window = windowByWallet.get(card.id)!;
     const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
-    // Current/next fortnights pass allowOutstandingBalanceFallback: true and must
-    // estimate from wallet debt even when imports exist but none align to the cycle.
-    // Historical fortnights pass false so we do not invent dues from today's debt.
+    // Historical fortnights pass false. Current fortnights may still pass true,
+    // but total card debt is never used as the pago del corte (see
+    // computeNextDuePayment). Without an aligned statement, ledger, or open-cycle
+    // projection, the suggested period payment is 0.
     const allowOutstandingBalanceFallback =
       options?.allowOutstandingBalanceFallback ?? true;
 

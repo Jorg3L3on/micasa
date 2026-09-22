@@ -431,7 +431,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toEqual([]);
   });
 
-  it('does not carry a stale latest import; current/next fortnights estimate from wallet debt', async () => {
+  it('does not carry a stale import or bill total debt as this corte', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 6, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
@@ -462,15 +462,16 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second[0]).toMatchObject({
       walletId: 29,
       statementDueDate: '2026-06-17',
-      nextDuePayment: 4494.74,
-      effectiveAmount: 4494.74,
-      plannerStatus: 'por_pagar',
-      obligationAmountSource: 'wallet_debt',
-      isEstimate: true,
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      outstandingBalance: 4494.74,
+      plannerStatus: 'sin_cargo',
+      obligationAmountSource: 'none',
+      isEstimate: false,
     });
   });
 
-  it('estimates wallet debt on current fortnight even with unaligned stale imports', async () => {
+  it('does not estimate the corte from wallet debt when imports are unaligned', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 6, 24, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
@@ -502,11 +503,12 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toHaveLength(1);
     expect(result.second[0]).toMatchObject({
       walletId: 36,
-      nextDuePayment: 300,
-      effectiveAmount: 300,
-      plannerStatus: 'por_pagar',
-      obligationAmountSource: 'wallet_debt',
-      isEstimate: true,
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      outstandingBalance: 300,
+      plannerStatus: 'sin_cargo',
+      obligationAmountSource: 'none',
+      isEstimate: false,
     });
     expect(result.second[0]?.plannerStatus).not.toBe('pagado');
   });
@@ -542,11 +544,13 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second[0]).toMatchObject({
       walletId: 26,
       plannedPayment: null,
-      nextDuePayment: 2913.07,
-      effectiveAmount: 2913.07,
-      plannerStatus: 'vencido',
-      obligationAmountSource: 'wallet_debt',
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      outstandingBalance: 2913.07,
+      plannerStatus: 'sin_cargo',
+      obligationAmountSource: 'none',
     });
+    expect(result.second[0]?.plannerStatus).not.toBe('pagado');
   });
 
   it('projects active installment rows into future planner months without repeating wallet debt', async () => {

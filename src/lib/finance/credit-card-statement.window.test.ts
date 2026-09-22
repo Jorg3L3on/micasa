@@ -107,7 +107,7 @@ describe('computeNextDuePayment', () => {
     ).toBe(500);
   });
 
-  it('uses outstanding balance when ledger is empty but card has debt', () => {
+  it('does not use outstanding balance as the period payment', () => {
     expect(
       computeNextDuePayment({
         lastStatementBalance: 0,
@@ -117,7 +117,7 @@ describe('computeNextDuePayment', () => {
         dueDay: 5,
         cutoffDay: 6,
       }),
-    ).toBe(4579.54);
+    ).toBe(0);
   });
 
   it('prefers imported total_due over ledger and outstanding', () => {

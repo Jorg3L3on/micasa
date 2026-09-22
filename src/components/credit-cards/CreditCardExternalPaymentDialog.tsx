@@ -118,7 +118,7 @@ export const CreditCardExternalPaymentDialog = ({
               onClick={() => nextDuePayment > 0 && setAmount(nextDuePayment)}
               disabled={nextDuePayment <= 0}
             >
-              Pago próximo ({formatCurrency(nextDuePayment)})
+              Toca pagar este corte ({formatCurrency(nextDuePayment)})
             </Button>
           </div>
 

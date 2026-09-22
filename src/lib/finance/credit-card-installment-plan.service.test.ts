@@ -121,6 +121,24 @@ describe('createInstallmentPlan', () => {
       13500,
     );
   });
+
+  it('raises debt by the issuer remaining balance, not mensualidad times months', async () => {
+    await createInstallmentPlan(10, ownerFilter, {
+      name: 'Laptop',
+      installment_amount: 333.33,
+      total_installments: 3,
+      paid_installments: 0,
+      next_due_date: '2026-03-15',
+      already_in_card_balance: false,
+      issuer_remaining_balance: 1000,
+    });
+
+    expect(applyWalletAmountDelta).toHaveBeenCalledWith(
+      expect.anything(),
+      10,
+      1000,
+    );
+  });
 });
 
 const existingPlanRow = {

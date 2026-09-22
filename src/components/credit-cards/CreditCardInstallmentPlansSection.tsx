@@ -95,9 +95,7 @@ export const CreditCardInstallmentPlansSection = ({
 
   const totalExposure = useMemo(
     () =>
-      items.reduce(
-        (sum, item) => sum + item.installmentAmount * item.remainingInstallments,
-        0,
+      items.reduce((sum, item) => sum + item.remainingBalance, 0,
       ),
     [items],
   );
@@ -259,14 +257,15 @@ export const CreditCardInstallmentPlansSection = ({
           {!embedded ? (
             <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Exposición en planes
+                Saldo del plan
               </p>
               <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
                 {formatCurrency(totalExposure)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {items.length} plan{items.length === 1 ? '' : 'es'} activo
-                {items.length === 1 ? '' : 's'}
+                {items.length === 1 ? '' : 's'}. Informativo: este corte solo
+                incluye la mensualidad.
               </p>
             </div>
           ) : null}
@@ -327,11 +326,9 @@ export const CreditCardInstallmentPlansSection = ({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground">Restante</p>
+                    <p className="text-[10px] text-muted-foreground">Saldo del plan</p>
                     <p className="font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                      {formatCurrency(
-                        item.installmentAmount * item.remainingInstallments,
-                      )}
+                      {formatCurrency(item.remainingBalance)}
                     </p>
                   </div>
                 </div>
