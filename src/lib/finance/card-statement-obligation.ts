@@ -86,7 +86,7 @@ export type CardStatementObligationDto = {
   amountAlreadyPaid: number;
   obligationAmountSource: CardObligationAmountSource;
   status: CardStatementObligationStatus;
-  /** True when amount comes from wallet debt or open-cycle projection fallback. */
+  /** True when the amount is an open-cycle projection, not a closed statement. */
   isEstimate: boolean;
 };
 
@@ -244,7 +244,19 @@ export const toCardStatementCycle = (
 });
 
 /**
- * Monto sugerido a pagar al próximo vencimiento.
+ * Suggested payment for this statement (pago del corte / toca pagar).
+ *
+ * Priority:
+ * 1. Imported "pago para no generar intereses", minus payments already applied.
+ * 2. Ledger statement balance (posted charges, including a projected MSI cuota
+ *    that belongs to this statement) minus payments.
+ * 3. Open-cycle purchases when the due day precedes the cutoff.
+ * 4. Otherwise 0.
+ *
+ * `outstandingBalance` is deuda total. It feeds utilization and the "wallet
+ * paid off" check, and is never the suggested period payment — even when
+ * `allowOutstandingBalanceFallback` is true. Remaining MSI plan balance is
+ * not an input here.
  */
 export const computeNextDuePayment = ({
   lastStatementBalance,
@@ -264,10 +276,6 @@ export const computeNextDuePayment = ({
     lastStatementBalance + Math.max(projectedStatementInstallmentsTotal, 0);
   const ledgerDue = Math.max(
     statementBalance - paymentsAppliedToStatement,
-    0,
-  );
-  const outstandingDue = Math.max(
-    outstandingBalance - paymentsAppliedToStatement,
     0,
   );
   const projectedOpenCycleDue =
@@ -293,9 +301,10 @@ export const computeNextDuePayment = ({
   if (projectedOpenCycleDue > 0) {
     return projectedOpenCycleDue;
   }
-  if (allowOutstandingBalanceFallback && outstandingDue > 0) {
-    return outstandingDue;
-  }
+  // Documented fallback: no statement, ledger, or open-cycle projection.
+  // `outstandingBalance` (deuda total) is not billed. The flag is retained so
+  // callers can keep passing it; it no longer invents a period payment.
+  void allowOutstandingBalanceFallback;
   return 0;
 };
 
@@ -334,12 +343,9 @@ export const deriveObligationAmountSource = (input: {
   ) {
     return 'projection';
   }
-  if (input.allowOutstandingBalanceFallback === false) {
-    return 'none';
-  }
-  if (input.outstandingBalance > 0) {
-    return 'wallet_debt';
-  }
+  // Deuda total is not a period-payment source.
+  void input.outstandingBalance;
+  void input.allowOutstandingBalanceFallback;
   return 'none';
 };
 
@@ -537,7 +543,7 @@ export const buildCardStatementObligation = (
       ? statementBalanceBeforePayments
       : obligationAmountSource === 'projection'
         ? (input.currentCyclePurchasesTotal ?? 0)
-        : input.outstandingBalance);
+        : 0);
 
   return {
     walletId: input.walletId,

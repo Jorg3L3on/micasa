@@ -8,6 +8,8 @@ export type InstallmentPlanFormValues = {
   paidInstallments: string;
   nextDueDate: string;
   alreadyInBalance: boolean;
+  /** 0 means “use mensualidad × months”. */
+  issuerRemainingBalance: number;
 };
 
 /** Create-mode defaults (empty name, 0 amount, 9 months, 0 paid). */
@@ -20,6 +22,7 @@ export const CREATE_INSTALLMENT_PLAN_FORM_DEFAULTS: Omit<
   totalInstallments: '9',
   paidInstallments: '0',
   alreadyInBalance: true,
+  issuerRemainingBalance: 0,
 };
 
 export const defaultNextDueDate = (
@@ -49,6 +52,10 @@ export const getInstallmentPlanFormValues = (
   defaultDueDay?: number | null,
 ): InstallmentPlanFormValues => {
   if (plan) {
+    const naiveRemaining =
+      plan.installmentAmount * plan.remainingInstallments;
+    const hasIssuerCents =
+      Math.abs(plan.remainingBalance - naiveRemaining) > 0.009;
     return {
       name: plan.name,
       installmentAmount: plan.installmentAmount,
@@ -56,6 +63,7 @@ export const getInstallmentPlanFormValues = (
       paidInstallments: String(plan.paidInstallments),
       nextDueDate: plan.nextDueDate ?? defaultNextDueDate(defaultDueDay),
       alreadyInBalance: plan.alreadyInCardBalance,
+      issuerRemainingBalance: hasIssuerCents ? plan.remainingBalance : 0,
     };
   }
 

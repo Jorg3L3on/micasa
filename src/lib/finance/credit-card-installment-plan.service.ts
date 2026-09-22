@@ -16,6 +16,10 @@ import {
   formatPlanEndMonthLabel,
   generateInstallmentPlanPayments,
 } from '@/lib/finance/credit-card-installment-plan-schedule';
+import {
+  resolvePlanRemainingBalance,
+  roundMoney,
+} from '@/lib/finance/credit-card-msi-period-due';
 
 export type CreditCardInstallmentPlanPaymentItem = {
   id: number;
@@ -35,6 +39,8 @@ export type CreditCardInstallmentPlanItem = {
   paidInstallments: number;
   currentInstallment: number;
   remainingInstallments: number;
+  /** Sum of unpaid cuotas (exact cents). Informative; not the period payment. */
+  remainingBalance: number;
   progressPct: number;
   alreadyInCardBalance: boolean;
   status: 'ACTIVE' | 'COMPLETED';
@@ -102,6 +108,11 @@ const mapPlan = (row: {
       ? row.total_installments
       : row.paid_installments + 1;
   const remainingInstallments = scheduled.length;
+  const remainingBalance = resolvePlanRemainingBalance({
+    scheduledAmounts: scheduled.map((payment) => payment.amount),
+    monthlyAmount: decimalToNumber(row.installment_amount),
+    remainingCount: remainingInstallments,
+  });
   const progressPct = Math.round(
     (row.paid_installments / row.total_installments) * 100,
   );
@@ -115,6 +126,7 @@ const mapPlan = (row: {
     paidInstallments: row.paid_installments,
     currentInstallment,
     remainingInstallments,
+    remainingBalance,
     progressPct,
     alreadyInCardBalance: row.already_in_card_balance,
     status: row.status,
@@ -199,12 +211,15 @@ export async function createInstallmentPlan(
     totalInstallments: input.total_installments,
     paidInstallments: input.paid_installments,
     nextDueDate,
+    issuerRemainingBalance: input.issuer_remaining_balance,
   });
 
-  const remainingCount = input.total_installments - input.paid_installments;
-  const debtDelta = input.already_in_card_balance
-    ? 0
-    : remainingCount * input.installment_amount;
+  const scheduledTotal = roundMoney(
+    generated
+      .filter((payment) => payment.status === 'SCHEDULED')
+      .reduce((sum, payment) => sum + payment.amount, 0),
+  );
+  const debtDelta = input.already_in_card_balance ? 0 : scheduledTotal;
 
   if (
     !input.already_in_card_balance &&
@@ -272,7 +287,11 @@ function hasStructuralPlanChanges(
     total_installments: number;
     paid_installments: number;
     already_in_card_balance: boolean;
-    payments: Array<{ status: 'SCHEDULED' | 'PAID'; due_date: Date }>;
+    payments: Array<{
+      status: 'SCHEDULED' | 'PAID';
+      due_date: Date;
+      amount: unknown;
+    }>;
   },
   input: UpdateCreditCardInstallmentPlanInput,
   nextDueDate: string,
@@ -291,7 +310,25 @@ function hasStructuralPlanChanges(
   }
 
   const existingNextDue = firstScheduledDueDateYmd(existing.payments);
-  return existingNextDue !== nextDueDate;
+  if (existingNextDue !== nextDueDate) return true;
+
+  if (input.issuer_remaining_balance !== undefined) {
+    const scheduledSum = roundMoney(
+      existing.payments
+        .filter((payment) => payment.status === 'SCHEDULED')
+        .reduce((sum, payment) => sum + decimalToNumber(payment.amount), 0),
+    );
+    const target =
+      input.issuer_remaining_balance == null
+        ? roundMoney(
+            input.installment_amount *
+              (input.total_installments - input.paid_installments),
+          )
+        : roundMoney(input.issuer_remaining_balance);
+    if (scheduledSum !== target) return true;
+  }
+
+  return false;
 }
 
 export async function updateInstallmentPlan(
@@ -348,6 +385,7 @@ export async function updateInstallmentPlan(
     totalInstallments: input.total_installments,
     paidInstallments: input.paid_installments,
     nextDueDate,
+    issuerRemainingBalance: input.issuer_remaining_balance,
   });
 
   const existingBySequence = new Map(
@@ -358,9 +396,11 @@ export async function updateInstallmentPlan(
     .filter((payment) => payment.status === 'SCHEDULED')
     .reduce((sum, payment) => sum + decimalToNumber(payment.amount), 0);
 
-  const newScheduledTotal =
-    (input.total_installments - input.paid_installments) *
-    input.installment_amount;
+  const newScheduledTotal = roundMoney(
+    generated
+      .filter((payment) => payment.status === 'SCHEDULED')
+      .reduce((sum, payment) => sum + payment.amount, 0),
+  );
 
   const oldDebtContribution = existing.already_in_card_balance
     ? 0

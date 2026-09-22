@@ -115,7 +115,7 @@ describe('obligation surface parity (fixture ledger)', () => {
     expect(totals.totalUnpaid).toBe(cardDueTotal);
   });
 
-  it('wallet debt fallback when ledger is zero but outstanding balance remains', () => {
+  it('keeps total debt off the period payment when the ledger is empty', () => {
     const breakdown = buildCardObligationsFromLedger(
       [{ ...card, outstandingBalance: 250 }],
       window,
@@ -123,7 +123,7 @@ describe('obligation surface parity (fixture ledger)', () => {
       [],
       asOfYmd,
     );
-    expect(breakdown.get(7)?.next_due_payment).toBe(250);
-    expect(breakdown.get(7)?.is_estimate).toBe(true);
+    expect(breakdown.get(7)?.next_due_payment).toBe(0);
+    expect(breakdown.get(7)?.is_estimate).toBe(false);
   });
 });

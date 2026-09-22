@@ -63,6 +63,9 @@ export const CreditCardInstallmentPlanDialog = ({
   const [alreadyInBalance, setAlreadyInBalance] = useState(
     initial.alreadyInBalance,
   );
+  const [issuerRemainingBalance, setIssuerRemainingBalance] = useState(
+    initial.issuerRemainingBalance,
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const parsedTotal = Number.parseInt(totalInstallments.trim(), 10);
@@ -106,6 +109,8 @@ export const CreditCardInstallmentPlanDialog = ({
       paid_installments: parsedPaid,
       next_due_date: nextDueDate,
       already_in_card_balance: alreadyInBalance,
+      issuer_remaining_balance:
+        issuerRemainingBalance > 0 ? issuerRemainingBalance : null,
     };
 
     try {
@@ -137,6 +142,7 @@ export const CreditCardInstallmentPlanDialog = ({
     }
   }, [
     alreadyInBalance,
+    issuerRemainingBalance,
     context,
     creditCardId,
     installmentAmount,
@@ -250,11 +256,34 @@ export const CreditCardInstallmentPlanDialog = ({
                 {isEditing ? 'pendiente' : 'futura'}
                 {remainingInstallments === 1 ? '' : 's'}
                 {installmentAmount > 0
-                  ? ` · ${formatCurrency(installmentAmount)}/mes`
+                  ? ` · mensualidad ${formatCurrency(installmentAmount)}`
                   : ''}
+                {issuerRemainingBalance > 0
+                  ? ` · saldo del plan ${formatCurrency(issuerRemainingBalance)}`
+                  : ''}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Este corte solo incluye la mensualidad. El saldo del plan es
+                informativo.
               </p>
             </div>
           ) : null}
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="plan-remaining">
+              Saldo del plan (emisor)
+            </label>
+            <CurrencyInput
+              id="plan-remaining"
+              value={issuerRemainingBalance}
+              onChange={setIssuerRemainingBalance}
+              aria-label="Saldo restante del plan según el emisor"
+            />
+            <p className="text-xs text-muted-foreground">
+              Opcional. Si el emisor trae centavos distintos, la última cuota los
+              absorbe. No se cobra el saldo completo en este corte.
+            </p>
+          </div>
 
           <ToggleField
             label="Ya está en el saldo de la tarjeta"

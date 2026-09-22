@@ -3,6 +3,7 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import { allocateUnpaidInstallmentAmounts } from '@/lib/finance/credit-card-msi-period-due';
 
 export type GeneratedInstallmentPlanPayment = {
   sequence: number;
@@ -47,18 +48,28 @@ export const generateInstallmentPlanPayments = (input: {
   totalInstallments: number;
   paidInstallments: number;
   nextDueDate: string;
+  /** Issuer-stated sum of unpaid cuotas, when it is not mensualidad × months. */
+  issuerRemainingBalance?: number | null;
 }): GeneratedInstallmentPlanPayment[] => {
   const firstDue = parseCalendarDate(input.nextDueDate);
+  const unpaidAmounts = allocateUnpaidInstallmentAmounts({
+    installmentAmount: input.installmentAmount,
+    unpaidCount: input.totalInstallments - input.paidInstallments,
+    issuerRemainingBalance: input.issuerRemainingBalance,
+  });
 
   return Array.from({ length: input.totalInstallments }, (_, index) => {
     const sequence = index + 1;
     const isPaid = sequence <= input.paidInstallments;
     const monthOffset = sequence - (input.paidInstallments + 1);
+    const unpaidIndex = sequence - input.paidInstallments - 1;
 
     return {
       sequence,
       dueDate: addMonthsClamped(firstDue, monthOffset),
-      amount: input.installmentAmount,
+      amount: isPaid
+        ? input.installmentAmount
+        : (unpaidAmounts[unpaidIndex] ?? input.installmentAmount),
       status: isPaid ? 'PAID' : 'SCHEDULED',
     };
   });

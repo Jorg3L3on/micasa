@@ -252,7 +252,7 @@ export const WalletListCard = ({
               <div className="space-y-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                    Deuda actual
+                    Deuda total
                   </p>
                   <p
                     className={cn(

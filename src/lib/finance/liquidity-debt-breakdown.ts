@@ -86,8 +86,18 @@ export const remainingInstallmentAmount = (
   current: number,
   total: number,
   monthlyAmount: number,
-): number =>
-  roundMoney(remainingInstallments(current, total) * (Number(monthlyAmount) || 0));
+  exactRemainingBalance?: number | null,
+): number => {
+  if (
+    exactRemainingBalance != null &&
+    Number.isFinite(exactRemainingBalance)
+  ) {
+    return roundMoney(Math.max(0, exactRemainingBalance));
+  }
+  return roundMoney(
+    remainingInstallments(current, total) * (Number(monthlyAmount) || 0),
+  );
+};
 
 export const capWhyLines = (
   lines: readonly DebtWhyLine[],
@@ -179,6 +189,8 @@ export type CardMsiInput = {
   current: number;
   total: number;
   monthlyAmount: number;
+  /** Issuer-stated remaining balance when it is not mensualidad × months. */
+  exactRemainingBalance?: number | null;
 };
 
 export type CardPlanInput = {
@@ -234,6 +246,7 @@ export const composeCardDebtAccount = (input: {
       item.current,
       item.total,
       item.monthlyAmount,
+      item.exactRemainingBalance,
     );
     if (remaining <= 0) continue;
     inBalanceRemaining = roundMoney(inBalanceRemaining + remaining);

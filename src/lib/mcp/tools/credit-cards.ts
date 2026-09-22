@@ -668,6 +668,14 @@ export function registerCreditCardTools(server: McpServer) {
           .optional()
           .describe('Próxima fecha de cuota; default derivado del día de pago.'),
         already_in_balance: z.boolean().default(false),
+        issuer_remaining_balance: z
+          .number()
+          .positive()
+          .nullable()
+          .optional()
+          .describe(
+            'Saldo restante del emisor si no es mensualidad × cuotas. La última cuota absorbe los centavos.',
+          ),
       }),
       annotations: { destructiveHint: false, idempotentHint: false },
     },
@@ -680,6 +688,7 @@ export function registerCreditCardTools(server: McpServer) {
           paid_installments: args.paid_installments,
           next_due_date: args.next_due_date,
           already_in_card_balance: args.already_in_balance,
+          issuer_remaining_balance: args.issuer_remaining_balance,
         });
         return createInstallmentPlan(args.card_id, agent.ownerFilter, input);
       }),
@@ -701,6 +710,7 @@ export function registerCreditCardTools(server: McpServer) {
         paid_installments: z.number().int().min(0),
         next_due_date: dateYmdSchema.optional(),
         already_in_balance: z.boolean().default(false),
+        issuer_remaining_balance: z.number().positive().nullable().optional(),
       }),
       annotations: { destructiveHint: false, idempotentHint: true },
     },
@@ -713,6 +723,7 @@ export function registerCreditCardTools(server: McpServer) {
           paid_installments: args.paid_installments,
           next_due_date: args.next_due_date,
           already_in_card_balance: args.already_in_balance,
+          issuer_remaining_balance: args.issuer_remaining_balance,
         });
         return updateInstallmentPlan(
           args.plan_id,

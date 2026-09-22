@@ -103,7 +103,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
           <div className="space-y-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                Deuda actual
+                Deuda total
               </p>
               <p className="font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(snapshot.amount)}

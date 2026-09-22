@@ -120,40 +120,41 @@ describe('derivePlannerStatus', () => {
   });
 });
 
-describe('Liverpool fixtures (planner vs statement)', () => {
-  it('Carmen: plan $694.76 paid in fortnight → pagado despite zero statement credit', () => {
+describe('Planner versus statement separation', () => {
+  it('paid fortnight plan stays pagado when the statement has no credit', () => {
     const statement = buildStatement({
       asOf: '2026-07-05',
       cutoff: 6,
       due: 5,
-      walletDebt: 3190.02,
+      walletDebt: 1800,
       importDue: null,
       statementPayments: 0,
     });
     expect(statement.paymentsAppliedToStatement).toBe(0);
-    expect(statement.remainingStatementDue).toBeGreaterThan(0);
+    expect(statement.outstandingBalance).toBe(1800);
+    expect(statement.remainingStatementDue).toBe(0);
 
     const planner = buildCardPlannerObligation({
       fortnightId: 37,
       statement,
-      plannedGrossAmount: 694.76,
-      paymentsAppliedToFortnight: 694.76,
+      plannedGrossAmount: 400,
+      paymentsAppliedToFortnight: 400,
       todayYmd: '2026-07-07',
     });
 
     expect(planner.plannerStatus).toBe('pagado');
     expect(planner.remainingPlannerAmount).toBe(0);
     expect(planner.paymentsAppliedToStatement).toBe(0);
-    expect(planner.paymentsAppliedToFortnight).toBe(694.76);
+    expect(planner.paymentsAppliedToFortnight).toBe(400);
   });
 
-  it('Jorge: suggested $1217.01 paid in fortnight → pagado despite zero statement credit', () => {
+  it('imported payoff paid in the fortnight stays pagado', () => {
     const statement = buildStatement({
       asOf: '2026-07-13',
       cutoff: 12,
       due: 13,
-      walletDebt: 7554.67,
-      importDue: 1217.01,
+      walletDebt: 2500,
+      importDue: 600,
       statementPayments: 0,
     });
 
@@ -161,13 +162,13 @@ describe('Liverpool fixtures (planner vs statement)', () => {
       fortnightId: 37,
       statement,
       plannedGrossAmount: null,
-      paymentsAppliedToFortnight: 1217.01,
+      paymentsAppliedToFortnight: 600,
       todayYmd: '2026-07-07',
     });
 
     expect(planner.plannerStatus).toBe('pagado');
     expect(planner.remainingPlannerAmount).toBe(0);
-    expect(planner.targetAmount).toBe(1217.01);
+    expect(planner.targetAmount).toBe(600);
     expect(planner.paymentsAppliedToStatement).toBe(0);
   });
 
@@ -197,7 +198,7 @@ describe('Liverpool fixtures (planner vs statement)', () => {
       asOf: '2026-07-18',
       cutoff: 3,
       due: 18,
-      walletDebt: 2913.07,
+      walletDebt: 700,
       importDue: null,
       statementPayments: 0,
     });
@@ -210,11 +211,12 @@ describe('Liverpool fixtures (planner vs statement)', () => {
       todayYmd: '2026-07-24',
     });
 
-    // $0 plan is ignored; suggested falls back to wallet debt.
+    // $0 plan is ignored. Deuda total is not the pago del corte.
     expect(planner.plannedPayment).toBeNull();
-    expect(planner.targetAmount).toBe(2913.07);
-    expect(planner.plannerStatus).toBe('vencido');
-    expect(planner.outstandingBalance).toBe(2913.07);
+    expect(planner.targetAmount).toBe(0);
+    expect(planner.plannerStatus).toBe('sin_cargo');
+    expect(planner.plannerStatus).not.toBe('pagado');
+    expect(planner.outstandingBalance).toBe(700);
   });
 });
 
