@@ -113,7 +113,7 @@ describe('computeNextDuePayment', () => {
         lastStatementBalance: 0,
         paymentsAppliedToStatement: 0,
         importedTotalDue: null,
-        outstandingBalance: 4579.54,
+        outstandingBalance: 900,
         dueDay: 5,
         cutoffDay: 6,
       }),
@@ -125,12 +125,12 @@ describe('computeNextDuePayment', () => {
       computeNextDuePayment({
         lastStatementBalance: 100,
         paymentsAppliedToStatement: 0,
-        importedTotalDue: 4494.74,
+        importedTotalDue: 1200,
         outstandingBalance: 5000,
         dueDay: 17,
         cutoffDay: 7,
       }),
-    ).toBe(4494.74);
+    ).toBe(1200);
   });
 
   it('projects open-cycle purchases when due day precedes cutoff', () => {

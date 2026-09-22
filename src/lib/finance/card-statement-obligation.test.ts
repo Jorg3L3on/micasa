@@ -86,13 +86,13 @@ describe('buildCardStatementObligation', () => {
       window,
       lastStatementBalance: 100,
       paymentsAppliedToStatement: 0,
-      importedTotalDue: 4494.74,
+      importedTotalDue: 1200,
       outstandingBalance: 5000,
     });
 
-    expect(dto.remainingStatementDue).toBe(4494.74);
+    expect(dto.remainingStatementDue).toBe(1200);
     expect(dto.obligationAmountSource).toBe('import');
-    expect(dto.importedAmount).toBe(4494.74);
+    expect(dto.importedAmount).toBe(1200);
   });
 
   it('does not bill total debt when the statement payoff is unknown', () => {
@@ -109,10 +109,10 @@ describe('buildCardStatementObligation', () => {
       lastStatementBalance: 0,
       paymentsAppliedToStatement: 0,
       importedTotalDue: null,
-      outstandingBalance: 4579.54,
+      outstandingBalance: 900,
     });
 
-    expect(dto.outstandingBalance).toBe(4579.54);
+    expect(dto.outstandingBalance).toBe(900);
     expect(dto.remainingStatementDue).toBe(0);
     expect(dto.suggestedStatementAmount).toBe(0);
     expect(dto.obligationAmountSource).toBe('none');

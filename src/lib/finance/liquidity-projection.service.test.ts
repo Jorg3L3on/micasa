@@ -739,7 +739,7 @@ describe('getLiquidityProjection', () => {
   it('does not bill total card debt as the current or future corte', async () => {
     const cardWithDebt = {
       ...visaRow,
-      amount: '28975.00',
+      amount: '1500.00',
     };
     setupWalletMock([fundingRow], [cardWithDebt]);
     queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
