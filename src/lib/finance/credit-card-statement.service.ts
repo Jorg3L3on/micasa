@@ -502,6 +502,23 @@ export const resolveImportedTotalDueForStatementWindow = (
   return null;
 };
 
+/** Issuer minimum for the matching statement window. Missing stays null. */
+export const resolveImportedMinimumPaymentForStatementWindow = (
+  imports: StatementImportRow[],
+  walletId: number,
+  window: CreditCardStatementWindow,
+): number | null => {
+  const chosen = resolveStatementImportForStatementWindow(
+    imports,
+    walletId,
+    window,
+  );
+  if (chosen?.minimum_payment == null) return null;
+  const value = Number(chosen.minimum_payment);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+};
+
 const aggregateLedgerActivityForCard = (
   walletId: number,
   window: CreditCardStatementWindow,

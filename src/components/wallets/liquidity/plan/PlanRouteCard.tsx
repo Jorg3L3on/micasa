@@ -48,6 +48,18 @@ export const PlanRouteCard = ({
             {PLAN_COPY.monthsSaved}: {plan.impact.monthsDelta}
           </p>
         </div>
+      ) : plan.gapClosed != null && plan.actions.length > 0 ? (
+        <div className="text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {PLAN_COPY.estimatedCost}
+          </p>
+          <p className="font-mono text-sm font-bold tabular-nums">
+            {formatCurrency(plan.estimatedCost)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {PLAN_COPY.gapClosed} ~{Math.round(plan.scores.gapClosed * 100)}% del hueco
+          </p>
+        </div>
       ) : null}
     </div>
 

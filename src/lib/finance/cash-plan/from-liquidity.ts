@@ -122,12 +122,22 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       if (item.source === 'credit_card_statement') {
         const card = projection.card_utilization_summary.cards.find((row) => row.card_id === item.wallet_id);
         const debt = month?.debt_items.find((row) => row.kind === 'card' && row.id.startsWith(`card-${item.wallet_id}-`));
+        const statementDue = item.next_due_payment;
+        const statedMinimum = item.minimum_payment;
+        const minimumDue = statedMinimum != null
+          && statedMinimum > 0
+          && statedMinimum < statementDue - 0.009
+          ? statedMinimum
+          : undefined;
+        const aprAnnual = item.apr_annual != null && item.apr_annual > 0 ? item.apr_annual : undefined;
         push({
           id: `card-${item.wallet_id}`,
           kind: 'card_revolving',
           labelSynthetic: item.wallet_name,
           balanceTotal: card?.used_amount ?? debt?.amount,
-          statementDue: item.next_due_payment,
+          statementDue,
+          minimumDue,
+          aprAnnual,
           creditLimit: card?.credit_limit ?? undefined,
           dueInHorizon: true,
           consequenceTier: 3,
@@ -141,13 +151,14 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
         const debt = month?.debt_items.find(
           (row) => row.kind === 'loan' && (row.title === item.loan_name || row.id.includes(String(item.loan_id))),
         );
+        const loanApr = item.apr_annual != null && item.apr_annual > 0 ? item.apr_annual : undefined;
         push({
           id: `loan-${item.loan_id ?? item.loan_payment_id}`,
           kind: 'loan',
           labelSynthetic: label,
           balanceTotal: debt?.amount,
           statementDue: item.next_due_payment,
-          minimumDue: item.next_due_payment,
+          aprAnnual: loanApr,
           dueInHorizon: true,
           consequenceTier: classified.tier,
         });
@@ -172,14 +183,19 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   for (const item of month?.debt_items ?? []) {
     if (item.kind !== 'msi') continue;
     const installment = item.payment_amount ?? 0;
-    if (installment <= 0 && horizon === 'mes') continue;
+    if (installment <= 0) continue;
     if (horizon === 'quincena') {
-      dataGaps.push({
-        code: 'undated_obligation',
-        obligationId: item.id,
-        message: `La mensualidad de ${item.title} no tiene día dentro de la quincena, así que no entra en este horizonte.`,
-      });
-      continue;
+      if (!item.due_date) {
+        dataGaps.push({
+          code: 'undated_obligation',
+          obligationId: item.id,
+          message: `La mensualidad de ${item.title} no tiene día dentro de la quincena, así que no entra en este horizonte.`,
+        });
+        continue;
+      }
+      if (!fortnight || !ymdFallsInFortnight(item.due_date, fortnight.year, fortnight.month, fortnight.period)) {
+        continue;
+      }
     }
     push({
       id: item.id,
@@ -187,7 +203,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       labelSynthetic: item.title,
       balanceTotal: item.amount,
       msiInstallment: installment,
-      dueInHorizon: installment > 0,
+      dueInHorizon: true,
       consequenceTier: 3,
     });
   }
@@ -220,7 +236,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       surplusStrategyDefault: 'avalanche',
       allowBridgeSim: true,
       allowConsolidateSim: true,
-      missingAprPolicy: 'assume_median',
+      missingAprPolicy: 'exclude_from_apr_rank',
     },
     bridgeSim: selection.bridgeSim ?? null,
     consolidateSim: selection.consolidateSim ?? null,

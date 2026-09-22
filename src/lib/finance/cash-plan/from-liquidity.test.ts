@@ -178,4 +178,91 @@ describe('planInputFromLiquidity', () => {
     expect(input.obligations.some((obligation) => obligation.labelSynthetic === 'Renta')).toBe(true);
     expect(input.obligations.some((obligation) => obligation.labelSynthetic === 'Tarjeta A')).toBe(true);
   });
+
+  it('maps a real card minimum into pay_minimum and does not copy a loan installment', () => {
+    const source = projection();
+    const card = source.milestones[0]?.obligations[0];
+    if (card && card.source === 'credit_card_statement') {
+      card.minimum_payment = 400;
+      card.apr_annual = 0.42;
+    }
+    source.milestones[0]?.obligations.push({
+      source: 'loan_payment',
+      wallet_id: 1,
+      wallet_name: 'Efectivo sintético',
+      wallet_type: 'CASH',
+      statement_start: '',
+      statement_end: '2026-09-10',
+      statement_due_date: '2026-09-10',
+      last_statement_balance: 0,
+      payments_applied_to_statement: 0,
+      next_due_payment: 500,
+      loan_id: 3,
+      loan_payment_id: 8,
+      loan_name: 'Préstamo A',
+    });
+    const input = planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T12:00:00.000Z',
+    });
+    const revolving = input.obligations.find((obligation) => obligation.id === 'card-7');
+    const loan = input.obligations.find((obligation) => obligation.kind === 'loan');
+    expect(revolving?.minimumDue).toBe(400);
+    expect(revolving?.aprAnnual).toBe(0.42);
+    expect(revolving?.statementDue).toBe(1200);
+    expect(loan?.statementDue).toBe(500);
+    expect(loan?.minimumDue).toBeUndefined();
+    expect(input.prefs?.missingAprPolicy).toBe('exclude_from_apr_rank');
+    const result = buildCashPlan(input);
+    const plans = [result.primary, ...result.alternatives];
+    expect(plans.some((plan) => plan.actions.some((item) => item.type === 'pay_minimum'))).toBe(true);
+    expect(result.primary.touchesUntouchable).toBe(false);
+    expect(result.dataGaps.some((gap) => gap.message === 'No tenemos el pago mínimo de tus tarjetas.')).toBe(false);
+  });
+
+  it('counts an MSI installment in the fortnight when the due date falls inside it', () => {
+    const source = projection();
+    const month = source.monthly_series[0];
+    if (month) {
+      month.debt_items = [
+        {
+          id: 'msi-1-2026-09',
+          kind: 'msi',
+          title: 'Plan MSI sintético',
+          subtitle: 'Tarjeta A',
+          amount: 8000,
+          payment_amount: 400,
+          due_date: '2026-09-10',
+        },
+      ];
+    }
+    const inside = planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon: 'quincena',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T12:00:00.000Z',
+    });
+    const msi = inside.obligations.find((obligation) => obligation.kind === 'card_msi');
+    expect(msi?.msiInstallment).toBe(400);
+    expect(msi?.balanceTotal).toBe(8000);
+    expect(inside.dataGaps?.some((gap) => gap.code === 'undated_obligation')).toBe(false);
+    expect(inside.obligations.some((obligation) => obligation.labelSynthetic === 'Netflix')).toBe(false);
+
+    if (month) {
+      month.debt_items[0] = { ...month.debt_items[0]!, due_date: '2026-09-20' };
+    }
+    const outside = planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon: 'quincena',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T12:00:00.000Z',
+    });
+    expect(outside.obligations.some((obligation) => obligation.kind === 'card_msi')).toBe(false);
+    expect(outside.dataGaps?.some((gap) => gap.code === 'undated_obligation')).toBe(false);
+  });
 });

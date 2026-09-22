@@ -137,16 +137,18 @@ const collectDataGaps = (input: PlanInput): DataGap[] => {
         message: `No tenemos la tasa de ${obligation.labelSynthetic}. El orden no la trata como dato real y la confianza baja.`,
       });
     }
-    if (
-      obligation.kind === 'card_revolving' &&
-      (obligation.minimumDue == null || obligation.minimumDue <= 0)
-    ) {
-      gaps.push({
-        code: 'missing_minimum',
-        obligationId: obligation.id,
-        message: `No tenemos el pago mínimo de ${obligation.labelSynthetic}.`,
-      });
-    }
+  }
+  const missingMinimum = input.obligations.some(
+    (obligation) =>
+      obligation.dueInHorizon
+      && obligation.kind === 'card_revolving'
+      && (obligation.minimumDue == null || obligation.minimumDue <= 0),
+  );
+  if (missingMinimum) {
+    gaps.push({
+      code: 'missing_minimum',
+      message: 'No tenemos el pago mínimo de tus tarjetas.',
+    });
   }
   return dedupeGaps(gaps);
 };
@@ -878,7 +880,7 @@ const balancedResult = (
 /** Deterministic plan. Same input → same routes, scores, and copy. */
 export const buildCashPlan = (input: PlanInput): PlanResult => {
   const computedAt = input.computedAt ?? DEFAULT_COMPUTED_AT;
-  const policy: MissingAprPolicy = input.prefs?.missingAprPolicy ?? 'assume_median';
+  const policy: MissingAprPolicy = input.prefs?.missingAprPolicy ?? 'exclude_from_apr_rank';
   const untouchableIds = new Set(input.untouchableIds ?? []);
   const gaps = collectDataGaps(input);
   const due = input.obligations
@@ -921,8 +923,10 @@ export const buildCashPlan = (input: PlanInput): PlanResult => {
     const draftWorse = drafts.find((draft) => draft.id === plan.id)?.worseRate;
     return !plan.touchesUntouchable && !draftWorse;
   });
-  const primary = eligible[0] ?? ranked[0] ?? emptyPlan(
-    'Con estos datos no hay una ruta que cierre el periodo sin inventar números.',
+  const primary = eligible[0] ?? emptyPlan(
+    ranked.some((plan) => plan.touchesUntouchable)
+      ? 'No hay una ruta principal que deje intactos renta, servicios, seguros y nómina.'
+      : 'Con estos datos no hay una ruta que cierre el periodo sin inventar números.',
   );
   const alternatives: RankedPlan[] = [];
   for (const plan of ranked) {

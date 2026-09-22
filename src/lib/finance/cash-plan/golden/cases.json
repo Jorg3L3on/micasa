@@ -569,5 +569,66 @@
     "expectedMode": "balanced",
     "expectedPrimaryId": "balanced",
     "forbiddenPrimaryActionTypes": ["bridge_loan", "pay_minimum"]
+  },
+  {
+    "id": "SF-15-only-rent-frees-cash",
+    "notes": "The only cut that frees cash is rent. Primary stays empty; the cut is an alternative.",
+    "input": {
+      "horizon": "quincena",
+      "gapAmount": 2000,
+      "availableCash": 100,
+      "computedAt": "2026-01-01T12:00:00.000Z",
+      "untouchableIds": ["rent"],
+      "obligations": [
+        {
+          "id": "rent",
+          "kind": "bill",
+          "labelSynthetic": "Renta",
+          "statementDue": 5000,
+          "dueInHorizon": true,
+          "consequenceTier": 1
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryId": "empty",
+    "forbiddenPrimaryActionTypes": ["defer_nonessential"],
+    "forbiddenPrimaryObligationIds": ["rent"],
+    "expectAlternativeRiskTag": "untouchable_conflict"
+  },
+  {
+    "id": "SF-16-quincena-msi",
+    "notes": "Fortnight plan pays the MSI installment, never the remaining plan balance.",
+    "input": {
+      "horizon": "quincena",
+      "gapAmount": 1500,
+      "availableCash": 200,
+      "computedAt": "2026-01-01T12:00:00.000Z",
+      "obligations": [
+        {
+          "id": "msi-a",
+          "kind": "card_msi",
+          "labelSynthetic": "Plan MSI",
+          "balanceTotal": 8000,
+          "msiInstallment": 400,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "card-a",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 4000,
+          "statementDue": 1800,
+          "minimumDue": 300,
+          "aprAnnual": 0.45,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum", "pay_msi_installment"],
+    "forbidActionAmount": 8000
   }
 ]

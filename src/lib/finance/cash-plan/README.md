@@ -27,11 +27,11 @@ Changing weights or bonuses means review the files in `golden/` in the same chan
 
 - MSI period cash is `msiInstallment`. `balanceTotal` is never the payment.
 - A payment below `minimumDue` is not `pay_minimum`.
-- Tier-1 labels (rent, mortgage, utilities, insurance, tuition, payroll) are not cut on the primary route. An alternative may show that cut with `untouchable_conflict`.
+- Tier-1 labels (rent, mortgage, utilities, insurance, tuition, payroll) are not cut on the primary route. An alternative may show that cut with `untouchable_conflict`. If every draft touches an untouchable, the primary is the empty route, never that cut.
 - Bridge and consolidation run only with caller-supplied APR, term, and fee. They always carry `approval_uncertain`.
 - A consolidation APR at or above the balance-weighted APR is not the primary route.
-- Missing APR uses `assume_median` (36%) unless the policy is `assume_high` (72%) or `exclude_from_apr_rank`. Missing APR or minimum sets `confidence: low` and a data gap.
-- Quincena does not split monthly income in half.
+- Missing APR defaults to `exclude_from_apr_rank`. `assume_median` (36%) and `assume_high` (72%) run only when the caller opts in. Missing APR or a card minimum sets `confidence: low` and a data gap. A loan installment is not copied into `minimumDue`.
+- The Plan tab opens on **quincena**. Quincena does not split monthly income in half. An MSI installment enters that fortnight only when its schedule has a civil due date inside it. Without a date, the plan records `undated_obligation` and does not invent a day. `balanceTotal` is never the period payment.
 
 ## Golden cases
 

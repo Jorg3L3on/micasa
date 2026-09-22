@@ -48,7 +48,7 @@ export const CashPlanTab = ({
   onReload,
   selectedMonthKey,
 }: CashPlanTabProps) => {
-  const [horizon, setHorizon] = useState<PlanHorizon>('mes');
+  const [horizon, setHorizon] = useState<PlanHorizon>('quincena');
   const [strategy, setStrategy] = useState<SurplusStrategy>('avalanche');
   const [bridgeRate, setBridgeRate] = useState('');
   const [bridgeTerm, setBridgeTerm] = useState('');
@@ -204,6 +204,10 @@ export const CashPlanTab = ({
 
       <PlanHero mode={plan.mode} gapAmount={input.gapAmount} horizon={horizon} />
       <DataGapCallout gaps={plan.dataGaps} lowConfidence={plan.confidence === 'low'} />
+
+      {plan.primary.id === 'empty' ? (
+        <p className="text-sm text-muted-foreground">{PLAN_COPY.noSafePrimary}</p>
+      ) : null}
 
       {plan.tie ? (
         <div className="rounded-xl border border-border/60 px-4 py-3">
