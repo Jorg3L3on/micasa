@@ -30,6 +30,29 @@ describe('buildInstallmentPortfolio', () => {
     expect(sumInstallmentExposure(items)).toBe(5000);
   });
 
+  it('uses the issuer remaining balance instead of cuota times months', () => {
+    const items = buildInstallmentPortfolio([
+      {
+        id: 3,
+        description: 'Screen',
+        amount: 333.33,
+        payment_date: '2026-05-01',
+        category: 'Home',
+        categoryIcon: null,
+        fortnight_id: 1,
+        fortnight_year: 2026,
+        fortnight_month: 5,
+        fortnight_period: 'FIRST',
+        credit_installment_current: 1,
+        credit_installment_total: 4,
+        issuer_remaining_balance: 1000,
+      },
+    ]);
+
+    expect(items[0].remainingAmount).toBe(1000);
+    expect(items[0].remainingAmount).not.toBeCloseTo(333.33 * 3, 2);
+  });
+
   it('excludes completed installment purchases', () => {
     const items = buildInstallmentPortfolio([
       {

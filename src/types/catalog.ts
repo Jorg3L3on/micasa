@@ -321,7 +321,7 @@ export type DuePaymentItem = {
   visibleDueDate?: string;
   /** Monto objetivo de la quincena (plan o sugerido). */
   targetAmount?: number;
-  /** Deuda actual en la billetera tarjeta (para tope de pago y “saldo total”). */
+  /** Deuda total de la tarjeta (utilización). No es el pago del corte. */
   outstandingBalance: number;
   /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
   plannedPayment?: number | null;
@@ -393,6 +393,10 @@ export type LiquidityProjectionObligationItem = {
   last_statement_balance: number;
   payments_applied_to_statement: number;
   next_due_payment: number;
+  /** Issuer minimum for this statement window, when the import has one. */
+  minimum_payment?: number | null;
+  /** Annual rate when the product has stored one. Absent means unknown. */
+  apr_annual?: number | null;
   stress_adjustment?: number;
   expense_id?: number;
   expense_description?: string;
@@ -457,6 +461,8 @@ export type LiquidityMonthlySeriesItem = {
     amount: number;
     /** Payment due this month (cash-flow); omitted in historical past summaries */
     payment_amount?: number;
+    /** Civil due date when the schedule knows a day. Never inferred. */
+    due_date?: string;
   }>;
 };
 
@@ -471,7 +477,7 @@ export type LiquidityProjectionTrack = {
   end_month_key: string;
   finishes_in_horizon: boolean;
   monthly_amount: number;
-  schedule: Array<{ month_key: string; amount: number }>;
+  schedule: Array<{ month_key: string; amount: number; due_date?: string }>;
   loan_id?: number;
   expense_id?: number;
   wallet_id?: number;
@@ -561,6 +567,8 @@ export type CreditCardStatementPurchaseItem = {
   fortnight_period: 'FIRST' | 'SECOND';
   credit_installment_current: number | null;
   credit_installment_total: number | null;
+  /** Issuer-stated remaining plan balance when it is not cuota × months. */
+  issuer_remaining_balance?: number | null;
 };
 
 export type InstallmentProjectionMonthItem = {
@@ -638,6 +646,8 @@ export type CreditCardInstallmentPlanItem = {
   paidInstallments: number;
   currentInstallment: number;
   remainingInstallments: number;
+  /** Sum of unpaid cuotas. Informative saldo del plan, not this period's payment. */
+  remainingBalance: number;
   progressPct: number;
   alreadyInCardBalance: boolean;
   status: 'ACTIVE' | 'COMPLETED';

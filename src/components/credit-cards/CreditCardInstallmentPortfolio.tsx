@@ -62,7 +62,7 @@ export const CreditCardInstallmentPortfolio = ({
       {!embedded ? (
         <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Exposición MSI total
+            Saldo del plan
           </p>
           <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
             {formatCurrency(totalExposure)}
@@ -110,7 +110,7 @@ export const CreditCardInstallmentPortfolio = ({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground">Restante</p>
+                    <p className="text-[10px] text-muted-foreground">Saldo del plan</p>
                     <p className="font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
                       {formatCurrency(item.remainingAmount)}
                     </p>

@@ -9,6 +9,8 @@ export type MonthDebtItem = {
   amount: number;
   /** Payment due this month for cash-flow chart/metrics. */
   payment_amount?: number;
+  /** Civil due date when the schedule knows a day. Never inferred. */
+  due_date?: string;
 };
 
 type ObligationLike = {
@@ -30,6 +32,7 @@ type MilestoneLike = {
 type TrackScheduleEntry = {
   month_key: string;
   amount: number;
+  due_date?: string;
 };
 
 type DebtTrackLike = {
@@ -155,6 +158,10 @@ export const buildMonthDebtItems = (
       if (remaining <= 0) continue;
 
       const payment = paymentDueInMonth(schedule, key);
+      const dueDate = schedule
+        .filter((entry) => entry.month_key === key && entry.due_date)
+        .map((entry) => entry.due_date as string)
+        .sort()[0];
       const kind: MonthDebtItemKind =
         track.kind === 'loan' ? 'loan' : 'msi';
       push(key, {
@@ -167,6 +174,7 @@ export const buildMonthDebtItems = (
             : track.subtitle,
         amount: remaining,
         payment_amount: payment,
+        ...(dueDate ? { due_date: dueDate } : {}),
       });
     }
   }

@@ -736,10 +736,10 @@ describe('getLiquidityProjection', () => {
     expect(afterPayoff).toBeUndefined();
   });
 
-  it('uses wallet debt only for the current statement cycle, not every future month', async () => {
+  it('does not bill total card debt as the current or future corte', async () => {
     const cardWithDebt = {
       ...visaRow,
-      amount: '28975.00',
+      amount: '1500.00',
     };
     setupWalletMock([fundingRow], [cardWithDebt]);
     queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
@@ -757,9 +757,7 @@ describe('getLiquidityProjection', () => {
       ),
     );
 
-    expect(cardObligations).toHaveLength(1);
-    expect(cardObligations[0]!.next_due_payment).toBe(28975);
-    expect(cardObligations[0]!.is_estimate).toBe(true);
+    expect(cardObligations).toHaveLength(0);
 
     const february2027 = result.monthly_series.find(
       (month) => month.month_key === '2027-02',

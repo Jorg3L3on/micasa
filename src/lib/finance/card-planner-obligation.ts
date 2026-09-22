@@ -48,9 +48,7 @@ export const derivePlannerStatus = (input: {
     if (target <= 0 && statementPaid > 0) {
       return 'pagado';
     }
-    // Nothing due this cycle (with or without leftover wallet debt).
-    // Current/next fortnights restore a wallet-debt estimate before this runs;
-    // do not invent actionable por_pagar/vencido at $0.
+    // Nothing due this cycle. Leftover wallet debt (deuda total) is not the corte.
     return 'sin_cargo';
   }
 

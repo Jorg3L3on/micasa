@@ -4,6 +4,7 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import { splitAggregatedDueAndInstallment } from '@/lib/finance/credit-card-msi-period-due';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import { listInstallmentPlanPaymentsForPlannerMonth } from '@/lib/finance/credit-card-installment-plan.service';
 import type { PlannerInstallmentPlanPaymentItem } from '@/lib/finance/credit-card-installment-plan.service';
@@ -82,16 +83,13 @@ const sumMsiByWalletDate = (
 const leftoverRevolvingFromCardDue = (
   payment: DuePaymentItem,
   msiOnDate: number,
-): number => {
-  const cardAmount = getEffectiveCardPaymentAmount(payment);
-  if (cardAmount <= 0) return 0;
-
-  if (payment.obligationAmountSource === 'scheduled_calendar') {
-    return cardAmount;
-  }
-
-  return Math.max(0, cardAmount - msiOnDate);
-};
+): number =>
+  splitAggregatedDueAndInstallment({
+    aggregatedDue: getEffectiveCardPaymentAmount(payment),
+    installmentDue: msiOnDate,
+    aggregatedExcludesInstallment:
+      payment.obligationAmountSource === 'scheduled_calendar',
+  }).revolvingLeftover;
 
 const monthsInRange = (
   fromYmd: string,
@@ -247,7 +245,10 @@ const collectProjectedRevolvingFromLiquidity = async (
       if (plannerSuppressedRevolvingKeys.has(key)) continue;
 
       const msiOnDate = msiByWalletDate.get(key) ?? 0;
-      const leftover = Math.max(0, obligation.next_due_payment - msiOnDate);
+      const leftover = splitAggregatedDueAndInstallment({
+        aggregatedDue: obligation.next_due_payment,
+        installmentDue: msiOnDate,
+      }).revolvingLeftover;
       if (leftover <= 0) continue;
 
       items.push({

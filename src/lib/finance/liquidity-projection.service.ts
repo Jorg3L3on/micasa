@@ -10,6 +10,7 @@ import {
   buildCardObligationsFromLedger,
   loadCreditCardActivityLedger,
   resolveCreditCardStatementWindow,
+  resolveImportedMinimumPaymentForStatementWindow,
   resolveImportedTotalDueForStatementWindow,
   type CardObligationFromLedgerInput,
   type StatementImportRow,
@@ -59,6 +60,8 @@ export type LiquidityObligationItem = {
   last_statement_balance: number;
   payments_applied_to_statement: number;
   next_due_payment: number;
+  minimum_payment?: number | null;
+  apr_annual?: number | null;
   stress_adjustment?: number;
   expense_id?: number;
   expense_description?: string;
@@ -712,7 +715,9 @@ export const getLiquidityProjection = async (
           select: {
             wallet_id: true,
             total_due: true,
+            minimum_payment: true,
             period_end: true,
+            payment_due_date: true,
             created_at: true,
           },
         })
@@ -795,6 +800,12 @@ export const getLiquidityProjection = async (
 
         if (omitZero && nextDue === 0) continue;
 
+        const minimumPayment = resolveImportedMinimumPaymentForStatementWindow(
+          statementImports,
+          id,
+          window,
+        );
+
         chunk.push({
           source: 'credit_card_statement',
           wallet_id: id,
@@ -806,6 +817,7 @@ export const getLiquidityProjection = async (
           last_statement_balance: row.last_statement_balance,
           payments_applied_to_statement: row.payments_applied_to_statement,
           next_due_payment: nextDue,
+          ...(minimumPayment == null ? {} : { minimum_payment: minimumPayment }),
           ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
         });

@@ -341,6 +341,7 @@ export async function createCreditCardInstallmentPlan(
     paid_installments?: number;
     next_due_date?: string;
     already_in_card_balance?: boolean;
+    issuer_remaining_balance?: number | null;
   },
   context?: FinanceContextType,
 ) {
@@ -376,6 +377,7 @@ export async function updateCreditCardInstallmentPlan(
     paid_installments?: number;
     next_due_date?: string;
     already_in_card_balance?: boolean;
+    issuer_remaining_balance?: number | null;
   },
   context?: FinanceContextType,
 ) {

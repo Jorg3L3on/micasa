@@ -26,7 +26,12 @@ export const buildInstallmentPortfolio = (
       const remainingInstallments = total - current;
       const progressPct = Math.round((current / total) * 100);
       const originalAmountEstimate = purchase.amount * total;
-      const remainingAmount = purchase.amount * remainingInstallments;
+      const naiveRemaining = purchase.amount * remainingInstallments;
+      const exactRemaining = purchase.issuer_remaining_balance;
+      const remainingAmount =
+        exactRemaining != null && Number.isFinite(exactRemaining)
+          ? Math.round(exactRemaining * 100) / 100
+          : Math.round(naiveRemaining * 100) / 100;
 
       return {
         purchase,

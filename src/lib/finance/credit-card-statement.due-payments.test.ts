@@ -431,14 +431,14 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toEqual([]);
   });
 
-  it('does not carry a stale latest import; current/next fortnights estimate from wallet debt', async () => {
+  it('does not carry a stale import or bill total debt as this corte', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 6, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
-        id: 29,
-        name: 'Mercado Pago',
+        id: 101,
+        name: 'Tarjeta A',
         type: 'CREDIT_CARD',
-        amount: 4494.74,
+        amount: 1200,
         cutoff_day: 7,
         due_day: 17,
       },
@@ -446,8 +446,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     queryRaw.mockResolvedValue([]);
     findManyStatementImports.mockResolvedValue([
       {
-        wallet_id: 29,
-        total_due: 4494.74,
+        wallet_id: 101,
+        total_due: 1200,
         period_end: new Date(Date.UTC(2026, 4, 7, 12, 0, 0)),
         payment_due_date: null,
         created_at: new Date(Date.UTC(2026, 5, 6, 3, 0, 0)),
@@ -460,22 +460,23 @@ describe('getDuePaymentsForCurrentFortnight', () => {
 
     expect(result.second).toHaveLength(1);
     expect(result.second[0]).toMatchObject({
-      walletId: 29,
+      walletId: 101,
       statementDueDate: '2026-06-17',
-      nextDuePayment: 4494.74,
-      effectiveAmount: 4494.74,
-      plannerStatus: 'por_pagar',
-      obligationAmountSource: 'wallet_debt',
-      isEstimate: true,
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      outstandingBalance: 1200,
+      plannerStatus: 'sin_cargo',
+      obligationAmountSource: 'none',
+      isEstimate: false,
     });
   });
 
-  it('estimates wallet debt on current fortnight even with unaligned stale imports', async () => {
+  it('does not estimate the corte from wallet debt when imports are unaligned', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 6, 24, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
-        id: 36,
-        name: 'DIDI Carmen',
+        id: 102,
+        name: 'Tarjeta B',
         type: 'CREDIT_CARD',
         amount: 300,
         cutoff_day: 12,
@@ -485,8 +486,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     queryRaw.mockResolvedValue([]);
     findManyStatementImports.mockResolvedValue([
       {
-        wallet_id: 36,
-        total_due: 2976.72,
+        wallet_id: 102,
+        total_due: 800,
         period_end: null,
         payment_due_date: new Date(Date.UTC(2026, 4, 27, 18, 0, 0)),
         created_at: new Date(Date.UTC(2026, 4, 15, 11, 0, 0)),
@@ -501,12 +502,13 @@ describe('getDuePaymentsForCurrentFortnight', () => {
 
     expect(result.second).toHaveLength(1);
     expect(result.second[0]).toMatchObject({
-      walletId: 36,
-      nextDuePayment: 300,
-      effectiveAmount: 300,
-      plannerStatus: 'por_pagar',
-      obligationAmountSource: 'wallet_debt',
-      isEstimate: true,
+      walletId: 102,
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      outstandingBalance: 300,
+      plannerStatus: 'sin_cargo',
+      obligationAmountSource: 'none',
+      isEstimate: false,
     });
     expect(result.second[0]?.plannerStatus).not.toBe('pagado');
   });
@@ -515,10 +517,10 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 6, 24, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
-        id: 26,
-        name: 'DIDI Card',
+        id: 103,
+        name: 'Tarjeta C',
         type: 'CREDIT_CARD',
-        amount: 2913.07,
+        amount: 700,
         cutoff_day: 3,
         due_day: 18,
       },
@@ -531,7 +533,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       .mockResolvedValueOnce({ id: 38 });
     findManyPaymentPlans.mockResolvedValue([
       {
-        credit_card_wallet_id: 26,
+        credit_card_wallet_id: 103,
         planned_amount: 0,
       },
     ]);
@@ -540,13 +542,15 @@ describe('getDuePaymentsForCurrentFortnight', () => {
 
     expect(result.second).toHaveLength(1);
     expect(result.second[0]).toMatchObject({
-      walletId: 26,
+      walletId: 103,
       plannedPayment: null,
-      nextDuePayment: 2913.07,
-      effectiveAmount: 2913.07,
-      plannerStatus: 'vencido',
-      obligationAmountSource: 'wallet_debt',
+      nextDuePayment: 0,
+      effectiveAmount: 0,
+      outstandingBalance: 700,
+      plannerStatus: 'sin_cargo',
+      obligationAmountSource: 'none',
     });
+    expect(result.second[0]?.plannerStatus).not.toBe('pagado');
   });
 
   it('projects active installment rows into future planner months without repeating wallet debt', async () => {

@@ -30,6 +30,8 @@ describe('remainingInstallments', () => {
   it('counts cuotas after the current one (4 de 12 → 8)', () => {
     expect(remainingInstallments(4, 12)).toBe(8);
     expect(remainingInstallmentAmount(4, 12, 850)).toBe(6800);
+    expect(remainingInstallmentAmount(1, 3, 333.33, 1000)).toBe(1000);
+    expect(remainingInstallmentAmount(1, 3, 333.33)).toBe(666.66);
   });
 
   it('returns 0 when the plazo is finished', () => {

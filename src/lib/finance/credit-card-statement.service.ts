@@ -502,6 +502,23 @@ export const resolveImportedTotalDueForStatementWindow = (
   return null;
 };
 
+/** Issuer minimum for the matching statement window. Missing stays null. */
+export const resolveImportedMinimumPaymentForStatementWindow = (
+  imports: StatementImportRow[],
+  walletId: number,
+  window: CreditCardStatementWindow,
+): number | null => {
+  const chosen = resolveStatementImportForStatementWindow(
+    imports,
+    walletId,
+    window,
+  );
+  if (chosen?.minimum_payment == null) return null;
+  const value = Number(chosen.minimum_payment);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+};
+
 const aggregateLedgerActivityForCard = (
   walletId: number,
   window: CreditCardStatementWindow,
@@ -1328,9 +1345,10 @@ async function getDuePaymentsWithAsOf(
     const outstandingBalance = Number(card.amount);
     const window = windowByWallet.get(card.id)!;
     const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
-    // Current/next fortnights pass allowOutstandingBalanceFallback: true and must
-    // estimate from wallet debt even when imports exist but none align to the cycle.
-    // Historical fortnights pass false so we do not invent dues from today's debt.
+    // Historical fortnights pass false. Current fortnights may still pass true,
+    // but total card debt is never used as the pago del corte (see
+    // computeNextDuePayment). Without an aligned statement, ledger, or open-cycle
+    // projection, the suggested period payment is 0.
     const allowOutstandingBalanceFallback =
       options?.allowOutstandingBalanceFallback ?? true;
 

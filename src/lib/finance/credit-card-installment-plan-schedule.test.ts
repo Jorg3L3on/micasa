@@ -25,6 +25,24 @@ describe('generateInstallmentPlanPayments', () => {
     expect(payments[2]!.dueDate.toISOString().slice(0, 10)).toBe('2026-03-15');
     expect(payments[3]!.dueDate.toISOString().slice(0, 10)).toBe('2026-04-15');
   });
+
+  it('stores issuer cents on the last unpaid cuota instead of repeating the mensualidad', () => {
+    const payments = generateInstallmentPlanPayments({
+      installmentAmount: 333.33,
+      totalInstallments: 4,
+      paidInstallments: 1,
+      nextDueDate: '2026-04-15',
+      issuerRemainingBalance: 1000,
+    });
+
+    const scheduled = payments.filter((payment) => payment.status === 'SCHEDULED');
+    expect(scheduled.map((payment) => payment.amount)).toEqual([
+      333.33, 333.33, 333.34,
+    ]);
+    expect(
+      scheduled.reduce((sum, payment) => sum + payment.amount, 0),
+    ).toBeCloseTo(1000, 2);
+  });
 });
 
 describe('defaultNextDueDateForCard', () => {

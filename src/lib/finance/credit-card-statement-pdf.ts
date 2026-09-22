@@ -129,7 +129,7 @@ export const buildCreditCardStatementPdfBlob = (
   doc.setFontSize(10);
 
   y = writeSectionTitle(doc, y, 'Resumen');
-  y = writeKeyValue(doc, y, 'Deuda actual', formatCurrency(statement.outstanding_balance));
+  y = writeKeyValue(doc, y, 'Deuda total', formatCurrency(statement.outstanding_balance));
   y = writeKeyValue(
     doc,
     y,
@@ -138,7 +138,7 @@ export const buildCreditCardStatementPdfBlob = (
       ? 'Sin línea'
       : formatCurrency(statement.available_credit),
   );
-  y = writeKeyValue(doc, y, 'Pago próximo', formatCurrency(statement.next_due_payment));
+  y = writeKeyValue(doc, y, 'Toca pagar este corte', formatCurrency(statement.next_due_payment));
   y = writeKeyValue(
     doc,
     y,
