@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { parseCalendarDate } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
 import { buildCashPlan, planInputFromLiquidity } from '@/lib/finance/cash-plan';
 import type { PlanHorizon, RankedPlan } from '@/lib/finance/cash-plan/types';
@@ -71,7 +72,7 @@ export const CashPlanTab = ({
       asOfYmd: data.as_of,
       bridgeSim: parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee),
       consolidateSim: parseLoanSimFields(consolidateRate, consolidateTerm, consolidateFee),
-      computedAt: `${data.as_of}T00:00:00.000Z`,
+      computedAt: parseCalendarDate(data.as_of).toISOString(),
     });
     return { input, plan: buildCashPlan(input) };
   }, [

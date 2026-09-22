@@ -23,6 +23,8 @@ import {
 
 const INTEREST_MONTHS = 6;
 const FUTURE_CUOTA_MONTHS = 6;
+/** Caller-injected runs stay deterministic. Noon matches calendar-date storage. */
+const DEFAULT_COMPUTED_AT = '1970-01-01T12:00:00.000Z';
 
 type AprResolution = {
   apr: number;
@@ -875,7 +877,7 @@ const balancedResult = (
 
 /** Deterministic plan. Same input → same routes, scores, and copy. */
 export const buildCashPlan = (input: PlanInput): PlanResult => {
-  const computedAt = input.computedAt ?? '1970-01-01T00:00:00.000Z';
+  const computedAt = input.computedAt ?? DEFAULT_COMPUTED_AT;
   const policy: MissingAprPolicy = input.prefs?.missingAprPolicy ?? 'assume_median';
   const untouchableIds = new Set(input.untouchableIds ?? []);
   const gaps = collectDataGaps(input);
