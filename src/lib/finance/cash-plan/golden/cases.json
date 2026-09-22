@@ -1,0 +1,573 @@
+[
+  {
+    "id": "SF-01-small-gap",
+    "notes": "Small hole. Selective minimums close it. Rent stays untouched.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 800,
+      "availableCash": 1500,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "untouchableIds": ["rent"],
+      "obligations": [
+        {
+          "id": "card-a",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 12000,
+          "statementDue": 4000,
+          "minimumDue": 500,
+          "aprAnnual": 0.45,
+          "dueInHorizon": true,
+          "consequenceTier": 3,
+          "creditLimit": 20000
+        },
+        {
+          "id": "card-b",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta B",
+          "balanceTotal": 8000,
+          "statementDue": 3000,
+          "minimumDue": 400,
+          "aprAnnual": 0.3,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "rent",
+          "kind": "bill",
+          "labelSynthetic": "Renta",
+          "statementDue": 5000,
+          "dueInHorizon": true,
+          "consequenceTier": 1
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum"],
+    "forbiddenPrimaryActionTypes": ["bridge_loan", "consolidate"],
+    "forbiddenPrimaryObligationIds": ["rent"]
+  },
+  {
+    "id": "SF-02-large-gap-bridge",
+    "notes": "Minimums barely dent a large hole. Bridge with caller inputs ranks above them.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 15000,
+      "availableCash": 2000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "untouchableIds": ["rent"],
+      "bridgeSim": { "aprAnnual": 0.24, "termMonths": 12, "feePct": 0.02 },
+      "obligations": [
+        {
+          "id": "card-a",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 20000,
+          "statementDue": 8000,
+          "minimumDue": 7000,
+          "aprAnnual": 0.5,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "card-b",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta B",
+          "balanceTotal": 15000,
+          "statementDue": 7000,
+          "minimumDue": 6500,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "rent",
+          "kind": "bill",
+          "labelSynthetic": "Renta",
+          "statementDue": 6000,
+          "dueInHorizon": true,
+          "consequenceTier": 1
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["bridge_loan"],
+    "forbiddenPrimaryObligationIds": ["rent"],
+    "expectRiskTags": ["approval_uncertain"]
+  },
+  {
+    "id": "SF-03-payoff-small",
+    "notes": "Paying off the small revolving frees a cuota and beats stretching several minimums.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 1000,
+      "availableCash": 4000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "small",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta chica",
+          "balanceTotal": 900,
+          "statementDue": 900,
+          "minimumDue": 450,
+          "aprAnnual": 0.8,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "big-1",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta grande 1",
+          "balanceTotal": 12000,
+          "statementDue": 3000,
+          "minimumDue": 2500,
+          "aprAnnual": 0.45,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "big-2",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta grande 2",
+          "balanceTotal": 10000,
+          "statementDue": 2800,
+          "minimumDue": 2300,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_off"],
+    "forbiddenPrimaryActionTypes": ["bridge_loan"]
+  },
+  {
+    "id": "SF-04-surplus-avalanche",
+    "notes": "Extra goes to the higher APR. Interest delta beats snowball.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": -3000,
+      "availableCash": 8000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "high",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta cara",
+          "balanceTotal": 10000,
+          "statementDue": 200,
+          "minimumDue": 200,
+          "aprAnnual": 0.6,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "low",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta barata",
+          "balanceTotal": 2000,
+          "statementDue": 100,
+          "minimumDue": 100,
+          "aprAnnual": 0.2,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "surplus",
+    "expectedPrimaryStrategy": "avalanche",
+    "expectedPrimaryActionTypes": ["extra_to_debt_avalanche"],
+    "expectImpact": true
+  },
+  {
+    "id": "SF-05-surplus-snowball",
+    "notes": "APRs almost equal. Snowball clears the small balance and wins on momentum.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": -500,
+      "availableCash": 8000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "large",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta grande",
+          "balanceTotal": 8000,
+          "minimumDue": 200,
+          "aprAnnual": 0.305,
+          "dueInHorizon": false,
+          "consequenceTier": 3
+        },
+        {
+          "id": "tiny",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta chica",
+          "balanceTotal": 500,
+          "minimumDue": 50,
+          "aprAnnual": 0.3,
+          "dueInHorizon": false,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "surplus",
+    "expectedPrimaryStrategy": "snowball",
+    "expectedPrimaryActionTypes": ["extra_to_debt_snowball"]
+  },
+  {
+    "id": "SF-06-missing-apr",
+    "notes": "No APR. Confidence drops, ranking still returns a route.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 1000,
+      "availableCash": 500,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "prefs": { "missingAprPolicy": "exclude_from_apr_rank" },
+      "obligations": [
+        {
+          "id": "known-min",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta sin tasa",
+          "balanceTotal": 5000,
+          "statementDue": 2000,
+          "minimumDue": 400,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "no-min",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta sin mínimo",
+          "balanceTotal": 3000,
+          "statementDue": 1500,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum"],
+    "expectConfidence": "low",
+    "expectDataGapCodes": ["missing_apr", "missing_minimum"]
+  },
+  {
+    "id": "SF-07-msi-vs-revolving",
+    "notes": "MSI installment is the period payment. Revolving keeps statement vs minimum.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 500,
+      "availableCash": 1000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "msi",
+          "kind": "card_msi",
+          "labelSynthetic": "Plan MSI",
+          "balanceTotal": 20000,
+          "msiInstallment": 800,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "revolver",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta revolvente",
+          "balanceTotal": 5000,
+          "statementDue": 1200,
+          "minimumDue": 300,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum", "pay_msi_installment"],
+    "forbiddenPrimaryActionTypes": ["pay_off"],
+    "forbidActionAmount": 20000
+  },
+  {
+    "id": "SF-08-untouchable",
+    "notes": "Rent would close the hole and still must not be the primary cut.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 2000,
+      "availableCash": 500,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "untouchableIds": ["rent"],
+      "obligations": [
+        {
+          "id": "rent",
+          "kind": "bill",
+          "labelSynthetic": "Renta",
+          "statementDue": 5000,
+          "dueInHorizon": true,
+          "consequenceTier": 1
+        },
+        {
+          "id": "card",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 8000,
+          "statementDue": 1000,
+          "minimumDue": 900,
+          "aprAnnual": 0.3,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum"],
+    "forbiddenPrimaryObligationIds": ["rent"],
+    "expectAlternativeRiskTag": "untouchable_conflict"
+  },
+  {
+    "id": "SF-09-tie",
+    "notes": "Two single-card minimums close the hole with the same score.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 500,
+      "availableCash": 1000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "card-a",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 5000,
+          "statementDue": 2000,
+          "minimumDue": 1400,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "card-b",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta B",
+          "balanceTotal": 5000,
+          "statementDue": 2000,
+          "minimumDue": 1400,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum"],
+    "expectTie": true
+  },
+  {
+    "id": "SF-10a-horizon-quincena",
+    "notes": "Only the discretionary bill is due this fortnight.",
+    "input": {
+      "horizon": "quincena",
+      "gapAmount": 300,
+      "availableCash": 200,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "dataGaps": [
+        {
+          "code": "income_monthly_only",
+          "message": "El ingreso está por mes. Esta quincena no lo parte a la mitad."
+        }
+      ],
+      "obligations": [
+        {
+          "id": "netflix",
+          "kind": "bill",
+          "labelSynthetic": "Netflix",
+          "statementDue": 300,
+          "dueInHorizon": true,
+          "consequenceTier": 3,
+          "discretionary": true
+        },
+        {
+          "id": "card",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 8000,
+          "statementDue": 2000,
+          "minimumDue": 500,
+          "aprAnnual": 0.4,
+          "dueInHorizon": false,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["defer_nonessential"],
+    "expectDataGapCodes": ["income_monthly_only"]
+  },
+  {
+    "id": "SF-10b-horizon-mes",
+    "notes": "Same household shape with the card due. Minimums outrank deferring Netflix.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 2000,
+      "availableCash": 200,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "netflix",
+          "kind": "bill",
+          "labelSynthetic": "Netflix",
+          "statementDue": 300,
+          "dueInHorizon": true,
+          "consequenceTier": 3,
+          "discretionary": true
+        },
+        {
+          "id": "card",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 8000,
+          "statementDue": 2000,
+          "minimumDue": 500,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["pay_minimum"],
+    "forbiddenPrimaryActionTypes": ["defer_nonessential"]
+  },
+  {
+    "id": "SF-11-defer",
+    "notes": "Discretionary spend closes the hole without new debt.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 1500,
+      "availableCash": 500,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "netflix",
+          "kind": "bill",
+          "labelSynthetic": "Netflix",
+          "statementDue": 2000,
+          "dueInHorizon": true,
+          "consequenceTier": 3,
+          "discretionary": true
+        },
+        {
+          "id": "card",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 10000,
+          "statementDue": 3000,
+          "minimumDue": 2500,
+          "aprAnnual": 0.5,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "expectedPrimaryActionTypes": ["defer_nonessential"],
+    "forbiddenPrimaryActionTypes": ["bridge_loan", "consolidate"]
+  },
+  {
+    "id": "SF-12-surplus-buffer",
+    "notes": "Cash does not cover one period of payments, so the extra stays in the cushion.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": -2000,
+      "availableCash": 100,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "despensa",
+          "kind": "bill",
+          "labelSynthetic": "Despensa",
+          "statementDue": 2000,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "card",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 5000,
+          "statementDue": 100,
+          "minimumDue": 100,
+          "aprAnnual": 0.4,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "surplus",
+    "expectedPrimaryStrategy": "buffer",
+    "expectedPrimaryActionTypes": ["buffer_reserve"]
+  },
+  {
+    "id": "SF-13-consolidate-worse-rate",
+    "notes": "New APR is above the weighted APR, so consolidation is not primary.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 8000,
+      "availableCash": 1000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "consolidateSim": { "aprAnnual": 0.4, "termMonths": 24, "feePct": 0.02 },
+      "obligations": [
+        {
+          "id": "loan-a",
+          "kind": "loan",
+          "labelSynthetic": "Préstamo A",
+          "balanceTotal": 5000,
+          "statementDue": 800,
+          "minimumDue": 400,
+          "aprAnnual": 0.2,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        },
+        {
+          "id": "loan-b",
+          "kind": "loan",
+          "labelSynthetic": "Préstamo B",
+          "balanceTotal": 5000,
+          "statementDue": 800,
+          "minimumDue": 400,
+          "aprAnnual": 0.2,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "shortfall",
+    "forbiddenPrimaryActionTypes": ["consolidate"],
+    "expectAlternativeWarning": "no baja la tasa ponderada"
+  },
+  {
+    "id": "SF-14-balanced",
+    "notes": "A zero gap stays balanced.",
+    "input": {
+      "horizon": "mes",
+      "gapAmount": 0,
+      "availableCash": 1000,
+      "computedAt": "2026-01-01T00:00:00.000Z",
+      "obligations": [
+        {
+          "id": "card",
+          "kind": "card_revolving",
+          "labelSynthetic": "Tarjeta A",
+          "balanceTotal": 1000,
+          "statementDue": 100,
+          "minimumDue": 50,
+          "aprAnnual": 0.3,
+          "dueInHorizon": true,
+          "consequenceTier": 3
+        }
+      ]
+    },
+    "expectedMode": "balanced",
+    "expectedPrimaryId": "balanced",
+    "forbiddenPrimaryActionTypes": ["bridge_loan", "pay_minimum"]
+  }
+]
