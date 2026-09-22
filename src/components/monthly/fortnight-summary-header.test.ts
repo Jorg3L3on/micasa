@@ -21,24 +21,24 @@ describe('getFortnightSummaryHeader', () => {
 });
 
 describe('getFortnightRemainderCopy', () => {
-  it('uses Queda when income covers toca pagar', () => {
+  it('uses Te queda when income covers toca pagar', () => {
     expect(getFortnightRemainderCopy(2150)).toEqual({
       tone: 'surplus',
-      rowLabel: 'Queda',
+      rowLabel: 'Te queda',
     });
   });
 
-  it('uses Falta when toca pagar exceeds income', () => {
+  it('uses Te falta when toca pagar exceeds income', () => {
     expect(getFortnightRemainderCopy(-4800)).toEqual({
       tone: 'shortfall',
-      rowLabel: 'Falta',
+      rowLabel: 'Te falta',
     });
   });
 
-  it('uses Queda when remainder is zero', () => {
+  it('uses Te queda when remainder is zero', () => {
     expect(getFortnightRemainderCopy(0)).toEqual({
       tone: 'even',
-      rowLabel: 'Queda',
+      rowLabel: 'Te queda',
     });
   });
 });
@@ -75,14 +75,12 @@ describe('getDueToPayComposition', () => {
         statementDue: 850,
         walletLoanDue: 1_800,
         payrollDeduction: 4_036.41,
-        budgetRemaining: 3_500,
       }),
     ).toEqual([
       { label: 'Pendiente de gastos', amount: 25_671.62 },
       { label: 'De eso, estado de cuenta', amount: 850 },
       { label: 'De eso, cuotas de préstamo', amount: 1_800 },
       { label: 'Deducciones de nómina', amount: 4_036.41 },
-      { label: 'Presupuesto restante', amount: 3_500 },
     ]);
   });
 

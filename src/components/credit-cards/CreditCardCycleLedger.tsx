@@ -29,7 +29,6 @@ import {
   searchCycleLedger,
   type CycleLedgerFilter,
 } from '@/lib/finance/credit-card-cycle-ledger';
-import type { CreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
 import type {
   CreditCardStatementImportListItem,
   CreditCardStatementPurchaseItem,
@@ -81,7 +80,6 @@ type CreditCardCycleLedgerProps = {
   payments: CreditCardPaymentListItem[];
   imports: CreditCardStatementImportListItem[];
   ownerQueryString: string;
-  reconciliation?: CreditCardCycleReconciliation | null;
   onRegisterPurchase: () => void;
   onGoToCuotas?: () => void;
 };
@@ -94,7 +92,6 @@ export const CreditCardCycleLedger = ({
   payments,
   imports,
   ownerQueryString,
-  reconciliation,
   onRegisterPurchase,
   onGoToCuotas,
 }: CreditCardCycleLedgerProps) => {
@@ -124,9 +121,6 @@ export const CreditCardCycleLedger = ({
   const activeFilterLabel =
     FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'Todos';
 
-  const showReconciliationHint =
-    reconciliation != null && reconciliation.status === 'needs_review';
-
   if (allEntries.length === 0) {
     return (
       <CreditCardFeedEmpty
@@ -149,12 +143,6 @@ export const CreditCardCycleLedger = ({
             {allEntries.length} movimiento{allEntries.length === 1 ? '' : 's'} ·{' '}
             {activeFilterLabel.toLowerCase()}
           </p>
-          {showReconciliationHint ? (
-            <p className="text-xs font-medium text-amber-600 dark:text-amber-400 sm:mr-auto">
-              Hay diferencias con el import — revisa en Resumen.
-            </p>
-          ) : null}
-
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative sm:w-64">
               <Search

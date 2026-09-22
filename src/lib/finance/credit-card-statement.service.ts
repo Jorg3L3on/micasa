@@ -1403,8 +1403,18 @@ async function getDuePaymentsForPlannerMonthImpl(
   year: number,
   month: number,
 ) {
-  const asOfForVisibleDueDate = (card: { due_day: number }) =>
-    createCalendarDate(year, month, clampDayToMonth(year, month, card.due_day));
+  const asOfForVisibleDueDate = (card: {
+    due_day: number;
+    cutoff_day: number;
+  }) => {
+    const dueDay = clampDayToMonth(year, month, card.due_day);
+    // Same-day corte/pago: asOf on the due day is already the cutoff, so the
+    // statement window rolls the due date into next month. Step back one day
+    // to keep this month's payment in the fortnight that contains due_day.
+    const asOfDay =
+      card.cutoff_day === card.due_day && dueDay > 1 ? dueDay - 1 : dueDay;
+    return createCalendarDate(year, month, asOfDay);
+  };
 
   // Fallback only; planner rows use each card's visible due date so cards with
   // due day before cutoff stay on the statement that is actually due this month.

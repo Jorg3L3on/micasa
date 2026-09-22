@@ -28,6 +28,7 @@ type CreditCardInstallmentPlansSectionProps = {
   createDialogOpen?: boolean;
   onCreateDialogOpenChange?: (open: boolean) => void;
   embedded?: boolean;
+  hideWhenEmpty?: boolean;
 };
 
 /** Atomic dialog state so open+plan never diverge across parent/child setState. */
@@ -46,6 +47,7 @@ export const CreditCardInstallmentPlansSection = ({
   createDialogOpen,
   onCreateDialogOpenChange,
   embedded = false,
+  hideWhenEmpty = false,
 }: CreditCardInstallmentPlansSectionProps) => {
   const [items, setItems] = useState<CreditCardInstallmentPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +162,33 @@ export const CreditCardInstallmentPlansSection = ({
       : 'create'
     : 'closed';
 
+  if (hideWhenEmpty && items.length === 0 && !loading) {
+    return (
+      <>
+        <CreditCardInstallmentPlanDialog
+          key={dialogInstanceKey}
+          open={dialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          creditCardId={creditCardId}
+          context={context}
+          defaultDueDay={defaultDueDay}
+          plan={editingPlan}
+          onSuccess={handleSuccess}
+        />
+        <ConfirmDeleteDialog
+          open={deleteTarget != null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="Eliminar plan de cuotas"
+          description="Se eliminará el plan y sus cuotas futuras. Las cuotas ya pagadas no se revierten en el saldo de la tarjeta."
+          itemName={deleteTarget?.name}
+        />
+      </>
+    );
+  }
+
   return (
     <section
       className="space-y-3"
@@ -203,21 +232,28 @@ export const CreditCardInstallmentPlansSection = ({
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando planes…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/60 bg-card/50 px-4 py-6 text-center">
-          <p className="text-sm font-medium">Sin planes activos</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Crea un plan con nombre y cuotas ya pagadas para ver el progreso sin
-            duplicar la deuda de la tarjeta.
+        embedded ? (
+          <p className="px-0.5 text-xs text-muted-foreground">
+            Sin planes activos. Usa Agregar para crear uno con nombre y cuotas ya
+            pagadas.
           </p>
-          <Button
-            type="button"
-            size="sm"
-            className="mt-4 rounded-xl"
-            onClick={handleOpenCreate}
-          >
-            Crear plan de cuotas
-          </Button>
-        </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border/60 bg-card/50 px-4 py-6 text-center">
+            <p className="text-sm font-medium">Sin planes activos</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Crea un plan con nombre y cuotas ya pagadas para ver el progreso sin
+              duplicar la deuda de la tarjeta.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              className="mt-4 rounded-xl"
+              onClick={handleOpenCreate}
+            >
+              Crear plan de cuotas
+            </Button>
+          </div>
+        )
       ) : (
         <>
           {!embedded ? (

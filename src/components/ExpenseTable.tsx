@@ -294,7 +294,12 @@ export default function ExpenseTable({
         ? {
             ...e,
             amount: data.amount,
-            ...(walletChanged ? { wallet_id: data.wallet_id ?? null, paymentMethod: walletName } : {}),
+            description: data.description,
+            date: data.payment_date,
+            due_day: Number(data.payment_date.slice(8, 10)),
+            ...(walletChanged
+              ? { wallet_id: data.wallet_id ?? null, paymentMethod: walletName }
+              : {}),
           }
         : e,
     );
@@ -302,7 +307,16 @@ export default function ExpenseTable({
 
     try {
       setEditError(null);
-      await updateExpenseAmount(expenseId, data.amount, context, data.wallet_id);
+      await updateExpenseAmount(
+        expenseId,
+        {
+          amount: data.amount,
+          wallet_id: data.wallet_id,
+          description: data.description,
+          payment_date: data.payment_date,
+        },
+        context,
+      );
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, editingExpense.is_paid);
       }
@@ -313,7 +327,7 @@ export default function ExpenseTable({
       setLocalExpenses(expenses);
       const { userMessage, logToConsole } = getApiErrorFeedback(
         error,
-        'Error al actualizar el monto',
+        'Error al actualizar el gasto',
       );
       setEditError(userMessage);
       if (logToConsole) {
@@ -868,6 +882,8 @@ export default function ExpenseTable({
           }}
           onSave={handleUpdateAmount}
           defaultAmount={toDisplayAmount(editingExpense.amount)}
+          defaultDescription={editingExpense.description}
+          defaultPaymentDate={editingExpense.date}
           defaultWalletId={editingExpense.wallet_id ?? null}
           wallets={wallets}
           isPaid={editingExpense.is_paid}

@@ -1,16 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { DragEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { WalletListItem } from '@/types/catalog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   applyWalletStripOrder,
   defaultWalletStripOrder,
   isPointerNearWalletStrip,
+  isWalletStripTouchPointer,
   moveWalletStripId,
   readWalletStripOrder,
+  WALLET_STRIP_LONG_PRESS_MS,
   walletStripAutoScrollDelta,
+  walletStripHoldShouldCancel,
+  walletStripInsertIndexAtPointerX,
+  walletStripMouseShouldActivate,
+  walletStripPointerDistance,
   writeWalletStripOrder,
 } from '@/lib/ui/wallet-strip-order';
 import {
@@ -19,7 +25,7 @@ import {
 } from '@/lib/provider-card-style';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import { formatCurrency, cn } from '@/lib/utils';
-import { CreditCard, Landmark, Wallet } from 'lucide-react';
+import { CreditCard, GripVertical, Landmark, Wallet } from 'lucide-react';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { todayCalendarDate } from '@/lib/calendar-dates';
@@ -70,12 +76,32 @@ const WalletBalanceStrip = ({
 
   const [savedOrderIds, setSavedOrderIds] = useState<number[] | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [holdingId, setHoldingId] = useState<number | null>(null);
   const draggingIdRef = useRef<number | null>(null);
   const orderedIdsRef = useRef<number[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const dragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const autoScrollIntervalRef = useRef<number | null>(null);
   const lastAutoScrollAtRef = useRef(0);
+  const longPressTimerRef = useRef<number | null>(null);
+  const suppressOpenRef = useRef(false);
+  const pointerSessionRef = useRef<{
+    id: number;
+    pointerId: number;
+    pointerType: string;
+    startX: number;
+    startY: number;
+    activated: boolean;
+    moved: boolean;
+    target: HTMLElement;
+  } | null>(null);
+
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollIntervalRef.current != null) {
@@ -86,35 +112,63 @@ const WalletBalanceStrip = ({
     lastAutoScrollAtRef.current = 0;
   }, []);
 
+  const handleReorder = useCallback(
+    (nextIds: number[]) => {
+      setSavedOrderIds(nextIds);
+      writeWalletStripOrder(context.type, context.id, nextIds);
+    },
+    [context.type, context.id],
+  );
+
+  const reorderTowardPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      const list = listRef.current;
+      const activeId = draggingIdRef.current;
+      if (list == null || activeId == null) return;
+
+      dragPointerRef.current = { x: clientX, y: clientY };
+
+      const rect = list.getBoundingClientRect();
+      if (isPointerNearWalletStrip(clientY, rect.top, rect.bottom)) {
+        const delta = walletStripAutoScrollDelta(clientX, rect.left, rect.right);
+        if (delta !== 0) {
+          list.scrollLeft += delta;
+        }
+      }
+
+      const cards = [
+        ...list.querySelectorAll<HTMLElement>('[data-wallet-strip-id]'),
+      ];
+      const centers = cards.map((card) => {
+        const cardRect = card.getBoundingClientRect();
+        return cardRect.left + cardRect.width / 2;
+      });
+      const toIndex = walletStripInsertIndexAtPointerX(clientX, centers);
+
+      const nextIds = moveWalletStripId(
+        orderedIdsRef.current,
+        activeId,
+        toIndex,
+      );
+      if (nextIds.every((id, index) => id === orderedIdsRef.current[index])) {
+        return;
+      }
+      orderedIdsRef.current = nextIds;
+      handleReorder(nextIds);
+    },
+    [handleReorder],
+  );
+
   const scrollStripTowardPointer = useCallback(() => {
-    const list = listRef.current;
     const pointer = dragPointerRef.current;
-    if (list == null || pointer == null || draggingIdRef.current == null) {
-      return;
-    }
+    if (pointer == null || draggingIdRef.current == null) return;
 
     const now = performance.now();
     if (now - lastAutoScrollAtRef.current < 16) return;
     lastAutoScrollAtRef.current = now;
 
-    const rect = list.getBoundingClientRect();
-    if (!isPointerNearWalletStrip(pointer.y, rect.top, rect.bottom)) return;
-
-    const delta = walletStripAutoScrollDelta(pointer.x, rect.left, rect.right);
-    if (delta !== 0) {
-      list.scrollLeft += delta;
-    }
-  }, []);
-
-  const applyDragAutoScroll = useCallback(
-    (clientX: number, clientY: number) => {
-      if (draggingIdRef.current == null) return;
-      if (clientX === 0 && clientY === 0) return;
-      dragPointerRef.current = { x: clientX, y: clientY };
-      scrollStripTowardPointer();
-    },
-    [scrollStripTowardPointer],
-  );
+    reorderTowardPointer(pointer.x, pointer.y);
+  }, [reorderTowardPointer]);
 
   const startAutoScroll = useCallback(() => {
     if (autoScrollIntervalRef.current != null) return;
@@ -124,17 +178,150 @@ const WalletBalanceStrip = ({
     );
   }, [scrollStripTowardPointer]);
 
+  const endPointerDrag = useCallback(() => {
+    const session = pointerSessionRef.current;
+    if (session?.target.hasPointerCapture(session.pointerId)) {
+      session.target.releasePointerCapture(session.pointerId);
+    }
+    pointerSessionRef.current = null;
+    draggingIdRef.current = null;
+    clearLongPressTimer();
+    setHoldingId(null);
+    setDraggingId(null);
+    stopAutoScroll();
+  }, [clearLongPressTimer, stopAutoScroll]);
+
+  const activatePointerDrag = useCallback(
+    (walletId: number) => {
+      const session = pointerSessionRef.current;
+      if (session == null || session.id !== walletId) return;
+      session.activated = true;
+      suppressOpenRef.current = true;
+      draggingIdRef.current = walletId;
+      setDraggingId(walletId);
+      setHoldingId(null);
+      startAutoScroll();
+      try {
+        session.target.setPointerCapture(session.pointerId);
+      } catch {
+        /* capture can fail if the node unmounted */
+      }
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(12);
+      }
+    },
+    [startAutoScroll],
+  );
+
+  const beginPointerSession = useCallback(
+    (
+      walletId: number,
+      event: ReactPointerEvent<HTMLElement>,
+      immediate: boolean,
+    ) => {
+      if (event.button !== 0) return;
+      if (pointerSessionRef.current?.activated) return;
+
+      clearLongPressTimer();
+      pointerSessionRef.current = {
+        id: walletId,
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        startX: event.clientX,
+        startY: event.clientY,
+        activated: false,
+        moved: false,
+        target: event.currentTarget,
+      };
+
+      if (immediate) {
+        event.preventDefault();
+        activatePointerDrag(walletId);
+        return;
+      }
+
+      suppressOpenRef.current = false;
+      if (isWalletStripTouchPointer(event.pointerType)) {
+        setHoldingId(walletId);
+      }
+
+      if (!isWalletStripTouchPointer(event.pointerType)) return;
+
+      longPressTimerRef.current = window.setTimeout(() => {
+        const session = pointerSessionRef.current;
+        if (session == null || session.moved || session.id !== walletId) return;
+        activatePointerDrag(walletId);
+      }, WALLET_STRIP_LONG_PRESS_MS);
+    },
+    [activatePointerDrag, clearLongPressTimer],
+  );
+
   useEffect(() => {
-    const handleWindowDragOver = (event: globalThis.DragEvent) => {
-      applyDragAutoScroll(event.clientX, event.clientY);
+    const handlePointerMove = (event: PointerEvent) => {
+      const session = pointerSessionRef.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+
+      const distance = walletStripPointerDistance(
+        event.clientX - session.startX,
+        event.clientY - session.startY,
+      );
+
+      if (!session.activated) {
+        if (isWalletStripTouchPointer(session.pointerType)) {
+          if (walletStripHoldShouldCancel(distance)) {
+            session.moved = true;
+            suppressOpenRef.current = true;
+            clearLongPressTimer();
+            setHoldingId(null);
+            pointerSessionRef.current = null;
+          }
+          return;
+        }
+
+        if (walletStripMouseShouldActivate(distance)) {
+          session.moved = true;
+          activatePointerDrag(session.id);
+        } else {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      reorderTowardPointer(event.clientX, event.clientY);
     };
 
-    window.addEventListener('dragover', handleWindowDragOver, true);
-    return () => {
-      window.removeEventListener('dragover', handleWindowDragOver, true);
-      stopAutoScroll();
+    const handlePointerUp = (event: PointerEvent) => {
+      const session = pointerSessionRef.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      endPointerDrag();
     };
-  }, [applyDragAutoScroll, stopAutoScroll]);
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (draggingIdRef.current == null) return;
+      event.preventDefault();
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('touchmove', handleTouchMove, {
+      passive: false,
+      capture: true,
+    });
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('touchmove', handleTouchMove, true);
+      endPointerDrag();
+    };
+  }, [
+    activatePointerDrag,
+    clearLongPressTimer,
+    endPointerDrag,
+    reorderTowardPointer,
+  ]);
 
   useLayoutEffect(() => {
     setSavedOrderIds(readWalletStripOrder(context.type, context.id));
@@ -147,51 +334,29 @@ const WalletBalanceStrip = ({
   const orderedIds = orderedWallets.map((wallet) => wallet.id);
   orderedIdsRef.current = orderedIds;
 
-  const handleReorder = (nextIds: number[]) => {
-    setSavedOrderIds(nextIds);
-    writeWalletStripOrder(context.type, context.id, nextIds);
-  };
-
-  const handleDragStart =
-    (walletId: number) => (event: DragEvent<HTMLDivElement>) => {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', String(walletId));
-      draggingIdRef.current = walletId;
-      setDraggingId(walletId);
-      startAutoScroll();
+  const handleCardPointerDown =
+    (walletId: number) => (event: ReactPointerEvent<HTMLElement>) => {
+      beginPointerSession(walletId, event, false);
     };
 
-  const handleListDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    applyDragAutoScroll(event.clientX, event.clientY);
-  };
+  const handleGripPointerDown =
+    (walletId: number) => (event: ReactPointerEvent<HTMLElement>) => {
+      event.stopPropagation();
+      beginPointerSession(walletId, event, true);
+    };
 
-  const handleDragOver =
-    (overId: number) => (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-      applyDragAutoScroll(event.clientX, event.clientY);
-      const activeId = draggingIdRef.current;
-      if (activeId == null || activeId === overId) return;
-      const toIndex = orderedIdsRef.current.indexOf(overId);
-      if (toIndex < 0) return;
-      const nextIds = moveWalletStripId(
-        orderedIdsRef.current,
-        activeId,
-        toIndex,
-      );
-      if (nextIds.every((id, index) => id === orderedIdsRef.current[index])) {
+  const handleCardClick =
+    (wallet: WalletListItem) => (event: ReactMouseEvent<HTMLButtonElement>) => {
+      if (suppressOpenRef.current) {
+        event.preventDefault();
+        suppressOpenRef.current = false;
         return;
       }
-      orderedIdsRef.current = nextIds;
-      handleReorder(nextIds);
+      handleOpenWalletModal(wallet);
     };
 
-  const handleDragEnd = () => {
-    draggingIdRef.current = null;
-    setDraggingId(null);
-    stopAutoScroll();
+  const handleCardContextMenu = (event: ReactMouseEvent) => {
+    event.preventDefault();
   };
 
   if (wallets.length === 0) return null;
@@ -205,11 +370,17 @@ const WalletBalanceStrip = ({
       >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-linear-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-linear-to-l from-background to-transparent" />
+          <p className="sr-only" aria-live="polite">
+            {draggingId != null
+              ? `Reordenando ${orderedWallets.find((wallet) => wallet.id === draggingId)?.name ?? 'billetera'}`
+              : ''}
+          </p>
           <div
             ref={listRef}
-            className="flex items-stretch gap-2 overflow-x-auto py-0.5 pr-1 scrollbar-hide px-1"
-            onDragOver={handleListDragOver}
-            onDrop={(event) => event.preventDefault()}
+            className={cn(
+              'flex items-stretch gap-2 overflow-x-auto py-0.5 pr-1 scrollbar-hide px-1',
+              draggingId != null && 'touch-none',
+            )}
           >
               {orderedWallets.map((wallet) => {
                 const isCreditType =
@@ -459,8 +630,8 @@ const WalletBalanceStrip = ({
                 );
 
                 const cardClasses = cn(
-                  'group relative flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2',
-                  'backdrop-blur-sm ring-1 ring-inset transition-all duration-300',
+                  'group relative flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
+                  'backdrop-blur-sm ring-1 ring-inset transition-all duration-300 [-webkit-touch-callout:none]',
                   onDarkSurface ? 'ring-white/5' : 'ring-black/5',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
                   onDarkSurface
@@ -479,7 +650,13 @@ const WalletBalanceStrip = ({
                     cn(
                       'cursor-grab select-none active:cursor-grabbing',
                       draggingId !== wallet.id &&
+                        holdingId !== wallet.id &&
                         'hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg',
+                      holdingId === wallet.id &&
+                        draggingId !== wallet.id &&
+                        'scale-[1.03]',
+                      draggingId === wallet.id &&
+                        'cursor-grabbing scale-[1.04] shadow-xl',
                       useProviderGradient &&
                         (onDarkSurface
                           ? 'border-white/25 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.9)] hover:border-white/40 hover:shadow-[0_16px_34px_-14px_rgba(15,23,42,0.95)] hover:after:opacity-70'
@@ -502,24 +679,24 @@ const WalletBalanceStrip = ({
                 return (
                   <div
                     key={wallet.id}
-                    draggable
                     data-wallet-strip-id={wallet.id}
-                    onDragStart={handleDragStart(wallet.id)}
-                    onDragOver={handleDragOver(wallet.id)}
-                    onDragEnd={handleDragEnd}
-                    onDrop={(event) => event.preventDefault()}
+                    onPointerDown={handleCardPointerDown(wallet.id)}
+                    onContextMenu={handleCardContextMenu}
                     className={cn(
-                      'flex shrink-0',
-                      draggingId === wallet.id && 'opacity-60',
+                      'relative flex shrink-0 touch-manipulation',
+                      draggingId === wallet.id && 'z-20',
+                      draggingId != null &&
+                        draggingId !== wallet.id &&
+                        'opacity-70',
                     )}
                     aria-grabbed={draggingId === wallet.id}
                   >
                     <button
                       type="button"
-                      onClick={() => handleOpenWalletModal(wallet)}
+                      onClick={handleCardClick(wallet)}
                       className={cardClasses}
                       style={providerCardStyle}
-                      aria-label={`Abrir detalles de ${wallet.name}. Arrastra para reordenar.`}
+                      aria-label={`Abrir detalles de ${wallet.name}. Usa el asa o mantén presionado para reordenar.`}
                     >
                       {useProviderGradient ? (
                         <>
@@ -539,6 +716,29 @@ const WalletBalanceStrip = ({
                       ) : null}
                       {cardContent}
                     </button>
+                    <span
+                      role="button"
+                      tabIndex={-1}
+                      aria-label={`Reordenar ${wallet.name}`}
+                      className={cn(
+                        'absolute inset-y-0 right-0 z-10 flex w-8 touch-none items-center justify-center',
+                        draggingId === wallet.id
+                          ? 'cursor-grabbing'
+                          : 'cursor-grab',
+                      )}
+                      onPointerDown={handleGripPointerDown(wallet.id)}
+                      onContextMenu={handleCardContextMenu}
+                    >
+                      <GripVertical
+                        className={cn(
+                          'h-4 w-4',
+                          onDarkSurface
+                            ? 'text-white/45'
+                            : 'text-muted-foreground/55',
+                        )}
+                        aria-hidden
+                      />
+                    </span>
                   </div>
                 );
               })}

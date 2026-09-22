@@ -5,6 +5,7 @@ import {
   positiveAmountSchema,
   optionalBooleanSchema,
   defaultBooleanSchema,
+  dateStringSchema,
 } from './common.schema';
 
 // Expense schemas
@@ -35,6 +36,8 @@ export const expenseSchema = z.object({
 export const expenseAmountSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0'),
   wallet_id: z.number().int().positive().nullable().optional(),
+  description: z.string().trim().min(1, 'El nombre es requerido'),
+  payment_date: dateStringSchema,
 });
 
 // Type exports

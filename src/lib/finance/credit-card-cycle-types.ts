@@ -1,8 +1,7 @@
-export type CreditCardCycleTab = 'movimientos' | 'resumen' | 'cuotas';
+export type CreditCardCycleTab = 'movimientos' | 'cuotas';
 
 export const CREDIT_CARD_CYCLE_TABS: CreditCardCycleTab[] = [
   'movimientos',
-  'resumen',
   'cuotas',
 ];
 

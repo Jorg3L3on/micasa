@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
-import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
@@ -42,8 +41,6 @@ import {
   ArrowUp,
   ArrowUpDown,
   Banknote,
-  Loader2,
-  MoreVertical,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -57,6 +54,7 @@ import {
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
 import { useFinanceContext } from '@/context/finance-context';
+import { useRegisterToolbarOverflow } from '@/context/toolbar-actions-context';
 import {
   buildOwnerQuery,
   clientFetchFromApi,
@@ -405,6 +403,102 @@ export default function FortnightColumn({
       setIsRefreshing(false);
     }
   }, [year, month, period, context, router, refreshCardDueItems]);
+
+  const handleRegenerateFromTemplates = useCallback(async () => {
+    const loadingToastId = 'fortnight-regenerating';
+    try {
+      setIsRegenerating(true);
+      setAddExpenseError(null);
+      toast.loading('Regenerando quincena desde plantillas...', {
+        id: loadingToastId,
+      });
+
+      if (!fortnightId || fortnightId <= 0) {
+        toast.error(
+          'No se pudo regenerar la quincena. Recarga la página o vuelve al plan mensual.',
+        );
+        return;
+      }
+
+      const result = await clientFetchFromApi<{
+        expensesCreated: { count: number; names: string[] };
+        incomeCreated: { count: number; names: string[] };
+      }>(
+        `/api/fortnights/${fortnightId}/regenerate-from-templates`,
+        {
+          method: 'POST',
+        },
+        context,
+      );
+
+      await refreshData();
+      router.refresh();
+      const createdExpenses = result.expensesCreated.count;
+      const createdIncomes = result.incomeCreated.count;
+      if (createdExpenses === 0 && createdIncomes === 0) {
+        toast('Regeneración completada: no se encontraron plantillas aplicables.', {
+          id: loadingToastId,
+        });
+      } else {
+        toast.success(
+          `Quincena regenerada: ${createdExpenses} gasto(s) y ${createdIncomes} ingreso(s).`,
+          { id: loadingToastId },
+        );
+      }
+    } catch (error) {
+      console.error('Error regenerating fortnight from templates:', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Error al regenerar la quincena desde plantillas';
+      setAddExpenseError(message);
+      toast.error(message, { id: loadingToastId });
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [fortnightId, context, refreshData, router]);
+
+  const payrollOverflowIcon = useMemo(
+    () => <Banknote className="h-4 w-4 shrink-0" aria-hidden />,
+    [],
+  );
+  const regenerateOverflowIcon = useMemo(
+    () => <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />,
+    [],
+  );
+  const handleOpenPayroll = useCallback(() => {
+    setPayrollDialogOpen(true);
+  }, []);
+  const fortnightOverflowItems = useMemo(() => {
+    const canAct = Boolean(fortnightId && fortnightId > 0);
+    return [
+      {
+        key: 'receive-payroll',
+        label: 'Recibir quincena',
+        onClick: handleOpenPayroll,
+        icon: payrollOverflowIcon,
+        disabled: !canAct,
+      },
+      {
+        key: 'regenerate-templates',
+        label: 'Regenerar desde plantillas',
+        onClick: () => {
+          void handleRegenerateFromTemplates();
+        },
+        icon: regenerateOverflowIcon,
+        disabled: !canAct || isRefreshing || isRegenerating,
+      },
+    ];
+  }, [
+    fortnightId,
+    handleOpenPayroll,
+    handleRegenerateFromTemplates,
+    payrollOverflowIcon,
+    regenerateOverflowIcon,
+    isRefreshing,
+    isRegenerating,
+  ]);
+  useRegisterToolbarOverflow(fortnightOverflowItems);
 
   useEffect(() => {
     if (summaryFundingRefreshNonce == null) return;
@@ -768,60 +862,6 @@ export default function FortnightColumn({
     }
   };
 
-  const handleRegenerateFromTemplates = async () => {
-    const loadingToastId = 'fortnight-regenerating';
-    try {
-      setIsRegenerating(true);
-      setAddExpenseError(null);
-      toast.loading('Regenerando quincena desde plantillas...', {
-        id: loadingToastId,
-      });
-
-      if (!fortnightId || fortnightId <= 0) {
-        toast.error(
-          'No se pudo regenerar la quincena. Recarga la página o vuelve al plan mensual.',
-        );
-        return;
-      }
-
-      const result = await clientFetchFromApi<{
-        expensesCreated: { count: number; names: string[] };
-        incomeCreated: { count: number; names: string[] };
-      }>(
-        `/api/fortnights/${fortnightId}/regenerate-from-templates`,
-        {
-          method: 'POST',
-        },
-        context,
-      );
-
-      await refreshData();
-      router.refresh();
-      const createdExpenses = result.expensesCreated.count;
-      const createdIncomes = result.incomeCreated.count;
-      if (createdExpenses === 0 && createdIncomes === 0) {
-        toast('Regeneración completada: no se encontraron plantillas aplicables.', {
-          id: loadingToastId,
-        });
-      } else {
-        toast.success(
-          `Quincena regenerada: ${createdExpenses} gasto(s) y ${createdIncomes} ingreso(s).`,
-          { id: loadingToastId },
-        );
-      }
-    } catch (error) {
-      console.error('Error regenerating fortnight from templates:', error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Error al regenerar la quincena desde plantillas';
-      setAddExpenseError(message);
-      toast.error(message, { id: loadingToastId });
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
-
   const tenemos = summary.totalIncome;
   const libre = summary.balance;
   const pagado = summary.totalPaid;
@@ -917,15 +957,9 @@ export default function FortnightColumn({
           )}
           onEditIncome={handleOpenOverrideDialog}
           onEditIncomeSource={handleOpenEditIncomeSource}
+          budgetPanel={budgetPanel}
+          budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
         />
-
-        {budgetPanel != null ? (
-          <MonthlyBudgetSidebar
-            panel={budgetPanel}
-            ownerQuery={budgetOwnerQuery || ownerQueryString}
-            className="xl:hidden"
-          />
-        ) : null}
 
         <Tabs
           value={columnTab}
@@ -1093,57 +1127,6 @@ export default function FortnightColumn({
                       </DropdownMenuItem>
                     );
                   })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 shrink-0 border-border/70 bg-background/70 text-foreground/85 hover:bg-muted sm:h-8 sm:w-8"
-                        disabled={!fortnightId || fortnightId <= 0}
-                        aria-label="Más acciones de esta quincena"
-                      >
-                        <MoreVertical className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={4}>
-                    Más acciones
-                  </TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end" className="min-w-48">
-                  <DropdownMenuItem
-                    disabled={!fortnightId || fortnightId <= 0}
-                    onSelect={() => setPayrollDialogOpen(true)}
-                  >
-                    <Banknote className="h-4 w-4 shrink-0" aria-hidden />
-                    Recibir quincena
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={
-                      !fortnightId ||
-                      fortnightId <= 0 ||
-                      isRefreshing ||
-                      isRegenerating
-                    }
-                    onSelect={() => {
-                      void handleRegenerateFromTemplates();
-                    }}
-                  >
-                    {isRefreshing || isRegenerating ? (
-                      <Loader2
-                        className="h-4 w-4 shrink-0 animate-spin"
-                        aria-hidden
-                      />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
-                    )}
-                    Regenerar desde plantillas
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

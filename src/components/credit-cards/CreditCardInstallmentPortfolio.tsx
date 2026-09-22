@@ -16,7 +16,7 @@ import { CategoryLabel } from '@/components/categories/CategoryLabel';
 type CreditCardInstallmentPortfolioProps = {
   purchases: CreditCardStatementPurchaseItem[];
   ownerQueryString: string;
-  onCreateInstallmentPlan: () => void;
+  onCreateInstallmentPlan?: () => void;
   embedded?: boolean;
 };
 
@@ -40,11 +40,19 @@ export const CreditCardInstallmentPortfolio = ({
     return (
       <CreditCardFeedEmpty
         message="Sin cuotas vigentes"
-        description="Las compras a meses con pagos pendientes aparecerán aquí como un portafolio con progreso y saldo restante."
-        action={{
-          label: 'Registrar compra a meses',
-          onClick: onCreateInstallmentPlan,
-        }}
+        description={
+          embedded
+            ? 'Las compras a meses con pagos pendientes aparecen aquí con progreso y saldo restante.'
+            : 'Las compras a meses con pagos pendientes aparecerán aquí como un portafolio con progreso y saldo restante.'
+        }
+        action={
+          !embedded && onCreateInstallmentPlan
+            ? {
+                label: 'Registrar compra a meses',
+                onClick: onCreateInstallmentPlan,
+              }
+            : undefined
+        }
       />
     );
   }
@@ -129,14 +137,16 @@ export const CreditCardInstallmentPortfolio = ({
         })}
       </ul>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="h-10 w-full rounded-xl"
-        onClick={onCreateInstallmentPlan}
-      >
-        Registrar compra a meses
-      </Button>
+      {!embedded && onCreateInstallmentPlan ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 w-full rounded-xl"
+          onClick={onCreateInstallmentPlan}
+        >
+          Registrar compra a meses
+        </Button>
+      ) : null}
     </div>
   );
 };

@@ -159,22 +159,29 @@ export const CreditCardScheduledPaymentsSection = ({
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando calendario…</p>
       ) : scheduledItems.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/60 bg-card/50 px-4 py-6 text-center">
-          <p className="text-sm font-medium">Sin pagos programados</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Agrega MSI o mensualidades conocidas para ver el pago próximo y la
-            planificación del mes.
+        embedded ? (
+          <p className="px-0.5 text-xs text-muted-foreground">
+            Sin pagos programados. Usa Agregar para programar MSI o mensualidades
+            conocidas.
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4 rounded-xl"
-            onClick={handleOpenCreate}
-          >
-            Agregar cuota futura
-          </Button>
-        </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border/60 bg-card/50 px-4 py-6 text-center">
+            <p className="text-sm font-medium">Sin pagos programados</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Agrega MSI o mensualidades conocidas para ver el pago próximo y la
+              planificación del mes.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4 rounded-xl"
+              onClick={handleOpenCreate}
+            >
+              Agregar cuota futura
+            </Button>
+          </div>
+        )
       ) : (
         <ul className="space-y-2">
           {scheduledItems.map((item) => (

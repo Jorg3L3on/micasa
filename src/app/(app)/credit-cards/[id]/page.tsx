@@ -42,7 +42,6 @@ import { CreditCardCuotasTab } from '@/components/credit-cards/CreditCardCuotasT
 import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
-import { CreditCardPaymentsChart } from '@/components/credit-cards/CreditCardPaymentsChart';
 import CreditCardPaymentDialog, {
   type CreditCardPaymentSubmitPayload,
 } from '@/components/credit-cards/CreditCardPaymentDialog';
@@ -688,9 +687,6 @@ export default function CreditCardDetailPage() {
           <CreditCardDetailTabTrigger value="movimientos">
             Movimientos
           </CreditCardDetailTabTrigger>
-          <CreditCardDetailTabTrigger value="resumen">
-            Resumen
-          </CreditCardDetailTabTrigger>
           <CreditCardDetailTabTrigger value="cuotas">
             Cuotas
             {statement.installment_active_purchases.length > 0 ? (
@@ -711,25 +707,6 @@ export default function CreditCardDetailPage() {
             {cycleLoading ? (
               <TabContentSkeleton />
             ) : (
-              <CreditCardCycleLedger
-                cycleStart={statement.current_cycle_start}
-                cycleEnd={statement.current_cycle_end}
-                statementEnd={statement.statement_end}
-                cyclePurchases={statement.current_cycle_purchase_items}
-                payments={statement.payment_history}
-                imports={statementImports}
-                ownerQueryString={ownerQueryString}
-                reconciliation={reconciliation}
-                onRegisterPurchase={() => setPurchaseDialogOpen(true)}
-                onGoToCuotas={() => setTab('cuotas')}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="resumen" className="mt-0 space-y-4">
-            {cycleLoading ? (
-              <TabContentSkeleton />
-            ) : (
               <>
                 {reconciliation && reconciliation.status !== 'matched' ? (
                   <CreditCardReconciliationStrip
@@ -740,6 +717,18 @@ export default function CreditCardDetailPage() {
                   />
                 ) : null}
 
+                <CreditCardCycleLedger
+                  cycleStart={statement.current_cycle_start}
+                  cycleEnd={statement.current_cycle_end}
+                  statementEnd={statement.statement_end}
+                  cyclePurchases={statement.current_cycle_purchase_items}
+                  payments={statement.payment_history}
+                  imports={statementImports}
+                  ownerQueryString={ownerQueryString}
+                  onRegisterPurchase={() => setPurchaseDialogOpen(true)}
+                  onGoToCuotas={() => setTab('cuotas')}
+                />
+
                 <CreditCardPlannedPaymentSection
                   walletId={creditCardId}
                   items={paymentPlanItems}
@@ -747,23 +736,11 @@ export default function CreditCardDetailPage() {
                   onPayCard={handleOpenPlanPayment}
                 />
 
-                <div className="grid gap-4 lg:grid-cols-3">
-                  <div className="lg:col-span-2">
-                    <CreditCardPaymentsChart
-                      paymentHistory={statement.payment_history}
-                      installmentActivePurchases={
-                        statement.installment_active_purchases
-                      }
-                      statementEnd={statement.statement_end}
-                      cycleLabel={cycleRangeLabel}
-                    />
-                  </div>
-                  <CreditCardStatementSummaryCard
-                    statement={statement}
-                    daysUntilDue={daysUntilDue}
-                    collapsible
-                  />
-                </div>
+                <CreditCardStatementSummaryCard
+                  statement={statement}
+                  daysUntilDue={daysUntilDue}
+                  collapsible
+                />
 
                 <LinkedLoansCard walletId={creditCardId} />
               </>
@@ -776,6 +753,8 @@ export default function CreditCardDetailPage() {
               context={context}
               defaultDueDay={card.due_day}
               purchases={statement.installment_active_purchases}
+              paymentHistory={statement.payment_history}
+              statementEnd={statement.statement_end}
               ownerQueryString={ownerQueryString}
               onChanged={() => loadData({ cycleOnly: true })}
               createPlanDialogOpen={installmentPlanDialogOpen}

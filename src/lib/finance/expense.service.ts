@@ -1,6 +1,7 @@
 import {
   coerceToCalendarDayStart,
   formatCalendarDate,
+  isValidCalendarDateString,
   startOfCalendarDay,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
@@ -572,7 +573,12 @@ export async function updateExpense(input: UpdateExpenseInput) {
     if (amount !== undefined) updateData.amount = amount;
     if (isPaid !== undefined) updateData.is_paid = isPaid;
     if (paymentDate !== undefined) {
-      updateData.payment_date = paymentDate ? coerceToCalendarDayStart(paymentDate) : null;
+      updateData.payment_date = paymentDate
+        ? coerceToCalendarDayStart(paymentDate)
+        : null;
+      if (paymentDate && isValidCalendarDateString(paymentDate)) {
+        updateData.due_day = Number(paymentDate.slice(8, 10));
+      }
     }
 
     updateData.user_id = newFortnight.user_id;
