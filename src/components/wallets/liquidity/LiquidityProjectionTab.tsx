@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CreditCard, PieChart } from 'lucide-react';
-import { useFinanceContext } from '@/context/finance-context';
-import { fetchLiquidityProjection } from '@/lib/api/liquidity';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
 import { LiquidityFutureTimeline } from '@/components/wallets/liquidity/LiquidityFutureTimeline';
 import { LiquidityMonthFocus } from '@/components/wallets/liquidity/LiquidityMonthFocus';
@@ -64,44 +62,29 @@ function LoadingSkeleton() {
   );
 }
 
-export function LiquidityProjectionTab() {
-  const { context } = useFinanceContext();
+export type LiquidityProjectionTabProps = {
+  data: LiquidityProjectionResponse | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+  selectedMonthKey: string;
+  onSelectedMonthKeyChange: (monthKey: string) => void;
+};
+
+export function LiquidityProjectionTab({
+  data,
+  loading,
+  error,
+  onReload,
+  selectedMonthKey,
+  onSelectedMonthKeyChange,
+}: LiquidityProjectionTabProps) {
   const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(() =>
     readStoredChartRange(),
   );
   const [customRange, setCustomRange] = useState<LiquidityCustomChartRange | null>(() =>
     readStoredCustomRange(),
   );
-  const [data, setData] = useState<LiquidityProjectionResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedMonthKey, setSelectedMonthKey] = useState('');
-
-  const load = useCallback(async () => {
-    if (!context || (context.type === 'user' && context.id === 0)) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetchLiquidityProjection(
-        {
-          chartRange: 'year_and_half',
-          omitZero: true,
-          includeUnpaid: true,
-          includeTemplates: true,
-        },
-        context,
-      );
-      setData(res);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar tu panorama');
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [context]);
 
   const handleChartRangeChange = (next: LiquidityChartRangeId) => {
     setChartRange(next);
@@ -115,10 +98,6 @@ export function LiquidityProjectionTab() {
     setChartRange('custom');
     persistCustomRange(next);
   };
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const availableMonthKeys = useMemo(
     () => data?.monthly_series.map((month) => month.month_key) ?? [],
@@ -150,14 +129,13 @@ export function LiquidityProjectionTab() {
   );
 
   const monthKeys = chartMonths.map((month) => month.month_key);
+  const monthKeyList = monthKeys.join('|');
 
   useEffect(() => {
     if (!data || monthKeys.length === 0) return;
-    setSelectedMonthKey((current) => {
-      if (current && monthKeys.includes(current)) return current;
-      return resolveInitialMonthKey(monthKeys, data.as_of);
-    });
-  }, [data, monthKeys]);
+    if (selectedMonthKey && monthKeys.includes(selectedMonthKey)) return;
+    onSelectedMonthKeyChange(resolveInitialMonthKey(monthKeys, data.as_of));
+  }, [data, monthKeyList, monthKeys, onSelectedMonthKeyChange, selectedMonthKey]);
 
   const resolvedMonthKey =
     selectedMonthKey && monthKeys.includes(selectedMonthKey)
@@ -175,7 +153,7 @@ export function LiquidityProjectionTab() {
   const isChartRefreshing = loading && data !== null;
 
   const handleShiftMonth = (delta: number) => {
-    setSelectedMonthKey(shiftSelectedMonthKey(monthKeys, resolvedMonthKey, delta));
+    onSelectedMonthKeyChange(shiftSelectedMonthKey(monthKeys, resolvedMonthKey, delta));
   };
 
   return (
@@ -205,7 +183,7 @@ export function LiquidityProjectionTab() {
                 availableMonthKeys={availableMonthKeys}
                 asOfYmd={data.as_of}
                 selectedMonthKey={resolvedMonthKey}
-                onSelectMonth={setSelectedMonthKey}
+                onSelectMonth={onSelectedMonthKeyChange}
                 isRefreshing={false}
                 embedded
               />
@@ -229,8 +207,8 @@ export function LiquidityProjectionTab() {
           <LiquiditySectionGroup aria-label="Cuentas">
             <LiquidityAccountsToday
               fundingTotal={fundingTotal}
-              onChanged={() => void load()}
-              actions={<LiquidityFundingWalletsMenu onChanged={() => void load()} />}
+              onChanged={onReload}
+              actions={<LiquidityFundingWalletsMenu onChanged={onReload} />}
               sectionIcon={CreditCard}
             />
           </LiquiditySectionGroup>

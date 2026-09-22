@@ -64,6 +64,22 @@ export function isValidCalendarDateString(value: string): boolean {
   );
 }
 
+/**
+ * Civil YYYY-MM-DD for a day-of-month inside `YYYY-MM`.
+ * Days past the end of the month clamp to the last civil day.
+ */
+export function ymdForDayInMonth(monthKey: string, day: number): string | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
+  if (!match || !Number.isInteger(day) || day < 1) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const clamped = Math.min(day, lastDay);
+  const ymd = `${match[1]}-${match[2]}-${String(clamped).padStart(2, '0')}`;
+  return isValidCalendarDateString(ymd) ? ymd : null;
+}
+
 /** Parse YYYY-MM-DD → UTC noon on that civil day (stable for UTC−6 display). */
 export function parseCalendarDate(ymd: string): Date {
   if (!isValidCalendarDateString(ymd)) {

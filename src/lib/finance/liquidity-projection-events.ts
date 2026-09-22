@@ -1,4 +1,4 @@
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import { parseCalendarDate, ymdForDayInMonth } from '@/lib/calendar-dates';
 import { resolveCreditCardStatementWindow } from '@/lib/finance/credit-card-statement.service';
 import {
   compareUtcDateOnly,
@@ -37,7 +37,7 @@ export type LiquidityProjectionTrack = {
   finishes_in_horizon: boolean;
   monthly_amount: number;
   /** Installment amounts by month; used to compute remaining balance curves. */
-  schedule: Array<{ month_key: string; amount: number }>;
+  schedule: Array<{ month_key: string; amount: number; due_date?: string }>;
   loan_id?: number;
   expense_id?: number;
   installment_plan_id?: number;
@@ -320,10 +320,14 @@ export const collectInstallmentPlanProjectionData = async (
       const finishesInHorizon = monthKeySet.has(lastMonth);
       const visibleEnd = finishesInHorizon ? lastMonth : horizonEnd;
       const remainingCount = plan.payments.length;
-      const schedule = plan.payments.map((payment) => ({
-        month_key: toMonthKey(toUtcDateOnlyString(payment.due_date)),
-        amount: Number(payment.amount),
-      }));
+      const schedule = plan.payments.map((payment) => {
+        const dueDate = toUtcDateOnlyString(payment.due_date);
+        return {
+          month_key: toMonthKey(dueDate),
+          amount: Number(payment.amount),
+          due_date: dueDate,
+        };
+      });
 
       for (const payment of plan.payments) {
         const monthKey = toMonthKey(toUtcDateOnlyString(payment.due_date));
@@ -460,11 +464,14 @@ export const collectMsiProjectionData = async (
 
       if (compareMonthKeys(startMonth, horizonEnd) <= 0) {
         const description = purchase.description.trim() || 'Compra a meses';
-        const schedule: Array<{ month_key: string; amount: number }> = [];
+        const schedule: Array<{ month_key: string; amount: number; due_date?: string }> = [];
         for (let i = 0; i <= remaining; i += 1) {
+          const monthKey = monthKeyFromOffset(baseMonthKey, i);
+          const dueDate = ymdForDayInMonth(monthKey, card.due_day!);
           schedule.push({
-            month_key: monthKeyFromOffset(baseMonthKey, i),
+            month_key: monthKey,
             amount: Number(purchase.amount),
+            ...(dueDate ? { due_date: dueDate } : {}),
           });
         }
         tracks.push({
