@@ -64,6 +64,17 @@ describe('getFortnightStatusPill', () => {
       label: 'Justo',
     });
   });
+
+  it('does not say Alcanza when a card payment is missing', () => {
+    expect(getFortnightStatusPill(2_150, { obligationGapCount: 1 })).toEqual({
+      tone: 'gap',
+      label: 'Falta el pago',
+    });
+    expect(getFortnightRemainderCopy(2_150, { obligationGapCount: 1 })).toEqual({
+      tone: 'gap',
+      rowLabel: 'Falta el pago',
+    });
+  });
 });
 
 describe('getDueToPayComposition', () => {

@@ -11,6 +11,7 @@ import {
   getEffectiveCardPaymentAmount,
   resolveFortnightIdForDate,
 } from '@/lib/finance/credit-card-payment-plan.service';
+import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
 import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligation.service';
 import {
   buildCardStatementObligation,
@@ -19,6 +20,7 @@ import {
   paymentAppliesToStatementPeriod,
   resolveCreditCardStatementWindow,
   toDuePaymentItemFields,
+  type CardObligationAmountSource,
   type ComputeNextDuePaymentInput,
   type CreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
@@ -582,10 +584,19 @@ export const buildCardObligationsFromLedger = (
     /** When false, empty future cycles do not invent dues from today's wallet debt. */
     allowOutstandingBalanceFallback?: boolean;
   },
-): Map<number, CreditCardStatementObligationWithCycle & { is_estimate?: boolean }> => {
+): Map<
+  number,
+  CreditCardStatementObligationWithCycle & {
+    is_estimate?: boolean;
+    obligation_amount_source?: CardObligationAmountSource;
+  }
+> => {
   const result = new Map<
     number,
-    CreditCardStatementObligationWithCycle & { is_estimate?: boolean }
+    CreditCardStatementObligationWithCycle & {
+      is_estimate?: boolean;
+      obligation_amount_source?: CardObligationAmountSource;
+    }
   >();
   const allowOutstandingBalanceFallback =
     options?.allowOutstandingBalanceFallback ?? true;
@@ -627,6 +638,7 @@ export const buildCardObligationsFromLedger = (
       next_due_payment: obligation.remainingStatementDue,
       current_cycle_purchases: currentCyclePurchases,
       is_estimate: obligation.isEstimate,
+      obligation_amount_source: obligation.obligationAmountSource,
     });
   }
 
@@ -1139,6 +1151,7 @@ const applyScheduledCalendarToDueItems = (
         existing.remainingPlannerAmount = merged.amount;
         existing.targetAmount = merged.amount;
       }
+      applyPeriodObligation(existing);
       continue;
     }
 
@@ -1160,6 +1173,7 @@ const applyScheduledCalendarToDueItems = (
       obligationAmountSource: 'scheduled_calendar',
       targetAmount: scheduled.amount,
     };
+    applyPeriodObligation(newItem);
     result.push(newItem);
     byWallet.set(walletId, newItem);
   }
@@ -1543,22 +1557,36 @@ export function getDuePaymentsForPlannerMonth(
   );
 }
 
-/** Suma `nextDuePayment` de tarjetas con corte en la quincena (misma lógica que planificación / due-payments). */
+const isMissingCardObligation = (item: DuePaymentItem): boolean =>
+  item.periodObligation?.confidence === 'missing' ||
+  item.plannerStatus === 'falta_dato';
+
+const sumCardDueItems = (
+  items: DuePaymentItem[],
+): { total: number; cardCount: number; obligationGapCount: number } => {
+  const withDue = items.filter((item) => getEffectiveCardPaymentAmount(item) > 0);
+  const total = withDue.reduce(
+    (sum, item) => sum + getEffectiveCardPaymentAmount(item),
+    0,
+  );
+  const obligationGapCount = items.filter(isMissingCardObligation).length;
+  return { total, cardCount: withDue.length, obligationGapCount };
+};
+
+/** Suma el pago conocido de tarjetas con corte en la quincena. Los huecos no entran como $0. */
 export async function sumPlannerCardDueForFortnight(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{ total: number; cardCount: number }> {
+): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
     month,
   );
   const items = period === 'FIRST' ? first : second;
-  const withDue = items.filter((i) => getEffectiveCardPaymentAmount(i) > 0);
-  const total = withDue.reduce((s, i) => s + getEffectiveCardPaymentAmount(i), 0);
-  return { total, cardCount: withDue.length };
+  return sumCardDueItems(items);
 }
 
 /** Mes completo (vista mensual en panel): 1ª + 2ª quincena sin duplicar tarjetas (cada TC cae en una sola lista). */
@@ -1566,17 +1594,13 @@ export async function sumPlannerCardDueForMonth(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
-): Promise<{ total: number; cardCount: number }> {
+): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
     month,
   );
-  const withDue = [...first, ...second].filter(
-    (i) => getEffectiveCardPaymentAmount(i) > 0,
-  );
-  const total = withDue.reduce((s, i) => s + getEffectiveCardPaymentAmount(i), 0);
-  return { total, cardCount: withDue.length };
+  return sumCardDueItems([...first, ...second]);
 }
 
 export async function sumPlannerCardDueForPeriodScope(
@@ -1585,7 +1609,7 @@ export async function sumPlannerCardDueForPeriodScope(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{ total: number; cardCount: number }> {
+): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
   if (view === 'month') {
     return sumPlannerCardDueForMonth(ownerFilter, year, month);
   }

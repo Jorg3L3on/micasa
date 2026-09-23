@@ -270,7 +270,7 @@ export async function upsertCreditCardPaymentPlan(
   const outstandingBalance = Number(wallet.amount);
   if (plannedAmount <= 0) {
     const error = new Error(
-      'El monto planeado debe ser mayor a 0. Usa «Usar sugerido» para quitar el plan.',
+      'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.',
     );
     (error as { code?: string }).code = 'AMOUNT_INVALID';
     throw error;

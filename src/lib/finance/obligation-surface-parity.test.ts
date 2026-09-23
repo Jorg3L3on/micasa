@@ -9,6 +9,7 @@ import {
   type StatementImportRow,
 } from '@/lib/finance/credit-card-statement.service';
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
+import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
 import { formatCalendarDate } from '@/lib/calendar-dates';
 
 const sumEffectiveDue = (
@@ -125,5 +126,18 @@ describe('obligation surface parity (fixture ledger)', () => {
     );
     expect(breakdown.get(7)?.next_due_payment).toBe(0);
     expect(breakdown.get(7)?.is_estimate).toBe(false);
+    expect(breakdown.get(7)?.obligation_amount_source).toBe('none');
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 250,
+        dueInPeriod: true,
+        statementPayoff: null,
+      }),
+    ).toEqual({
+      amount: null,
+      basis: 'none_declared',
+      confidence: 'missing',
+      gaps: ['missing_statement_payoff'],
+    });
   });
 });

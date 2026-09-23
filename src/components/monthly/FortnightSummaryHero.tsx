@@ -41,6 +41,8 @@ type FortnightSummaryHeroProps = {
   leftoverAmount?: number;
   /** Deducciones de nómina incluidas en toca pagar / pendiente de la barra. */
   payrollDeductionAmount?: number;
+  /** Cards with debt and a due date but no statement payment. Blocks green Alcanza. */
+  obligationGapCount?: number;
 };
 
 const remainderToneClass: Record<
@@ -50,6 +52,7 @@ const remainderToneClass: Record<
   surplus: 'text-emerald-600 dark:text-emerald-400',
   shortfall: 'text-destructive',
   even: 'text-foreground',
+  gap: 'text-amber-700 dark:text-amber-300',
 };
 
 const commitmentCaptionClass: Record<
@@ -324,8 +327,9 @@ export const FortnightSummaryHero = ({
   compositionRows = [],
   leftoverAmount = 0,
   payrollDeductionAmount = 0,
+  obligationGapCount = 0,
 }: FortnightSummaryHeroProps) => {
-  const copy = getFortnightRemainderCopy(incomeRemainder);
+  const copy = getFortnightRemainderCopy(incomeRemainder, { obligationGapCount });
   const remainderAbs = Math.abs(incomeRemainder);
   const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];

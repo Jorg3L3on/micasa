@@ -89,6 +89,8 @@ export type PlannerOrphanCardPaymentsSummary = {
 export type PlannerCardStatementDueSummary = {
   total: number;
   cardCount: number;
+  /** Tarjetas con deuda y vencimiento sin pago del corte. No cuentan como $0. */
+  obligationGapCount?: number;
 };
 
 /** Cuotas de préstamo pendientes pagadas desde billetera. */
@@ -323,7 +325,7 @@ export type DuePaymentItem = {
   targetAmount?: number;
   /** Deuda total de la tarjeta (utilización). No es el pago del corte. */
   outstandingBalance: number;
-  /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
+  /** Monto que el usuario planea pagar en esta quincena. Null = sin override. */
   plannedPayment?: number | null;
   /** Neto pendiente en la quincena (remainingPlannerAmount). */
   effectiveAmount?: number;
@@ -335,6 +337,8 @@ export type DuePaymentItem = {
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
   isEstimate?: boolean;
+  /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
+  periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
   remainingPlannedAmount?: number | null;
 };
@@ -346,7 +350,7 @@ export type CreditCardPaymentPlanView = {
   month: number;
   period: 'FIRST' | 'SECOND';
   isCurrentFortnight: boolean;
-  /** Monto sugerido al corte (`nextDuePayment` en el modelo canónico). */
+  /** Pago del corte conocido (`nextDuePayment`). 0 no distingue dato faltante: usar `periodObligation`. */
   suggestedAmount: number;
   plannedPayment: number | null;
   effectiveAmount: number;
@@ -362,6 +366,7 @@ export type CreditCardPaymentPlanView = {
   targetAmount: number;
   /** Plan guardado ya cubierto por pagos en la quincena. */
   isStaleFullyCoveredPlan: boolean;
+  periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */
@@ -431,6 +436,8 @@ export type LiquidityProjectionSummary = {
   net_liquidity_versus_obligations_including_income: number;
   shortfall_versus_funding_and_income: number;
   first_projected_shortfall_date: string | null;
+  /** Cards with debt and a due date but no period payment figure. */
+  unresolved_card_obligation_count?: number;
 };
 
 export type LiquidityProjectionOptionsEcho = {

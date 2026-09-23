@@ -829,7 +829,6 @@ export default function WalletDetailPage() {
           fundingWalletOptions={fundingWalletOptions}
           categoryOptions={categoryOptions}
           nextDuePayment={paymentSuggestedOverride ?? 0}
-          outstandingBalance={wallet.amount}
           submitting={paymentSubmitting}
           error={paymentError}
           fortnightId={paymentFortnightId}

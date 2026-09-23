@@ -8,7 +8,7 @@ export const getFortnightSummaryHeader = (
   };
 };
 
-export type FortnightRemainderTone = 'surplus' | 'shortfall' | 'even';
+export type FortnightRemainderTone = 'surplus' | 'shortfall' | 'even' | 'gap';
 
 export type FortnightRemainderCopy = {
   tone: FortnightRemainderTone;
@@ -18,7 +18,11 @@ export type FortnightRemainderCopy = {
 /** Row label for ingreso − toca pagar (absolute amount is formatted by the UI). */
 export const getFortnightRemainderCopy = (
   remainder: number,
+  options?: { obligationGapCount?: number },
 ): FortnightRemainderCopy => {
+  if ((options?.obligationGapCount ?? 0) > 0 && remainder >= 0) {
+    return { tone: 'gap', rowLabel: 'Falta el pago' };
+  }
   if (remainder > 0) {
     return { tone: 'surplus', rowLabel: 'Te queda' };
   }
@@ -28,7 +32,7 @@ export const getFortnightRemainderCopy = (
   return { tone: 'even', rowLabel: 'Te queda' };
 };
 
-export type FortnightStatusPillTone = 'shortfall' | 'surplus' | 'even';
+export type FortnightStatusPillTone = 'shortfall' | 'surplus' | 'even' | 'gap';
 
 export type FortnightStatusPill = {
   tone: FortnightStatusPillTone;
@@ -38,7 +42,11 @@ export type FortnightStatusPill = {
 /** Compact status chip beside the resumen title (no amount — that lives in the ledger). */
 export const getFortnightStatusPill = (
   remainder: number,
+  options?: { obligationGapCount?: number },
 ): FortnightStatusPill => {
+  if ((options?.obligationGapCount ?? 0) > 0 && remainder >= 0) {
+    return { tone: 'gap', label: 'Falta el pago' };
+  }
   if (remainder > 0) {
     return { tone: 'surplus', label: 'Alcanza' };
   }

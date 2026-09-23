@@ -1,4 +1,5 @@
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
 import type {
   CardObligationAmountSource,
   CardStatementObligationDto,
@@ -87,15 +88,32 @@ export const buildCardPlannerObligation = (input: {
     0,
   );
   const visibleDueDate = input.statement.cycle.statementDueDate;
-  const plannerStatus = derivePlannerStatus({
-    remainingPlannerAmount,
-    paymentsAppliedToFortnight: input.paymentsAppliedToFortnight,
-    paymentsAppliedToStatement: input.statement.paymentsAppliedToStatement,
-    targetAmount,
+  const periodObligation = resolveCardPeriodObligation({
     outstandingBalance: input.statement.outstandingBalance,
-    visibleDueDate,
-    todayYmd: input.todayYmd,
+    dueInPeriod: true,
+    statementPayoff:
+      input.statement.obligationAmountSource === 'none'
+        ? null
+        : input.statement.remainingStatementDue,
+    statementIsEstimate: input.statement.isEstimate,
+    plannedOverride: plannedGross,
+    paymentsApplied: Math.max(
+      input.paymentsAppliedToFortnight,
+      input.statement.paymentsAppliedToStatement,
+    ),
   });
+  const plannerStatus =
+    periodObligation.confidence === 'missing'
+      ? 'falta_dato'
+      : derivePlannerStatus({
+          remainingPlannerAmount,
+          paymentsAppliedToFortnight: input.paymentsAppliedToFortnight,
+          paymentsAppliedToStatement: input.statement.paymentsAppliedToStatement,
+          targetAmount,
+          outstandingBalance: input.statement.outstandingBalance,
+          visibleDueDate,
+          todayYmd: input.todayYmd,
+        });
 
   return {
     fortnightId: input.fortnightId,

@@ -215,6 +215,15 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     });
   }
 
+  const unresolvedCards = projection.summary.unresolved_card_obligation_count ?? 0;
+  if (unresolvedCards > 0) {
+    dataGaps.push({
+      code: 'missing_statement',
+      message:
+        'Hay tarjetas con deuda y fecha de pago sin el pago del corte. Ese hueco no es $0.',
+    });
+  }
+
   const incomeCents = horizon === 'mes' ? toCents(month?.expected_income_total ?? 0) : 0;
   const paymentCents = horizon === 'mes'
     ? toCents(month?.total_payments_due ?? 0)

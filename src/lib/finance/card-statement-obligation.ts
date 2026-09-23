@@ -27,7 +27,8 @@ export type PlannerCardPaymentStatusUi =
   | 'pagado'
   | 'vencido'
   | 'por_pagar'
-  | 'sin_cargo';
+  | 'sin_cargo'
+  | 'falta_dato';
 
 /** Short hint when the suggested amount is not from an imported statement. */
 export const formatCardObligationAmountSourceHint = (

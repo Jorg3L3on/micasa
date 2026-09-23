@@ -41,6 +41,9 @@ const statusAmountClass = (
   if (status === 'sin_cargo') {
     return 'text-muted-foreground';
   }
+  if (status === 'falta_dato') {
+    return 'text-amber-700 dark:text-amber-300';
+  }
   return hasCustomPlan
     ? 'text-blue-600 dark:text-blue-400'
     : 'text-foreground';
@@ -97,7 +100,7 @@ export const CreditCardPlannedPaymentSection = ({
         walletId,
         context,
       );
-      toast.success('Se usará el monto sugerido');
+      toast.success('Se quitó el monto planeado');
       await onPlanUpdated?.();
     } catch (error) {
       const message =
@@ -142,6 +145,7 @@ export const CreditCardPlannedPaymentSection = ({
               item.obligationAmountSource,
               item.isEstimate,
             );
+            const isMissingPayment = item.plannerStatus === 'falta_dato';
             const displayAmount =
               item.plannerStatus === 'pagado'
                 ? fortnightPaid > 0
@@ -149,7 +153,7 @@ export const CreditCardPlannedPaymentSection = ({
                   : item.paymentsAppliedToStatement > 0
                     ? item.paymentsAppliedToStatement
                     : item.targetAmount
-                : item.plannerStatus === 'sin_cargo'
+                : item.plannerStatus === 'sin_cargo' || isMissingPayment
                   ? 0
                   : item.effectiveAmount;
             const statementMismatch =
@@ -187,12 +191,14 @@ export const CreditCardPlannedPaymentSection = ({
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
                       <>Pagado esta quincena</>
+                    ) : isMissingPayment ? (
+                      <>Falta el pago del corte</>
                     ) : item.plannerStatus === 'sin_cargo' ? (
                       <>Sin cargo en esta quincena</>
                     ) : (
                       <>
-                        Sugerido al corte: {formatCurrency(item.suggestedAmount)}
-                        {hasCustomPlan ? ' · plan personalizado' : null}
+                        Toca pagar: {formatCurrency(item.suggestedAmount)}
+                        {hasCustomPlan ? ' · monto planeado' : null}
                       </>
                     )}
                     {isStalePlan ? (
@@ -236,10 +242,12 @@ export const CreditCardPlannedPaymentSection = ({
                         ? `Pagado esta quincena: ${formatCurrency(displayAmount)}`
                         : item.plannerStatus === 'sin_cargo'
                           ? 'Sin cargo'
-                          : `Planeado: ${formatCurrency(displayAmount)}`
+                          : isMissingPayment
+                            ? 'Falta el pago del corte'
+                            : `Planeado: ${formatCurrency(displayAmount)}`
                     }
                   >
-                    {formatCurrency(displayAmount)}
+                    {isMissingPayment ? '—' : formatCurrency(displayAmount)}
                   </span>
                   {item.plannerStatus !== 'sin_cargo' ? (
                     <Tooltip>
@@ -322,15 +330,23 @@ export const CreditCardPlannedPaymentSection = ({
           }
           walletName="esta tarjeta"
           fortnightLabel={editingItem.fortnightLabel}
-          suggestedAmount={editingItem.suggestedAmount}
+          knownPeriodAmount={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? null
+              : editingItem.periodObligation?.amount ??
+                (editingItem.suggestedAmount > 0
+                  ? editingItem.suggestedAmount
+                  : null)
+          }
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0
               ? editingItem.plannedPayment
-              : editingItem.effectiveAmount > 0
+              : editingItem.periodObligation?.confidence !== 'missing' &&
+                  editingItem.effectiveAmount > 0
                 ? editingItem.effectiveAmount
-                : editingItem.suggestedAmount
+                : 0
           }
           hasCustomPlan={
             editingItem.plannedPayment != null &&

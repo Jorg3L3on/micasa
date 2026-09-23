@@ -465,9 +465,15 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       nextDuePayment: 0,
       effectiveAmount: 0,
       outstandingBalance: 1200,
-      plannerStatus: 'sin_cargo',
+      plannerStatus: 'falta_dato',
       obligationAmountSource: 'none',
       isEstimate: false,
+      periodObligation: {
+        amount: null,
+        basis: 'none_declared',
+        confidence: 'missing',
+        gaps: ['missing_statement_payoff'],
+      },
     });
   });
 
@@ -506,9 +512,13 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       nextDuePayment: 0,
       effectiveAmount: 0,
       outstandingBalance: 300,
-      plannerStatus: 'sin_cargo',
+      plannerStatus: 'falta_dato',
       obligationAmountSource: 'none',
       isEstimate: false,
+      periodObligation: {
+        amount: null,
+        confidence: 'missing',
+      },
     });
     expect(result.second[0]?.plannerStatus).not.toBe('pagado');
   });
@@ -547,10 +557,15 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       nextDuePayment: 0,
       effectiveAmount: 0,
       outstandingBalance: 700,
-      plannerStatus: 'sin_cargo',
+      plannerStatus: 'falta_dato',
       obligationAmountSource: 'none',
+      periodObligation: {
+        amount: null,
+        confidence: 'missing',
+      },
     });
     expect(result.second[0]?.plannerStatus).not.toBe('pagado');
+    expect(result.second[0]?.plannerStatus).not.toBe('sin_cargo');
   });
 
   it('projects active installment rows into future planner months without repeating wallet debt', async () => {
@@ -597,15 +612,19 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       });
     }
     // Historical month after installments end: no invented wallet-debt due.
-    // Remaining debt with zero cycle due → sin_cargo (not false pagado / $0 pending).
+    // Remaining debt with no cycle figure is a gap, not $0 / sin cargo.
     expect(october.second[0]).toMatchObject({
       walletId: 29,
       nextDuePayment: 0,
       effectiveAmount: 0,
-      plannerStatus: 'sin_cargo',
+      plannerStatus: 'falta_dato',
       obligationAmountSource: 'none',
+      periodObligation: {
+        amount: null,
+        confidence: 'missing',
+      },
     });
     expect(october.second[0]?.plannerStatus).not.toBe('pagado');
-    expect(october.second[0]?.plannerStatus).not.toBe('por_pagar');
+    expect(october.second[0]?.plannerStatus).not.toBe('sin_cargo');
   });
 });

@@ -11,7 +11,7 @@ export const cardPaymentPlanFormSchema = z.object({
   plannedAmount: z
     .number()
     .positive(
-      'El monto debe ser mayor a 0. Usa «Usar sugerido» para quitar el plan.',
+      'El monto debe ser mayor a 0. Quita el monto planeado si no quieres un override.',
     ),
 });
 

@@ -9,6 +9,7 @@ import {
   buildCardStatementObligation,
   type BuildCardStatementObligationInput,
 } from '@/lib/finance/card-statement-obligation';
+import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
 import {
   buildCardPlannerObligation,
   derivePlannerStatus,
@@ -113,6 +114,7 @@ export async function applyPlannerLayerToDueItems(
         todayYmd,
       });
       item.isStaleFullyCoveredPlan = false;
+      applyPeriodObligation(item);
     }
     return;
   }
@@ -161,6 +163,7 @@ export async function applyPlannerLayerToDueItems(
         todayYmd,
       });
       Object.assign(item, fields);
+      applyPeriodObligation(item);
       continue;
     }
 
@@ -192,6 +195,7 @@ export async function applyPlannerLayerToDueItems(
       remainingPlannerAmount,
       paymentsAppliedToFortnight,
     });
+    applyPeriodObligation(item);
   }
 }
 
@@ -205,25 +209,41 @@ export const toCreditCardPaymentPlanView = (input: {
   };
   isCurrentFortnight: boolean;
   fields: ReturnType<typeof toPlannerDuePaymentFields>;
-}): CreditCardPaymentPlanView => ({
-  fortnightId: input.fortnight.id,
-  fortnightLabel: input.fortnight.label,
-  year: input.fortnight.year,
-  month: input.fortnight.month,
-  period: input.fortnight.period,
-  isCurrentFortnight: input.isCurrentFortnight,
-  suggestedAmount: input.fields.nextDuePayment,
-  plannedPayment: input.fields.plannedPayment,
-  effectiveAmount: input.fields.effectiveAmount,
-  outstandingBalance: input.fields.outstandingBalance,
-  plannerStatus: input.fields.plannerStatus,
-  obligationAmountSource: input.fields.obligationAmountSource,
-  isEstimate: input.fields.isEstimate,
-  remainingPlannerAmount: input.fields.remainingPlannerAmount,
-  paymentsAppliedToStatement: input.fields.paymentsAppliedToStatement,
-  paymentsAppliedToFortnight: input.fields.paymentsAppliedToFortnight,
-  statementDueDate: input.fields.statementDueDate,
-  visibleDueDate: input.fields.visibleDueDate,
-  targetAmount: input.fields.targetAmount,
-  isStaleFullyCoveredPlan: input.fields.isStaleFullyCoveredPlan,
-});
+}): CreditCardPaymentPlanView => {
+  const obligationCarrier = {
+    outstandingBalance: input.fields.outstandingBalance,
+    nextDuePayment: input.fields.nextDuePayment,
+    obligationAmountSource: input.fields.obligationAmountSource,
+    isEstimate: input.fields.isEstimate,
+    plannedPayment: input.fields.plannedPayment,
+    paymentsAppliedToStatement: input.fields.paymentsAppliedToStatement,
+    paymentsAppliedToFortnight: input.fields.paymentsAppliedToFortnight,
+    plannerStatus: input.fields.plannerStatus,
+    effectiveAmount: input.fields.effectiveAmount,
+  };
+  const periodObligation = applyPeriodObligation(obligationCarrier);
+
+  return {
+    fortnightId: input.fortnight.id,
+    fortnightLabel: input.fortnight.label,
+    year: input.fortnight.year,
+    month: input.fortnight.month,
+    period: input.fortnight.period,
+    isCurrentFortnight: input.isCurrentFortnight,
+    suggestedAmount: input.fields.nextDuePayment,
+    plannedPayment: input.fields.plannedPayment,
+    effectiveAmount: input.fields.effectiveAmount,
+    outstandingBalance: input.fields.outstandingBalance,
+    plannerStatus: obligationCarrier.plannerStatus,
+    obligationAmountSource: input.fields.obligationAmountSource,
+    isEstimate: input.fields.isEstimate,
+    remainingPlannerAmount: input.fields.remainingPlannerAmount,
+    paymentsAppliedToStatement: input.fields.paymentsAppliedToStatement,
+    paymentsAppliedToFortnight: input.fields.paymentsAppliedToFortnight,
+    statementDueDate: input.fields.statementDueDate,
+    visibleDueDate: input.fields.visibleDueDate,
+    targetAmount: input.fields.targetAmount,
+    isStaleFullyCoveredPlan: input.fields.isStaleFullyCoveredPlan,
+    periodObligation,
+  };
+};
