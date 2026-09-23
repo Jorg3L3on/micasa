@@ -998,6 +998,7 @@ export type LoanPlanningPayment = {
   loanId: number;
   loanName: string;
   lender: string;
+  lenderId: number | null;
   amount: number;
   dueDate: string;
   paidAt: string | null;
@@ -1064,6 +1065,7 @@ export async function aggregateLoanPaymentsForFortnights(
           id: true,
           name: true,
           lender: true,
+          lender_id: true,
           payment_source: true,
         },
       },
@@ -1080,6 +1082,7 @@ export async function aggregateLoanPaymentsForFortnights(
         loanId: row.loan.id,
         loanName: row.loan.name,
         lender: row.loan.lender,
+        lenderId: row.loan.lender_id ?? null,
         amount: mapped.amount,
         dueDate: mapped.dueDate,
         paidAt: mapped.paidAt,

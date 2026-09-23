@@ -11,6 +11,9 @@ const {
   txCreateLenderPayment,
   txUpdateLenderPayment,
   txUpdateManyLoanPayment,
+  txUpdateLoanPayment,
+  txCreateLoanPayment,
+  txAggregateLoanPayment,
   txFindManyLoanPayment,
   txUpdateLoan,
   txDeleteExpense,
@@ -29,6 +32,9 @@ const {
   txCreateLenderPayment: vi.fn(),
   txUpdateLenderPayment: vi.fn(),
   txUpdateManyLoanPayment: vi.fn(),
+  txUpdateLoanPayment: vi.fn(),
+  txCreateLoanPayment: vi.fn(),
+  txAggregateLoanPayment: vi.fn(),
   txFindManyLoanPayment: vi.fn(),
   txUpdateLoan: vi.fn(),
   txDeleteExpense: vi.fn(),
@@ -139,6 +145,9 @@ const tx = {
   },
   loanPayment: {
     updateMany: txUpdateManyLoanPayment,
+    update: txUpdateLoanPayment,
+    create: txCreateLoanPayment,
+    aggregate: txAggregateLoanPayment,
     findMany: txFindManyLoanPayment,
   },
   loan: {
@@ -233,6 +242,55 @@ describe('payLenderForOwner', () => {
     );
     expect(result.payment.amount).toBe(180);
     expect(result.payment.installmentCount).toBe(2);
+  });
+
+  it('omits opted-out wallet installments from the cash payment', async () => {
+    listLoansByOwner.mockResolvedValue([
+      walletLoan(1, 'MSI celular', [
+        scheduledPayment({ id: 11, loanId: 1, dueDate: '2026-09-05', amount: 100 }),
+      ]),
+      walletLoan(2, 'MSI laptop', [
+        scheduledPayment({ id: 21, loanId: 2, dueDate: '2026-09-18', amount: 80 }),
+      ]),
+    ]);
+    findFirstWallet.mockResolvedValue({
+      id: 10,
+      type: 'DEBIT_CARD',
+      amount: '500',
+    });
+    findManyLenderPayment
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 50,
+          lender_id: 7,
+          amount: '100',
+          paid_at: new Date('2026-09-10T12:00:00.000Z'),
+          mode: 'WALLET',
+          source_wallet_id: 10,
+          source_wallet: { name: 'BBVA' },
+          expense_id: 321,
+          note: null,
+          loan_payments: [{ id: 11 }],
+        },
+      ]);
+
+    await payLenderForOwner(7, ownerFilter, {
+      mode: 'WALLET',
+      paidAt: '2026-09-10',
+      sourceWalletId: 10,
+      excludePaymentIds: [21],
+    });
+
+    expect(createExpenseInTransaction).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ amount: 100 }),
+    );
+    expect(txUpdateManyLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: [11] }, loan: ownerFilter },
+      }),
+    );
   });
 
   it('rejects payroll-only lenders with no wallet window', async () => {

@@ -924,6 +924,7 @@ model LenderPayment {
   source_wallet_id Int?
   expense_id       Int?               @unique
   note             String?
+  allocation       Json?
   user_id          Int?
   house_id         Int?
   created_at       DateTime           @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
