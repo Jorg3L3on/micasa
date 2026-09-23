@@ -10,7 +10,7 @@ import {
   OVERLAY_ROW_TRIGGER_CLASS,
 } from '@/components/overlay/overlay-form';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { ToggleField } from '@/components/ui/toggle';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { todayCalendarDate } from '@/lib/calendar-dates';
@@ -116,21 +115,18 @@ export default function LenderPayDialog({
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Compromiso del periodo
-            </p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+          <p className="px-1 text-xs text-muted-foreground">
+            Compromiso del periodo:{' '}
+            <span className="font-mono font-semibold tabular-nums text-foreground">
               {formatCurrency(window?.amount ?? 0)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {window?.isRange
-                ? `${formatDate(window.commitmentDate ?? '')} – ${formatDate(window.commitmentDateEnd ?? '')} · varios vencimientos`
-                : window?.commitmentDate
-                  ? formatDate(window.commitmentDate)
-                  : 'Sin cuotas de billetera'}
-            </p>
-          </div>
+            </span>
+            {' · '}
+            {window?.isRange
+              ? `${formatDate(window.commitmentDate ?? '')} – ${formatDate(window.commitmentDateEnd ?? '')}`
+              : window?.commitmentDate
+                ? formatDate(window.commitmentDate)
+                : 'Sin cuotas de billetera'}
+          </p>
 
           <ul className="space-y-1.5" aria-label="Contratos incluidos">
             {(window?.included ?? []).map((item) => (
@@ -152,14 +148,16 @@ export default function LenderPayDialog({
           </ul>
 
           <ToggleField
+            layout="row"
+            className="px-3"
             label="Ya pagado"
             helper="Marca las cuotas sin descontar una billetera."
             checked={external}
             onCheckedChange={setExternal}
           />
 
-          {!external ? (
-            <div className={OVERLAY_GROUPED_CARD_CLASS}>
+          <div className={OVERLAY_GROUPED_CARD_CLASS}>
+            {!external ? (
               <GroupedRow label="Billetera">
                 <Select
                   value={sourceWalletId || undefined}
@@ -193,22 +191,20 @@ export default function LenderPayDialog({
                   </SelectContent>
                 </Select>
               </GroupedRow>
-            </div>
-          ) : null}
-
-          <DateStepper
-            value={paidAt}
-            onChange={setPaidAt}
-          />
-
-          <div className="space-y-1.5">
-            <Label htmlFor="lender-pay-note">Nota (opcional)</Label>
-            <Textarea
-              id="lender-pay-note"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              rows={2}
-            />
+            ) : null}
+            <GroupedRow label="Fecha">
+              <DateStepper value={paidAt} onChange={setPaidAt} />
+            </GroupedRow>
+            <GroupedRow label="Nota">
+              <Input
+                id="lender-pay-note"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Opcional"
+                autoComplete="off"
+                className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+              />
+            </GroupedRow>
           </div>
 
           <Button
@@ -216,11 +212,7 @@ export default function LenderPayDialog({
             className={OVERLAY_PRIMARY_BUTTON_CLASS}
             disabled={submitting || !window?.canPay}
           >
-            {submitting
-              ? 'Guardando…'
-              : external
-                ? 'Registrar como ya pagado'
-                : `Pagar ${formatCurrency(window?.amount ?? 0)}`}
+            {submitting ? 'Guardando…' : 'Guardar'}
           </Button>
         </form>
       )}
