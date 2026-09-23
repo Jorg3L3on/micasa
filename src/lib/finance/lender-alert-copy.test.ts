@@ -15,4 +15,14 @@ describe('summarizeOverdueLoans', () => {
     ]);
     expect(summary.obligationCount).toBe(2);
   });
+
+  it('pluralizes several payroll deductions', () => {
+    const summary = summarizeOverdueLoans([
+      { paymentSource: 'PAYROLL_DEDUCTION', lender: 'FONACOT', lenderId: 8 },
+      { paymentSource: 'PAYROLL_DEDUCTION', lender: 'FONACOT', lenderId: 8 },
+    ]);
+
+    expect(summary.parts).toEqual(['2 deducciones nómina']);
+    expect(summary.obligationCount).toBe(2);
+  });
 });

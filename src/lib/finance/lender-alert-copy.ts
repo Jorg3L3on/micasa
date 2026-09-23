@@ -37,7 +37,9 @@ export const summarizeOverdueLoans = (
   }
   if (payrollCount > 0) {
     parts.push(
-      `${payrollCount} deducción${payrollCount === 1 ? '' : 'es'} nómina`,
+      payrollCount === 1
+        ? '1 deducción nómina'
+        : `${payrollCount} deducciones nómina`,
     );
   }
 
