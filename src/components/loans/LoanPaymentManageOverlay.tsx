@@ -244,7 +244,10 @@ export const LoanPaymentManageOverlay = ({
   const allScheduled = items.every((item) => item.status === 'SCHEDULED');
   const allPaid = items.every((item) => item.status === 'PAID');
   const showWalletControls =
-    isGroup && allScheduled && (action == null || action === 'MARK_PAID');
+    !isPayrollDeduction &&
+    isGroup &&
+    allScheduled &&
+    (action == null || action === 'MARK_PAID');
 
   useEffect(() => {
     if (!open || items.length === 0) return;
@@ -443,7 +446,7 @@ export const LoanPaymentManageOverlay = ({
                     ? `${items.length} contratos · ${formatDate(primary.dueDate)}`
                     : `${primary.lender} · ${formatDate(primary.dueDate)}`}
                   {!isGroup && primary.paymentSource === 'PAYROLL_DEDUCTION'
-                    ? ` · Nómina${primary.incomeTemplateName ? `: ${primary.incomeTemplateName}` : ''}`
+                    ? ` · Se descuenta del ingreso${primary.incomeTemplateName ? ` · ${primary.incomeTemplateName}` : ''}`
                     : !isGroup && primary.sourceWalletName
                       ? ` · ${primary.sourceWalletName}`
                       : ''}
@@ -548,15 +551,21 @@ export const LoanPaymentManageOverlay = ({
             ) : action == null ? (
               allScheduled ? (
                 <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 justify-center gap-1.5"
-                    onClick={() => handleSelectAction('MARK_PAID')}
-                  >
-                    <CheckCircle2 className="h-4 w-4" aria-hidden />
-                    Pagar
-                  </Button>
+                  {isPayrollDeduction ? (
+                    <p className="col-span-2 text-xs text-muted-foreground">
+                      Se descuenta del ingreso.
+                    </p>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 justify-center gap-1.5"
+                      onClick={() => handleSelectAction('MARK_PAID')}
+                    >
+                      <CheckCircle2 className="h-4 w-4" aria-hidden />
+                      Pagar
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
