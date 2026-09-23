@@ -105,7 +105,12 @@ export function QuickExpenseSheet({
   );
 
   const expenseWallets = useMemo(
-    () => paymentMethods.filter((pm) => !isGoalWalletType(pm.type)),
+    () =>
+      paymentMethods.filter(
+        (pm) =>
+          !isGoalWalletType(pm.type) &&
+          (pm.type === 'CASH' || pm.type === 'DEBIT_CARD'),
+      ),
     [paymentMethods],
   );
 
@@ -143,6 +148,16 @@ export function QuickExpenseSheet({
       cancelled = true;
     };
   }, [open, context]);
+
+  useEffect(() => {
+    if (!open || loading) return;
+    const current = form.getValues('paymentMethodId');
+    if (current != null && current > 0) return;
+    if (expenseWallets.length !== 1) return;
+    form.setValue('paymentMethodId', expenseWallets[0].id, {
+      shouldValidate: true,
+    });
+  }, [open, loading, expenseWallets, form]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
@@ -220,6 +235,67 @@ export function QuickExpenseSheet({
 
           <FormField
             control={form.control}
+            name="paymentMethodId"
+            render={({ field }) => {
+              const selected = expenseWallets.find(
+                (pm) => pm.id === Number(field.value),
+              );
+              return (
+                <FormItem className="space-y-1 px-3 py-2">
+                  <FormLabel>Billetera</FormLabel>
+                  <Select
+                    value={field.value ? String(field.value) : undefined}
+                    onValueChange={(value) =>
+                      field.onChange(parseInt(value, 10))
+                    }
+                    disabled={loading || submitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger
+                        className="h-11 w-full"
+                        aria-label="Billetera de efectivo o débito"
+                      >
+                        <SelectValue placeholder="Selecciona efectivo o débito">
+                          {selected ? (
+                            <WalletIdentity
+                              name={selected.name}
+                              providerIconKey={selected.provider_icon_key}
+                              iconClassName="h-8 w-8 rounded-lg"
+                            />
+                          ) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {expenseWallets.map((pm) => (
+                        <SelectItem key={pm.id} value={String(pm.id)}>
+                          <span className="flex items-center justify-between gap-3">
+                            <WalletIdentity
+                              name={pm.name}
+                              providerIconKey={pm.provider_icon_key}
+                              iconClassName="h-5 w-5 rounded-md"
+                            />
+                            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                              {formatCurrency(pm.amount ?? 0)}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    {expenseWallets.length === 0
+                      ? 'Necesitas una billetera de efectivo o débito.'
+                      : 'De aquí sale el gasto. Si hay varias, elige una; no se asigna sola.'}
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
             name="categoryId"
             render={({ field }) => (
               <FormItem className="space-y-1 px-3 py-2">
@@ -254,8 +330,8 @@ export function QuickExpenseSheet({
               label="¿Ya se pagó?"
               helper={
                 field.value
-                  ? 'Marca la cartera y si debe descontarse del saldo'
-                  : 'Queda planificado en esa quincena; no afecta saldo'
+                  ? 'Se descuenta de la billetera elegida'
+                  : 'Queda planificado en esa quincena; la billetera no se mueve hasta pagarlo'
               }
               checked={Boolean(field.value)}
               onCheckedChange={field.onChange}
@@ -266,59 +342,6 @@ export function QuickExpenseSheet({
 
         {isPaid ? (
           <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
-            <FormField
-              control={form.control}
-              name="paymentMethodId"
-              render={({ field }) => {
-                const selected = expenseWallets.find(
-                  (pm) => pm.id === Number(field.value),
-                );
-                return (
-                  <FormItem className="space-y-1">
-                    <FormLabel>Cartera</FormLabel>
-                    <Select
-                      value={field.value ? String(field.value) : undefined}
-                      onValueChange={(value) =>
-                        field.onChange(parseInt(value, 10))
-                      }
-                      disabled={loading || submitting}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="Selecciona cartera">
-                            {selected ? (
-                              <WalletIdentity
-                                name={selected.name}
-                                providerIconKey={selected.provider_icon_key}
-                                iconClassName="h-8 w-8 rounded-lg"
-                              />
-                            ) : null}
-                          </SelectValue>
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {expenseWallets.map((pm) => (
-                          <SelectItem key={pm.id} value={String(pm.id)}>
-                            <span className="flex items-center justify-between gap-3">
-                              <WalletIdentity
-                                name={pm.name}
-                                providerIconKey={pm.provider_icon_key}
-                                iconClassName="h-5 w-5 rounded-md"
-                              />
-                              <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                                {formatCurrency(pm.amount ?? 0)}
-                              </span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
             <FormField
               control={form.control}
               name="applyWalletDelta"
