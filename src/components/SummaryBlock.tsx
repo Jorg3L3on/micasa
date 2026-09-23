@@ -154,10 +154,14 @@ export default function SummaryBlock({
    * Liquidez actual solo en la quincena calendario en curso
    * o la inmediata siguiente.
    */
+  const isCurrentFortnight =
+    year != null && month != null && period != null
+      ? isCalendarFortnightCurrent(year, month, period)
+      : false;
+
   const fundingLiquidityApplies =
     year != null && month != null && period != null
-      ? isCalendarFortnightCurrent(year, month, period) ||
-        isCalendarFortnightNext(year, month, period)
+      ? isCurrentFortnight || isCalendarFortnightNext(year, month, period)
       : true;
 
   const displayFundingNet = fundingLiquidityApplies
@@ -239,6 +243,7 @@ export default function SummaryBlock({
           fundingInAccounts={fundingWalletBalanceTotal}
           fundingLiquidity={fundingNetVsPendingExpense}
           fundingLiquidityApplies={fundingLiquidityApplies}
+          showIncomeRemainderBreakdown={!isCurrentFortnight}
           paidAmount={pagado}
           pendingAmount={pendiente}
           cashCommittedAmount={cashCommitted}
