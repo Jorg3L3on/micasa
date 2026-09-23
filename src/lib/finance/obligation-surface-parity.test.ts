@@ -125,6 +125,7 @@ describe('obligation surface parity (fixture ledger)', () => {
       asOfYmd,
     );
     expect(breakdown.get(7)?.next_due_payment).toBe(0);
+    expect(breakdown.get(7)?.statement_payoff).toBeNull();
     expect(breakdown.get(7)?.is_estimate).toBe(false);
     expect(breakdown.get(7)?.obligation_amount_source).toBe('none');
     expect(

@@ -38,7 +38,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       context.ownerFilter,
       fortnightId,
       validated.walletId,
-      validated.plannedAmount,
+      validated.declareZero ? 0 : (validated.plannedAmount ?? 0),
+      { declareZero: validated.declareZero === true },
     );
 
     return NextResponse.json(
@@ -46,6 +47,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         walletId: plan.credit_card_wallet_id,
         fortnightId: plan.fortnight_id,
         plannedAmount: Number(plan.planned_amount),
+        declaredZero: plan.declared_zero === true,
       },
       { status: 200 },
     );

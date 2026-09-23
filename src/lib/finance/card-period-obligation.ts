@@ -46,6 +46,13 @@ export type ResolveCardPeriodObligationInput = {
   scheduledAmount?: number | null;
   /** User override for this period. Positive amounts win over every other basis. */
   plannedOverride?: number | null;
+  /** User declared this cycle is $0. Distinct from a missing figure and from clearing a plan. */
+  explicitZero?: boolean;
+  /**
+   * Fortnight payments that are not already subtracted from `statementPayoff`.
+   * Statement figures are net of statement payments; this avoids counting them twice.
+   */
+  paymentsNotInPayoff?: number;
   /** Payments already applied. A covered remainder is paid, not missing. */
   paymentsApplied?: number;
 };
@@ -63,8 +70,8 @@ const paidZero = (
 });
 
 /**
- * Priority: planned override → statement → minimum → MSI / calendar →
- * paid zero → missing (debt + due date, no figure) → explicit zero.
+ * Priority: planned override → declared $0 → statement → minimum →
+ * MSI / calendar → paid zero → missing (debt + due date, no figure) → explicit zero.
  */
 export const resolveCardPeriodObligation = (
   input: ResolveCardPeriodObligationInput,
@@ -89,8 +96,15 @@ export const resolveCardPeriodObligation = (
     };
   }
 
+  if (input.explicitZero) {
+    return paidZero('none_declared');
+  }
+
   if (input.statementPayoff != null && Number.isFinite(input.statementPayoff)) {
-    const remaining = roundMoney(Math.max(input.statementPayoff, 0));
+    const unnetted = roundMoney(Math.max(0, input.paymentsNotInPayoff ?? 0));
+    const remaining = roundMoney(
+      Math.max(input.statementPayoff - unnetted, 0),
+    );
     if (remaining <= 0 && paymentsApplied > 0) {
       return paidZero('statement_no_interest');
     }
@@ -183,9 +197,12 @@ export const lastPlannedOverrideWrite = (
 export type DueItemObligationSource = {
   outstandingBalance?: number;
   nextDuePayment?: number;
+  /** Null is unknown. Zero is an explicit corte figure. Omit to fall back to source. */
+  statementPayoff?: number | null;
   obligationAmountSource?: CardObligationAmountSource;
   isEstimate?: boolean;
   plannedPayment?: number | null;
+  declaredZero?: boolean;
   paymentsAppliedToStatement?: number;
   paymentsAppliedToFortnight?: number;
   minimumPayment?: number | null;
@@ -201,25 +218,34 @@ export const dueItemToPeriodObligation = (
   item: DueItemObligationSource,
 ): CardPeriodObligation => {
   const source = item.obligationAmountSource;
-  const paymentsApplied = Math.max(
-    item.paymentsAppliedToStatement ?? 0,
-    item.paymentsAppliedToFortnight ?? 0,
-  );
+  const statementPaid = item.paymentsAppliedToStatement ?? 0;
+  const fortnightPaid = item.paymentsAppliedToFortnight ?? 0;
+  const paymentsApplied = Math.max(statementPaid, fortnightPaid);
   const knownStatement = statementSource(source);
+  const statementPayoff =
+    source === 'scheduled_calendar'
+      ? null
+      : item.statementPayoff !== undefined
+        ? item.statementPayoff
+        : knownStatement
+          ? (item.nextDuePayment ?? 0)
+          : null;
 
   return resolveCardPeriodObligation({
     outstandingBalance: item.outstandingBalance ?? 0,
     dueInPeriod: true,
-    statementPayoff: knownStatement ? (item.nextDuePayment ?? 0) : null,
+    statementPayoff,
     statementIsEstimate:
       source === 'ledger' ||
       source === 'projection' ||
       item.isEstimate === true,
     minimumPayment:
-      source === 'none' || source == null ? (item.minimumPayment ?? null) : null,
+      source === 'scheduled_calendar' ? null : (item.minimumPayment ?? null),
     scheduledAmount:
       source === 'scheduled_calendar' ? (item.nextDuePayment ?? 0) : null,
     plannedOverride: item.plannedPayment ?? null,
+    explicitZero: item.declaredZero === true,
+    paymentsNotInPayoff: Math.max(0, fortnightPaid - statementPaid),
     paymentsApplied,
   });
 };
@@ -231,6 +257,7 @@ export const periodObligationAmountOrZero = (
 type ObligationCarrier = DueItemObligationSource & {
   plannerStatus?: PlannerCardPaymentStatusUi;
   effectiveAmount?: number;
+  remainingPlannerAmount?: number;
   periodObligation?: CardPeriodObligation;
 };
 
@@ -240,13 +267,28 @@ export const applyPeriodObligation = <T extends ObligationCarrier>(
 ): CardPeriodObligation => {
   const periodObligation = dueItemToPeriodObligation(item);
   item.periodObligation = periodObligation;
+  const amount = periodObligation.amount ?? 0;
   if (periodObligation.confidence === 'missing') {
     item.plannerStatus = 'falta_dato';
+    item.effectiveAmount = 0;
+    item.remainingPlannerAmount = 0;
     return periodObligation;
   }
-  if (item.plannerStatus === 'falta_dato') {
-    const amount = item.effectiveAmount ?? item.nextDuePayment ?? 0;
-    item.plannerStatus = amount > 0 ? 'por_pagar' : 'sin_cargo';
+
+  item.effectiveAmount = amount;
+  item.remainingPlannerAmount = amount;
+  if (amount <= 0) {
+    const paid =
+      (item.paymentsAppliedToFortnight ?? 0) > 0 ||
+      (item.paymentsAppliedToStatement ?? 0) > 0;
+    item.plannerStatus = paid ? 'pagado' : 'sin_cargo';
+  } else if (
+    item.plannerStatus == null ||
+    item.plannerStatus === 'falta_dato' ||
+    item.plannerStatus === 'sin_cargo' ||
+    item.plannerStatus === 'pagado'
+  ) {
+    item.plannerStatus = 'por_pagar';
   }
   return periodObligation;
 };

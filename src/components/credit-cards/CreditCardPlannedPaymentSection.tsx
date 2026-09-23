@@ -12,6 +12,7 @@ import {
 import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
 import {
   clearFortnightCardPaymentPlan,
+  declareFortnightCardPeriodZero,
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
@@ -86,6 +87,25 @@ export const CreditCardPlannedPaymentSection = ({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo guardar el plan';
+      setPlanError(message);
+      throw error;
+    }
+  };
+
+  const handleDeclareZero = async () => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await declareFortnightCardPeriodZero(
+        editingItem.fortnightId,
+        walletId,
+        context,
+      );
+      toast.success('Este ciclo quedó en $0');
+      await onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo declarar el ciclo';
       setPlanError(message);
       throw error;
     }
@@ -193,11 +213,17 @@ export const CreditCardPlannedPaymentSection = ({
                       <>Pagado esta quincena</>
                     ) : isMissingPayment ? (
                       <>Falta el pago del corte</>
+                    ) : item.declaredZero ? (
+                      <>Este ciclo es $0</>
                     ) : item.plannerStatus === 'sin_cargo' ? (
                       <>Sin cargo en esta quincena</>
                     ) : (
                       <>
-                        Toca pagar: {formatCurrency(item.suggestedAmount)}
+                        Toca pagar:{' '}
+                        {item.periodObligation?.confidence === 'missing' ||
+                        item.periodObligation?.amount == null
+                          ? '—'
+                          : formatCurrency(item.periodObligation.amount)}
                         {hasCustomPlan ? ' · monto planeado' : null}
                       </>
                     )}
@@ -249,7 +275,17 @@ export const CreditCardPlannedPaymentSection = ({
                   >
                     {isMissingPayment ? '—' : formatCurrency(displayAmount)}
                   </span>
-                  {item.plannerStatus !== 'sin_cargo' ? (
+                  {isMissingPayment ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      onClick={() => handleOpenDialog(item)}
+                      aria-label={`Capturar pago del corte: ${item.fortnightLabel}`}
+                    >
+                      Capturar
+                    </Button>
+                  ) : item.plannerStatus !== 'sin_cargo' || item.declaredZero ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -323,9 +359,15 @@ export const CreditCardPlannedPaymentSection = ({
           }}
           onSave={handleSavePlan}
           onClearPlan={
-            editingItem.plannedPayment != null &&
-            editingItem.plannedPayment > 0
+            (editingItem.plannedPayment != null &&
+              editingItem.plannedPayment > 0) ||
+            editingItem.declaredZero
               ? handleClearPlan
+              : undefined
+          }
+          onDeclareZero={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? handleDeclareZero
               : undefined
           }
           walletName="esta tarjeta"
@@ -333,10 +375,7 @@ export const CreditCardPlannedPaymentSection = ({
           knownPeriodAmount={
             editingItem.periodObligation?.confidence === 'missing'
               ? null
-              : editingItem.periodObligation?.amount ??
-                (editingItem.suggestedAmount > 0
-                  ? editingItem.suggestedAmount
-                  : null)
+              : (editingItem.periodObligation?.amount ?? null)
           }
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={

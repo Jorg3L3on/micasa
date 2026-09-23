@@ -11,12 +11,15 @@ import {
   getEffectiveCardPaymentAmount,
   resolveFortnightIdForDate,
 } from '@/lib/finance/credit-card-payment-plan.service';
-import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  applyPeriodObligation,
+  resolveCardPeriodObligation,
+} from '@/lib/finance/card-period-obligation';
 import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligation.service';
 import {
   buildCardStatementObligation,
-  computeNextDuePayment,
   mergeScheduledCalendarWithStatementDue,
+  resolveStatementPayoff,
   paymentAppliesToStatementPeriod,
   resolveCreditCardStatementWindow,
   toDuePaymentItemFields,
@@ -290,7 +293,7 @@ export async function getCreditCardStatementByOwner(
   const temporaryCreditLimit =
     card.temporary_credit_limit == null ? null : Number(card.temporary_credit_limit);
 
-  const nextDuePaymentRaw = computeNextDuePayment({
+  const statementPayoff = resolveStatementPayoff({
     lastStatementBalance,
     paymentsAppliedToStatement: paymentsAppliedToStatementTotal,
     importedTotalDue,
@@ -316,14 +319,26 @@ export async function getCreditCardStatementByOwner(
   );
 
   const mergedDue = mergeScheduledCalendarWithStatementDue({
-    statementDue: nextDuePaymentRaw,
+    statementDue: statementPayoff.amount ?? 0,
     statementDueDateYmd,
     scheduled: nextScheduled
       ? { amount: nextScheduled.amount, dueDate: nextScheduled.dueDate }
       : null,
   });
 
-  const nextDuePayment = mergedDue.amount;
+  const periodObligation = resolveCardPeriodObligation({
+    outstandingBalance: currentBalance,
+    dueInPeriod: true,
+    statementPayoff: mergedDue.usedScheduledCalendar ? null : statementPayoff.amount,
+    statementIsEstimate: statementPayoff.source === 'projection',
+    minimumPayment: importedMinimumPayment,
+    scheduledAmount: mergedDue.usedScheduledCalendar ? mergedDue.amount : null,
+    paymentsApplied: paymentsAppliedToStatementTotal,
+  });
+  const nextDuePayment =
+    periodObligation.confidence === 'missing'
+      ? 0
+      : (periodObligation.amount ?? 0);
   const visibleDueDateYmd = mergedDue.dueDateYmd;
 
   return {
@@ -354,6 +369,7 @@ export async function getCreditCardStatementByOwner(
     payments_applied_to_statement: paymentsAppliedToStatementTotal,
     imported_statement_total: importedTotalDue,
     next_due_payment: nextDuePayment,
+    period_obligation: periodObligation,
     minimum_payment: importedMinimumPayment,
     current_cycle_purchases: currentCyclePurchasesTotal,
     current_cycle_payments: currentCyclePaymentsTotal,
@@ -432,6 +448,7 @@ export type CardObligationFromLedgerInput = {
   cutoffDay: number;
   dueDay: number;
   importedTotalDue?: number | null;
+  importedMinimumPayment?: number | null;
 };
 
 export type StatementImportRow = {
@@ -589,6 +606,7 @@ export const buildCardObligationsFromLedger = (
   CreditCardStatementObligationWithCycle & {
     is_estimate?: boolean;
     obligation_amount_source?: CardObligationAmountSource;
+    statement_payoff?: number | null;
   }
 > => {
   const result = new Map<
@@ -596,6 +614,7 @@ export const buildCardObligationsFromLedger = (
     CreditCardStatementObligationWithCycle & {
       is_estimate?: boolean;
       obligation_amount_source?: CardObligationAmountSource;
+      statement_payoff?: number | null;
     }
   >();
   const allowOutstandingBalanceFallback =
@@ -625,6 +644,7 @@ export const buildCardObligationsFromLedger = (
       paymentsAppliedToStatement,
       importedTotalDue: card.importedTotalDue ?? null,
       outstandingBalance: card.outstandingBalance,
+      minimumPayment: card.importedMinimumPayment ?? null,
       currentCyclePurchasesTotal: currentCyclePurchases,
       currentCyclePaymentsTotal: currentCyclePayments,
       asOfYmd,
@@ -639,6 +659,7 @@ export const buildCardObligationsFromLedger = (
       current_cycle_purchases: currentCyclePurchases,
       is_estimate: obligation.isEstimate,
       obligation_amount_source: obligation.obligationAmountSource,
+      statement_payoff: obligation.statementPayoff,
     });
   }
 
@@ -1239,6 +1260,7 @@ async function getDuePaymentsWithAsOf(
   const currentCyclePurchaseSums = new Map<number, number>();
   const currentCyclePaymentSums = new Map<number, number>();
   const importedTotalByWallet = new Map<number, number>();
+  const importedMinimumByWallet = new Map<number, number>();
   const hasAlignedImportByWallet = new Map<number, boolean>();
   const projectedInstallmentSums = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
@@ -1260,6 +1282,7 @@ async function getDuePaymentsWithAsOf(
         total_due: true,
         period_end: true,
         payment_due_date: true,
+        minimum_payment: true,
         created_at: true,
       },
     }),
@@ -1323,6 +1346,14 @@ async function getDuePaymentsWithAsOf(
         if (selectedImport?.total_due != null) {
           importedTotalByWallet.set(wid, Number(selectedImport.total_due));
         }
+        const minimum = resolveImportedMinimumPaymentForStatementWindow(
+          allImports,
+          wid,
+          window,
+        );
+        if (minimum != null) {
+          importedMinimumByWallet.set(wid, minimum);
+        }
       }
 
       if (options?.includeProjectedInstallments) {
@@ -1359,10 +1390,8 @@ async function getDuePaymentsWithAsOf(
     const outstandingBalance = Number(card.amount);
     const window = windowByWallet.get(card.id)!;
     const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
-    // Historical fortnights pass false. Current fortnights may still pass true,
-    // but total card debt is never used as the pago del corte (see
-    // computeNextDuePayment). Without an aligned statement, ledger, or open-cycle
-    // projection, the suggested period payment is 0.
+    // Historical fortnights pass false. Total card debt is never the corte.
+    // Without a statement, ledger, or open-cycle figure, statementPayoff stays null.
     const allowOutstandingBalanceFallback =
       options?.allowOutstandingBalanceFallback ?? true;
 
@@ -1377,6 +1406,7 @@ async function getDuePaymentsWithAsOf(
       paymentsAppliedToStatement,
       importedTotalDue,
       outstandingBalance,
+      minimumPayment: importedMinimumByWallet.get(card.id) ?? null,
       projectedStatementInstallmentsTotal:
         projectedInstallmentSums.get(card.id) ?? 0,
       currentCyclePurchasesTotal: currentCyclePurchaseSums.get(card.id) ?? 0,
@@ -1404,7 +1434,11 @@ async function getDuePaymentsWithAsOf(
   if (options?.includeZeroObligation) {
     return items;
   }
-  return items.filter((item) => item.nextDuePayment > 0);
+  return items.filter(
+    (item) =>
+      item.nextDuePayment > 0 ||
+      (item.statementPayoff == null && item.outstandingBalance > 0),
+  );
 }
 
 export async function getDuePaymentsForCurrentFortnight(

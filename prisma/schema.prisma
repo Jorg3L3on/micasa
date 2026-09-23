@@ -616,6 +616,8 @@ model CreditCardPaymentPlan {
   credit_card_wallet_id Int
   fortnight_id          Int
   planned_amount        Decimal  @db.Decimal(12, 2)
+  /// True when the user declared this cycle is $0. A stored 0 without this flag is not a declaration.
+  declared_zero         Boolean  @default(false)
   user_id               Int?
   house_id              Int?
   created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)

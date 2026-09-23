@@ -22,6 +22,7 @@ type EditCardPaymentPlanDialogProps = {
   onOpenChange: (open: boolean) => void;
   onSave: (data: CardPaymentPlanFormValues) => Promise<void>;
   onClearPlan?: () => Promise<void>;
+  onDeclareZero?: () => Promise<void>;
   walletName: string;
   fortnightLabel: string;
   /** Known period amount. Null when the statement payment is missing. */
@@ -37,6 +38,7 @@ export const EditCardPaymentPlanDialog = ({
   onOpenChange,
   onSave,
   onClearPlan,
+  onDeclareZero,
   walletName,
   fortnightLabel,
   knownPeriodAmount,
@@ -64,6 +66,16 @@ export const EditCardPaymentPlanDialog = ({
       onOpenChange(false);
     } catch {
       // Parent sets error; keep dialog open so the user can fix it.
+    }
+  };
+
+  const handleDeclareZero = async () => {
+    if (!onDeclareZero) return;
+    try {
+      await onDeclareZero();
+      onOpenChange(false);
+    } catch {
+      // Parent sets error; keep dialog open so the user can retry.
     }
   };
 
@@ -133,7 +145,18 @@ export const EditCardPaymentPlanDialog = ({
               )}
             />
           </div>
-          {hasCustomPlan && onClearPlan ? (
+          {knownPeriodAmount == null && onDeclareZero ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-9 px-2 text-amber-700 dark:text-amber-300"
+              disabled={form.formState.isSubmitting}
+              onClick={() => void handleDeclareZero()}
+            >
+              Este ciclo es $0
+            </Button>
+          ) : null}
+          {onClearPlan ? (
             <Button
               type="button"
               variant="ghost"
@@ -141,7 +164,7 @@ export const EditCardPaymentPlanDialog = ({
               disabled={form.formState.isSubmitting}
               onClick={() => void handleClear()}
             >
-              Quitar monto planeado
+              {hasCustomPlan ? 'Quitar monto planeado' : 'Quitar la declaración de $0'}
             </Button>
           ) : null}
           <Button

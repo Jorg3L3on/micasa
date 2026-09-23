@@ -13,6 +13,8 @@ export type FortnightRemainderTone = 'surplus' | 'shortfall' | 'even' | 'gap';
 export type FortnightRemainderCopy = {
   tone: FortnightRemainderTone;
   rowLabel: string;
+  /** Shown beside the money remainder when a corte payment is still unknown. */
+  gapNote: string | null;
 };
 
 /** Row label for ingreso − toca pagar (absolute amount is formatted by the UI). */
@@ -20,16 +22,15 @@ export const getFortnightRemainderCopy = (
   remainder: number,
   options?: { obligationGapCount?: number },
 ): FortnightRemainderCopy => {
-  if ((options?.obligationGapCount ?? 0) > 0 && remainder >= 0) {
-    return { tone: 'gap', rowLabel: 'Falta el pago' };
-  }
+  const gapNote =
+    (options?.obligationGapCount ?? 0) > 0 ? 'Falta el pago del corte' : null;
   if (remainder > 0) {
-    return { tone: 'surplus', rowLabel: 'Te queda' };
+    return { tone: 'surplus', rowLabel: 'Te queda', gapNote };
   }
   if (remainder < 0) {
-    return { tone: 'shortfall', rowLabel: 'Te falta' };
+    return { tone: 'shortfall', rowLabel: 'Te falta', gapNote };
   }
-  return { tone: 'even', rowLabel: 'Te queda' };
+  return { tone: 'even', rowLabel: 'Te queda', gapNote };
 };
 
 export type FortnightStatusPillTone = 'shortfall' | 'surplus' | 'even' | 'gap';

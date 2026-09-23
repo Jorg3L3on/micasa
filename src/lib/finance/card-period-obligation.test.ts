@@ -6,6 +6,7 @@ import {
 } from '@/lib/finance/card-statement-obligation';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import {
+  dueItemToPeriodObligation,
   lastPlannedOverrideWrite,
   resolveCardPeriodObligation,
 } from '@/lib/finance/card-period-obligation';
@@ -65,6 +66,149 @@ describe('resolveCardPeriodObligation', () => {
     expect(resolveCardPeriodObligation(debtWithDue)).toMatchObject({
       amount: null,
       confidence: 'missing',
+    });
+  });
+
+  it('bills only the MSI installment, not the remaining plan balance', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 12_000,
+        dueInPeriod: true,
+        msiInstallmentDue: 1_000,
+      }),
+    ).toEqual({
+      amount: 1_000,
+      basis: 'msi_installments',
+      confidence: 'estimated',
+      gaps: [],
+    });
+  });
+
+  it('does not add MSI again when the statement already includes it', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 12_000,
+        dueInPeriod: true,
+        statementPayoff: 2_500,
+        msiInstallmentDue: 1_000,
+      }),
+    ).toEqual({
+      amount: 2_500,
+      basis: 'statement_no_interest',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('shows a future calendar row without a purchase or wallet debt', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 0,
+        dueInPeriod: true,
+        scheduledAmount: 850,
+      }),
+    ).toEqual({
+      amount: 850,
+      basis: 'msi_installments',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('does not let a captured minimum replace a statement payoff', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 5_000,
+        dueInPeriod: true,
+        statementPayoff: 2_000,
+        minimumPayment: 400,
+      }),
+    ).toMatchObject({
+      amount: 2_000,
+      basis: 'statement_no_interest',
+    });
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 5_000,
+        dueInPeriod: true,
+        statementPayoff: null,
+        minimumPayment: 400,
+      }),
+    ).toEqual({
+      amount: 400,
+      basis: 'minimum',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('treats a declared cycle of $0 as explicit zero, not a gap', () => {
+    expect(
+      resolveCardPeriodObligation({
+        ...debtWithDue,
+        explicitZero: true,
+      }),
+    ).toEqual({
+      amount: 0,
+      basis: 'none_declared',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('treats an explicit statement zero as paid nothing, not a gap', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 900,
+        dueInPeriod: true,
+        statementPayoff: 0,
+      }),
+    ).toEqual({
+      amount: 0,
+      basis: 'none_declared',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('subtracts fortnight payments that are not already in the statement figure', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 800,
+        dueInPeriod: true,
+        statementPayoff: 800,
+        paymentsNotInPayoff: 200,
+        paymentsApplied: 200,
+      }).amount,
+    ).toBe(600);
+  });
+
+  it('reads a calendar row and a captured minimum from the same due item', () => {
+    expect(
+      dueItemToPeriodObligation({
+        outstandingBalance: 0,
+        nextDuePayment: 850,
+        obligationAmountSource: 'scheduled_calendar',
+        statementPayoff: null,
+        minimumPayment: 400,
+      }),
+    ).toMatchObject({
+      amount: 850,
+      basis: 'msi_installments',
+      confidence: 'exact',
+    });
+    expect(
+      dueItemToPeriodObligation({
+        outstandingBalance: 5_000,
+        nextDuePayment: 0,
+        obligationAmountSource: 'none',
+        statementPayoff: null,
+        minimumPayment: 400,
+      }),
+    ).toMatchObject({
+      amount: 400,
+      basis: 'minimum',
+      confidence: 'exact',
     });
   });
 

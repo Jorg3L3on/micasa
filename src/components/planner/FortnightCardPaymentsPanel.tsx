@@ -25,6 +25,7 @@ import {
 } from '@/lib/finance/planner-list-sort';
 import {
   clearFortnightCardPaymentPlan,
+  declareFortnightCardPeriodZero,
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
@@ -152,6 +153,25 @@ const FortnightCardPaymentsPanel = ({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo guardar el plan';
+      setPlanError(message);
+      throw error;
+    }
+  };
+
+  const handleDeclareZero = async () => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await declareFortnightCardPeriodZero(
+        fortnightId,
+        editingItem.walletId,
+        context,
+      );
+      toast.success('Este ciclo quedó en $0');
+      await onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo declarar el ciclo';
       setPlanError(message);
       throw error;
     }
@@ -341,6 +361,14 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
+                    {item.declaredZero ? (
+                      <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="font-medium text-foreground">
+                          Este ciclo es $0
+                        </span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
@@ -403,7 +431,20 @@ const FortnightCardPaymentsPanel = ({
                     ) : null}
                   </div>
 
+                  {onPlanUpdated && isMissingPayment ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      onClick={() => handleOpenPlanDialog(item)}
+                      aria-label={`Capturar pago del corte: ${item.walletName}`}
+                    >
+                      Capturar
+                    </Button>
+                  ) : null}
+
                   {onPlanUpdated &&
+                  !isMissingPayment &&
                   (status !== 'sin_cargo' || item.outstandingBalance > 0) ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -493,9 +534,15 @@ const FortnightCardPaymentsPanel = ({
           }}
           onSave={handleSavePlan}
           onClearPlan={
-            editingItem.plannedPayment != null &&
-            editingItem.plannedPayment > 0
+            (editingItem.plannedPayment != null &&
+              editingItem.plannedPayment > 0) ||
+            editingItem.declaredZero
               ? handleClearPlan
+              : undefined
+          }
+          onDeclareZero={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? handleDeclareZero
               : undefined
           }
           walletName={editingItem.walletName}

@@ -482,7 +482,9 @@ export const FortnightSummaryHero = ({
             'border-l-[3px] px-2.5 py-2',
             copy.tone === 'shortfall'
               ? 'border-l-destructive/60'
-              : 'border-l-emerald-500/50',
+              : copy.gapNote
+                ? 'border-l-amber-500/60'
+                : 'border-l-emerald-500/50',
           )}
         >
           <div className="flex items-baseline justify-between gap-3">
@@ -503,6 +505,11 @@ export const FortnightSummaryHero = ({
               {formatCurrency(remainderAbs)}
             </span>
           </div>
+          {copy.gapNote ? (
+            <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+              {copy.gapNote}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

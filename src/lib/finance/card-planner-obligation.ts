@@ -26,6 +26,9 @@ export type CardPlannerObligationDto = {
   isEstimate: boolean;
   outstandingBalance: number;
   isStaleFullyCoveredPlan: boolean;
+  statementPayoff: number | null;
+  minimumPayment: number | null;
+  declaredZero: boolean;
 };
 
 export const derivePlannerStatus = (input: {
@@ -75,33 +78,40 @@ export const buildCardPlannerObligation = (input: {
   plannedGrossAmount: number | null;
   paymentsAppliedToFortnight: number;
   todayYmd?: string;
+  explicitZero?: boolean;
 }): CardPlannerObligationDto => {
-  const suggestedAmount = input.statement.remainingStatementDue;
-  // Legacy $0 plans must not override the suggested due (treat as no plan).
+  // Legacy $0 plans must not override the corte (treat as no plan).
   const plannedGross =
     input.plannedGrossAmount != null && input.plannedGrossAmount > 0
       ? input.plannedGrossAmount
       : null;
-  const targetAmount = plannedGross ?? suggestedAmount;
-  const remainingPlannerAmount = Math.max(
-    targetAmount - input.paymentsAppliedToFortnight,
-    0,
-  );
   const visibleDueDate = input.statement.cycle.statementDueDate;
   const periodObligation = resolveCardPeriodObligation({
     outstandingBalance: input.statement.outstandingBalance,
     dueInPeriod: true,
-    statementPayoff:
-      input.statement.obligationAmountSource === 'none'
-        ? null
-        : input.statement.remainingStatementDue,
+    statementPayoff: input.statement.statementPayoff,
     statementIsEstimate: input.statement.isEstimate,
+    minimumPayment: input.statement.minimumPayment,
     plannedOverride: plannedGross,
+    paymentsNotInPayoff: Math.max(
+      0,
+      input.paymentsAppliedToFortnight -
+        input.statement.paymentsAppliedToStatement,
+    ),
     paymentsApplied: Math.max(
       input.paymentsAppliedToFortnight,
       input.statement.paymentsAppliedToStatement,
     ),
+    explicitZero: input.explicitZero === true,
   });
+  const targetAmount =
+    plannedGross ??
+    input.statement.statementPayoff ??
+    input.statement.remainingStatementDue;
+  const remainingPlannerAmount =
+    periodObligation.confidence === 'missing'
+      ? 0
+      : (periodObligation.amount ?? 0);
   const plannerStatus =
     periodObligation.confidence === 'missing'
       ? 'falta_dato'
@@ -129,6 +139,9 @@ export const buildCardPlannerObligation = (input: {
     obligationAmountSource: input.statement.obligationAmountSource,
     isEstimate: input.statement.isEstimate,
     outstandingBalance: input.statement.outstandingBalance,
+    statementPayoff: input.statement.statementPayoff,
+    minimumPayment: input.statement.minimumPayment,
+    declaredZero: input.explicitZero === true,
     isStaleFullyCoveredPlan: isPlannerPlanStale({
       plannedGrossAmount: plannedGross,
       remainingPlannerAmount,
@@ -152,6 +165,9 @@ export type PlannerDuePaymentFields = {
   isEstimate: boolean;
   isStaleFullyCoveredPlan: boolean;
   targetAmount: number;
+  statementPayoff: number | null;
+  minimumPayment: number | null;
+  declaredZero: boolean;
 };
 
 export const toPlannerDuePaymentFields = (
@@ -171,4 +187,7 @@ export const toPlannerDuePaymentFields = (
   isEstimate: planner.isEstimate,
   isStaleFullyCoveredPlan: planner.isStaleFullyCoveredPlan,
   targetAmount: planner.targetAmount,
+  statementPayoff: planner.statementPayoff,
+  minimumPayment: planner.minimumPayment,
+  declaredZero: planner.declaredZero,
 });

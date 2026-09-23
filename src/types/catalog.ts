@@ -337,6 +337,12 @@ export type DuePaymentItem = {
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
   isEstimate?: boolean;
+  /** Null = corte desconocido. 0 = el corte dice que no queda nada. */
+  statementPayoff?: number | null;
+  /** Mínimo capturado del emisor. No sustituye un corte conocido. */
+  minimumPayment?: number | null;
+  /** El usuario declaró que este ciclo es $0. No es un plan de $0 legado. */
+  declaredZero?: boolean;
   /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
@@ -350,8 +356,6 @@ export type CreditCardPaymentPlanView = {
   month: number;
   period: 'FIRST' | 'SECOND';
   isCurrentFortnight: boolean;
-  /** Pago del corte conocido (`nextDuePayment`). 0 no distingue dato faltante: usar `periodObligation`. */
-  suggestedAmount: number;
   plannedPayment: number | null;
   effectiveAmount: number;
   outstandingBalance: number;
@@ -367,6 +371,7 @@ export type CreditCardPaymentPlanView = {
   /** Plan guardado ya cubierto por pagos en la quincena. */
   isStaleFullyCoveredPlan: boolean;
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
+  declaredZero?: boolean;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */
@@ -438,6 +443,12 @@ export type LiquidityProjectionSummary = {
   first_projected_shortfall_date: string | null;
   /** Cards with debt and a due date but no period payment figure. */
   unresolved_card_obligation_count?: number;
+  /** Those cards, so Liquidez can name the gap instead of hiding it inside $0. */
+  unresolved_card_obligations?: Array<{
+    wallet_id: number;
+    wallet_name: string;
+    statement_due_date: string;
+  }>;
 };
 
 export type LiquidityProjectionOptionsEcho = {
@@ -611,6 +622,8 @@ export type CreditCardStatementResponse = {
   payments_applied_to_statement: number;
   next_due_payment: number;
   next_due_payment_source?: 'scheduled_calendar' | null;
+  /** Single period obligation. `amount: null` is the corte gap, not $0. */
+  period_obligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   minimum_payment: number | null;
   current_cycle_purchases: number;
   current_cycle_payments: number;

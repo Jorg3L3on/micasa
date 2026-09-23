@@ -32,6 +32,22 @@ export async function upsertFortnightCardPaymentPlan(
   }, context);
 }
 
+export async function declareFortnightCardPeriodZero(
+  fortnightId: number,
+  walletId: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<{
+    walletId: number;
+    fortnightId: number;
+    plannedAmount: number;
+    declaredZero: boolean;
+  }>(`/api/fortnights/${fortnightId}/card-payment-plans`, {
+    method: 'PUT',
+    body: JSON.stringify({ walletId, declareZero: true }),
+  }, context);
+}
+
 export async function clearFortnightCardPaymentPlan(
   fortnightId: number,
   walletId: number,

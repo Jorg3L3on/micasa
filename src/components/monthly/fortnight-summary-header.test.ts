@@ -25,6 +25,7 @@ describe('getFortnightRemainderCopy', () => {
     expect(getFortnightRemainderCopy(2150)).toEqual({
       tone: 'surplus',
       rowLabel: 'Te queda',
+      gapNote: null,
     });
   });
 
@@ -32,6 +33,7 @@ describe('getFortnightRemainderCopy', () => {
     expect(getFortnightRemainderCopy(-4800)).toEqual({
       tone: 'shortfall',
       rowLabel: 'Te falta',
+      gapNote: null,
     });
   });
 
@@ -39,6 +41,7 @@ describe('getFortnightRemainderCopy', () => {
     expect(getFortnightRemainderCopy(0)).toEqual({
       tone: 'even',
       rowLabel: 'Te queda',
+      gapNote: null,
     });
   });
 });
@@ -71,8 +74,9 @@ describe('getFortnightStatusPill', () => {
       label: 'Falta el pago',
     });
     expect(getFortnightRemainderCopy(2_150, { obligationGapCount: 1 })).toEqual({
-      tone: 'gap',
-      rowLabel: 'Falta el pago',
+      tone: 'surplus',
+      rowLabel: 'Te queda',
+      gapNote: 'Falta el pago del corte',
     });
   });
 });
