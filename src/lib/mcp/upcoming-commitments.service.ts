@@ -270,6 +270,29 @@ const collectProjectedRevolvingFromLiquidity = async (
     }
   }
 
+  for (const card of projection.summary?.unresolved_card_obligations ?? []) {
+    const date = card.statement_due_date;
+    if (
+      compareUtcDateOnly(date, fromYmd) < 0 ||
+      compareUtcDateOnly(date, toYmd) > 0
+    ) {
+      continue;
+    }
+    if (plannerWindowMonthKeys.has(monthKeyFromYmd(date))) continue;
+    const key = cardDueKey(card.wallet_id, date);
+    if (existingRevolvingKeys.has(key)) continue;
+    items.push({
+      date,
+      type: 'revolving',
+      name: `Pago tarjeta ${card.wallet_name}`,
+      amount: null,
+      confidence: 'missing',
+      is_paid: false,
+      source_id: card.wallet_id,
+      wallet_or_loan: card.wallet_name,
+    });
+  }
+
   return items;
 };
 

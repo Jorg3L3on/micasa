@@ -90,19 +90,18 @@ describe('derivePlannerStatus', () => {
     ).toBe('sin_cargo');
   });
 
-  it('returns sin_cargo for $0 target even when wallet still has debt', () => {
-    // Historical / no-estimate cycle: debt remains but nothing is due this quincena.
+  it('returns falta_dato for a $0 target when the wallet still has debt', () => {
     expect(
       derivePlannerStatus({
         remainingPlannerAmount: 0,
         paymentsAppliedToFortnight: 0,
         paymentsAppliedToStatement: 0,
         targetAmount: 0,
-        outstandingBalance: 2913.07,
+        outstandingBalance: 700,
         visibleDueDate: '2026-07-18',
         todayYmd: '2026-07-24',
       }),
-    ).toBe('sin_cargo');
+    ).toBe('falta_dato');
   });
 
   it('returns pagado when statement payments covered a zero remaining target', () => {

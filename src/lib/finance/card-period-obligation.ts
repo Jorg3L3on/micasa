@@ -308,6 +308,8 @@ export type DueItemObligationSource = {
   paymentsAppliedToStatement?: number;
   paymentsAppliedToFortnight?: number;
   minimumPayment?: number | null;
+  /** MSI installment of this period when it is not already inside the statement. */
+  msiInstallmentDue?: number | null;
 };
 
 const statementSource = (
@@ -343,6 +345,8 @@ export const dueItemToPeriodObligation = (
       item.isEstimate === true,
     minimumPayment:
       source === 'scheduled_calendar' ? null : (item.minimumPayment ?? null),
+    msiInstallmentDue:
+      source === 'scheduled_calendar' ? null : (item.msiInstallmentDue ?? null),
     scheduledAmount:
       source === 'scheduled_calendar' ? (item.nextDuePayment ?? 0) : null,
     plannedOverride: item.plannedPayment ?? null,

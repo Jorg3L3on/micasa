@@ -22,8 +22,11 @@ export const getFortnightRemainderCopy = (
   remainder: number,
   options?: { obligationGapCount?: number },
 ): FortnightRemainderCopy => {
-  const gapNote =
-    (options?.obligationGapCount ?? 0) > 0 ? 'Falta el pago del corte' : null;
+  const gapCount = options?.obligationGapCount ?? 0;
+  const gapNote = gapCount > 0 ? 'Falta el pago del corte' : null;
+  if (gapCount > 0 && remainder >= 0) {
+    return { tone: 'gap', rowLabel: 'Te queda', gapNote };
+  }
   if (remainder > 0) {
     return { tone: 'surplus', rowLabel: 'Te queda', gapNote };
   }

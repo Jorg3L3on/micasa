@@ -1,5 +1,6 @@
 import { getCalendarFortnightRefForYmd, ymdFallsInFortnight } from '@/lib/fortnight-calendar';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
+import { planContributionFromObligation } from '@/lib/finance/card-period-surfaces';
 import { isUntouchableObligation } from '@/lib/finance/cash-plan/catalog';
 import { toCents } from '@/lib/finance/cash-plan/money';
 import type {
@@ -102,6 +103,9 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   const dataGaps: DataGap[] = [];
   const obligations: Obligation[] = [];
   const seen = new Set<string>();
+  const unresolvedCardIds = new Set(
+    (projection.summary.unresolved_card_obligations ?? []).map((card) => card.wallet_id),
+  );
 
   const inHorizon = (dueDate: string | undefined): boolean => {
     if (!dueDate) return horizon === 'mes';
@@ -120,9 +124,16 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     if (!inHorizon(milestone.due_date)) continue;
     for (const item of milestone.obligations) {
       if (item.source === 'credit_card_statement') {
+        if (unresolvedCardIds.has(item.wallet_id)) continue;
+        const contribution = planContributionFromObligation({
+          amount: item.next_due_payment,
+          basis: 'statement_no_interest',
+          confidence: 'exact',
+          gaps: [],
+        });
+        if (contribution.statementDue == null) continue;
         const card = projection.card_utilization_summary.cards.find((row) => row.card_id === item.wallet_id);
         const debt = month?.debt_items.find((row) => row.kind === 'card' && row.id.startsWith(`card-${item.wallet_id}-`));
-        const statementDue = item.next_due_payment;
         const minimumDue =
           item.minimum_payment != null && item.minimum_payment > 0
             ? item.minimum_payment
@@ -136,7 +147,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           kind: 'card_revolving',
           labelSynthetic: item.wallet_name,
           balanceTotal: card?.used_amount ?? debt?.amount,
-          statementDue,
+          statementDue: contribution.statementDue,
           minimumDue,
           aprAnnual,
           catAnnual,

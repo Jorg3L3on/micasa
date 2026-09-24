@@ -1,0 +1,193 @@
+[
+  {
+    "id": "debt-due-without-statement",
+    "query": {
+      "outstandingBalance": 8000,
+      "dueInPeriod": true,
+      "statementPayoff": null
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": null,
+      "basis": "none_declared",
+      "confidence": "missing",
+      "gaps": ["missing_statement_payoff"],
+      "plannerStatus": "falta_dato",
+      "countsAsGap": true,
+      "countsAsPending": true,
+      "entersAlcanza": false,
+      "knownCashAmount": null
+    }
+  },
+  {
+    "id": "msi-installment-only",
+    "query": {
+      "outstandingBalance": 12000,
+      "dueInPeriod": true,
+      "statementPayoff": null,
+      "msiInstallmentDue": 1000,
+      "planRemainingBalance": 9000
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 1000,
+      "basis": "msi_installments",
+      "confidence": "estimated",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 1000
+    }
+  },
+  {
+    "id": "statement-plus-msi-no-double-count",
+    "query": {
+      "outstandingBalance": 6400,
+      "dueInPeriod": true,
+      "statementPayoff": 1500,
+      "msiInstallmentDue": 500,
+      "planRemainingBalance": 4500
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 1500,
+      "basis": "statement_no_interest",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 1500
+    }
+  },
+  {
+    "id": "planned-override",
+    "query": {
+      "outstandingBalance": 9000,
+      "dueInPeriod": true,
+      "statementPayoff": 4000,
+      "plannedOverride": 1200
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 1200,
+      "basis": "planned_override",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 1200
+    }
+  },
+  {
+    "id": "paid-external",
+    "query": {
+      "outstandingBalance": 2000,
+      "dueInPeriod": true,
+      "statementPayoff": 0,
+      "paymentsApplied": 800
+    },
+    "paymentsApplied": 800,
+    "expect": {
+      "amount": 0,
+      "basis": "statement_no_interest",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "pagado",
+      "countsAsGap": false,
+      "countsAsPending": false,
+      "entersAlcanza": true,
+      "knownCashAmount": 0
+    }
+  },
+  {
+    "id": "future-calendar-installment",
+    "query": {
+      "outstandingBalance": 0,
+      "dueInPeriod": true,
+      "statementPayoff": null,
+      "scheduledAmount": 650
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 650,
+      "basis": "msi_installments",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 650
+    }
+  },
+  {
+    "id": "last-write-wins-inside-scope",
+    "query": {
+      "outstandingBalance": 5000,
+      "dueInPeriod": true,
+      "statementPayoff": 2000,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-10-15",
+        "statementDueDate": "2026-10-20"
+      },
+      "planWrites": [
+        {
+          "amount": 400,
+          "scope": "n_cycles",
+          "cycleCount": 3,
+          "anchorStatementEnd": "2026-09-15",
+          "updatedAt": "2026-09-01T12:00:00.000Z"
+        },
+        {
+          "amount": 900,
+          "scope": "n_cycles",
+          "cycleCount": 3,
+          "anchorStatementEnd": "2026-09-15",
+          "updatedAt": "2026-09-20T12:00:00.000Z"
+        }
+      ]
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 900,
+      "basis": "planned_override",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 900
+    }
+  },
+  {
+    "id": "minimum-does-not-replace-statement",
+    "query": {
+      "outstandingBalance": 7000,
+      "dueInPeriod": true,
+      "statementPayoff": 2200,
+      "statementMinimum": 400,
+      "persistedMinimum": 350
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 2200,
+      "basis": "statement_no_interest",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 2200
+    }
+  }
+]

@@ -280,7 +280,11 @@ export function registerCreditCardTools(server: McpServer) {
                 last_statement_balance: statement.last_statement_balance,
                 payments_applied_to_statement:
                   statement.payments_applied_to_statement,
-                next_due_payment: statement.next_due_payment,
+                next_due_payment:
+                  statement.period_obligation?.confidence === 'missing'
+                    ? null
+                    : statement.next_due_payment,
+                period_obligation: statement.period_obligation ?? null,
                 minimum_payment: statement.minimum_payment,
                 current_cycle_purchases: statement.current_cycle_purchases,
                 current_cycle_payments: statement.current_cycle_payments,

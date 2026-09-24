@@ -1,5 +1,5 @@
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
+import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import type {
   CardObligationAmountSource,
   CardStatementObligationDto,
@@ -44,14 +44,16 @@ export const derivePlannerStatus = (input: {
   const statementPaid = input.paymentsAppliedToStatement ?? 0;
 
   if (input.remainingPlannerAmount <= 0) {
-    // Pagado only when money was actually applied.
     if (input.paymentsAppliedToFortnight > 0) {
       return 'pagado';
     }
     if (target <= 0 && statementPaid > 0) {
       return 'pagado';
     }
-    // Nothing due this cycle. Leftover wallet debt (deuda total) is not the corte.
+    const debt = input.outstandingBalance ?? 0;
+    if (target <= 0 && debt > 0) {
+      return 'falta_dato';
+    }
     return 'sin_cargo';
   }
 
@@ -85,7 +87,7 @@ export const buildCardPlannerObligation = (input: {
       ? input.plannedGrossAmount
       : null;
   const visibleDueDate = input.statement.cycle.statementDueDate;
-  const periodObligation = resolveCardPeriodObligation({
+  const periodObligation = getCardPeriodObligation({
     outstandingBalance: input.statement.outstandingBalance,
     dueInPeriod: true,
     statementPayoff: input.statement.statementPayoff,

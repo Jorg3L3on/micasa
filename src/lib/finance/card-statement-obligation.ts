@@ -325,17 +325,17 @@ export const toCardStatementCycle = (
  * 2. Ledger statement balance (posted charges, including a projected MSI cuota
  *    that belongs to this statement) minus payments.
  * 3. Open-cycle purchases when the due day precedes the cutoff.
- * 4. Otherwise null, returned here as 0 so existing numeric callers keep working.
- *    Period readers must use `resolveStatementPayoff` / `statementPayoff`.
+ * 4. Otherwise null. Unknown is not $0. Period readers use `getCardPeriodObligation`.
  *
  * `outstandingBalance` is deuda total. It feeds utilization and the "wallet
  * paid off" check, and is never the period payment — even when
  * `allowOutstandingBalanceFallback` is true. Remaining MSI plan balance is
  * not an input here. An imported total of 0 stays an explicit zero, not null.
  */
+/** Statement payoff only. Null when the corte figure is unknown. Never total debt. */
 export const computeNextDuePayment = (
   input: ComputeNextDuePaymentInput,
-): number => resolveStatementPayoff(input).amount ?? 0;
+): number | null => resolveStatementPayoff(input).amount;
 
 export const deriveObligationAmountSource = (input: {
   importedTotalDue: number | null;
