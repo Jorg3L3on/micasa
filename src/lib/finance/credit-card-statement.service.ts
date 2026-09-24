@@ -7,15 +7,12 @@ import {
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { resolveFortnightIdForDate } from '@/lib/finance/credit-card-payment-plan.service';
+import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
 import {
-  getEffectiveCardPaymentAmount,
-  resolveFortnightIdForDate,
-} from '@/lib/finance/credit-card-payment-plan.service';
-import {
-  applyPeriodObligation,
-  minimumPaymentForPeriod,
-  resolveCardPeriodObligation,
-} from '@/lib/finance/card-period-obligation';
+  getCardPeriodObligation,
+  panelSnapshotFromDueItem,
+} from '@/lib/finance/card-period-surfaces';
 import {
   selectActivePlannedOverride,
   toStoredPaymentPlanWrite,
@@ -359,22 +356,16 @@ export async function getCreditCardStatementByOwner(
       : null,
   });
 
-  const periodObligation = resolveCardPeriodObligation({
+  const periodObligation = getCardPeriodObligation({
     outstandingBalance: currentBalance,
     dueInPeriod: true,
     statementPayoff: mergedDue.usedScheduledCalendar ? null : statementPayoff.amount,
     statementIsEstimate: statementPayoff.source === 'projection',
-    minimumPayment: minimumPaymentForPeriod({
-      statementPayoff: mergedDue.usedScheduledCalendar
-        ? null
-        : statementPayoff.amount,
-      statementMinimum: importedMinimumPayment,
-      persistedMinimum:
-        card.minimum_payment == null ? null : Number(card.minimum_payment),
-    }),
+    statementMinimum: importedMinimumPayment,
+    persistedMinimum:
+      card.minimum_payment == null ? null : Number(card.minimum_payment),
     scheduledAmount: mergedDue.usedScheduledCalendar ? mergedDue.amount : null,
     paymentsApplied: paymentsAppliedToStatementTotal,
-    // A planner amount is not the corte. Only an explicit $0 declaration closes the gap.
     explicitZero: !mergedDue.usedScheduledCalendar && declaredZero,
   });
   const nextDuePayment =
@@ -1637,20 +1628,18 @@ export function getDuePaymentsForPlannerMonth(
   );
 }
 
-const isMissingCardObligation = (item: DuePaymentItem): boolean =>
-  item.periodObligation?.confidence === 'missing' ||
-  item.plannerStatus === 'falta_dato';
-
 const sumCardDueItems = (
   items: DuePaymentItem[],
 ): { total: number; cardCount: number; obligationGapCount: number } => {
-  const withDue = items.filter((item) => getEffectiveCardPaymentAmount(item) > 0);
-  const total = withDue.reduce(
-    (sum, item) => sum + getEffectiveCardPaymentAmount(item),
+  const snapshots = items.map((item) => panelSnapshotFromDueItem(item));
+  const total = snapshots.reduce(
+    (sum, snapshot) =>
+      sum + (snapshot.countsInKnownTotal ? (snapshot.knownCashAmount ?? 0) : 0),
     0,
   );
-  const obligationGapCount = items.filter(isMissingCardObligation).length;
-  return { total, cardCount: withDue.length, obligationGapCount };
+  const obligationGapCount = snapshots.filter((snapshot) => snapshot.countsAsGap).length;
+  const cardCount = snapshots.filter((snapshot) => snapshot.countsAsPending).length;
+  return { total, cardCount, obligationGapCount };
 };
 
 /** Suma el pago conocido de tarjetas con corte en la quincena. Los huecos no entran como $0. */

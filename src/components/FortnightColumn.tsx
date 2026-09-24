@@ -17,12 +17,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
-import FortnightCardPaymentsPanel, {
-  getPlannerCardPaymentStatus,
-  isPendingPlannerCardPayment,
-} from '@/components/planner/FortnightCardPaymentsPanel';
+import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
-import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
+import { panelSnapshotFromDueItem } from '@/lib/finance/card-period-surfaces';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
   DropdownMenu,
@@ -893,12 +890,8 @@ export default function FortnightColumn({
 
   const pendingCardPaymentsCount = useMemo(
     () =>
-      cardDueItems.filter((item) =>
-        isPendingPlannerCardPayment(
-          getPlannerCardPaymentStatus(item),
-          item.effectiveAmount ?? getEffectiveCardPaymentAmount(item),
-        ),
-      ).length,
+      cardDueItems.filter((item) => panelSnapshotFromDueItem(item).countsAsPending)
+        .length,
     [cardDueItems],
   );
   const pendingLoanPaymentsCount = useMemo(

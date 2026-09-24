@@ -3,16 +3,12 @@ import {
   formatCalendarDate,
   parseCalendarDate,
 } from '@/lib/calendar-dates';
-import {
-  selectActivePlannedOverride,
-  toStoredPaymentPlanWrite,
-} from '@/lib/finance/card-payment-plan-scope';
+import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
 import {
   exposedAnnualRate,
   exposedMinimumDue,
-  minimumPaymentForPeriod,
-  resolveCardPeriodObligation,
 } from '@/lib/finance/card-period-obligation';
+import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -845,15 +841,6 @@ export const getLiquidityProjection = async (
           window,
         );
         const persistedMinimum = meta.minimum_payment;
-        const activePlan = selectActivePlannedOverride(
-          (plansByCard.get(id) ?? []).map((plan) => toStoredPaymentPlanWrite(plan)),
-          {
-            statementEnd,
-            statementDueDate: dueStr,
-          },
-          { cutoffDay: meta.cutoff_day, dueDay: meta.due_day },
-        );
-        const plannedOverride = activePlan.plannedOverride;
         const source = row.obligation_amount_source;
         const statementPayoff =
           row.statement_payoff !== undefined
@@ -863,12 +850,7 @@ export const getLiquidityProjection = async (
                 source === 'projection'
               ? row.next_due_payment
               : null;
-        const minimumPayment = minimumPaymentForPeriod({
-          statementPayoff,
-          statementMinimum,
-          persistedMinimum,
-        });
-        const periodObligation = resolveCardPeriodObligation({
+        const periodObligation = getCardPeriodObligation({
           outstandingBalance: cardOutstandingById.get(id) ?? 0,
           dueInPeriod: true,
           statementPayoff,
@@ -876,9 +858,17 @@ export const getLiquidityProjection = async (
             source === 'ledger' ||
             source === 'projection' ||
             row.is_estimate === true,
-          minimumPayment,
-          plannedOverride,
-          explicitZero: activePlan.explicitZero,
+          statementMinimum,
+          persistedMinimum,
+          planWrites: (plansByCard.get(id) ?? []).map((plan) =>
+            toStoredPaymentPlanWrite(plan),
+          ),
+          cycle: {
+            statementEnd,
+            statementDueDate: dueStr,
+          },
+          cutoffDay: meta.cutoff_day,
+          dueDay: meta.due_day,
           paymentsApplied: row.payments_applied_to_statement,
         });
 

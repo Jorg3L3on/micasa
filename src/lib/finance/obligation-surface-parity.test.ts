@@ -9,7 +9,11 @@ import {
   type StatementImportRow,
 } from '@/lib/finance/credit-card-statement.service';
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
-import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  liquiditySnapshotFromQuery,
+  mcpSnapshotFromDueItem,
+  panelSnapshotFromDueItem,
+} from '@/lib/finance/card-period-surfaces';
 import { formatCalendarDate } from '@/lib/calendar-dates';
 
 const sumEffectiveDue = (
@@ -124,21 +128,28 @@ describe('obligation surface parity (fixture ledger)', () => {
       [],
       asOfYmd,
     );
-    expect(breakdown.get(7)?.next_due_payment).toBe(0);
     expect(breakdown.get(7)?.statement_payoff).toBeNull();
     expect(breakdown.get(7)?.is_estimate).toBe(false);
     expect(breakdown.get(7)?.obligation_amount_source).toBe('none');
-    expect(
-      resolveCardPeriodObligation({
-        outstandingBalance: 250,
-        dueInPeriod: true,
-        statementPayoff: null,
-      }),
-    ).toEqual({
-      amount: null,
-      basis: 'none_declared',
-      confidence: 'missing',
-      gaps: ['missing_statement_payoff'],
+    const dueItem = {
+      outstandingBalance: 250,
+      nextDuePayment: breakdown.get(7)?.next_due_payment ?? 0,
+      statementPayoff: null,
+      obligationAmountSource: 'none' as const,
+    };
+    const panel = panelSnapshotFromDueItem(dueItem);
+    const liquidity = liquiditySnapshotFromQuery({
+      outstandingBalance: 250,
+      dueInPeriod: true,
+      statementPayoff: null,
     });
+    const mcp = mcpSnapshotFromDueItem(dueItem);
+    expect(panel).toEqual(liquidity);
+    expect(mcp).toEqual(liquidity);
+    expect(panel.amount).toBeNull();
+    expect(panel.confidence).toBe('missing');
+    expect(panel.knownCashAmount).toBeNull();
+    expect(panel.entersAlcanza).toBe(false);
+    expect(panel.countsAsGap).toBe(true);
   });
 });

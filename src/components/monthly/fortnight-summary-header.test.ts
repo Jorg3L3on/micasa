@@ -74,7 +74,7 @@ describe('getFortnightStatusPill', () => {
       label: 'Falta el pago',
     });
     expect(getFortnightRemainderCopy(2_150, { obligationGapCount: 1 })).toEqual({
-      tone: 'surplus',
+      tone: 'gap',
       rowLabel: 'Te queda',
       gapNote: 'Falta el pago del corte',
     });
