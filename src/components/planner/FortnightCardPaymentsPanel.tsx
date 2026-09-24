@@ -17,6 +17,7 @@ import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import {
   sortCardDuePaymentRows,
@@ -212,9 +213,6 @@ const FortnightCardPaymentsPanel = ({
       </div>
     );
   }
-
-  const editingEffective =
-    editingItem != null ? getEffectiveCardPaymentAmount(editingItem) : 0;
 
   return (
     <>
@@ -547,23 +545,16 @@ const FortnightCardPaymentsPanel = ({
           }
           walletName={editingItem.walletName}
           fortnightLabel={fortnightLabel}
-          knownPeriodAmount={
-            editingItem.periodObligation?.confidence === 'missing'
-              ? null
-              : (editingItem.periodObligation?.amount ??
-                (editingItem.nextDuePayment > 0
-                  ? editingItem.nextDuePayment
-                  : null))
-          }
+          knownPeriodAmount={periodObligationPrefillAmount(
+            editingItem.periodObligation,
+          )}
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0
               ? editingItem.plannedPayment
-              : editingItem.periodObligation?.confidence !== 'missing' &&
-                  (editingItem.periodObligation?.amount ?? editingEffective) > 0
-                ? (editingItem.periodObligation?.amount ?? editingEffective)
-                : 0
+              : (periodObligationPrefillAmount(editingItem.periodObligation) ??
+                0)
           }
           hasCustomPlan={
             editingItem.plannedPayment != null &&

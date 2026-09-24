@@ -28,7 +28,8 @@ export type CreditCardExternalPaymentSubmitPayload = {
 export type CreditCardExternalPaymentDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  nextDuePayment: number;
+  /** Period obligation amount. Null leaves the field empty (missing corte). */
+  prefillAmount: number | null;
   submitting: boolean;
   error: string | null;
   onConfirm: (data: CreditCardExternalPaymentSubmitPayload) => Promise<void>;
@@ -37,12 +38,12 @@ export type CreditCardExternalPaymentDialogProps = {
 export const CreditCardExternalPaymentDialog = ({
   open,
   onOpenChange,
-  nextDuePayment,
+  prefillAmount,
   submitting,
   error,
   onConfirm,
 }: CreditCardExternalPaymentDialogProps) => {
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState<number | null>(null);
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [note, setNote] = useState('');
   const [adjustsDebt, setAdjustsDebt] = useState(true);
@@ -51,25 +52,25 @@ export const CreditCardExternalPaymentDialog = ({
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the dialog opens.
-    setAmount(nextDuePayment > 0 ? nextDuePayment : 0);
+    setAmount(prefillAmount);
     setPaidAt(todayCalendarDate());
     setNote('');
     setAdjustsDebt(true);
     setLocalError(null);
-  }, [open, nextDuePayment]);
+  }, [open, prefillAmount]);
 
   const handleSubmit = async () => {
     if (submitting) return;
     setLocalError(null);
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (amount == null || !Number.isFinite(amount) || amount <= 0) {
       setLocalError('Ingresa un monto válido.');
       return;
     }
 
     await onConfirm({
       mode: 'external',
-      amount: Number(amount),
+      amount,
       paid_at: paidAt,
       note: note.trim() || null,
       adjusts_debt: adjustsDebt,
@@ -103,15 +104,15 @@ export const CreditCardExternalPaymentDialog = ({
             </div>
           ) : null}
 
-          {nextDuePayment > 0 ? (
+          {prefillAmount != null && prefillAmount > 0 ? (
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setAmount(nextDuePayment)}
+                onClick={() => setAmount(prefillAmount)}
               >
-                Toca pagar este corte ({formatCurrency(nextDuePayment)})
+                Toca pagar este corte ({formatCurrency(prefillAmount)})
               </Button>
             </div>
           ) : null}

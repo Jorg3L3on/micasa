@@ -9,7 +9,7 @@
  *    already applied. That figure already includes this period's MSI installment
  *    and regular charges — do not add them again.
  * 2. Otherwise, regular charges of the period plus MSI installments due now.
- * 3. When neither exists, the suggested period payment is 0. Total debt is not
+ * 3. When neither exists, there is no period figure (not $0 from total debt). Total debt is not
  *    a fallback, and neither is the remaining plan balance.
  */
 
