@@ -101,6 +101,9 @@ export const CreditCardPlannedPaymentSection = ({
         {
           walletId,
           plannedAmount: data.plannedAmount,
+          scope: data.scope,
+          cycleCount: data.cycleCount,
+          validUntil: data.validUntil,
         },
         context,
       );
@@ -114,7 +117,11 @@ export const CreditCardPlannedPaymentSection = ({
     }
   };
 
-  const handleDeclareZero = async () => {
+  const handleDeclareZero = async (scope: {
+    scope?: 'this_cycle' | 'n_cycles' | 'until_date';
+    cycleCount?: number;
+    validUntil?: string;
+  }) => {
     if (!editingItem) return;
     setPlanError(null);
     try {
@@ -122,6 +129,7 @@ export const CreditCardPlannedPaymentSection = ({
         editingItem.fortnightId,
         walletId,
         context,
+        scope,
       );
       toast.success('Este ciclo quedó en $0');
       await onPlanUpdated?.();
@@ -414,6 +422,9 @@ export const CreditCardPlannedPaymentSection = ({
               : (periodObligationPrefillAmount(editingItem.periodObligation) ??
                 0)
           }
+          initialScope={editingItem.planScope ?? 'this_cycle'}
+          initialCycleCount={editingItem.planCycleCount}
+          initialValidUntil={editingItem.planValidUntil}
           hasCustomPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

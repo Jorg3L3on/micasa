@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import type { FortnightPeriod } from '@/generated/prisma/client';
+import { CardPaymentPlanScope, type FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { getCreditCardStatementByOwner } from '@/lib/finance/credit-card-statement.service';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
@@ -11,6 +11,13 @@ import {
   resolveCreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
 import { parseCalendarDate, todayCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
+import {
+  selectActivePlannedOverride,
+  statementCycleForMonth,
+  toStoredPaymentPlanWrite,
+  writeCoversCycle,
+  type CardPaymentPlanScopeKind,
+} from '@/lib/finance/card-payment-plan-scope';
 import {
   applyPlannerLayerToDueItems,
   buildPlannerFieldsFromStatement,
@@ -41,6 +48,33 @@ const createCalendarDate = (year: number, month: number, day: number) =>
   parseCalendarDate(
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
   );
+
+const planSelect = {
+  id: true,
+  planned_amount: true,
+  declared_zero: true,
+  scope: true,
+  cycle_count: true,
+  valid_until: true,
+  anchor_statement_end: true,
+  updated_at: true,
+  created_at: true,
+  fortnight_id: true,
+  fortnight: { select: { year: true, month: true, period: true } },
+} as const;
+
+const toPrismaScope = (scope: CardPaymentPlanScopeKind): CardPaymentPlanScope => {
+  if (scope === 'n_cycles') return CardPaymentPlanScope.N_CYCLES;
+  if (scope === 'until_date') return CardPaymentPlanScope.UNTIL_DATE;
+  return CardPaymentPlanScope.THIS_CYCLE;
+};
+
+export type UpsertCardPaymentPlanOptions = {
+  declareZero?: boolean;
+  scope?: CardPaymentPlanScopeKind;
+  cycleCount?: number | null;
+  validUntil?: string | null;
+};
 
 export async function getCreditCardPaymentPlanViews(
   ownerFilter: OwnerFilter,
@@ -107,19 +141,13 @@ export async function getCreditCardPaymentPlanViews(
     return [];
   }
 
-  const fortnightIds = fortnights.map((f) => f.id);
   const [plans, fortnightPayments] = await Promise.all([
     prisma.creditCardPaymentPlan.findMany({
       where: {
         credit_card_wallet_id: walletId,
-        fortnight_id: { in: fortnightIds },
         ...ownerFilter,
       },
-      select: {
-        fortnight_id: true,
-        planned_amount: true,
-        declared_zero: true,
-      },
+      select: planSelect,
     }),
     Promise.all(
       fortnights.map(async (fortnight) => ({
@@ -136,16 +164,7 @@ export async function getCreditCardPaymentPlanViews(
     ),
   ]);
 
-  const planByFortnight = new Map(
-    plans
-      .map((plan) => [plan.fortnight_id, Number(plan.planned_amount)] as const)
-      .filter(([, amount]) => amount > 0),
-  );
-  const declaredZeroFortnights = new Set(
-    plans
-      .filter((plan) => plan.declared_zero === true)
-      .map((plan) => plan.fortnight_id),
-  );
+  const storedWrites = plans.map((plan) => toStoredPaymentPlanWrite(plan));
   const paymentsByFortnight = new Map(
     fortnightPayments.map((row) => [row.fortnightId, row.total]),
   );
@@ -169,9 +188,16 @@ export async function getCreditCardPaymentPlanViews(
         card.cutoff_day!,
         card.due_day!,
       );
-      const plannedGross = planByFortnight.get(fortnight.id) ?? null;
-      const explicitZero =
-        declaredZeroFortnights.has(fortnight.id) && plannedGross == null;
+      const active = selectActivePlannedOverride(
+        storedWrites,
+        {
+          statementEnd: formatCalendarDate(window.statementEnd),
+          statementDueDate: formatCalendarDate(window.statementDueDate),
+        },
+        { cutoffDay: card.cutoff_day!, dueDay: card.due_day! },
+      );
+      const plannedGross = active.plannedOverride;
+      const explicitZero = active.explicitZero;
       const paymentsAppliedToFortnight =
         paymentsByFortnight.get(fortnight.id) ?? 0;
 
@@ -198,7 +224,7 @@ export async function getCreditCardPaymentPlanViews(
         explicitZero,
       });
 
-      return toCreditCardPaymentPlanView({
+      const view = toCreditCardPaymentPlanView({
         fortnight,
         isCurrentFortnight:
           fortnight.year === current.year &&
@@ -206,6 +232,12 @@ export async function getCreditCardPaymentPlanViews(
           fortnight.period === currentPeriod,
         fields,
       });
+      return {
+        ...view,
+        planScope: active.scope,
+        planCycleCount: active.cycleCount,
+        planValidUntil: active.validUntil,
+      };
     }),
   );
 
@@ -252,16 +284,22 @@ export async function upsertCreditCardPaymentPlan(
   fortnightId: number,
   walletId: number,
   plannedAmount: number,
-  options?: { declareZero?: boolean },
+  options?: UpsertCardPaymentPlanOptions,
 ) {
   const [fortnight, wallet] = await Promise.all([
     prisma.fortnight.findFirst({
       where: { id: fortnightId, ...ownerFilter },
-      select: { id: true },
+      select: { id: true, year: true, month: true },
     }),
     prisma.wallet.findFirst({
       where: { id: walletId, ...ownerFilter, active: true },
-      select: { id: true, type: true, amount: true },
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        cutoff_day: true,
+        due_day: true,
+      },
     }),
   ]);
 
@@ -278,6 +316,17 @@ export async function upsertCreditCardPaymentPlan(
   }
 
   const declareZero = options?.declareZero === true;
+  const scope = options?.scope ?? 'this_cycle';
+  if (scope === 'n_cycles' && (options?.cycleCount == null || options.cycleCount < 1)) {
+    const error = new Error('Indica cuántos cortes cubre el pago planeado.');
+    (error as { code?: string }).code = 'SCOPE_INVALID';
+    throw error;
+  }
+  if (scope === 'until_date' && !options?.validUntil) {
+    const error = new Error('Indica la fecha hasta la que aplica el pago planeado.');
+    (error as { code?: string }).code = 'SCOPE_INVALID';
+    throw error;
+  }
   const outstandingBalance = Number(wallet.amount);
   if (!declareZero && plannedAmount <= 0) {
     const error = new Error(
@@ -296,6 +345,26 @@ export async function upsertCreditCardPaymentPlan(
 
   const isUserContext = ownerFilter.user_id !== null;
   const storedAmount = declareZero ? 0 : plannedAmount;
+  const anchorStatementEnd =
+    wallet.cutoff_day != null && wallet.due_day != null
+      ? parseCalendarDate(
+          statementCycleForMonth(
+            fortnight.year,
+            fortnight.month,
+            wallet.cutoff_day,
+            wallet.due_day,
+          ).statementEnd,
+        )
+      : null;
+  const scopeData = {
+    scope: toPrismaScope(scope),
+    cycle_count: scope === 'n_cycles' ? options?.cycleCount ?? null : null,
+    valid_until:
+      scope === 'until_date' && options?.validUntil
+        ? parseCalendarDate(options.validUntil)
+        : null,
+    anchor_statement_end: anchorStatementEnd,
+  };
 
   return prisma.creditCardPaymentPlan.upsert({
     where: {
@@ -309,18 +378,23 @@ export async function upsertCreditCardPaymentPlan(
       fortnight_id: fortnightId,
       planned_amount: storedAmount,
       declared_zero: declareZero,
+      ...scopeData,
       user_id: isUserContext ? ownerFilter.user_id : null,
       house_id: !isUserContext ? ownerFilter.house_id : null,
     },
     update: {
       planned_amount: storedAmount,
       declared_zero: declareZero,
+      ...scopeData,
     },
     select: {
       credit_card_wallet_id: true,
       fortnight_id: true,
       planned_amount: true,
       declared_zero: true,
+      scope: true,
+      cycle_count: true,
+      valid_until: true,
     },
   });
 }
@@ -332,7 +406,7 @@ export async function clearCreditCardPaymentPlan(
 ) {
   const fortnight = await prisma.fortnight.findFirst({
     where: { id: fortnightId, ...ownerFilter },
-    select: { id: true },
+    select: { id: true, year: true, month: true },
   });
 
   if (!fortnight) {
@@ -341,11 +415,46 @@ export async function clearCreditCardPaymentPlan(
     throw error;
   }
 
-  await prisma.creditCardPaymentPlan.deleteMany({
+  const wallet = await prisma.wallet.findFirst({
+    where: { id: walletId, ...ownerFilter },
+    select: { cutoff_day: true, due_day: true },
+  });
+
+  const plans = await prisma.creditCardPaymentPlan.findMany({
     where: {
-      fortnight_id: fortnightId,
       credit_card_wallet_id: walletId,
       ...ownerFilter,
+    },
+    select: planSelect,
+  });
+
+  if (wallet?.cutoff_day == null || wallet.due_day == null) {
+    await prisma.creditCardPaymentPlan.deleteMany({
+      where: {
+        fortnight_id: fortnightId,
+        credit_card_wallet_id: walletId,
+        ...ownerFilter,
+      },
+    });
+    return;
+  }
+
+  const target = statementCycleForMonth(
+    fortnight.year,
+    fortnight.month,
+    wallet.cutoff_day,
+    wallet.due_day,
+  );
+  const card = { cutoffDay: wallet.cutoff_day, dueDay: wallet.due_day };
+  const ids = plans
+    .filter((plan) => writeCoversCycle(toStoredPaymentPlanWrite(plan), target, card))
+    .map((plan) => plan.id);
+
+  await prisma.creditCardPaymentPlan.deleteMany({
+    where: {
+      credit_card_wallet_id: walletId,
+      ...ownerFilter,
+      ...(ids.length > 0 ? { id: { in: ids } } : { fortnight_id: fortnightId }),
     },
   });
 }

@@ -11,12 +11,17 @@ import {
 } from '@/lib/finance/card-statement-obligation';
 import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
 import {
+  selectActivePlannedOverride,
+  statementCycleForDate,
+  toStoredPaymentPlanWrite,
+} from '@/lib/finance/card-payment-plan-scope';
+import { parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
+import {
   buildCardPlannerObligation,
   derivePlannerStatus,
   isPlannerPlanStale,
   toPlannerDuePaymentFields,
 } from '@/lib/finance/card-planner-obligation';
-import { todayCalendarDate } from '@/lib/calendar-dates';
 
 /** Treat non-positive plans as absent (legacy $0 rows must not force pagado). */
 const normalizePlannedGross = (raw: number | null | undefined): number | null =>
@@ -125,7 +130,6 @@ export async function applyPlannerLayerToDueItems(
   const [plans, fortnightPayments] = await Promise.all([
     prisma.creditCardPaymentPlan.findMany({
       where: {
-        fortnight_id: fortnightId,
         credit_card_wallet_id: { in: walletIds },
         ...ownerFilter,
       },
@@ -133,6 +137,13 @@ export async function applyPlannerLayerToDueItems(
         credit_card_wallet_id: true,
         planned_amount: true,
         declared_zero: true,
+        scope: true,
+        cycle_count: true,
+        valid_until: true,
+        anchor_statement_end: true,
+        updated_at: true,
+        created_at: true,
+        fortnight: { select: { year: true, month: true } },
       },
     }),
     sumPaymentsAppliedToFortnightByWallet(
@@ -142,25 +153,29 @@ export async function applyPlannerLayerToDueItems(
     ),
   ]);
 
-  const planByWallet = new Map(
-    plans.map((plan) => [
-      plan.credit_card_wallet_id,
-      Number(plan.planned_amount),
-    ]),
-  );
-  const declaredZeroByWallet = new Map(
-    plans.map((plan) => [
-      plan.credit_card_wallet_id,
-      plan.declared_zero === true,
-    ]),
-  );
+  const writesByWallet = new Map<number, ReturnType<typeof toStoredPaymentPlanWrite>[]>();
+  for (const plan of plans) {
+    const list = writesByWallet.get(plan.credit_card_wallet_id) ?? [];
+    list.push(toStoredPaymentPlanWrite(plan));
+    writesByWallet.set(plan.credit_card_wallet_id, list);
+  }
 
   for (const item of items) {
-    const plannedGross = normalizePlannedGross(
-      planByWallet.get(item.walletId),
+    const target = statementCycleForDate(
+      parseCalendarDate(item.statementDueDate),
+      item.cutoff_day,
+      item.dueDay,
     );
-    const explicitZero =
-      declaredZeroByWallet.get(item.walletId) === true && plannedGross == null;
+    const active = selectActivePlannedOverride(
+      writesByWallet.get(item.walletId) ?? [],
+      target,
+      { cutoffDay: item.cutoff_day, dueDay: item.dueDay },
+    );
+    const plannedGross = normalizePlannedGross(active.plannedOverride);
+    const explicitZero = active.explicitZero;
+    item.planScope = active.scope;
+    item.planCycleCount = active.cycleCount;
+    item.planValidUntil = active.validUntil;
     const paymentsAppliedToFortnight =
       fortnightPayments.get(item.walletId) ?? 0;
 
