@@ -235,6 +235,12 @@ export type WalletListItem = {
   include_in_liquidity: boolean;
   cutoff_day: number | null;
   due_day: number | null;
+  /** Pago mínimo capturado. Null = desconocido. No es el corte ni la deuda total. */
+  minimum_payment?: number | null;
+  /** APR anual como fracción (0.42 = 42%). Null = desconocida. */
+  apr_annual?: number | null;
+  /** CAT anual como fracción. Null = desconocido. */
+  cat_annual?: number | null;
   goal_amount?: number | null;
   goal_due_date?: string | null;
   created_at?: string | null;
@@ -403,10 +409,12 @@ export type LiquidityProjectionObligationItem = {
   last_statement_balance: number;
   payments_applied_to_statement: number;
   next_due_payment: number;
-  /** Issuer minimum for this statement window, when the import has one. */
+  /** Issuer minimum. Statement minimum wins; else the persisted capture. Null if neither. */
   minimum_payment?: number | null;
-  /** Annual rate when the product has stored one. Absent means unknown. */
+  /** Annual APR as a fraction. Null when the card has no stored rate. */
   apr_annual?: number | null;
+  /** Annual CAT as a fraction. Null when the card has no stored CAT. */
+  cat_annual?: number | null;
   stress_adjustment?: number;
   expense_id?: number;
   expense_description?: string;

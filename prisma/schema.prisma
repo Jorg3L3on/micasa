@@ -563,6 +563,12 @@ model Wallet {
   type                         PaymentMethodType
   cutoff_day                   Int?
   due_day                      Int?
+  /// Pago mínimo capturado. No es el pago para no generar intereses ni la deuda total.
+  minimum_payment              Decimal?          @db.Decimal(10, 2)
+  /// APR anual como fracción (0.42 = 42%). Null = desconocida.
+  apr_annual                   Decimal?          @db.Decimal(8, 6)
+  /// CAT anual como fracción. Null = desconocido.
+  cat_annual                   Decimal?          @db.Decimal(8, 6)
   active                       Boolean           @default(true)
   /// Si false, se excluye del saldo de liquidez (efectivo + débito). Solo aplica a CASH/DEBIT_CARD.
   include_in_liquidity         Boolean           @default(true)

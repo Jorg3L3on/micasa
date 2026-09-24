@@ -60,6 +60,50 @@ export type ResolveCardPeriodObligationInput = {
 const roundMoney = (value: number): number =>
   Math.round((Number(value) || 0) * 100) / 100;
 
+const positiveMoneyOrNull = (
+  value: number | null | undefined,
+): number | null => {
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  return roundMoney(value);
+};
+
+/**
+ * Minimum passed into `resolveCardPeriodObligation`.
+ * A known statement payoff wins: the persisted minimum is not fed in.
+ * Without a statement, the persisted capture is used. Never copies the
+ * statement amount or total debt, and never invents a figure.
+ */
+export const minimumPaymentForPeriod = (input: {
+  statementPayoff?: number | null;
+  statementMinimum?: number | null;
+  persistedMinimum?: number | null;
+}): number | null => {
+  const statementKnown =
+    input.statementPayoff != null && Number.isFinite(input.statementPayoff);
+  const fromStatement = positiveMoneyOrNull(input.statementMinimum);
+  if (statementKnown) return fromStatement;
+  return positiveMoneyOrNull(input.persistedMinimum) ?? fromStatement;
+};
+
+/**
+ * Minimum exposed to Plan. The statement's own minimum wins over the
+ * persisted capture. Missing stays null. Never copies the statement payoff.
+ */
+export const exposedMinimumDue = (input: {
+  statementMinimum?: number | null;
+  persistedMinimum?: number | null;
+}): number | null =>
+  positiveMoneyOrNull(input.statementMinimum) ??
+  positiveMoneyOrNull(input.persistedMinimum);
+
+/** Annual rate as a fraction. Missing or non-positive stays null. Never 36%. */
+export const exposedAnnualRate = (
+  value: number | null | undefined,
+): number | null => {
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  return value;
+};
+
 const paidZero = (
   basis: CardPeriodObligationBasis,
 ): CardPeriodObligation => ({

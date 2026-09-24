@@ -4,7 +4,12 @@ import {
   parseCalendarDate,
 } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
-import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  exposedAnnualRate,
+  exposedMinimumDue,
+  minimumPaymentForPeriod,
+  resolveCardPeriodObligation,
+} from '@/lib/finance/card-period-obligation';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -64,6 +69,7 @@ export type LiquidityObligationItem = {
   next_due_payment: number;
   minimum_payment?: number | null;
   apr_annual?: number | null;
+  cat_annual?: number | null;
   stress_adjustment?: number;
   expense_id?: number;
   expense_description?: string;
@@ -640,6 +646,9 @@ export const getLiquidityProjection = async (
         credit_limit: true,
         cutoff_day: true,
         due_day: true,
+        minimum_payment: true,
+        apr_annual: true,
+        cat_annual: true,
       },
     }),
     prisma.wallet.findMany({
@@ -710,6 +719,10 @@ export const getLiquidityProjection = async (
         type: c.type,
         cutoff_day: c.cutoff_day!,
         due_day: c.due_day!,
+        minimum_payment:
+          c.minimum_payment == null ? null : Number(c.minimum_payment),
+        apr_annual: c.apr_annual == null ? null : Number(c.apr_annual),
+        cat_annual: c.cat_annual == null ? null : Number(c.cat_annual),
       },
     ]),
   );
@@ -824,28 +837,35 @@ export const getLiquidityProjection = async (
         const row = breakdowns.get(id);
         if (!meta || !row) continue;
 
-        const minimumPayment = resolveImportedMinimumPaymentForStatementWindow(
+        const statementMinimum = resolveImportedMinimumPaymentForStatementWindow(
           statementImports,
           id,
           window,
         );
+        const persistedMinimum = meta.minimum_payment;
         const dueFortnight = getCalendarFortnightRefForYmd(dueStr);
         const plannedOverride =
           plannedOverrideByFortnight.get(
             `${id}:${dueFortnight.year}:${dueFortnight.month}:${dueFortnight.period}`,
           ) ?? null;
         const source = row.obligation_amount_source;
+        const statementPayoff =
+          row.statement_payoff !== undefined
+            ? row.statement_payoff
+            : source === 'import' ||
+                source === 'ledger' ||
+                source === 'projection'
+              ? row.next_due_payment
+              : null;
+        const minimumPayment = minimumPaymentForPeriod({
+          statementPayoff,
+          statementMinimum,
+          persistedMinimum,
+        });
         const periodObligation = resolveCardPeriodObligation({
           outstandingBalance: cardOutstandingById.get(id) ?? 0,
           dueInPeriod: true,
-          statementPayoff:
-            row.statement_payoff !== undefined
-              ? row.statement_payoff
-              : source === 'import' ||
-                  source === 'ledger' ||
-                  source === 'projection'
-                ? row.next_due_payment
-                : null,
+          statementPayoff,
           statementIsEstimate:
             source === 'ledger' ||
             source === 'projection' ||
@@ -892,7 +912,12 @@ export const getLiquidityProjection = async (
           last_statement_balance: row.last_statement_balance,
           payments_applied_to_statement: row.payments_applied_to_statement,
           next_due_payment: nextDue,
-          ...(minimumPayment == null ? {} : { minimum_payment: minimumPayment }),
+          minimum_payment: exposedMinimumDue({
+            statementMinimum,
+            persistedMinimum,
+          }),
+          apr_annual: exposedAnnualRate(meta.apr_annual),
+          cat_annual: exposedAnnualRate(meta.cat_annual),
           ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
         });

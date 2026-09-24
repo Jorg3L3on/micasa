@@ -123,13 +123,14 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
         const card = projection.card_utilization_summary.cards.find((row) => row.card_id === item.wallet_id);
         const debt = month?.debt_items.find((row) => row.kind === 'card' && row.id.startsWith(`card-${item.wallet_id}-`));
         const statementDue = item.next_due_payment;
-        const statedMinimum = item.minimum_payment;
-        const minimumDue = statedMinimum != null
-          && statedMinimum > 0
-          && statedMinimum < statementDue - 0.009
-          ? statedMinimum
-          : undefined;
-        const aprAnnual = item.apr_annual != null && item.apr_annual > 0 ? item.apr_annual : undefined;
+        const minimumDue =
+          item.minimum_payment != null && item.minimum_payment > 0
+            ? item.minimum_payment
+            : null;
+        const aprAnnual =
+          item.apr_annual != null && item.apr_annual > 0 ? item.apr_annual : null;
+        const catAnnual =
+          item.cat_annual != null && item.cat_annual > 0 ? item.cat_annual : null;
         push({
           id: `card-${item.wallet_id}`,
           kind: 'card_revolving',
@@ -138,6 +139,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           statementDue,
           minimumDue,
           aprAnnual,
+          catAnnual,
           creditLimit: card?.credit_limit ?? undefined,
           dueInHorizon: true,
           consequenceTier: 3,

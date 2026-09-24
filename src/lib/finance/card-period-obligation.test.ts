@@ -7,7 +7,10 @@ import {
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import {
   dueItemToPeriodObligation,
+  exposedAnnualRate,
+  exposedMinimumDue,
   lastPlannedOverrideWrite,
+  minimumPaymentForPeriod,
   periodObligationPrefillAmount,
   resolveCardPeriodObligation,
 } from '@/lib/finance/card-period-obligation';
@@ -142,6 +145,48 @@ describe('resolveCardPeriodObligation', () => {
       confidence: 'exact',
       gaps: [],
     });
+  });
+
+  it('feeds a persisted minimum only when the cycle has no statement', () => {
+    expect(
+      minimumPaymentForPeriod({
+        statementPayoff: 2000,
+        statementMinimum: null,
+        persistedMinimum: 400,
+      }),
+    ).toBeNull();
+    expect(
+      minimumPaymentForPeriod({
+        statementPayoff: null,
+        persistedMinimum: 400,
+      }),
+    ).toBe(400);
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 8000,
+        dueInPeriod: true,
+        statementPayoff: 2000,
+        minimumPayment: minimumPaymentForPeriod({
+          statementPayoff: 2000,
+          statementMinimum: null,
+          persistedMinimum: 400,
+        }),
+      }),
+    ).toMatchObject({
+      amount: 2000,
+      basis: 'statement_no_interest',
+      confidence: 'exact',
+    });
+    expect(exposedAnnualRate(null)).toBeNull();
+    expect(exposedAnnualRate(0.42)).toBe(0.42);
+    expect(exposedAnnualRate(null)).not.toBe(0.36);
+    expect(
+      exposedMinimumDue({ statementMinimum: 250, persistedMinimum: 400 }),
+    ).toBe(250);
+    expect(
+      exposedMinimumDue({ statementMinimum: null, persistedMinimum: 400 }),
+    ).toBe(400);
+    expect(exposedMinimumDue({ statementMinimum: null, persistedMinimum: null })).toBeNull();
   });
 
   it('does not let a captured minimum replace a statement payoff', () => {
