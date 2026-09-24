@@ -493,7 +493,6 @@ export default function CreditCardDetailPage() {
   const handleOpenPayment = useCallback(() => {
     const current =
       paymentPlanItems.find((item) => item.isCurrentFortnight) ?? null;
-    setPaymentFortnightId(current?.fortnightId);
     setPaymentPrefillAmount(
       periodObligationPrefillAmount(
         current?.periodObligation ?? statement?.period_obligation,
