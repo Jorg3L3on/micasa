@@ -53,6 +53,7 @@ export type IncomeItemBySource = {
   userName: string | null;
   templateName: string | null;
   categoryId: number | null;
+  walletId: number | null;
 };
 
 type SummaryBlockProps = {
@@ -98,6 +99,7 @@ type SummaryBlockProps = {
     id: number,
     amount: number,
     categoryId: number | null,
+    walletId: number | null,
   ) => void;
 };
 
@@ -518,6 +520,7 @@ export default function SummaryBlock({
                                     item.id,
                                     item.amount,
                                     item.categoryId,
+                                    item.walletId,
                                   )
                                 }
                                 aria-label={`Modificar ${displayLabel}`}

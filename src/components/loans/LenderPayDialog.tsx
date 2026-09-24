@@ -12,7 +12,7 @@ import {
 } from '@/components/overlay/overlay-form';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { ToggleField } from '@/components/ui/toggle';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { todayCalendarDate } from '@/lib/calendar-dates';
@@ -217,14 +216,16 @@ const LenderPayForm = ({
       </p>
 
       <ToggleField
+        layout="row"
+        className="px-3"
         label="Ya pagado"
         helper="Marca las cuotas sin descontar una billetera."
         checked={external}
         onCheckedChange={setExternal}
       />
 
-      {!external ? (
-        <div className={OVERLAY_GROUPED_CARD_CLASS}>
+      <div className={OVERLAY_GROUPED_CARD_CLASS}>
+        {!external ? (
           <GroupedRow label="Billetera">
             <Select
               value={sourceWalletId || undefined}
@@ -258,19 +259,20 @@ const LenderPayForm = ({
               </SelectContent>
             </Select>
           </GroupedRow>
-        </div>
-      ) : null}
-
-      <DateStepper value={paidAt} onChange={setPaidAt} />
-
-      <div className="space-y-1.5">
-        <Label htmlFor="lender-pay-note">Nota (opcional)</Label>
-        <Textarea
-          id="lender-pay-note"
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          rows={2}
-        />
+        ) : null}
+        <GroupedRow label="Fecha">
+          <DateStepper value={paidAt} onChange={setPaidAt} />
+        </GroupedRow>
+        <GroupedRow label="Nota">
+          <Textarea
+            id="lender-pay-note"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Opcional"
+            rows={2}
+            className="min-h-11 border-0 bg-transparent px-0 py-2 shadow-none focus-visible:ring-0"
+          />
+        </GroupedRow>
       </div>
 
       <Button

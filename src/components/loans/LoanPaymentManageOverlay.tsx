@@ -433,26 +433,22 @@ export const LoanPaymentManageOverlay = ({
       {({ handleSelectOpenChange }) =>
         primary ? (
           <div className="flex flex-col gap-3">
-            <div className={OVERLAY_GROUPED_CARD_CLASS}>
-              <div className="space-y-1 px-3 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {isGroup ? 'Compromiso del periodo' : `Pago #${primary.sequence}`}
-                </p>
-                <p className="font-mono text-2xl font-bold tabular-nums">
-                  {formatCurrency(isGroup ? totalAmount : primary.amount)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {isGroup
-                    ? `${items.length} contratos · ${formatDate(primary.dueDate)}`
-                    : `${primary.lender} · ${formatDate(primary.dueDate)}`}
-                  {!isGroup && primary.paymentSource === 'PAYROLL_DEDUCTION'
-                    ? ` · Se descuenta del ingreso${primary.incomeTemplateName ? ` · ${primary.incomeTemplateName}` : ''}`
-                    : !isGroup && primary.sourceWalletName
-                      ? ` · ${primary.sourceWalletName}`
-                      : ''}
-                </p>
-              </div>
-            </div>
+            <p className="px-1 text-xs text-muted-foreground">
+              {isGroup ? 'Compromiso del periodo' : `Pago #${primary.sequence}`}
+              {': '}
+              <span className="font-mono font-semibold tabular-nums text-foreground">
+                {formatCurrency(isGroup ? totalAmount : primary.amount)}
+              </span>
+              {' · '}
+              {isGroup
+                ? `${items.length} contratos · ${formatDate(primary.dueDate)}`
+                : `${primary.lender} · ${formatDate(primary.dueDate)}`}
+              {!isGroup && primary.paymentSource === 'PAYROLL_DEDUCTION'
+                ? ` · Se descuenta del ingreso${primary.incomeTemplateName ? ` · ${primary.incomeTemplateName}` : ''}`
+                : !isGroup && primary.sourceWalletName
+                  ? ` · ${primary.sourceWalletName}`
+                  : ''}
+            </p>
 
             {isGroup ? (
               <>
@@ -550,16 +546,15 @@ export const LoanPaymentManageOverlay = ({
               </div>
             ) : action == null ? (
               allScheduled ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-2">
                   {isPayrollDeduction ? (
-                    <p className="col-span-2 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Se descuenta del ingreso.
                     </p>
                   ) : (
                     <Button
                       type="button"
-                      variant="outline"
-                      className="h-11 justify-center gap-1.5"
+                      className={OVERLAY_PRIMARY_BUTTON_CLASS}
                       onClick={() => handleSelectAction('MARK_PAID')}
                     >
                       <CheckCircle2 className="h-4 w-4" aria-hidden />
@@ -568,8 +563,8 @@ export const LoanPaymentManageOverlay = ({
                   )}
                   <Button
                     type="button"
-                    variant="outline"
-                    className="h-11 justify-center gap-1.5"
+                    variant="ghost"
+                    className="h-11 w-full justify-center gap-1.5"
                     onClick={() => handleSelectAction('MARK_PAID_EXTERNAL')}
                     aria-label={
                       isGroup
@@ -583,7 +578,7 @@ export const LoanPaymentManageOverlay = ({
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-11 justify-center gap-1.5 text-muted-foreground"
+                    className="h-11 w-full justify-center gap-1.5 text-muted-foreground"
                     onClick={() => handleSelectAction('SKIP')}
                   >
                     <CircleSlash className="h-4 w-4" aria-hidden />
@@ -592,18 +587,18 @@ export const LoanPaymentManageOverlay = ({
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-11 justify-center gap-1.5 text-destructive hover:text-destructive"
+                    className="h-11 w-full justify-center gap-1.5 text-destructive hover:text-destructive"
                     onClick={() => handleSelectAction('CANCEL')}
                   >
                     <CircleSlash className="h-4 w-4" aria-hidden />
-                    Cancelar
+                    Cancelar pago
                   </Button>
                 </div>
               ) : allPaid ? (
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 justify-center gap-1.5"
+                  className="h-11 w-full justify-center gap-1.5"
                   onClick={() => handleSelectAction('MARK_SCHEDULED')}
                 >
                   <Undo2 className="h-4 w-4" aria-hidden />
@@ -672,28 +667,26 @@ export const LoanPaymentManageOverlay = ({
                   </div>
                 ) : null}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11"
-                    onClick={() => {
-                      setAction(null);
-                      setErrors({});
-                    }}
-                    disabled={submitting}
-                  >
-                    Volver
-                  </Button>
-                  <Button
-                    type="button"
-                    className={OVERLAY_PRIMARY_BUTTON_CLASS}
-                    onClick={() => void handleSubmit()}
-                    disabled={submitting}
-                  >
-                    {submitting ? 'Guardando…' : 'Aplicar'}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  className={OVERLAY_PRIMARY_BUTTON_CLASS}
+                  onClick={() => void handleSubmit()}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Guardando…' : 'Guardar'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-11 w-full"
+                  onClick={() => {
+                    setAction(null);
+                    setErrors({});
+                  }}
+                  disabled={submitting}
+                >
+                  Volver
+                </Button>
               </div>
             )}
           </div>

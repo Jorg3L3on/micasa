@@ -31,6 +31,10 @@ vi.mock('@/lib/finance/wallet-accounting', async (importOriginal) => {
   };
 });
 
+import {
+  coerceToCalendarDayStart,
+  formatCalendarDate,
+} from '@/lib/calendar-dates';
 import { createExpense } from '@/lib/finance/expense.service';
 
 describe('createExpense applyWalletDelta', () => {
@@ -154,5 +158,32 @@ describe('createExpense applyWalletDelta', () => {
 
     expect(assertPaidChargeAllowedForWallet).not.toHaveBeenCalled();
     expect(applyWalletAmountDelta).not.toHaveBeenCalled();
+  });
+
+  it('stores the civil payment day for unpaid expenses without shifting the calendar', async () => {
+    for (const ymd of ['2026-01-01', '2026-09-15', '2026-12-31'] as const) {
+      await createExpense({
+        fortnightId: 5,
+        categoryId: 10,
+        description: 'Doctor futuro',
+        amount: 2500,
+        isPaid: false,
+        paymentDate: ymd,
+        walletId: 20,
+      });
+
+      const stored = coerceToCalendarDayStart(ymd);
+      expect(formatCalendarDate(stored)).toBe(ymd);
+      expect(expenseCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            payment_date: stored,
+            due_day: Number(ymd.slice(8, 10)),
+            wallet_id: 20,
+            is_paid: false,
+          }),
+        }),
+      );
+    }
   });
 });
