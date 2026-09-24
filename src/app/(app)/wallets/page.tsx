@@ -71,8 +71,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
+import type { LenderListItem } from '@/types/lenders';
+import { listLenders } from '@/lib/api/lenders';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
+import { LenderRail } from '@/components/wallets/LenderRail';
+import { WalletKindRail } from '@/components/wallets/WalletKindRail';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import {
@@ -159,12 +163,13 @@ const CREDIT_LINE_OPTIONS: { value: CreditLineFilterValue; label: string }[] =
   ];
 
 /** Efectivo/débito vs tarjetas; al elegir un tipo concreto en chips, se vuelve a «all». */
-type KindFilterValue = 'all' | 'funding' | 'credit';
+type KindFilterValue = 'all' | 'funding' | 'credit' | 'lenders';
 
 const KIND_FILTER_CHIPS: { value: KindFilterValue; label: string }[] = [
   { value: 'all', label: 'Todas' },
   { value: 'funding', label: 'Efectivo y débito' },
   { value: 'credit', label: 'Tarjetas' },
+  { value: 'lenders', label: 'Prestamistas' },
 ];
 
 const FILTERS_STORAGE_KEY = 'micasa.wallets.listFilters';
@@ -221,7 +226,12 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
     if (o.sortDir === 'asc' || o.sortDir === 'desc') {
       out.sortDir = o.sortDir;
     }
-    if (o.kindFilter === 'all' || o.kindFilter === 'funding' || o.kindFilter === 'credit') {
+    if (
+      o.kindFilter === 'all' ||
+      o.kindFilter === 'funding' ||
+      o.kindFilter === 'credit' ||
+      o.kindFilter === 'lenders'
+    ) {
       out.kindFilter = o.kindFilter;
     }
     if (
@@ -272,6 +282,7 @@ const walletMatchesKindFilter = (
   kindFilter: KindFilterValue,
 ): boolean => {
   if (w.type === 'GOAL') return false;
+  if (kindFilter === 'lenders') return false;
   if (kindFilter === 'all') return true;
   if (kindFilter === 'funding') {
     return w.type === 'CASH' || w.type === 'DEBIT_CARD';
@@ -429,8 +440,24 @@ export default function WalletsPage() {
   >([]);
   const [filtersReady, setFiltersReady] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [lenders, setLenders] = useState<LenderListItem[]>([]);
 
   const isHouseContext = context?.type === 'house';
+
+  useEffect(() => {
+    if (!context) return;
+    let cancelled = false;
+    listLenders(context)
+      .then((rows) => {
+        if (!cancelled) setLenders(rows.filter((lender) => lender.active));
+      })
+      .catch(() => {
+        if (!cancelled) setLenders([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [context]);
 
   const displayWallets = useMemo(() => {
     const q = searchQuery;
@@ -462,6 +489,28 @@ export default function WalletsPage() {
     sortKey,
     sortDir,
   ]);
+
+  const visibleLenders = useMemo(() => {
+    if (!context) return [];
+    const query = searchQuery.trim().toLowerCase();
+    const active = lenders.filter((lender) => lender.active);
+    if (!query) return active;
+    return active.filter((lender) => lender.name.toLowerCase().includes(query));
+  }, [context, lenders, searchQuery]);
+
+  const fundingRailWallets = useMemo(
+    () =>
+      displayWallets.filter(
+        (wallet) => wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD',
+      ),
+    [displayWallets],
+  );
+  const creditRailWallets = useMemo(
+    () => displayWallets.filter((wallet) => isCreditType(wallet.type)),
+    [displayWallets],
+  );
+  const showIdentityRails =
+    kindFilter === 'all' && typeFilter === TYPE_FILTER_ALL;
 
   /** Conteos para chips: aplica búsqueda y todos los filtros excepto la dimensión del chip. */
   const statusChipCounts = useMemo(() => {
@@ -567,9 +616,13 @@ export default function WalletsPage() {
         (w) => w.type === 'CASH' || w.type === 'DEBIT_CARD',
       ).length,
       credit: pool.filter((w) => isCreditType(w.type)).length,
+      lenders: lenders.filter((lender) =>
+        lender.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
+      ).length,
     };
   }, [
     wallets,
+    lenders,
     searchQuery,
     typeFilter,
     statusFilter,
@@ -1111,7 +1164,9 @@ export default function WalletsPage() {
                           ? kindChipCounts.all
                           : v === 'funding'
                             ? kindChipCounts.funding
-                            : kindChipCounts.credit;
+                            : v === 'credit'
+                              ? kindChipCounts.credit
+                              : kindChipCounts.lenders;
                       return (
                         <button
                           key={v}
@@ -1397,12 +1452,38 @@ export default function WalletsPage() {
             </SkeletonExit>
           ) : (
             <ContentEnter>
-              {wallets.length === 0 ? (
+              {wallets.length === 0 && visibleLenders.length === 0 ? (
                 <EmptyState message="No se encontraron billeteras" />
               ) : (
                 <div className="@container w-full min-w-0">
                   <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
-                    {displayWallets.length === 0 ? (
+                    {kindFilter === 'lenders' ? (
+                      <LenderRail lenders={visibleLenders} />
+                    ) : showIdentityRails ? (
+                      <div className="grid gap-5 xl:grid-cols-3">
+                        <WalletKindRail
+                          label="Efectivo y débito"
+                          wallets={fundingRailWallets}
+                          ownerQueryString={ownerQueryString}
+                          isHouseContext={isHouseContext}
+                          onEdit={openEditDialog}
+                          onTransfer={openTransferDialog}
+                          onDelete={openDeleteDialog}
+                          onOpenBalance={setBalanceWallet}
+                        />
+                        <WalletKindRail
+                          label="Tarjetas"
+                          wallets={creditRailWallets}
+                          ownerQueryString={ownerQueryString}
+                          isHouseContext={isHouseContext}
+                          onEdit={openEditDialog}
+                          onTransfer={openTransferDialog}
+                          onDelete={openDeleteDialog}
+                          onOpenBalance={setBalanceWallet}
+                        />
+                        <LenderRail lenders={visibleLenders} />
+                      </div>
+                    ) : displayWallets.length === 0 ? (
                       <p className="py-8 text-center text-muted-foreground">
                         Ninguna billetera coincide con los filtros.
                       </p>

@@ -159,9 +159,62 @@ describe('getAlerts', () => {
     });
 
     const overdue = data.alerts.find((a) => a.type === 'overdue');
-    expect(overdue?.description).toContain('pago préstamo billetera');
+    expect(overdue?.description).toContain('1 pago a DiDi');
     expect(overdue?.description).toContain('deducción nómina');
     expect(overdue?.target.path).toBe('/monthly/2026/06');
+    vi.useRealTimers();
+  });
+
+  it('collapses several wallet installments of one lender into 1 pago a X', async () => {
+    mockQueries.fetchFortnightsCurrent.mockResolvedValue([fortnightCurrent]);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-20T12:00:00.000Z'));
+    mockQueries.fetchAlertExpenses.mockResolvedValue([]);
+    mockQueries.fetchIncomeCurrent.mockResolvedValue([
+      { amount: 5000, source: 'job' },
+    ]);
+    mockLoanAgg.mockResolvedValue({
+      ...emptyLoanAggregate,
+      upcoming: [
+        {
+          id: 1,
+          loanId: 10,
+          loanName: 'Celular',
+          lender: 'Mercado Libre',
+          lenderId: 4,
+          amount: 200,
+          dueDate: '2026-06-10',
+          paymentSource: 'WALLET',
+          sourceWalletId: 3,
+          sourceWalletName: 'BBVA',
+        },
+        {
+          id: 2,
+          loanId: 11,
+          loanName: 'Laptop',
+          lender: 'MELI',
+          lenderId: 4,
+          amount: 80,
+          dueDate: '2026-06-12',
+          paymentSource: 'WALLET',
+          sourceWalletId: 3,
+          sourceWalletName: 'BBVA',
+        },
+      ],
+    });
+
+    const data = await getAlerts({
+      ownerFilter,
+      view: 'biweekly',
+      month: '6',
+      year: '2026',
+      period: 'FIRST',
+    });
+
+    const overdue = data.alerts.find((alert) => alert.type === 'overdue');
+    expect(overdue?.description).toContain('1 pago a Mercado Libre');
+    expect(overdue?.description).not.toContain('2 pago');
+    expect(overdue?.description.startsWith('1 obligacion')).toBe(true);
     vi.useRealTimers();
   });
 });

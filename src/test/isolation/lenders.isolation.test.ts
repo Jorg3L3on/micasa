@@ -14,12 +14,16 @@ const {
   payLenderForOwner,
   undoLenderPaymentForOwner,
   listLendersByOwner,
+  mergeLendersForOwner,
+  splitLenderForOwner,
 } = vi.hoisted(() => ({
   getOwnerContext: vi.fn(),
   getLenderByIdForOwner: vi.fn(),
   payLenderForOwner: vi.fn(),
   undoLenderPaymentForOwner: vi.fn(),
   listLendersByOwner: vi.fn(),
+  mergeLendersForOwner: vi.fn(),
+  splitLenderForOwner: vi.fn(),
 }));
 
 vi.mock('@/lib/server/get-owner-context', () => ({
@@ -31,11 +35,15 @@ vi.mock('@/lib/finance/lender.service', () => ({
   payLenderForOwner,
   undoLenderPaymentForOwner,
   listLendersByOwner,
+  mergeLendersForOwner,
+  splitLenderForOwner,
   createLenderForOwner: vi.fn(),
 }));
 
 import { GET as getLender } from '@/app/api/lenders/[id]/route';
 import { POST as payLender } from '@/app/api/lenders/[id]/pay/route';
+import { POST as mergeLender } from '@/app/api/lenders/[id]/merge/route';
+import { POST as splitLender } from '@/app/api/lenders/[id]/split/route';
 import { DELETE as undoPayment } from '@/app/api/lenders/[id]/payments/[paymentId]/route';
 import { GET as listLenders } from '@/app/api/lenders/route';
 
@@ -49,6 +57,8 @@ describe('isolation: lenders', () => {
       new Error('Pago del prestamista no encontrado'),
     );
     listLendersByOwner.mockResolvedValue([]);
+    mergeLendersForOwner.mockRejectedValue(new Error('Prestamista no encontrado'));
+    splitLenderForOwner.mockRejectedValue(new Error('Prestamista no encontrado'));
   });
 
   it('GET /api/lenders/[id] → 404 for another owner', async () => {
@@ -68,6 +78,30 @@ describe('isolation: lenders', () => {
         method: 'POST',
         body: { mode: 'EXTERNAL', paidAt: '2026-09-10' },
       }) as Parameters<typeof payLender>[0],
+      { params: paramsOf(RESOURCE_ID) },
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('POST /api/lenders/[id]/merge → 404 for another owner', async () => {
+    const response = await mergeLender(
+      requestFor(`/api/lenders/${RESOURCE_ID}/merge`, {
+        method: 'POST',
+        body: { targetLenderId: RESOURCE_ID + 1 },
+      }) as Parameters<typeof mergeLender>[0],
+      { params: paramsOf(RESOURCE_ID) },
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('POST /api/lenders/[id]/split → 404 for another owner', async () => {
+    const response = await splitLender(
+      requestFor(`/api/lenders/${RESOURCE_ID}/split`, {
+        method: 'POST',
+        body: { loanIds: [RESOURCE_ID], name: 'Otro' },
+      }) as Parameters<typeof splitLender>[0],
       { params: paramsOf(RESOURCE_ID) },
     );
 

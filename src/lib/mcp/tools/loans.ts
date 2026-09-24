@@ -9,7 +9,10 @@ import {
   updateLoanPaymentForOwner,
   updateLoanScheduleForOwner,
 } from '@/lib/finance/loan.service';
-import { listLendersByOwner } from '@/lib/finance/lender.service';
+import {
+  listLendersByOwner,
+  payLenderForOwner,
+} from '@/lib/finance/lender.service';
 import { createLoanSchema, updateLoanPaymentSchema } from '@/schemas/loan.schema';
 import {
   confirmSchema,
@@ -137,6 +140,54 @@ export function registerLoanTools(server: McpServer) {
               paymentSource: loan.paymentSource,
             })),
           })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    'pay_lender',
+    {
+      title: 'Pagar prestamista',
+      description:
+        'Un desembolso al prestamista, misma ventana que la UI. Nómina no entra. exclude_payment_ids saca contratos del periodo (opt-out). amount menor que la ventana es pago parcial; amount mayor abona a capital al final del calendario.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        lender_id: z.number().int().positive(),
+        mode: z.enum(['WALLET', 'EXTERNAL']).default('WALLET'),
+        paid_at: dateYmdSchema.optional(),
+        source_wallet_id: z.number().int().positive().optional(),
+        wallet_name: z.string().trim().min(1).optional(),
+        exclude_payment_ids: z.array(z.number().int().positive()).optional(),
+        amount: z.number().positive().optional(),
+        note: z.string().trim().max(500).optional(),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: false },
+    },
+    async (args, ctx) =>
+      runAgentTool('pay_lender', ctx as McpToolContext, args, 'write', async (agent) => {
+        let sourceWalletId: number | null = null;
+        if ((args.mode ?? 'WALLET') === 'WALLET') {
+          const wallet = await resolveWalletRef(
+            agent.ownerFilter,
+            args.source_wallet_id,
+            args.wallet_name,
+          );
+          sourceWalletId = wallet.id;
+        }
+        const result = await payLenderForOwner(args.lender_id, agent.ownerFilter, {
+          mode: args.mode ?? 'WALLET',
+          paidAt: args.paid_at,
+          sourceWalletId,
+          note: args.note ?? null,
+          excludePaymentIds: args.exclude_payment_ids,
+          amount: args.amount ?? null,
+        });
+        return {
+          lender_id: result.lender.id,
+          payment_id: result.payment.id,
+          amount: result.payment.amount,
+          mode: result.payment.mode,
+          installmentCount: result.payment.installmentCount,
         };
       }),
   );
