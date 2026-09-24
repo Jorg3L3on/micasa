@@ -13,6 +13,7 @@ import {
 } from '@/lib/finance/credit-card-payment-plan.service';
 import {
   applyPeriodObligation,
+  minimumPaymentForPeriod,
   resolveCardPeriodObligation,
 } from '@/lib/finance/card-period-obligation';
 import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligation.service';
@@ -110,6 +111,7 @@ export async function getCreditCardStatementByOwner(
       temporary_credit_limit: true,
       cutoff_day: true,
       due_day: true,
+      minimum_payment: true,
     },
   });
 
@@ -354,7 +356,14 @@ export async function getCreditCardStatementByOwner(
     dueInPeriod: true,
     statementPayoff: mergedDue.usedScheduledCalendar ? null : statementPayoff.amount,
     statementIsEstimate: statementPayoff.source === 'projection',
-    minimumPayment: importedMinimumPayment,
+    minimumPayment: minimumPaymentForPeriod({
+      statementPayoff: mergedDue.usedScheduledCalendar
+        ? null
+        : statementPayoff.amount,
+      statementMinimum: importedMinimumPayment,
+      persistedMinimum:
+        card.minimum_payment == null ? null : Number(card.minimum_payment),
+    }),
     scheduledAmount: mergedDue.usedScheduledCalendar ? mergedDue.amount : null,
     paymentsApplied: paymentsAppliedToStatementTotal,
     // A planner amount is not the corte. Only an explicit $0 declaration closes the gap.
@@ -1252,6 +1261,7 @@ async function getDuePaymentsWithAsOf(
       amount: true,
       cutoff_day: true,
       due_day: true,
+      minimum_payment: true,
     },
   });
 
@@ -1433,6 +1443,8 @@ async function getDuePaymentsWithAsOf(
       importedTotalDue,
       outstandingBalance,
       minimumPayment: importedMinimumByWallet.get(card.id) ?? null,
+      persistedMinimumPayment:
+        card.minimum_payment == null ? null : Number(card.minimum_payment),
       projectedStatementInstallmentsTotal:
         projectedInstallmentSums.get(card.id) ?? 0,
       currentCyclePurchasesTotal: currentCyclePurchaseSums.get(card.id) ?? 0,

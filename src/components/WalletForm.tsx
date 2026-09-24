@@ -100,7 +100,7 @@ type WalletFormProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: WalletFormValues) => Promise<void>;
-  defaultValues?: WalletFormValues;
+  defaultValues?: Partial<WalletFormValues>;
   mode: 'create' | 'edit';
   error?: string | null;
   allowedTypes?: WalletFormValues['type'][];
@@ -118,9 +118,20 @@ const toNumericAmount = (value: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const percentFromRate = (value: unknown): number | null => {
+  const rate = toNumericOrNull(value);
+  if (rate == null || rate <= 0) return null;
+  return Math.round(rate * 10000) / 100;
+};
+
+const rateFromPercent = (value: number | null): number | null => {
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  return Math.round((value / 100) * 1_000_000) / 1_000_000;
+};
+
 const buildWalletFormDefaults = (
   mode: 'create' | 'edit',
-  defaultValues?: WalletFormValues,
+  defaultValues?: Partial<WalletFormValues>,
 ): WalletFormInput => ({
   name: defaultValues?.name ?? '',
   amount: toNumericAmount(defaultValues?.amount),
@@ -132,6 +143,9 @@ const buildWalletFormDefaults = (
   include_in_liquidity: defaultValues?.include_in_liquidity ?? true,
   cutoff_day: toNumericOrNull(defaultValues?.cutoff_day),
   due_day: toNumericOrNull(defaultValues?.due_day),
+  minimum_payment: toNumericOrNull(defaultValues?.minimum_payment),
+  apr_annual: toNumericOrNull(defaultValues?.apr_annual),
+  cat_annual: toNumericOrNull(defaultValues?.cat_annual),
   goal_amount: toNumericOrNull(defaultValues?.goal_amount),
   goal_due_date: defaultValues?.goal_due_date ?? null,
   assignee_user_id: defaultValues?.assignee_user_id ?? null,
@@ -768,6 +782,114 @@ export default function WalletForm({
                       }
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="minimum_payment"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pago mínimo</FormLabel>
+                <FormControl>
+                  <CurrencyInput
+                    className={creditAmountHeight}
+                    aria-label="Pago mínimo"
+                    value={
+                      field.value == null || field.value === ''
+                        ? 0
+                        : Number(field.value)
+                    }
+                    onChange={(val) =>
+                      field.onChange(val === 0 ? null : val)
+                    }
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    ref={field.ref}
+                    placeholder="0.00"
+                    enterKeyHint="next"
+                  />
+                </FormControl>
+                <p className="pl-0.5 text-[10px] text-muted-foreground">
+                  Lo que el banco pide como mínimo. No es el pago para no
+                  generar intereses (corte) ni la deuda total. Vacío si no lo
+                  conoces.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="apr_annual"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>APR anual (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      max={500}
+                      step="0.01"
+                      className={fieldHeight}
+                      aria-label="APR anual en porcentaje"
+                      placeholder="42"
+                      value={percentFromRate(field.value) ?? ''}
+                      onChange={(event) =>
+                        field.onChange(
+                          rateFromPercent(
+                            event.target.value === ''
+                              ? null
+                              : Number(event.target.value),
+                          ),
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <p className="pl-0.5 text-[10px] text-muted-foreground">
+                    Porcentaje anual. Vacío si no la tienes. No inventamos 36%.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="cat_annual"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CAT anual (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      max={500}
+                      step="0.01"
+                      className={fieldHeight}
+                      aria-label="CAT anual en porcentaje"
+                      placeholder="55"
+                      value={percentFromRate(field.value) ?? ''}
+                      onChange={(event) =>
+                        field.onChange(
+                          rateFromPercent(
+                            event.target.value === ''
+                              ? null
+                              : Number(event.target.value),
+                          ),
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <p className="pl-0.5 text-[10px] text-muted-foreground">
+                    Costo anual total. Distinto del APR y del pago del corte.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

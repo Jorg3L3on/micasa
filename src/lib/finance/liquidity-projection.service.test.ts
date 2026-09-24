@@ -772,4 +772,90 @@ describe('getLiquidityProjection', () => {
       (february2027?.debt_items ?? []).filter((item) => item.kind === 'card'),
     ).toEqual([]);
   });
+
+  it('uses a persisted minimum when the cycle has no statement', async () => {
+    const card = {
+      id: 8,
+      name: 'Tarjeta A',
+      type: PaymentMethodType.CREDIT_CARD,
+      cutoff_day: 15,
+      due_day: 20,
+      amount: '5000',
+      minimum_payment: '400',
+      apr_annual: '0.42',
+      cat_annual: '0.55',
+    };
+    setupWalletMock([fundingRow], [card]);
+    queryRaw.mockResolvedValue([]);
+    findManyExpense.mockResolvedValue([]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 3, 30)),
+      includeUnpaidExpenses: false,
+    });
+
+    const obligation = result.milestones
+      .flatMap((milestone) => milestone.obligations)
+      .find((item) => item.wallet_id === 8 && item.source === 'credit_card_statement');
+
+    expect(obligation?.next_due_payment).toBe(400);
+    expect(obligation?.minimum_payment).toBe(400);
+    expect(obligation?.apr_annual).toBe(0.42);
+    expect(obligation?.cat_annual).toBe(0.55);
+    expect(obligation?.next_due_payment).not.toBe(5000);
+    expect(obligation?.apr_annual).not.toBe(0.36);
+  });
+
+  it('does not let persisted minimum and APR replace a statement payoff', async () => {
+    const card = {
+      id: 8,
+      name: 'Tarjeta A',
+      type: PaymentMethodType.CREDIT_CARD,
+      cutoff_day: 15,
+      due_day: 20,
+      amount: '8000',
+      minimum_payment: '400',
+      apr_annual: '0.42',
+      cat_annual: null,
+    };
+    setupWalletMock([fundingRow], [card]);
+    queryRaw
+      .mockResolvedValueOnce([
+        {
+          wallet_id: 8,
+          amount: '1200',
+          eff: new Date(Date.UTC(2026, 1, 5)),
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    findManyStatementImport.mockResolvedValue([
+      {
+        wallet_id: 8,
+        total_due: '1200',
+        minimum_payment: '250',
+        period_end: new Date(Date.UTC(2026, 1, 15)),
+        payment_due_date: new Date(Date.UTC(2026, 1, 20)),
+        created_at: new Date(Date.UTC(2026, 2, 1)),
+      },
+    ]);
+    findManyExpense.mockResolvedValue([]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 3, 30)),
+      includeUnpaidExpenses: false,
+    });
+
+    const obligation = result.milestones
+      .flatMap((milestone) => milestone.obligations)
+      .find((item) => item.wallet_id === 8 && item.source === 'credit_card_statement');
+
+    expect(obligation?.next_due_payment).toBe(1200);
+    expect(obligation?.minimum_payment).toBe(250);
+    expect(obligation?.apr_annual).toBe(0.42);
+    expect(obligation?.cat_annual).toBeNull();
+    expect(obligation?.next_due_payment).not.toBe(400);
+    expect(obligation?.next_due_payment).not.toBe(8000);
+  });
 });

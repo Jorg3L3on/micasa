@@ -19,6 +19,22 @@ const resolveIncludeInLiquidity = (
   return includeInLiquidity !== false;
 };
 
+const resolveCardTerms = (
+  type: PaymentMethodType | string,
+  minimumPayment?: number | null,
+  aprAnnual?: number | null,
+  catAnnual?: number | null,
+) => {
+  if (!isCreditWalletType(type as PaymentMethodType)) {
+    return { minimum_payment: null, apr_annual: null, cat_annual: null };
+  }
+  return {
+    minimum_payment: minimumPayment ?? null,
+    apr_annual: aprAnnual ?? null,
+    cat_annual: catAnnual ?? null,
+  };
+};
+
 const resolveGoalFields = (
   type: PaymentMethodType | string,
   goalAmount?: number | null,
@@ -57,6 +73,9 @@ const mapWalletRowToListDto = (
     include_in_liquidity: boolean;
     cutoff_day: number | null;
     due_day: number | null;
+    minimum_payment?: unknown;
+    apr_annual?: unknown;
+    cat_annual?: unknown;
     goal_amount?: unknown;
     goal_due_date?: Date | null;
     created_at?: Date;
@@ -83,6 +102,10 @@ const mapWalletRowToListDto = (
     include_in_liquidity: w.include_in_liquidity,
     cutoff_day: w.cutoff_day,
     due_day: w.due_day,
+    minimum_payment:
+      w.minimum_payment == null ? null : Number(w.minimum_payment),
+    apr_annual: w.apr_annual == null ? null : Number(w.apr_annual),
+    cat_annual: w.cat_annual == null ? null : Number(w.cat_annual),
     goal_amount: w.goal_amount == null ? null : Number(w.goal_amount),
     goal_due_date:
       w.goal_due_date == null ? null : formatCalendarDate(w.goal_due_date),
@@ -205,6 +228,12 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
       ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
+      ...resolveCardTerms(
+        data.type,
+        data.minimum_payment,
+        data.apr_annual,
+        data.cat_annual,
+      ),
       ...resolveGoalFields(data.type, data.goal_amount, data.goal_due_date),
       user_id: defaultUser.id,
       house_id: null,
@@ -238,6 +267,12 @@ export async function createWalletForUser(
       ),
       cutoff_day: data.cutoff_day,
       due_day: data.due_day,
+      ...resolveCardTerms(
+        data.type,
+        data.minimum_payment,
+        data.apr_annual,
+        data.cat_annual,
+      ),
       ...resolveGoalFields(data.type, data.goal_amount, data.goal_due_date),
       user_id: userId,
       house_id: null,
@@ -282,6 +317,12 @@ export async function createWalletForOwner(
       ),
       cutoff_day: isGoal ? null : data.cutoff_day,
       due_day: isGoal ? null : data.due_day,
+      ...resolveCardTerms(
+        data.type,
+        data.minimum_payment,
+        data.apr_annual,
+        data.cat_annual,
+      ),
       ...resolveGoalFields(data.type, data.goal_amount, data.goal_due_date),
       user_id: ownerType === 'user' ? ownerId : null,
       house_id: ownerType === 'house' ? ownerId : null,
@@ -305,7 +346,13 @@ export async function updateWalletMetadataForOwner(
     throw error;
   }
 
-  const { assignee_user_id: assigneePatch, ...rest } = data;
+  const {
+    assignee_user_id: assigneePatch,
+    minimum_payment: minimumPaymentPatch,
+    apr_annual: aprAnnualPatch,
+    cat_annual: catAnnualPatch,
+    ...rest
+  } = data;
   const ownerType = existing.house_id != null ? 'house' : 'user';
   const ownerId = existing.house_id ?? existing.user_id;
   if (ownerId == null) {
@@ -350,6 +397,35 @@ export async function updateWalletMetadataForOwner(
     );
     prismaData.goal_amount = goals.goal_amount;
     prismaData.goal_due_date = goals.goal_due_date;
+  }
+
+  if (
+    data.type !== undefined ||
+    minimumPaymentPatch !== undefined ||
+    aprAnnualPatch !== undefined ||
+    catAnnualPatch !== undefined
+  ) {
+    const terms = resolveCardTerms(
+      effectiveType,
+      minimumPaymentPatch !== undefined
+        ? minimumPaymentPatch
+        : existing.minimum_payment == null
+          ? null
+          : Number(existing.minimum_payment),
+      aprAnnualPatch !== undefined
+        ? aprAnnualPatch
+        : existing.apr_annual == null
+          ? null
+          : Number(existing.apr_annual),
+      catAnnualPatch !== undefined
+        ? catAnnualPatch
+        : existing.cat_annual == null
+          ? null
+          : Number(existing.cat_annual),
+    );
+    prismaData.minimum_payment = terms.minimum_payment;
+    prismaData.apr_annual = terms.apr_annual;
+    prismaData.cat_annual = terms.cat_annual;
   }
 
   if (data.include_in_liquidity !== undefined || data.type !== undefined) {

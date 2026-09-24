@@ -4,6 +4,7 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import { minimumPaymentForPeriod } from '@/lib/finance/card-period-obligation';
 
 /** How the remaining statement due amount was derived. */
 export type CardObligationAmountSource =
@@ -139,8 +140,10 @@ export type BuildCardStatementObligationInput = {
   asOfYmd?: string;
   plannedGrossAmount?: number | null;
   allowOutstandingBalanceFallback?: boolean;
-  /** Captured issuer minimum for this window. Not a substitute for the statement. */
+  /** Statement-import minimum for this window. Not a substitute for the payoff. */
   minimumPayment?: number | null;
+  /** Persisted wallet minimum. Used only when this cycle has no statement payoff. */
+  persistedMinimumPayment?: number | null;
   /** Calendar YYYY-MM-DD for overdue check; defaults to today in Mexico City. */
   todayYmd?: string;
 };
@@ -567,10 +570,11 @@ export const buildCardStatementObligation = (
     paymentsAppliedToStatement: input.paymentsAppliedToStatement,
     suggestedStatementAmount: suggestedBeforePayments,
     statementPayoff,
-    minimumPayment:
-      input.minimumPayment != null && input.minimumPayment > 0
-        ? input.minimumPayment
-        : null,
+    minimumPayment: minimumPaymentForPeriod({
+      statementPayoff,
+      statementMinimum: input.minimumPayment,
+      persistedMinimum: input.persistedMinimumPayment,
+    }),
     remainingStatementDue,
     plannedGrossAmount,
     remainingPlannedAmount,

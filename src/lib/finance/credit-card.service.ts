@@ -56,6 +56,9 @@ const mapWalletToCreditCardDto = (
     include_in_liquidity: boolean;
     cutoff_day: number | null;
     due_day: number | null;
+    minimum_payment?: unknown;
+    apr_annual?: unknown;
+    cat_annual?: unknown;
     assignee_user_id: number | null;
     assignee: { id: number; name: string } | null;
   },
@@ -90,6 +93,10 @@ const mapWalletToCreditCardDto = (
     include_in_liquidity: wallet.include_in_liquidity,
     cutoff_day: wallet.cutoff_day,
     due_day: wallet.due_day,
+    minimum_payment:
+      wallet.minimum_payment == null ? null : Number(wallet.minimum_payment),
+    apr_annual: wallet.apr_annual == null ? null : Number(wallet.apr_annual),
+    cat_annual: wallet.cat_annual == null ? null : Number(wallet.cat_annual),
     spent_amount: spent,
     remaining_amount: currentBalance - spent,
     assignee_user_id: wallet.assignee_user_id ?? null,
