@@ -3,7 +3,10 @@ import {
   formatCalendarDate,
   parseCalendarDate,
 } from '@/lib/calendar-dates';
-import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
+import {
+  selectActivePlannedOverride,
+  toStoredPaymentPlanWrite,
+} from '@/lib/finance/card-payment-plan-scope';
 import {
   exposedAnnualRate,
   exposedMinimumDue,
@@ -679,23 +682,22 @@ export const getLiquidityProjection = async (
         credit_card_wallet_id: true,
         planned_amount: true,
         declared_zero: true,
+        scope: true,
+        cycle_count: true,
+        valid_until: true,
+        anchor_statement_end: true,
+        updated_at: true,
+        created_at: true,
         fortnight: { select: { year: true, month: true, period: true } },
       },
     }),
   ]);
 
-  const plannedOverrideByFortnight = new Map<string, number>();
-  const declaredZeroByFortnight = new Set<string>();
+  const plansByCard = new Map<number, typeof paymentPlans>();
   for (const plan of paymentPlans) {
-    const amount = Number(plan.planned_amount);
-    const { year, month, period } = plan.fortnight;
-    const key = `${plan.credit_card_wallet_id}:${year}:${month}:${period}`;
-    if (plan.declared_zero === true && amount <= 0) {
-      declaredZeroByFortnight.add(key);
-      continue;
-    }
-    if (amount <= 0) continue;
-    plannedOverrideByFortnight.set(key, amount);
+    const list = plansByCard.get(plan.credit_card_wallet_id) ?? [];
+    list.push(plan);
+    plansByCard.set(plan.credit_card_wallet_id, list);
   }
 
   const fundingTotal = fundingWallets.reduce(
@@ -843,11 +845,15 @@ export const getLiquidityProjection = async (
           window,
         );
         const persistedMinimum = meta.minimum_payment;
-        const dueFortnight = getCalendarFortnightRefForYmd(dueStr);
-        const plannedOverride =
-          plannedOverrideByFortnight.get(
-            `${id}:${dueFortnight.year}:${dueFortnight.month}:${dueFortnight.period}`,
-          ) ?? null;
+        const activePlan = selectActivePlannedOverride(
+          (plansByCard.get(id) ?? []).map((plan) => toStoredPaymentPlanWrite(plan)),
+          {
+            statementEnd,
+            statementDueDate: dueStr,
+          },
+          { cutoffDay: meta.cutoff_day, dueDay: meta.due_day },
+        );
+        const plannedOverride = activePlan.plannedOverride;
         const source = row.obligation_amount_source;
         const statementPayoff =
           row.statement_payoff !== undefined
@@ -872,9 +878,7 @@ export const getLiquidityProjection = async (
             row.is_estimate === true,
           minimumPayment,
           plannedOverride,
-          explicitZero: declaredZeroByFortnight.has(
-            `${id}:${dueFortnight.year}:${dueFortnight.month}:${dueFortnight.period}`,
-          ),
+          explicitZero: activePlan.explicitZero,
           paymentsApplied: row.payments_applied_to_statement,
         });
 

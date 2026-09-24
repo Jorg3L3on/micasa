@@ -227,15 +227,73 @@ export const resolveCardPeriodObligation = (
   };
 };
 
-/** Last positive write wins. A later period without a write does not erase it. */
+export type PlannedOverrideStamp = {
+  amount: number;
+  /** Explicit $0. Distinct from a missing amount and from deleting the plan. */
+  declaredZero?: boolean;
+  updatedAt?: Date | string | number | null;
+  createdAt?: Date | string | number | null;
+};
+
+const stampMillis = (value: Date | string | number | null | undefined): number => {
+  if (value == null) return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+/**
+ * Last positive write wins. Array order is the timeline when amounts are bare
+ * numbers. Stamped writes use updatedAt, then createdAt. A later period that
+ * is not in the list does not erase an earlier write.
+ * A declared $0 is not a positive amount; callers that need that flag use
+ * `lastPlannedOverrideDecision`.
+ */
 export const lastPlannedOverrideWrite = (
-  writes: readonly number[],
+  writes: readonly number[] | readonly PlannedOverrideStamp[],
 ): number | null => {
-  for (let index = writes.length - 1; index >= 0; index -= 1) {
-    const amount = writes[index];
-    if (amount != null && amount > 0) return roundMoney(amount);
+  if (writes.length === 0) return null;
+  const first = writes[0];
+  if (typeof first === 'number') {
+    for (let index = writes.length - 1; index >= 0; index -= 1) {
+      const amount = writes[index] as number;
+      if (amount != null && amount > 0) return roundMoney(amount);
+    }
+    return null;
   }
+
+  const ordered = [...(writes as readonly PlannedOverrideStamp[])].sort((a, b) => {
+    const updated = stampMillis(a.updatedAt) - stampMillis(b.updatedAt);
+    if (updated !== 0) return updated;
+    return stampMillis(a.createdAt) - stampMillis(b.createdAt);
+  });
+  const last = ordered[ordered.length - 1];
+  if (last == null || last.declaredZero === true) return null;
+  if (last.amount > 0) return roundMoney(last.amount);
   return null;
+};
+
+/**
+ * Latest stamp wins, including an explicit $0. The amount of a positive
+ * winner goes through `lastPlannedOverrideWrite`.
+ */
+export const lastPlannedOverrideDecision = (
+  writes: readonly PlannedOverrideStamp[],
+): { amount: number | null; declaredZero: boolean } => {
+  if (writes.length === 0) return { amount: null, declaredZero: false };
+  const ordered = [...writes].sort((a, b) => {
+    const updated = stampMillis(a.updatedAt) - stampMillis(b.updatedAt);
+    if (updated !== 0) return updated;
+    return stampMillis(a.createdAt) - stampMillis(b.createdAt);
+  });
+  const last = ordered[ordered.length - 1];
+  if (last.declaredZero === true && !(last.amount > 0)) {
+    return { amount: null, declaredZero: true };
+  }
+  return {
+    amount: lastPlannedOverrideWrite([last]),
+    declaredZero: false,
+  };
 };
 
 export type DueItemObligationSource = {

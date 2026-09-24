@@ -349,6 +349,10 @@ export type DuePaymentItem = {
   minimumPayment?: number | null;
   /** El usuario declaró que este ciclo es $0. No es un plan de $0 legado. */
   declaredZero?: boolean;
+  /** Vigencia del override que está ganando en este corte. */
+  planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
+  planCycleCount?: number | null;
+  planValidUntil?: string | null;
   /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
@@ -378,6 +382,9 @@ export type CreditCardPaymentPlanView = {
   isStaleFullyCoveredPlan: boolean;
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   declaredZero?: boolean;
+  planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
+  planCycleCount?: number | null;
+  planValidUntil?: string | null;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */

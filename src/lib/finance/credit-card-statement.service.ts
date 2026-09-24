@@ -16,6 +16,10 @@ import {
   minimumPaymentForPeriod,
   resolveCardPeriodObligation,
 } from '@/lib/finance/card-period-obligation';
+import {
+  selectActivePlannedOverride,
+  toStoredPaymentPlanWrite,
+} from '@/lib/finance/card-payment-plan-scope';
 import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligation.service';
 import {
   buildCardStatementObligation,
@@ -39,7 +43,6 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import {
   dueDayFallsInFortnight,
-  getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
   getDaysInCalendarMonth,
   isCalendarFortnightCurrent,
@@ -139,16 +142,12 @@ export async function getCreditCardStatementByOwner(
     card.cutoff_day,
     card.due_day,
   );
-  const statementDueFortnight = getCalendarFortnightRefForYmd(
-    toDateOnlyString(window.statementDueDate),
-  );
-
   const paymentWhereBase = {
     ...ownerFilter,
     credit_card_wallet_id: creditCardId,
   };
 
-  const [purchases, payments, paymentTotals, statementImports, dueFortnightPlan] =
+  const [purchases, payments, paymentTotals, statementImports, cardPlans] =
     await Promise.all([
     prisma.expense.findMany({
       where: {
@@ -216,25 +215,34 @@ export async function getCreditCardStatementByOwner(
         created_at: true,
       },
     }),
-    prisma.fortnight.findFirst({
+    prisma.creditCardPaymentPlan.findMany({
       where: {
         ...ownerFilter,
-        year: statementDueFortnight.year,
-        month: statementDueFortnight.month,
-        period: statementDueFortnight.period,
+        credit_card_wallet_id: creditCardId,
       },
       select: {
-        credit_card_payment_plans: {
-          where: { credit_card_wallet_id: creditCardId },
-          select: { declared_zero: true },
-          take: 1,
-        },
+        planned_amount: true,
+        declared_zero: true,
+        scope: true,
+        cycle_count: true,
+        valid_until: true,
+        anchor_statement_end: true,
+        updated_at: true,
+        created_at: true,
+        fortnight: { select: { year: true, month: true } },
       },
     }),
   ]);
 
-  const declaredZero =
-    dueFortnightPlan?.credit_card_payment_plans[0]?.declared_zero === true;
+  const activePlan = selectActivePlannedOverride(
+    cardPlans.map((plan) => toStoredPaymentPlanWrite(plan)),
+    {
+      statementEnd: formatCalendarDate(window.statementEnd),
+      statementDueDate: formatCalendarDate(window.statementDueDate),
+    },
+    { cutoffDay: card.cutoff_day, dueDay: card.due_day },
+  );
+  const declaredZero = activePlan.explicitZero;
 
   const recentImport = resolveStatementImportForStatementWindow(
     statementImports,
