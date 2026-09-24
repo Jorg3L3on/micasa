@@ -21,6 +21,7 @@ import FortnightCardPaymentsPanel, {
   getPlannerCardPaymentStatus,
   isPendingPlannerCardPayment,
 } from '@/components/planner/FortnightCardPaymentsPanel';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
@@ -1273,13 +1274,9 @@ export default function FortnightColumn({
         }}
         fundingWalletOptions={plannerFundingWalletOptions}
         categoryOptions={plannerPaymentCategories}
-        nextDuePayment={
-          plannerPaymentCard != null &&
-          plannerPaymentCard.plannerStatus !== 'falta_dato' &&
-          plannerPaymentCard.periodObligation?.confidence !== 'missing'
-            ? getEffectiveCardPaymentAmount(plannerPaymentCard)
-            : 0
-        }
+        prefillAmount={periodObligationPrefillAmount(
+          plannerPaymentCard?.periodObligation,
+        )}
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}

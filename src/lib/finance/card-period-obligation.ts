@@ -254,6 +254,21 @@ export const periodObligationAmountOrZero = (
   obligation: CardPeriodObligation,
 ): number => (obligation.confidence === 'missing' ? 0 : (obligation.amount ?? 0));
 
+/**
+ * Prefill for Pagar / Registrar pago.
+ * Missing stays empty (`null`). Explicit `0` is a real amount, never invented debt.
+ */
+export const periodObligationPrefillAmount = (
+  obligation:
+    | Pick<CardPeriodObligation, 'amount' | 'confidence'>
+    | null
+    | undefined,
+): number | null => {
+  if (obligation == null || obligation.confidence === 'missing') return null;
+  if (obligation.amount == null) return null;
+  return obligation.amount;
+};
+
 type ObligationCarrier = DueItemObligationSource & {
   plannerStatus?: PlannerCardPaymentStatusUi;
   effectiveAmount?: number;

@@ -30,7 +30,7 @@ export type PlannerCardPaymentStatusUi =
   | 'sin_cargo'
   | 'falta_dato';
 
-/** Short hint when the suggested amount is not from an imported statement. */
+/** Short hint when the corte amount is not from an imported statement. */
 export const formatCardObligationAmountSourceHint = (
   source: CardObligationAmountSource | undefined,
   isEstimate?: boolean,
@@ -79,8 +79,6 @@ export type CardStatementObligationDto = {
   ledgerAmount: number;
   outstandingBalance: number;
   paymentsAppliedToStatement: number;
-  /** Raw suggested amount before user plan overlay (same as remaining when no plan). */
-  suggestedStatementAmount: number;
   /**
    * Pago del corte. `null` is unknown. `0` is an explicit figure
    * (import, ledger, or open cycle says nothing remains).
@@ -317,7 +315,7 @@ export const toCardStatementCycle = (
 });
 
 /**
- * Suggested payment for this statement (pago del corte / toca pagar).
+ * Pago del corte / toca pagar for this statement.
  *
  * Priority:
  * 1. Imported "pago para no generar intereses", minus payments already applied.
@@ -328,7 +326,7 @@ export const toCardStatementCycle = (
  *    Period readers must use `resolveStatementPayoff` / `statementPayoff`.
  *
  * `outstandingBalance` is deuda total. It feeds utilization and the "wallet
- * paid off" check, and is never the suggested period payment — even when
+ * paid off" check, and is never the period payment — even when
  * `allowOutstandingBalanceFallback` is true. Remaining MSI plan balance is
  * not an input here. An imported total of 0 stays an explicit zero, not null.
  */
@@ -543,16 +541,6 @@ export const buildCardStatementObligation = (
     obligationAmountSource === 'wallet_debt' ||
     obligationAmountSource === 'projection';
 
-  const statementBalanceBeforePayments =
-    input.lastStatementBalance + (input.projectedStatementInstallmentsTotal ?? 0);
-  const suggestedBeforePayments =
-    input.importedTotalDue ??
-    (statementBalanceBeforePayments > 0
-      ? statementBalanceBeforePayments
-      : obligationAmountSource === 'projection'
-        ? (input.currentCyclePurchasesTotal ?? 0)
-        : 0);
-
   return {
     walletId: input.walletId,
     walletName: input.walletName,
@@ -565,7 +553,6 @@ export const buildCardStatementObligation = (
     ledgerAmount: input.lastStatementBalance,
     outstandingBalance: input.outstandingBalance,
     paymentsAppliedToStatement: input.paymentsAppliedToStatement,
-    suggestedStatementAmount: suggestedBeforePayments,
     statementPayoff,
     minimumPayment:
       input.minimumPayment != null && input.minimumPayment > 0

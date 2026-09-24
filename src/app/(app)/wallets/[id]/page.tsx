@@ -46,6 +46,7 @@ import { getPaymentMethodOptions, updateWallet } from '@/lib/api/wallets';
 import { createWalletIncome } from '@/lib/api/incomes';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
 import {
   buildWalletPeriodAnalytics,
@@ -180,9 +181,9 @@ export default function WalletDetailPage() {
   const [paymentFortnightId, setPaymentFortnightId] = useState<
     number | undefined
   >(undefined);
-  const [paymentSuggestedOverride, setPaymentSuggestedOverride] = useState<
-    number | undefined
-  >(undefined);
+  const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<
+    number | null
+  >(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
 
@@ -397,7 +398,7 @@ export default function WalletDetailPage() {
         toast.success('Pago registrado');
         setPaymentDialogOpen(false);
         setPaymentFortnightId(undefined);
-        setPaymentSuggestedOverride(undefined);
+        setPaymentPrefillAmount(null);
         await loadData();
       } catch (err) {
         setPaymentError(
@@ -413,7 +414,9 @@ export default function WalletDetailPage() {
   const handleOpenPlanPayment = useCallback(
     (item: CreditCardPaymentPlanView) => {
       setPaymentFortnightId(item.fortnightId);
-      setPaymentSuggestedOverride(item.effectiveAmount);
+      setPaymentPrefillAmount(
+        periodObligationPrefillAmount(item.periodObligation),
+      );
       setPaymentDialogOpen(true);
     },
     [],
@@ -823,12 +826,12 @@ export default function WalletDetailPage() {
             if (!open) {
               setPaymentError(null);
               setPaymentFortnightId(undefined);
-              setPaymentSuggestedOverride(undefined);
+              setPaymentPrefillAmount(null);
             }
           }}
           fundingWalletOptions={fundingWalletOptions}
           categoryOptions={categoryOptions}
-          nextDuePayment={paymentSuggestedOverride ?? 0}
+          prefillAmount={paymentPrefillAmount}
           submitting={paymentSubmitting}
           error={paymentError}
           fortnightId={paymentFortnightId}
