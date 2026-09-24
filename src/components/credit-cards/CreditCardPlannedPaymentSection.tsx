@@ -16,6 +16,7 @@ import {
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-statement-obligation';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
@@ -402,21 +403,16 @@ export const CreditCardPlannedPaymentSection = ({
           }
           walletName="esta tarjeta"
           fortnightLabel={editingItem.fortnightLabel}
-          knownPeriodAmount={
-            editingItem.obligationAmountSource === 'none' ||
-            editingItem.periodObligation?.confidence === 'missing'
-              ? null
-              : (editingItem.periodObligation?.amount ?? null)
-          }
+          knownPeriodAmount={periodObligationPrefillAmount(
+            editingItem.periodObligation,
+          )}
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0
               ? editingItem.plannedPayment
-              : editingItem.periodObligation?.confidence !== 'missing' &&
-                  editingItem.effectiveAmount > 0
-                ? editingItem.effectiveAmount
-                : 0
+              : (periodObligationPrefillAmount(editingItem.periodObligation) ??
+                0)
           }
           hasCustomPlan={
             editingItem.plannedPayment != null &&

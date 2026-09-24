@@ -327,7 +327,7 @@ export type DuePaymentItem = {
   statementDueDate: string;
   /** Fecha de vencimiento del corte (desde servidor). */
   visibleDueDate?: string;
-  /** Monto objetivo de la quincena (plan o sugerido). */
+  /** Monto objetivo de la quincena (plan o pago del corte). */
   targetAmount?: number;
   /** Deuda total de la tarjeta (utilización). No es el pago del corte. */
   outstandingBalance: number;

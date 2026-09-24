@@ -77,6 +77,7 @@ import type { CreditCardExternalPaymentSubmitPayload } from '@/components/credit
 import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { computeCreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
 import type { CreditCardCycleTab } from '@/lib/finance/credit-card-cycle-types';
 import {
@@ -179,9 +180,9 @@ export default function CreditCardDetailPage() {
   const [paymentFortnightId, setPaymentFortnightId] = useState<
     number | undefined
   >(undefined);
-  const [paymentSuggestedOverride, setPaymentSuggestedOverride] = useState<
-    number | undefined
-  >(undefined);
+  const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<
+    number | null
+  >(null);
 
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -323,7 +324,7 @@ export default function CreditCardDetailPage() {
       toast.success('Pago registrado');
       setPaymentDialogOpen(false);
       setPaymentFortnightId(undefined);
-      setPaymentSuggestedOverride(undefined);
+      setPaymentPrefillAmount(null);
       await loadData();
     } catch (err) {
       setPaymentError(
@@ -360,7 +361,9 @@ export default function CreditCardDetailPage() {
   const handleOpenPlanPayment = useCallback(
     (item: CreditCardPaymentPlanView) => {
       setPaymentFortnightId(item.fortnightId);
-      setPaymentSuggestedOverride(item.effectiveAmount);
+      setPaymentPrefillAmount(
+        periodObligationPrefillAmount(item.periodObligation),
+      );
       setPaymentDialogOpen(true);
     },
     [],
@@ -488,8 +491,15 @@ export default function CreditCardDetailPage() {
   }, []);
 
   const handleOpenPayment = useCallback(() => {
+    const current =
+      paymentPlanItems.find((item) => item.isCurrentFortnight) ?? null;
+    setPaymentPrefillAmount(
+      periodObligationPrefillAmount(
+        current?.periodObligation ?? statement?.period_obligation,
+      ),
+    );
     setPaymentDialogOpen(true);
-  }, []);
+  }, [paymentPlanItems, statement?.period_obligation]);
 
   const handleOpenImport = useCallback(() => {
     setMpImportDialogOpen(true);
@@ -500,8 +510,11 @@ export default function CreditCardDetailPage() {
   }, []);
 
   const handleOpenExternalPayment = useCallback(() => {
+    setPaymentPrefillAmount(
+      periodObligationPrefillAmount(statement?.period_obligation),
+    );
     setExternalPaymentDialogOpen(true);
-  }, []);
+  }, [statement?.period_obligation]);
 
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
@@ -547,16 +560,6 @@ export default function CreditCardDetailPage() {
       );
     }
   }, [statementDuePlan, creditCardId, context, loadData]);
-
-  const paymentDialogSuggestedAmount = useMemo(() => {
-    const currentPlan =
-      paymentPlanItems.find((item) => item.isCurrentFortnight) ??
-      paymentPlanItems[0];
-    if (!currentPlan) {
-      return statement?.next_due_payment ?? 0;
-    }
-    return currentPlan.effectiveAmount;
-  }, [paymentPlanItems, statement?.next_due_payment]);
 
   const reconciliation = useMemo(() => {
     if (!statement) return null;
@@ -821,14 +824,12 @@ export default function CreditCardDetailPage() {
           if (!open) {
             setPaymentError(null);
             setPaymentFortnightId(undefined);
-            setPaymentSuggestedOverride(undefined);
+            setPaymentPrefillAmount(null);
           }
         }}
         fundingWalletOptions={fundingWalletOptions}
         categoryOptions={categoryOptions}
-        nextDuePayment={
-          paymentSuggestedOverride ?? paymentDialogSuggestedAmount
-        }
+        prefillAmount={paymentPrefillAmount}
         submitting={paymentSubmitting}
         error={paymentError}
         fortnightId={paymentFortnightId}
@@ -841,9 +842,7 @@ export default function CreditCardDetailPage() {
           setExternalPaymentDialogOpen(open);
           if (!open) setPaymentError(null);
         }}
-        nextDuePayment={
-          paymentSuggestedOverride ?? paymentDialogSuggestedAmount
-        }
+        prefillAmount={paymentPrefillAmount}
         submitting={paymentSubmitting}
         error={paymentError}
         onConfirm={handleExternalPaymentSubmit}

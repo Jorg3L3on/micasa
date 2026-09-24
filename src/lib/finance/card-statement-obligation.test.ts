@@ -118,7 +118,6 @@ describe('buildCardStatementObligation', () => {
     expect(dto.outstandingBalance).toBe(900);
     expect(dto.remainingStatementDue).toBe(0);
     expect(dto.statementPayoff).toBeNull();
-    expect(dto.suggestedStatementAmount).toBe(0);
     expect(dto.obligationAmountSource).toBe('none');
     expect(dto.isEstimate).toBe(false);
   });

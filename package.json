@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "prisma generate",
+    "predev": "prisma generate",
     "dev": "next dev --webpack",
+    "predev:turbo": "prisma generate",
     "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",

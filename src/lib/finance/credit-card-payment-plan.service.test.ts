@@ -5,7 +5,7 @@ describe('getEffectiveCardPaymentAmount', () => {
   it('uses planned payment when set (legacy fallback)', () => {
     expect(
       getEffectiveCardPaymentAmount({
-        nextDuePayment: 4579.54,
+        nextDuePayment: 4500,
         plannedPayment: 500,
       }),
     ).toBe(500);
@@ -14,9 +14,9 @@ describe('getEffectiveCardPaymentAmount', () => {
   it('uses remainingPlannerAmount when provided', () => {
     expect(
       getEffectiveCardPaymentAmount({
-        nextDuePayment: 3884.78,
+        nextDuePayment: 3800,
         remainingPlannerAmount: 0,
-        plannedPayment: 694.76,
+        plannedPayment: 700,
         paymentsAppliedToStatement: 0,
       }),
     ).toBe(0);
@@ -25,23 +25,23 @@ describe('getEffectiveCardPaymentAmount', () => {
   it('subtracts fortnight payments from a planned payment (legacy fallback)', () => {
     expect(
       getEffectiveCardPaymentAmount({
-        nextDuePayment: 3884.78,
-        plannedPayment: 694.76,
-        paymentsAppliedToFortnight: 694.76,
+        nextDuePayment: 3800,
+        plannedPayment: 700,
+        paymentsAppliedToFortnight: 700,
       }),
     ).toBe(0);
   });
 
-  it('falls back to suggested when plan is null', () => {
+  it('falls back to the corte figure when no plan is set', () => {
     expect(
       getEffectiveCardPaymentAmount({
-        nextDuePayment: 4579.54,
+        nextDuePayment: 1500,
         plannedPayment: null,
       }),
-    ).toBe(4579.54);
+    ).toBe(1500);
   });
 
-  it('ignores non-positive plans and uses suggested due', () => {
+  it('ignores a non-positive plan and keeps the corte figure', () => {
     expect(
       getEffectiveCardPaymentAmount({
         nextDuePayment: 1000,

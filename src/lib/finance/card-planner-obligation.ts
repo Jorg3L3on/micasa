@@ -12,13 +12,12 @@ import type {
  */
 export type CardPlannerObligationDto = {
   fortnightId: number;
-  /** Planned gross or suggested statement due when no custom plan. */
+  /** Planned gross, or the statement payoff when there is no custom plan. */
   targetAmount: number;
   paymentsAppliedToFortnight: number;
   remainingPlannerAmount: number;
   plannerStatus: PlannerCardPaymentStatusUi;
   visibleDueDate: string;
-  suggestedStatementAmount: number;
   paymentsAppliedToStatement: number;
   remainingStatementDue: number;
   plannedPayment: number | null;
@@ -132,7 +131,6 @@ export const buildCardPlannerObligation = (input: {
     remainingPlannerAmount,
     plannerStatus,
     visibleDueDate,
-    suggestedStatementAmount: input.statement.suggestedStatementAmount,
     paymentsAppliedToStatement: input.statement.paymentsAppliedToStatement,
     remainingStatementDue: input.statement.remainingStatementDue,
     plannedPayment: plannedGross,

@@ -11,6 +11,7 @@ import {
   exposedMinimumDue,
   lastPlannedOverrideWrite,
   minimumPaymentForPeriod,
+  periodObligationPrefillAmount,
   resolveCardPeriodObligation,
 } from '@/lib/finance/card-period-obligation';
 
@@ -18,6 +19,34 @@ const debtWithDue = {
   outstandingBalance: 4_200,
   dueInPeriod: true,
 } as const;
+
+describe('periodObligationPrefillAmount', () => {
+  it('prefills a known obligation amount, including explicit zero', () => {
+    expect(
+      periodObligationPrefillAmount({
+        amount: 800,
+        confidence: 'exact',
+      }),
+    ).toBe(800);
+    expect(
+      periodObligationPrefillAmount({
+        amount: 0,
+        confidence: 'exact',
+      }),
+    ).toBe(0);
+  });
+
+  it('leaves the pay field empty when the corte is missing', () => {
+    expect(
+      periodObligationPrefillAmount({
+        amount: null,
+        confidence: 'missing',
+      }),
+    ).toBeNull();
+    expect(periodObligationPrefillAmount(null)).toBeNull();
+    expect(periodObligationPrefillAmount(undefined)).toBeNull();
+  });
+});
 
 describe('resolveCardPeriodObligation', () => {
   it('does not show $0 when debt is due and the statement payment is unknown', () => {
