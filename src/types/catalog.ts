@@ -624,6 +624,8 @@ export type CreditCardStatementResponse = {
   next_due_payment_source?: 'scheduled_calendar' | null;
   /** Single period obligation. `amount: null` is the corte gap, not $0. */
   period_obligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
+  /** User declared this statement cycle is $0. Distinct from a missing corte. */
+  declared_zero?: boolean;
   minimum_payment: number | null;
   current_cycle_purchases: number;
   current_cycle_payments: number;

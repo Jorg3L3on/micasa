@@ -71,6 +71,7 @@ import {
   rollbackCreditCardStatementImport,
   updateCreditCard,
 } from '@/lib/api/credit-cards';
+import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardExternalPaymentSubmitPayload } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
 import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
@@ -172,6 +173,9 @@ export default function CreditCardDetailPage() {
   const [paymentPlanItems, setPaymentPlanItems] = useState<
     CreditCardPaymentPlanView[]
   >([]);
+  const [captureFortnightId, setCaptureFortnightId] = useState<number | null>(
+    null,
+  );
   const [paymentFortnightId, setPaymentFortnightId] = useState<
     number | undefined
   >(undefined);
@@ -514,6 +518,36 @@ export default function CreditCardDetailPage() {
     );
   }, [statement]);
 
+  const statementDuePlan = useMemo(() => {
+    if (!statement) return null;
+    const due = statement.statement_due_date.slice(0, 10);
+    return (
+      paymentPlanItems.find((item) => item.statementDueDate.slice(0, 10) === due) ??
+      null
+    );
+  }, [paymentPlanItems, statement]);
+
+  const handleRequestedCaptureHandled = useCallback(() => {
+    setCaptureFortnightId(null);
+  }, []);
+
+  const handleClearCorteDeclaration = useCallback(async () => {
+    if (!statementDuePlan) return;
+    try {
+      await clearFortnightCardPaymentPlan(
+        statementDuePlan.fortnightId,
+        creditCardId,
+        context,
+      );
+      toast.success('Se quitó la declaración');
+      await loadData();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo quitar la declaración',
+      );
+    }
+  }, [statementDuePlan, creditCardId, context, loadData]);
+
   const paymentDialogSuggestedAmount = useMemo(() => {
     const currentPlan =
       paymentPlanItems.find((item) => item.isCurrentFortnight) ??
@@ -656,6 +690,19 @@ export default function CreditCardDetailPage() {
         <CreditCardDuePaymentStrip
           statement={statement}
           daysUntilDue={daysUntilDue}
+          onCapture={
+            statement.period_obligation?.confidence === 'missing' &&
+            statementDuePlan
+              ? () => setCaptureFortnightId(statementDuePlan.fortnightId)
+              : undefined
+          }
+          onClearDeclaration={
+            statement.declared_zero && statementDuePlan
+              ? () => {
+                  void handleClearCorteDeclaration();
+                }
+              : undefined
+          }
         />
 
         {isCurrentCycle ? (
@@ -734,6 +781,8 @@ export default function CreditCardDetailPage() {
                   items={paymentPlanItems}
                   onPlanUpdated={loadData}
                   onPayCard={handleOpenPlanPayment}
+                  requestedCaptureFortnightId={captureFortnightId}
+                  onRequestedCaptureHandled={handleRequestedCaptureHandled}
                 />
 
                 <CreditCardStatementSummaryCard

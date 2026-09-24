@@ -17,10 +17,9 @@ import {
   sumPaymentsAppliedToFortnightByWallet,
   toCreditCardPaymentPlanView,
 } from '@/lib/finance/card-planner-obligation.service';
+import { paymentPlanFortnightKeys } from '@/lib/finance/card-payment-plan-fortnights';
 import {
-  dueDayFallsInFortnight,
   getCurrentCalendarFortnightRef,
-  getNextCalendarFortnight,
   getCalendarFortnightRefForYmd,
 } from '@/lib/fortnight-calendar';
 
@@ -70,12 +69,13 @@ export async function getCreditCardPaymentPlanViews(
   const now = new Date();
   const dueDay = card.due_day;
   const current = getCurrentCalendarFortnightRef(now);
-  const next = getNextCalendarFortnight(now);
   const currentPeriod = current.period;
 
-  const keys: PlannerFortnightKey[] = [current, next].filter((key) =>
-    dueDayFallsInFortnight(dueDay, key.year, key.month, key.period),
-  );
+  const keys: PlannerFortnightKey[] = paymentPlanFortnightKeys({
+    now,
+    dueDay,
+    cutoffDay: card.cutoff_day,
+  });
 
   const uniqueKeys = Array.from(
     new Map(keys.map((key) => [fortnightKey(key), key])).values(),
