@@ -813,11 +813,20 @@ export function registerCreditCardTools(server: McpServer) {
             walletId: args.card_id,
             plannedAmount: args.planned_amount,
           });
+          // Schema allows a missing amount only when declareZero is set.
+          // This tool always sends a positive plan, so a missing amount stays
+          // an error instead of becoming a stored $0.
+          const plannedAmount = validated.plannedAmount;
+          if (plannedAmount == null) {
+            throw new Error(
+              'El monto planeado debe ser mayor a 0, o declara que este ciclo es $0.',
+            );
+          }
           const plan = await upsertCreditCardPaymentPlan(
             agent.ownerFilter,
             fortnightId,
             validated.walletId,
-            validated.plannedAmount,
+            plannedAmount,
           );
           return {
             card_id: plan.credit_card_wallet_id,

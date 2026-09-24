@@ -25,6 +25,7 @@ import {
 } from '@/lib/finance/planner-list-sort';
 import {
   clearFortnightCardPaymentPlan,
+  declareFortnightCardPeriodZero,
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
@@ -42,7 +43,11 @@ const getDaysLeft = (statementDueDateYmd: string, todayYmd: string): number => {
 };
 
 const daysLeftColor = (days: number, status: PlannerCardPaymentStatus) => {
-  if (status === 'pagado' || status === 'sin_cargo') return 'text-muted-foreground';
+  if (status === 'pagado' || status === 'sin_cargo' || status === 'falta_dato') {
+    return status === 'falta_dato'
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-muted-foreground';
+  }
   if (days < 0) return 'text-destructive';
   if (days <= 3) return 'text-destructive';
   if (days <= 7) return 'text-amber-600 dark:text-amber-400';
@@ -61,12 +66,13 @@ export const getPlannerCardPaymentStatus = (
   item: DuePaymentItem,
 ): PlannerCardPaymentStatus => item.plannerStatus ?? 'por_pagar';
 
-/** Pending badge / pay CTA: only actionable open obligations with amount. */
+/** Pending badge / pay CTA: open amounts, plus a missing statement gap. */
 export const isPendingPlannerCardPayment = (
   status: PlannerCardPaymentStatus,
   amount = 1,
 ): boolean =>
-  (status === 'por_pagar' || status === 'vencido') && amount > 0;
+  status === 'falta_dato' ||
+  ((status === 'por_pagar' || status === 'vencido') && amount > 0);
 
 const displayPaidAmount = (item: DuePaymentItem, fortnightPaid: number) => {
   if (fortnightPaid > 0) return fortnightPaid;
@@ -152,6 +158,25 @@ const FortnightCardPaymentsPanel = ({
     }
   };
 
+  const handleDeclareZero = async () => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await declareFortnightCardPeriodZero(
+        fortnightId,
+        editingItem.walletId,
+        context,
+      );
+      toast.success('Este ciclo quedó en $0');
+      await onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo declarar el ciclo';
+      setPlanError(message);
+      throw error;
+    }
+  };
+
   const handleClearPlan = async () => {
     if (!editingItem) return;
     setPlanError(null);
@@ -161,7 +186,7 @@ const FortnightCardPaymentsPanel = ({
         editingItem.walletId,
         context,
       );
-      toast.success('Se usará el monto sugerido');
+      toast.success('Se quitó el monto planeado');
       await onPlanUpdated?.();
     } catch (error) {
       const message =
@@ -205,8 +230,7 @@ const FortnightCardPaymentsPanel = ({
               item.effectiveAmount ?? getEffectiveCardPaymentAmount(item);
             const fortnightPaid = item.paymentsAppliedToFortnight ?? 0;
             const paidDisplayAmount = displayPaidAmount(item, fortnightPaid);
-            const hasCustomPlan =
-              item.plannedPayment != null && item.plannedPayment > 0;
+            const isMissingPayment = status === 'falta_dato';
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const displayDueDateStr =
@@ -219,7 +243,9 @@ const FortnightCardPaymentsPanel = ({
 
             const daysLabel = (() => {
               if (!showRelativeDueTiming) return null;
-              if (status === 'pagado' || status === 'sin_cargo') return null;
+              if (status === 'pagado' || status === 'sin_cargo' || status === 'falta_dato') {
+                return null;
+              }
               // Row accent already signals overdue — don't repeat "vencido" in the subtitle.
               if (status === 'vencido' || daysLeft < 0) return null;
               if (daysLeft === 0) return 'vence hoy';
@@ -248,6 +274,8 @@ const FortnightCardPaymentsPanel = ({
                     'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
                   status === 'sin_cargo' &&
                     'border-border/50 bg-muted/20 opacity-80',
+                  isMissingPayment &&
+                    'border-amber-500/30 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
                 )}
               >
                 <span
@@ -259,6 +287,8 @@ const FortnightCardPaymentsPanel = ({
                         ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
                         : status === 'sin_cargo'
                           ? 'bg-muted/40 ring-border/40'
+                          : isMissingPayment
+                            ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
                           : isDueSoon
                             ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
                             : 'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
@@ -273,7 +303,7 @@ const FortnightCardPaymentsPanel = ({
                           ? 'text-destructive'
                           : status === 'sin_cargo'
                             ? 'text-muted-foreground'
-                            : isDueSoon
+                            : isMissingPayment || isDueSoon
                               ? 'text-amber-600 dark:text-amber-300'
                               : 'text-blue-600 dark:text-blue-300',
                     )}
@@ -289,6 +319,8 @@ const FortnightCardPaymentsPanel = ({
                       isCompact ? 'text-xs' : 'text-sm',
                       status === 'pagado' || status === 'sin_cargo'
                         ? 'text-muted-foreground'
+                        : isMissingPayment
+                          ? 'text-foreground'
                         : 'text-foreground',
                     )}
                   >
@@ -321,19 +353,19 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
-                    {status === 'sin_cargo' && item.outstandingBalance > 0 ? (
+                    {isMissingPayment ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
-                        <span className="text-muted-foreground/70">
-                          Deuda total {formatCurrency(item.outstandingBalance)}
+                        <span className="font-medium text-amber-700 dark:text-amber-300">
+                          Falta el pago del corte
                         </span>
                       </>
                     ) : null}
-                    {hasCustomPlan && isPendingPlannerCardPayment(status, effectiveAmount) ? (
+                    {item.declaredZero ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>
-                        <span className="text-muted-foreground/60">
-                          Sugerido {formatCurrency(item.nextDuePayment)}
+                        <span className="font-medium text-foreground">
+                          Este ciclo es $0
                         </span>
                       </>
                     ) : null}
@@ -357,21 +389,27 @@ const FortnightCardPaymentsPanel = ({
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : status === 'sin_cargo'
                             ? 'text-muted-foreground'
-                            : 'text-foreground',
+                            : isMissingPayment
+                              ? 'text-amber-700 dark:text-amber-300'
+                              : 'text-foreground',
                       )}
                       aria-label={
                         status === 'pagado'
                           ? `${item.walletName}: pagado ${formatCurrency(paidDisplayAmount)}`
                           : status === 'sin_cargo'
                             ? `${item.walletName}: sin cargo`
-                            : `${item.walletName}: planeado ${formatCurrency(effectiveAmount)}`
+                            : isMissingPayment
+                              ? `${item.walletName}: falta el pago del corte`
+                              : `${item.walletName}: planeado ${formatCurrency(effectiveAmount)}`
                       }
                     >
                       {status === 'pagado'
                         ? formatCurrency(paidDisplayAmount)
                         : status === 'sin_cargo'
                           ? formatCurrency(0)
-                          : formatCurrency(effectiveAmount)}
+                          : isMissingPayment
+                            ? '—'
+                            : formatCurrency(effectiveAmount)}
                     </span>
                     {status === 'pagado' && fortnightPaid > 0 ? (
                       <span
@@ -393,7 +431,20 @@ const FortnightCardPaymentsPanel = ({
                     ) : null}
                   </div>
 
+                  {onPlanUpdated && isMissingPayment ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      onClick={() => handleOpenPlanDialog(item)}
+                      aria-label={`Capturar pago del corte: ${item.walletName}`}
+                    >
+                      Capturar
+                    </Button>
+                  ) : null}
+
                   {onPlanUpdated &&
+                  !isMissingPayment &&
                   (status !== 'sin_cargo' || item.outstandingBalance > 0) ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -483,22 +534,36 @@ const FortnightCardPaymentsPanel = ({
           }}
           onSave={handleSavePlan}
           onClearPlan={
-            editingItem.plannedPayment != null &&
-            editingItem.plannedPayment > 0
+            (editingItem.plannedPayment != null &&
+              editingItem.plannedPayment > 0) ||
+            editingItem.declaredZero
               ? handleClearPlan
+              : undefined
+          }
+          onDeclareZero={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? handleDeclareZero
               : undefined
           }
           walletName={editingItem.walletName}
           fortnightLabel={fortnightLabel}
-          suggestedAmount={editingItem.nextDuePayment}
+          knownPeriodAmount={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? null
+              : (editingItem.periodObligation?.amount ??
+                (editingItem.nextDuePayment > 0
+                  ? editingItem.nextDuePayment
+                  : null))
+          }
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0
               ? editingItem.plannedPayment
-              : editingEffective > 0
-                ? editingEffective
-                : editingItem.nextDuePayment
+              : editingItem.periodObligation?.confidence !== 'missing' &&
+                  (editingItem.periodObligation?.amount ?? editingEffective) > 0
+                ? (editingItem.periodObligation?.amount ?? editingEffective)
+                : 0
           }
           hasCustomPlan={
             editingItem.plannedPayment != null &&

@@ -780,7 +780,6 @@ export default function CreditCardDetailPage() {
         nextDuePayment={
           paymentSuggestedOverride ?? paymentDialogSuggestedAmount
         }
-        outstandingBalance={statement.outstanding_balance}
         submitting={paymentSubmitting}
         error={paymentError}
         fortnightId={paymentFortnightId}
@@ -796,7 +795,6 @@ export default function CreditCardDetailPage() {
         nextDuePayment={
           paymentSuggestedOverride ?? paymentDialogSuggestedAmount
         }
-        outstandingBalance={statement.outstanding_balance}
         submitting={paymentSubmitting}
         error={paymentError}
         onConfirm={handleExternalPaymentSubmit}

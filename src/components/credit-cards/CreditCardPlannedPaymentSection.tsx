@@ -12,6 +12,7 @@ import {
 import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
 import {
   clearFortnightCardPaymentPlan,
+  declareFortnightCardPeriodZero,
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
@@ -40,6 +41,9 @@ const statusAmountClass = (
   }
   if (status === 'sin_cargo') {
     return 'text-muted-foreground';
+  }
+  if (status === 'falta_dato') {
+    return 'text-amber-700 dark:text-amber-300';
   }
   return hasCustomPlan
     ? 'text-blue-600 dark:text-blue-400'
@@ -88,6 +92,25 @@ export const CreditCardPlannedPaymentSection = ({
     }
   };
 
+  const handleDeclareZero = async () => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await declareFortnightCardPeriodZero(
+        editingItem.fortnightId,
+        walletId,
+        context,
+      );
+      toast.success('Este ciclo quedó en $0');
+      await onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo declarar el ciclo';
+      setPlanError(message);
+      throw error;
+    }
+  };
+
   const handleClearPlan = async () => {
     if (!editingItem) return;
     setPlanError(null);
@@ -97,7 +120,7 @@ export const CreditCardPlannedPaymentSection = ({
         walletId,
         context,
       );
-      toast.success('Se usará el monto sugerido');
+      toast.success('Se quitó el monto planeado');
       await onPlanUpdated?.();
     } catch (error) {
       const message =
@@ -142,6 +165,7 @@ export const CreditCardPlannedPaymentSection = ({
               item.obligationAmountSource,
               item.isEstimate,
             );
+            const isMissingPayment = item.plannerStatus === 'falta_dato';
             const displayAmount =
               item.plannerStatus === 'pagado'
                 ? fortnightPaid > 0
@@ -149,7 +173,7 @@ export const CreditCardPlannedPaymentSection = ({
                   : item.paymentsAppliedToStatement > 0
                     ? item.paymentsAppliedToStatement
                     : item.targetAmount
-                : item.plannerStatus === 'sin_cargo'
+                : item.plannerStatus === 'sin_cargo' || isMissingPayment
                   ? 0
                   : item.effectiveAmount;
             const statementMismatch =
@@ -187,12 +211,20 @@ export const CreditCardPlannedPaymentSection = ({
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
                       <>Pagado esta quincena</>
+                    ) : isMissingPayment ? (
+                      <>Falta el pago del corte</>
+                    ) : item.declaredZero ? (
+                      <>Este ciclo es $0</>
                     ) : item.plannerStatus === 'sin_cargo' ? (
                       <>Sin cargo en esta quincena</>
                     ) : (
                       <>
-                        Sugerido al corte: {formatCurrency(item.suggestedAmount)}
-                        {hasCustomPlan ? ' · plan personalizado' : null}
+                        Toca pagar:{' '}
+                        {item.periodObligation?.confidence === 'missing' ||
+                        item.periodObligation?.amount == null
+                          ? '—'
+                          : formatCurrency(item.periodObligation.amount)}
+                        {hasCustomPlan ? ' · monto planeado' : null}
                       </>
                     )}
                     {isStalePlan ? (
@@ -236,12 +268,24 @@ export const CreditCardPlannedPaymentSection = ({
                         ? `Pagado esta quincena: ${formatCurrency(displayAmount)}`
                         : item.plannerStatus === 'sin_cargo'
                           ? 'Sin cargo'
-                          : `Planeado: ${formatCurrency(displayAmount)}`
+                          : isMissingPayment
+                            ? 'Falta el pago del corte'
+                            : `Planeado: ${formatCurrency(displayAmount)}`
                     }
                   >
-                    {formatCurrency(displayAmount)}
+                    {isMissingPayment ? '—' : formatCurrency(displayAmount)}
                   </span>
-                  {item.plannerStatus !== 'sin_cargo' ? (
+                  {isMissingPayment ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      onClick={() => handleOpenDialog(item)}
+                      aria-label={`Capturar pago del corte: ${item.fortnightLabel}`}
+                    >
+                      Capturar
+                    </Button>
+                  ) : item.plannerStatus !== 'sin_cargo' || item.declaredZero ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -315,22 +359,33 @@ export const CreditCardPlannedPaymentSection = ({
           }}
           onSave={handleSavePlan}
           onClearPlan={
-            editingItem.plannedPayment != null &&
-            editingItem.plannedPayment > 0
+            (editingItem.plannedPayment != null &&
+              editingItem.plannedPayment > 0) ||
+            editingItem.declaredZero
               ? handleClearPlan
+              : undefined
+          }
+          onDeclareZero={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? handleDeclareZero
               : undefined
           }
           walletName="esta tarjeta"
           fortnightLabel={editingItem.fortnightLabel}
-          suggestedAmount={editingItem.suggestedAmount}
+          knownPeriodAmount={
+            editingItem.periodObligation?.confidence === 'missing'
+              ? null
+              : (editingItem.periodObligation?.amount ?? null)
+          }
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0
               ? editingItem.plannedPayment
-              : editingItem.effectiveAmount > 0
+              : editingItem.periodObligation?.confidence !== 'missing' &&
+                  editingItem.effectiveAmount > 0
                 ? editingItem.effectiveAmount
-                : editingItem.suggestedAmount
+                : 0
           }
           hasCustomPlan={
             editingItem.plannedPayment != null &&

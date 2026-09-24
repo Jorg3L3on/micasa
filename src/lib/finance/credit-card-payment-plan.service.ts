@@ -118,6 +118,7 @@ export async function getCreditCardPaymentPlanViews(
       select: {
         fortnight_id: true,
         planned_amount: true,
+        declared_zero: true,
       },
     }),
     Promise.all(
@@ -139,6 +140,11 @@ export async function getCreditCardPaymentPlanViews(
     plans
       .map((plan) => [plan.fortnight_id, Number(plan.planned_amount)] as const)
       .filter(([, amount]) => amount > 0),
+  );
+  const declaredZeroFortnights = new Set(
+    plans
+      .filter((plan) => plan.declared_zero === true)
+      .map((plan) => plan.fortnight_id),
   );
   const paymentsByFortnight = new Map(
     fortnightPayments.map((row) => [row.fortnightId, row.total]),
@@ -164,6 +170,8 @@ export async function getCreditCardPaymentPlanViews(
         card.due_day!,
       );
       const plannedGross = planByFortnight.get(fortnight.id) ?? null;
+      const explicitZero =
+        declaredZeroFortnights.has(fortnight.id) && plannedGross == null;
       const paymentsAppliedToFortnight =
         paymentsByFortnight.get(fortnight.id) ?? 0;
 
@@ -187,6 +195,7 @@ export async function getCreditCardPaymentPlanViews(
         plannedGrossAmount: plannedGross,
         paymentsAppliedToFortnight,
         todayYmd,
+        explicitZero,
       });
 
       return toCreditCardPaymentPlanView({
@@ -243,6 +252,7 @@ export async function upsertCreditCardPaymentPlan(
   fortnightId: number,
   walletId: number,
   plannedAmount: number,
+  options?: { declareZero?: boolean },
 ) {
   const [fortnight, wallet] = await Promise.all([
     prisma.fortnight.findFirst({
@@ -267,15 +277,16 @@ export async function upsertCreditCardPaymentPlan(
     throw error;
   }
 
+  const declareZero = options?.declareZero === true;
   const outstandingBalance = Number(wallet.amount);
-  if (plannedAmount <= 0) {
+  if (!declareZero && plannedAmount <= 0) {
     const error = new Error(
-      'El monto planeado debe ser mayor a 0. Usa «Usar sugerido» para quitar el plan.',
+      'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.',
     );
     (error as { code?: string }).code = 'AMOUNT_INVALID';
     throw error;
   }
-  if (plannedAmount > outstandingBalance) {
+  if (!declareZero && plannedAmount > outstandingBalance) {
     const error = new Error(
       'El monto planeado no puede superar la deuda actual de la tarjeta',
     );
@@ -284,6 +295,7 @@ export async function upsertCreditCardPaymentPlan(
   }
 
   const isUserContext = ownerFilter.user_id !== null;
+  const storedAmount = declareZero ? 0 : plannedAmount;
 
   return prisma.creditCardPaymentPlan.upsert({
     where: {
@@ -295,17 +307,20 @@ export async function upsertCreditCardPaymentPlan(
     create: {
       credit_card_wallet_id: walletId,
       fortnight_id: fortnightId,
-      planned_amount: plannedAmount,
+      planned_amount: storedAmount,
+      declared_zero: declareZero,
       user_id: isUserContext ? ownerFilter.user_id : null,
       house_id: !isUserContext ? ownerFilter.house_id : null,
     },
     update: {
-      planned_amount: plannedAmount,
+      planned_amount: storedAmount,
+      declared_zero: declareZero,
     },
     select: {
       credit_card_wallet_id: true,
       fortnight_id: true,
       planned_amount: true,
+      declared_zero: true,
     },
   });
 }

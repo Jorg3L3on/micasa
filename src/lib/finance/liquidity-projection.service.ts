@@ -3,6 +3,8 @@ import {
   formatCalendarDate,
   parseCalendarDate,
 } from '@/lib/calendar-dates';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
+import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -96,6 +98,12 @@ export type LiquidityProjectionSummary = {
   net_liquidity_versus_obligations_including_income: number;
   shortfall_versus_funding_and_income: number;
   first_projected_shortfall_date: string | null;
+  unresolved_card_obligation_count?: number;
+  unresolved_card_obligations?: Array<{
+    wallet_id: number;
+    wallet_name: string;
+    statement_due_date: string;
+  }>;
 };
 
 export type LiquidityProjectionOptionsEcho = {
@@ -598,7 +606,7 @@ export const getLiquidityProjection = async (
   const includeUnpaid = input.includeUnpaidExpenses ?? true;
   const includeTemplates = input.includeExpenseTemplates ?? false;
 
-  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth] = await Promise.all([
+  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth, paymentPlans] = await Promise.all([
     prisma.wallet.findMany({
       where: {
         ...input.ownerFilter,
@@ -656,7 +664,30 @@ export const getLiquidityProjection = async (
       orderBy: { name: 'asc' },
     }),
     collectExpectedIncomeByMonth(input.ownerFilter, asOf, input.until),
+    prisma.creditCardPaymentPlan.findMany({
+      where: { ...input.ownerFilter },
+      select: {
+        credit_card_wallet_id: true,
+        planned_amount: true,
+        declared_zero: true,
+        fortnight: { select: { year: true, month: true, period: true } },
+      },
+    }),
   ]);
+
+  const plannedOverrideByFortnight = new Map<string, number>();
+  const declaredZeroByFortnight = new Set<string>();
+  for (const plan of paymentPlans) {
+    const amount = Number(plan.planned_amount);
+    const { year, month, period } = plan.fortnight;
+    const key = `${plan.credit_card_wallet_id}:${year}:${month}:${period}`;
+    if (plan.declared_zero === true && amount <= 0) {
+      declaredZeroByFortnight.add(key);
+      continue;
+    }
+    if (amount <= 0) continue;
+    plannedOverrideByFortnight.set(key, amount);
+  }
 
   const fundingTotal = fundingWallets.reduce(
     (sum, w) => sum + Number(w.amount),
@@ -728,6 +759,12 @@ export const getLiquidityProjection = async (
   );
 
   const byDueDate = new Map<string, LiquidityObligationItem[]>();
+  let unresolvedCardObligationCount = 0;
+  const unresolvedCardObligations: Array<{
+    wallet_id: number;
+    wallet_name: string;
+    statement_due_date: string;
+  }> = [];
 
   for (const [, cardIds] of groups) {
     const head = cardMeta.get(cardIds[0]);
@@ -787,7 +824,51 @@ export const getLiquidityProjection = async (
         const row = breakdowns.get(id);
         if (!meta || !row) continue;
 
-        let nextDue = row.next_due_payment;
+        const minimumPayment = resolveImportedMinimumPaymentForStatementWindow(
+          statementImports,
+          id,
+          window,
+        );
+        const dueFortnight = getCalendarFortnightRefForYmd(dueStr);
+        const plannedOverride =
+          plannedOverrideByFortnight.get(
+            `${id}:${dueFortnight.year}:${dueFortnight.month}:${dueFortnight.period}`,
+          ) ?? null;
+        const source = row.obligation_amount_source;
+        const periodObligation = resolveCardPeriodObligation({
+          outstandingBalance: cardOutstandingById.get(id) ?? 0,
+          dueInPeriod: true,
+          statementPayoff:
+            row.statement_payoff !== undefined
+              ? row.statement_payoff
+              : source === 'import' ||
+                  source === 'ledger' ||
+                  source === 'projection'
+                ? row.next_due_payment
+                : null,
+          statementIsEstimate:
+            source === 'ledger' ||
+            source === 'projection' ||
+            row.is_estimate === true,
+          minimumPayment,
+          plannedOverride,
+          explicitZero: declaredZeroByFortnight.has(
+            `${id}:${dueFortnight.year}:${dueFortnight.month}:${dueFortnight.period}`,
+          ),
+          paymentsApplied: row.payments_applied_to_statement,
+        });
+
+        if (periodObligation.confidence === 'missing') {
+          unresolvedCardObligationCount += 1;
+          unresolvedCardObligations.push({
+            wallet_id: id,
+            wallet_name: meta.name,
+            statement_due_date: dueStr,
+          });
+          continue;
+        }
+
+        let nextDue = periodObligation.amount ?? row.next_due_payment;
         let stressAdj = 0;
         if (
           stressPct > 0 &&
@@ -799,12 +880,6 @@ export const getLiquidityProjection = async (
         }
 
         if (omitZero && nextDue === 0) continue;
-
-        const minimumPayment = resolveImportedMinimumPaymentForStatementWindow(
-          statementImports,
-          id,
-          window,
-        );
 
         chunk.push({
           source: 'credit_card_statement',
@@ -934,6 +1009,8 @@ export const getLiquidityProjection = async (
       cumulative - (fundingTotal + expectedIncomeTotal),
     ),
     first_projected_shortfall_date: firstProjectedShortfall,
+    unresolved_card_obligation_count: unresolvedCardObligationCount,
+    unresolved_card_obligations: unresolvedCardObligations,
   };
 
   const debtByMonth = new Map<

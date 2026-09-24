@@ -44,7 +44,6 @@ export type CreditCardPaymentDialogProps = {
   fundingWalletOptions: PaymentMethodOption[];
   categoryOptions: CategoryOption[];
   nextDuePayment: number;
-  outstandingBalance: number;
   submitting: boolean;
   error: string | null;
   /** When paying from planner / Compromisos, pin expense to this fortnight. */
@@ -58,7 +57,6 @@ const CreditCardPaymentDialog = ({
   fundingWalletOptions,
   categoryOptions,
   nextDuePayment,
-  outstandingBalance,
   submitting,
   error,
   fortnightId,
@@ -75,13 +73,7 @@ const CreditCardPaymentDialog = ({
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the payment dialog opens.
     setSourceWalletId('');
-    const suggested =
-      nextDuePayment > 0
-        ? nextDuePayment
-        : outstandingBalance > 0
-          ? outstandingBalance
-          : 0;
-    setAmount(suggested);
+    setAmount(nextDuePayment > 0 ? nextDuePayment : 0);
     setPaidAt(todayCalendarDate());
     setCreateFortnightExpense(true);
     setLocalError(null);
@@ -96,7 +88,7 @@ const CreditCardPaymentDialog = ({
       /* ignore */
     }
     setCategoryId(initialCategory);
-  }, [open, categoryOptions, nextDuePayment, outstandingBalance]);
+  }, [open, categoryOptions, nextDuePayment]);
 
   const selectedSource = fundingWalletOptions.find(
     (w) => String(w.id) === sourceWalletId,

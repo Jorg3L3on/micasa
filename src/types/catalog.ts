@@ -89,6 +89,8 @@ export type PlannerOrphanCardPaymentsSummary = {
 export type PlannerCardStatementDueSummary = {
   total: number;
   cardCount: number;
+  /** Tarjetas con deuda y vencimiento sin pago del corte. No cuentan como $0. */
+  obligationGapCount?: number;
 };
 
 /** Cuotas de préstamo pendientes pagadas desde billetera. */
@@ -323,7 +325,7 @@ export type DuePaymentItem = {
   targetAmount?: number;
   /** Deuda total de la tarjeta (utilización). No es el pago del corte. */
   outstandingBalance: number;
-  /** Monto que el usuario planea pagar en esta quincena; null = usar sugerido (`nextDuePayment`). */
+  /** Monto que el usuario planea pagar en esta quincena. Null = sin override. */
   plannedPayment?: number | null;
   /** Neto pendiente en la quincena (remainingPlannerAmount). */
   effectiveAmount?: number;
@@ -335,6 +337,14 @@ export type DuePaymentItem = {
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
   isEstimate?: boolean;
+  /** Null = corte desconocido. 0 = el corte dice que no queda nada. */
+  statementPayoff?: number | null;
+  /** Mínimo capturado del emisor. No sustituye un corte conocido. */
+  minimumPayment?: number | null;
+  /** El usuario declaró que este ciclo es $0. No es un plan de $0 legado. */
+  declaredZero?: boolean;
+  /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
+  periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
   remainingPlannedAmount?: number | null;
 };
@@ -346,8 +356,6 @@ export type CreditCardPaymentPlanView = {
   month: number;
   period: 'FIRST' | 'SECOND';
   isCurrentFortnight: boolean;
-  /** Monto sugerido al corte (`nextDuePayment` en el modelo canónico). */
-  suggestedAmount: number;
   plannedPayment: number | null;
   effectiveAmount: number;
   outstandingBalance: number;
@@ -362,6 +370,8 @@ export type CreditCardPaymentPlanView = {
   targetAmount: number;
   /** Plan guardado ya cubierto por pagos en la quincena. */
   isStaleFullyCoveredPlan: boolean;
+  periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
+  declaredZero?: boolean;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */
@@ -431,6 +441,14 @@ export type LiquidityProjectionSummary = {
   net_liquidity_versus_obligations_including_income: number;
   shortfall_versus_funding_and_income: number;
   first_projected_shortfall_date: string | null;
+  /** Cards with debt and a due date but no period payment figure. */
+  unresolved_card_obligation_count?: number;
+  /** Those cards, so Liquidez can name the gap instead of hiding it inside $0. */
+  unresolved_card_obligations?: Array<{
+    wallet_id: number;
+    wallet_name: string;
+    statement_due_date: string;
+  }>;
 };
 
 export type LiquidityProjectionOptionsEcho = {
@@ -604,6 +622,8 @@ export type CreditCardStatementResponse = {
   payments_applied_to_statement: number;
   next_due_payment: number;
   next_due_payment_source?: 'scheduled_calendar' | null;
+  /** Single period obligation. `amount: null` is the corte gap, not $0. */
+  period_obligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   minimum_payment: number | null;
   current_cycle_purchases: number;
   current_cycle_payments: number;

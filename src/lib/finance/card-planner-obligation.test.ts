@@ -214,7 +214,7 @@ describe('Planner versus statement separation', () => {
     // $0 plan is ignored. Deuda total is not the pago del corte.
     expect(planner.plannedPayment).toBeNull();
     expect(planner.targetAmount).toBe(0);
-    expect(planner.plannerStatus).toBe('sin_cargo');
+    expect(planner.plannerStatus).toBe('falta_dato');
     expect(planner.plannerStatus).not.toBe('pagado');
     expect(planner.outstandingBalance).toBe(700);
   });

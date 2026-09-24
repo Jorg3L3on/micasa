@@ -1274,11 +1274,12 @@ export default function FortnightColumn({
         fundingWalletOptions={plannerFundingWalletOptions}
         categoryOptions={plannerPaymentCategories}
         nextDuePayment={
-          plannerPaymentCard != null
+          plannerPaymentCard != null &&
+          plannerPaymentCard.plannerStatus !== 'falta_dato' &&
+          plannerPaymentCard.periodObligation?.confidence !== 'missing'
             ? getEffectiveCardPaymentAmount(plannerPaymentCard)
             : 0
         }
-        outstandingBalance={plannerPaymentCard?.outstandingBalance ?? 0}
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}

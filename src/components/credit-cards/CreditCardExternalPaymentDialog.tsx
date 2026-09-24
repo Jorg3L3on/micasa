@@ -29,7 +29,6 @@ export type CreditCardExternalPaymentDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   nextDuePayment: number;
-  outstandingBalance: number;
   submitting: boolean;
   error: string | null;
   onConfirm: (data: CreditCardExternalPaymentSubmitPayload) => Promise<void>;
@@ -39,7 +38,6 @@ export const CreditCardExternalPaymentDialog = ({
   open,
   onOpenChange,
   nextDuePayment,
-  outstandingBalance,
   submitting,
   error,
   onConfirm,
@@ -52,18 +50,13 @@ export const CreditCardExternalPaymentDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    const suggested =
-      nextDuePayment > 0
-        ? nextDuePayment
-        : outstandingBalance > 0
-          ? outstandingBalance
-          : 0;
-    setAmount(suggested);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the dialog opens.
+    setAmount(nextDuePayment > 0 ? nextDuePayment : 0);
     setPaidAt(todayCalendarDate());
     setNote('');
     setAdjustsDebt(true);
     setLocalError(null);
-  }, [open, nextDuePayment, outstandingBalance]);
+  }, [open, nextDuePayment]);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -110,17 +103,18 @@ export const CreditCardExternalPaymentDialog = ({
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => nextDuePayment > 0 && setAmount(nextDuePayment)}
-              disabled={nextDuePayment <= 0}
-            >
-              Toca pagar este corte ({formatCurrency(nextDuePayment)})
-            </Button>
-          </div>
+          {nextDuePayment > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAmount(nextDuePayment)}
+              >
+                Toca pagar este corte ({formatCurrency(nextDuePayment)})
+              </Button>
+            </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

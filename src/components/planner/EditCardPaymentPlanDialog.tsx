@@ -22,9 +22,11 @@ type EditCardPaymentPlanDialogProps = {
   onOpenChange: (open: boolean) => void;
   onSave: (data: CardPaymentPlanFormValues) => Promise<void>;
   onClearPlan?: () => Promise<void>;
+  onDeclareZero?: () => Promise<void>;
   walletName: string;
   fortnightLabel: string;
-  suggestedAmount: number;
+  /** Known period amount. Null when the statement payment is missing. */
+  knownPeriodAmount: number | null;
   outstandingBalance: number;
   initialPlannedAmount: number;
   hasCustomPlan: boolean;
@@ -36,9 +38,10 @@ export const EditCardPaymentPlanDialog = ({
   onOpenChange,
   onSave,
   onClearPlan,
+  onDeclareZero,
   walletName,
   fortnightLabel,
-  suggestedAmount,
+  knownPeriodAmount,
   outstandingBalance,
   initialPlannedAmount,
   hasCustomPlan,
@@ -66,6 +69,16 @@ export const EditCardPaymentPlanDialog = ({
     }
   };
 
+  const handleDeclareZero = async () => {
+    if (!onDeclareZero) return;
+    try {
+      await onDeclareZero();
+      onOpenChange(false);
+    } catch {
+      // Parent sets error; keep dialog open so the user can retry.
+    }
+  };
+
   const handleClear = async () => {
     if (!onClearPlan) return;
     try {
@@ -86,7 +99,7 @@ export const EditCardPaymentPlanDialog = ({
       open={open}
       onOpenChange={handleOpenChange}
       title="Pago planeado"
-      description={`Cuánto planeas pagar en ${fortnightLabel} para ${walletName}. No cambia la deuda total de la tarjeta. Para volver al sugerido usa «Usar sugerido» (no guardes $0).`}
+      description={`Cuánto planeas pagar en ${fortnightLabel} para ${walletName}. No cambia la deuda total. Si quitas el monto, vuelve el pago del corte o el aviso de que falta el dato.`}
       busy={form.formState.isSubmitting}
     >
       <Form {...form}>
@@ -100,10 +113,18 @@ export const EditCardPaymentPlanDialog = ({
             </div>
           ) : null}
           <p className="px-1 text-xs text-muted-foreground">
-            Sugerido al corte:{' '}
-            <span className="font-mono font-semibold tabular-nums text-foreground">
-              {formatCurrency(suggestedAmount)}
-            </span>
+            {knownPeriodAmount != null ? (
+              <>
+                Toca pagar:{' '}
+                <span className="font-mono font-semibold tabular-nums text-foreground">
+                  {formatCurrency(knownPeriodAmount)}
+                </span>
+              </>
+            ) : (
+              <span className="font-medium text-amber-700 dark:text-amber-300">
+                Falta el pago del corte
+              </span>
+            )}
           </p>
           <p className="px-1 text-xs text-muted-foreground">
             Deuda total:{' '}
@@ -124,7 +145,18 @@ export const EditCardPaymentPlanDialog = ({
               )}
             />
           </div>
-          {hasCustomPlan && onClearPlan ? (
+          {knownPeriodAmount == null && onDeclareZero ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-9 px-2 text-amber-700 dark:text-amber-300"
+              disabled={form.formState.isSubmitting}
+              onClick={() => void handleDeclareZero()}
+            >
+              Este ciclo es $0
+            </Button>
+          ) : null}
+          {onClearPlan ? (
             <Button
               type="button"
               variant="ghost"
@@ -132,7 +164,7 @@ export const EditCardPaymentPlanDialog = ({
               disabled={form.formState.isSubmitting}
               onClick={() => void handleClear()}
             >
-              Usar sugerido
+              {hasCustomPlan ? 'Quitar monto planeado' : 'Quitar la declaración de $0'}
             </Button>
           ) : null}
           <Button
