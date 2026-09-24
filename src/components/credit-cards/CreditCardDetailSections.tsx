@@ -295,18 +295,25 @@ export const CreditCardVisualHero = ({
 type DuePaymentStripProps = {
   statement: CreditCardStatementResponse;
   daysUntilDue: number;
+  onCapture?: () => void;
+  onClearDeclaration?: () => void;
 };
 
 export const CreditCardDuePaymentStrip = ({
   statement,
   daysUntilDue,
+  onCapture,
+  onClearDeclaration,
 }: DuePaymentStripProps) => {
   const isMissingCorte = statement.period_obligation?.confidence === 'missing';
-  const hasPendingDue = !isMissingCorte && statement.next_due_payment > 0;
+  const isDeclaredZero = statement.declared_zero === true && !isMissingCorte;
+  const hasPendingDue = !isMissingCorte && !isDeclaredZero && statement.next_due_payment > 0;
 
   const dueLabel = isMissingCorte
     ? 'Falta el pago del corte'
-    : !hasPendingDue
+    : isDeclaredZero
+      ? 'Este ciclo es $0'
+      : !hasPendingDue
     ? 'Sin pago pendiente'
     : daysUntilDue < 0
       ? `Vencido hace ${Math.abs(daysUntilDue)} d`
@@ -343,6 +350,28 @@ export const CreditCardDuePaymentStrip = ({
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {isMissingCorte && onCapture ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+            onClick={onCapture}
+            aria-label="Capturar pago del corte"
+          >
+            Capturar
+          </Button>
+        ) : null}
+        {isDeclaredZero && onClearDeclaration ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 px-2 text-xs font-medium text-primary-text"
+            onClick={onClearDeclaration}
+            aria-label="Quitar la declaración de $0"
+          >
+            Quitar declaración
+          </Button>
+        ) : null}
         <Badge
           variant="outline"
           className={cn(

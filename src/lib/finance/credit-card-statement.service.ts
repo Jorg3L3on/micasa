@@ -38,6 +38,7 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import {
   dueDayFallsInFortnight,
+  getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
   getDaysInCalendarMonth,
   isCalendarFortnightCurrent,
@@ -136,13 +137,17 @@ export async function getCreditCardStatementByOwner(
     card.cutoff_day,
     card.due_day,
   );
+  const statementDueFortnight = getCalendarFortnightRefForYmd(
+    toDateOnlyString(window.statementDueDate),
+  );
 
   const paymentWhereBase = {
     ...ownerFilter,
     credit_card_wallet_id: creditCardId,
   };
 
-  const [purchases, payments, paymentTotals, statementImports] = await Promise.all([
+  const [purchases, payments, paymentTotals, statementImports, dueFortnightPlan] =
+    await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -209,7 +214,25 @@ export async function getCreditCardStatementByOwner(
         created_at: true,
       },
     }),
+    prisma.fortnight.findFirst({
+      where: {
+        ...ownerFilter,
+        year: statementDueFortnight.year,
+        month: statementDueFortnight.month,
+        period: statementDueFortnight.period,
+      },
+      select: {
+        credit_card_payment_plans: {
+          where: { credit_card_wallet_id: creditCardId },
+          select: { declared_zero: true },
+          take: 1,
+        },
+      },
+    }),
   ]);
+
+  const declaredZero =
+    dueFortnightPlan?.credit_card_payment_plans[0]?.declared_zero === true;
 
   const recentImport = resolveStatementImportForStatementWindow(
     statementImports,
@@ -334,6 +357,8 @@ export async function getCreditCardStatementByOwner(
     minimumPayment: importedMinimumPayment,
     scheduledAmount: mergedDue.usedScheduledCalendar ? mergedDue.amount : null,
     paymentsApplied: paymentsAppliedToStatementTotal,
+    // A planner amount is not the corte. Only an explicit $0 declaration closes the gap.
+    explicitZero: !mergedDue.usedScheduledCalendar && declaredZero,
   });
   const nextDuePayment =
     periodObligation.confidence === 'missing'
@@ -370,6 +395,7 @@ export async function getCreditCardStatementByOwner(
     imported_statement_total: importedTotalDue,
     next_due_payment: nextDuePayment,
     period_obligation: periodObligation,
+    declared_zero: !mergedDue.usedScheduledCalendar && declaredZero,
     minimum_payment: importedMinimumPayment,
     current_cycle_purchases: currentCyclePurchasesTotal,
     current_cycle_payments: currentCyclePaymentsTotal,
