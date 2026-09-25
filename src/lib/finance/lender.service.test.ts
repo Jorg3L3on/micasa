@@ -162,6 +162,7 @@ const tx = {
   },
   category: {
     findFirst: txCategoryFindFirst,
+    findMany: vi.fn().mockResolvedValue([{ id: 9, name: 'Préstamos' }]),
     create: vi.fn(),
   },
 };

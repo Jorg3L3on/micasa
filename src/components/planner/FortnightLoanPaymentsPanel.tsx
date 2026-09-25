@@ -9,7 +9,6 @@ import type { LenderListItem } from '@/types/lenders';
 import type { PaymentMethodOption } from '@/types/catalog';
 import type { PayLenderInput } from '@/schemas/lender.schema';
 import { groupDuePaymentsByLender } from '@/lib/finance/lender-payment-window';
-import { PAYROLL_DEDUCTION_COPY } from '@/lib/finance/lender-payroll';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import {
@@ -217,12 +216,10 @@ export default function FortnightLoanPaymentsPanel({
           const Icon = isPayroll ? Landmark : HandCoins;
           const isDueSoon = visual === 'pending' && daysLeft <= 7;
           const isDueLater = visual === 'pending' && daysLeft > 7;
-          const canPay =
-            !isPayroll &&
-            group.items.some((item) => item.status === 'SCHEDULED');
           const scheduledItems = group.items.filter(
             (item) => item.status === 'SCHEDULED',
           );
+          const canPay = scheduledItems.length > 0;
           const firstScheduled = scheduledItems[0] ?? group.items[0]!;
           const isPayLoading =
             group.lenderId != null && payLoadingLenderId === group.lenderId;
@@ -311,19 +308,23 @@ export default function FortnightLoanPaymentsPanel({
                   <span className="font-mono text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
-                  {isPayroll ? (
-                    <span className="max-w-[8.5rem] text-right text-[10px] leading-tight text-muted-foreground">
-                      {PAYROLL_DEDUCTION_COPY}
-                    </span>
-                  ) : canPay ? (
+                  {canPay ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       className="h-7 gap-1 px-2 text-[10px]"
-                      onClick={() => handleOpenPay(group)}
+                      onClick={() =>
+                        isPayroll
+                          ? handleOpenManageGroup(group.items)
+                          : handleOpenPay(group)
+                      }
                       disabled={isPayLoading || paySubmitting}
-                      aria-label={`Pagar a ${group.lenderName}`}
+                      aria-label={
+                        isPayroll
+                          ? `Pagar nómina de ${group.lenderName}`
+                          : `Pagar a ${group.lenderName}`
+                      }
                     >
                       {isPayLoading ? (
                         <Loader2

@@ -215,9 +215,6 @@ export default function FortnightColumn({
   const [plannerPaymentFunding, setPlannerPaymentFunding] = useState<
     PaymentMethodOption[]
   >([]);
-  const [plannerPaymentCategories, setPlannerPaymentCategories] = useState<
-    CategoryOption[]
-  >([]);
   const [plannerPayCardLoadingId, setPlannerPayCardLoadingId] = useState<
     number | null
   >(null);
@@ -242,16 +239,8 @@ export default function FortnightColumn({
       setPlannerPayCardLoadingId(item.walletId);
       setPlannerPaymentError(null);
       try {
-        const [methods, categoriesData] = await Promise.all([
-          getPaymentMethodOptions(context),
-          clientFetchFromApi<CategoryOption[]>(
-            '/api/categories',
-            undefined,
-            context,
-          ),
-        ]);
+        const methods = await getPaymentMethodOptions(context);
         setPlannerPaymentFunding(methods);
-        setPlannerPaymentCategories(categoriesData);
         setPlannerPaymentCard(item);
         setPlannerPaymentDialogOpen(true);
       } catch (err) {
@@ -1271,7 +1260,6 @@ export default function FortnightColumn({
           }
         }}
         fundingWalletOptions={plannerFundingWalletOptions}
-        categoryOptions={plannerPaymentCategories}
         prefillAmount={periodObligationPrefillAmount(
           plannerPaymentCard?.periodObligation,
         )}

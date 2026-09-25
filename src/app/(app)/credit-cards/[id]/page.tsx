@@ -828,7 +828,6 @@ export default function CreditCardDetailPage() {
           }
         }}
         fundingWalletOptions={fundingWalletOptions}
-        categoryOptions={categoryOptions}
         prefillAmount={paymentPrefillAmount}
         submitting={paymentSubmitting}
         error={paymentError}

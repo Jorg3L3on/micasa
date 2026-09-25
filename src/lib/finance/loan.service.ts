@@ -26,6 +26,7 @@ import {
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
 import { createExpenseInTransaction } from '@/lib/finance/expense.service';
+import { resolvePaymentCategoryId } from '@/lib/finance/payment-category';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import {
   getCalendarFortnightRefForYmd,
@@ -222,27 +223,10 @@ const loanInclude = {
   },
 };
 
-async function ensureLoanPaymentCategory(
+const ensureLoanPaymentCategory = (
   tx: Prisma.TransactionClient,
   ownerFilter: OwnerFilter,
-) {
-  const existing = await tx.category.findFirst({
-    where: { ...ownerFilter, name: 'Pago de préstamos' },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-
-  const created = await tx.category.create({
-    data: {
-      ...ownerFilter,
-      name: 'Pago de préstamos',
-      description: 'Pagos generados desde préstamos',
-      icon: '🏦',
-    },
-    select: { id: true },
-  });
-  return created.id;
-}
+) => resolvePaymentCategoryId(tx, ownerFilter, 'LOAN');
 
 async function reverseAndDeleteLoanPaymentExpense(
   tx: Prisma.TransactionClient,
@@ -661,11 +645,7 @@ async function applyLoanPaymentUpdateInTransaction(
     });
   }
 
-  if (
-    willDebitWallet &&
-    existing.loan.payment_source === 'WALLET' &&
-    !nextSourceWalletId
-  ) {
+  if (willDebitWallet && !nextSourceWalletId) {
     throw new Error('Selecciona la billetera que paga el préstamo');
   }
 

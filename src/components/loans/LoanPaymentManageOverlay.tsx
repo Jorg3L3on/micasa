@@ -168,14 +168,9 @@ const paymentActionDescription = (
 ) => {
   const plural = count > 1;
   if (action === 'MARK_PAID') {
-    if (paymentSource === 'PAYROLL_DEDUCTION') {
-      return plural
-        ? 'Se marcarán como pagados. Si eliges billetera, se generará un gasto vinculado contra esa billetera por cada contrato.'
-        : 'Se marcará como pagado. Si eliges billetera, se generará un gasto vinculado contra esa billetera.';
-    }
     return plural
-      ? 'Se marcarán como pagados y se generará el gasto vinculado contra la billetera seleccionada por cada contrato.'
-      : 'Se marcará como pagado y se generará el gasto vinculado contra la billetera seleccionada.';
+      ? 'Cada contrato se descuenta de su billetera.'
+      : 'Se descuenta de la billetera seleccionada.';
   }
   if (action === 'MARK_PAID_EXTERNAL') {
     return plural
@@ -244,19 +239,20 @@ export const LoanPaymentManageOverlay = ({
   const allScheduled = items.every((item) => item.status === 'SCHEDULED');
   const allPaid = items.every((item) => item.status === 'PAID');
   const showWalletControls =
-    !isPayrollDeduction &&
-    isGroup &&
-    allScheduled &&
-    (action == null || action === 'MARK_PAID');
+    isGroup && allScheduled && (action == null || action === 'MARK_PAID');
 
   useEffect(() => {
     if (!open || items.length === 0) return;
 
+    const walletsByItem = defaultItemWalletIds(items);
+    const selected = Object.values(walletsByItem).filter(Boolean);
+    const sharesWallet =
+      selected.length === items.length && new Set(selected).size === 1;
     setAction(null);
     setPaidAt(items[0].paidAt ?? items[0].dueDate);
-    setSourceWalletId(defaultSourceWalletId(items[0]));
-    setItemWalletIds(defaultItemWalletIds(items));
-    setUseSameWallet(true);
+    setSourceWalletId(sharesWallet ? selected[0]! : defaultSourceWalletId(items[0]));
+    setItemWalletIds(walletsByItem);
+    setUseSameWallet(sharesWallet);
     setErrors({});
   }, [open, itemKey]);
 
@@ -304,14 +300,11 @@ export const LoanPaymentManageOverlay = ({
       }
       if (action === 'MARK_PAID') {
         if (isGroup && !useSameWallet) {
-          if (
-            !isPayrollDeduction &&
-            items.some((item) => !itemWalletIds[item.id])
-          ) {
+          if (items.some((item) => !itemWalletIds[item.id])) {
             nextErrors.sourceWalletId =
               'Selecciona una billetera para cada contrato.';
           }
-        } else if (!isPayrollDeduction && !sourceWalletId) {
+        } else if (!sourceWalletId) {
           nextErrors.sourceWalletId = isGroup
             ? 'Selecciona la billetera que pagará estos préstamos.'
             : 'Selecciona la billetera que pagará este préstamo.';
@@ -467,7 +460,7 @@ export const LoanPaymentManageOverlay = ({
                             value={sourceWalletId}
                             onValueChange={setSourceWalletId}
                             fundingWallets={fundingWallets}
-                            allowNone={isPayrollDeduction}
+                            allowNone={false}
                             invalid={Boolean(errors.sourceWalletId)}
                             ariaLabel="Billetera que pagará estos préstamos"
                             onOpenChange={handleSelectOpenChange}
@@ -519,10 +512,9 @@ export const LoanPaymentManageOverlay = ({
                                 }))
                               }
                               fundingWallets={fundingWallets}
-                              allowNone={isPayrollDeduction}
+                              allowNone={false}
                               invalid={
                                 Boolean(errors.sourceWalletId) &&
-                                !isPayrollDeduction &&
                                 !itemWalletIds[item.id]
                               }
                               ariaLabel={`Billetera de ${item.loanName}`}
@@ -547,20 +539,14 @@ export const LoanPaymentManageOverlay = ({
             ) : action == null ? (
               allScheduled ? (
                 <div className="flex flex-col gap-2">
-                  {isPayrollDeduction ? (
-                    <p className="text-xs text-muted-foreground">
-                      Se descuenta del ingreso.
-                    </p>
-                  ) : (
-                    <Button
-                      type="button"
-                      className={OVERLAY_PRIMARY_BUTTON_CLASS}
-                      onClick={() => handleSelectAction('MARK_PAID')}
-                    >
-                      <CheckCircle2 className="h-4 w-4" aria-hidden />
-                      Pagar
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    className={OVERLAY_PRIMARY_BUTTON_CLASS}
+                    onClick={() => handleSelectAction('MARK_PAID')}
+                  >
+                    <CheckCircle2 className="h-4 w-4" aria-hidden />
+                    Pagar
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -637,7 +623,7 @@ export const LoanPaymentManageOverlay = ({
                           value={sourceWalletId}
                           onValueChange={setSourceWalletId}
                           fundingWallets={fundingWallets}
-                          allowNone={isPayrollDeduction}
+                          allowNone={false}
                           invalid={Boolean(errors.sourceWalletId)}
                           ariaLabel="Billetera que pagará el préstamo"
                           onOpenChange={handleSelectOpenChange}

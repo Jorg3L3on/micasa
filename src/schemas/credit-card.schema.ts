@@ -57,17 +57,7 @@ export const createCreditCardPaymentSchema = z
         paid_at: dateStringSchema,
         note: z.string().trim().max(200).optional().nullable(),
       })
-      .merge(walletPaymentFields)
-      .superRefine((data, ctx) => {
-        if (data.create_fortnight_expense === true && data.category_id == null) {
-          ctx.addIssue({
-            code: 'custom',
-            message:
-              'Selecciona una categoría para registrar el gasto en la quincena',
-            path: ['category_id'],
-          });
-        }
-      }),
+      .merge(walletPaymentFields),
     z.object({
       mode: z.literal('external'),
       amount: paymentAmountSchema,
@@ -88,16 +78,6 @@ export const createCreditCardPaymentSchema = z
         fortnight_id: positiveIntSchema.optional(),
         category_id: positiveIntSchema.optional(),
         expense_description: z.string().trim().max(200).optional().nullable(),
-      })
-      .superRefine((data, ctx) => {
-        if (data.create_fortnight_expense === true && data.category_id == null) {
-          ctx.addIssue({
-            code: 'custom',
-            message:
-              'Selecciona una categoría para registrar el gasto en la quincena',
-            path: ['category_id'],
-          });
-        }
       }),
   );
 

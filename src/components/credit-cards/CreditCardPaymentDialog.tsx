@@ -12,9 +12,8 @@ import {
 import { ToggleField } from '@/components/ui/toggle';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
-import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import type { PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   AmountRow,
@@ -25,16 +24,12 @@ import {
   OVERLAY_ROW_TRIGGER_CLASS,
 } from '@/components/overlay/overlay-form';
 
-/** Persist last category used for “registrar en quincena” (see ui-consistency / micasa.* keys). */
-const LAST_CATEGORY_STORAGE_KEY = 'micasa.creditCardPayment.lastCategoryId';
-
 export type CreditCardPaymentSubmitPayload = {
   source_wallet_id: number;
   amount: number;
   paid_at: string;
   note: string | null;
   create_fortnight_expense: boolean;
-  category_id?: number;
   fortnight_id?: number;
 };
 
@@ -42,7 +37,6 @@ export type CreditCardPaymentDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fundingWalletOptions: PaymentMethodOption[];
-  categoryOptions: CategoryOption[];
   /** Period obligation amount. Null leaves the field empty (missing corte). */
   prefillAmount: number | null;
   submitting: boolean;
@@ -56,7 +50,6 @@ const CreditCardPaymentDialog = ({
   open,
   onOpenChange,
   fundingWalletOptions,
-  categoryOptions,
   prefillAmount,
   submitting,
   error,
@@ -67,7 +60,6 @@ const CreditCardPaymentDialog = ({
   const [amount, setAmount] = useState<number | null>(null);
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [createFortnightExpense, setCreateFortnightExpense] = useState(true);
-  const [categoryId, setCategoryId] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -78,18 +70,7 @@ const CreditCardPaymentDialog = ({
     setPaidAt(todayCalendarDate());
     setCreateFortnightExpense(true);
     setLocalError(null);
-
-    let initialCategory = '';
-    try {
-      const raw = localStorage.getItem(LAST_CATEGORY_STORAGE_KEY);
-      if (raw && categoryOptions.some((c) => String(c.id) === raw)) {
-        initialCategory = raw;
-      }
-    } catch {
-      /* ignore */
-    }
-    setCategoryId(initialCategory);
-  }, [open, categoryOptions, prefillAmount]);
+  }, [open, prefillAmount]);
 
   const selectedSource = fundingWalletOptions.find(
     (w) => String(w.id) === sourceWalletId,
@@ -104,30 +85,14 @@ const CreditCardPaymentDialog = ({
       return;
     }
 
-    if (createFortnightExpense && !categoryId) {
-      setLocalError('Elige una categoría para el gasto en la quincena.');
-      return;
-    }
-
     const payload: CreditCardPaymentSubmitPayload = {
       source_wallet_id: Number(sourceWalletId),
       amount,
       paid_at: paidAt,
       note: null,
       create_fortnight_expense: createFortnightExpense,
-      ...(createFortnightExpense && categoryId
-        ? { category_id: Number(categoryId) }
-        : {}),
       ...(fortnightId != null ? { fortnight_id: fortnightId } : {}),
     };
-
-    if (createFortnightExpense && categoryId) {
-      try {
-        localStorage.setItem(LAST_CATEGORY_STORAGE_KEY, categoryId);
-      } catch {
-        /* ignore */
-      }
-    }
 
     await onConfirm(payload);
   };
@@ -217,29 +182,9 @@ const CreditCardPaymentDialog = ({
             aria-label="Registrar en la quincena"
           />
 
-          {createFortnightExpense ? (
-            <div className={OVERLAY_GROUPED_CARD_CLASS}>
-              <GroupedRow label="Categoría">
-                <CategoryGroupedSelect
-                  categories={categoryOptions}
-                  value={categoryId ? Number(categoryId) : undefined}
-                  onValueChange={(id) => setCategoryId(String(id))}
-                  onOpenChange={handleSelectOpenChange}
-                  placeholder="Selecciona"
-                  ariaLabel="Categoría para el gasto en la quincena"
-                  triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
-                />
-              </GroupedRow>
-            </div>
-          ) : null}
-
           <Button
             type="submit"
-            disabled={
-              submitting ||
-              !sourceWalletId ||
-              (createFortnightExpense && !categoryId)
-            }
+            disabled={submitting || !sourceWalletId}
             aria-busy={submitting}
             className={OVERLAY_PRIMARY_BUTTON_CLASS}
           >

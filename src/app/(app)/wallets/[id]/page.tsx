@@ -58,7 +58,7 @@ import type {
   WalletDetail,
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
-import type { CreditCardPaymentPlanView, CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import type { CreditCardPaymentPlanView, PaymentMethodOption } from '@/types/catalog';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import {
   WalletDetailTabsList,
@@ -176,7 +176,6 @@ export default function WalletDetailPage() {
   const [paymentSources, setPaymentSources] = useState<PaymentMethodOption[]>(
     [],
   );
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentFortnightId, setPaymentFortnightId] = useState<
     number | undefined
@@ -273,25 +272,18 @@ export default function WalletDetailPage() {
           detail.type === 'CREDIT_CARD' ||
           detail.type === 'DEPARTMENT_STORE_CARD'
         ) {
-          const [plan, methods, categories] = await Promise.all([
+          const [plan, methods] = await Promise.all([
             getCreditCardPaymentPlan(walletId, context).catch(() => ({
               items: [] as CreditCardPaymentPlanView[],
             })),
             getPaymentMethodOptions(context),
-            clientFetchFromApi<CategoryOption[]>(
-              '/api/categories',
-              undefined,
-              context,
-            ),
           ]);
           setPaymentPlanItems(plan.items);
           setPaymentSources(methods);
-          setCategoryOptions(categories);
           setTransferWallets([]);
         } else {
           setPaymentPlanItems([]);
           setPaymentSources([]);
-          setCategoryOptions([]);
           const list = await clientFetchFromApi<
             {
               id: number;
@@ -833,7 +825,6 @@ export default function WalletDetailPage() {
             }
           }}
           fundingWalletOptions={fundingWalletOptions}
-          categoryOptions={categoryOptions}
           prefillAmount={paymentPrefillAmount}
           submitting={paymentSubmitting}
           error={paymentError}
