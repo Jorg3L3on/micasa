@@ -105,7 +105,7 @@ Optional:
 | --- | --- |
 | `npm run dev` | Dev server (webpack) |
 | `npm run dev:turbo` | Dev server (Turbopack) |
-| `npm run build` / `npm start` | Production build / serve |
+| `npm run build` / `npm start` | Production build / serve. On Vercel production (`VERCEL_ENV=production`) the build applies Prisma migrations first ([docs/deploy-migrations.md](docs/deploy-migrations.md)) |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit suite |
 | `npm run test:coverage` | Vitest with finance coverage floor |

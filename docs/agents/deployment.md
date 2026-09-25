@@ -18,7 +18,7 @@ Agents open slice PRs into `feat/<slug>`, **merge those slice PRs** once CI is g
 ## Before prod merge
 
 - Run `npm run ci` on the feature branch when possible
-- Apply Prisma migrations to production DB if schema changed (`npx prisma migrate deploy` per your hosting runbook)
+- Schema changes ship as backward-compatible migrations. Production applies them in the Vercel build before the new deployment is promoted ([deploy-migrations.md](../deploy-migrations.md)).
 
 ## Vercel
 

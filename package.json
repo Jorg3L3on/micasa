@@ -9,7 +9,7 @@
     "dev": "next dev --webpack",
     "predev:turbo": "prisma generate",
     "dev:turbo": "next dev",
-    "build": "next build",
+    "build": "tsx --tsconfig tsconfig.json scripts/vercel-build.ts",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
