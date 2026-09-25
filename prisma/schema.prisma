@@ -563,6 +563,12 @@ model Wallet {
   type                         PaymentMethodType
   cutoff_day                   Int?
   due_day                      Int?
+  /// Pago mínimo capturado. No es el pago para no generar intereses ni la deuda total.
+  minimum_payment              Decimal?          @db.Decimal(10, 2)
+  /// APR anual como fracción (0.42 = 42%). Null = desconocida.
+  apr_annual                   Decimal?          @db.Decimal(8, 6)
+  /// CAT anual como fracción. Null = desconocido.
+  cat_annual                   Decimal?          @db.Decimal(8, 6)
   active                       Boolean           @default(true)
   /// Si false, se excluye del saldo de liquidez (efectivo + débito). Solo aplica a CASH/DEBIT_CARD.
   include_in_liquidity         Boolean           @default(true)
@@ -610,12 +616,28 @@ model Wallet {
   @@index([house_id, assignee_user_id])
 }
 
-/// Monto que planeas pagar a una TC en una quincena (independiente de la deuda total).
+enum CardPaymentPlanScope {
+  THIS_CYCLE
+  N_CYCLES
+  UNTIL_DATE
+}
+
+/// Monto que planeas pagar a una TC. La vigencia es por ciclo de corte, no por quincena suelta.
 model CreditCardPaymentPlan {
   id                    Int      @id @default(autoincrement())
   credit_card_wallet_id Int
   fortnight_id          Int
   planned_amount        Decimal  @db.Decimal(12, 2)
+  /// True when the user declared this cycle is $0. A stored 0 without this flag is not a declaration.
+  declared_zero         Boolean  @default(false)
+  /// Null on legacy rows means this_cycle. Backfill sets THIS_CYCLE.
+  scope                 CardPaymentPlanScope?
+  /// Used when scope is N_CYCLES. Inclusive count of statement cycles from the anchor.
+  cycle_count           Int?
+  /// Used when scope is UNTIL_DATE. The override covers cycles whose due date is on or before this day.
+  valid_until           DateTime? @db.Date
+  /// Statement end (corte) the write is anchored to. Null rows derive it from the stored fortnight.
+  anchor_statement_end  DateTime? @db.Date
   user_id               Int?
   house_id              Int?
   created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)

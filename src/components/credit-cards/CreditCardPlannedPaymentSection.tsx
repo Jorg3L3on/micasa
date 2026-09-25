@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Banknote, CalendarRange, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,13 @@ import {
 import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
 import {
   clearFortnightCardPaymentPlan,
+  declareFortnightCardPeriodZero,
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-statement-obligation';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
 import type { CreditCardPaymentPlanView } from '@/types/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -26,6 +29,9 @@ type CreditCardPlannedPaymentSectionProps = {
   onPlanUpdated?: () => void | Promise<void>;
   onPayCard?: (item: CreditCardPaymentPlanView) => void;
   payingFortnightId?: number | null;
+  /** Opens Capturar for this fortnight (the open corte on the hero). */
+  requestedCaptureFortnightId?: number | null;
+  onRequestedCaptureHandled?: () => void;
 };
 
 const statusAmountClass = (
@@ -41,6 +47,9 @@ const statusAmountClass = (
   if (status === 'sin_cargo') {
     return 'text-muted-foreground';
   }
+  if (status === 'falta_dato') {
+    return 'text-amber-700 dark:text-amber-300';
+  }
   return hasCustomPlan
     ? 'text-blue-600 dark:text-blue-400'
     : 'text-foreground';
@@ -52,6 +61,8 @@ export const CreditCardPlannedPaymentSection = ({
   onPlanUpdated,
   onPayCard,
   payingFortnightId = null,
+  requestedCaptureFortnightId = null,
+  onRequestedCaptureHandled,
 }: CreditCardPlannedPaymentSectionProps) => {
   const { context } = useFinanceContext();
   const [editingItem, setEditingItem] = useState<CreditCardPaymentPlanView | null>(
@@ -66,6 +77,21 @@ export const CreditCardPlannedPaymentSection = ({
     setDialogOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (requestedCaptureFortnightId == null) return;
+    const item = items.find(
+      (row) => row.fortnightId === requestedCaptureFortnightId,
+    );
+    onRequestedCaptureHandled?.();
+    if (!item) return;
+    handleOpenDialog(item);
+  }, [
+    requestedCaptureFortnightId,
+    items,
+    handleOpenDialog,
+    onRequestedCaptureHandled,
+  ]);
+
   const handleSavePlan = async (data: CardPaymentPlanFormValues) => {
     if (!editingItem) return;
     setPlanError(null);
@@ -75,6 +101,9 @@ export const CreditCardPlannedPaymentSection = ({
         {
           walletId,
           plannedAmount: data.plannedAmount,
+          scope: data.scope,
+          cycleCount: data.cycleCount,
+          validUntil: data.validUntil,
         },
         context,
       );
@@ -83,6 +112,30 @@ export const CreditCardPlannedPaymentSection = ({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo guardar el plan';
+      setPlanError(message);
+      throw error;
+    }
+  };
+
+  const handleDeclareZero = async (scope: {
+    scope?: 'this_cycle' | 'n_cycles' | 'until_date';
+    cycleCount?: number;
+    validUntil?: string;
+  }) => {
+    if (!editingItem) return;
+    setPlanError(null);
+    try {
+      await declareFortnightCardPeriodZero(
+        editingItem.fortnightId,
+        walletId,
+        context,
+        scope,
+      );
+      toast.success('Este ciclo quedó en $0');
+      await onPlanUpdated?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo declarar el ciclo';
       setPlanError(message);
       throw error;
     }
@@ -97,7 +150,7 @@ export const CreditCardPlannedPaymentSection = ({
         walletId,
         context,
       );
-      toast.success('Se usará el monto sugerido');
+      toast.success('Se quitó el monto planeado');
       await onPlanUpdated?.();
     } catch (error) {
       const message =
@@ -142,6 +195,7 @@ export const CreditCardPlannedPaymentSection = ({
               item.obligationAmountSource,
               item.isEstimate,
             );
+            const isMissingPayment = item.plannerStatus === 'falta_dato';
             const displayAmount =
               item.plannerStatus === 'pagado'
                 ? fortnightPaid > 0
@@ -149,7 +203,7 @@ export const CreditCardPlannedPaymentSection = ({
                   : item.paymentsAppliedToStatement > 0
                     ? item.paymentsAppliedToStatement
                     : item.targetAmount
-                : item.plannerStatus === 'sin_cargo'
+                : item.plannerStatus === 'sin_cargo' || isMissingPayment
                   ? 0
                   : item.effectiveAmount;
             const statementMismatch =
@@ -160,6 +214,18 @@ export const CreditCardPlannedPaymentSection = ({
               (item.plannerStatus === 'por_pagar' ||
                 item.plannerStatus === 'vencido') &&
               item.effectiveAmount > 0;
+            const corteIsOpen =
+              item.statementDueDate.slice(0, 10) < todayCalendarDate();
+            const timingLabel = item.isCurrentFortnight
+              ? 'quincena en curso'
+              : corteIsOpen
+                ? 'corte de este estado'
+                : 'próxima quincena';
+            const canDeclareZero =
+              !item.declaredZero &&
+              item.outstandingBalance > 0 &&
+              (item.periodObligation?.confidence === 'missing' ||
+                item.obligationAmountSource === 'none');
 
             return (
               <li
@@ -169,15 +235,9 @@ export const CreditCardPlannedPaymentSection = ({
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground">
                     {item.fortnightLabel}
-                    {item.isCurrentFortnight ? (
-                      <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
-                        · quincena en curso
-                      </span>
-                    ) : (
-                      <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
-                        · próxima quincena
-                      </span>
-                    )}
+                    <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                      · {timingLabel}
+                    </span>
                     {isStalePlan ? (
                       <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                         Plan cubierto
@@ -187,12 +247,24 @@ export const CreditCardPlannedPaymentSection = ({
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
                       <>Pagado esta quincena</>
+                    ) : isMissingPayment ? (
+                      <>Falta el pago del corte</>
+                    ) : item.declaredZero ? (
+                      <>Este ciclo es $0</>
                     ) : item.plannerStatus === 'sin_cargo' ? (
                       <>Sin cargo en esta quincena</>
                     ) : (
                       <>
-                        Sugerido al corte: {formatCurrency(item.suggestedAmount)}
-                        {hasCustomPlan ? ' · plan personalizado' : null}
+                        Toca pagar:{' '}
+                        {item.periodObligation?.confidence === 'missing' ||
+                        item.periodObligation?.amount == null
+                          ? '—'
+                          : formatCurrency(item.periodObligation.amount)}
+                        {hasCustomPlan
+                          ? ' · monto planeado'
+                          : item.periodObligation?.basis === 'minimum'
+                            ? ' · pago mínimo'
+                            : null}
                       </>
                     )}
                     {isStalePlan ? (
@@ -236,12 +308,24 @@ export const CreditCardPlannedPaymentSection = ({
                         ? `Pagado esta quincena: ${formatCurrency(displayAmount)}`
                         : item.plannerStatus === 'sin_cargo'
                           ? 'Sin cargo'
-                          : `Planeado: ${formatCurrency(displayAmount)}`
+                          : isMissingPayment
+                            ? 'Falta el pago del corte'
+                            : `Planeado: ${formatCurrency(displayAmount)}`
                     }
                   >
-                    {formatCurrency(displayAmount)}
+                    {isMissingPayment ? '—' : formatCurrency(displayAmount)}
                   </span>
-                  {item.plannerStatus !== 'sin_cargo' ? (
+                  {canDeclareZero || isMissingPayment ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      onClick={() => handleOpenDialog(item)}
+                      aria-label={`Capturar pago del corte: ${item.fortnightLabel}`}
+                    >
+                      Capturar
+                    </Button>
+                  ) : item.plannerStatus !== 'sin_cargo' || item.declaredZero ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -315,23 +399,36 @@ export const CreditCardPlannedPaymentSection = ({
           }}
           onSave={handleSavePlan}
           onClearPlan={
-            editingItem.plannedPayment != null &&
-            editingItem.plannedPayment > 0
+            (editingItem.plannedPayment != null &&
+              editingItem.plannedPayment > 0) ||
+            editingItem.declaredZero
               ? handleClearPlan
+              : undefined
+          }
+          onDeclareZero={
+            !editingItem.declaredZero &&
+            editingItem.outstandingBalance > 0 &&
+            (editingItem.periodObligation?.confidence === 'missing' ||
+              editingItem.obligationAmountSource === 'none')
+              ? handleDeclareZero
               : undefined
           }
           walletName="esta tarjeta"
           fortnightLabel={editingItem.fortnightLabel}
-          suggestedAmount={editingItem.suggestedAmount}
+          knownPeriodAmount={periodObligationPrefillAmount(
+            editingItem.periodObligation,
+          )}
           outstandingBalance={editingItem.outstandingBalance}
           initialPlannedAmount={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0
               ? editingItem.plannedPayment
-              : editingItem.effectiveAmount > 0
-                ? editingItem.effectiveAmount
-                : editingItem.suggestedAmount
+              : (periodObligationPrefillAmount(editingItem.periodObligation) ??
+                0)
           }
+          initialScope={editingItem.planScope ?? 'this_cycle'}
+          initialCycleCount={editingItem.planCycleCount}
+          initialValidUntil={editingItem.planValidUntil}
           hasCustomPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

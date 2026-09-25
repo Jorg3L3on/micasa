@@ -117,7 +117,7 @@ describe('computeNextDuePayment', () => {
         dueDay: 5,
         cutoffDay: 6,
       }),
-    ).toBe(0);
+    ).toBeNull();
   });
 
   it('prefers imported total_due over ledger and outstanding', () => {

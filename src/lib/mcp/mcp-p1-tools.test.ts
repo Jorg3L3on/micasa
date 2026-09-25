@@ -579,6 +579,7 @@ describe('registered card calendar tools', () => {
       55,
       9,
       1200,
+      { scope: 'this_cycle', cycleCount: undefined, validUntil: undefined },
     );
   });
 });

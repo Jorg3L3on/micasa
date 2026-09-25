@@ -280,7 +280,11 @@ export function registerCreditCardTools(server: McpServer) {
                 last_statement_balance: statement.last_statement_balance,
                 payments_applied_to_statement:
                   statement.payments_applied_to_statement,
-                next_due_payment: statement.next_due_payment,
+                next_due_payment:
+                  statement.period_obligation?.confidence === 'missing'
+                    ? null
+                    : statement.next_due_payment,
+                period_obligation: statement.period_obligation ?? null,
                 minimum_payment: statement.minimum_payment,
                 current_cycle_purchases: statement.current_cycle_purchases,
                 current_cycle_payments: statement.current_cycle_payments,
@@ -782,6 +786,22 @@ export function registerCreditCardTools(server: McpServer) {
           ...ownerArgs,
           card_id: cardIdSchema,
           planned_amount: z.number().positive(),
+          scope: z
+            .enum(['this_cycle', 'n_cycles', 'until_date'])
+            .optional()
+            .describe(
+              'Vigencia del pago planeado. this_cycle (default), n_cycles o until_date.',
+            ),
+          cycle_count: z
+            .number()
+            .int()
+            .min(1)
+            .max(36)
+            .optional()
+            .describe('Cortes que cubre el plan cuando scope es n_cycles.'),
+          valid_until: dateYmdSchema
+            .optional()
+            .describe('Fecha inclusive cuando scope es until_date (YYYY-MM-DD).'),
           fortnight_id: z.number().int().positive().optional(),
           year: z.number().int().min(2000).max(2100).optional(),
           month: z.number().int().min(1).max(12).optional(),
@@ -812,17 +832,37 @@ export function registerCreditCardTools(server: McpServer) {
           const validated = cardPaymentPlanSchema.parse({
             walletId: args.card_id,
             plannedAmount: args.planned_amount,
+            scope: args.scope ?? 'this_cycle',
+            cycleCount: args.cycle_count,
+            validUntil: args.valid_until,
           });
+          // Schema allows a missing amount only when declareZero is set.
+          // This tool always sends a positive plan, so a missing amount stays
+          // an error instead of becoming a stored $0.
+          const plannedAmount = validated.plannedAmount;
+          if (plannedAmount == null) {
+            throw new Error(
+              'El monto planeado debe ser mayor a 0, o declara que este ciclo es $0.',
+            );
+          }
           const plan = await upsertCreditCardPaymentPlan(
             agent.ownerFilter,
             fortnightId,
             validated.walletId,
-            validated.plannedAmount,
+            plannedAmount,
+            {
+              scope: validated.scope ?? 'this_cycle',
+              cycleCount: validated.cycleCount,
+              validUntil: validated.validUntil,
+            },
           );
           return {
             card_id: plan.credit_card_wallet_id,
             fortnight_id: plan.fortnight_id,
             planned_amount: Number(plan.planned_amount),
+            scope: validated.scope ?? 'this_cycle',
+            cycle_count: validated.cycleCount ?? null,
+            valid_until: validated.validUntil ?? null,
           };
         },
       ),

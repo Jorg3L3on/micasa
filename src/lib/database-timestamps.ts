@@ -10,8 +10,46 @@ const WRITE_OPERATIONS = new Set([
   'upsert',
 ])
 
+const READ_OPERATIONS = new Set([
+  'findUnique',
+  'findUniqueOrThrow',
+  'findFirst',
+  'findFirstOrThrow',
+  'findMany',
+  'create',
+  'createManyAndReturn',
+  'update',
+  'updateManyAndReturn',
+  'upsert',
+])
+
 /** Civil-day and calendar fields stored as Mexico wall clock in TIMESTAMP columns. */
 const PRESERVED_TIMESTAMP_FIELDS = new Set(['payment_date'])
+
+const DATE_COLUMN_RE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s+DateTime\??\s[^\n]*@db\.Date\b/gm
+
+/**
+ * Every `@db.Date` column in `prisma/schema.prisma`. Prisma 7 does not expose
+ * `Prisma.dmmf`, so the parser below is the source of truth for tests.
+ * The runtime set is a static constant: the Next server bundle does not ship
+ * `prisma/schema.prisma`, and a missing file must not become an empty set
+ * (that re-shifts DATE columns a day early).
+ *
+ * `database-timestamps.test.ts` asserts this set equals
+ * `dateOnlyFieldNamesFromSchema(schema)`. Add the new column here in the same
+ * change that adds `@db.Date`.
+ */
+export const DATE_ONLY_FIELDS = new Set(['valid_until', 'anchor_statement_end'])
+
+export const dateOnlyFieldNamesFromSchema = (schema: string): Set<string> => {
+  const names = new Set<string>()
+  for (const match of schema.matchAll(DATE_COLUMN_RE)) {
+    names.add(match[1]!)
+  }
+  return names
+}
+
+export const dateOnlyFieldNames = (): Set<string> => DATE_ONLY_FIELDS
 
 /**
  * TIMESTAMPTZ OAuth fields must keep real UTC instants through the Prisma
@@ -31,11 +69,21 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 
 export const preservedTimestampFieldsForModel = (model?: string): Set<string> => {
   const preserved = new Set(PRESERVED_TIMESTAMP_FIELDS)
+  for (const field of dateOnlyFieldNames()) preserved.add(field)
   if (!model) return preserved
   for (const field of OAUTH_TIMESTAMPTZ_UTC_FIELDS[model] ?? []) {
     preserved.add(field)
   }
   return preserved
+}
+
+/**
+ * `@db.Date` values are civil days, not Mexico wall-clock instants.
+ * Keep the UTC calendar day. Do not run them through `toDatabaseTimestamp`.
+ */
+export function normalizeDateOnlyInstant(date: Date): Date {
+  if (Number.isNaN(date.getTime())) return date
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
 }
 
 /**
@@ -99,4 +147,30 @@ export function transformPrismaWriteArgs(
   }
 
   return transformed
+}
+
+/**
+ * Read path: DATE columns stay on the UTC civil day. Timestamp columns are
+ * left untouched (the write shim is what encodes Mexico wall time).
+ */
+export function transformReadDates(
+  value: unknown,
+  dateFields: Set<string> = dateOnlyFieldNames(),
+): unknown {
+  if (Array.isArray(value)) return value.map((entry) => transformReadDates(entry, dateFields))
+  if (!isPlainObject(value)) return value
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [
+      key,
+      nested instanceof Date && dateFields.has(key)
+        ? normalizeDateOnlyInstant(nested)
+        : transformReadDates(nested, dateFields),
+    ]),
+  )
+}
+
+export function transformPrismaReadResult(result: unknown, operation: string): unknown {
+  if (!READ_OPERATIONS.has(operation)) return result
+  return transformReadDates(result)
 }

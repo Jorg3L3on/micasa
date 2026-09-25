@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { formatStoredDateOnly } from '@/lib/calendar-dates';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
@@ -38,7 +39,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       context.ownerFilter,
       fortnightId,
       validated.walletId,
-      validated.plannedAmount,
+      validated.declareZero ? 0 : (validated.plannedAmount ?? 0),
+      {
+        declareZero: validated.declareZero === true,
+        scope: validated.scope ?? 'this_cycle',
+        cycleCount: validated.cycleCount,
+        validUntil: validated.validUntil,
+      },
     );
 
     return NextResponse.json(
@@ -46,6 +53,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         walletId: plan.credit_card_wallet_id,
         fortnightId: plan.fortnight_id,
         plannedAmount: Number(plan.planned_amount),
+        declaredZero: plan.declared_zero === true,
+        scope: plan.scope,
+        cycleCount: plan.cycle_count,
+        validUntil: plan.valid_until
+          ? formatStoredDateOnly(plan.valid_until)
+          : null,
       },
       { status: 200 },
     );
@@ -61,7 +74,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (code === 'FORTNIGHT_NOT_FOUND' || code === 'WALLET_NOT_FOUND') {
       return NextResponse.json({ error: (error as Error).message }, { status: 404 });
     }
-    if (code === 'AMOUNT_EXCEEDS_BALANCE' || code === 'AMOUNT_INVALID') {
+    if (
+      code === 'AMOUNT_EXCEEDS_BALANCE' ||
+      code === 'AMOUNT_INVALID' ||
+      code === 'SCOPE_INVALID'
+    ) {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
     }
 

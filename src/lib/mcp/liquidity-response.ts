@@ -16,6 +16,8 @@ export type McpLiquidityPayload = {
   lasts_until: string | null;
   lasts_until_including_income: string | null;
   next_gap: McpLiquidityGap;
+  /** Cards with debt and a due date but no corte figure. Not counted as $0. */
+  unresolved_card_obligation_count: number;
 };
 
 const isOnOrAfterAsOf = (dueDate: string, asOfYmd: string): boolean =>
@@ -99,5 +101,7 @@ export function buildMcpLiquidityPayload(
           cumulative_due: forwardGap.cumulativeDueFromAsOf,
         }
       : null,
+    unresolved_card_obligation_count:
+      projection.summary.unresolved_card_obligation_count ?? 0,
   };
 }

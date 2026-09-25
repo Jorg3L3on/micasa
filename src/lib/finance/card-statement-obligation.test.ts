@@ -1,5 +1,6 @@
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { describe, expect, it } from 'vitest';
+import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import {
   buildCardStatementObligation,
   computeNextDuePayment,
@@ -8,6 +9,8 @@ import {
   getRemainingPlannedAmount,
   mergeScheduledCalendarWithStatementDue,
   resolveCreditCardStatementWindow,
+  paymentAppliesToStatementPeriod,
+  resolveStatementPayoff,
 } from '@/lib/finance/card-statement-obligation';
 
 const cardBase = {
@@ -71,6 +74,8 @@ describe('buildCardStatementObligation', () => {
       todayYmd: '2026-03-18',
     });
     expect(paid.remainingStatementDue).toBe(0);
+    expect(paid.statementPayoff).toBe(0);
+    expect(paid.obligationAmountSource).toBe('ledger');
     expect(paid.status).toBe('paid');
   });
 
@@ -114,7 +119,7 @@ describe('buildCardStatementObligation', () => {
 
     expect(dto.outstandingBalance).toBe(900);
     expect(dto.remainingStatementDue).toBe(0);
-    expect(dto.suggestedStatementAmount).toBe(0);
+    expect(dto.statementPayoff).toBeNull();
     expect(dto.obligationAmountSource).toBe('none');
     expect(dto.isEstimate).toBe(false);
   });
@@ -203,8 +208,58 @@ describe('buildCardStatementObligation', () => {
   });
 });
 
+describe('resolveStatementPayoff', () => {
+  it('keeps an imported zero distinct from an unknown corte', () => {
+    expect(
+      resolveStatementPayoff({
+        lastStatementBalance: 0,
+        paymentsAppliedToStatement: 0,
+        importedTotalDue: 0,
+        outstandingBalance: 900,
+        dueDay: 20,
+        cutoffDay: 15,
+      }),
+    ).toEqual({ amount: 0, source: 'import' });
+    expect(
+      resolveStatementPayoff({
+        lastStatementBalance: 0,
+        paymentsAppliedToStatement: 0,
+        importedTotalDue: null,
+        outstandingBalance: 900,
+        dueDay: 5,
+        cutoffDay: 6,
+      }),
+    ).toEqual({ amount: null, source: 'none' });
+  });
+
+  it('bills the MSI cuota and does not add it again on top of a statement', () => {
+    expect(
+      resolveStatementPayoff({
+        lastStatementBalance: 0,
+        paymentsAppliedToStatement: 0,
+        importedTotalDue: null,
+        outstandingBalance: 11_000,
+        dueDay: 20,
+        cutoffDay: 15,
+        projectedStatementInstallmentsTotal: 1_000,
+      }),
+    ).toEqual({ amount: 1_000, source: 'projection' });
+    expect(
+      resolveStatementPayoff({
+        lastStatementBalance: 0,
+        paymentsAppliedToStatement: 0,
+        importedTotalDue: 2_500,
+        outstandingBalance: 12_000,
+        dueDay: 20,
+        cutoffDay: 15,
+        projectedStatementInstallmentsTotal: 1_000,
+      }),
+    ).toEqual({ amount: 2_500, source: 'import' });
+  });
+});
+
 describe('deriveObligationAmountSource', () => {
-  it('returns none when remaining is zero', () => {
+  it('keeps import when the imported payoff is fully paid', () => {
     expect(
       deriveObligationAmountSource({
         importedTotalDue: 100,
@@ -212,6 +267,20 @@ describe('deriveObligationAmountSource', () => {
         outstandingBalance: 100,
         dueDay: 20,
         cutoffDay: 15,
+        paymentsAppliedToStatement: 100,
+        remainingStatementDue: 0,
+      }),
+    ).toBe('import');
+  });
+
+  it('returns none only when no statement figure exists', () => {
+    expect(
+      deriveObligationAmountSource({
+        importedTotalDue: null,
+        lastStatementBalance: 0,
+        outstandingBalance: 900,
+        dueDay: 5,
+        cutoffDay: 6,
         remainingStatementDue: 0,
       }),
     ).toBe('none');
@@ -322,5 +391,54 @@ describe('mergeScheduledCalendarWithStatementDue', () => {
       dueDateYmd: '2026-08-10',
       usedScheduledCalendar: false,
     });
+  });
+});
+
+describe('paymentAppliesToStatementPeriod', () => {
+  it('applies a payment recorded after the due date to that cycle', () => {
+    const window = resolveCreditCardStatementWindow(
+      parseCalendarDate('2026-09-25'),
+      15,
+      20,
+    );
+    const late = parseCalendarDate('2026-09-25');
+    expect(window.statementDueDate < late).toBe(true);
+    expect(
+      paymentAppliesToStatementPeriod(
+        late,
+        window.statementEnd,
+        window.statementDueDate,
+        window.currentCycleEnd,
+      ),
+    ).toBe(true);
+    expect(
+      paymentAppliesToStatementPeriod(
+        parseCalendarDate('2026-10-16'),
+        window.statementEnd,
+        window.statementDueDate,
+        window.currentCycleEnd,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('zero debt statement payoff', () => {
+  it('keeps the ledger figure but the period obligation is 0 when debt is 0', () => {
+    const payoff = resolveStatementPayoff({
+      lastStatementBalance: 900,
+      paymentsAppliedToStatement: 0,
+      importedTotalDue: null,
+      outstandingBalance: 0,
+      dueDay: 20,
+      cutoffDay: 15,
+    });
+    expect(payoff).toEqual({ amount: 900, source: 'ledger' });
+    expect(
+      getCardPeriodObligation({
+        outstandingBalance: 0,
+        dueInPeriod: true,
+        statementPayoff: payoff.amount,
+      }).amount,
+    ).toBe(0);
   });
 });

@@ -3,6 +3,12 @@ import {
   formatCalendarDate,
   parseCalendarDate,
 } from '@/lib/calendar-dates';
+import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
+import {
+  exposedAnnualRate,
+  exposedMinimumDue,
+} from '@/lib/finance/card-period-obligation';
+import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, FortnightPeriod } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -62,6 +68,7 @@ export type LiquidityObligationItem = {
   next_due_payment: number;
   minimum_payment?: number | null;
   apr_annual?: number | null;
+  cat_annual?: number | null;
   stress_adjustment?: number;
   expense_id?: number;
   expense_description?: string;
@@ -96,6 +103,12 @@ export type LiquidityProjectionSummary = {
   net_liquidity_versus_obligations_including_income: number;
   shortfall_versus_funding_and_income: number;
   first_projected_shortfall_date: string | null;
+  unresolved_card_obligation_count?: number;
+  unresolved_card_obligations?: Array<{
+    wallet_id: number;
+    wallet_name: string;
+    statement_due_date: string;
+  }>;
 };
 
 export type LiquidityProjectionOptionsEcho = {
@@ -598,7 +611,7 @@ export const getLiquidityProjection = async (
   const includeUnpaid = input.includeUnpaidExpenses ?? true;
   const includeTemplates = input.includeExpenseTemplates ?? false;
 
-  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth] = await Promise.all([
+  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth, scheduledCardPayments, paymentPlans] = await Promise.all([
     prisma.wallet.findMany({
       where: {
         ...input.ownerFilter,
@@ -632,6 +645,9 @@ export const getLiquidityProjection = async (
         credit_limit: true,
         cutoff_day: true,
         due_day: true,
+        minimum_payment: true,
+        apr_annual: true,
+        cat_annual: true,
       },
     }),
     prisma.wallet.findMany({
@@ -656,7 +672,37 @@ export const getLiquidityProjection = async (
       orderBy: { name: 'asc' },
     }),
     collectExpectedIncomeByMonth(input.ownerFilter, asOf, input.until),
+    prisma.creditCardScheduledPayment.findMany({
+      where: { ...input.ownerFilter, status: 'SCHEDULED' },
+      select: {
+        credit_card_wallet_id: true,
+        due_date: true,
+        amount: true,
+      },
+    }),
+    prisma.creditCardPaymentPlan.findMany({
+      where: { ...input.ownerFilter },
+      select: {
+        credit_card_wallet_id: true,
+        planned_amount: true,
+        declared_zero: true,
+        scope: true,
+        cycle_count: true,
+        valid_until: true,
+        anchor_statement_end: true,
+        updated_at: true,
+        created_at: true,
+        fortnight: { select: { year: true, month: true, period: true } },
+      },
+    }),
   ]);
+
+  const plansByCard = new Map<number, typeof paymentPlans>();
+  for (const plan of paymentPlans) {
+    const list = plansByCard.get(plan.credit_card_wallet_id) ?? [];
+    list.push(plan);
+    plansByCard.set(plan.credit_card_wallet_id, list);
+  }
 
   const fundingTotal = fundingWallets.reduce(
     (sum, w) => sum + Number(w.amount),
@@ -679,6 +725,10 @@ export const getLiquidityProjection = async (
         type: c.type,
         cutoff_day: c.cutoff_day!,
         due_day: c.due_day!,
+        minimum_payment:
+          c.minimum_payment == null ? null : Number(c.minimum_payment),
+        apr_annual: c.apr_annual == null ? null : Number(c.apr_annual),
+        cat_annual: c.cat_annual == null ? null : Number(c.cat_annual),
       },
     ]),
   );
@@ -728,6 +778,12 @@ export const getLiquidityProjection = async (
   );
 
   const byDueDate = new Map<string, LiquidityObligationItem[]>();
+  let unresolvedCardObligationCount = 0;
+  const unresolvedCardObligations: Array<{
+    wallet_id: number;
+    wallet_name: string;
+    statement_due_date: string;
+  }> = [];
 
   for (const [, cardIds] of groups) {
     const head = cardMeta.get(cardIds[0]);
@@ -787,7 +843,66 @@ export const getLiquidityProjection = async (
         const row = breakdowns.get(id);
         if (!meta || !row) continue;
 
-        let nextDue = row.next_due_payment;
+        const statementMinimum = resolveImportedMinimumPaymentForStatementWindow(
+          statementImports,
+          id,
+          window,
+        );
+        const persistedMinimum = meta.minimum_payment;
+        const source = row.obligation_amount_source;
+        const statementPayoff =
+          row.statement_payoff !== undefined
+            ? row.statement_payoff
+            : source === 'import' ||
+                source === 'ledger' ||
+                source === 'projection'
+              ? row.next_due_payment
+              : null;
+        const scheduledForCycle = scheduledCardPayments.find(
+          (payment) =>
+            payment.credit_card_wallet_id === id &&
+            toUtcDateOnlyString(payment.due_date) === dueStr,
+        );
+        const scheduledAmount =
+          scheduledForCycle == null ? null : Number(scheduledForCycle.amount);
+        const useScheduled =
+          scheduledAmount != null &&
+          scheduledAmount > 0 &&
+          (statementPayoff == null || statementPayoff <= 0);
+        const periodObligation = getCardPeriodObligation({
+          outstandingBalance: cardOutstandingById.get(id) ?? 0,
+          dueInPeriod: true,
+          statementPayoff: useScheduled ? null : statementPayoff,
+          scheduledAmount: useScheduled ? scheduledAmount : null,
+          statementIsEstimate:
+            source === 'ledger' ||
+            source === 'projection' ||
+            row.is_estimate === true,
+          statementMinimum,
+          persistedMinimum,
+          planWrites: (plansByCard.get(id) ?? []).map((plan) =>
+            toStoredPaymentPlanWrite(plan),
+          ),
+          cycle: {
+            statementEnd,
+            statementDueDate: dueStr,
+          },
+          cutoffDay: meta.cutoff_day,
+          dueDay: meta.due_day,
+          paymentsApplied: row.payments_applied_to_statement,
+        });
+
+        if (periodObligation.confidence === 'missing') {
+          unresolvedCardObligationCount += 1;
+          unresolvedCardObligations.push({
+            wallet_id: id,
+            wallet_name: meta.name,
+            statement_due_date: dueStr,
+          });
+          continue;
+        }
+
+        let nextDue = periodObligation.amount ?? row.next_due_payment;
         let stressAdj = 0;
         if (
           stressPct > 0 &&
@@ -800,12 +915,6 @@ export const getLiquidityProjection = async (
 
         if (omitZero && nextDue === 0) continue;
 
-        const minimumPayment = resolveImportedMinimumPaymentForStatementWindow(
-          statementImports,
-          id,
-          window,
-        );
-
         chunk.push({
           source: 'credit_card_statement',
           wallet_id: id,
@@ -817,7 +926,12 @@ export const getLiquidityProjection = async (
           last_statement_balance: row.last_statement_balance,
           payments_applied_to_statement: row.payments_applied_to_statement,
           next_due_payment: nextDue,
-          ...(minimumPayment == null ? {} : { minimum_payment: minimumPayment }),
+          minimum_payment: exposedMinimumDue({
+            statementMinimum,
+            persistedMinimum,
+          }),
+          apr_annual: exposedAnnualRate(meta.apr_annual),
+          cat_annual: exposedAnnualRate(meta.cat_annual),
           ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
         });
@@ -934,6 +1048,8 @@ export const getLiquidityProjection = async (
       cumulative - (fundingTotal + expectedIncomeTotal),
     ),
     first_projected_shortfall_date: firstProjectedShortfall,
+    unresolved_card_obligation_count: unresolvedCardObligationCount,
+    unresolved_card_obligations: unresolvedCardObligations,
   };
 
   const debtByMonth = new Map<
