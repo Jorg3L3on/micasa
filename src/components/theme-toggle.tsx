@@ -1,60 +1,47 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { ActionSwapIcon } from '@/components/motion/action-swap-icon';
+import { useThemeToggle } from '@/components/motion/theme-toggle';
 
 export function ThemeToggle() {
-  const { setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { isDark, mounted, toggle } = useThemeToggle({
+    variant: 'circle',
+    start: 'bottom-left',
+  });
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Theme UI must wait until client mount.
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-9"
-        aria-label="Toggle theme"
-        disabled
-      >
-        <Sun className="size-5" data-icon="inline-start" />
-      </Button>
-    );
-  }
-
-  const isDark = resolvedTheme === 'dark';
-
-  const handleClick = () => {
-    setTheme(isDark ? 'light' : 'dark');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  };
+  const label = !mounted
+    ? 'Cambiar tema'
+    : isDark
+      ? 'Cambiar a modo claro'
+      : 'Cambiar a modo oscuro';
 
   return (
     <Button
+      type="button"
       variant="ghost"
       size="icon"
       className="size-9"
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
+      aria-label={label}
+      onClick={toggle}
+      disabled={!mounted}
       tabIndex={0}
     >
-      {isDark ? (
-        <Sun className="size-5" aria-hidden data-icon="inline-start" />
+      {mounted ? (
+        <ActionSwapIcon
+          value={isDark ? 'dark' : 'light'}
+          animation="blur"
+          className="size-5"
+        >
+          {isDark ? (
+            <Sun className="size-5" aria-hidden data-icon="inline-start" />
+          ) : (
+            <Moon className="size-5" aria-hidden data-icon="inline-start" />
+          )}
+        </ActionSwapIcon>
       ) : (
-        <Moon className="size-5" aria-hidden data-icon="inline-start" />
+        <Sun className="size-5" aria-hidden data-icon="inline-start" />
       )}
     </Button>
   );

@@ -2,6 +2,9 @@
 export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 export const EASE_IN_OUT = [0.77, 0, 0.175, 1] as const;
 
+/** CSS string form of EASE_OUT for view-transition keyframes. */
+export const EASE_OUT_CSS = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
 /** Press feedback on buttons and other tappable surfaces. */
 export const SPRING_PRESS = {
   type: 'spring',
