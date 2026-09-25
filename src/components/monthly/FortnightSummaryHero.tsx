@@ -27,7 +27,10 @@ type FortnightSummaryHeroProps = {
    * (“Liquidez actual” / billeteras vs pendiente).
    */
   fundingLiquidity?: number;
-  /** Si false, se oculta Liquidez actual (solo quincena actual o siguiente). */
+  /**
+   * Si false, se ocultan las tarjetas Balance actual y Liquidez actual
+   * (solo quincena calendario en curso o la siguiente).
+   */
   fundingLiquidityApplies?: boolean;
   paidAmount: number;
   pendingAmount: number;
@@ -359,24 +362,19 @@ export const FortnightSummaryHero = ({
     <div className="@container min-w-0">
       <div className="flex min-w-0 flex-col gap-4 @3xl:flex-row @3xl:items-start @3xl:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <div
-          className={cn(
-            'grid gap-2',
-            fundingLiquidityApplies ? 'grid-cols-2' : 'grid-cols-1',
-          )}
-        >
-          <AccountMetric
-            label="Balance actual"
-            amount={fundingInAccounts}
-            subtitle="Efectivo + débito hoy"
-            borderClassName="border-l-emerald-500/50"
-            pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-            icon={Banknote}
-            amountClassName={
-              fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
-            }
-          />
-          {fundingLiquidityApplies ? (
+        {fundingLiquidityApplies ? (
+          <div className="grid grid-cols-2 gap-2">
+            <AccountMetric
+              label="Balance actual"
+              amount={fundingInAccounts}
+              subtitle="Efectivo + débito hoy"
+              borderClassName="border-l-emerald-500/50"
+              pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+              icon={Banknote}
+              amountClassName={
+                fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
+              }
+            />
             <AccountMetric
               label="Liquidez actual"
               amount={fundingLiquidity}
@@ -398,8 +396,8 @@ export const FortnightSummaryHero = ({
                   : 'text-emerald-700 dark:text-emerald-300'
               }
             />
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <CommitmentBar
           periodIncome={periodIncome}

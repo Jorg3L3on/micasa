@@ -68,7 +68,7 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
             name: values.name,
             categoryId: values.categoryId,
             amount: values.amount,
-            paymentMethodId: values.isPaid ? values.paymentMethodId : null,
+            paymentMethodId: values.paymentMethodId,
             date: values.date,
             isPaid: values.isPaid,
             isRecurring: false,

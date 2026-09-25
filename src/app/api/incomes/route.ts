@@ -11,6 +11,11 @@ import {
   assertOwnedCategoryOfKind,
   CategoryServiceError,
 } from '@/lib/finance/category.service';
+import {
+  assertIncomeFundingWallet,
+  IncomeServiceError,
+  resolveIncomeWalletId,
+} from '@/lib/finance/income.service';
 
 const createIncomeSchema = z.object({
   fortnight_id: z.number().int().positive(),
@@ -119,18 +124,13 @@ export async function PUT(request: NextRequest) {
     const oldAmount = Number(income.amount);
     const newAmount = validated.amount;
     const oldWalletId = income.wallet_id;
-    const newWalletId =
-      validated.wallet_id !== undefined ? validated.wallet_id : oldWalletId;
+    const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
 
-    if (newWalletId == null) {
-      return NextResponse.json(
-        {
-          error:
-            'La billetera es requerida. Asigna una billetera de efectivo o débito a este ingreso.',
-        },
-        { status: 400 },
-      );
-    }
+    const fundingWallet = await prisma.wallet.findFirst({
+      where: { id: newWalletId, ...ownerFilter },
+      select: { id: true, type: true },
+    });
+    assertIncomeFundingWallet(fundingWallet);
 
     let nextCategoryId = income.category_id;
     if (validated.category_id !== undefined) {
@@ -181,6 +181,12 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(serializeIncome(updated), { status: 200 });
   } catch (error) {
+    if (error instanceof IncomeServiceError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     if (error instanceof CategoryServiceError) {
       return NextResponse.json(
         { error: error.message },

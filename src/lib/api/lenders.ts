@@ -1,7 +1,12 @@
 'use client';
 
 import type { FinanceContextType } from '@/types/finance-context';
-import type { CreateLenderInput, PayLenderInput } from '@/schemas/lender.schema';
+import type {
+  CreateLenderInput,
+  MergeLenderInput,
+  PayLenderInput,
+  SplitLenderInput,
+} from '@/schemas/lender.schema';
 import type {
   LenderDetail,
   LenderListItem,
@@ -49,6 +54,36 @@ export async function payLender(
 ) {
   return clientFetchFromApi<PayLenderResult>(
     `/api/lenders/${lenderId}/pay`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function mergeLenders(
+  lenderId: number,
+  data: MergeLenderInput,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<LenderDetail>(
+    `/api/lenders/${lenderId}/merge`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    context,
+  );
+}
+
+export async function splitLender(
+  lenderId: number,
+  data: SplitLenderInput,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi<LenderDetail>(
+    `/api/lenders/${lenderId}/split`,
     {
       method: 'POST',
       body: JSON.stringify(data),

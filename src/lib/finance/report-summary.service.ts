@@ -49,6 +49,7 @@ export type ReportSummaryResult = {
     userName: string | null;
     templateName: string | null;
     categoryId: number | null;
+    walletId: number | null;
   }>;
   planningExpenseCount?: number;
   planningPaidExpenseCount?: number;
@@ -352,6 +353,7 @@ export const getReportSummary = async (
         userName: inc.user?.name ?? null,
         templateName: inc.income_template?.name ?? null,
         categoryId: inc.category_id ?? null,
+        walletId: inc.wallet_id ?? null,
       });
     });
 
