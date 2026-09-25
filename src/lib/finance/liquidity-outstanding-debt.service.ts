@@ -1,7 +1,7 @@
 import {
   endOfCalendarDay,
   formatCalendarDate,
-  parseCalendarDate,
+  parseDateOnly,
   startOfCalendarDay,
 } from '@/lib/calendar-dates';
 import { LoanPaymentStatus, PaymentMethodType } from '@/generated/prisma/client';
@@ -19,7 +19,7 @@ import {
   type MonthOutstandingSnapshot,
   shouldUseHistoricalDebtSnapshot,
 } from '@/lib/finance/liquidity-outstanding-debt';
-import { pastDebtDateForLoanPayment } from '@/lib/finance/monthly-chart-debt';
+import { loanDebtMonthKey } from '@/lib/finance/monthly-chart-debt';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import type { WalletMovement } from '@/types/wallet-movements';
@@ -71,7 +71,10 @@ export const loadHistoricalOutstandingByMonth = async (
           },
           {
             status: { notIn: [LoanPaymentStatus.SKIPPED, LoanPaymentStatus.CANCELLED] },
-            due_date: { gte: rangeFrom, lte: rangeTo },
+            due_date: {
+              gte: parseDateOnly(`${firstMonth}-01`),
+              lte: parseDateOnly(todayYmd),
+            },
           },
         ],
       },
@@ -157,14 +160,13 @@ export const loadHistoricalOutstandingByMonth = async (
 
   const loanPaymentsByMonth = new Map<string, Map<number, number>>();
   for (const payment of loanPaymentRows) {
-    const when = pastDebtDateForLoanPayment({
+    const monthKey = loanDebtMonthKey({
       status: payment.status,
       paid_at: payment.paid_at,
       due_date: payment.due_date,
       payment_source: payment.loan.payment_source,
     });
-    if (!when) continue;
-    const monthKey = calendarMonthKeyFromDate(when);
+    if (!monthKey) continue;
     const loanMap = loanPaymentsByMonth.get(monthKey) ?? new Map<number, number>();
     loanMap.set(payment.loan.id, (loanMap.get(payment.loan.id) ?? 0) + Number(payment.amount));
     loanPaymentsByMonth.set(monthKey, loanMap);

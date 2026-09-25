@@ -133,6 +133,7 @@ const walletLoan = (
   remainingAmount: 3000,
   paidPayments: 0,
   remainingPayments: 6,
+  overduePayment: null,
   nextPayment: payments[0] ?? null,
   payments,
 });

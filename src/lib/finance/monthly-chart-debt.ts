@@ -1,4 +1,5 @@
 import { formatCalendarDate } from '@/lib/calendar-dates';
+import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 
 export const calendarMonthKeyFromDate = (date: Date): string =>
   formatCalendarDate(date).slice(0, 7);
@@ -19,4 +20,16 @@ export const pastDebtDateForLoanPayment = (payment: PastLoanPayment): Date | nul
   if (payment.status === 'PAID' && payment.paid_at) return payment.paid_at;
   if (payment.payment_source === 'PAYROLL_DEDUCTION') return payment.due_date;
   return null;
+};
+
+/** Month bucket for a loan debt row. Installment due dates use the stored civil day. */
+export const loanDebtMonthKey = (payment: PastLoanPayment): string | null => {
+  const when = pastDebtDateForLoanPayment(payment);
+  if (!when) return null;
+  const usesDueDate =
+    payment.payment_source === 'PAYROLL_DEDUCTION' &&
+    !(payment.status === 'PAID' && payment.paid_at);
+  return usesDueDate
+    ? formatLoanDueYmd(when).slice(0, 7)
+    : calendarMonthKeyFromDate(when);
 };

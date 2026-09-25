@@ -251,7 +251,7 @@ const paymentStatusLabel = (status: LoanPaymentVisualStatus) => {
   if (status === 'paid') return 'Pagado';
   if (status === 'skipped') return 'Omitido';
   if (status === 'cancelled') return 'Cancelado';
-  if (status === 'overdue') return 'Vencido';
+  if (status === 'overdue') return 'Vencida';
   return 'Por pagar';
 };
 
@@ -2086,10 +2086,17 @@ export default function LoansPage() {
                             Calendario de pagos
                           </h3>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            Próximo:{' '}
+                            {selectedLoan.overduePayment
+                              ? `Vencida: ${formatDate(selectedLoan.overduePayment.dueDate)}`
+                              : null}
+                            {selectedLoan.overduePayment && selectedLoan.nextPayment
+                              ? ' · '
+                              : null}
                             {selectedLoan.nextPayment
-                              ? formatDate(selectedLoan.nextPayment.dueDate)
-                              : 'Sin pagos pendientes'}
+                              ? `Próximo: ${formatDate(selectedLoan.nextPayment.dueDate)}`
+                              : selectedLoan.overduePayment
+                                ? null
+                                : 'Sin pagos pendientes'}
                           </p>
                         </div>
                         <Badge variant="outline" className="w-fit text-[10px]">
@@ -2101,7 +2108,7 @@ export default function LoansPage() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(
                           [
-                            ['overdue', 'Vencidos'],
+                            ['overdue', 'Vencidas'],
                             ['scheduled', 'Por pagar'],
                             ['paid', 'Pagados'],
                             ['skipped', 'Omitidos'],
