@@ -1,11 +1,17 @@
 'use client';
 
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { ChevronDown, HandCoins, Landmark } from 'lucide-react';
+import { ChevronDown, HandCoins, Landmark, MoreHorizontal } from 'lucide-react';
 import { LenderIdentity } from '@/components/loans/LenderIdentity';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,6 +32,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { lenderNextCommitment } from '@/lib/finance/lender-next-commitment';
+import {
+  PAYROLL_DEDUCTION_COPY,
+  payrollCommitmentHint,
+} from '@/lib/finance/lender-payroll';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { LenderListItem, LenderPaymentListItem } from '@/types/lenders';
 import type { LoanListItem } from '@/types/loans';
@@ -36,6 +46,8 @@ type LenderGroupedLoansTableProps = {
   onOpenLoan: (loanId: number) => void;
   onPayLender: (lenderId: number) => void;
   onUndoLastPayment: (lenderId: number, paymentId: number) => void;
+  onMergeLender: (lenderId: number) => void;
+  onSplitLender: (lenderId: number) => void;
 };
 
 const statusLabel = (status: LoanListItem['status']) => {
@@ -62,9 +74,7 @@ const roundMoney = (value: number) => Math.round(value * 100) / 100;
 const nextHint = (next: ReturnType<typeof lenderNextCommitment>): string => {
   if (next.kind === 'none') return '';
   if (next.kind === 'payroll') {
-    return next.date
-      ? `Nómina · ${formatDate(next.date)}`
-      : 'Se descuenta del ingreso';
+    return payrollCommitmentHint(next.date ? formatDate(next.date) : null);
   }
   if (next.isRange) return 'Varios vencimientos';
   return next.date ? formatDate(next.date) : '';
@@ -119,11 +129,15 @@ const InstitutionActions = ({
   name,
   canPay,
   onPay,
+  onMerge,
+  onSplit,
   compact,
 }: {
   name: string;
   canPay: boolean;
   onPay?: () => void;
+  onMerge?: () => void;
+  onSplit?: () => void;
   compact?: boolean;
 }) => (
   <div className="flex shrink-0 items-center gap-1">
@@ -136,6 +150,29 @@ const InstitutionActions = ({
       >
         Pagar
       </Button>
+    ) : null}
+    {onMerge && onSplit ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(compact ? 'h-10 w-10' : 'h-8 w-8')}
+            aria-label={`Más acciones de ${name}`}
+          >
+            <MoreHorizontal className="h-4 w-4" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onClick={onMerge}>
+            Fusionar con otro
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onSplit}>
+            Separar contratos
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     ) : null}
     <Tooltip>
       <TooltipTrigger asChild>
@@ -170,6 +207,8 @@ const InstitutionCard = ({
   next,
   canPay,
   onPay,
+  onMerge,
+  onSplit,
   children,
 }: {
   name: string;
@@ -179,6 +218,8 @@ const InstitutionCard = ({
   next: ReturnType<typeof lenderNextCommitment>;
   canPay: boolean;
   onPay?: () => void;
+  onMerge?: () => void;
+  onSplit?: () => void;
   children: ReactNode;
 }) => {
   const [open, setOpen] = useState(false);
@@ -232,6 +273,8 @@ const InstitutionCard = ({
               name={name}
               canPay={canPay}
               onPay={onPay}
+              onMerge={onMerge}
+              onSplit={onSplit}
               compact
             />
           </div>
@@ -261,7 +304,13 @@ const InstitutionCard = ({
             />
           </div>
           <div className="flex items-center self-center">
-            <InstitutionActions name={name} canPay={canPay} onPay={onPay} />
+            <InstitutionActions
+              name={name}
+              canPay={canPay}
+              onPay={onPay}
+              onMerge={onMerge}
+              onSplit={onSplit}
+            />
           </div>
         </div>
 
@@ -279,6 +328,8 @@ export const LenderGroupedLoansTable = ({
   onOpenLoan,
   onPayLender,
   onUndoLastPayment,
+  onMergeLender,
+  onSplitLender,
 }: LenderGroupedLoansTableProps) => {
   const unassignedLoans = loans.filter((loan) => loan.lenderId == null);
 
@@ -492,18 +543,15 @@ export const LenderGroupedLoansTable = ({
           lenderLoans.reduce((sum, loan) => sum + loan.remainingAmount, 0),
         );
         const next = lenderNextCommitment(lender.payWindow, lenderLoans);
-        const payrollOnly =
-          lenderLoans.length > 0 &&
-          lenderLoans.every(
-            (loan) => loan.paymentSource === 'PAYROLL_DEDUCTION',
-          );
-        const canPay =
-          lender.payWindow.canPay &&
-          lenderLoans.some((loan) => loan.status === 'ACTIVE');
+        const payrollOnly = lender.payrollOnly || next.kind === 'payroll';
+        const canPay = lender.payWindow.canPay && !lender.payrollOnly;
         const lastPayment = lender.recentPayments?.[0];
-        const subtitle = `${lenderLoans.length} contrato${
+        const contractLabel = `${lenderLoans.length} contrato${
           lenderLoans.length === 1 ? '' : 's'
-        }${payrollOnly ? ' · Nómina' : ''}`;
+        }`;
+        const subtitle = payrollOnly
+          ? `${contractLabel} · ${PAYROLL_DEDUCTION_COPY}`
+          : contractLabel;
 
         return (
           <InstitutionCard
@@ -515,6 +563,8 @@ export const LenderGroupedLoansTable = ({
             next={next}
             canPay={canPay}
             onPay={() => onPayLender(lender.id)}
+            onMerge={() => onMergeLender(lender.id)}
+            onSplit={() => onSplitLender(lender.id)}
           >
             {renderContracts(
               lenderLoans,
