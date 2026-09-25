@@ -1,12 +1,15 @@
 import { PrismaClient } from '@/generated/prisma/client'
-import { transformPrismaWriteArgs } from '@/lib/database-timestamps'
+import {
+  transformPrismaReadResult,
+  transformPrismaWriteArgs,
+} from '@/lib/database-timestamps'
 import { PrismaNeon } from '@prisma/adapter-neon'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
 const LOCAL_TIMESTAMP_WRITES = Symbol.for('micasa.localTimestampWrites')
 /** Bump when adding models so long-lived `npm run dev` drops a stale singleton. */
-const PRISMA_CLIENT_GENERATION = 5
+const PRISMA_CLIENT_GENERATION = 6
 
 type TaggedPrismaClient = PrismaClient & {
   [LOCAL_TIMESTAMP_WRITES]?: true
@@ -25,7 +28,10 @@ function createPrismaClient(): PrismaClient {
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
-          return query(transformPrismaWriteArgs(args, operation, model) as typeof args)
+          const result = await query(
+            transformPrismaWriteArgs(args, operation, model) as typeof args,
+          )
+          return transformPrismaReadResult(result, operation, model)
         },
       },
     },

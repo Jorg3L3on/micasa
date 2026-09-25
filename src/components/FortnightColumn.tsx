@@ -1,6 +1,5 @@
 'use client';
 
-import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,11 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
-import FortnightCardPaymentsPanel, {
-  getPlannerCardPaymentStatus,
-  isPendingPlannerCardPayment,
-} from '@/components/planner/FortnightCardPaymentsPanel';
-import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
+import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
+import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
+import { panelSnapshotFromDueItem } from '@/lib/finance/card-period-surfaces';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
   DropdownMenu,
@@ -110,6 +107,7 @@ type IncomeItemBySource = {
   userName: string | null;
   templateName: string | null;
   categoryId: number | null;
+  walletId: number | null;
 };
 
 type Summary = {
@@ -190,6 +188,9 @@ export default function FortnightColumn({
   const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
   const [editingIncomeAmount, setEditingIncomeAmount] = useState(0);
   const [editingIncomeCategoryId, setEditingIncomeCategoryId] = useState<
+    number | null
+  >(null);
+  const [editingIncomeWalletId, setEditingIncomeWalletId] = useState<
     number | null
   >(null);
   const [incomeCategories, setIncomeCategories] = useState<CategoryOption[]>(
@@ -562,11 +563,16 @@ export default function FortnightColumn({
             data.categoryId != null && data.categoryId > 0
               ? data.categoryId
               : undefined,
+          wallet_id:
+            data.walletId != null && data.walletId > 0
+              ? data.walletId
+              : undefined,
         });
         await refreshData();
         setOverrideDialogOpen(false);
         setEditingIncomeId(null);
         setEditingIncomeCategoryId(null);
+        setEditingIncomeWalletId(null);
         toast.success('Monto del ingreso actualizado.');
       } else {
         await updateFortnightOverrideAmount(
@@ -594,6 +600,7 @@ export default function FortnightColumn({
   const handleOpenOverrideDialog = () => {
     setEditingIncomeId(null);
     setEditingIncomeCategoryId(null);
+    setEditingIncomeWalletId(null);
     setOverrideError(null);
     setOverrideDialogOpen(true);
   };
@@ -602,10 +609,12 @@ export default function FortnightColumn({
     id: number,
     amount: number,
     categoryId: number | null,
+    walletId: number | null,
   ) => {
     setEditingIncomeId(id);
     setEditingIncomeAmount(amount);
     setEditingIncomeCategoryId(categoryId);
+    setEditingIncomeWalletId(walletId);
     setOverrideError(null);
     setOverrideDialogOpen(true);
   };
@@ -664,12 +673,10 @@ export default function FortnightColumn({
         targetPeriod: 'FIRST' | 'SECOND',
       ): string => {
         const day = targetPeriod === 'FIRST' ? 1 : 16;
-        return formatCalendarDate(
-          parseCalendarDate(
-            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-          ),
-        );
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       };
+
+      const civilDayFromYmd = (ymd: string): number => Number(ymd.slice(8, 10));
 
       if (fromTemplateId) {
         await createExpenseTransaction(
@@ -701,11 +708,7 @@ export default function FortnightColumn({
         );
       } else if (data.isRecurring && !data.applyToBothFortnights) {
         // Case 2: Recurring, single fortnight - create expense + template
-        // Extract day from date for per-quincena due
-        const dateObj = data.date
-          ? new Date(data.date)
-          : new Date(year, month - 1, period === 'FIRST' ? 1 : 16);
-        const dueFromDate = dateObj.getDate();
+        const dueFromDate = civilDayFromYmd(data.date);
         const dueDayFirst =
           period === 'FIRST' ? dueFromDate : null;
         const dueDaySecond =
@@ -754,11 +757,8 @@ export default function FortnightColumn({
         }
 
         const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
-        const dateObj = data.date
-          ? new Date(data.date)
-          : new Date(year, month - 1, period === 'FIRST' ? 1 : 16);
-        const currentDue = dateObj.getDate();
-        const otherDue = new Date(getDateForFortnight(otherPeriod)).getDate();
+        const currentDue = civilDayFromYmd(data.date);
+        const otherDue = civilDayFromYmd(getDateForFortnight(otherPeriod));
         const dueDayFirst =
           period === 'FIRST' ? currentDue : otherDue;
         const dueDaySecond =
@@ -892,12 +892,8 @@ export default function FortnightColumn({
 
   const pendingCardPaymentsCount = useMemo(
     () =>
-      cardDueItems.filter((item) =>
-        isPendingPlannerCardPayment(
-          getPlannerCardPaymentStatus(item),
-          item.effectiveAmount ?? getEffectiveCardPaymentAmount(item),
-        ),
-      ).length,
+      cardDueItems.filter((item) => panelSnapshotFromDueItem(item).countsAsPending)
+        .length,
     [cardDueItems],
   );
   const pendingLoanPaymentsCount = useMemo(
@@ -1233,6 +1229,7 @@ export default function FortnightColumn({
           if (!open) {
             setEditingIncomeId(null);
             setEditingIncomeCategoryId(null);
+            setEditingIncomeWalletId(null);
           }
           setOverrideError(null);
         }}
@@ -1245,6 +1242,8 @@ export default function FortnightColumn({
         requireCategory={editingIncomeId != null}
         categories={incomeCategories}
         defaultCategoryId={editingIncomeCategoryId}
+        requireWallet={editingIncomeId != null}
+        defaultWalletId={editingIncomeWalletId}
       />
 
       {/* Add Expense Dialog */}
@@ -1273,12 +1272,9 @@ export default function FortnightColumn({
         }}
         fundingWalletOptions={plannerFundingWalletOptions}
         categoryOptions={plannerPaymentCategories}
-        nextDuePayment={
-          plannerPaymentCard != null
-            ? getEffectiveCardPaymentAmount(plannerPaymentCard)
-            : 0
-        }
-        outstandingBalance={plannerPaymentCard?.outstandingBalance ?? 0}
+        prefillAmount={periodObligationPrefillAmount(
+          plannerPaymentCard?.periodObligation,
+        )}
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}

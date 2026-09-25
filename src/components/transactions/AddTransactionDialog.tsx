@@ -181,6 +181,17 @@ export default function AddTransactionDialog({
     };
   }, [open, context]);
 
+  useEffect(() => {
+    if (!open || loading) return;
+    const current = expenseForm.getValues('paymentMethodId');
+    if (current > 0) return;
+    const selectable = paymentMethods.filter((pm) => !isGoalWalletType(pm.type));
+    if (selectable.length !== 1) return;
+    expenseForm.setValue('paymentMethodId', selectable[0].id, {
+      shouldValidate: true,
+    });
+  }, [open, loading, paymentMethods, expenseForm]);
+
   const expenseWallets = useMemo(
     () => paymentMethods.filter((pm) => !isGoalWalletType(pm.type)),
     [paymentMethods],
@@ -362,6 +373,10 @@ export default function AddTransactionDialog({
                     );
                   }}
                 />
+
+                <p className="px-3 pb-2 text-[11px] leading-snug text-muted-foreground">
+                  Elige la billetera. Si hay varias, no se asigna sola.
+                </p>
 
                 <FormField
                   control={expenseForm.control}

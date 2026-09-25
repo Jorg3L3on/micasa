@@ -9,6 +9,7 @@ import type { LenderListItem } from '@/types/lenders';
 import type { PaymentMethodOption } from '@/types/catalog';
 import type { PayLenderInput } from '@/schemas/lender.schema';
 import { groupDuePaymentsByLender } from '@/lib/finance/lender-payment-window';
+import { PAYROLL_DEDUCTION_COPY } from '@/lib/finance/lender-payroll';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
 import {
@@ -310,7 +311,11 @@ export default function FortnightLoanPaymentsPanel({
                   <span className="font-mono text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
-                  {canPay ? (
+                  {isPayroll ? (
+                    <span className="max-w-[8.5rem] text-right text-[10px] leading-tight text-muted-foreground">
+                      {PAYROLL_DEDUCTION_COPY}
+                    </span>
+                  ) : canPay ? (
                     <Button
                       type="button"
                       size="sm"

@@ -1,24 +1,31 @@
 import { cache } from 'react';
-import {
-  endOfCalendarDay,
-  formatCalendarDate,
-  parseCalendarDate,
-} from '@/lib/calendar-dates';
+import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { resolveFortnightIdForDate } from '@/lib/finance/credit-card-payment-plan.service';
 import {
-  getEffectiveCardPaymentAmount,
-  resolveFortnightIdForDate,
-} from '@/lib/finance/credit-card-payment-plan.service';
+  isStalePastDueGap,
+  plannerAsOfForCardMonth,
+} from '@/lib/finance/card-obligation-cycle';
+import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  getCardPeriodObligation,
+  panelSnapshotFromDueItem,
+} from '@/lib/finance/card-period-surfaces';
+import {
+  selectActivePlannedOverride,
+  toStoredPaymentPlanWrite,
+} from '@/lib/finance/card-payment-plan-scope';
 import { applyPlannerLayerToDueItems } from '@/lib/finance/card-planner-obligation.service';
 import {
   buildCardStatementObligation,
-  computeNextDuePayment,
   mergeScheduledCalendarWithStatementDue,
+  resolveStatementPayoff,
   paymentAppliesToStatementPeriod,
   resolveCreditCardStatementWindow,
   toDuePaymentItemFields,
+  type CardObligationAmountSource,
   type ComputeNextDuePaymentInput,
   type CreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
@@ -65,10 +72,6 @@ const createCalendarDate = (year: number, month: number, day: number) =>
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
   );
 
-/** Inclusive upper bound for the due calendar day in Mexico City. */
-const endOfDueCalendarDay = (date: Date) =>
-  endOfCalendarDay(formatCalendarDate(date));
-
 const clampDayToMonth = (year: number, month: number, day: number) =>
   Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
 
@@ -104,6 +107,7 @@ export async function getCreditCardStatementByOwner(
       temporary_credit_limit: true,
       cutoff_day: true,
       due_day: true,
+      minimum_payment: true,
     },
   });
 
@@ -131,13 +135,13 @@ export async function getCreditCardStatementByOwner(
     card.cutoff_day,
     card.due_day,
   );
-
   const paymentWhereBase = {
     ...ownerFilter,
     credit_card_wallet_id: creditCardId,
   };
 
-  const [purchases, payments, paymentTotals, statementImports] = await Promise.all([
+  const [purchases, payments, paymentTotals, statementImports, cardPlans] =
+    await Promise.all([
     prisma.expense.findMany({
       where: {
         ...ownerFilter,
@@ -204,7 +208,34 @@ export async function getCreditCardStatementByOwner(
         created_at: true,
       },
     }),
+    prisma.creditCardPaymentPlan.findMany({
+      where: {
+        ...ownerFilter,
+        credit_card_wallet_id: creditCardId,
+      },
+      select: {
+        planned_amount: true,
+        declared_zero: true,
+        scope: true,
+        cycle_count: true,
+        valid_until: true,
+        anchor_statement_end: true,
+        updated_at: true,
+        created_at: true,
+        fortnight: { select: { year: true, month: true } },
+      },
+    }),
   ]);
+
+  const activePlan = selectActivePlannedOverride(
+    cardPlans.map((plan) => toStoredPaymentPlanWrite(plan)),
+    {
+      statementEnd: formatCalendarDate(window.statementEnd),
+      statementDueDate: formatCalendarDate(window.statementDueDate),
+    },
+    { cutoffDay: card.cutoff_day, dueDay: card.due_day },
+  );
+  const declaredZero = activePlan.explicitZero;
 
   const recentImport = resolveStatementImportForStatementWindow(
     statementImports,
@@ -288,7 +319,7 @@ export async function getCreditCardStatementByOwner(
   const temporaryCreditLimit =
     card.temporary_credit_limit == null ? null : Number(card.temporary_credit_limit);
 
-  const nextDuePaymentRaw = computeNextDuePayment({
+  const statementPayoff = resolveStatementPayoff({
     lastStatementBalance,
     paymentsAppliedToStatement: paymentsAppliedToStatementTotal,
     importedTotalDue,
@@ -314,14 +345,38 @@ export async function getCreditCardStatementByOwner(
   );
 
   const mergedDue = mergeScheduledCalendarWithStatementDue({
-    statementDue: nextDuePaymentRaw,
+    statementDue: statementPayoff.amount ?? 0,
     statementDueDateYmd,
     scheduled: nextScheduled
       ? { amount: nextScheduled.amount, dueDate: nextScheduled.dueDate }
       : null,
   });
 
-  const nextDuePayment = mergedDue.amount;
+  const periodObligation = getCardPeriodObligation({
+    outstandingBalance: currentBalance,
+    dueInPeriod: true,
+    statementPayoff: mergedDue.usedScheduledCalendar ? null : statementPayoff.amount,
+    statementIsEstimate: statementPayoff.source === 'projection',
+    statementMinimum: importedMinimumPayment,
+    persistedMinimum:
+      card.minimum_payment == null ? null : Number(card.minimum_payment),
+    scheduledAmount: mergedDue.usedScheduledCalendar ? mergedDue.amount : null,
+    paymentsApplied: paymentsAppliedToStatementTotal,
+    explicitZero: !mergedDue.usedScheduledCalendar && declaredZero,
+    planWrites: mergedDue.usedScheduledCalendar
+      ? undefined
+      : cardPlans.map((plan) => toStoredPaymentPlanWrite(plan)),
+    cycle: {
+      statementEnd: formatCalendarDate(window.statementEnd),
+      statementDueDate: formatCalendarDate(window.statementDueDate),
+    },
+    cutoffDay: card.cutoff_day,
+    dueDay: card.due_day,
+  });
+  const nextDuePayment =
+    periodObligation.confidence === 'missing'
+      ? 0
+      : (periodObligation.amount ?? 0);
   const visibleDueDateYmd = mergedDue.dueDateYmd;
 
   return {
@@ -352,6 +407,8 @@ export async function getCreditCardStatementByOwner(
     payments_applied_to_statement: paymentsAppliedToStatementTotal,
     imported_statement_total: importedTotalDue,
     next_due_payment: nextDuePayment,
+    period_obligation: periodObligation,
+    declared_zero: !mergedDue.usedScheduledCalendar && declaredZero,
     minimum_payment: importedMinimumPayment,
     current_cycle_purchases: currentCyclePurchasesTotal,
     current_cycle_payments: currentCyclePaymentsTotal,
@@ -430,6 +487,7 @@ export type CardObligationFromLedgerInput = {
   cutoffDay: number;
   dueDay: number;
   importedTotalDue?: number | null;
+  importedMinimumPayment?: number | null;
 };
 
 export type StatementImportRow = {
@@ -552,6 +610,7 @@ const aggregateLedgerActivityForCard = (
         p.paid_at,
         window.statementEnd,
         window.statementDueDate,
+        window.currentCycleEnd,
       )
     ) {
       paymentsAppliedToStatement += p.amount;
@@ -582,10 +641,21 @@ export const buildCardObligationsFromLedger = (
     /** When false, empty future cycles do not invent dues from today's wallet debt. */
     allowOutstandingBalanceFallback?: boolean;
   },
-): Map<number, CreditCardStatementObligationWithCycle & { is_estimate?: boolean }> => {
+): Map<
+  number,
+  CreditCardStatementObligationWithCycle & {
+    is_estimate?: boolean;
+    obligation_amount_source?: CardObligationAmountSource;
+    statement_payoff?: number | null;
+  }
+> => {
   const result = new Map<
     number,
-    CreditCardStatementObligationWithCycle & { is_estimate?: boolean }
+    CreditCardStatementObligationWithCycle & {
+      is_estimate?: boolean;
+      obligation_amount_source?: CardObligationAmountSource;
+      statement_payoff?: number | null;
+    }
   >();
   const allowOutstandingBalanceFallback =
     options?.allowOutstandingBalanceFallback ?? true;
@@ -614,6 +684,7 @@ export const buildCardObligationsFromLedger = (
       paymentsAppliedToStatement,
       importedTotalDue: card.importedTotalDue ?? null,
       outstandingBalance: card.outstandingBalance,
+      minimumPayment: card.importedMinimumPayment ?? null,
       currentCyclePurchasesTotal: currentCyclePurchases,
       currentCyclePaymentsTotal: currentCyclePayments,
       asOfYmd,
@@ -627,6 +698,8 @@ export const buildCardObligationsFromLedger = (
       next_due_payment: obligation.remainingStatementDue,
       current_cycle_purchases: currentCyclePurchases,
       is_estimate: obligation.isEstimate,
+      obligation_amount_source: obligation.obligationAmountSource,
+      statement_payoff: obligation.statementPayoff,
     });
   }
 
@@ -874,14 +947,13 @@ const sumPaymentsAppliedToStatementByWallet = async (
   }
 
   const ownerSql = creditPaymentOwnerWhereSql(ownerFilter);
-  const paymentDueEnd = endOfDueCalendarDay(window.statementDueDate);
   const rows = await prisma.$queryRaw<
     Array<{ credit_card_wallet_id: number; total: unknown }>
   >`
     SELECT p."credit_card_wallet_id", COALESCE(SUM(p."amount"), 0) AS total
     FROM "CreditCardPayment" p
     WHERE p."credit_card_wallet_id" IN (${Prisma.join(cardIds)})
-      AND p."paid_at" <= ${paymentDueEnd}
+      AND p."paid_at" <= ${window.currentCycleEnd}
       AND (
         (p."paid_at" AT TIME ZONE 'UTC')::date
           > (${window.statementEnd} AT TIME ZONE 'UTC')::date
@@ -1139,6 +1211,7 @@ const applyScheduledCalendarToDueItems = (
         existing.remainingPlannerAmount = merged.amount;
         existing.targetAmount = merged.amount;
       }
+      applyPeriodObligation(existing);
       continue;
     }
 
@@ -1160,6 +1233,7 @@ const applyScheduledCalendarToDueItems = (
       obligationAmountSource: 'scheduled_calendar',
       targetAmount: scheduled.amount,
     };
+    applyPeriodObligation(newItem);
     result.push(newItem);
     byWallet.set(walletId, newItem);
   }
@@ -1191,6 +1265,7 @@ async function getDuePaymentsWithAsOf(
       amount: true,
       cutoff_day: true,
       due_day: true,
+      minimum_payment: true,
     },
   });
 
@@ -1225,6 +1300,7 @@ async function getDuePaymentsWithAsOf(
   const currentCyclePurchaseSums = new Map<number, number>();
   const currentCyclePaymentSums = new Map<number, number>();
   const importedTotalByWallet = new Map<number, number>();
+  const importedMinimumByWallet = new Map<number, number>();
   const hasAlignedImportByWallet = new Map<number, boolean>();
   const projectedInstallmentSums = new Map<number, number>();
   const statementDueByWallet = new Map<number, string>();
@@ -1246,6 +1322,7 @@ async function getDuePaymentsWithAsOf(
         total_due: true,
         period_end: true,
         payment_due_date: true,
+        minimum_payment: true,
         created_at: true,
       },
     }),
@@ -1309,6 +1386,14 @@ async function getDuePaymentsWithAsOf(
         if (selectedImport?.total_due != null) {
           importedTotalByWallet.set(wid, Number(selectedImport.total_due));
         }
+        const minimum = resolveImportedMinimumPaymentForStatementWindow(
+          allImports,
+          wid,
+          window,
+        );
+        if (minimum != null) {
+          importedMinimumByWallet.set(wid, minimum);
+        }
       }
 
       if (options?.includeProjectedInstallments) {
@@ -1345,10 +1430,8 @@ async function getDuePaymentsWithAsOf(
     const outstandingBalance = Number(card.amount);
     const window = windowByWallet.get(card.id)!;
     const asOfYmd = asOfYmdByWallet.get(card.id) ?? toDateOnlyString(asOf);
-    // Historical fortnights pass false. Current fortnights may still pass true,
-    // but total card debt is never used as the pago del corte (see
-    // computeNextDuePayment). Without an aligned statement, ledger, or open-cycle
-    // projection, the suggested period payment is 0.
+    // Historical fortnights pass false. Total card debt is never the corte.
+    // Without a statement, ledger, or open-cycle figure, statementPayoff stays null.
     const allowOutstandingBalanceFallback =
       options?.allowOutstandingBalanceFallback ?? true;
 
@@ -1363,6 +1446,9 @@ async function getDuePaymentsWithAsOf(
       paymentsAppliedToStatement,
       importedTotalDue,
       outstandingBalance,
+      minimumPayment: importedMinimumByWallet.get(card.id) ?? null,
+      persistedMinimumPayment:
+        card.minimum_payment == null ? null : Number(card.minimum_payment),
       projectedStatementInstallmentsTotal:
         projectedInstallmentSums.get(card.id) ?? 0,
       currentCyclePurchasesTotal: currentCyclePurchaseSums.get(card.id) ?? 0,
@@ -1390,7 +1476,11 @@ async function getDuePaymentsWithAsOf(
   if (options?.includeZeroObligation) {
     return items;
   }
-  return items.filter((item) => item.nextDuePayment > 0);
+  return items.filter(
+    (item) =>
+      item.nextDuePayment > 0 ||
+      (item.statementPayoff == null && item.outstandingBalance > 0),
+  );
 }
 
 export async function getDuePaymentsForCurrentFortnight(
@@ -1424,15 +1514,13 @@ async function getDuePaymentsForPlannerMonthImpl(
   const asOfForVisibleDueDate = (card: {
     due_day: number;
     cutoff_day: number;
-  }) => {
-    const dueDay = clampDayToMonth(year, month, card.due_day);
-    // Same-day corte/pago: asOf on the due day is already the cutoff, so the
-    // statement window rolls the due date into next month. Step back one day
-    // to keep this month's payment in the fortnight that contains due_day.
-    const asOfDay =
-      card.cutoff_day === card.due_day && dueDay > 1 ? dueDay - 1 : dueDay;
-    return createCalendarDate(year, month, asOfDay);
-  };
+  }) =>
+    plannerAsOfForCardMonth({
+      year,
+      month,
+      cutoffDay: card.cutoff_day,
+      dueDay: card.due_day,
+    });
 
   // Fallback only; planner rows use each card's visible due date so cards with
   // due day before cutoff stay on the statement that is actually due this month.
@@ -1499,9 +1587,21 @@ async function getDuePaymentsForPlannerMonthImpl(
     scheduled.second,
   );
 
+  const dropStaleGap = (item: (typeof firstWithCalendar)[number]) =>
+    !isStalePastDueGap({
+      statementDueDate: item.statementDueDate,
+      cutoffDay: item.cutoff_day,
+      dueDay: item.dueDay,
+      plannerStatus: item.plannerStatus,
+      paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+      paymentsAppliedToFortnight: item.paymentsAppliedToFortnight,
+      nextDuePayment: item.nextDuePayment,
+      periodObligation: item.periodObligation,
+    });
+
   return {
-    first: firstWithCalendar.filter(hasPlannerRelevantCardActivity),
-    second: secondWithCalendar.filter(hasPlannerRelevantCardActivity),
+    first: firstWithCalendar.filter(hasPlannerRelevantCardActivity).filter(dropStaleGap),
+    second: secondWithCalendar.filter(hasPlannerRelevantCardActivity).filter(dropStaleGap),
   };
 }
 
@@ -1543,22 +1643,34 @@ export function getDuePaymentsForPlannerMonth(
   );
 }
 
-/** Suma `nextDuePayment` de tarjetas con corte en la quincena (misma lógica que planificación / due-payments). */
+const sumCardDueItems = (
+  items: DuePaymentItem[],
+): { total: number; cardCount: number; obligationGapCount: number } => {
+  const snapshots = items.map((item) => panelSnapshotFromDueItem(item));
+  const total = snapshots.reduce(
+    (sum, snapshot) =>
+      sum + (snapshot.countsInKnownTotal ? (snapshot.knownCashAmount ?? 0) : 0),
+    0,
+  );
+  const obligationGapCount = snapshots.filter((snapshot) => snapshot.countsAsGap).length;
+  const cardCount = snapshots.filter((snapshot) => snapshot.countsAsPending).length;
+  return { total, cardCount, obligationGapCount };
+};
+
+/** Suma el pago conocido de tarjetas con corte en la quincena. Los huecos no entran como $0. */
 export async function sumPlannerCardDueForFortnight(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{ total: number; cardCount: number }> {
+): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
     month,
   );
   const items = period === 'FIRST' ? first : second;
-  const withDue = items.filter((i) => getEffectiveCardPaymentAmount(i) > 0);
-  const total = withDue.reduce((s, i) => s + getEffectiveCardPaymentAmount(i), 0);
-  return { total, cardCount: withDue.length };
+  return sumCardDueItems(items);
 }
 
 /** Mes completo (vista mensual en panel): 1ª + 2ª quincena sin duplicar tarjetas (cada TC cae en una sola lista). */
@@ -1566,17 +1678,13 @@ export async function sumPlannerCardDueForMonth(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
-): Promise<{ total: number; cardCount: number }> {
+): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
     month,
   );
-  const withDue = [...first, ...second].filter(
-    (i) => getEffectiveCardPaymentAmount(i) > 0,
-  );
-  const total = withDue.reduce((s, i) => s + getEffectiveCardPaymentAmount(i), 0);
-  return { total, cardCount: withDue.length };
+  return sumCardDueItems([...first, ...second]);
 }
 
 export async function sumPlannerCardDueForPeriodScope(
@@ -1585,7 +1693,7 @@ export async function sumPlannerCardDueForPeriodScope(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{ total: number; cardCount: number }> {
+): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
   if (view === 'month') {
     return sumPlannerCardDueForMonth(ownerFilter, year, month);
   }

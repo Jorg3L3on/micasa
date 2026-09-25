@@ -9,7 +9,11 @@ import {
   updateLoanPaymentForOwner,
   updateLoanScheduleForOwner,
 } from '@/lib/finance/loan.service';
-import { listLendersByOwner } from '@/lib/finance/lender.service';
+import {
+  listLendersByOwner,
+  payLenderForOwner,
+} from '@/lib/finance/lender.service';
+import type { LenderListItem } from '@/types/lenders';
 import { createLoanSchema, updateLoanPaymentSchema } from '@/schemas/loan.schema';
 import {
   confirmSchema,
@@ -28,6 +32,49 @@ const ownerArgs = {
 const dateYmdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato requerido: YYYY-MM-DD');
+
+const activeLoanPayments = (
+  loans: LenderListItem['loans'],
+  pick: 'overduePayment' | 'nextPayment',
+) =>
+  loans
+    .filter((loan) => loan.status === 'ACTIVE')
+    .map((loan) => loan[pick])
+    .filter((payment): payment is NonNullable<typeof payment> => payment != null);
+
+/** MCP list_lenders row. Existing nextPayment* fields stay the pay window. */
+export const mapLenderForMcpList = (lender: LenderListItem) => {
+  const overdue = activeLoanPayments(lender.loans, 'overduePayment').sort((a, b) =>
+    a.dueDate.localeCompare(b.dueDate),
+  );
+  const upcoming = activeLoanPayments(lender.loans, 'nextPayment').sort((a, b) =>
+    a.dueDate.localeCompare(b.dueDate),
+  );
+
+  return {
+    id: lender.id,
+    name: lender.name,
+    remainingPrincipal: lender.remainingPrincipal,
+    activeContractCount: lender.activeContractCount,
+    payrollOnly: lender.payrollOnly,
+    nextPaymentAmount: lender.payWindow.amount,
+    nextPaymentDate: lender.payWindow.commitmentDate,
+    nextPaymentDateEnd: lender.payWindow.commitmentDateEnd,
+    canPayAmount: lender.payWindow.amount,
+    canPay: lender.payWindow.canPay,
+    overduePaymentAmount: overdue.reduce((sum, payment) => sum + payment.amount, 0),
+    overduePaymentDate: overdue[0]?.dueDate ?? null,
+    upcomingPaymentAmount: upcoming.reduce((sum, payment) => sum + payment.amount, 0),
+    upcomingPaymentDate: upcoming[0]?.dueDate ?? null,
+    loans: lender.loans.map((loan) => ({
+      id: loan.id,
+      name: loan.name,
+      status: loan.status,
+      remainingAmount: loan.remainingAmount,
+      paymentSource: loan.paymentSource,
+    })),
+  };
+};
 
 export function registerLoanTools(server: McpServer) {
   server.registerTool(
@@ -89,6 +136,7 @@ export function registerLoanTools(server: McpServer) {
             remainingAmount: loan.remainingAmount,
             paidPayments: loan.paidPayments,
             remainingPayments: loan.remainingPayments,
+            overduePayment: loan.overduePayment,
             nextPayment: loan.nextPayment,
             ...(monthPayments ? { monthPayments } : {}),
           };
@@ -108,7 +156,7 @@ export function registerLoanTools(server: McpServer) {
     {
       title: 'Listar prestamistas',
       description:
-        'Prestamistas del contexto con capital pendiente y próximo pago consolidado. Los contratos siguen vivos debajo de cada identidad.',
+        'Prestamistas del contexto con capital pendiente. nextPaymentAmount y canPayAmount son la ventana de pago. overduePayment* suma cuotas vencidas de préstamos activos. upcomingPayment* es la siguiente cuota futura sin pagar de préstamos activos.',
       inputSchema: z.object({
         ownerType: ownerTypeSchema,
         ownerId: ownerIdSchema,
@@ -119,24 +167,55 @@ export function registerLoanTools(server: McpServer) {
       runAgentTool('list_lenders', ctx as McpToolContext, args, 'read', async (agent) => {
         const lenders = await listLendersByOwner(agent.ownerFilter);
         return {
-          lenders: lenders.map((lender) => ({
-            id: lender.id,
-            name: lender.name,
-            remainingPrincipal: lender.remainingPrincipal,
-            activeContractCount: lender.activeContractCount,
-            payrollOnly: lender.payrollOnly,
-            nextPaymentAmount: lender.payWindow.amount,
-            nextPaymentDate: lender.payWindow.commitmentDate,
-            nextPaymentDateEnd: lender.payWindow.commitmentDateEnd,
-            canPay: lender.payWindow.canPay,
-            loans: lender.loans.map((loan) => ({
-              id: loan.id,
-              name: loan.name,
-              status: loan.status,
-              remainingAmount: loan.remainingAmount,
-              paymentSource: loan.paymentSource,
-            })),
-          })),
+          lenders: lenders.map(mapLenderForMcpList),
+        };
+      }),
+  );
+
+  server.registerTool(
+    'pay_lender',
+    {
+      title: 'Pagar prestamista',
+      description:
+        'Un desembolso al prestamista, misma ventana que la UI. Nómina no entra. exclude_payment_ids saca contratos del periodo (opt-out). amount menor que la ventana es pago parcial; amount mayor abona a capital al final del calendario.',
+      inputSchema: z.object({
+        ...ownerArgs,
+        lender_id: z.number().int().positive(),
+        mode: z.enum(['WALLET', 'EXTERNAL']).default('WALLET'),
+        paid_at: dateYmdSchema.optional(),
+        source_wallet_id: z.number().int().positive().optional(),
+        wallet_name: z.string().trim().min(1).optional(),
+        exclude_payment_ids: z.array(z.number().int().positive()).optional(),
+        amount: z.number().positive().optional(),
+        note: z.string().trim().max(500).optional(),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: false },
+    },
+    async (args, ctx) =>
+      runAgentTool('pay_lender', ctx as McpToolContext, args, 'write', async (agent) => {
+        let sourceWalletId: number | null = null;
+        if ((args.mode ?? 'WALLET') === 'WALLET') {
+          const wallet = await resolveWalletRef(
+            agent.ownerFilter,
+            args.source_wallet_id,
+            args.wallet_name,
+          );
+          sourceWalletId = wallet.id;
+        }
+        const result = await payLenderForOwner(args.lender_id, agent.ownerFilter, {
+          mode: args.mode ?? 'WALLET',
+          paidAt: args.paid_at,
+          sourceWalletId,
+          note: args.note ?? null,
+          excludePaymentIds: args.exclude_payment_ids,
+          amount: args.amount ?? null,
+        });
+        return {
+          lender_id: result.lender.id,
+          payment_id: result.payment.id,
+          amount: result.payment.amount,
+          mode: result.payment.mode,
+          installmentCount: result.payment.installmentCount,
         };
       }),
   );
@@ -178,6 +257,7 @@ export function registerLoanTools(server: McpServer) {
             paymentCount: loan.paymentCount,
             paidPayments: loan.paidPayments,
             remainingPayments: loan.remainingPayments,
+            overduePayment: loan.overduePayment,
             nextPayment: loan.nextPayment,
           },
           calendar: monthPayments,

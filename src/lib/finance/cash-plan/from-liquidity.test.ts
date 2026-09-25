@@ -212,15 +212,50 @@ describe('planInputFromLiquidity', () => {
     const loan = input.obligations.find((obligation) => obligation.kind === 'loan');
     expect(revolving?.minimumDue).toBe(400);
     expect(revolving?.aprAnnual).toBe(0.42);
+    expect(revolving?.catAnnual).toBeNull();
     expect(revolving?.statementDue).toBe(1200);
     expect(loan?.statementDue).toBe(500);
     expect(loan?.minimumDue).toBeUndefined();
+    expect(revolving?.minimumDue).not.toBe(revolving?.statementDue);
     expect(input.prefs?.missingAprPolicy).toBe('exclude_from_apr_rank');
     const result = buildCashPlan(input);
     const plans = [result.primary, ...result.alternatives];
     expect(plans.some((plan) => plan.actions.some((item) => item.type === 'pay_minimum'))).toBe(true);
     expect(result.primary.touchesUntouchable).toBe(false);
     expect(result.dataGaps.some((gap) => gap.message === 'No tenemos el pago mínimo de tus tarjetas.')).toBe(false);
+  });
+
+  it('leaves minimum and rates null when the projection has none', () => {
+    const input = planInputFromLiquidity({
+      projection: projection(),
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+    });
+    const revolving = input.obligations.find((obligation) => obligation.id === 'card-7');
+    expect(revolving?.statementDue).toBe(1200);
+    expect(revolving?.minimumDue).toBeNull();
+    expect(revolving?.aprAnnual).toBeNull();
+    expect(revolving?.catAnnual).toBeNull();
+    expect(revolving?.minimumDue).not.toBe(1200);
+  });
+
+  it('maps CAT when the projection carries it and does not assume 36%', () => {
+    const source = projection();
+    const card = source.milestones[0]?.obligations[0];
+    if (card && card.source === 'credit_card_statement') {
+      card.cat_annual = 0.55;
+    }
+    const input = planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+    });
+    const revolving = input.obligations.find((obligation) => obligation.id === 'card-7');
+    expect(revolving?.catAnnual).toBe(0.55);
+    expect(revolving?.aprAnnual).toBeNull();
+    expect(revolving?.aprAnnual).not.toBe(0.36);
   });
 
   it('counts an MSI installment in the fortnight when the due date falls inside it', () => {

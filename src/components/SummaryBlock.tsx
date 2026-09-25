@@ -53,6 +53,7 @@ export type IncomeItemBySource = {
   userName: string | null;
   templateName: string | null;
   categoryId: number | null;
+  walletId: number | null;
 };
 
 type SummaryBlockProps = {
@@ -98,6 +99,7 @@ type SummaryBlockProps = {
     id: number,
     amount: number,
     categoryId: number | null,
+    walletId: number | null,
   ) => void;
 };
 
@@ -183,7 +185,10 @@ export default function SummaryBlock({
     payrollDeduction: payrollLoanDeduction,
   });
 
-  const statusPill = getFortnightStatusPill(trasPagarPlaneado);
+  const obligationGapCount = planningCardStatementDue?.obligationGapCount ?? 0;
+  const statusPill = getFortnightStatusPill(trasPagarPlaneado, {
+    obligationGapCount,
+  });
 
   const dateRange =
     year != null && month != null && period != null
@@ -230,6 +235,8 @@ export default function SummaryBlock({
                 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
               statusPill.tone === 'even' &&
                 'border-border/50 text-muted-foreground',
+              statusPill.tone === 'gap' &&
+                'border-amber-500/40 text-amber-700 dark:text-amber-300',
             )}
           >
             {statusPill.label}
@@ -253,6 +260,7 @@ export default function SummaryBlock({
           compositionRows={compositionRows}
           leftoverAmount={budgetRemaining}
           payrollDeductionAmount={payrollLoanDeduction}
+          obligationGapCount={obligationGapCount}
         />
 
         <button
@@ -523,6 +531,7 @@ export default function SummaryBlock({
                                     item.id,
                                     item.amount,
                                     item.categoryId,
+                                    item.walletId,
                                   )
                                 }
                                 aria-label={`Modificar ${displayLabel}`}

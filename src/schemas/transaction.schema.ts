@@ -98,7 +98,7 @@ export const addExpenseSchema = z
     paymentMethodId: z
       .number()
       .int()
-      .positive('El método de pago es requerido'),
+      .positive('Selecciona la billetera'),
     date: dateStringSchema,
     isPaid: z.boolean(),
     isRecurring: z.boolean(),
@@ -133,12 +133,9 @@ export const quickExpenseSchema = z
     applyWalletDelta: z.boolean(),
   })
   .refine(
-    (data) => {
-      if (!data.isPaid) return true;
-      return data.paymentMethodId != null && data.paymentMethodId > 0;
-    },
+    (data) => data.paymentMethodId != null && data.paymentMethodId > 0,
     {
-      message: 'La billetera es requerida para un gasto pagado',
+      message: 'Selecciona la billetera de efectivo o débito',
       path: ['paymentMethodId'],
     },
   );

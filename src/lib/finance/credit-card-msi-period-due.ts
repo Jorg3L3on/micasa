@@ -1,3 +1,5 @@
+import { resolveCardPeriodObligation } from '@/lib/finance/card-period-obligation';
+
 /**
  * Separates three card figures that must not be mixed:
  * - deuda total: outstanding balance (utilization / available credit only)
@@ -9,7 +11,7 @@
  *    already applied. That figure already includes this period's MSI installment
  *    and regular charges — do not add them again.
  * 2. Otherwise, regular charges of the period plus MSI installments due now.
- * 3. When neither exists, the suggested period payment is 0. Total debt is not
+ * 3. When neither exists, there is no period figure (not $0 from total debt). Total debt is not
  *    a fallback, and neither is the remaining plan balance.
  */
 
@@ -26,7 +28,14 @@ export type MsiPlanSlice = {
   remainingBalance: number;
 };
 
-export type CardPeriodDueSource = 'statement' | 'components' | 'none';
+export type CardPeriodDueSource =
+  | 'statement'
+  | 'components'
+  | 'planned_override'
+  | 'minimum'
+  | 'scheduled'
+  | 'none'
+  | 'missing';
 
 export type ResolveCardPeriodDueInput = {
   /** Outstanding on the card. Never copied into `periodDue`. */
@@ -40,12 +49,17 @@ export type ResolveCardPeriodDueInput = {
   /** Regular (non-plan) charges of this period when there is no statement payoff. */
   regularCharges?: number;
   msi?: readonly MsiPlanSlice[];
+  /** Debt with a due date in the period and no figure is missing, not $0. */
+  dueInPeriod?: boolean;
+  plannedOverride?: number | null;
+  explicitZero?: boolean;
+  minimumPayment?: number | null;
 };
 
 export type ResolveCardPeriodDueResult = {
   totalDebt: number;
-  /** Toca pagar este corte. */
-  periodDue: number;
+  /** Toca pagar este corte. Null when the figure is missing. */
+  periodDue: number | null;
   /** Sum of plan balances. Informative; not included in `periodDue`. */
   planRemainingBalance: number;
   /** Sum of installments that belong to this period. */
@@ -125,40 +139,50 @@ export const resolveCardPeriodDue = (
   );
   const totalDebt = roundMoney(Math.max(0, input.totalDebt));
   const paymentsApplied = roundMoney(Math.max(0, input.paymentsApplied ?? 0));
+  const obligation = resolveCardPeriodObligation({
+    outstandingBalance: totalDebt,
+    dueInPeriod: input.dueInPeriod ?? true,
+    statementPayoff: input.statementPayoff,
+    msiInstallmentDue: installmentDue,
+    scheduledAmount: input.regularCharges ?? null,
+    paymentsApplied,
+    plannedOverride: input.plannedOverride,
+    explicitZero: input.explicitZero,
+    minimumPayment: input.minimumPayment,
+  });
 
-  if (input.statementPayoff != null) {
-    const periodDue =
-      totalDebt <= 0
-        ? 0
-        : roundMoney(Math.max(input.statementPayoff - paymentsApplied, 0));
+  if (obligation.confidence === 'missing') {
     return {
       totalDebt,
-      periodDue,
+      periodDue: null,
       planRemainingBalance,
       installmentDue,
-      source: periodDue > 0 ? 'statement' : 'none',
+      source: 'missing',
     };
   }
 
-  const components = roundMoney(
-    Math.max(0, input.regularCharges ?? 0) + installmentDue - paymentsApplied,
-  );
-  if (components > 0) {
-    return {
-      totalDebt,
-      periodDue: components,
-      planRemainingBalance,
-      installmentDue,
-      source: 'components',
-    };
-  }
+  const periodDue = obligation.amount ?? 0;
+  const scheduledOnly =
+    installmentDue <= 0 && roundMoney(input.regularCharges ?? 0) > 0;
+  const source: CardPeriodDueSource =
+    obligation.basis === 'statement_no_interest'
+      ? 'statement'
+      : obligation.basis === 'planned_override'
+        ? 'planned_override'
+        : obligation.basis === 'minimum'
+          ? 'minimum'
+          : obligation.basis === 'msi_installments'
+            ? scheduledOnly
+              ? 'scheduled'
+              : 'components'
+            : 'none';
 
   return {
     totalDebt,
-    periodDue: 0,
+    periodDue,
     planRemainingBalance,
     installmentDue,
-    source: 'none',
+    source,
   };
 };
 

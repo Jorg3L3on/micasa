@@ -17,9 +17,15 @@ export async function getPlannerDuePayments(
   );
 }
 
+export type CardPaymentPlanScopePayload = {
+  scope?: 'this_cycle' | 'n_cycles' | 'until_date';
+  cycleCount?: number;
+  validUntil?: string;
+};
+
 export async function upsertFortnightCardPaymentPlan(
   fortnightId: number,
-  data: { walletId: number; plannedAmount: number },
+  data: { walletId: number; plannedAmount: number } & CardPaymentPlanScopePayload,
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi<{
@@ -29,6 +35,29 @@ export async function upsertFortnightCardPaymentPlan(
   }>(`/api/fortnights/${fortnightId}/card-payment-plans`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  }, context);
+}
+
+export async function declareFortnightCardPeriodZero(
+  fortnightId: number,
+  walletId: number,
+  context?: FinanceContextType,
+  scope?: CardPaymentPlanScopePayload,
+) {
+  return clientFetchFromApi<{
+    walletId: number;
+    fortnightId: number;
+    plannedAmount: number;
+    declaredZero: boolean;
+  }>(`/api/fortnights/${fortnightId}/card-payment-plans`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      walletId,
+      declareZero: true,
+      scope: scope?.scope ?? 'this_cycle',
+      cycleCount: scope?.cycleCount,
+      validUntil: scope?.validUntil,
+    }),
   }, context);
 }
 

@@ -97,6 +97,9 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
                     </Link>
                     <p className="text-xs text-muted-foreground">
                       {loan.lender}
+                      {loan.overduePayment
+                        ? ` · Vencida ${formatDate(loan.overduePayment.dueDate)}`
+                        : ''}
                       {loan.nextPayment
                         ? ` · Próximo ${formatDate(loan.nextPayment.dueDate)}`
                         : ''}

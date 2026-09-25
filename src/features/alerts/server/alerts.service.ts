@@ -9,6 +9,7 @@ import { sumPlannerCardDueForPeriodScope } from '@/lib/finance/credit-card-state
 import { mergePlanningCardTotalsIntoExpenseSummary } from '@/lib/finance/planning-period-card-totals';
 import { partitionLoanPaymentsForPlanningTotals } from '@/lib/finance/planning-period-loan-totals';
 import { aggregateLoanPaymentsForFortnights } from '@/lib/finance/loan.service';
+import { summarizeOverdueLoans } from '@/lib/finance/lender-alert-copy';
 import * as alertsQueries from './alerts.queries';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import type {
@@ -64,6 +65,8 @@ const buildAlerts = (input: {
     amount: number;
     dueDate: string;
     paymentSource: 'WALLET' | 'PAYROLL_DEDUCTION';
+    lender?: string | null;
+    lenderId?: number | null;
   }>;
 }): FinanceAlert[] => {
   const {
@@ -106,12 +109,7 @@ const buildAlerts = (input: {
     const d = parseCalendarDate(payment.dueDate);
     return d < today;
   });
-  const overdueWalletLoanPayments = overdueLoanPayments.filter(
-    (payment) => payment.paymentSource === 'WALLET',
-  );
-  const overduePayrollLoanPayments = overdueLoanPayments.filter(
-    (payment) => payment.paymentSource === 'PAYROLL_DEDUCTION',
-  );
+  const overdueLoanSummary = summarizeOverdueLoans(overdueLoanPayments);
   const totalOverdueAmount =
     overdueInCurrent.reduce((s, o) => s + o.amount, 0) +
     overdueLoanPayments.reduce((s, payment) => s + payment.amount, 0);
@@ -130,16 +128,7 @@ const buildAlerts = (input: {
         `${overdueInCurrent.length} gasto${overdueInCurrent.length === 1 ? '' : 's'}`,
       );
     }
-    if (overdueWalletLoanPayments.length > 0) {
-      overdueParts.push(
-        `${overdueWalletLoanPayments.length} pago${overdueWalletLoanPayments.length === 1 ? '' : 's'} préstamo billetera`,
-      );
-    }
-    if (overduePayrollLoanPayments.length > 0) {
-      overdueParts.push(
-        `${overduePayrollLoanPayments.length} deducción${overduePayrollLoanPayments.length === 1 ? '' : 'es'} nómina`,
-      );
-    }
+    overdueParts.push(...overdueLoanSummary.parts);
     const overdueBreakdown =
       overdueParts.length > 0 ? ` (${overdueParts.join(', ')})` : '';
     result.push({
@@ -147,7 +136,7 @@ const buildAlerts = (input: {
       type: 'overdue',
       title: 'Obligaciones vencidas',
       description: `${
-        overdueInCurrent.length + overdueLoanPayments.length
+        overdueInCurrent.length + overdueLoanSummary.obligationCount
       } obligacion(es) vencida(s) por ${new Intl.NumberFormat('es-MX', {
         style: 'currency',
         currency: 'MXN',
@@ -299,6 +288,8 @@ export const getAlerts = async (
       amount: payment.amount,
       dueDate: payment.dueDate,
       paymentSource: payment.paymentSource,
+      lender: payment.lender,
+      lenderId: payment.lenderId,
     })),
   });
 

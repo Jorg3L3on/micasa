@@ -9,13 +9,19 @@ import {
   buildCardStatementObligation,
   type BuildCardStatementObligationInput,
 } from '@/lib/finance/card-statement-obligation';
+import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  selectActivePlannedOverride,
+  statementCycleForDate,
+  toStoredPaymentPlanWrite,
+} from '@/lib/finance/card-payment-plan-scope';
+import { parseCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import {
   buildCardPlannerObligation,
   derivePlannerStatus,
   isPlannerPlanStale,
   toPlannerDuePaymentFields,
 } from '@/lib/finance/card-planner-obligation';
-import { todayCalendarDate } from '@/lib/calendar-dates';
 
 /** Treat non-positive plans as absent (legacy $0 rows must not force pagado). */
 const normalizePlannedGross = (raw: number | null | undefined): number | null =>
@@ -68,6 +74,7 @@ export const buildPlannerFieldsFromStatement = (input: {
   plannedGrossAmount: number | null;
   paymentsAppliedToFortnight: number;
   todayYmd?: string;
+  explicitZero?: boolean;
 }) => {
   const statementObligation = buildCardStatementObligation({
     ...input.statement,
@@ -80,6 +87,7 @@ export const buildPlannerFieldsFromStatement = (input: {
     plannedGrossAmount: input.plannedGrossAmount,
     paymentsAppliedToFortnight: input.paymentsAppliedToFortnight,
     todayYmd: input.todayYmd,
+    explicitZero: input.explicitZero,
   });
   return toPlannerDuePaymentFields(planner);
 };
@@ -113,6 +121,7 @@ export async function applyPlannerLayerToDueItems(
         todayYmd,
       });
       item.isStaleFullyCoveredPlan = false;
+      applyPeriodObligation(item);
     }
     return;
   }
@@ -121,13 +130,20 @@ export async function applyPlannerLayerToDueItems(
   const [plans, fortnightPayments] = await Promise.all([
     prisma.creditCardPaymentPlan.findMany({
       where: {
-        fortnight_id: fortnightId,
         credit_card_wallet_id: { in: walletIds },
         ...ownerFilter,
       },
       select: {
         credit_card_wallet_id: true,
         planned_amount: true,
+        declared_zero: true,
+        scope: true,
+        cycle_count: true,
+        valid_until: true,
+        anchor_statement_end: true,
+        updated_at: true,
+        created_at: true,
+        fortnight: { select: { year: true, month: true } },
       },
     }),
     sumPaymentsAppliedToFortnightByWallet(
@@ -137,17 +153,29 @@ export async function applyPlannerLayerToDueItems(
     ),
   ]);
 
-  const planByWallet = new Map(
-    plans.map((plan) => [
-      plan.credit_card_wallet_id,
-      Number(plan.planned_amount),
-    ]),
-  );
+  const writesByWallet = new Map<number, ReturnType<typeof toStoredPaymentPlanWrite>[]>();
+  for (const plan of plans) {
+    const list = writesByWallet.get(plan.credit_card_wallet_id) ?? [];
+    list.push(toStoredPaymentPlanWrite(plan));
+    writesByWallet.set(plan.credit_card_wallet_id, list);
+  }
 
   for (const item of items) {
-    const plannedGross = normalizePlannedGross(
-      planByWallet.get(item.walletId),
+    const target = statementCycleForDate(
+      parseCalendarDate(item.statementDueDate),
+      item.cutoff_day,
+      item.dueDay,
     );
+    const active = selectActivePlannedOverride(
+      writesByWallet.get(item.walletId) ?? [],
+      target,
+      { cutoffDay: item.cutoff_day, dueDay: item.dueDay },
+    );
+    const plannedGross = normalizePlannedGross(active.plannedOverride);
+    const explicitZero = active.explicitZero;
+    item.planScope = active.scope;
+    item.planCycleCount = active.cycleCount;
+    item.planValidUntil = active.validUntil;
     const paymentsAppliedToFortnight =
       fortnightPayments.get(item.walletId) ?? 0;
 
@@ -159,8 +187,11 @@ export async function applyPlannerLayerToDueItems(
         plannedGrossAmount: plannedGross,
         paymentsAppliedToFortnight,
         todayYmd,
+        explicitZero,
       });
       Object.assign(item, fields);
+      item.declaredZero = explicitZero;
+      applyPeriodObligation(item);
       continue;
     }
 
@@ -192,6 +223,8 @@ export async function applyPlannerLayerToDueItems(
       remainingPlannerAmount,
       paymentsAppliedToFortnight,
     });
+    item.declaredZero = explicitZero;
+    applyPeriodObligation(item);
   }
 }
 
@@ -205,25 +238,48 @@ export const toCreditCardPaymentPlanView = (input: {
   };
   isCurrentFortnight: boolean;
   fields: ReturnType<typeof toPlannerDuePaymentFields>;
-}): CreditCardPaymentPlanView => ({
-  fortnightId: input.fortnight.id,
-  fortnightLabel: input.fortnight.label,
-  year: input.fortnight.year,
-  month: input.fortnight.month,
-  period: input.fortnight.period,
-  isCurrentFortnight: input.isCurrentFortnight,
-  suggestedAmount: input.fields.nextDuePayment,
-  plannedPayment: input.fields.plannedPayment,
-  effectiveAmount: input.fields.effectiveAmount,
-  outstandingBalance: input.fields.outstandingBalance,
-  plannerStatus: input.fields.plannerStatus,
-  obligationAmountSource: input.fields.obligationAmountSource,
-  isEstimate: input.fields.isEstimate,
-  remainingPlannerAmount: input.fields.remainingPlannerAmount,
-  paymentsAppliedToStatement: input.fields.paymentsAppliedToStatement,
-  paymentsAppliedToFortnight: input.fields.paymentsAppliedToFortnight,
-  statementDueDate: input.fields.statementDueDate,
-  visibleDueDate: input.fields.visibleDueDate,
-  targetAmount: input.fields.targetAmount,
-  isStaleFullyCoveredPlan: input.fields.isStaleFullyCoveredPlan,
-});
+}): CreditCardPaymentPlanView => {
+  const obligationCarrier = {
+    outstandingBalance: input.fields.outstandingBalance,
+    nextDuePayment: input.fields.nextDuePayment,
+    obligationAmountSource: input.fields.obligationAmountSource,
+    isEstimate: input.fields.isEstimate,
+    plannedPayment: input.fields.plannedPayment,
+    paymentsAppliedToStatement: input.fields.paymentsAppliedToStatement,
+    paymentsAppliedToFortnight: input.fields.paymentsAppliedToFortnight,
+    statementPayoff: input.fields.statementPayoff,
+    minimumPayment: input.fields.minimumPayment,
+    declaredZero: input.fields.declaredZero,
+    plannerStatus: input.fields.plannerStatus,
+    effectiveAmount: input.fields.effectiveAmount,
+    remainingPlannerAmount: input.fields.remainingPlannerAmount,
+  };
+  const periodObligation = applyPeriodObligation(obligationCarrier);
+
+  return {
+    fortnightId: input.fortnight.id,
+    fortnightLabel: input.fortnight.label,
+    year: input.fortnight.year,
+    month: input.fortnight.month,
+    period: input.fortnight.period,
+    isCurrentFortnight: input.isCurrentFortnight,
+    plannedPayment: input.fields.plannedPayment,
+    effectiveAmount:
+      obligationCarrier.effectiveAmount ?? input.fields.effectiveAmount,
+    outstandingBalance: input.fields.outstandingBalance,
+    plannerStatus: obligationCarrier.plannerStatus,
+    obligationAmountSource: input.fields.obligationAmountSource,
+    isEstimate: input.fields.isEstimate,
+    remainingPlannerAmount:
+      obligationCarrier.remainingPlannerAmount ??
+      input.fields.remainingPlannerAmount,
+    paymentsAppliedToStatement: input.fields.paymentsAppliedToStatement,
+    paymentsAppliedToFortnight: input.fields.paymentsAppliedToFortnight,
+    statementDueDate: input.fields.statementDueDate,
+    visibleDueDate: input.fields.visibleDueDate,
+    targetAmount: input.fields.targetAmount,
+    isStaleFullyCoveredPlan: input.fields.isStaleFullyCoveredPlan,
+    periodObligation,
+    declaredZero: input.fields.declaredZero,
+  };
+};

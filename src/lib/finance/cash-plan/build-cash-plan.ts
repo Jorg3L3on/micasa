@@ -384,7 +384,7 @@ const buildShortfallDrafts = (
         action('pay_minimum', {
           obligationId: obligation.id,
           label: `Pagar solo el mínimo · ${obligation.labelSynthetic}`,
-          amount: obligation.minimumDue,
+          amount: obligation.minimumDue ?? undefined,
         }),
       ),
     ];

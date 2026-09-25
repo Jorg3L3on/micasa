@@ -1,7 +1,54 @@
 import { coerceToCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
-import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
+import {
+  applyWalletAmountDelta,
+  isFundingWalletType,
+} from '@/lib/finance/wallet-accounting';
+import type { PaymentMethodType } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+
+export const INCOME_WALLET_REQUIRED_MESSAGE =
+  'La billetera es requerida. Asigna una billetera de efectivo o débito a este ingreso.';
+
+export const INCOME_WALLET_TYPE_MESSAGE =
+  'La billetera debe ser de efectivo o débito.';
+
+export const INCOME_WALLET_NOT_FOUND_MESSAGE =
+  'Billetera no encontrada en este contexto';
+
+export class IncomeServiceError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = 'IncomeServiceError';
+    this.status = status;
+  }
+}
+
+/** Keeps the current wallet unless the edit assigns a new one. */
+export const resolveIncomeWalletId = (
+  existingWalletId: number | null,
+  providedWalletId: number | undefined,
+): number => {
+  const next =
+    providedWalletId !== undefined ? providedWalletId : existingWalletId;
+  if (next == null) {
+    throw new IncomeServiceError(INCOME_WALLET_REQUIRED_MESSAGE);
+  }
+  return next;
+};
+
+export const assertIncomeFundingWallet = (
+  wallet: { type: PaymentMethodType } | null,
+): void => {
+  if (wallet == null) {
+    throw new IncomeServiceError(INCOME_WALLET_NOT_FOUND_MESSAGE);
+  }
+  if (!isFundingWalletType(wallet.type)) {
+    throw new IncomeServiceError(INCOME_WALLET_TYPE_MESSAGE);
+  }
+};
 
 export type CreateIncomeForOwnerInput = {
   fortnightId: number;
@@ -118,14 +165,13 @@ export async function updateIncomeForOwner(input: UpdateIncomeForOwnerInput) {
   const oldAmount = Number(income.amount);
   const newAmount = input.amount;
   const oldWalletId = income.wallet_id;
-  const newWalletId =
-    input.walletId !== undefined ? input.walletId : oldWalletId;
+  const newWalletId = resolveIncomeWalletId(oldWalletId, input.walletId);
 
-  if (newWalletId == null) {
-    throw new Error(
-      'La billetera es requerida. Asigna una billetera de efectivo o débito a este ingreso.',
-    );
-  }
+  const walletForIncome = await prisma.wallet.findFirst({
+    where: { id: newWalletId, ...input.ownerFilter },
+    select: { id: true, type: true },
+  });
+  assertIncomeFundingWallet(walletForIncome);
 
   const updated = await prisma.$transaction(async (tx) => {
     if (oldWalletId === null && newWalletId != null) {

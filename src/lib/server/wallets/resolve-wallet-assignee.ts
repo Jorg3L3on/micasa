@@ -10,6 +10,7 @@ export const resolveWalletAssignee = async (
   ownerType: 'user' | 'house',
   ownerId: number,
   assigneeUserId: number | null | undefined,
+  existingAssigneeUserId?: number | null,
 ): Promise<number | null> => {
   if (assigneeUserId == null) {
     return null;
@@ -21,6 +22,9 @@ export const resolveWalletAssignee = async (
   }
   if (assigneeUserId <= 0 || !Number.isInteger(assigneeUserId)) {
     throw new AssigneeInvalidError('Selecciona un miembro de la casa');
+  }
+  if (existingAssigneeUserId != null && assigneeUserId === existingAssigneeUserId) {
+    return assigneeUserId;
   }
   await assertHouseMember(ownerId, assigneeUserId);
   return assigneeUserId;

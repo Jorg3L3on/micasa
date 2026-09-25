@@ -27,7 +27,10 @@ type FortnightSummaryHeroProps = {
    * (“Liquidez actual” / billeteras vs pendiente).
    */
   fundingLiquidity?: number;
-  /** Si false, se oculta Liquidez actual (solo quincena actual o siguiente). */
+  /**
+   * Si false, se ocultan las tarjetas Balance actual y Liquidez actual
+   * (solo quincena calendario en curso o la siguiente).
+   */
   fundingLiquidityApplies?: boolean;
   /**
    * Entra / toca pagar / te falta. En la quincena en curso se oculta:
@@ -46,6 +49,8 @@ type FortnightSummaryHeroProps = {
   leftoverAmount?: number;
   /** Deducciones de nómina incluidas en toca pagar / pendiente de la barra. */
   payrollDeductionAmount?: number;
+  /** Cards with debt and a due date but no statement payment. Blocks green Alcanza. */
+  obligationGapCount?: number;
 };
 
 const remainderToneClass: Record<
@@ -55,6 +60,7 @@ const remainderToneClass: Record<
   surplus: 'text-emerald-600 dark:text-emerald-400',
   shortfall: 'text-destructive',
   even: 'text-foreground',
+  gap: 'text-amber-700 dark:text-amber-300',
 };
 
 const commitmentCaptionClass: Record<
@@ -330,8 +336,9 @@ export const FortnightSummaryHero = ({
   compositionRows = [],
   leftoverAmount = 0,
   payrollDeductionAmount = 0,
+  obligationGapCount = 0,
 }: FortnightSummaryHeroProps) => {
-  const copy = getFortnightRemainderCopy(incomeRemainder);
+  const copy = getFortnightRemainderCopy(incomeRemainder, { obligationGapCount });
   const remainderAbs = Math.abs(incomeRemainder);
   const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];
@@ -361,24 +368,19 @@ export const FortnightSummaryHero = ({
     <div className="@container min-w-0">
       <div className="flex min-w-0 flex-col gap-4 @3xl:flex-row @3xl:items-start @3xl:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <div
-          className={cn(
-            'grid gap-2',
-            fundingLiquidityApplies ? 'grid-cols-2' : 'grid-cols-1',
-          )}
-        >
-          <AccountMetric
-            label="Balance actual"
-            amount={fundingInAccounts}
-            subtitle="Efectivo + débito hoy"
-            borderClassName="border-l-emerald-500/50"
-            pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-            icon={Banknote}
-            amountClassName={
-              fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
-            }
-          />
-          {fundingLiquidityApplies ? (
+        {fundingLiquidityApplies ? (
+          <div className="grid grid-cols-2 gap-2">
+            <AccountMetric
+              label="Balance actual"
+              amount={fundingInAccounts}
+              subtitle="Efectivo + débito hoy"
+              borderClassName="border-l-emerald-500/50"
+              pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+              icon={Banknote}
+              amountClassName={
+                fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
+              }
+            />
             <AccountMetric
               label="Liquidez actual"
               amount={fundingLiquidity}
@@ -400,8 +402,8 @@ export const FortnightSummaryHero = ({
                   : 'text-emerald-700 dark:text-emerald-300'
               }
             />
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <CommitmentBar
           periodIncome={periodIncome}
@@ -491,7 +493,9 @@ export const FortnightSummaryHero = ({
               'border-l-[3px] px-2.5 py-2',
               copy.tone === 'shortfall'
                 ? 'border-l-destructive/60'
-                : 'border-l-emerald-500/50',
+                : copy.gapNote
+                  ? 'border-l-amber-500/60'
+                  : 'border-l-emerald-500/50',
             )}
           >
             <div className="flex items-baseline justify-between gap-3">
@@ -512,6 +516,11 @@ export const FortnightSummaryHero = ({
                 {formatCurrency(remainderAbs)}
               </span>
             </div>
+            {copy.gapNote ? (
+              <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                {copy.gapNote}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

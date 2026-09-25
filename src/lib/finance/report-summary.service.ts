@@ -49,6 +49,7 @@ export type ReportSummaryResult = {
     userName: string | null;
     templateName: string | null;
     categoryId: number | null;
+    walletId: number | null;
   }>;
   planningExpenseCount?: number;
   planningPaidExpenseCount?: number;
@@ -60,7 +61,11 @@ export type ReportSummaryResult = {
     expenseCount: number;
   } | null;
   planningOrphanCardPayments?: { total: number; count: number } | null;
-  planningCardStatementDue?: { total: number; cardCount: number } | null;
+  planningCardStatementDue?: {
+    total: number;
+    cardCount: number;
+    obligationGapCount?: number;
+  } | null;
   /** Cuotas pendientes pagadas desde billetera (pestaña Préstamos). */
   planningWalletLoanDue?: { total: number; count: number } | null;
   /** Deducciones de nómina pendientes (pestaña Préstamos); reducen el ingreso disponible. */
@@ -202,6 +207,7 @@ export const getReportSummary = async (
 
   let planningCardStatementDueTotal = 0;
   let planningCardStatementDueCardCount = 0;
+  let planningCardStatementDueGapCount = 0;
   let planningWalletLoanDueTotal = 0;
   let planningWalletLoanDueCount = 0;
   let planningPayrollLoanDeductionTotal = 0;
@@ -231,6 +237,7 @@ export const getReportSummary = async (
     ]);
     planningCardStatementDueTotal = cardDue.total;
     planningCardStatementDueCardCount = cardDue.cardCount;
+    planningCardStatementDueGapCount = cardDue.obligationGapCount;
     planningWalletLoanDueTotal = loanDue.wallet.total;
     planningWalletLoanDueCount = loanDue.wallet.count;
     planningPayrollLoanDeductionTotal = loanDue.payroll.total;
@@ -346,6 +353,7 @@ export const getReportSummary = async (
         userName: inc.user?.name ?? null,
         templateName: inc.income_template?.name ?? null,
         categoryId: inc.category_id ?? null,
+        walletId: inc.wallet_id ?? null,
       });
     });
 
@@ -466,10 +474,12 @@ export const getReportSummary = async (
                 }
               : null,
           planningCardStatementDue:
-            planningCardStatementDueTotal > 0
+            planningCardStatementDueTotal > 0 ||
+            planningCardStatementDueGapCount > 0
               ? {
                   total: planningCardStatementDueTotal,
                   cardCount: planningCardStatementDueCardCount,
+                  obligationGapCount: planningCardStatementDueGapCount,
                 }
               : null,
           planningWalletLoanDue:

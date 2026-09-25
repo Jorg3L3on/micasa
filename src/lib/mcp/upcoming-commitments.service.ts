@@ -4,6 +4,10 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import {
+  dueItemToPeriodObligation,
+  type CardPeriodObligationConfidence,
+} from '@/lib/finance/card-period-obligation';
 import { splitAggregatedDueAndInstallment } from '@/lib/finance/credit-card-msi-period-due';
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 import { listInstallmentPlanPaymentsForPlannerMonth } from '@/lib/finance/credit-card-installment-plan.service';
@@ -31,10 +35,12 @@ export type UpcomingCommitmentItem = {
   date: string;
   type: 'revolving' | 'msi' | 'loan';
   name: string;
-  amount: number;
+  /** Null when the period payment is unknown. Not the same as 0. */
+  amount: number | null;
   is_paid: boolean;
   source_id: number;
   wallet_or_loan: string;
+  confidence?: CardPeriodObligationConfidence;
 };
 
 export type UpcomingCommitmentsResult = {
@@ -264,6 +270,29 @@ const collectProjectedRevolvingFromLiquidity = async (
     }
   }
 
+  for (const card of projection.summary?.unresolved_card_obligations ?? []) {
+    const date = card.statement_due_date;
+    if (
+      compareUtcDateOnly(date, fromYmd) < 0 ||
+      compareUtcDateOnly(date, toYmd) > 0
+    ) {
+      continue;
+    }
+    if (plannerWindowMonthKeys.has(monthKeyFromYmd(date))) continue;
+    const key = cardDueKey(card.wallet_id, date);
+    if (existingRevolvingKeys.has(key)) continue;
+    items.push({
+      date,
+      type: 'revolving',
+      name: `Pago tarjeta ${card.wallet_name}`,
+      amount: null,
+      confidence: 'missing',
+      is_paid: false,
+      source_id: card.wallet_id,
+      wallet_or_loan: card.wallet_name,
+    });
+  }
+
   return items;
 };
 
@@ -303,10 +332,26 @@ export async function listUpcomingCommitmentsForMonth(
   }
 
   for (const payment of [...cardDue.first, ...cardDue.second]) {
-    if (!isUnpaidCardPlannerRow(payment)) continue;
-
     const date = payment.visibleDueDate ?? payment.statementDueDate;
     if (!date.startsWith(monthPrefix)) continue;
+
+    const obligation =
+      payment.periodObligation ?? dueItemToPeriodObligation(payment);
+    if (obligation.confidence === 'missing') {
+      items.push({
+        date,
+        type: 'revolving',
+        name: `Pago tarjeta ${payment.walletName}`,
+        amount: null,
+        confidence: 'missing',
+        is_paid: false,
+        source_id: payment.walletId,
+        wallet_or_loan: payment.walletName,
+      });
+      continue;
+    }
+
+    if (!isUnpaidCardPlannerRow(payment)) continue;
 
     const msiOnDate = msiByWalletDate.get(cardDueKey(payment.walletId, date)) ?? 0;
     const leftover = leftoverRevolvingFromCardDue(payment, msiOnDate);
@@ -317,6 +362,7 @@ export async function listUpcomingCommitmentsForMonth(
       type: 'revolving',
       name: `Pago tarjeta ${payment.walletName}`,
       amount: leftover,
+      confidence: obligation.confidence,
       is_paid: false,
       source_id: payment.walletId,
       wallet_or_loan: payment.walletName,
@@ -345,8 +391,8 @@ export async function listUpcomingCommitmentsForMonth(
   items.sort((a, b) => a.date.localeCompare(b.date));
 
   const periodTotal = items
-    .filter((item) => !item.is_paid)
-    .reduce((sum, item) => sum + item.amount, 0);
+    .filter((item) => !item.is_paid && item.confidence !== 'missing')
+    .reduce((sum, item) => sum + (item.amount ?? 0), 0);
 
   return {
     year,
@@ -429,8 +475,8 @@ export async function listUpcomingCommitments(
   items.sort((a, b) => a.date.localeCompare(b.date));
 
   const periodTotal = items
-    .filter((item) => !item.is_paid)
-    .reduce((sum, item) => sum + item.amount, 0);
+    .filter((item) => !item.is_paid && item.confidence !== 'missing')
+    .reduce((sum, item) => sum + (item.amount ?? 0), 0);
 
   return {
     year: range.year,

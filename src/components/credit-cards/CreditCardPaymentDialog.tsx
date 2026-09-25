@@ -43,8 +43,8 @@ export type CreditCardPaymentDialogProps = {
   onOpenChange: (open: boolean) => void;
   fundingWalletOptions: PaymentMethodOption[];
   categoryOptions: CategoryOption[];
-  nextDuePayment: number;
-  outstandingBalance: number;
+  /** Period obligation amount. Null leaves the field empty (missing corte). */
+  prefillAmount: number | null;
   submitting: boolean;
   error: string | null;
   /** When paying from planner / Compromisos, pin expense to this fortnight. */
@@ -57,15 +57,14 @@ const CreditCardPaymentDialog = ({
   onOpenChange,
   fundingWalletOptions,
   categoryOptions,
-  nextDuePayment,
-  outstandingBalance,
+  prefillAmount,
   submitting,
   error,
   fortnightId,
   onConfirm,
 }: CreditCardPaymentDialogProps) => {
   const [sourceWalletId, setSourceWalletId] = useState('');
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState<number | null>(null);
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [createFortnightExpense, setCreateFortnightExpense] = useState(true);
   const [categoryId, setCategoryId] = useState('');
@@ -75,13 +74,7 @@ const CreditCardPaymentDialog = ({
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset form state each time the payment dialog opens.
     setSourceWalletId('');
-    const suggested =
-      nextDuePayment > 0
-        ? nextDuePayment
-        : outstandingBalance > 0
-          ? outstandingBalance
-          : 0;
-    setAmount(suggested);
+    setAmount(prefillAmount);
     setPaidAt(todayCalendarDate());
     setCreateFortnightExpense(true);
     setLocalError(null);
@@ -96,7 +89,7 @@ const CreditCardPaymentDialog = ({
       /* ignore */
     }
     setCategoryId(initialCategory);
-  }, [open, categoryOptions, nextDuePayment, outstandingBalance]);
+  }, [open, categoryOptions, prefillAmount]);
 
   const selectedSource = fundingWalletOptions.find(
     (w) => String(w.id) === sourceWalletId,
@@ -106,6 +99,11 @@ const CreditCardPaymentDialog = ({
     if (submitting) return;
     setLocalError(null);
 
+    if (amount == null || !Number.isFinite(amount) || amount <= 0) {
+      setLocalError('Ingresa un monto válido.');
+      return;
+    }
+
     if (createFortnightExpense && !categoryId) {
       setLocalError('Elige una categoría para el gasto en la quincena.');
       return;
@@ -113,7 +111,7 @@ const CreditCardPaymentDialog = ({
 
     const payload: CreditCardPaymentSubmitPayload = {
       source_wallet_id: Number(sourceWalletId),
-      amount: Number(amount),
+      amount,
       paid_at: paidAt,
       note: null,
       create_fortnight_expense: createFortnightExpense,

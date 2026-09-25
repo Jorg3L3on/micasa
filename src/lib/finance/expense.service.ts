@@ -313,6 +313,11 @@ export async function createExpenseInTransaction(
     }
   }
 
+  const paymentYmd =
+    paymentDate && isValidCalendarDateString(paymentDate) ? paymentDate : null;
+  const dueDayFromPayment =
+    paymentYmd != null ? Number(paymentYmd.slice(8, 10)) : null;
+
   const expense = await tx.expense.create({
     data: {
       fortnight_id: fortnightId,
@@ -321,9 +326,9 @@ export async function createExpenseInTransaction(
       description,
       amount,
       is_paid: isPaid,
-      payment_date: paymentDate ? coerceToCalendarDayStart(paymentDate) : null,
+      payment_date: paymentYmd ? coerceToCalendarDayStart(paymentYmd) : null,
       expense_template_id: expenseTemplateId || null,
-      due_day: resolvedDueDay,
+      due_day: dueDayFromPayment ?? resolvedDueDay,
       statement_import_id: statementImportId ?? null,
       loan_payment_id: loanPaymentId ?? null,
       credit_installment_current: creditInstallmentCurrent ?? null,

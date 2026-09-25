@@ -73,11 +73,15 @@ import {
 import {
   createLender,
   listLenders,
+  mergeLenders,
   payLender,
+  splitLender,
   undoLenderPayment,
 } from '@/lib/api/lenders';
+import type { PayLenderInput } from '@/schemas/lender.schema';
 import LenderPayDialog from '@/components/loans/LenderPayDialog';
 import { LenderGroupedLoansTable } from '@/components/loans/LenderGroupedLoansTable';
+import { LenderOrganizeDialog } from '@/components/loans/LenderOrganizeDialog';
 import { LoanCalendarPaymentOverlay } from '@/components/loans/LoanCalendarPaymentOverlay';
 import { LoanCreateOverlay } from '@/components/loans/LoanCreateOverlay';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
@@ -220,8 +224,8 @@ const loanPaymentSourceLabel = (
 ) => {
   if (loan.paymentSource === 'PAYROLL_DEDUCTION') {
     return loan.incomeTemplateName
-      ? `Deducción de nómina: ${loan.incomeTemplateName}`
-      : 'Deducción de nómina (sin plantilla vinculada)';
+      ? `Se descuenta del ingreso · ${loan.incomeTemplateName}`
+      : 'Se descuenta del ingreso';
   }
 
   return loan.sourceWalletName ?? 'Billetera';
@@ -247,7 +251,7 @@ const paymentStatusLabel = (status: LoanPaymentVisualStatus) => {
   if (status === 'paid') return 'Pagado';
   if (status === 'skipped') return 'Omitido';
   if (status === 'cancelled') return 'Cancelado';
-  if (status === 'overdue') return 'Vencido';
+  if (status === 'overdue') return 'Vencida';
   return 'Por pagar';
 };
 
@@ -463,6 +467,10 @@ export default function LoansPage() {
   const [payLenderId, setPayLenderId] = useState<number | null>(null);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [organizeLenderId, setOrganizeLenderId] = useState<number | null>(null);
+  const [organizeMode, setOrganizeMode] = useState<'merge' | 'split'>('merge');
+  const [organizeSubmitting, setOrganizeSubmitting] = useState(false);
+  const [organizeError, setOrganizeError] = useState<string | null>(null);
   const [newLenderOpen, setNewLenderOpen] = useState(false);
   const [newLenderName, setNewLenderName] = useState('');
   const [newLenderSubmitting, setNewLenderSubmitting] = useState(false);
@@ -698,12 +706,60 @@ export default function LoansPage() {
     [lenders, payLenderId],
   );
 
-  const handlePayLender = async (data: {
-    mode: 'WALLET' | 'EXTERNAL';
-    paidAt?: string;
-    sourceWalletId?: number | null;
-    note?: string | null;
+  const organizeLender = useMemo(
+    () => lenders.find((lender) => lender.id === organizeLenderId) ?? null,
+    [lenders, organizeLenderId],
+  );
+
+  const handleMergeLender = async (targetLenderId: number) => {
+    if (!organizeLenderId) return;
+    setOrganizeSubmitting(true);
+    setOrganizeError(null);
+    try {
+      await mergeLenders(organizeLenderId, { targetLenderId }, context);
+      toast.success('Prestamistas fusionados');
+      setOrganizeLenderId(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo fusionar';
+      setOrganizeError(message);
+    } finally {
+      setOrganizeSubmitting(false);
+    }
+  };
+
+  const handleSplitLender = async (input: {
+    loanIds: number[];
+    targetLenderId: number | null;
+    name: string | null;
   }) => {
+    if (!organizeLenderId) return;
+    setOrganizeSubmitting(true);
+    setOrganizeError(null);
+    try {
+      await splitLender(
+        organizeLenderId,
+        {
+          loanIds: input.loanIds,
+          targetLenderId: input.targetLenderId,
+          name: input.name,
+        },
+        context,
+      );
+      toast.success('Contratos separados');
+      setOrganizeLenderId(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo separar';
+      setOrganizeError(message);
+    } finally {
+      setOrganizeSubmitting(false);
+    }
+  };
+
+  const handlePayLender = async (data: PayLenderInput) => {
     if (!payLenderId) return;
     setPaySubmitting(true);
     setPayError(null);
@@ -1295,6 +1351,16 @@ export default function LoansPage() {
           onPayLender={(lenderId) => {
             setPayError(null);
             setPayLenderId(lenderId);
+          }}
+          onMergeLender={(lenderId) => {
+            setOrganizeError(null);
+            setOrganizeMode('merge');
+            setOrganizeLenderId(lenderId);
+          }}
+          onSplitLender={(lenderId) => {
+            setOrganizeError(null);
+            setOrganizeMode('split');
+            setOrganizeLenderId(lenderId);
           }}
           onUndoLastPayment={(lenderId, paymentId) => {
             void undoLenderPayment(lenderId, paymentId, context)
@@ -2020,10 +2086,17 @@ export default function LoansPage() {
                             Calendario de pagos
                           </h3>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            Próximo:{' '}
+                            {selectedLoan.overduePayment
+                              ? `Vencida: ${formatDate(selectedLoan.overduePayment.dueDate)}`
+                              : null}
+                            {selectedLoan.overduePayment && selectedLoan.nextPayment
+                              ? ' · '
+                              : null}
                             {selectedLoan.nextPayment
-                              ? formatDate(selectedLoan.nextPayment.dueDate)
-                              : 'Sin pagos pendientes'}
+                              ? `Próximo: ${formatDate(selectedLoan.nextPayment.dueDate)}`
+                              : selectedLoan.overduePayment
+                                ? null
+                                : 'Sin pagos pendientes'}
                           </p>
                         </div>
                         <Badge variant="outline" className="w-fit text-[10px]">
@@ -2035,7 +2108,7 @@ export default function LoansPage() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(
                           [
-                            ['overdue', 'Vencidos'],
+                            ['overdue', 'Vencidas'],
                             ['scheduled', 'Por pagar'],
                             ['paid', 'Pagados'],
                             ['skipped', 'Omitidos'],
@@ -2114,21 +2187,27 @@ export default function LoansPage() {
                                   </span>
                                   {payment.status === 'SCHEDULED' ? (
                                     <div className="flex items-center gap-0.5">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 rounded-lg px-2 text-[11px]"
-                                        onClick={() =>
-                                          startPaymentAction(
-                                            payment,
-                                            'MARK_PAID',
-                                          )
-                                        }
-                                        disabled={paymentActionSubmitting}
-                                      >
-                                        Pagar
-                                      </Button>
+                                      {isPayrollDeductionLoan ? (
+                                        <span className="max-w-[7.5rem] text-right text-[10px] leading-tight text-muted-foreground">
+                                          Se descuenta del ingreso
+                                        </span>
+                                      ) : (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 rounded-lg px-2 text-[11px]"
+                                          onClick={() =>
+                                            startPaymentAction(
+                                              payment,
+                                              'MARK_PAID',
+                                            )
+                                          }
+                                          disabled={paymentActionSubmitting}
+                                        >
+                                          Pagar
+                                        </Button>
+                                      )}
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                           <Button
@@ -2299,26 +2378,32 @@ export default function LoansPage() {
                                   <TableCell className="text-right">
                                     {payment.status === 'SCHEDULED' ? (
                                       <div className="inline-flex items-center justify-end gap-1">
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-8 gap-1 px-2 text-[11px]"
-                                          onClick={() =>
-                                            startPaymentAction(
-                                              payment,
-                                              'MARK_PAID',
-                                            )
-                                          }
-                                          disabled={paymentActionSubmitting}
-                                        >
-                                          <CheckCircle2
-                                            className="h-3 w-3"
-                                            aria-hidden
-                                            data-icon="inline-start"
-                                          />
-                                          Pagar
-                                        </Button>
+                                        {isPayrollDeductionLoan ? (
+                                          <span className="max-w-[8rem] text-right text-[11px] leading-tight text-muted-foreground">
+                                            Se descuenta del ingreso
+                                          </span>
+                                        ) : (
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 gap-1 px-2 text-[11px]"
+                                            onClick={() =>
+                                              startPaymentAction(
+                                                payment,
+                                                'MARK_PAID',
+                                              )
+                                            }
+                                            disabled={paymentActionSubmitting}
+                                          >
+                                            <CheckCircle2
+                                              className="h-3 w-3"
+                                              aria-hidden
+                                              data-icon="inline-start"
+                                            />
+                                            Pagar
+                                          </Button>
+                                        )}
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                             <Button
@@ -2587,6 +2672,24 @@ export default function LoansPage() {
         submitting={paySubmitting}
         error={payError}
         onConfirm={handlePayLender}
+      />
+
+      <LenderOrganizeDialog
+        open={organizeLenderId !== null}
+        mode={organizeMode}
+        lender={organizeLender}
+        lenders={lenders}
+        loans={loans}
+        submitting={organizeSubmitting}
+        error={organizeError}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOrganizeLenderId(null);
+            setOrganizeError(null);
+          }
+        }}
+        onMerge={handleMergeLender}
+        onSplit={handleSplitLender}
       />
 
       <ResponsiveOverlay

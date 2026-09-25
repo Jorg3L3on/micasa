@@ -1,9 +1,9 @@
 import {
-  endOfCalendarDay,
   formatCalendarDate,
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import { minimumPaymentForPeriod } from '@/lib/finance/card-period-obligation';
 
 /** How the remaining statement due amount was derived. */
 export type CardObligationAmountSource =
@@ -27,9 +27,10 @@ export type PlannerCardPaymentStatusUi =
   | 'pagado'
   | 'vencido'
   | 'por_pagar'
-  | 'sin_cargo';
+  | 'sin_cargo'
+  | 'falta_dato';
 
-/** Short hint when the suggested amount is not from an imported statement. */
+/** Short hint when the corte amount is not from an imported statement. */
 export const formatCardObligationAmountSourceHint = (
   source: CardObligationAmountSource | undefined,
   isEstimate?: boolean,
@@ -78,8 +79,14 @@ export type CardStatementObligationDto = {
   ledgerAmount: number;
   outstandingBalance: number;
   paymentsAppliedToStatement: number;
-  /** Raw suggested amount before user plan overlay (same as remaining when no plan). */
-  suggestedStatementAmount: number;
+  /**
+   * Pago del corte. `null` is unknown. `0` is an explicit figure
+   * (import, ledger, or open cycle says nothing remains).
+   * `remainingStatementDue` is the same number with null coerced to 0 for sums.
+   */
+  statementPayoff: number | null;
+  /** Captured issuer minimum. Does not replace a known statement payoff. */
+  minimumPayment: number | null;
   remainingStatementDue: number;
   plannedGrossAmount: number | null;
   remainingPlannedAmount: number | null;
@@ -130,8 +137,74 @@ export type BuildCardStatementObligationInput = {
   asOfYmd?: string;
   plannedGrossAmount?: number | null;
   allowOutstandingBalanceFallback?: boolean;
+  /** Statement-import minimum for this window. Not a substitute for the payoff. */
+  minimumPayment?: number | null;
+  /** Persisted wallet minimum. Used only when this cycle has no statement payoff. */
+  persistedMinimumPayment?: number | null;
   /** Calendar YYYY-MM-DD for overdue check; defaults to today in Mexico City. */
   todayYmd?: string;
+};
+
+export type StatementPayoffResolution = {
+  /** Null when no import, ledger charge, or open-cycle figure exists. */
+  amount: number | null;
+  source: CardObligationAmountSource;
+};
+
+/**
+ * The only place a statement figure is born.
+ * `amount: null` is unknown. `amount: 0` means a real source says nothing is due.
+ * Total debt is never copied into `amount`.
+ */
+export const resolveStatementPayoff = ({
+  lastStatementBalance,
+  paymentsAppliedToStatement,
+  importedTotalDue,
+  outstandingBalance,
+  dueDay,
+  cutoffDay,
+  projectedStatementInstallmentsTotal = 0,
+  currentCyclePurchasesTotal = 0,
+  currentCyclePaymentsTotal = 0,
+  asOfYmd,
+  currentCycleEndYmd,
+  allowOutstandingBalanceFallback = true,
+}: ComputeNextDuePaymentInput): StatementPayoffResolution => {
+  const projectedInstallments = Math.max(projectedStatementInstallmentsTotal, 0);
+  const statementBalance = lastStatementBalance + projectedInstallments;
+  const ledgerDue = Math.max(statementBalance - paymentsAppliedToStatement, 0);
+  const projectedOpenCycleDue =
+    dueDay < cutoffDay &&
+    currentCyclePurchasesTotal > 0 &&
+    asOfYmd != null &&
+    currentCycleEndYmd != null &&
+    asOfYmd <= currentCycleEndYmd
+      ? Math.max(currentCyclePurchasesTotal - currentCyclePaymentsTotal, 0)
+      : 0;
+
+  if (importedTotalDue != null) {
+    if (outstandingBalance <= 0) {
+      return { amount: 0, source: 'import' };
+    }
+    return {
+      amount: Math.max(importedTotalDue - paymentsAppliedToStatement, 0),
+      source: 'import',
+    };
+  }
+
+  if (statementBalance > 0) {
+    return {
+      amount: ledgerDue,
+      source: lastStatementBalance > 0 ? 'ledger' : 'projection',
+    };
+  }
+
+  if (projectedOpenCycleDue > 0) {
+    return { amount: projectedOpenCycleDue, source: 'projection' };
+  }
+
+  void allowOutstandingBalanceFallback;
+  return { amount: null, source: 'none' };
 };
 
 const toDateOnlyString = (date: Date) => formatCalendarDate(date);
@@ -188,21 +261,19 @@ const resolveDueDate = (statementEnd: Date, dueDay: number) => {
   return addMonths(candidate, 1, dueDay);
 };
 
-/** Inclusive upper bound for the due calendar day in Mexico City. */
-const endOfDueCalendarDay = (date: Date) =>
-  endOfCalendarDay(formatCalendarDate(date));
-
 /**
- * Pago que cuenta contra el corte: día UTC posterior al del cierre, o mismo día UTC con `paid_at`
- * estrictamente después del instante de cierre.
+ * Pago que cuenta contra el corte: después del cierre y hasta el siguiente corte
+ * (inclusive). Un pago posterior al día de vencimiento sigue aplicando al ciclo
+ * más antiguo que aún no cerró — no se descarta por llegar tarde.
  */
 export const paymentAppliesToStatementPeriod = (
   paidAt: Date,
   statementEnd: Date,
-  statementDueDate: Date,
+  _statementDueDate: Date,
+  nextStatementEnd?: Date,
 ): boolean => {
   const paidMs = paidAt.getTime();
-  if (paidMs > endOfDueCalendarDay(statementDueDate).getTime()) {
+  if (nextStatementEnd != null && paidMs > nextStatementEnd.getTime()) {
     return false;
   }
   const payDay = toDateOnlyString(paidAt);
@@ -244,69 +315,24 @@ export const toCardStatementCycle = (
 });
 
 /**
- * Suggested payment for this statement (pago del corte / toca pagar).
+ * Pago del corte / toca pagar for this statement.
  *
  * Priority:
  * 1. Imported "pago para no generar intereses", minus payments already applied.
  * 2. Ledger statement balance (posted charges, including a projected MSI cuota
  *    that belongs to this statement) minus payments.
  * 3. Open-cycle purchases when the due day precedes the cutoff.
- * 4. Otherwise 0.
+ * 4. Otherwise null. Unknown is not $0. Period readers use `getCardPeriodObligation`.
  *
  * `outstandingBalance` is deuda total. It feeds utilization and the "wallet
- * paid off" check, and is never the suggested period payment — even when
+ * paid off" check, and is never the period payment — even when
  * `allowOutstandingBalanceFallback` is true. Remaining MSI plan balance is
- * not an input here.
+ * not an input here. An imported total of 0 stays an explicit zero, not null.
  */
-export const computeNextDuePayment = ({
-  lastStatementBalance,
-  paymentsAppliedToStatement,
-  importedTotalDue,
-  outstandingBalance,
-  dueDay,
-  cutoffDay,
-  projectedStatementInstallmentsTotal = 0,
-  currentCyclePurchasesTotal = 0,
-  currentCyclePaymentsTotal = 0,
-  asOfYmd,
-  currentCycleEndYmd,
-  allowOutstandingBalanceFallback = true,
-}: ComputeNextDuePaymentInput): number => {
-  const statementBalance =
-    lastStatementBalance + Math.max(projectedStatementInstallmentsTotal, 0);
-  const ledgerDue = Math.max(
-    statementBalance - paymentsAppliedToStatement,
-    0,
-  );
-  const projectedOpenCycleDue =
-    dueDay < cutoffDay &&
-    currentCyclePurchasesTotal > 0 &&
-    asOfYmd != null &&
-    currentCycleEndYmd != null &&
-    asOfYmd <= currentCycleEndYmd
-      ? Math.max(currentCyclePurchasesTotal - currentCyclePaymentsTotal, 0)
-      : 0;
-
-  if (importedTotalDue != null) {
-    const fromImport = Math.max(importedTotalDue - paymentsAppliedToStatement, 0);
-    // Wallet paid off → do not keep a stale import total as actionable due.
-    if (outstandingBalance <= 0) {
-      return 0;
-    }
-    return fromImport;
-  }
-  if (ledgerDue > 0) {
-    return ledgerDue;
-  }
-  if (projectedOpenCycleDue > 0) {
-    return projectedOpenCycleDue;
-  }
-  // Documented fallback: no statement, ledger, or open-cycle projection.
-  // `outstandingBalance` (deuda total) is not billed. The flag is retained so
-  // callers can keep passing it; it no longer invents a period payment.
-  void allowOutstandingBalanceFallback;
-  return 0;
-};
+/** Statement payoff only. Null when the corte figure is unknown. Never total debt. */
+export const computeNextDuePayment = (
+  input: ComputeNextDuePaymentInput,
+): number | null => resolveStatementPayoff(input).amount;
 
 export const deriveObligationAmountSource = (input: {
   importedTotalDue: number | null;
@@ -316,38 +342,27 @@ export const deriveObligationAmountSource = (input: {
   cutoffDay: number;
   projectedStatementInstallmentsTotal?: number;
   currentCyclePurchasesTotal?: number;
+  currentCyclePaymentsTotal?: number;
+  paymentsAppliedToStatement?: number;
   asOfYmd?: string;
   currentCycleEndYmd?: string;
   remainingStatementDue: number;
   allowOutstandingBalanceFallback?: boolean;
-}): CardObligationAmountSource => {
-  if (input.remainingStatementDue <= 0) {
-    return 'none';
-  }
-  if (input.importedTotalDue != null) {
-    return 'import';
-  }
-  const ledgerDue = Math.max(input.lastStatementBalance, 0);
-  if (ledgerDue > 0) {
-    return 'ledger';
-  }
-  if ((input.projectedStatementInstallmentsTotal ?? 0) > 0) {
-    return 'projection';
-  }
-  if (
-    input.dueDay < input.cutoffDay &&
-    (input.currentCyclePurchasesTotal ?? 0) > 0 &&
-    input.asOfYmd != null &&
-    input.currentCycleEndYmd != null &&
-    input.asOfYmd <= input.currentCycleEndYmd
-  ) {
-    return 'projection';
-  }
-  // Deuda total is not a period-payment source.
-  void input.outstandingBalance;
-  void input.allowOutstandingBalanceFallback;
-  return 'none';
-};
+}): CardObligationAmountSource =>
+  resolveStatementPayoff({
+    lastStatementBalance: input.lastStatementBalance,
+    paymentsAppliedToStatement: input.paymentsAppliedToStatement ?? 0,
+    importedTotalDue: input.importedTotalDue,
+    outstandingBalance: input.outstandingBalance,
+    dueDay: input.dueDay,
+    cutoffDay: input.cutoffDay,
+    projectedStatementInstallmentsTotal: input.projectedStatementInstallmentsTotal,
+    currentCyclePurchasesTotal: input.currentCyclePurchasesTotal,
+    currentCyclePaymentsTotal: input.currentCyclePaymentsTotal,
+    asOfYmd: input.asOfYmd,
+    currentCycleEndYmd: input.currentCycleEndYmd,
+    allowOutstandingBalanceFallback: input.allowOutstandingBalanceFallback,
+  }).source;
 
 export const getRemainingPlannedAmount = (input: {
   plannedGrossAmount: number | null;
@@ -425,6 +440,8 @@ export const toDuePaymentItemFields = (
   obligationAmountSource: CardObligationAmountSource;
   isEstimate: boolean;
   remainingPlannedAmount: number | null;
+  statementPayoff: number | null;
+  minimumPayment: number | null;
 } => ({
   nextDuePayment: obligation.remainingStatementDue,
   paymentsAppliedToStatement: obligation.paymentsAppliedToStatement,
@@ -437,6 +454,8 @@ export const toDuePaymentItemFields = (
   obligationAmountSource: obligation.obligationAmountSource,
   isEstimate: obligation.isEstimate,
   remainingPlannedAmount: obligation.remainingPlannedAmount,
+  statementPayoff: obligation.statementPayoff,
+  minimumPayment: obligation.minimumPayment,
 });
 
 export const reconcileDuePaymentItemCanonicalFields = (
@@ -483,7 +502,7 @@ export const buildCardStatementObligation = (
   const cycle = toCardStatementCycle(input.window);
   const currentCycleEndYmd = cycle.currentCycleEnd;
 
-  const remainingStatementDue = computeNextDuePayment({
+  const payoff = resolveStatementPayoff({
     lastStatementBalance: input.lastStatementBalance,
     paymentsAppliedToStatement: input.paymentsAppliedToStatement,
     importedTotalDue: input.importedTotalDue,
@@ -499,22 +518,9 @@ export const buildCardStatementObligation = (
     allowOutstandingBalanceFallback:
       input.allowOutstandingBalanceFallback ?? true,
   });
-
-  const obligationAmountSource = deriveObligationAmountSource({
-    importedTotalDue: input.importedTotalDue,
-    lastStatementBalance: input.lastStatementBalance,
-    outstandingBalance: input.outstandingBalance,
-    dueDay: input.dueDay,
-    cutoffDay: input.cutoffDay,
-    projectedStatementInstallmentsTotal:
-      input.projectedStatementInstallmentsTotal ?? 0,
-    currentCyclePurchasesTotal: input.currentCyclePurchasesTotal,
-    asOfYmd: input.asOfYmd,
-    currentCycleEndYmd,
-    remainingStatementDue,
-    allowOutstandingBalanceFallback:
-      input.allowOutstandingBalanceFallback ?? true,
-  });
+  const statementPayoff = payoff.amount;
+  const remainingStatementDue = statementPayoff ?? 0;
+  const obligationAmountSource = payoff.source;
 
   const plannedGrossAmount = input.plannedGrossAmount ?? null;
   const remainingPlannedAmount = getRemainingPlannedAmount({
@@ -535,16 +541,6 @@ export const buildCardStatementObligation = (
     obligationAmountSource === 'wallet_debt' ||
     obligationAmountSource === 'projection';
 
-  const statementBalanceBeforePayments =
-    input.lastStatementBalance + (input.projectedStatementInstallmentsTotal ?? 0);
-  const suggestedBeforePayments =
-    input.importedTotalDue ??
-    (statementBalanceBeforePayments > 0
-      ? statementBalanceBeforePayments
-      : obligationAmountSource === 'projection'
-        ? (input.currentCyclePurchasesTotal ?? 0)
-        : 0);
-
   return {
     walletId: input.walletId,
     walletName: input.walletName,
@@ -557,7 +553,12 @@ export const buildCardStatementObligation = (
     ledgerAmount: input.lastStatementBalance,
     outstandingBalance: input.outstandingBalance,
     paymentsAppliedToStatement: input.paymentsAppliedToStatement,
-    suggestedStatementAmount: suggestedBeforePayments,
+    statementPayoff,
+    minimumPayment: minimumPaymentForPeriod({
+      statementPayoff,
+      statementMinimum: input.minimumPayment,
+      persistedMinimum: input.persistedMinimumPayment,
+    }),
     remainingStatementDue,
     plannedGrossAmount,
     remainingPlannedAmount,

@@ -28,7 +28,8 @@ export type Obligation = {
   labelSynthetic: string;
   balanceTotal?: number;
   statementDue?: number;
-  minimumDue?: number;
+  /** Null when the issuer minimum is unknown. Never copied from the statement payoff. */
+  minimumDue?: number | null;
   msiInstallment?: number;
   aprAnnual?: number | null;
   catAnnual?: number | null;

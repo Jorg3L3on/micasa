@@ -19,6 +19,7 @@ import {
   creditCardSegmentedTabChromeClass,
   creditCardSegmentedTabListClass,
 } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { canAdvanceToNextCreditCardCycle } from '@/lib/finance/credit-card-cycle-types';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -295,15 +296,25 @@ export const CreditCardVisualHero = ({
 type DuePaymentStripProps = {
   statement: CreditCardStatementResponse;
   daysUntilDue: number;
+  onCapture?: () => void;
+  onClearDeclaration?: () => void;
 };
 
 export const CreditCardDuePaymentStrip = ({
   statement,
   daysUntilDue,
+  onCapture,
+  onClearDeclaration,
 }: DuePaymentStripProps) => {
-  const hasPendingDue = statement.next_due_payment > 0;
+  const isMissingCorte = statement.period_obligation?.confidence === 'missing';
+  const isDeclaredZero = statement.declared_zero === true && !isMissingCorte;
+  const hasPendingDue = !isMissingCorte && !isDeclaredZero && statement.next_due_payment > 0;
 
-  const dueLabel = !hasPendingDue
+  const dueLabel = isMissingCorte
+    ? 'Falta el pago del corte'
+    : isDeclaredZero
+      ? 'Este ciclo es $0'
+      : !hasPendingDue
     ? 'Sin pago pendiente'
     : daysUntilDue < 0
       ? `Vencido hace ${Math.abs(daysUntilDue)} d`
@@ -315,7 +326,9 @@ export const CreditCardDuePaymentStrip = ({
     <div
       className={cn(
         'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 backdrop-blur-sm',
-        !hasPendingDue
+        isMissingCorte
+          ? 'border-amber-500/35 bg-card/50'
+          : !hasPendingDue
           ? 'border-border/50 bg-card/50 dark:bg-card/30'
           : daysUntilDue < 0
             ? 'border-destructive/35 bg-destructive/5'
@@ -334,15 +347,39 @@ export const CreditCardDuePaymentStrip = ({
           No es la deuda total ni el saldo del plan.
         </p>
         <p className="font-mono text-lg font-bold tabular-nums leading-tight">
-          {formatCurrency(statement.next_due_payment)}
+          {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {isMissingCorte && onCapture ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+            onClick={onCapture}
+            aria-label="Capturar pago del corte"
+          >
+            Capturar
+          </Button>
+        ) : null}
+        {isDeclaredZero && onClearDeclaration ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 px-2 text-xs font-medium text-primary-text"
+            onClick={onClearDeclaration}
+            aria-label="Quitar la declaración de $0"
+          >
+            Quitar declaración
+          </Button>
+        ) : null}
         <Badge
           variant="outline"
           className={cn(
             'gap-1 text-[10px] font-medium',
-            !hasPendingDue
+            isMissingCorte
+              ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+              : !hasPendingDue
               ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
               : daysUntilDue < 0
                 ? 'border-destructive/40 bg-destructive/10 text-destructive'
@@ -407,7 +444,7 @@ export const CreditCardCycleSummary = ({
           size="icon"
           className="h-9 w-9 shrink-0 rounded-full"
           onClick={onNextCycle}
-          disabled={isCurrentCycle}
+          disabled={!canAdvanceToNextCreditCardCycle(statement.current_cycle_end)}
           aria-label="Ciclo siguiente"
         >
           <ChevronRight className="h-4 w-4" data-icon="inline-end" />
@@ -444,7 +481,8 @@ export const CreditCardStatementSummaryCard = ({
   daysUntilDue,
   collapsible = false,
 }: StatementSummaryCardProps) => {
-  const hasPendingDue = statement.next_due_payment > 0;
+  const isMissingCorte = statement.period_obligation?.confidence === 'missing';
+  const hasPendingDue = !isMissingCorte && statement.next_due_payment > 0;
 
   const body = (
     <Card className="overflow-hidden border-border/60">
@@ -499,7 +537,9 @@ export const CreditCardStatementSummaryCard = ({
         <div
           className={cn(
             'flex items-center justify-between px-4 py-3 text-sm font-semibold',
-            !hasPendingDue
+            isMissingCorte
+              ? 'text-amber-700 dark:text-amber-300'
+              : !hasPendingDue
               ? 'bg-muted/30 text-foreground'
               : daysUntilDue < 0
                 ? 'bg-destructive/8 text-destructive'
@@ -510,7 +550,7 @@ export const CreditCardStatementSummaryCard = ({
         >
           <span>Toca pagar este corte</span>
           <span className="font-mono tabular-nums">
-            {formatCurrency(statement.next_due_payment)}
+            {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
           </span>
         </div>
       </CardContent>

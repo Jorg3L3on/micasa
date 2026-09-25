@@ -40,12 +40,28 @@ const nullableGoalDueDateSchema = z.preprocess(
   dateStringSchema.nullable(),
 );
 
+/** Annual rate as a fraction (0.42 = 42%). Empty stays null. No invented default. */
+const nullableAnnualRateSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === '' || value === null) return null;
+    return Number(value);
+  },
+  z
+    .number()
+    .min(0, 'La tasa no puede ser negativa')
+    .max(5, 'La tasa anual debe ser una fracción (0.42 = 42%)')
+    .nullable(),
+);
+
 type WalletRuleShape = {
   type: (typeof PAYMENT_METHODS)[number];
   cutoff_day: number | null;
   due_day: number | null;
   credit_limit?: number | null;
   temporary_credit_limit?: number | null;
+  minimum_payment?: number | null;
+  apr_annual?: number | null;
+  cat_annual?: number | null;
   goal_amount?: number | null;
   goal_due_date?: string | null;
   include_in_liquidity?: boolean;
@@ -150,6 +166,30 @@ const applyWalletBusinessRules = (
       code: z.ZodIssueCode.custom,
     });
   }
+
+  if (data.minimum_payment != null) {
+    ctx.addIssue({
+      path: ['minimum_payment'],
+      message: 'El pago mínimo solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
+
+  if (data.apr_annual != null) {
+    ctx.addIssue({
+      path: ['apr_annual'],
+      message: 'La tasa APR solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
+
+  if (data.cat_annual != null) {
+    ctx.addIssue({
+      path: ['cat_annual'],
+      message: 'El CAT solo aplica para tarjetas',
+      code: z.ZodIssueCode.custom,
+    });
+  }
 };
 
 // Wallet Schemas
@@ -165,6 +205,9 @@ export const createWalletSchema = z
     include_in_liquidity: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,
+    minimum_payment: nullableCreditLimitSchema.optional(),
+    apr_annual: nullableAnnualRateSchema.optional(),
+    cat_annual: nullableAnnualRateSchema.optional(),
     goal_amount: nullableGoalAmountSchema.optional(),
     goal_due_date: nullableGoalDueDateSchema.optional(),
     /** Solo en contexto casa: miembro atribuido (null = compartida). */
@@ -184,6 +227,9 @@ export const updateWalletSchema = z
     include_in_liquidity: z.boolean().optional(),
     cutoff_day: nullablePositiveInt.optional(),
     due_day: nullablePositiveInt.optional(),
+    minimum_payment: nullableCreditLimitSchema.optional(),
+    apr_annual: nullableAnnualRateSchema.optional(),
+    cat_annual: nullableAnnualRateSchema.optional(),
     goal_amount: nullableGoalAmountSchema.optional(),
     goal_due_date: nullableGoalDueDateSchema.optional(),
     assignee_user_id: z.number().int().positive().nullable().optional(),
@@ -201,6 +247,9 @@ export const updateWalletSchema = z
         due_day: data.due_day ?? null,
         credit_limit: data.credit_limit ?? null,
         temporary_credit_limit: data.temporary_credit_limit ?? null,
+        minimum_payment: data.minimum_payment ?? null,
+        apr_annual: data.apr_annual ?? null,
+        cat_annual: data.cat_annual ?? null,
         goal_amount: data.goal_amount ?? null,
         goal_due_date: data.goal_due_date ?? null,
         include_in_liquidity: data.include_in_liquidity,
@@ -221,6 +270,9 @@ export const walletSchema = z
     include_in_liquidity: z.boolean().default(true),
     cutoff_day: nullablePositiveInt,
     due_day: nullablePositiveInt,
+    minimum_payment: nullableCreditLimitSchema.default(null),
+    apr_annual: nullableAnnualRateSchema.default(null),
+    cat_annual: nullableAnnualRateSchema.default(null),
     goal_amount: nullableGoalAmountSchema.default(null),
     goal_due_date: nullableGoalDueDateSchema.default(null),
     assignee_user_id: z.number().int().positive().nullable().optional().default(null),

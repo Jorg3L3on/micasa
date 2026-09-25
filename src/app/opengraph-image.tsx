@@ -1,11 +1,15 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
 export const alt = 'MiCasa — Planifica tu dinero por quincenas';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-export default function OpenGraphImage() {
+export default async function OpenGraphImage() {
+  const mark = await readFile(path.join(process.cwd(), 'public/brand/mark.png'));
+  const markSrc = `data:image/png;base64,${mark.toString('base64')}`;
+
   return new ImageResponse(
     (
       <div
@@ -33,14 +37,7 @@ export default function OpenGraphImage() {
             letterSpacing: '-0.03em',
           }}
         >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              backgroundImage: 'linear-gradient(135deg, #2E8DF5, #AC3DF3)',
-            }}
-          />
+          <img src={markSrc} width={64} height={64} alt="" />
           MiCasa
         </div>
 

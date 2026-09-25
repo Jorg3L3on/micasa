@@ -23,12 +23,9 @@ const bodySchema = z
     applyWalletDelta: z.boolean().optional(),
   })
   .refine(
-    (data) => {
-      if (!data.isPaid) return true;
-      return data.paymentMethodId != null && data.paymentMethodId > 0;
-    },
+    (data) => data.paymentMethodId != null && data.paymentMethodId > 0,
     {
-      message: 'La billetera es requerida para un gasto pagado',
+      message: 'Selecciona la billetera',
       path: ['paymentMethodId'],
     },
   );
@@ -106,7 +103,7 @@ export async function POST(request: NextRequest) {
       description: data.name,
       amount: data.amount,
       isPaid: data.isPaid,
-      paymentDate: data.isPaid ? data.date : null,
+      paymentDate: data.date,
       expenseTemplateId: data.expenseTemplateId ?? null,
       walletId,
       applyWalletDelta: data.applyWalletDelta,

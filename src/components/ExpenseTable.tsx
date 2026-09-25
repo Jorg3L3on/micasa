@@ -33,7 +33,7 @@ import {
   getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
 } from '@/lib/fortnight-calendar';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatDisplayDate, todayCalendarDate } from '@/lib/calendar-dates';
 import {
   sortExpenseListRows,
   type PlannerListSortDir,
@@ -681,6 +681,11 @@ export default function ExpenseTable({
                         </span>
                       </span>
                       <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        {e.date ? (
+                          <span className="tabular-nums">
+                            {formatDisplayDate(e.date)}
+                          </span>
+                        ) : null}
                         <ExpenseWalletLabel
                           expense={e}
                           walletsById={walletsById}

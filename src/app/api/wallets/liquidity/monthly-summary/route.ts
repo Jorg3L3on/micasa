@@ -5,8 +5,9 @@ import { LoanPaymentStatus, LoanPaymentSource } from '@/generated/prisma/client'
 import { effectiveFortnightIncome } from '@/lib/finance/monthly-chart-income';
 import {
   calendarMonthKeyFromDate,
-  pastDebtDateForLoanPayment,
+  loanDebtMonthKey,
 } from '@/lib/finance/monthly-chart-debt';
+import { parseDateOnly } from '@/lib/calendar-dates';
 import {
   groupDebtItemsByMonth,
   pastLoanDebtSubtitle,
@@ -97,7 +98,10 @@ export async function GET(request: NextRequest) {
             },
             {
               status: { notIn: [LoanPaymentStatus.SKIPPED, LoanPaymentStatus.CANCELLED] },
-              due_date: { gte: rangeFrom, lte: rangeTo },
+              due_date: {
+                gte: parseDateOnly(rangeFrom.toISOString().slice(0, 10)),
+                lte: parseDateOnly(rangeTo.toISOString().slice(0, 10)),
+              },
               loan: { ...ownerFilter, payment_source: LoanPaymentSource.PAYROLL_DEDUCTION },
             },
           ],
@@ -162,17 +166,19 @@ export async function GET(request: NextRequest) {
     }
 
     for (const payment of loanPayments) {
-      const when = pastDebtDateForLoanPayment({
+      const monthKey = loanDebtMonthKey({
         status: payment.status,
         paid_at: payment.paid_at,
         due_date: payment.due_date,
         payment_source: payment.loan.payment_source,
       });
-      if (!when) continue;
+      if (!monthKey) continue;
       const amount = Number(payment.amount);
-      addDebt(when, amount);
+      const [year, month] = monthKey.split('-').map(Number);
+      const entry = byMonth.get(`${year}-${month}`);
+      if (entry) entry.expense += amount;
       debtItemInputs.push({
-        month_key: calendarMonthKeyFromDate(when),
+        month_key: monthKey,
         kind: 'loan',
         group_id: String(payment.loan.id),
         title: payment.loan.name,

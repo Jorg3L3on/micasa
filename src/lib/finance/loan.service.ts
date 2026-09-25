@@ -13,10 +13,13 @@ import {
   calculateLoanProgress,
   deriveLoanStatusFromPayments,
   formatDateYmd,
+  formatLoanDueYmd,
   generateLoanPaymentSchedule,
+  loanDueDateForStorage,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
-import { todayCalendarDate, startOfCalendarDay, endOfCalendarDay } from '@/lib/calendar-dates';
+import { partitionScheduledInstallments } from '@/lib/finance/loan-installment-cues';
+import { todayCalendarDate, parseDateOnly } from '@/lib/calendar-dates';
 import {
   applyWalletAmountDelta,
   getPaidExpenseWalletDelta,
@@ -131,7 +134,7 @@ function mapPayment(
     id: payment.id,
     loanId: payment.loan_id,
     sequence: payment.sequence,
-    dueDate: formatDateYmd(payment.due_date),
+    dueDate: formatLoanDueYmd(payment.due_date),
     amount: decimalToNumber(payment.amount),
     status: payment.status as LoanPaymentListItem['status'],
     paidAt: payment.paid_at ? formatDateYmd(payment.paid_at) : null,
@@ -172,10 +175,12 @@ function mapLoan(
     principalAmount: decimalToNumber(loan.principal_amount),
     payments,
   });
-  const nextPayment =
-    payments
-      .filter((p) => p.status === 'SCHEDULED')
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] ?? null;
+  const { overdue, upcoming } = partitionScheduledInstallments(
+    payments,
+    todayCalendarDate(),
+  );
+  const overduePayment = overdue[0] ?? null;
+  const nextPayment = upcoming[0] ?? null;
 
   return {
     id: loan.id,
@@ -198,6 +203,7 @@ function mapLoan(
     incomeTemplateName: loan.income_template?.name ?? null,
     notes: loan.notes,
     ...progress,
+    overduePayment,
     nextPayment,
     payments,
   };
@@ -405,7 +411,7 @@ export async function createLoanForOwner(
       payments: {
         create: schedule.map((payment) => ({
           sequence: payment.sequence,
-          due_date: payment.dueDate,
+          due_date: loanDueDateForStorage(payment.dueDate),
           amount: payment.amount.toString(),
           source_wallet_id:
             input.paymentSource === 'WALLET' ? input.sourceWalletId : null,
@@ -866,8 +872,8 @@ async function listLoanPaymentsForPlannerMonthImpl(
 ): Promise<PlannerLoanPaymentsResponse> {
   const firstBounds = getFortnightYmdBounds(year, month, 'FIRST');
   const secondBounds = getFortnightYmdBounds(year, month, 'SECOND');
-  const from = startOfCalendarDay(firstBounds.startYmd);
-  const to = endOfCalendarDay(secondBounds.endYmd);
+  const from = parseDateOnly(firstBounds.startYmd);
+  const to = parseDateOnly(secondBounds.endYmd);
   const payments = await prisma.loanPayment.findMany({
     where: {
       due_date: { gte: from, lte: to },
@@ -998,6 +1004,7 @@ export type LoanPlanningPayment = {
   loanId: number;
   loanName: string;
   lender: string;
+  lenderId: number | null;
   amount: number;
   dueDate: string;
   paidAt: string | null;
@@ -1020,11 +1027,12 @@ export type LoanPlanningAggregate = {
 };
 
 function containsDate(fortnights: PlanningFortnightLike[], value: Date) {
-  const ts = value.getTime();
-  return fortnights.some(
-    (fortnight) =>
-      ts >= fortnight.start_date.getTime() && ts <= fortnight.end_date.getTime(),
-  );
+  const ymd = formatLoanDueYmd(value);
+  return fortnights.some((fortnight) => {
+    const start = formatDateYmd(fortnight.start_date);
+    const end = formatDateYmd(fortnight.end_date);
+    return ymd >= start && ymd <= end;
+  });
 }
 
 export async function aggregateLoanPaymentsForFortnights(
@@ -1064,6 +1072,7 @@ export async function aggregateLoanPaymentsForFortnights(
           id: true,
           name: true,
           lender: true,
+          lender_id: true,
           payment_source: true,
         },
       },
@@ -1080,6 +1089,7 @@ export async function aggregateLoanPaymentsForFortnights(
         loanId: row.loan.id,
         loanName: row.loan.name,
         lender: row.loan.lender,
+        lenderId: row.loan.lender_id ?? null,
         amount: mapped.amount,
         dueDate: mapped.dueDate,
         paidAt: mapped.paidAt,
@@ -1245,7 +1255,7 @@ export async function updateLoanScheduleForOwner(
         data: newSchedule.map((payment, index) => ({
           loan_id: loanId,
           sequence: paidCount + index + 1,
-          due_date: payment.dueDate,
+          due_date: loanDueDateForStorage(payment.dueDate),
           amount: payment.amount.toString(),
           source_wallet_id:
             existing.payment_source === 'WALLET'
