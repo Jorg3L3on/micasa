@@ -15,6 +15,7 @@ import {
   assertIncomeFundingWallet,
   IncomeServiceError,
   resolveIncomeWalletId,
+  updatePlannedIncomeForOwner,
 } from '@/lib/finance/income.service';
 
 const createIncomeSchema = z.object({
@@ -35,6 +36,11 @@ const updateIncomeAmountSchema = z.object({
   force_wallet_credit: z.boolean().optional(),
   /** Required when the income has no category yet. */
   category_id: z.number().int().positive().optional(),
+  /**
+   * Panel edit of a planned income: update the line and its template.
+   * Ignores wallet_id and does not credit the wallet.
+   */
+  sync_template: z.boolean().optional(),
 });
 
 function serializeIncome(i: {
@@ -123,14 +129,6 @@ export async function PUT(request: NextRequest) {
 
     const oldAmount = Number(income.amount);
     const newAmount = validated.amount;
-    const oldWalletId = income.wallet_id;
-    const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
-
-    const fundingWallet = await prisma.wallet.findFirst({
-      where: { id: newWalletId, ...ownerFilter },
-      select: { id: true, type: true },
-    });
-    assertIncomeFundingWallet(fundingWallet);
 
     let nextCategoryId = income.category_id;
     if (validated.category_id !== undefined) {
@@ -151,6 +149,31 @@ export async function PUT(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    if (validated.sync_template === true) {
+      const planned = await updatePlannedIncomeForOwner({
+        id,
+        ownerFilter,
+        amount: newAmount,
+        categoryId: validated.category_id,
+      });
+      return NextResponse.json(
+        {
+          ...serializeIncome(planned.income),
+          template_updated: planned.templateUpdated,
+        },
+        { status: 200 },
+      );
+    }
+
+    const oldWalletId = income.wallet_id;
+    const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
+
+    const fundingWallet = await prisma.wallet.findFirst({
+      where: { id: newWalletId, ...ownerFilter },
+      select: { id: true, type: true },
+    });
+    assertIncomeFundingWallet(fundingWallet);
 
     const updated = await prisma.$transaction(async (tx) => {
       if (oldWalletId === null && newWalletId != null) {

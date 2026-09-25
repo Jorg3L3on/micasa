@@ -4,14 +4,20 @@ const {
   getOwnerContext,
   incomeFindFirst,
   walletFindFirst,
+  categoryFindFirst,
   incomeUpdate,
+  incomeTemplateFindFirst,
+  incomeTemplateUpdate,
   transactionFn,
   applyWalletAmountDelta,
 } = vi.hoisted(() => ({
   getOwnerContext: vi.fn(),
   incomeFindFirst: vi.fn(),
   walletFindFirst: vi.fn(),
+  categoryFindFirst: vi.fn(),
   incomeUpdate: vi.fn(),
+  incomeTemplateFindFirst: vi.fn(),
+  incomeTemplateUpdate: vi.fn(),
   transactionFn: vi.fn(),
   applyWalletAmountDelta: vi.fn(),
 }));
@@ -24,6 +30,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     income: { findFirst: incomeFindFirst },
     wallet: { findFirst: walletFindFirst },
+    category: { findFirst: categoryFindFirst },
     $transaction: transactionFn,
   },
 }));
@@ -71,8 +78,17 @@ describe('PUT /api/incomes', () => {
     transactionFn.mockImplementation(async (fn: (tx: unknown) => unknown) =>
       fn({
         income: { update: incomeUpdate },
+        incomeTemplate: {
+          findFirst: incomeTemplateFindFirst,
+          update: incomeTemplateUpdate,
+        },
       }),
     );
+    categoryFindFirst.mockResolvedValue({
+      id: 4,
+      kind: 'INCOME',
+      active: true,
+    });
     incomeUpdate.mockResolvedValue({
       id: 12,
       amount: 12500,
@@ -114,6 +130,98 @@ describe('PUT /api/incomes', () => {
           amount: 12500,
           wallet_id: 7,
         }),
+      }),
+    );
+  });
+
+  it('updates the income template and does not credit the wallet', async () => {
+    incomeFindFirst.mockResolvedValue({
+      id: 12,
+      amount: 6000,
+      wallet_id: null,
+      category_id: 3,
+      source: 'Salario Carmen',
+      income_template_id: 9,
+    });
+    incomeTemplateFindFirst.mockResolvedValue({ id: 9 });
+    incomeUpdate.mockResolvedValue({
+      id: 12,
+      amount: 6500,
+      source: 'Salario Carmen',
+      received_at: new Date('2026-09-15T12:00:00.000Z'),
+      fortnight_id: 4,
+      income_template_id: 9,
+      wallet_id: null,
+      category_id: 4,
+    });
+
+    const response = await putIncome({
+      amount: 6500,
+      category_id: 4,
+      wallet_id: 7,
+      sync_template: true,
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.amount).toBe(6500);
+    expect(body.wallet_id).toBeNull();
+    expect(body.template_updated).toBe(true);
+    expect(walletFindFirst).not.toHaveBeenCalled();
+    expect(applyWalletAmountDelta).not.toHaveBeenCalled();
+    expect(incomeUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          amount: 6500,
+          category_id: 4,
+        },
+      }),
+    );
+    expect(incomeTemplateUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 9 },
+        data: {
+          suggested_amount: '6500',
+          category_id: 4,
+        },
+      }),
+    );
+  });
+
+  it('leaves an already assigned wallet balance unchanged', async () => {
+    incomeFindFirst.mockResolvedValue({
+      id: 12,
+      amount: 17500,
+      wallet_id: 7,
+      category_id: 3,
+      source: 'Salario Jorge',
+      income_template_id: 10,
+    });
+    incomeTemplateFindFirst.mockResolvedValue({ id: 10 });
+    incomeUpdate.mockResolvedValue({
+      id: 12,
+      amount: 18000,
+      source: 'Salario Jorge',
+      received_at: new Date('2026-09-15T12:00:00.000Z'),
+      fortnight_id: 4,
+      income_template_id: 10,
+      wallet_id: 7,
+      category_id: 3,
+    });
+
+    const response = await putIncome({
+      amount: 18000,
+      sync_template: true,
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.wallet_id).toBe(7);
+    expect(body.template_updated).toBe(true);
+    expect(applyWalletAmountDelta).not.toHaveBeenCalled();
+    expect(incomeUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { amount: 18000 },
       }),
     );
   });

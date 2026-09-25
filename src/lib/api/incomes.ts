@@ -117,6 +117,32 @@ export async function updateIncomeAmount(
   }, context);
 }
 
+/** Panel edit: planned amount and income template. Does not credit a wallet. */
+export async function updatePlannedIncome(
+  id: number,
+  amount: number,
+  context?: FinanceContextType,
+  options?: { category_id?: number },
+) {
+  const payload: {
+    amount: number;
+    sync_template: true;
+    category_id?: number;
+  } = { amount, sync_template: true };
+  if (options?.category_id != null) {
+    payload.category_id = options.category_id;
+  }
+
+  return clientFetchFromApi<{ template_updated: boolean }>(
+    `/api/incomes?id=${id}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    context,
+  );
+}
+
 export async function createIncomeTemplate(
   data: {
     name: string;

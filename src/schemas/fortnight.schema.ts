@@ -19,32 +19,26 @@ export const overrideAmountSchema = z.object({
 export const overrideAmountFormSchema = z.object({
   amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
   categoryId: z.number().int().positive().optional().nullable(),
-  walletId: z.number().int().positive().optional().nullable(),
 });
 
 export type OverrideAmountFormOptions = {
   requireCategory: boolean;
-  requireWallet: boolean;
 };
 
 export function createOverrideAmountFormSchema({
   requireCategory,
-  requireWallet,
 }: OverrideAmountFormOptions) {
   return z.object({
     amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
     categoryId: requireCategory
-      ? z.number().int().positive('La categoría es requerida')
-      : z.number().int().positive().optional().nullable(),
-    walletId: requireWallet
       ? z
           .number()
           .int()
-          .positive()
+          .positive('La categoría es requerida')
           .nullable()
           .optional()
           .refine((value) => value != null && value > 0, {
-            message: 'Selecciona una billetera de efectivo o débito',
+            message: 'La categoría es requerida',
           })
       : z.number().int().positive().optional().nullable(),
   });

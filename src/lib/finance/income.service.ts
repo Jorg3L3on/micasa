@@ -67,6 +67,14 @@ export type UpdateIncomeForOwnerInput = {
   forceWalletCredit?: boolean;
 };
 
+/** Panel edit: change the planned amount (and template) without moving wallet cash. */
+export type UpdatePlannedIncomeForOwnerInput = {
+  id: number;
+  ownerFilter: OwnerFilter;
+  amount: number;
+  categoryId?: number;
+};
+
 export async function listIncomesForFortnight(
   ownerFilter: OwnerFilter,
   fortnightId: number,
@@ -147,6 +155,70 @@ export async function createIncomeForOwner(
       new_balance: updatedWallet ? Number(updatedWallet.amount) : null,
     };
   });
+}
+
+/**
+ * Updates the fortnight income line and, when it came from a template, that
+ * template's suggested amount. Does not assign a wallet or change its balance.
+ * Depositing cash stays on "Recibir quincena".
+ */
+export async function updatePlannedIncomeForOwner(
+  input: UpdatePlannedIncomeForOwnerInput,
+) {
+  const income = await prisma.income.findFirst({
+    where: { id: input.id, ...input.ownerFilter },
+  });
+  if (!income) {
+    throw new IncomeServiceError('Ingreso no encontrado', 404);
+  }
+  if (income.source === '__OVERRIDE__') {
+    throw new IncomeServiceError(
+      'No se puede editar el override de ingreso de la quincena',
+    );
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.income.update({
+      where: { id: input.id },
+      data: {
+        amount: input.amount,
+        ...(input.categoryId !== undefined
+          ? { category_id: input.categoryId }
+          : {}),
+      },
+    });
+
+    let templateUpdated = false;
+    if (income.income_template_id != null) {
+      const template = await tx.incomeTemplate.findFirst({
+        where: {
+          id: income.income_template_id,
+          ...input.ownerFilter,
+        },
+        select: { id: true },
+      });
+      if (template) {
+        await tx.incomeTemplate.update({
+          where: { id: template.id },
+          data: {
+            suggested_amount:
+              input.amount > 0 ? input.amount.toString() : null,
+            ...(input.categoryId !== undefined
+              ? { category_id: input.categoryId }
+              : {}),
+          },
+        });
+        templateUpdated = true;
+      }
+    }
+
+    return { row, templateUpdated };
+  });
+
+  return {
+    income: updated.row,
+    templateUpdated: updated.templateUpdated,
+  };
 }
 
 /** Same wallet delta rules as PUT /api/incomes?id=… */
