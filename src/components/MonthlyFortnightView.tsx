@@ -47,6 +47,7 @@ type FortnightSummary = {
     incomeTemplateId: number | null;
     templateSuggestedAmount: number | null;
     templateCategoryId: number | null;
+    templateWalletId: number | null;
     walletId: number | null;
   }>;
   planningExpenseCount?: number;

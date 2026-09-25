@@ -22,12 +22,23 @@ describe('createOverrideAmountFormSchema income edit', () => {
     }
   });
 
-  it('accepts amount and category without a wallet', () => {
-    const result = incomeEditSchema.safeParse({
+  it('requires a wallet on the template edit', () => {
+    const schema = createOverrideAmountFormSchema({
+      requireCategory: true,
+      requireWallet: true,
+    });
+    const missing = schema.safeParse({
       amount: 12500,
       categoryId: 3,
+      walletId: null,
     });
+    expect(missing.success).toBe(false);
 
-    expect(result.success).toBe(true);
+    const saved = schema.safeParse({
+      amount: 12500,
+      categoryId: 3,
+      walletId: 7,
+    });
+    expect(saved.success).toBe(true);
   });
 });

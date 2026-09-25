@@ -28,11 +28,20 @@ const createIncomeSchema = z
     income_template_id: z.number().int().positive().optional().nullable(),
     wallet_id: z.number().int().positive().optional(),
     category_id: z.number().int().positive('La categoría es requerida'),
-    /** Fortnight income only. Leaves every wallet balance unchanged. */
+    /** Fortnight income only. Stores the wallet and leaves its balance unchanged. */
     planned: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.planned === true) return;
+    if (data.planned === true) {
+      if (data.wallet_id == null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'La billetera es requerida',
+          path: ['wallet_id'],
+        });
+      }
+      return;
+    }
     if (data.fortnight_id == null) {
       ctx.addIssue({
         code: 'custom',
@@ -166,6 +175,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const oldWalletId = income.wallet_id;
+    const wasCredited =
+      income.wallet_credited === true ||
+      (income.wallet_credited == null && oldWalletId != null);
     const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
 
     const fundingWallet = await prisma.wallet.findFirst({
@@ -175,9 +187,9 @@ export async function PUT(request: NextRequest) {
     assertIncomeFundingWallet(fundingWallet);
 
     const updated = await prisma.$transaction(async (tx) => {
-      if (oldWalletId === null && newWalletId != null) {
+      if (!wasCredited && newWalletId != null) {
         await applyWalletAmountDelta(tx, newWalletId, newAmount);
-      } else if (oldWalletId != null && newWalletId != null) {
+      } else if (wasCredited && oldWalletId != null && newWalletId != null) {
         if (oldWalletId === newWalletId) {
           if (validated.force_wallet_credit === true) {
             await applyWalletAmountDelta(tx, newWalletId, newAmount);
@@ -196,6 +208,7 @@ export async function PUT(request: NextRequest) {
         data: {
           amount: newAmount,
           wallet_id: newWalletId,
+          wallet_credited: true,
           category_id: nextCategoryId,
         },
       });
@@ -209,7 +222,7 @@ export async function PUT(request: NextRequest) {
         { status: error.status },
       );
     }
-    if (error instanceof CategoryServiceError) {
+    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },
@@ -252,6 +265,19 @@ export async function POST(request: NextRequest) {
     );
 
     if (validated.planned === true) {
+      const plannedWalletId = validated.wallet_id;
+      if (plannedWalletId == null) {
+        return NextResponse.json(
+          { error: 'La billetera es requerida' },
+          { status: 400 },
+        );
+      }
+      const plannedWallet = await prisma.wallet.findFirst({
+        where: { id: plannedWalletId, ...ownerFilter },
+        select: { id: true, type: true },
+      });
+      assertIncomeFundingWallet(plannedWallet);
+
       const ref = getCalendarFortnightRefForYmd(validated.received_at);
       const fortnight = await resolveOrCreateFortnight({
         ownerType,
@@ -270,7 +296,7 @@ export async function POST(request: NextRequest) {
               : null,
           received_at: coerceToCalendarDate(validated.received_at),
           category_id: validated.category_id,
-          wallet_id: null,
+          wallet_id: plannedWalletId,
           ...ownerFilter,
         },
       });
@@ -419,6 +445,7 @@ export async function POST(request: NextRequest) {
           received_at: coerceToCalendarDate(validated.received_at),
           income_template_id: validated.income_template_id ?? null,
           wallet_id: walletId,
+          wallet_credited: true,
           category_id: validated.category_id,
           ...ownerData,
         },
@@ -431,7 +458,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(serializeIncome(created), { status: 201 });
   } catch (error) {
-    if (error instanceof CategoryServiceError) {
+    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },

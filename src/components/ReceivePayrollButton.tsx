@@ -148,7 +148,9 @@ export function ReceivePayrollButton({
             const entryWallet =
               existing?.wallet_id != null
                 ? String(existing.wallet_id)
-                : defaultWallet;
+                : t.walletId != null
+                  ? String(t.walletId)
+                  : defaultWallet;
             const defaultCategoryId = pickDefaultIncomeCategoryId({
               existingCategoryId: existing?.category_id,
               templateCategoryId: t.categoryId,

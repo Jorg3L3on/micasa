@@ -128,6 +128,7 @@ export async function createIncomeForOwner(
         received_at: coerceToCalendarDate(input.receivedAt),
         income_template_id: input.incomeTemplateId ?? null,
         wallet_id: input.walletId,
+        wallet_credited: true,
         ...ownerFilter,
       },
     });
@@ -165,6 +166,9 @@ export async function updateIncomeForOwner(input: UpdateIncomeForOwnerInput) {
   const oldAmount = Number(income.amount);
   const newAmount = input.amount;
   const oldWalletId = income.wallet_id;
+  const wasCredited =
+    income.wallet_credited === true ||
+    (income.wallet_credited == null && oldWalletId != null);
   const newWalletId = resolveIncomeWalletId(oldWalletId, input.walletId);
 
   const walletForIncome = await prisma.wallet.findFirst({
@@ -174,9 +178,9 @@ export async function updateIncomeForOwner(input: UpdateIncomeForOwnerInput) {
   assertIncomeFundingWallet(walletForIncome);
 
   const updated = await prisma.$transaction(async (tx) => {
-    if (oldWalletId === null && newWalletId != null) {
+    if (!wasCredited && newWalletId != null) {
       await applyWalletAmountDelta(tx, newWalletId, newAmount);
-    } else if (oldWalletId != null && newWalletId != null) {
+    } else if (wasCredited && oldWalletId != null && newWalletId != null) {
       if (oldWalletId === newWalletId) {
         if (input.forceWalletCredit === true) {
           await applyWalletAmountDelta(tx, newWalletId, newAmount);
@@ -197,6 +201,7 @@ export async function updateIncomeForOwner(input: UpdateIncomeForOwnerInput) {
       data: {
         amount: newAmount,
         wallet_id: newWalletId,
+        wallet_credited: true,
       },
     });
   });
@@ -233,7 +238,10 @@ export async function deleteIncomeForOwner(
   }
 
   await prisma.$transaction(async (tx) => {
-    if (income.wallet_id != null) {
+    const wasCredited =
+      income.wallet_credited === true ||
+      (income.wallet_credited == null && income.wallet_id != null);
+    if (wasCredited && income.wallet_id != null) {
       await applyWalletAmountDelta(tx, income.wallet_id, -Number(income.amount));
     }
     await tx.income.delete({ where: { id } });

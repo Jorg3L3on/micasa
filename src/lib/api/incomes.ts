@@ -20,6 +20,7 @@ export type IncomeTemplateDto = {
   suggestedAmount: number | null;
   source: string | null;
   categoryId: number | null;
+  walletId: number | null;
   categoryName: string | null;
   categoryIcon: string | null;
   appliesFirstFortnight: boolean;
@@ -124,6 +125,7 @@ export async function createPlannedIncome(
     source: string;
     received_at: string;
     category_id: number;
+    wallet_id: number;
   },
   context?: FinanceContextType,
 ) {
@@ -139,6 +141,7 @@ export async function createIncomeTemplate(
     suggestedAmount?: number | null;
     source?: string | null;
     categoryId: number;
+    walletId?: number | null;
     appliesFirstFortnight: boolean;
     appliesSecondFortnight: boolean;
     active?: boolean;
@@ -159,6 +162,7 @@ export async function updateIncomeTemplate(
     suggestedAmount?: number | null;
     source?: string | null;
     categoryId?: number;
+    walletId?: number | null;
     appliesFirstFortnight?: boolean;
     appliesSecondFortnight?: boolean;
     active?: boolean;

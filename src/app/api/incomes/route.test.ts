@@ -154,6 +154,7 @@ describe('POST /api/incomes planned', () => {
       active: true,
     });
     resolveOrCreateFortnight.mockResolvedValue({ id: 10 });
+    walletFindFirst.mockResolvedValue({ id: 7, type: 'CASH' });
     incomeCreate.mockResolvedValue({
       id: 21,
       amount: 800,
@@ -161,12 +162,12 @@ describe('POST /api/incomes planned', () => {
       received_at: new Date('2026-09-20T12:00:00.000Z'),
       fortnight_id: 10,
       income_template_id: null,
-      wallet_id: null,
+      wallet_id: 7,
       category_id: 4,
     });
   });
 
-  it('records the fortnight income without crediting a wallet', async () => {
+  it('stores the wallet on the fortnight income without crediting it', async () => {
     const response = await POST(
       new Request('http://localhost/api/incomes?ownerType=user&ownerId=1', {
         method: 'POST',
@@ -184,15 +185,16 @@ describe('POST /api/incomes planned', () => {
     const body = await response.json();
 
     expect(response.status).toBe(201);
-    expect(body.wallet_id).toBeNull();
+    expect(body.wallet_id).toBe(7);
     expect(body.amount).toBe(800);
     expect(applyWalletAmountDelta).not.toHaveBeenCalled();
+    expect(walletFindFirst).toHaveBeenCalled();
     expect(incomeCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           fortnight_id: 10,
           amount: 800,
-          wallet_id: null,
+          wallet_id: 7,
           category_id: 4,
           source: 'Bono',
         }),

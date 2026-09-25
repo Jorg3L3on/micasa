@@ -1,11 +1,23 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormField } from '@/components/ui/form';
+import { Form, FormControl, FormField } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { useFinanceContext } from '@/context/finance-context';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import { isGoalWalletType } from '@/domain/payment-method';
+import type { PaymentMethodOption } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import {
   createOverrideAmountFormSchema,
   OverrideAmountFormValues,
@@ -31,6 +43,7 @@ type EditFortnightAmountDialogProps = {
   requireCategory?: boolean;
   categories?: CategoryOption[];
   defaultCategoryId?: number | null;
+  defaultWalletId?: number | null;
   /** True when this line comes from an income template. */
   updatesIncomeTemplate?: boolean;
 };
@@ -45,14 +58,28 @@ export default function EditFortnightAmountDialog({
   requireCategory = false,
   categories = [],
   defaultCategoryId = null,
+  defaultWalletId = null,
   updatesIncomeTemplate = false,
 }: EditFortnightAmountDialogProps) {
+  const { context } = useFinanceContext();
+  const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
   const schema = useMemo(
     () =>
       createOverrideAmountFormSchema({
         requireCategory,
+        requireWallet: updatesIncomeTemplate,
       }),
-    [requireCategory],
+    [requireCategory, updatesIncomeTemplate],
+  );
+
+  const fundingWallets = useMemo(
+    () =>
+      wallets.filter(
+        (wallet) =>
+          !isGoalWalletType(wallet.type) &&
+          (wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD'),
+      ),
+    [wallets],
   );
 
   const form = useForm<OverrideAmountFormValues>({
@@ -60,6 +87,7 @@ export default function EditFortnightAmountDialog({
     defaultValues: {
       amount: defaultAmount,
       categoryId: defaultCategoryId ?? undefined,
+      walletId: defaultWalletId ?? undefined,
     },
   });
 
@@ -68,9 +96,33 @@ export default function EditFortnightAmountDialog({
       form.reset({
         amount: defaultAmount,
         categoryId: defaultCategoryId ?? undefined,
+        walletId: defaultWalletId ?? undefined,
       });
     }
-  }, [open, defaultAmount, defaultCategoryId, form, requireCategory]);
+  }, [
+    open,
+    defaultAmount,
+    defaultCategoryId,
+    defaultWalletId,
+    form,
+    requireCategory,
+    updatesIncomeTemplate,
+  ]);
+
+  useEffect(() => {
+    if (!open || !updatesIncomeTemplate) return;
+    let cancelled = false;
+    getPaymentMethodOptions(context)
+      .then((data) => {
+        if (!cancelled) setWallets(data);
+      })
+      .catch(() => {
+        if (!cancelled) setWallets([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, updatesIncomeTemplate, context]);
 
   const handleSubmit = async (data: OverrideAmountFormValues) => {
     await onSave(data);
@@ -86,7 +138,7 @@ export default function EditFortnightAmountDialog({
     ? 'Modificar plantilla'
     : 'Modificar ingresos';
   const description = updatesIncomeTemplate
-    ? 'Cambia el monto y la categoría de la plantilla. Esta quincena conserva su ingreso y ninguna billetera se mueve.'
+    ? 'Cambia el monto, la categoría y la billetera de la plantilla. El saldo no se mueve.'
     : `Modificar ingresos de ${fortnightLabel}. Monto actual: ${formatCurrency(defaultAmount)}. Este monto solo aplica a esta quincena.`;
 
   return (
@@ -153,12 +205,68 @@ export default function EditFortnightAmountDialog({
                   )}
                 />
               ) : null}
+              {updatesIncomeTemplate ? (
+                <FormField
+                  control={form.control}
+                  name="walletId"
+                  render={({ field }) => {
+                    const selected = fundingWallets.find(
+                      (wallet) => wallet.id === Number(field.value),
+                    );
+                    return (
+                      <FormGroupedRow label="Billetera">
+                        <Select
+                          value={
+                            field.value != null && field.value > 0
+                              ? String(field.value)
+                              : undefined
+                          }
+                          onOpenChange={handleSelectOpenChange}
+                          onValueChange={(value) =>
+                            field.onChange(parseInt(value, 10))
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger
+                              className={OVERLAY_ROW_TRIGGER_CLASS}
+                              aria-label="Billetera de la plantilla"
+                            >
+                              <SelectValue placeholder="Selecciona">
+                                {selected ? (
+                                  <WalletIdentity
+                                    name={selected.name}
+                                    providerIconKey={selected.provider_icon_key}
+                                    iconClassName="h-8 w-8 rounded-lg"
+                                  />
+                                ) : null}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {fundingWallets.map((wallet) => (
+                              <SelectItem
+                                key={wallet.id}
+                                value={String(wallet.id)}
+                              >
+                                <WalletIdentity
+                                  name={wallet.name}
+                                  providerIconKey={wallet.provider_icon_key}
+                                  iconClassName="h-5 w-5 rounded-md"
+                                />
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormGroupedRow>
+                    );
+                  }}
+                />
+              ) : null}
             </div>
             {updatesIncomeTemplate ? (
               <p className="px-1 text-xs text-muted-foreground">
-                Las próximas quincenas usan este monto al crear el mes. Para
-                sumar un ingreso solo a esta quincena, usa el botón + de la
-                barra.
+                La plantilla guarda esta billetera. El saldo no cambia hasta
+                que uses Recibir quincena.
               </p>
             ) : null}
             <Button

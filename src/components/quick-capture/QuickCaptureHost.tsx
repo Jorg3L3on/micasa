@@ -116,6 +116,10 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   const handleSaveIncome = async (values: QuickIncomeFormValues) => {
     setIncomeError(null);
+    if (values.paymentMethodId == null) {
+      setIncomeError('Selecciona la billetera de efectivo o débito');
+      return;
+    }
     try {
       await createPlannedIncome(
         {
@@ -123,6 +127,7 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
           source: values.name,
           received_at: values.date,
           category_id: values.categoryId,
+          wallet_id: values.paymentMethodId,
         },
         context,
       );

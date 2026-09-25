@@ -59,7 +59,7 @@ export const QuickCaptureChooser = ({
             <span className="min-w-0">
               <span className="block text-sm font-semibold">Ingreso</span>
               <span className="block text-xs text-muted-foreground">
-                Solo esta quincena. No se suma a ninguna billetera.
+                Solo esta quincena. Eliges la billetera; el saldo no cambia.
               </span>
             </span>
           </button>

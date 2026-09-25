@@ -52,6 +52,7 @@ export type ReportSummaryResult = {
     incomeTemplateId: number | null;
     templateSuggestedAmount: number | null;
     templateCategoryId: number | null;
+    templateWalletId: number | null;
     walletId: number | null;
   }>;
   planningExpenseCount?: number;
@@ -170,7 +171,12 @@ export const getReportSummary = async (
           include: {
             user: { select: { id: true, name: true } },
             income_template: {
-              select: { name: true, suggested_amount: true, category_id: true },
+              select: {
+                name: true,
+                suggested_amount: true,
+                category_id: true,
+                wallet_id: true,
+              },
             },
           },
         })
@@ -364,6 +370,7 @@ export const getReportSummary = async (
             ? Number(inc.income_template.suggested_amount)
             : null,
         templateCategoryId: inc.income_template?.category_id ?? null,
+        templateWalletId: inc.income_template?.wallet_id ?? null,
         walletId: inc.wallet_id ?? null,
       });
     });

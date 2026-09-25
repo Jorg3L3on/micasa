@@ -6,17 +6,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import {
   quickIncomeSchema,
   type QuickIncomeFormValues,
 } from '@/schemas/transaction.schema';
-import type { CategoryOption } from '@/types/catalog';
+import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
-import { formatMonth } from '@/lib/utils';
+import { isGoalWalletType } from '@/domain/payment-method';
+import { formatCurrency, formatMonth } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   DateStepper,
@@ -39,6 +49,7 @@ const emptyValues = (): QuickIncomeFormValues => ({
   name: '',
   categoryId: 0,
   amount: 0,
+  paymentMethodId: null,
   date: todayCalendarDate(),
 });
 
@@ -59,11 +70,24 @@ export const QuickIncomeSheet = ({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>(
+    [],
+  );
 
   const form = useForm<QuickIncomeFormValues>({
     resolver: zodResolver(quickIncomeSchema) as never,
     defaultValues: emptyValues(),
   });
+
+  const fundingWallets = useMemo(
+    () =>
+      paymentMethods.filter(
+        (pm) =>
+          !isGoalWalletType(pm.type) &&
+          (pm.type === 'CASH' || pm.type === 'DEBIT_CARD'),
+      ),
+    [paymentMethods],
+  );
 
   const dateValue = form.watch('date');
   const preview = useMemo(
@@ -83,12 +107,18 @@ export const QuickIncomeSheet = ({
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const categoriesData = await clientFetchFromApi<CategoryOption[]>(
-          '/api/categories?kind=income',
-          undefined,
-          context,
-        );
-        if (!cancelled) setCategories(categoriesData);
+        const [categoriesData, paymentMethodsData] = await Promise.all([
+          clientFetchFromApi<CategoryOption[]>(
+            '/api/categories?kind=income',
+            undefined,
+            context,
+          ),
+          getPaymentMethodOptions(context),
+        ]);
+        if (!cancelled) {
+          setCategories(categoriesData);
+          setPaymentMethods(paymentMethodsData);
+        }
       } catch (err) {
         console.error('Error fetching income categories:', err);
       } finally {
@@ -115,7 +145,7 @@ export const QuickIncomeSheet = ({
       open={open}
       onOpenChange={onOpenChange}
       title="Agregar ingreso"
-      description="La fecha elige la quincena. Este ingreso no se suma a ninguna billetera."
+      description="La fecha elige la quincena. La billetera queda asignada y su saldo no cambia."
       busy={submitting}
     >
       {({ handleSelectOpenChange }) => (
@@ -130,6 +160,60 @@ export const QuickIncomeSheet = ({
               {preview}
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
+              <FormField
+                control={form.control}
+                name="paymentMethodId"
+                render={({ field }) => {
+                  const selected = fundingWallets.find(
+                    (wallet) => wallet.id === Number(field.value),
+                  );
+                  return (
+                    <FormGroupedRow label="Billetera">
+                      <Select
+                        value={field.value ? String(field.value) : undefined}
+                        onOpenChange={handleSelectOpenChange}
+                        onValueChange={(value) =>
+                          field.onChange(parseInt(value, 10))
+                        }
+                        disabled={loading || submitting}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className={OVERLAY_ROW_TRIGGER_CLASS}
+                            aria-label="Billetera de efectivo o débito"
+                          >
+                            <SelectValue placeholder="Selecciona">
+                              {selected ? (
+                                <WalletIdentity
+                                  name={selected.name}
+                                  providerIconKey={selected.provider_icon_key}
+                                  iconClassName="h-8 w-8 rounded-lg"
+                                />
+                              ) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {fundingWallets.map((wallet) => (
+                            <SelectItem key={wallet.id} value={String(wallet.id)}>
+                              <span className="flex items-center justify-between gap-3">
+                                <WalletIdentity
+                                  name={wallet.name}
+                                  providerIconKey={wallet.provider_icon_key}
+                                  iconClassName="h-5 w-5 rounded-md"
+                                />
+                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                  {formatCurrency(wallet.amount ?? 0)}
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormGroupedRow>
+                  );
+                }}
+              />
               <FormField
                 control={form.control}
                 name="amount"
@@ -203,8 +287,8 @@ export const QuickIncomeSheet = ({
               />
             </div>
             <p className="px-1 text-xs text-muted-foreground">
-              Queda en la quincena de esa fecha. El saldo de las billeteras no
-              cambia. Para depositarlo, usa Recibir quincena.
+              Queda en la quincena de esa fecha, asignado a la billetera. El
+              saldo no cambia. Para depositarlo, usa Recibir quincena.
             </p>
             <Button
               type="submit"

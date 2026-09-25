@@ -150,12 +150,18 @@ export type QuickExpenseFormValues = {
   applyWalletDelta: boolean;
 };
 
-export const quickIncomeSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
-  categoryId: z.number().int().positive('La categoría es requerida'),
-  amount: z.number().positive('El monto debe ser mayor a 0'),
-  date: dateStringSchema,
-});
+export const quickIncomeSchema = z
+  .object({
+    name: z.string().min(1, 'El nombre es requerido'),
+    categoryId: z.number().int().positive('La categoría es requerida'),
+    amount: z.number().positive('El monto debe ser mayor a 0'),
+    paymentMethodId: optionalPaymentMethodIdSchema,
+    date: dateStringSchema,
+  })
+  .refine((data) => data.paymentMethodId != null && data.paymentMethodId > 0, {
+    message: 'Selecciona la billetera de efectivo o débito',
+    path: ['paymentMethodId'],
+  });
 
 export type QuickIncomeFormValues = z.infer<typeof quickIncomeSchema>;
 
