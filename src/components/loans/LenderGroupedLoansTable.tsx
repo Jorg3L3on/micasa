@@ -31,7 +31,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { lenderNextCommitment } from '@/lib/finance/lender-next-commitment';
+import {
+  summarizeInstallmentCues,
+  type InstallmentCue,
+  type InstallmentCueSummary,
+} from '@/lib/finance/loan-installment-cues';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   PAYROLL_DEDUCTION_COPY,
   payrollCommitmentHint,
@@ -71,20 +76,55 @@ const loanProgressPct = (loan: LoanListItem) => {
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
-const nextHint = (next: ReturnType<typeof lenderNextCommitment>): string => {
-  if (next.kind === 'none') return '';
-  if (next.kind === 'payroll') {
-    return payrollCommitmentHint(next.date ? formatDate(next.date) : null);
+const cueHint = (cue: InstallmentCue): string =>
+  cue.isRange
+    ? `${formatDate(cue.date)} – ${formatDate(cue.dateEnd)}`
+    : formatDate(cue.date);
+
+const loanDueCueLabel = (loan: LoanListItem): string => {
+  const parts: string[] = [];
+  if (loan.overduePayment) {
+    parts.push(`Vencida ${formatDate(loan.overduePayment.dueDate)}`);
   }
-  if (next.isRange) return 'Varios vencimientos';
-  return next.date ? formatDate(next.date) : '';
+  if (loan.nextPayment) {
+    parts.push(formatDate(loan.nextPayment.dueDate));
+  }
+  return parts.length > 0 ? parts.join(' · ') : '—';
 };
 
-const nextLine = (next: ReturnType<typeof lenderNextCommitment>): string => {
-  if (next.kind === 'none') return 'Sin próximo pago';
-  const amount = formatCurrency(next.amount);
-  const hint = nextHint(next);
-  return hint ? `Próx. ${amount} · ${hint}` : `Próx. ${amount}`;
+const cuesForLoans = (groupLoans: LoanListItem[]): InstallmentCueSummary => {
+  const todayYmd = todayCalendarDate();
+  const payments = groupLoans
+    .filter((loan) => loan.status === 'ACTIVE')
+    .flatMap((loan) =>
+      (loan.payments ?? []).map((payment) => ({ ...payment, loanId: loan.id })),
+    );
+  if (payments.length > 0) {
+    return summarizeInstallmentCues(payments, todayYmd, { perLoanNext: true });
+  }
+  const fallback = groupLoans
+    .filter((loan) => loan.status === 'ACTIVE')
+    .flatMap((loan) => {
+      const rows = [];
+      if (loan.overduePayment) rows.push({ ...loan.overduePayment, loanId: loan.id });
+      if (loan.nextPayment) rows.push({ ...loan.nextPayment, loanId: loan.id });
+      return rows;
+    });
+  return summarizeInstallmentCues(fallback, todayYmd, { perLoanNext: true });
+};
+
+const nextLine = (cues: InstallmentCueSummary, payroll: boolean): string => {
+  const parts: string[] = [];
+  if (cues.overdue) {
+    parts.push(`Vencida ${formatCurrency(cues.overdue.amount)} · ${cueHint(cues.overdue)}`);
+  }
+  if (cues.next) {
+    const hint = payroll
+      ? payrollCommitmentHint(formatDate(cues.next.date))
+      : cueHint(cues.next);
+    parts.push(`Próx. ${formatCurrency(cues.next.amount)} · ${hint}`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : 'Sin próximo pago';
 };
 
 const HeaderMetric = ({
@@ -204,7 +244,8 @@ const InstitutionCard = ({
   providerIconKey,
   subtitle,
   remaining,
-  next,
+  cues,
+  payroll,
   canPay,
   onPay,
   onMerge,
@@ -215,7 +256,8 @@ const InstitutionCard = ({
   providerIconKey?: string | null;
   subtitle: string;
   remaining: number;
-  next: ReturnType<typeof lenderNextCommitment>;
+  cues: InstallmentCueSummary;
+  payroll: boolean;
   canPay: boolean;
   onPay?: () => void;
   onMerge?: () => void;
@@ -266,7 +308,7 @@ const InstitutionCard = ({
                 type="button"
                 className="min-w-0 flex-1 truncate text-left text-[11px] leading-tight text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                {nextLine(next)}
+                {nextLine(cues, payroll)}
               </button>
             </CollapsibleTrigger>
             <InstitutionActions
@@ -296,12 +338,35 @@ const InstitutionCard = ({
               amount={formatCurrency(remaining)}
               accentClassName="border-l-emerald-500/50"
             />
-            <HeaderMetric
-              label="Próximo"
-              amount={next.kind === 'none' ? '—' : formatCurrency(next.amount)}
-              hint={nextHint(next)}
-              accentClassName="border-l-amber-500/50"
-            />
+            <div className="flex min-w-0 flex-col gap-2">
+              {cues.overdue ? (
+                <HeaderMetric
+                  label="Vencida"
+                  amount={formatCurrency(cues.overdue.amount)}
+                  hint={cueHint(cues.overdue)}
+                  accentClassName="border-l-destructive/70"
+                />
+              ) : null}
+              {cues.next ? (
+                <HeaderMetric
+                  label="Próximo"
+                  amount={formatCurrency(cues.next.amount)}
+                  hint={
+                    payroll
+                      ? payrollCommitmentHint(formatDate(cues.next.date))
+                      : cueHint(cues.next)
+                  }
+                  accentClassName="border-l-amber-500/50"
+                />
+              ) : null}
+              {!cues.overdue && !cues.next ? (
+                <HeaderMetric
+                  label="Próximo"
+                  amount="—"
+                  accentClassName="border-l-amber-500/50"
+                />
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center self-center">
             <InstitutionActions
@@ -387,7 +452,7 @@ export const LenderGroupedLoansTable = ({
                   {formatCurrency(loan.remainingAmount)}
                 </span>
                 <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {loan.nextPayment ? formatDate(loan.nextPayment.dueDate) : '—'}
+                  {loanDueCueLabel(loan)}
                 </span>
               </span>
             </div>
@@ -453,8 +518,8 @@ export const LenderGroupedLoansTable = ({
               {formatCurrency(loan.remainingAmount)}
             </span>
           </TableCell>
-          <TableCell>
-            {loan.nextPayment ? formatDate(loan.nextPayment.dueDate) : '—'}
+          <TableCell className="whitespace-normal text-xs">
+            {loanDueCueLabel(loan)}
           </TableCell>
           <TableCell className="text-right">
             <Button
@@ -521,16 +586,8 @@ export const LenderGroupedLoansTable = ({
           remaining={roundMoney(
             unassignedLoans.reduce((sum, loan) => sum + loan.remainingAmount, 0),
           )}
-          next={lenderNextCommitment(
-            {
-              amount: 0,
-              commitmentDate: null,
-              commitmentDateEnd: null,
-              isRange: false,
-              canPay: false,
-            },
-            unassignedLoans,
-          )}
+          cues={cuesForLoans(unassignedLoans)}
+          payroll={false}
           canPay={false}
         >
           {renderContracts(unassignedLoans)}
@@ -542,8 +599,11 @@ export const LenderGroupedLoansTable = ({
         const remaining = roundMoney(
           lenderLoans.reduce((sum, loan) => sum + loan.remainingAmount, 0),
         );
-        const next = lenderNextCommitment(lender.payWindow, lenderLoans);
-        const payrollOnly = lender.payrollOnly || next.kind === 'payroll';
+        const cues = cuesForLoans(lenderLoans);
+        const payrollOnly =
+          lender.payrollOnly ||
+          (lenderLoans.length > 0 &&
+            lenderLoans.every((loan) => loan.paymentSource === 'PAYROLL_DEDUCTION'));
         const canPay = lender.payWindow.canPay && !lender.payrollOnly;
         const lastPayment = lender.recentPayments?.[0];
         const contractLabel = `${lenderLoans.length} contrato${
@@ -560,7 +620,8 @@ export const LenderGroupedLoansTable = ({
             providerIconKey={lender.providerIconKey}
             subtitle={subtitle}
             remaining={remaining}
-            next={next}
+            cues={cues}
+            payroll={payrollOnly}
             canPay={canPay}
             onPay={() => onPayLender(lender.id)}
             onMerge={() => onMergeLender(lender.id)}
@@ -588,7 +649,7 @@ const ContractTable = ({ children }: { children: ReactNode }) => (
         <TableHead>Estado</TableHead>
         <TableHead>Progreso</TableHead>
         <TableHead className="text-right">Pendiente</TableHead>
-        <TableHead>Próximo</TableHead>
+        <TableHead>Vence</TableHead>
         <TableHead className="text-right">
           <span className="sr-only">Acciones</span>
         </TableHead>

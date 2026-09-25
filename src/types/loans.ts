@@ -54,6 +54,9 @@ export type LoanListItem = {
   remainingAmount: number;
   paidPayments: number;
   remainingPayments: number;
+  /** Earliest unpaid installment before today (civil day in America/Mexico_City). */
+  overduePayment: LoanPaymentListItem | null;
+  /** Next unpaid installment due today or later. */
   nextPayment: LoanPaymentListItem | null;
   payments?: LoanPaymentListItem[];
 };

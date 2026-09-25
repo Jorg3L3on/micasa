@@ -95,6 +95,7 @@ describe('getLiquidityDebtBreakdown', () => {
         status: 'ACTIVE',
         remainingAmount: 50269,
         remainingPayments: 18,
+        overduePayment: null,
         nextPayment: { dueDate: '2026-04-01', amount: 2793 },
         payments: [
           { id: 1, dueDate: '2026-04-01', amount: 2793, status: 'SCHEDULED' },
@@ -106,6 +107,7 @@ describe('getLiquidityDebtBreakdown', () => {
         status: 'PAID_OFF',
         remainingAmount: 0,
         remainingPayments: 0,
+        overduePayment: null,
         nextPayment: null,
         payments: [],
       },

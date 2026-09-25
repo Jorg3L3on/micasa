@@ -2,7 +2,9 @@ import {
   endOfCalendarDay,
   formatCalendarDate,
   parseCalendarDate,
+  parseDateOnly,
 } from '@/lib/calendar-dates';
+import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
 import {
   exposedAnnualRate,
@@ -326,7 +328,10 @@ const collectExpectedIncomeByMonth = async (
 
   const payrollDeductions = await prisma.loanPayment.findMany({
     where: {
-      due_date: { gte: asOf, lte: endOfUtcDay(until) },
+      due_date: {
+        gte: parseDateOnly(formatCalendarDate(asOf)),
+        lte: parseDateOnly(formatCalendarDate(until)),
+      },
       status: 'SCHEDULED',
       loan: {
         ...ownerFilter,
@@ -343,7 +348,7 @@ const collectExpectedIncomeByMonth = async (
   for (const deduction of payrollDeductions) {
     mergeMoneyByMonthKey(
       map,
-      toMonthKeyUtc(deduction.due_date),
+      formatLoanDueYmd(deduction.due_date).slice(0, 7),
       -Number(deduction.amount),
     );
   }
@@ -361,7 +366,10 @@ const collectLoanPaymentObligations = async (
   const out = new Map<string, LiquidityObligationItem[]>();
   const rows = await prisma.loanPayment.findMany({
     where: {
-      due_date: { gte: asOf, lte: endOfUtcDay(until) },
+      due_date: {
+        gte: parseDateOnly(formatCalendarDate(asOf)),
+        lte: parseDateOnly(formatCalendarDate(until)),
+      },
       status: 'SCHEDULED',
       loan: {
         ...ownerFilter,
@@ -377,7 +385,7 @@ const collectLoanPaymentObligations = async (
   });
 
   for (const row of rows) {
-    const dueStr = toUtcDateOnlyString(row.due_date);
+    const dueStr = formatLoanDueYmd(row.due_date);
     if (compareUtcDateOnly(dueStr, untilStr) > 0) continue;
     const amount = Number(row.amount);
     if (omitZero && amount === 0) continue;

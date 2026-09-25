@@ -1,7 +1,9 @@
 import {
   addCalendarDays,
   formatCalendarDate,
+  formatStoredDateOnly,
   parseCalendarDate,
+  parseDateOnly,
 } from '@/lib/calendar-dates';
 import type {
   LoanPaymentFrequencyValue,
@@ -21,6 +23,24 @@ export function parseYmdAsUtcDate(value: string): Date {
 
 export function formatDateYmd(value: Date): string {
   return formatCalendarDate(value);
+}
+
+/** Civil day for a loan installment, ignoring the timestamp's clock. */
+export function formatLoanDueYmd(value: Date): string {
+  return formatStoredDateOnly(value);
+}
+
+/**
+ * Value written to LoanPayment.due_date (@db.Date).
+ * 00:00 UTC and 06:00 UTC of the same UTC day stay that civil day.
+ */
+export function loanDueDateForStorage(value: string | Date): Date {
+  if (typeof value === 'string') {
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+    if (match) return parseDateOnly(match[1]!);
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return parseDateOnly(formatStoredDateOnly(date));
 }
 
 function lastDayOfMonth(year: number, month: number): number {

@@ -116,6 +116,52 @@ describe('database timestamp conversion', () => {
     expect(args.data.created_at.toISOString()).toBe('2026-06-04T00:46:25.681Z')
   })
 
+  it('preserves LoanPayment due_date and still shifts other due_date timestamps', () => {
+    const civilDay = new Date('2026-09-01T00:00:00.000Z')
+    const noon = new Date('2026-09-01T12:00:00.000Z')
+
+    const loanArgs = transformPrismaWriteArgs(
+      {
+        data: {
+          payments: {
+            create: [{ due_date: civilDay }],
+          },
+        },
+      },
+      'create',
+      'Loan',
+    ) as { data: { payments: { create: Array<{ due_date: Date }> } } }
+
+    const cardArgs = transformPrismaWriteArgs(
+      { data: { due_date: noon } },
+      'create',
+      'CreditCardScheduledPayment',
+    ) as { data: { due_date: Date } }
+
+    expect(loanArgs.data.payments.create[0]!.due_date.toISOString()).toBe(
+      '2026-09-01T00:00:00.000Z',
+    )
+    expect(cardArgs.data.due_date.toISOString()).toBe('2026-09-01T06:00:00.000Z')
+  })
+
+  it('normalizes LoanPayment due_date on read and leaves card due_date alone', () => {
+    const read = transformPrismaReadResult(
+      {
+        payments: [{ due_date: new Date('2026-09-01T06:00:00.000Z') }],
+      },
+      'findMany',
+      'Loan',
+    ) as { payments: Array<{ due_date: Date }> }
+    const card = transformPrismaReadResult(
+      { due_date: new Date('2026-09-01T06:00:00.000Z') },
+      'findMany',
+      'CreditCardScheduledPayment',
+    ) as { due_date: Date }
+
+    expect(read.payments[0]!.due_date.toISOString()).toBe('2026-09-01T00:00:00.000Z')
+    expect(card.due_date.toISOString()).toBe('2026-09-01T06:00:00.000Z')
+  })
+
   it('reads DATE columns back on the same UTC civil day', () => {
     const read = transformPrismaReadResult(
       {
