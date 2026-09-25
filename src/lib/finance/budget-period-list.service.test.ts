@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { endOfCalendarDay, startOfCalendarDay } from '@/lib/calendar-dates';
+import {
+  endOfCalendarDay,
+  startOfCalendarDay,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import {
   generatePeriodsForMonth,
   listActivePeriods,
+  listBudgetPeriodExpensesByAllocation,
   listHistoryPeriods,
+  refreshFuturePeriodSnapshots,
 } from './budget-period.service';
 
 const mocks = vi.hoisted(() => ({
@@ -15,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   budgetPeriodCount: vi.fn(),
   fortnightFindMany: vi.fn(),
   fortnightCount: vi.fn(),
+  expenseFindMany: vi.fn(),
   computePeriodSpendByAllocations: vi.fn(),
 }));
 
@@ -29,6 +36,7 @@ vi.mock('@/lib/prisma', () => ({
       deleteMany: vi.fn(),
     },
     fortnight: { findMany: mocks.fortnightFindMany, count: mocks.fortnightCount },
+    expense: { findMany: mocks.expenseFindMany },
   },
 }));
 
@@ -270,3 +278,103 @@ describe('generatePeriodsForMonth', () => {
     expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
   });
 });
+
+describe('refreshFuturePeriodSnapshots', () => {
+  beforeEach(() => {
+    mocks.budgetPeriodFindMany.mockReset();
+  });
+
+  it('refreshes periods that have not ended and leaves closed history out of the query', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([]);
+    const asOf = new Date('2026-06-10T18:00:00.000Z');
+
+    await refreshFuturePeriodSnapshots(10, asOf);
+
+    expect(mocks.budgetPeriodFindMany).toHaveBeenCalledWith({
+      where: {
+        budget_id: 10,
+        end_date: { gte: startOfCalendarDay(todayCalendarDate(asOf)) },
+      },
+      select: { id: true },
+    });
+  });
+});
+
+describe('listBudgetPeriodExpensesByAllocation', () => {
+  beforeEach(() => {
+    mocks.budgetPeriodFindFirst.mockReset();
+    mocks.expenseFindMany.mockReset();
+  });
+
+  it('includes Despensa from any wallet when the allocation wallet is null', async () => {
+    mocks.budgetPeriodFindFirst.mockResolvedValue({
+      id: 4,
+      start_date: startOfCalendarDay('2026-06-01'),
+      end_date: endOfCalendarDay('2026-06-14'),
+      snapshot: {
+        allocations: [{ id: 9, wallet_id: null, category_id: 7 }],
+      },
+      budget: { allocations: [] },
+    });
+    mocks.expenseFindMany.mockResolvedValue([
+      expenseRow(1, 2, 7),
+      expenseRow(2, 8, 7),
+      expenseRow(3, 2, 9),
+    ]);
+
+    const groups = await listBudgetPeriodExpensesByAllocation(4, ownerFilter);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.expenses.map((expense) => expense.id)).toEqual([1, 2]);
+    expect(mocks.expenseFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ category_id: 7 }],
+        }),
+      }),
+    );
+  });
+
+  it('keeps a specific wallet from listing expenses on another wallet', async () => {
+    mocks.budgetPeriodFindFirst.mockResolvedValue({
+      id: 4,
+      start_date: startOfCalendarDay('2026-06-01'),
+      end_date: endOfCalendarDay('2026-06-14'),
+      snapshot: {
+        allocations: [{ id: 9, wallet_id: 2, category_id: 7 }],
+      },
+      budget: { allocations: [] },
+    });
+    mocks.expenseFindMany.mockResolvedValue([
+      expenseRow(1, 2, 7),
+      expenseRow(2, 8, 7),
+    ]);
+
+    const groups = await listBudgetPeriodExpensesByAllocation(4, ownerFilter);
+
+    expect(groups[0]?.expenses.map((expense) => expense.id)).toEqual([1]);
+    expect(mocks.expenseFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ wallet_id: 2, category_id: 7 }],
+        }),
+      }),
+    );
+  });
+});
+
+function expenseRow(id: number, walletId: number, categoryId: number) {
+  return {
+    id,
+    description: 'Despensa',
+    amount: 40,
+    payment_date: startOfCalendarDay('2026-06-04'),
+    created_at: startOfCalendarDay('2026-06-04'),
+    is_paid: true,
+    expense_template_id: null,
+    credit_installment_current: null,
+    credit_installment_total: null,
+    category: { id: categoryId, name: 'Despensa', icon: null },
+    wallet: { id: walletId, name: `Wallet ${walletId}`, type: 'DEBIT_CARD' },
+  };
+}

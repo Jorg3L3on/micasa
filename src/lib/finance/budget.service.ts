@@ -15,6 +15,8 @@ import {
 import { getCalendarFortnightRefForYmd, getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { computeBudgetTemplateDateRange } from '@/lib/finance/budget-template-date-range';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
+import { allocationOverlapMessage } from '@/lib/finance/budget-allocation-overlap';
+import { ANY_WALLET_LABEL } from '@/schemas/budget.schema';
 
 async function resolveCurrentFortnight(ownerFilter: OwnerFilter) {
   return prisma.fortnight.findFirst({
@@ -70,21 +72,65 @@ function assertExactAllocationTotal(totalAmount: number, allocations: Allocation
   }
 }
 
+function normalizeAllocations(allocations: AllocationInput[]): AllocationInput[] {
+  return allocations.map((allocation) => ({
+    ...allocation,
+    wallet_id: allocation.wallet_id ?? null,
+  }));
+}
+
 function assertNoEmptyAllocations(allocations: AllocationInput[]) {
   if (
     allocations.some(
       (allocation) =>
-        allocation.wallet_id <= 0 ||
+        (allocation.wallet_id != null && allocation.wallet_id <= 0) ||
         allocation.category_id <= 0 ||
         Number(allocation.amount) <= 0,
     )
   ) {
     throw Object.assign(
       new Error(
-        'Todas las asignaciones deben incluir una cartera, una categoría y un monto mayor a cero',
+        'Todas las asignaciones deben incluir una cartera o Cualquier cartera, una categoría y un monto mayor a cero',
       ),
       { code: 'EMPTY_ALLOCATION' },
     );
+  }
+}
+
+async function assertNoAllocationOverlap(
+  ownerFilter: OwnerFilter,
+  allocations: AllocationInput[],
+) {
+  let parentIdByCategoryId = new Map<number, number | null>();
+  const needsParentLookup = allocations.some(
+    (allocation) => allocation.wallet_id == null,
+  );
+  if (
+    needsParentLookup &&
+    prisma.category &&
+    typeof prisma.category.findMany === 'function'
+  ) {
+    const categories = await prisma.category.findMany({
+      where: {
+        ...ownerFilter,
+        id: { in: [...new Set(allocations.map((allocation) => allocation.category_id))] },
+      },
+      select: { id: true, parent_id: true },
+    });
+    parentIdByCategoryId = new Map(
+      categories.map((category) => [category.id, category.parent_id]),
+    );
+  }
+
+  const message = allocationOverlapMessage(
+    allocations.map((allocation) => ({
+      wallet_id: allocation.wallet_id ?? null,
+      category_id: allocation.category_id,
+    })),
+    parentIdByCategoryId,
+  );
+  if (message) {
+    throw Object.assign(new Error(message), { code: 'ALLOCATION_OVERLAP' });
   }
 }
 
@@ -100,13 +146,21 @@ async function assertOwnerScopedReferences(
   ) {
     return;
   }
-  const walletIds = [...new Set(allocations.map((allocation) => allocation.wallet_id))];
+  const walletIds = [
+    ...new Set(
+      allocations.flatMap((allocation) =>
+        allocation.wallet_id == null ? [] : [allocation.wallet_id],
+      ),
+    ),
+  ];
   const categoryIds = [...new Set(allocations.map((allocation) => allocation.category_id))];
 
   const [walletCount, categoryCount] = await Promise.all([
-    prisma.wallet.count({
-      where: { ...ownerFilter, id: { in: walletIds } },
-    }),
+    walletIds.length === 0
+      ? Promise.resolve(0)
+      : prisma.wallet.count({
+          where: { ...ownerFilter, id: { in: walletIds } },
+        }),
     prisma.category.count({
       where: { ...ownerFilter, kind: 'EXPENSE', id: { in: categoryIds } },
     }),
@@ -150,7 +204,7 @@ export async function listBudgetsByOwner(ownerFilter: OwnerFilter) {
     allocations: budget.allocations.map((a) => ({
       id: a.id,
       wallet_id: a.wallet_id,
-      wallet_name: a.wallet.name,
+      wallet_name: a.wallet?.name ?? ANY_WALLET_LABEL,
       category_id: a.category_id,
       category_name: a.category.name,
       category_icon: a.category.icon ?? null,
@@ -168,9 +222,11 @@ export async function createBudget(
     ownerType === 'user'
       ? { user_id: ownerId, house_id: null }
       : { user_id: null, house_id: ownerId };
-  assertNoEmptyAllocations(data.allocations);
-  assertExactAllocationTotal(Number(data.allocated_amount), data.allocations);
-  await assertOwnerScopedReferences(ownerFilter, data.allocations);
+  const allocations = normalizeAllocations(data.allocations);
+  assertNoEmptyAllocations(allocations);
+  assertExactAllocationTotal(Number(data.allocated_amount), allocations);
+  await assertNoAllocationOverlap(ownerFilter, allocations);
+  await assertOwnerScopedReferences(ownerFilter, allocations);
 
   const budgetDateRange = await resolveBudgetDateRange(
     data.frequency,
@@ -197,7 +253,7 @@ export async function createBudget(
     });
 
     await tx.budgetAllocation.createMany({
-      data: data.allocations.map((a) => ({
+      data: allocations.map((a) => ({
         budget_id: created.id,
         wallet_id: a.wallet_id,
         category_id: a.category_id,
@@ -382,14 +438,16 @@ export async function updateBudgetAllocations(
     throw Object.assign(new Error('Presupuesto no encontrado'), { code: 'P2025' });
   }
 
-  assertNoEmptyAllocations(allocations);
-  assertExactAllocationTotal(Number(budget.total_amount), allocations);
-  await assertOwnerScopedReferences(ownerFilter, allocations);
+  const normalized = normalizeAllocations(allocations);
+  assertNoEmptyAllocations(normalized);
+  assertExactAllocationTotal(Number(budget.total_amount), normalized);
+  await assertNoAllocationOverlap(ownerFilter, normalized);
+  await assertOwnerScopedReferences(ownerFilter, normalized);
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.budgetAllocation.deleteMany({ where: { budget_id: budgetId } });
     await tx.budgetAllocation.createMany({
-      data: allocations.map((a) => ({
+      data: normalized.map((a) => ({
         budget_id: budgetId,
         wallet_id: a.wallet_id,
         category_id: a.category_id,

@@ -52,11 +52,16 @@ import {
   step2Schema,
   BUDGET_FREQUENCY_LABELS,
   BUDGET_FREQUENCIES,
+  ANY_WALLET_LABEL,
+  isWalletSelectionMissing,
+  selectValueToWalletId,
+  walletIdToSelectValue,
   type Step1Values,
   type Step1Input,
   type Step2Values,
   type Step2Input,
 } from '@/schemas/budget.schema';
+import { allocationOverlapMessage } from '@/lib/finance/budget-allocation-overlap';
 import type { CategoryOption, WalletListItem } from '@/types/catalog';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
@@ -189,13 +194,24 @@ export default function BudgetFormDialog({
   );
   const hasEmptyAllocation = (watchedAllocations ?? []).some(
     (allocation) =>
-      Number(allocation.wallet_id) <= 0 ||
+      isWalletSelectionMissing(allocation.wallet_id) ||
       Number(allocation.category_id) <= 0 ||
       Number(allocation.amount) <= 0,
+  );
+  const overlapMessage = allocationOverlapMessage(
+    (watchedAllocations ?? []).map((allocation) => ({
+      wallet_id:
+        allocation.wallet_id === null ? null : Number(allocation.wallet_id),
+      category_id: Number(allocation.category_id) || 0,
+    })),
+    new Map(
+      categories.map((category) => [category.id, category.parentId ?? null]),
+    ),
   );
   const isFullyAllocated =
     step1Data !== null &&
     !hasEmptyAllocation &&
+    overlapMessage == null &&
     Math.abs(allocated - Number(step1Data.allocated_amount)) < 0.01;
 
   const loadOptions = useCallback(() => {
@@ -284,6 +300,10 @@ export default function BudgetFormDialog({
       form2.setError('root', {
         message: 'El monto asignado debe ser igual al presupuesto total',
       });
+      return;
+    }
+    if (overlapMessage) {
+      form2.setError('root', { message: overlapMessage });
       return;
     }
     await onCreate(step1Data, data);
@@ -565,8 +585,14 @@ export default function BudgetFormDialog({
 
           {hasEmptyAllocation ? (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-              Completa cada asignación con cartera, categoría y un monto mayor
-              a $0.00.
+              Elige {ANY_WALLET_LABEL} o una cartera, una categoría y un monto
+              mayor a $0.00.
+            </div>
+          ) : null}
+
+          {overlapMessage ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              {overlapMessage}
             </div>
           ) : null}
 
@@ -646,9 +672,9 @@ export default function BudgetFormDialog({
                       >
                         <FormLabel className="text-xs">Cartera</FormLabel>
                         <Select
-                          onValueChange={(v) => f.onChange(Number(v))}
+                          onValueChange={(v) => f.onChange(selectValueToWalletId(v))}
                           onOpenChange={handleSelectOpenChange}
-                          value={f.value ? String(f.value) : ''}
+                          value={walletIdToSelectValue(f.value)}
                         >
                           <FormControl>
                             <SelectTrigger
@@ -659,6 +685,9 @@ export default function BudgetFormDialog({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value={walletIdToSelectValue(null)}>
+                              {ANY_WALLET_LABEL}
+                            </SelectItem>
                             {wallets.map((w) => (
                               <SelectItem key={w.id} value={String(w.id)}>
                                 <WalletIdentity

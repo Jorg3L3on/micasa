@@ -29,6 +29,26 @@ describe('budget allocation validation', () => {
     ).toBe(false);
   });
 
+  it('accepts Cualquier cartera as a null wallet', () => {
+    const result = createBudgetSchema.safeParse({
+      name: 'Despensa',
+      allocated_amount: 100,
+      frequency: 'BIWEEKLY',
+      recurrent: true,
+      allocations: [{ wallet_id: null, category_id: 1, amount: 100 }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('still rejects a zero wallet id', () => {
+    const result = updateBudgetAllocationsSchema.safeParse({
+      allocations: [{ wallet_id: 0, category_id: 1, amount: 100 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('rejects zero-amount allocations when updating allocations', () => {
     expect(
       updateBudgetAllocationsSchema.safeParse({

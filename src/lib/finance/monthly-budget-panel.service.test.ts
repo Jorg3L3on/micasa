@@ -41,7 +41,7 @@ function periodFixture(overrides: {
   frequency?: string;
   categoryId?: number;
   categoryName?: string;
-  walletId?: number;
+  walletId?: number | null;
   walletName?: string;
 }) {
   const {
@@ -73,12 +73,15 @@ function periodFixture(overrides: {
           category_id: categoryId,
           amount: total,
           category: { id: categoryId, name: categoryName, icon: 'shopping-cart' },
-          wallet: {
-            id: walletId,
-            name: walletName,
-            provider_icon_key: null,
-            assignee: null,
-          },
+          wallet:
+            walletId == null
+              ? null
+              : {
+                  id: walletId,
+                  name: walletName,
+                  provider_icon_key: null,
+                  assignee: null,
+                },
         },
       ],
     },
@@ -328,5 +331,40 @@ describe('getMonthlyBudgetPanel', () => {
 
     expect(panel.first.totalBudget).toBe(100);
     expect(panel.first.allocations[0]?.budgeted).toBe(100);
+  });
+
+  it('shows Cualquier cartera and counts that category on any wallet', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({
+        start: '2026-05-31',
+        end: '2026-06-14',
+        total: 400,
+        frequency: 'BIWEEKLY',
+        categoryId: 5,
+        categoryName: 'Despensa',
+        walletId: null,
+      }),
+    ]);
+    mocks.computePeriodSpendByAllocations.mockResolvedValue({
+      total_spent: 80,
+      by_allocation: [{ spent_amount: 80 }],
+    });
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 6);
+
+    expect(panel.first.allocations[0]).toMatchObject({
+      categoryName: 'Despensa',
+      walletId: null,
+      walletName: 'Cualquier cartera',
+      walletProviderIconKey: null,
+      spent: 80,
+      budgeted: 400,
+    });
+    expect(mocks.computePeriodSpendByAllocations).toHaveBeenCalledWith(
+      expect.anything(),
+      [expect.objectContaining({ wallet_id: null, category_id: 5 })],
+      expect.anything(),
+      ownerFilter,
+    );
   });
 });

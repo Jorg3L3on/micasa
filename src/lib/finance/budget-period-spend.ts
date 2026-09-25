@@ -7,7 +7,8 @@ import type { OwnerFilter } from '@/lib/server/get-owner-context';
 export type DateRange = { start_date: Date; end_date: Date };
 
 export type BudgetAllocationSpendInput = {
-  wallet_id: number;
+  /** Null matches the category on every wallet. */
+  wallet_id: number | null;
   category_id: number;
   amount: number;
 };
@@ -99,7 +100,7 @@ export function buildBudgetSpendExpenseWhere(
   return {
     ...ownerFilter,
     is_paid: true,
-    wallet_id: allocation.wallet_id,
+    ...(allocation.wallet_id != null ? { wallet_id: allocation.wallet_id } : {}),
     category_id:
       categoryIds.length === 1
         ? categoryIds[0]
@@ -136,12 +137,23 @@ export async function computePeriodSpendByAllocations(
     ),
   ];
 
+  const walletIds = [
+    ...new Set(
+      allocations.flatMap((allocation) =>
+        allocation.wallet_id == null ? [] : [allocation.wallet_id],
+      ),
+    ),
+  ];
+  const matchAnyWallet = allocations.some(
+    (allocation) => allocation.wallet_id == null,
+  );
+
   const grouped = await db.expense.groupBy({
     by: ['wallet_id', 'category_id'],
     where: {
       ...ownerFilter,
       is_paid: true,
-      wallet_id: { in: [...new Set(allocations.map((a) => a.wallet_id))] },
+      ...(matchAnyWallet ? {} : { wallet_id: { in: walletIds } }),
       category_id: { in: allCategoryIds },
       payment_date: { gte: window.start_date, lte: window.end_date },
       ...whereExcludeCreditInstallments(),
@@ -149,12 +161,17 @@ export async function computePeriodSpendByAllocations(
     _sum: { amount: true },
   });
 
-  const spentByPair = new Map(
-    grouped.map((row) => [
-      `${row.wallet_id}|${row.category_id}`,
-      Number(row._sum.amount ?? 0),
-    ]),
-  );
+  const spentByPair = new Map<string, number>();
+  const spentByCategory = new Map<number, number>();
+  for (const row of grouped) {
+    if (row.category_id == null) continue;
+    const amount = Number(row._sum.amount ?? 0);
+    spentByPair.set(`${row.wallet_id}|${row.category_id}`, amount);
+    spentByCategory.set(
+      row.category_id,
+      (spentByCategory.get(row.category_id) ?? 0) + amount,
+    );
+  }
 
   let total_spent = 0;
   const by_allocation: AllocationSpendResult[] = allocations.map(
@@ -162,12 +179,14 @@ export async function computePeriodSpendByAllocations(
       const ids = rollupMap.get(allocation.category_id) ?? [
         allocation.category_id,
       ];
-      const spent_amount = ids.reduce(
-        (sum, categoryId) =>
-          sum +
-          (spentByPair.get(`${allocation.wallet_id}|${categoryId}`) ?? 0),
-        0,
-      );
+      const spent_amount = ids.reduce((sum, categoryId) => {
+        if (allocation.wallet_id == null) {
+          return sum + (spentByCategory.get(categoryId) ?? 0);
+        }
+        return (
+          sum + (spentByPair.get(`${allocation.wallet_id}|${categoryId}`) ?? 0)
+        );
+      }, 0);
       total_spent += spent_amount;
       return { spent_amount };
     },
