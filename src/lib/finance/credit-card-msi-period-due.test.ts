@@ -73,6 +73,32 @@ describe('resolveCardPeriodDue', () => {
     expect(result.periodDue).not.toBe(result.totalDebt);
   });
 
+  it('names planned, minimum and scheduled sources when the period has a charge', () => {
+    expect(
+      resolveCardPeriodDue({
+        totalDebt: 4000,
+        statementPayoff: 2000,
+        plannedOverride: 600,
+      }).source,
+    ).toBe('planned_override');
+
+    expect(
+      resolveCardPeriodDue({
+        totalDebt: 4000,
+        statementPayoff: null,
+        minimumPayment: 350,
+      }),
+    ).toMatchObject({ periodDue: 350, source: 'minimum' });
+
+    expect(
+      resolveCardPeriodDue({
+        totalDebt: 0,
+        statementPayoff: null,
+        regularCharges: 180,
+      }),
+    ).toMatchObject({ periodDue: 180, source: 'scheduled' });
+  });
+
   it('does not add the installment again when the statement payoff already includes it', () => {
     const period = resolveCardPeriodDue({
       totalDebt: 6400,

@@ -1,9 +1,5 @@
 import { cache } from 'react';
-import {
-  endOfCalendarDay,
-  formatCalendarDate,
-  parseCalendarDate,
-} from '@/lib/calendar-dates';
+import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -71,10 +67,6 @@ const createCalendarDate = (year: number, month: number, day: number) =>
   parseCalendarDate(
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
   );
-
-/** Inclusive upper bound for the due calendar day in Mexico City. */
-const endOfDueCalendarDay = (date: Date) =>
-  endOfCalendarDay(formatCalendarDate(date));
 
 const clampDayToMonth = (year: number, month: number, day: number) =>
   Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
@@ -367,6 +359,15 @@ export async function getCreditCardStatementByOwner(
     scheduledAmount: mergedDue.usedScheduledCalendar ? mergedDue.amount : null,
     paymentsApplied: paymentsAppliedToStatementTotal,
     explicitZero: !mergedDue.usedScheduledCalendar && declaredZero,
+    planWrites: mergedDue.usedScheduledCalendar
+      ? undefined
+      : cardPlans.map((plan) => toStoredPaymentPlanWrite(plan)),
+    cycle: {
+      statementEnd: formatCalendarDate(window.statementEnd),
+      statementDueDate: formatCalendarDate(window.statementDueDate),
+    },
+    cutoffDay: card.cutoff_day,
+    dueDay: card.due_day,
   });
   const nextDuePayment =
     periodObligation.confidence === 'missing'
@@ -605,6 +606,7 @@ const aggregateLedgerActivityForCard = (
         p.paid_at,
         window.statementEnd,
         window.statementDueDate,
+        window.currentCycleEnd,
       )
     ) {
       paymentsAppliedToStatement += p.amount;
@@ -941,14 +943,13 @@ const sumPaymentsAppliedToStatementByWallet = async (
   }
 
   const ownerSql = creditPaymentOwnerWhereSql(ownerFilter);
-  const paymentDueEnd = endOfDueCalendarDay(window.statementDueDate);
   const rows = await prisma.$queryRaw<
     Array<{ credit_card_wallet_id: number; total: unknown }>
   >`
     SELECT p."credit_card_wallet_id", COALESCE(SUM(p."amount"), 0) AS total
     FROM "CreditCardPayment" p
     WHERE p."credit_card_wallet_id" IN (${Prisma.join(cardIds)})
-      AND p."paid_at" <= ${paymentDueEnd}
+      AND p."paid_at" <= ${window.currentCycleEnd}
       AND (
         (p."paid_at" AT TIME ZONE 'UTC')::date
           > (${window.statementEnd} AT TIME ZONE 'UTC')::date

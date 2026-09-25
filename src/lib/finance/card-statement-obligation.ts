@@ -1,5 +1,4 @@
 import {
-  endOfCalendarDay,
   formatCalendarDate,
   parseCalendarDate,
   todayCalendarDate,
@@ -262,21 +261,19 @@ const resolveDueDate = (statementEnd: Date, dueDay: number) => {
   return addMonths(candidate, 1, dueDay);
 };
 
-/** Inclusive upper bound for the due calendar day in Mexico City. */
-const endOfDueCalendarDay = (date: Date) =>
-  endOfCalendarDay(formatCalendarDate(date));
-
 /**
- * Pago que cuenta contra el corte: día UTC posterior al del cierre, o mismo día UTC con `paid_at`
- * estrictamente después del instante de cierre.
+ * Pago que cuenta contra el corte: después del cierre y hasta el siguiente corte
+ * (inclusive). Un pago posterior al día de vencimiento sigue aplicando al ciclo
+ * más antiguo que aún no cerró — no se descarta por llegar tarde.
  */
 export const paymentAppliesToStatementPeriod = (
   paidAt: Date,
   statementEnd: Date,
-  statementDueDate: Date,
+  _statementDueDate: Date,
+  nextStatementEnd?: Date,
 ): boolean => {
   const paidMs = paidAt.getTime();
-  if (paidMs > endOfDueCalendarDay(statementDueDate).getTime()) {
+  if (nextStatementEnd != null && paidMs > nextStatementEnd.getTime()) {
     return false;
   }
   const payDay = toDateOnlyString(paidAt);

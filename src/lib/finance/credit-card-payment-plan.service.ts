@@ -10,7 +10,13 @@ import type {
 import {
   resolveCreditCardStatementWindow,
 } from '@/lib/finance/card-statement-obligation';
-import { parseCalendarDate, todayCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
+import {
+  formatCalendarDate,
+  formatStoredDateOnly,
+  parseCalendarDate,
+  parseDateOnly,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import {
   selectActivePlannedOverride,
   statementCycleForMonth,
@@ -88,6 +94,7 @@ export async function getCreditCardPaymentPlanViews(
       type: true,
       cutoff_day: true,
       due_day: true,
+      minimum_payment: true,
     },
   });
 
@@ -217,6 +224,8 @@ export async function getCreditCardPaymentPlanViews(
           currentCyclePurchasesTotal: statement.current_cycle_purchases,
           currentCyclePaymentsTotal: statement.current_cycle_payments,
           asOfYmd: todayYmd,
+          persistedMinimumPayment:
+            card.minimum_payment == null ? null : Number(card.minimum_payment),
         },
         plannedGrossAmount: plannedGross,
         paymentsAppliedToFortnight,
@@ -347,7 +356,7 @@ export async function upsertCreditCardPaymentPlan(
   const storedAmount = declareZero ? 0 : plannedAmount;
   const anchorStatementEnd =
     wallet.cutoff_day != null && wallet.due_day != null
-      ? parseCalendarDate(
+      ? parseDateOnly(
           statementCycleForMonth(
             fortnight.year,
             fortnight.month,
@@ -361,7 +370,7 @@ export async function upsertCreditCardPaymentPlan(
     cycle_count: scope === 'n_cycles' ? options?.cycleCount ?? null : null,
     valid_until:
       scope === 'until_date' && options?.validUntil
-        ? parseCalendarDate(options.validUntil)
+        ? parseDateOnly(options.validUntil)
         : null,
     anchor_statement_end: anchorStatementEnd,
   };

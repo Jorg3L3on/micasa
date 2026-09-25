@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { formatStoredDateOnly } from '@/lib/calendar-dates';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import {
@@ -55,7 +56,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         declaredZero: plan.declared_zero === true,
         scope: plan.scope,
         cycleCount: plan.cycle_count,
-        validUntil: plan.valid_until,
+        validUntil: plan.valid_until
+          ? formatStoredDateOnly(plan.valid_until)
+          : null,
       },
       { status: 200 },
     );

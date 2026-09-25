@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
 import { dueItemToPeriodObligation } from '@/lib/finance/card-period-obligation';
 import {
   getCardPeriodObligation,
@@ -33,6 +34,38 @@ type GoldenCase = {
   expect: GoldenExpect;
 };
 
+const isUtcInstant = (value: string | null | undefined) =>
+  typeof value === 'string' && value.includes('T');
+
+const materializeQuery = (query: GoldenCase['query']): GoldenCase['query'] => {
+  if (!query.planWrites?.length) return query;
+  const needsDateRead = query.planWrites.some(
+    (write) => isUtcInstant(write.anchorStatementEnd) || isUtcInstant(write.validUntil),
+  );
+  if (!needsDateRead) return query;
+  return {
+    ...query,
+    planWrites: query.planWrites.map((write) =>
+      toStoredPaymentPlanWrite({
+        planned_amount: write.amount,
+        declared_zero: write.declaredZero === true,
+        scope: write.scope,
+        cycle_count: write.cycleCount,
+        valid_until: write.validUntil ? new Date(write.validUntil) : null,
+        anchor_statement_end: write.anchorStatementEnd
+          ? new Date(write.anchorStatementEnd)
+          : null,
+        updated_at: write.updatedAt ? new Date(String(write.updatedAt)) : null,
+        created_at: write.createdAt ? new Date(String(write.createdAt)) : null,
+        fortnight:
+          write.fortnightYear != null && write.fortnightMonth != null
+            ? { year: write.fortnightYear, month: write.fortnightMonth }
+            : null,
+      }),
+    ),
+  };
+};
+
 const cases = JSON.parse(
   readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), 'golden/card-obligation-cases.json'),
@@ -61,7 +94,12 @@ const dueItemFor = (query: GoldenCase['query']): DueItemObligationSource => {
       query.statementPayoff != null ? null : (query.persistedMinimum ?? query.statementMinimum ?? null),
     msiInstallmentDue: scheduled ? null : (query.msiInstallmentDue ?? null),
     plannedPayment: obligation.basis === 'planned_override' ? obligation.amount : null,
-    declaredZero: false,
+    declaredZero:
+      obligation.basis === 'none_declared' &&
+      obligation.confidence === 'exact' &&
+      obligation.amount === 0 &&
+      (query.explicitZero === true ||
+        query.planWrites?.some((write) => write.declaredZero === true) === true),
     paymentsAppliedToStatement: query.paymentsApplied ?? 0,
     paymentsAppliedToFortnight: 0,
   };
@@ -69,9 +107,10 @@ const dueItemFor = (query: GoldenCase['query']): DueItemObligationSource => {
 
 describe('card period obligation golden surfaces', () => {
   it.each(cases)('$id matches on panel, liquidity and MCP', (golden) => {
-    const panel = panelSnapshotFromDueItem(dueItemFor(golden.query));
-    const liquidity = liquiditySnapshotFromQuery(golden.query);
-    const mcp = mcpSnapshotFromDueItem(dueItemFor(golden.query));
+    const query = materializeQuery(golden.query);
+    const panel = panelSnapshotFromDueItem(dueItemFor(query));
+    const liquidity = liquiditySnapshotFromQuery(query);
+    const mcp = mcpSnapshotFromDueItem(dueItemFor(query));
 
     expect(liquidity.amount).toBe(golden.expect.amount);
     expect(liquidity.basis).toBe(golden.expect.basis);
@@ -89,7 +128,7 @@ describe('card period obligation golden surfaces', () => {
     if (golden.expect.confidence === 'missing') {
       expect(panel.amount).toBeNull();
       expect(panel.knownCashAmount).not.toBe(0);
-      const plan = planContributionFromObligation(getCardPeriodObligation(golden.query));
+      const plan = planContributionFromObligation(getCardPeriodObligation(query));
       expect(plan.statementDue).toBeNull();
       expect(plan.gap).toBe('missing_statement');
     }

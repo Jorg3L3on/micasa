@@ -4,6 +4,7 @@ import {
   selectActivePlannedOverride,
   statementCycleForFortnight,
   statementCycleForMonth,
+  toStoredPaymentPlanWrite,
   type StoredPaymentPlanWrite,
 } from '@/lib/finance/card-payment-plan-scope';
 
@@ -103,6 +104,64 @@ describe('planned override validity', () => {
       confidence: 'exact',
       gaps: [],
     });
+  });
+
+  it('reads DATE columns as UTC civil days under America/Mexico_City', () => {
+    const previousTz = process.env.TZ;
+    process.env.TZ = 'America/Mexico_City';
+    try {
+      const september = cycle(2026, 9);
+      const october = cycle(2026, 10);
+      const august = cycle(2026, 8);
+      const anchor = new Date('2026-09-15T00:00:00.000Z');
+      const validUntil = new Date('2026-10-20T00:00:00.000Z');
+
+      const thisCycle = toStoredPaymentPlanWrite({
+        planned_amount: 0,
+        declared_zero: true,
+        scope: 'this_cycle',
+        anchor_statement_end: anchor,
+        fortnight: { year: 2026, month: 9 },
+      });
+      expect(thisCycle.anchorStatementEnd).toBe('2026-09-15');
+      expect(selectActivePlannedOverride([thisCycle], september, card).explicitZero).toBe(
+        true,
+      );
+      expect(selectActivePlannedOverride([thisCycle], august, card).explicitZero).toBe(
+        false,
+      );
+
+      const twoCycles = toStoredPaymentPlanWrite({
+        planned_amount: 250,
+        declared_zero: false,
+        scope: 'n_cycles',
+        cycle_count: 2,
+        anchor_statement_end: anchor,
+        fortnight: { year: 2026, month: 9 },
+      });
+      expect(selectActivePlannedOverride([twoCycles], september, card).plannedOverride).toBe(
+        250,
+      );
+      expect(selectActivePlannedOverride([twoCycles], october, card).plannedOverride).toBe(
+        250,
+      );
+      expect(selectActivePlannedOverride([twoCycles], august, card).plannedOverride).toBeNull();
+
+      const untilDue = toStoredPaymentPlanWrite({
+        planned_amount: 180,
+        declared_zero: false,
+        scope: 'until_date',
+        valid_until: validUntil,
+        anchor_statement_end: anchor,
+        fortnight: { year: 2026, month: 9 },
+      });
+      expect(untilDue.validUntil).toBe('2026-10-20');
+      expect(selectActivePlannedOverride([untilDue], october, card).plannedOverride).toBe(180);
+      expect(selectActivePlannedOverride([untilDue], cycle(2026, 11), card).plannedOverride).toBeNull();
+    } finally {
+      if (previousTz == null) delete process.env.TZ;
+      else process.env.TZ = previousTz;
+    }
   });
 
   it('keeps a later declared zero distinct from deleting the amount', () => {

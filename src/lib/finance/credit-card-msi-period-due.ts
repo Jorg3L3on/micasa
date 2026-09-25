@@ -28,7 +28,14 @@ export type MsiPlanSlice = {
   remainingBalance: number;
 };
 
-export type CardPeriodDueSource = 'statement' | 'components' | 'none' | 'missing';
+export type CardPeriodDueSource =
+  | 'statement'
+  | 'components'
+  | 'planned_override'
+  | 'minimum'
+  | 'scheduled'
+  | 'none'
+  | 'missing';
 
 export type ResolveCardPeriodDueInput = {
   /** Outstanding on the card. Never copied into `periodDue`. */
@@ -44,6 +51,9 @@ export type ResolveCardPeriodDueInput = {
   msi?: readonly MsiPlanSlice[];
   /** Debt with a due date in the period and no figure is missing, not $0. */
   dueInPeriod?: boolean;
+  plannedOverride?: number | null;
+  explicitZero?: boolean;
+  minimumPayment?: number | null;
 };
 
 export type ResolveCardPeriodDueResult = {
@@ -136,6 +146,9 @@ export const resolveCardPeriodDue = (
     msiInstallmentDue: installmentDue,
     scheduledAmount: input.regularCharges ?? null,
     paymentsApplied,
+    plannedOverride: input.plannedOverride,
+    explicitZero: input.explicitZero,
+    minimumPayment: input.minimumPayment,
   });
 
   if (obligation.confidence === 'missing') {
@@ -149,12 +162,20 @@ export const resolveCardPeriodDue = (
   }
 
   const periodDue = obligation.amount ?? 0;
+  const scheduledOnly =
+    installmentDue <= 0 && roundMoney(input.regularCharges ?? 0) > 0;
   const source: CardPeriodDueSource =
     obligation.basis === 'statement_no_interest'
       ? 'statement'
-      : obligation.basis === 'msi_installments'
-        ? 'components'
-        : 'none';
+      : obligation.basis === 'planned_override'
+        ? 'planned_override'
+        : obligation.basis === 'minimum'
+          ? 'minimum'
+          : obligation.basis === 'msi_installments'
+            ? scheduledOnly
+              ? 'scheduled'
+              : 'components'
+            : 'none';
 
   return {
     totalDebt,

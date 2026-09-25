@@ -788,6 +788,8 @@ export default function WalletForm({
             />
           </div>
 
+          {mode === 'edit' ? (
+          <>
           <FormField
             control={form.control}
             name="minimum_payment"
@@ -895,6 +897,8 @@ export default function WalletForm({
               )}
             />
           </div>
+          </>
+          ) : null}
         </div>
       ) : null}
     </>
