@@ -54,6 +54,8 @@ export type IncomeItemBySource = {
   templateName: string | null;
   categoryId: number | null;
   incomeTemplateId: number | null;
+  templateSuggestedAmount: number | null;
+  templateCategoryId: number | null;
   walletId: number | null;
 };
 
@@ -97,10 +99,9 @@ type SummaryBlockProps = {
   budgetOwnerQuery?: string;
   onEditIncome?: () => void;
   onEditIncomeSource?: (
-    id: number,
+    incomeTemplateId: number,
     amount: number,
     categoryId: number | null,
-    incomeTemplateId: number | null,
   ) => void;
 };
 
@@ -517,17 +518,16 @@ export default function SummaryBlock({
                             <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(item.amount)}
                             </span>
-                            {onEditIncomeSource ? (
+                            {onEditIncomeSource && item.incomeTemplateId != null ? (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() =>
                                   onEditIncomeSource(
-                                    item.id,
-                                    item.amount,
-                                    item.categoryId,
-                                    item.incomeTemplateId,
+                                    item.incomeTemplateId as number,
+                                    item.templateSuggestedAmount ?? item.amount,
+                                    item.templateCategoryId ?? item.categoryId,
                                   )
                                 }
                                 aria-label={`Modificar ${displayLabel}`}

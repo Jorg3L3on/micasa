@@ -117,30 +117,20 @@ export async function updateIncomeAmount(
   }, context);
 }
 
-/** Panel edit: planned amount and income template. Does not credit a wallet. */
-export async function updatePlannedIncome(
-  id: number,
-  amount: number,
-  context?: FinanceContextType,
-  options?: { category_id?: number },
-) {
-  const payload: {
+/** Fortnight income that does not credit a wallet. */
+export async function createPlannedIncome(
+  data: {
     amount: number;
-    sync_template: true;
-    category_id?: number;
-  } = { amount, sync_template: true };
-  if (options?.category_id != null) {
-    payload.category_id = options.category_id;
-  }
-
-  return clientFetchFromApi<{ template_updated: boolean }>(
-    `/api/incomes?id=${id}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    },
-    context,
-  );
+    source: string;
+    received_at: string;
+    category_id: number;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi('/api/incomes', {
+    method: 'POST',
+    body: JSON.stringify({ ...data, planned: true }),
+  }, context);
 }
 
 export async function createIncomeTemplate(

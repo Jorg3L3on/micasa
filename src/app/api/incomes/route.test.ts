@@ -8,6 +8,8 @@ const {
   incomeUpdate,
   incomeTemplateFindFirst,
   incomeTemplateUpdate,
+  incomeCreate,
+  resolveOrCreateFortnight,
   transactionFn,
   applyWalletAmountDelta,
 } = vi.hoisted(() => ({
@@ -18,6 +20,8 @@ const {
   incomeUpdate: vi.fn(),
   incomeTemplateFindFirst: vi.fn(),
   incomeTemplateUpdate: vi.fn(),
+  incomeCreate: vi.fn(),
+  resolveOrCreateFortnight: vi.fn(),
   transactionFn: vi.fn(),
   applyWalletAmountDelta: vi.fn(),
 }));
@@ -28,11 +32,15 @@ vi.mock('@/lib/server/get-owner-context', () => ({
 
 vi.mock('@/lib/prisma', () => ({
   default: {
-    income: { findFirst: incomeFindFirst },
+    income: { findFirst: incomeFindFirst, create: incomeCreate },
     wallet: { findFirst: walletFindFirst },
     category: { findFirst: categoryFindFirst },
     $transaction: transactionFn,
   },
+}));
+
+vi.mock('@/lib/fortnights', () => ({
+  resolveOrCreateFortnight,
 }));
 
 vi.mock('@/lib/finance/wallet-accounting', async (importOriginal) => {
@@ -44,7 +52,7 @@ vi.mock('@/lib/finance/wallet-accounting', async (importOriginal) => {
   };
 });
 
-import { PUT } from './route';
+import { POST, PUT } from './route';
 import { INCOME_WALLET_REQUIRED_MESSAGE } from '@/lib/finance/income.service';
 
 const ownerContext = {
@@ -134,94 +142,60 @@ describe('PUT /api/incomes', () => {
     );
   });
 
-  it('updates the income template and does not credit the wallet', async () => {
-    incomeFindFirst.mockResolvedValue({
-      id: 12,
-      amount: 6000,
-      wallet_id: null,
-      category_id: 3,
-      source: 'Salario Carmen',
-      income_template_id: 9,
+});
+
+describe('POST /api/incomes planned', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getOwnerContext.mockResolvedValue(ownerContext);
+    categoryFindFirst.mockResolvedValue({
+      id: 4,
+      kind: 'INCOME',
+      active: true,
     });
-    incomeTemplateFindFirst.mockResolvedValue({ id: 9 });
-    incomeUpdate.mockResolvedValue({
-      id: 12,
-      amount: 6500,
-      source: 'Salario Carmen',
-      received_at: new Date('2026-09-15T12:00:00.000Z'),
-      fortnight_id: 4,
-      income_template_id: 9,
+    resolveOrCreateFortnight.mockResolvedValue({ id: 10 });
+    incomeCreate.mockResolvedValue({
+      id: 21,
+      amount: 800,
+      source: 'Bono',
+      received_at: new Date('2026-09-20T12:00:00.000Z'),
+      fortnight_id: 10,
+      income_template_id: null,
       wallet_id: null,
       category_id: 4,
     });
-
-    const response = await putIncome({
-      amount: 6500,
-      category_id: 4,
-      wallet_id: 7,
-      sync_template: true,
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.amount).toBe(6500);
-    expect(body.wallet_id).toBeNull();
-    expect(body.template_updated).toBe(true);
-    expect(walletFindFirst).not.toHaveBeenCalled();
-    expect(applyWalletAmountDelta).not.toHaveBeenCalled();
-    expect(incomeUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: {
-          amount: 6500,
-          category_id: 4,
-        },
-      }),
-    );
-    expect(incomeTemplateUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 9 },
-        data: {
-          suggested_amount: '6500',
-          category_id: 4,
-        },
-      }),
-    );
   });
 
-  it('leaves an already assigned wallet balance unchanged', async () => {
-    incomeFindFirst.mockResolvedValue({
-      id: 12,
-      amount: 17500,
-      wallet_id: 7,
-      category_id: 3,
-      source: 'Salario Jorge',
-      income_template_id: 10,
-    });
-    incomeTemplateFindFirst.mockResolvedValue({ id: 10 });
-    incomeUpdate.mockResolvedValue({
-      id: 12,
-      amount: 18000,
-      source: 'Salario Jorge',
-      received_at: new Date('2026-09-15T12:00:00.000Z'),
-      fortnight_id: 4,
-      income_template_id: 10,
-      wallet_id: 7,
-      category_id: 3,
-    });
-
-    const response = await putIncome({
-      amount: 18000,
-      sync_template: true,
-    });
+  it('records the fortnight income without crediting a wallet', async () => {
+    const response = await POST(
+      new Request('http://localhost/api/incomes?ownerType=user&ownerId=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: 800,
+          source: 'Bono',
+          received_at: '2026-09-20',
+          category_id: 4,
+          wallet_id: 7,
+          planned: true,
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
     const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body.wallet_id).toBe(7);
-    expect(body.template_updated).toBe(true);
+    expect(response.status).toBe(201);
+    expect(body.wallet_id).toBeNull();
+    expect(body.amount).toBe(800);
     expect(applyWalletAmountDelta).not.toHaveBeenCalled();
-    expect(incomeUpdate).toHaveBeenCalledWith(
+    expect(incomeCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { amount: 18000 },
+        data: expect.objectContaining({
+          fortnight_id: 10,
+          amount: 800,
+          wallet_id: null,
+          category_id: 4,
+          source: 'Bono',
+        }),
       }),
     );
   });

@@ -82,11 +82,11 @@ export default function EditFortnightAmountDialog({
     onOpenChange(nextOpen);
   };
 
-  const title = requireCategory ? 'Modificar ingreso' : 'Modificar ingresos';
-  const description = requireCategory
-    ? updatesIncomeTemplate
-      ? `Actualiza la plantilla de ingreso. Quincena: ${fortnightLabel}. El monto no se deposita en ninguna billetera.`
-      : `Actualiza este ingreso de ${fortnightLabel}. El monto no se deposita en ninguna billetera.`
+  const title = updatesIncomeTemplate
+    ? 'Modificar plantilla'
+    : 'Modificar ingresos';
+  const description = updatesIncomeTemplate
+    ? 'Cambia el monto y la categoría de la plantilla. Esta quincena conserva su ingreso y ninguna billetera se mueve.'
     : `Modificar ingresos de ${fortnightLabel}. Monto actual: ${formatCurrency(defaultAmount)}. Este monto solo aplica a esta quincena.`;
 
   return (
@@ -154,11 +154,11 @@ export default function EditFortnightAmountDialog({
                 />
               ) : null}
             </div>
-            {requireCategory ? (
+            {updatesIncomeTemplate ? (
               <p className="px-1 text-xs text-muted-foreground">
-                {updatesIncomeTemplate
-                  ? 'Se guarda en la plantilla y en esta quincena. Para abonar el saldo, usa Recibir quincena.'
-                  : 'Este cambio solo ajusta el ingreso planificado. No mueve el saldo de una billetera.'}
+                Las próximas quincenas usan este monto al crear el mes. Para
+                sumar un ingreso solo a esta quincena, usa el botón + de la
+                barra.
               </p>
             ) : null}
             <Button

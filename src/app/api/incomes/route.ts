@@ -11,23 +11,43 @@ import {
   assertOwnedCategoryOfKind,
   CategoryServiceError,
 } from '@/lib/finance/category.service';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import {
   assertIncomeFundingWallet,
   IncomeServiceError,
   resolveIncomeWalletId,
-  updatePlannedIncomeForOwner,
 } from '@/lib/finance/income.service';
 
-const createIncomeSchema = z.object({
-  fortnight_id: z.number().int().positive(),
-  amount: z.number().positive('Amount must be greater than 0'),
-  source: z.string().optional().nullable(),
-  received_at: dateStringSchema,
-  transfer_from_user_id: z.number().int().positive().optional(),
-  income_template_id: z.number().int().positive().optional().nullable(),
-  wallet_id: z.number().int().positive('La billetera es requerida'),
-  category_id: z.number().int().positive('La categoría es requerida'),
-});
+const createIncomeSchema = z
+  .object({
+    fortnight_id: z.number().int().positive().optional(),
+    amount: z.number().positive('Amount must be greater than 0'),
+    source: z.string().optional().nullable(),
+    received_at: dateStringSchema,
+    transfer_from_user_id: z.number().int().positive().optional(),
+    income_template_id: z.number().int().positive().optional().nullable(),
+    wallet_id: z.number().int().positive().optional(),
+    category_id: z.number().int().positive('La categoría es requerida'),
+    /** Fortnight income only. Leaves every wallet balance unchanged. */
+    planned: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.planned === true) return;
+    if (data.fortnight_id == null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'fortnight_id is required',
+        path: ['fortnight_id'],
+      });
+    }
+    if (data.wallet_id == null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'La billetera es requerida',
+        path: ['wallet_id'],
+      });
+    }
+  });
 
 const updateIncomeAmountSchema = z.object({
   amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
@@ -36,11 +56,6 @@ const updateIncomeAmountSchema = z.object({
   force_wallet_credit: z.boolean().optional(),
   /** Required when the income has no category yet. */
   category_id: z.number().int().positive().optional(),
-  /**
-   * Panel edit of a planned income: update the line and its template.
-   * Ignores wallet_id and does not credit the wallet.
-   */
-  sync_template: z.boolean().optional(),
 });
 
 function serializeIncome(i: {
@@ -150,22 +165,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (validated.sync_template === true) {
-      const planned = await updatePlannedIncomeForOwner({
-        id,
-        ownerFilter,
-        amount: newAmount,
-        categoryId: validated.category_id,
-      });
-      return NextResponse.json(
-        {
-          ...serializeIncome(planned.income),
-          template_updated: planned.templateUpdated,
-        },
-        { status: 200 },
-      );
-    }
-
     const oldWalletId = income.wallet_id;
     const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
 
@@ -234,7 +233,7 @@ export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    const { ownerType, ownerId, ownerFilter } = context;
 
     const ownerData: { user_id?: number | null; house_id?: number | null } =
       ownerType === 'user'
@@ -252,8 +251,43 @@ export async function POST(request: NextRequest) {
       'INCOME',
     );
 
+    if (validated.planned === true) {
+      const ref = getCalendarFortnightRefForYmd(validated.received_at);
+      const fortnight = await resolveOrCreateFortnight({
+        ownerType,
+        ownerId,
+        year: ref.year,
+        month: ref.month,
+        period: ref.period,
+      });
+      const created = await prisma.income.create({
+        data: {
+          fortnight_id: fortnight.id,
+          amount: validated.amount,
+          source:
+            validated.source && validated.source.length > 0
+              ? validated.source
+              : null,
+          received_at: coerceToCalendarDate(validated.received_at),
+          category_id: validated.category_id,
+          wallet_id: null,
+          ...ownerFilter,
+        },
+      });
+      return NextResponse.json(serializeIncome(created), { status: 201 });
+    }
+
+    const fortnightId = validated.fortnight_id;
+    const walletIdRequired = validated.wallet_id;
+    if (fortnightId == null || walletIdRequired == null) {
+      return NextResponse.json(
+        { error: 'La quincena y la billetera son requeridas' },
+        { status: 400 },
+      );
+    }
+
     const fortnight = await prisma.fortnight.findUnique({
-      where: { id: validated.fortnight_id },
+      where: { id: fortnightId },
       select: {
         id: true,
         user_id: true,
@@ -325,14 +359,14 @@ export async function POST(request: NextRequest) {
         houseId: ownerId,
         amount: validated.amount,
         userFortnightId: userFortnight.id,
-        houseFortnightId: validated.fortnight_id,
+        houseFortnightId: fortnightId,
         note:
           validated.source && validated.source.length > 0
             ? validated.source
             : null,
         date: coerceToCalendarDate(validated.received_at),
         userWalletId: null,
-        houseWalletId: validated.wallet_id,
+        houseWalletId: walletIdRequired,
       });
 
       type TransferWithHouseIncome = {
@@ -371,12 +405,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const walletId = validated.wallet_id;
+    const walletId = walletIdRequired;
 
     const created = await prisma.$transaction(async (tx) => {
       const income = await tx.income.create({
         data: {
-          fortnight_id: validated.fortnight_id,
+          fortnight_id: fortnightId,
           amount: validated.amount,
           source:
             validated.source && validated.source.length > 0

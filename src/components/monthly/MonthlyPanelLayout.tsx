@@ -63,8 +63,8 @@ export const MonthlyPanelLayout = ({
   useRegisterToolbarActions({
     primaryAction: quickCapture
       ? {
-          label: 'Agregar gasto',
-          onClick: quickCapture.openExpense,
+          label: 'Agregar gasto o ingreso',
+          onClick: quickCapture.open,
           icon: primaryActionIcon,
         }
       : null,

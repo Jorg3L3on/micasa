@@ -29,7 +29,9 @@ export function createOverrideAmountFormSchema({
   requireCategory,
 }: OverrideAmountFormOptions) {
   return z.object({
-    amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
+    amount: requireCategory
+      ? z.number().positive('El monto debe ser mayor a 0')
+      : z.number().min(0, 'El monto debe ser mayor o igual a 0'),
     categoryId: requireCategory
       ? z
           .number()
