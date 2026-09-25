@@ -260,8 +260,8 @@ export async function PUT(request: NextRequest) {
         validatedData.appliesSecondFortnight;
     if (validatedData.active !== undefined)
       updateData.active = validatedData.active;
-    if (validatedData.userId !== undefined)
-      updateData.user_id = validatedData.userId;
+    // House templates keep house_id and a null user_id. Writing a member id
+    // here violates income_template_single_owner_check. Ownership stays as created.
 
     const template = await prisma.incomeTemplate.update({
       where: { id: templateId },

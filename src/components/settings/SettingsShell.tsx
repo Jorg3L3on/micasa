@@ -11,6 +11,7 @@ import {
   SETTINGS_NAV_SECTIONS,
   filterSettingsNavItems,
   isSettingsNavItemActive,
+  withSettingsOwnerQuery,
 } from '@/components/settings/settings-nav';
 
 export function SettingsShell({ children }: { children: React.ReactNode }) {
@@ -66,7 +67,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 key={item.href}
-                href={item.href!}
+                href={withSettingsOwnerQuery(item.href!, context)}
                 className={className}
                 aria-current={active ? 'page' : undefined}
               >
@@ -128,7 +129,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
                       return (
                         <li key={item.href}>
                           <Link
-                            href={item.href!}
+                            href={withSettingsOwnerQuery(item.href!, context)}
                             className={itemClass}
                             aria-current={active ? 'page' : undefined}
                           >

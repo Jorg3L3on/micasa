@@ -80,6 +80,18 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   },
 ];
 
+export function withSettingsOwnerQuery(
+  href: string,
+  context: { type: string; id: number },
+): string {
+  if (context.id <= 0) return href;
+  const params = new URLSearchParams({
+    ownerType: context.type,
+    ownerId: String(context.id),
+  });
+  return `${href}?${params.toString()}`;
+}
+
 export function filterSettingsNavItems(
   items: SettingsNavItem[],
   isHouseContext: boolean,

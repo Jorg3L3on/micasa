@@ -186,7 +186,6 @@ export default function EditIncomeTemplatePage() {
           appliesFirstFortnight: data.appliesFirstFortnight,
           appliesSecondFortnight: data.appliesSecondFortnight,
           active: data.active,
-          userId: isHouseContext ? data.userId ?? null : undefined,
         },
         context,
       );
