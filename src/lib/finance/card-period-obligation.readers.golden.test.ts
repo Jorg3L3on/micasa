@@ -383,5 +383,8 @@ describe('golden readers agree', () => {
     expect(plannerAmount).toBe(engine.amount);
     expect(liquidityAmount).toBe(engine.amount);
     expect(upcomingAmount).toBe(engine.amount);
+    if (golden.id === 'zero-debt-with-scheduled-and-msi-is-zero') {
+      expect(liquidityRow?.next_due_payment).toBe(0);
+    }
   });
 });

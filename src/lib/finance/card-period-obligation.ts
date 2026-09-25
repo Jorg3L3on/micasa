@@ -114,7 +114,9 @@ const paidZero = (
 });
 
 /**
- * Priority: planned override → declared $0 → statement → minimum →
+ * $0 outstanding debt is obligation 0 (none_declared, exact) on every surface,
+ * including leftover calendar or MSI rows.
+ * Otherwise: planned override → declared $0 → statement → minimum →
  * MSI / calendar → paid zero → missing (debt + due date, no figure) → explicit zero.
  */
 export const resolveCardPeriodObligation = (
@@ -123,24 +125,11 @@ export const resolveCardPeriodObligation = (
   const paymentsApplied = roundMoney(Math.max(0, input.paymentsApplied ?? 0));
   const outstandingBalance = roundMoney(Math.max(0, input.outstandingBalance));
 
-  if (outstandingBalance <= 0 && input.explicitZero !== true) {
-    const installment = roundMoney(
-      Math.max(0, input.msiInstallmentDue ?? 0) +
-        Math.max(0, input.scheduledAmount ?? 0),
-    );
-    if (installment <= 0) {
-      return {
-        amount: 0,
-        basis: 'none_declared',
-        confidence: 'exact',
-        gaps: [],
-      };
-    }
-    const remaining = roundMoney(Math.max(installment - paymentsApplied, 0));
+  if (outstandingBalance <= 0) {
     return {
-      amount: remaining,
-      basis: 'msi_installments',
-      confidence: input.scheduledAmount != null && input.scheduledAmount > 0 ? 'exact' : 'estimated',
+      amount: 0,
+      basis: 'none_declared',
+      confidence: 'exact',
       gaps: [],
     };
   }

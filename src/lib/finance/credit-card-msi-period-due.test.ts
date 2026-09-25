@@ -92,11 +92,20 @@ describe('resolveCardPeriodDue', () => {
 
     expect(
       resolveCardPeriodDue({
-        totalDebt: 0,
+        totalDebt: 400,
         statementPayoff: null,
         regularCharges: 180,
       }),
     ).toMatchObject({ periodDue: 180, source: 'scheduled' });
+
+    expect(
+      resolveCardPeriodDue({
+        totalDebt: 0,
+        statementPayoff: null,
+        regularCharges: 180,
+        msi: [msi(400, 1200)],
+      }),
+    ).toMatchObject({ periodDue: 0, source: 'none' });
   });
 
   it('does not add the installment again when the statement payoff already includes it', () => {

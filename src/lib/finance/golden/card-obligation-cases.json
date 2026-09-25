@@ -108,7 +108,7 @@
   {
     "id": "future-calendar-installment",
     "query": {
-      "outstandingBalance": 0,
+      "outstandingBalance": 2000,
       "dueInPeriod": true,
       "statementPayoff": null,
       "scheduledAmount": 650
@@ -336,6 +336,34 @@
       "outstandingBalance": 0,
       "dueInPeriod": true,
       "statementPayoff": 1500
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 0,
+      "basis": "none_declared",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "sin_cargo",
+      "countsAsGap": false,
+      "countsAsPending": false,
+      "entersAlcanza": true,
+      "knownCashAmount": 0
+    }
+  },
+  {
+    "id": "zero-debt-with-scheduled-and-msi-is-zero",
+    "query": {
+      "outstandingBalance": 0,
+      "dueInPeriod": true,
+      "statementPayoff": null,
+      "scheduledAmount": 650,
+      "msiInstallmentDue": 400,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-09-15",
+        "statementDueDate": "2026-09-20"
+      }
     },
     "paymentsApplied": 0,
     "expect": {

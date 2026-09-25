@@ -132,16 +132,17 @@ describe('resolveCardPeriodObligation', () => {
     });
   });
 
-  it('shows a future calendar row without a purchase or wallet debt', () => {
+  it('does not bill a calendar or MSI row when total debt is 0', () => {
     expect(
       resolveCardPeriodObligation({
         outstandingBalance: 0,
         dueInPeriod: true,
         scheduledAmount: 850,
+        msiInstallmentDue: 400,
       }),
     ).toEqual({
-      amount: 850,
-      basis: 'msi_installments',
+      amount: 0,
+      basis: 'none_declared',
       confidence: 'exact',
       gaps: [],
     });
@@ -267,8 +268,8 @@ describe('resolveCardPeriodObligation', () => {
         minimumPayment: 400,
       }),
     ).toMatchObject({
-      amount: 850,
-      basis: 'msi_installments',
+      amount: 0,
+      basis: 'none_declared',
       confidence: 'exact',
     });
     expect(
