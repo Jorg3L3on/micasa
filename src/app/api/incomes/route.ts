@@ -75,6 +75,7 @@ function serializeIncome(i: {
   fortnight_id: number;
   income_template_id: number | null;
   wallet_id: number | null;
+  wallet_credited?: boolean;
   category_id: number | null;
 }) {
   return {
@@ -85,6 +86,7 @@ function serializeIncome(i: {
     fortnight_id: i.fortnight_id,
     income_template_id: i.income_template_id,
     wallet_id: i.wallet_id,
+    wallet_credited: i.wallet_credited === true,
     category_id: i.category_id,
   };
 }

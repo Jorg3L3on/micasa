@@ -11,6 +11,7 @@ export type FortnightIncomeDto = {
   fortnight_id: number;
   income_template_id: number | null;
   wallet_id: number | null;
+  wallet_credited: boolean;
   category_id: number | null;
 };
 

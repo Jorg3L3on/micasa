@@ -142,6 +142,27 @@ describe('PUT /api/incomes', () => {
     );
   });
 
+  it('adds only the difference when the defined wallet was already credited', async () => {
+    incomeFindFirst.mockResolvedValue({
+      id: 12,
+      amount: 12500,
+      wallet_id: 7,
+      wallet_credited: true,
+      category_id: 3,
+      source: 'Nómina',
+    });
+    walletFindFirst.mockResolvedValue({ id: 7, type: 'CASH' });
+
+    const response = await putIncome({ amount: 13000, wallet_id: 7 });
+
+    expect(response.status).toBe(200);
+    expect(applyWalletAmountDelta).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      500,
+    );
+  });
+
 });
 
 describe('POST /api/incomes planned', () => {
