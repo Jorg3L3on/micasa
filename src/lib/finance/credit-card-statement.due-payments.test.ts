@@ -8,6 +8,7 @@ const {
   findFirstFortnight,
   findManyPaymentPlans,
   findManyScheduledPayments,
+  findManyInstallmentPlanPayments,
 } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   findManyWallets: vi.fn(),
@@ -16,6 +17,7 @@ const {
   findFirstFortnight: vi.fn(),
   findManyPaymentPlans: vi.fn(),
   findManyScheduledPayments: vi.fn(),
+  findManyInstallmentPlanPayments: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -38,6 +40,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     creditCardScheduledPayment: {
       findMany: findManyScheduledPayments,
+    },
+    creditCardInstallmentPlanPayment: {
+      findMany: findManyInstallmentPlanPayments,
     },
   },
 }));
@@ -66,6 +71,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyPaymentPlans.mockResolvedValue([]);
     findManyScheduledPayments.mockReset();
     findManyScheduledPayments.mockResolvedValue([]);
+    findManyInstallmentPlanPayments.mockReset();
+    findManyInstallmentPlanPayments.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -655,5 +662,67 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       statementDueDate: '2026-06-08',
     });
     expect(june.second).toEqual([]);
+  });
+
+  it('adds the iPad cuota and the scheduled PIF that fall in the fortnight', async () => {
+    vi.setSystemTime(new Date(Date.UTC(2026, 10, 1, 18, 0, 0)));
+    findManyWallets.mockResolvedValue([
+      {
+        id: 30,
+        name: 'Liverpool Jorge',
+        type: 'DEPARTMENT_STORE_CARD',
+        amount: 5798,
+        cutoff_day: 13,
+        due_day: 13,
+      },
+    ]);
+    queryRaw.mockResolvedValue([]);
+    findManyStatementImports.mockResolvedValue([]);
+    findManyExpenses.mockResolvedValue([]);
+    findFirstFortnight.mockResolvedValue({ id: 80 });
+    findManyPaymentPlans.mockResolvedValue([]);
+    const due = new Date(Date.UTC(2026, 10, 13, 18, 0, 0));
+    findManyScheduledPayments.mockResolvedValue([
+      {
+        id: 1,
+        credit_card_wallet_id: 30,
+        due_date: due,
+        amount: 132,
+        label: 'PIF sin intereses',
+        status: 'SCHEDULED',
+        paid_at: null,
+        credit_card_wallet: {
+          name: 'Liverpool Jorge',
+          type: 'DEPARTMENT_STORE_CARD',
+          cutoff_day: 13,
+          due_day: 13,
+        },
+      },
+    ]);
+    findManyInstallmentPlanPayments.mockResolvedValue([
+      {
+        id: 9,
+        sequence: 4,
+        due_date: due,
+        amount: 944.33,
+        status: 'SCHEDULED',
+        paid_at: null,
+        plan: {
+          id: 3,
+          name: 'iPad',
+          credit_card_wallet: { id: 30, name: 'Liverpool Jorge' },
+        },
+      },
+    ]);
+
+    const result = await getDuePaymentsForPlannerMonth(userOwner, 2026, 11);
+
+    expect(result.first[0]).toMatchObject({
+      walletId: 30,
+      nextDuePayment: 1076.33,
+      effectiveAmount: 1076.33,
+      plannerStatus: 'por_pagar',
+    });
+    expect(result.second).toEqual([]);
   });
 });

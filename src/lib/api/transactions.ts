@@ -75,6 +75,7 @@ export async function createExpenseTransaction(
     is_paid?: boolean;
     payment_date?: string | null;
     expense_template_id?: number | null;
+    apply_wallet_delta?: boolean;
   },
   context?: FinanceContextType,
 ) {

@@ -215,9 +215,6 @@ export default function FortnightColumn({
   const [plannerPaymentFunding, setPlannerPaymentFunding] = useState<
     PaymentMethodOption[]
   >([]);
-  const [plannerPaymentCategories, setPlannerPaymentCategories] = useState<
-    CategoryOption[]
-  >([]);
   const [plannerPayCardLoadingId, setPlannerPayCardLoadingId] = useState<
     number | null
   >(null);
@@ -242,16 +239,8 @@ export default function FortnightColumn({
       setPlannerPayCardLoadingId(item.walletId);
       setPlannerPaymentError(null);
       try {
-        const [methods, categoriesData] = await Promise.all([
-          getPaymentMethodOptions(context),
-          clientFetchFromApi<CategoryOption[]>(
-            '/api/categories',
-            undefined,
-            context,
-          ),
-        ]);
+        const methods = await getPaymentMethodOptions(context);
         setPlannerPaymentFunding(methods);
-        setPlannerPaymentCategories(categoriesData);
         setPlannerPaymentCard(item);
         setPlannerPaymentDialogOpen(true);
       } catch (err) {
@@ -689,6 +678,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
             expense_template_id: fromTemplateId,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -703,6 +695,9 @@ export default function FortnightColumn({
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -744,6 +739,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
             expense_template_id: template.id,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -794,6 +792,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
             expense_template_id: template.id,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -810,6 +811,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: otherDate ?? null,
             expense_template_id: template.id,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -1271,7 +1275,6 @@ export default function FortnightColumn({
           }
         }}
         fundingWalletOptions={plannerFundingWalletOptions}
-        categoryOptions={plannerPaymentCategories}
         prefillAmount={periodObligationPrefillAmount(
           plannerPaymentCard?.periodObligation,
         )}

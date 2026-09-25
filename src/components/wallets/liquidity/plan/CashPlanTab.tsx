@@ -202,7 +202,13 @@ export const CashPlanTab = ({
         ) : null}
       </div>
 
-      <PlanHero mode={plan.mode} gapAmount={input.gapAmount} horizon={horizon} />
+      <PlanHero
+        mode={plan.mode}
+        gapAmount={input.gapAmount}
+        horizon={horizon}
+        lines={input.gapLines}
+        note={input.gapNote}
+      />
       <DataGapCallout gaps={plan.dataGaps} lowConfidence={plan.confidence === 'low'} />
 
       {plan.primary.id === 'empty' ? (

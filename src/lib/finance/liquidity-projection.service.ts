@@ -3,6 +3,7 @@ import {
   formatCalendarDate,
   parseCalendarDate,
   parseDateOnly,
+  startOfCalendarDay,
 } from '@/lib/calendar-dates';
 import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
@@ -23,6 +24,8 @@ import {
   type CardObligationFromLedgerInput,
   type StatementImportRow,
 } from '@/lib/finance/credit-card-statement.service';
+import { derivePlannerStatus } from '@/lib/finance/card-planner-obligation';
+import type { PlannerCardPaymentStatusUi } from '@/lib/finance/card-statement-obligation';
 import {
   getEffectiveCreditLimit,
   isFundingWalletType,
@@ -83,6 +86,10 @@ export type LiquidityObligationItem = {
   payment_source?: string;
   is_estimate?: boolean;
   fortnight_id?: number;
+  planned_fortnight_payment?: number | null;
+  payments_applied_to_fortnight?: number;
+  remaining_planner_amount?: number;
+  planner_status?: PlannerCardPaymentStatusUi;
 };
 
 export type LiquidityMilestone = {
@@ -575,6 +582,115 @@ const collectTemplateObligations = async (
   return out;
 };
 
+const planKey = (fortnightId: number, walletId: number): string =>
+  `${fortnightId}:${walletId}`;
+
+/**
+ * A card whose fortnight plan is already paid should not re-enter the cash plan
+ * as the full statement remainder. Statement `next_due_payment` stays intact.
+ */
+const annotateFortnightCardPlans = async (
+  byDueDate: Map<string, LiquidityObligationItem[]>,
+  ownerFilter: OwnerFilter,
+  asOfStr: string,
+) => {
+  const cards: LiquidityObligationItem[] = [];
+  for (const items of byDueDate.values()) {
+    for (const item of items) {
+      if (item.source === 'credit_card_statement' && item.statement_due_date) {
+        cards.push(item);
+      }
+    }
+  }
+  if (cards.length === 0) return;
+
+  const dueYmds = cards.map((item) => item.statement_due_date).sort();
+  const fortnights = await prisma.fortnight.findMany({
+    where: {
+      ...ownerFilter,
+      start_date: { lte: endOfCalendarDay(dueYmds[dueYmds.length - 1]!) },
+      end_date: { gte: startOfCalendarDay(dueYmds[0]!) },
+    },
+    select: { id: true, start_date: true, end_date: true },
+  });
+  if (fortnights.length === 0) return;
+
+  const fortnightFor = (ymd: string): number | undefined =>
+    fortnights.find((row) => {
+      const start = toUtcDateOnlyString(row.start_date);
+      const end = toUtcDateOnlyString(row.end_date);
+      return ymd >= start && ymd <= end;
+    })?.id;
+
+  const pairs = cards.flatMap((item) => {
+    const fortnightId = fortnightFor(item.statement_due_date);
+    return fortnightId == null ? [] : [{ item, fortnightId }];
+  });
+  if (pairs.length === 0) return;
+
+  const fortnightIds = [...new Set(pairs.map((row) => row.fortnightId))];
+  const walletIds = [...new Set(pairs.map((row) => row.item.wallet_id))];
+  const [plans, payments] = await Promise.all([
+    prisma.creditCardPaymentPlan.findMany({
+      where: {
+        ...ownerFilter,
+        fortnight_id: { in: fortnightIds },
+        credit_card_wallet_id: { in: walletIds },
+      },
+      select: {
+        fortnight_id: true,
+        credit_card_wallet_id: true,
+        planned_amount: true,
+      },
+    }),
+    prisma.creditCardPayment.findMany({
+      where: {
+        ...ownerFilter,
+        credit_card_wallet_id: { in: walletIds },
+        expense: { fortnight_id: { in: fortnightIds } },
+      },
+      select: {
+        amount: true,
+        credit_card_wallet_id: true,
+        expense: { select: { fortnight_id: true } },
+      },
+    }),
+  ]);
+
+  const planByKey = new Map(
+    plans.map((plan) => [
+      planKey(plan.fortnight_id, plan.credit_card_wallet_id),
+      Number(plan.planned_amount),
+    ]),
+  );
+  const paidByKey = new Map<string, number>();
+  for (const payment of payments) {
+    const fortnightId = payment.expense?.fortnight_id;
+    if (fortnightId == null) continue;
+    const key = planKey(fortnightId, payment.credit_card_wallet_id);
+    paidByKey.set(key, (paidByKey.get(key) ?? 0) + Number(payment.amount));
+  }
+
+  for (const { item, fortnightId } of pairs) {
+    const plannedRaw = planByKey.get(planKey(fortnightId, item.wallet_id));
+    const planned = plannedRaw != null && plannedRaw > 0 ? plannedRaw : null;
+    if (planned == null) continue;
+    const paid = paidByKey.get(planKey(fortnightId, item.wallet_id)) ?? 0;
+    const remaining = Math.max(planned - paid, 0);
+    item.planned_fortnight_payment = planned;
+    item.payments_applied_to_fortnight = paid;
+    item.remaining_planner_amount = remaining;
+    item.planner_status = derivePlannerStatus({
+      remainingPlannerAmount: remaining,
+      paymentsAppliedToFortnight: paid,
+      paymentsAppliedToStatement: item.payments_applied_to_statement,
+      targetAmount: planned,
+      visibleDueDate: item.statement_due_date,
+      todayYmd: asOfStr,
+    });
+  }
+};
+
 const mergeAllMilestones = (
   primary: Map<string, LiquidityObligationItem[]>,
   extra: Map<string, LiquidityObligationItem[]>,
@@ -958,6 +1074,8 @@ export const getLiquidityProjection = async (
       allowOutstandingBalanceFallback = false;
     }
   }
+
+  await annotateFortnightCardPlans(byDueDate, input.ownerFilter, asOfStr);
 
   if (includeUnpaid) {
     const unpaidMap = await collectUnpaidFundingObligations(

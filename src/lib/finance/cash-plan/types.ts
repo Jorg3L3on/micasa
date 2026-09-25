@@ -54,10 +54,27 @@ export type ConsolidateSimInput = {
   feePct: number;
 };
 
+/** One signed piece of the hueco. Positive widens a shortfall. */
+export type GapBreakdownLine = {
+  id: string;
+  label: string;
+  amount: number;
+  detail?: string;
+  /** Prestamista. Lines that share `id` render as one total. */
+  group?: {
+    id: string;
+    label: string;
+  };
+};
+
 export type PlanInput = {
   horizon: PlanHorizon;
   /** Positive = shortfall, negative = surplus, near zero = balanced. */
   gapAmount: number;
+  /** Lines that add up to `gapAmount`. */
+  gapLines: GapBreakdownLine[];
+  /** Why some projection rows are absent from `gapLines`. */
+  gapNote?: string;
   availableCash: number;
   obligations: Obligation[];
   untouchableIds?: string[];

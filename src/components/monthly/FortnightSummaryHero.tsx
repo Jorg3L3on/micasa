@@ -32,6 +32,11 @@ type FortnightSummaryHeroProps = {
    * (solo quincena calendario en curso o la siguiente).
    */
   fundingLiquidityApplies?: boolean;
+  /**
+   * Entra / toca pagar / te falta. En la quincena en curso se oculta:
+   * Liquidez actual ya responde “¿alcanza el efectivo?”.
+   */
+  showIncomeRemainderBreakdown?: boolean;
   paidAmount: number;
   pendingAmount: number;
   /** Pagado + pendiente + nómina (segmento de efectivo del compromiso). */
@@ -321,6 +326,7 @@ export const FortnightSummaryHero = ({
   fundingInAccounts,
   fundingLiquidity = 0,
   fundingLiquidityApplies = true,
+  showIncomeRemainderBreakdown = true,
   paidAmount,
   pendingAmount,
   cashCommittedAmount,
@@ -438,78 +444,86 @@ export const FortnightSummaryHero = ({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <dl className="flex flex-col gap-1.5">
-          <div className="flex items-baseline justify-between gap-4">
-            <dt className="text-[13px] text-muted-foreground">Entra</dt>
-            <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
-              {formatCurrency(periodIncome)}
-            </dd>
-          </div>
-
-          <div className="flex items-baseline justify-between gap-4">
-            <dt className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
-              <span className="font-medium text-muted-foreground/80" aria-hidden>
-                −
-              </span>
-              <DueToPayLabel compositionRows={compositionRows} />
-            </dt>
-            <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
-              {formatCurrency(dueToPayCash)}
-            </dd>
-          </div>
-
-          {showLeftover ? (
+      {showIncomeRemainderBreakdown ? (
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <dl className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
-                <span className="font-medium text-muted-foreground/80" aria-hidden>
-                  −
-                </span>
-                <span>Presupuesto</span>
-              </dt>
+              <dt className="text-[13px] text-muted-foreground">Entra</dt>
               <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
-                {formatCurrency(leftoverAmount)}
+                {formatCurrency(periodIncome)}
               </dd>
             </div>
-          ) : null}
-        </dl>
 
-        <div
-          className={cn(
-            METRIC_STRIP_CLASS,
-            'border-l-[3px] px-2.5 py-2',
-            copy.tone === 'shortfall'
-              ? 'border-l-destructive/60'
-              : copy.gapNote
-                ? 'border-l-amber-500/60'
-                : 'border-l-emerald-500/50',
-          )}
-        >
-          <div className="flex items-baseline justify-between gap-3">
-            <span
-              className={cn(
-                'text-[10px] font-semibold uppercase tracking-wider',
-                remainderClass,
-              )}
-            >
-              {copy.rowLabel}
-            </span>
-            <span
-              className={cn(
-                'font-mono text-lg font-bold tabular-nums',
-                remainderClass,
-              )}
-            >
-              {formatCurrency(remainderAbs)}
-            </span>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
+                <span
+                  className="font-medium text-muted-foreground/80"
+                  aria-hidden
+                >
+                  −
+                </span>
+                <DueToPayLabel compositionRows={compositionRows} />
+              </dt>
+              <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
+                {formatCurrency(dueToPayCash)}
+              </dd>
+            </div>
+
+            {showLeftover ? (
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
+                  <span
+                    className="font-medium text-muted-foreground/80"
+                    aria-hidden
+                  >
+                    −
+                  </span>
+                  <span>Presupuesto</span>
+                </dt>
+                <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
+                  {formatCurrency(leftoverAmount)}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+
+          <div
+            className={cn(
+              METRIC_STRIP_CLASS,
+              'border-l-[3px] px-2.5 py-2',
+              copy.tone === 'shortfall'
+                ? 'border-l-destructive/60'
+                : copy.gapNote
+                  ? 'border-l-amber-500/60'
+                  : 'border-l-emerald-500/50',
+            )}
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span
+                className={cn(
+                  'text-[10px] font-semibold uppercase tracking-wider',
+                  remainderClass,
+                )}
+              >
+                {copy.rowLabel}
+              </span>
+              <span
+                className={cn(
+                  'font-mono text-lg font-bold tabular-nums',
+                  remainderClass,
+                )}
+              >
+                {formatCurrency(remainderAbs)}
+              </span>
+            </div>
+            {copy.gapNote ? (
+              <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                {copy.gapNote}
+              </p>
+            ) : null}
           </div>
-          {copy.gapNote ? (
-            <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-              {copy.gapNote}
-            </p>
-          ) : null}
         </div>
-      </div>
+      ) : null}
     </div>
     </div>
   );

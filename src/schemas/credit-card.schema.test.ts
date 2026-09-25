@@ -19,6 +19,21 @@ describe('createCreditCardPaymentSchema', () => {
     expect(parsed).toMatchObject({ paid_at: '2026-06-05' });
   });
 
+  it('accepts a fortnight expense without a chosen category', () => {
+    const parsed = createCreditCardPaymentSchema.parse({
+      mode: 'wallet',
+      source_wallet_id: 1,
+      amount: 944.33,
+      paid_at: '2026-11-13',
+      create_fortnight_expense: true,
+    });
+
+    expect(parsed).toMatchObject({
+      mode: 'wallet',
+      create_fortnight_expense: true,
+    });
+  });
+
   it('accepts external historical payments', () => {
     const parsed = createCreditCardPaymentSchema.parse({
       mode: 'external',

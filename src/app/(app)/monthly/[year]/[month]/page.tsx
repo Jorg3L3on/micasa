@@ -13,6 +13,7 @@ import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPan
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import { PLANNING_MONTH_MAX_YEAR } from '@/lib/finance/planning-month';
 import {
   dueDayFallsInFortnight,
   formatFortnightDateRangeLabel,
@@ -174,9 +175,10 @@ export default async function MonthlyPage({
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null;
   const canCreateNextMonth =
     !hasNextMonth &&
-    nextYear === currentYear &&
-    nextMonth >= currentMonth &&
-    !nextMonthAlreadyCreated;
+    !nextMonthAlreadyCreated &&
+    (nextYear > currentYear ||
+      (nextYear === currentYear && nextMonth >= currentMonth)) &&
+    nextYear <= PLANNING_MONTH_MAX_YEAR;
 
   const firstLabel = firstFortnightInfo?.label || formatFortnightDateRangeLabel(year, month, 'FIRST');
   const secondLabel =

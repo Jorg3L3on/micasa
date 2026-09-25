@@ -121,6 +121,7 @@ describe('getLiquidityProjection', () => {
     findManyLoan.mockResolvedValue([]);
     findManyCreditCardPayment.mockResolvedValue([]);
     findManyCreditCardInstallmentPlan.mockResolvedValue([]);
+    findManyCreditCardPaymentPlan.mockResolvedValue([]);
   });
 
   afterEach(() => {

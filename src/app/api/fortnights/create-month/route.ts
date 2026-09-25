@@ -8,6 +8,7 @@ import {
 } from '@/lib/finance/template.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
+import { planningMonthCreateError } from '@/lib/finance/planning-month';
 
 const createMonthSchema = z.object({
   year: z.number().int().min(2010).max(2030),
@@ -38,25 +39,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { year, month } = createMonthSchema.parse(body);
 
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-
-    if (year !== currentYear) {
-      return NextResponse.json(
-        { error: 'Solo se pueden crear meses del año en curso' },
-        { status: 400 },
-      );
-    }
-
-    if (month < currentMonth) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden crear meses ya pasados. Solo el mes actual o futuros.',
-        },
-        { status: 400 },
-      );
+    const monthError = planningMonthCreateError(year, month);
+    if (monthError) {
+      return NextResponse.json({ error: monthError }, { status: 400 });
     }
 
     const monthName = MONTH_NAMES[month - 1] ?? '';

@@ -4,6 +4,7 @@ import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { isFundingWalletType } from '@/lib/finance/wallet-accounting';
 import { createExpenseInTransaction } from '@/lib/finance/expense.service';
+import { resolvePaymentCategoryId } from '@/lib/finance/payment-category';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import {
@@ -70,27 +71,10 @@ function ownerFromFilter(ownerFilter: OwnerFilter): {
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
 
-async function ensureLoanPaymentCategory(
+const ensureLoanPaymentCategory = (
   tx: Prisma.TransactionClient,
   ownerFilter: OwnerFilter,
-) {
-  const existing = await tx.category.findFirst({
-    where: { ...ownerFilter, name: 'Pago de préstamos' },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-
-  const created = await tx.category.create({
-    data: {
-      ...ownerFilter,
-      name: 'Pago de préstamos',
-      description: 'Pagos generados desde préstamos',
-      icon: '🏦',
-    },
-    select: { id: true },
-  });
-  return created.id;
-}
+) => resolvePaymentCategoryId(tx, ownerFilter, 'LOAN');
 
 const mapLenderPayment = (row: {
   id: number;

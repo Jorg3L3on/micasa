@@ -581,6 +581,7 @@ const tx = {
   },
   category: {
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     create: vi.fn(),
   },
 };
@@ -692,6 +693,8 @@ describe('updateLoanPaymentForOwner', () => {
     resolveOrCreateFortnight.mockReset();
     createExpenseInTransaction.mockReset();
     tx.category.findFirst.mockReset();
+    tx.category.findMany.mockReset();
+    tx.category.findMany.mockResolvedValue([{ id: 7, name: 'Préstamos' }]);
     tx.category.create.mockReset();
 
     transaction.mockImplementation((fn) => fn(tx));
@@ -784,7 +787,26 @@ describe('updateLoanPaymentForOwner', () => {
     });
   });
 
-  it('marks payroll deduction payments paid without creating a funding expense', async () => {
+  it('requires a wallet when paying a payroll deduction', async () => {
+    txFindFirstLoanPayment.mockResolvedValueOnce({
+      ...scheduledWalletPayment,
+      source_wallet_id: null,
+      loan: {
+        ...scheduledWalletPayment.loan,
+        payment_source: 'PAYROLL_DEDUCTION',
+      },
+    });
+
+    await expect(
+      updateLoanPaymentForOwner(22, ownerFilter, {
+        action: 'MARK_PAID',
+        paidAt: '2026-06-15',
+      }),
+    ).rejects.toThrow('Selecciona la billetera que paga el préstamo');
+    expect(createExpenseInTransaction).not.toHaveBeenCalled();
+  });
+
+  it('marks payroll deduction payments as already paid without a wallet', async () => {
     txFindFirstLoanPayment.mockResolvedValueOnce({
       ...scheduledWalletPayment,
       source_wallet_id: null,
@@ -804,7 +826,7 @@ describe('updateLoanPaymentForOwner', () => {
     txFindManyLoanPayment.mockResolvedValueOnce([{ status: 'PAID' }]);
 
     const payment = await updateLoanPaymentForOwner(22, ownerFilter, {
-      action: 'MARK_PAID',
+      action: 'MARK_PAID_EXTERNAL',
       paidAt: '2026-06-15',
     });
 
@@ -1035,6 +1057,8 @@ describe('batchUpdateLoanPaymentsForOwner', () => {
     resolveOrCreateFortnight.mockReset();
     createExpenseInTransaction.mockReset();
     tx.category.findFirst.mockReset();
+    tx.category.findMany.mockReset();
+    tx.category.findMany.mockResolvedValue([{ id: 7, name: 'Préstamos' }]);
     tx.category.create.mockReset();
 
     transaction.mockImplementation((fn) => fn(tx));

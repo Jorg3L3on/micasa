@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -37,6 +37,11 @@ import { todayCalendarDate } from '@/lib/calendar-dates';
 import { formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
+import {
+  InsufficientWalletExpenseDialog,
+  InsufficientWalletExpenseNotice,
+} from '@/components/expenses/insufficient-wallet-expense';
 
 export type ExpenseFormProps = {
   mode: 'create' | 'edit';
@@ -131,10 +136,6 @@ export default function ExpenseForm({
     selectedPaymentMethod?.type === 'CREDIT_CARD' ||
     selectedPaymentMethod?.type === 'DEPARTMENT_STORE_CARD';
 
-  const isFundingPaymentMethod =
-    selectedPaymentMethod?.type === 'CASH' ||
-    selectedPaymentMethod?.type === 'DEBIT_CARD';
-
   const isPaidWatch = form.watch('isPaid');
 
   const projectedCardDebt = useMemo(() => {
@@ -165,11 +166,14 @@ export default function ExpenseForm({
     projectedAvailableCredit < 0;
 
   const fundingBalance = Number(selectedPaymentMethod?.amount ?? 0);
-  const exceedsFundingBalance =
-    isFundingPaymentMethod &&
-    isPaidWatch &&
-    Number.isFinite(fundingBalance) &&
-    Number(selectedAmount || 0) > fundingBalance + 1e-9;
+  const exceedsFundingBalance = paidExpenseExceedsWalletBalance({
+    walletType: selectedPaymentMethod?.type,
+    balance: fundingBalance,
+    amount: Number(selectedAmount || 0),
+    isPaid: Boolean(isPaidWatch),
+  });
+  const [confirmWithoutDelta, setConfirmWithoutDelta] = useState(false);
+  const acceptWithoutDeltaRef = useRef(false);
 
   useEffect(() => {
     if (!isCreditCardPaymentMethod) return;
@@ -179,9 +183,18 @@ export default function ExpenseForm({
   }, [form, isCreditCardPaymentMethod]);
 
   const handleSubmit = async (values: AddExpenseFormValues) => {
+    if (exceedsFundingBalance && !acceptWithoutDeltaRef.current) {
+      setConfirmWithoutDelta(true);
+      return;
+    }
+    acceptWithoutDeltaRef.current = false;
     try {
       setIsSubmitting(true);
-      await onSave(values);
+      await onSave({
+        ...values,
+        applyWalletDelta: exceedsFundingBalance ? false : values.applyWalletDelta,
+      });
+      setConfirmWithoutDelta(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -330,6 +343,13 @@ export default function ExpenseForm({
             </FormItem>
           )}
         />
+        {exceedsFundingBalance && selectedPaymentMethod ? (
+          <InsufficientWalletExpenseNotice
+            walletName={selectedPaymentMethod.name}
+            balance={fundingBalance}
+            amount={Number(selectedAmount || 0)}
+          />
+        ) : null}
         <FormField
           control={form.control}
           name="isPaid"
@@ -423,8 +443,7 @@ export default function ExpenseForm({
               isSubmitting ||
               isDeleting ||
               loading ||
-              exceedsCreditLimit ||
-              exceedsFundingBalance
+              exceedsCreditLimit
             }
           >
             {isSubmitting
@@ -433,6 +452,18 @@ export default function ExpenseForm({
           </Button>
         </div>
       </form>
+      <InsufficientWalletExpenseDialog
+        open={confirmWithoutDelta}
+        onOpenChange={setConfirmWithoutDelta}
+        walletName={selectedPaymentMethod?.name ?? 'La billetera'}
+        balance={fundingBalance}
+        amount={Number(selectedAmount || 0)}
+        busy={isSubmitting}
+        onAccept={() => {
+          acceptWithoutDeltaRef.current = true;
+          void form.handleSubmit(handleSubmit)();
+        }}
+      />
     </Form>
   );
 }

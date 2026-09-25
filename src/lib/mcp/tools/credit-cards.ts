@@ -159,7 +159,8 @@ const executeCardPayment = async (
     args.source_wallet_name,
   );
   const categoryId =
-    args.create_fortnight_expense === true
+    args.create_fortnight_expense === true &&
+    (args.category_id != null || args.category_name)
       ? await resolveCategoryRef(
           agent.ownerFilter,
           args.category_id,
@@ -584,18 +585,6 @@ export function registerCreditCardTools(server: McpServer) {
               path: ['source_wallet_id'],
             });
           }
-          if (
-            data.mode === 'wallet' &&
-            data.create_fortnight_expense === true &&
-            data.category_id == null &&
-            !data.category_name
-          ) {
-            ctxRef.addIssue({
-              code: 'custom',
-              message: 'create_fortnight_expense requiere category_id o category_name',
-              path: ['category_id'],
-            });
-          }
         }),
       annotations: { destructiveHint: false, idempotentHint: false },
     },
@@ -633,17 +622,6 @@ export function registerCreditCardTools(server: McpServer) {
               code: 'custom',
               message: 'Indica source_wallet_id o source_wallet_name',
               path: ['source_wallet_id'],
-            });
-          }
-          if (
-            data.create_fortnight_expense === true &&
-            data.category_id == null &&
-            !data.category_name
-          ) {
-            ctxRef.addIssue({
-              code: 'custom',
-              message: 'create_fortnight_expense requiere category_id o category_name',
-              path: ['category_id'],
             });
           }
         }),

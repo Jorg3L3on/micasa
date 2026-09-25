@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField } from '@/components/ui/form';
@@ -25,6 +25,11 @@ import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { isGoalWalletType } from '@/domain/payment-method';
+import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
+import {
+  InsufficientWalletExpenseDialog,
+  InsufficientWalletExpenseNotice,
+} from '@/components/expenses/insufficient-wallet-expense';
 import { formatCurrency, formatMonth } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
@@ -87,6 +92,10 @@ export function QuickExpenseSheet({
   const isPaid = form.watch('isPaid');
   const applyWalletDelta = form.watch('applyWalletDelta');
   const dateValue = form.watch('date');
+  const selectedWalletId = form.watch('paymentMethodId');
+  const selectedAmount = form.watch('amount');
+  const [confirmWithoutDelta, setConfirmWithoutDelta] = useState(false);
+  const acceptWithoutDeltaRef = useRef(false);
   const preview = useMemo(
     () => fortnightPreviewLabel(dateValue || todayCalendarDate()),
     [dateValue],
@@ -147,10 +156,33 @@ export function QuickExpenseSheet({
     });
   }, [open, loading, expenseWallets, form]);
 
+  const selectedWallet = useMemo(
+    () => expenseWallets.find((pm) => pm.id === Number(selectedWalletId)),
+    [expenseWallets, selectedWalletId],
+  );
+  const fundingBalance = Number(selectedWallet?.amount ?? 0);
+  const exceedsFundingBalance =
+    Boolean(applyWalletDelta) &&
+    paidExpenseExceedsWalletBalance({
+      walletType: selectedWallet?.type,
+      balance: fundingBalance,
+      amount: Number(selectedAmount || 0),
+      isPaid: Boolean(isPaid),
+    });
+
   const handleSubmit = form.handleSubmit(async (values) => {
+    if (exceedsFundingBalance && !acceptWithoutDeltaRef.current) {
+      setConfirmWithoutDelta(true);
+      return;
+    }
+    acceptWithoutDeltaRef.current = false;
     try {
       setSubmitting(true);
-      await onSave(values);
+      await onSave({
+        ...values,
+        applyWalletDelta: exceedsFundingBalance ? false : values.applyWalletDelta,
+      });
+      setConfirmWithoutDelta(false);
     } finally {
       setSubmitting(false);
     }
@@ -162,6 +194,7 @@ export function QuickExpenseSheet({
       : 'De aquí sale el gasto. Si hay varias, elige una; no se asigna sola.';
 
   return (
+    <>
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
@@ -316,6 +349,14 @@ export function QuickExpenseSheet({
 
             <p className="px-1 text-xs text-muted-foreground">{walletHint}</p>
 
+            {exceedsFundingBalance && selectedWallet ? (
+              <InsufficientWalletExpenseNotice
+                walletName={selectedWallet.name}
+                balance={fundingBalance}
+                amount={Number(selectedAmount || 0)}
+              />
+            ) : null}
+
             <ToggleField
               layout="row"
               className="px-3"
@@ -361,5 +402,18 @@ export function QuickExpenseSheet({
         </Form>
       )}
     </ResponsiveOverlay>
+    <InsufficientWalletExpenseDialog
+      open={confirmWithoutDelta}
+      onOpenChange={setConfirmWithoutDelta}
+      walletName={selectedWallet?.name ?? 'La billetera'}
+      balance={fundingBalance}
+      amount={Number(selectedAmount || 0)}
+      busy={submitting}
+      onAccept={() => {
+        acceptWithoutDeltaRef.current = true;
+        void handleSubmit();
+      }}
+    />
+    </>
   );
 }

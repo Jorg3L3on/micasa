@@ -33,6 +33,7 @@ import {
   getNextUncoveredScheduledPayment,
   listScheduledPaymentsForPlannerMonth,
 } from '@/lib/finance/credit-card-scheduled-payment.service';
+import { listInstallmentPlanPaymentsForPlannerMonth } from '@/lib/finance/credit-card-installment-plan.service';
 import { isCreditInstallmentExpense } from '@/lib/finance/expense-planning-scope';
 import {
   getWalletAvailableCredit,
@@ -41,6 +42,7 @@ import {
 import {
   dueDayFallsInFortnight,
   getCurrentCalendarFortnightRef,
+  ymdFallsInFortnight,
   getDaysInCalendarMonth,
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
@@ -1180,8 +1182,25 @@ const applyScheduledCalendarToDueItems = (
   scheduledRows: Awaited<
     ReturnType<typeof listScheduledPaymentsForPlannerMonth>
   >['first'],
+  planRows: Awaited<
+    ReturnType<typeof listInstallmentPlanPaymentsForPlannerMonth>
+  > = [],
 ): DuePaymentItem[] => {
   const scheduledByWallet = sumScheduledByWallet(scheduledRows);
+  for (const row of planRows) {
+    const existing = scheduledByWallet.get(row.walletId);
+    if (existing) {
+      existing.amount += row.amount;
+      if (row.dueDate < existing.dueDate) existing.dueDate = row.dueDate;
+    } else {
+      scheduledByWallet.set(row.walletId, {
+        amount: row.amount,
+        dueDate: row.dueDate,
+        walletName: row.walletName,
+        walletType: 'CREDIT_CARD',
+      });
+    }
+  }
   if (scheduledByWallet.size === 0) {
     return items;
   }
@@ -1192,25 +1211,25 @@ const applyScheduledCalendarToDueItems = (
   for (const [walletId, scheduled] of scheduledByWallet) {
     const existing = byWallet.get(walletId);
     if (existing) {
-      const merged = mergeScheduledCalendarWithStatementDue({
-        statementDue: existing.nextDuePayment,
-        statementDueDateYmd:
-          existing.visibleDueDate ?? existing.statementDueDate,
-        scheduled: { amount: scheduled.amount, dueDate: scheduled.dueDate },
-      });
-      if (merged.usedScheduledCalendar || existing.nextDuePayment <= 0) {
-        existing.nextDuePayment = merged.amount;
-        existing.visibleDueDate = merged.dueDateYmd;
-        existing.statementDueDate = merged.dueDateYmd;
-        existing.obligationAmountSource = merged.usedScheduledCalendar
-          ? 'scheduled_calendar'
-          : existing.obligationAmountSource;
-        existing.plannerStatus =
-          merged.amount > 0 ? 'por_pagar' : existing.plannerStatus;
-        existing.effectiveAmount = merged.amount;
-        existing.remainingPlannerAmount = merged.amount;
-        existing.targetAmount = merged.amount;
+      if (existing.obligationAmountSource === 'import') {
+        applyPeriodObligation(existing);
+        continue;
       }
+      const base =
+        existing.obligationAmountSource === 'projection' ||
+        existing.obligationAmountSource === 'ledger'
+          ? existing.nextDuePayment
+          : 0;
+      const amount = Math.round((base + scheduled.amount) * 100) / 100;
+      existing.nextDuePayment = amount;
+      existing.statementPayoff = null;
+      existing.visibleDueDate = scheduled.dueDate;
+      existing.statementDueDate = scheduled.dueDate;
+      existing.obligationAmountSource = 'scheduled_calendar';
+      existing.plannerStatus = amount > 0 ? 'por_pagar' : existing.plannerStatus;
+      existing.effectiveAmount = amount;
+      existing.remainingPlannerAmount = amount;
+      existing.targetAmount = amount;
       applyPeriodObligation(existing);
       continue;
     }
@@ -1572,19 +1591,24 @@ async function getDuePaymentsForPlannerMonthImpl(
     applyPlannerLayerToDueItems(second, fortnightSecond?.id, ownerFilter),
   ]);
 
-  const scheduled = await listScheduledPaymentsForPlannerMonth(
-    ownerFilter,
-    year,
-    month,
-  );
+  const [scheduled, planPayments] = await Promise.all([
+    listScheduledPaymentsForPlannerMonth(ownerFilter, year, month),
+    listInstallmentPlanPaymentsForPlannerMonth(ownerFilter, year, month),
+  ]);
+  const plansInFortnight = (period: 'FIRST' | 'SECOND') =>
+    planPayments.filter((row) =>
+      ymdFallsInFortnight(row.dueDate, year, month, period),
+    );
 
   const firstWithCalendar = applyScheduledCalendarToDueItems(
     first,
     scheduled.first,
+    plansInFortnight('FIRST'),
   );
   const secondWithCalendar = applyScheduledCalendarToDueItems(
     second,
     scheduled.second,
+    plansInFortnight('SECOND'),
   );
 
   const dropStaleGap = (item: (typeof firstWithCalendar)[number]) =>

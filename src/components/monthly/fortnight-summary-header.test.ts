@@ -68,15 +68,15 @@ describe('getFortnightStatusPill', () => {
     });
   });
 
-  it('does not say Alcanza when a card payment is missing', () => {
+  it('keeps Alcanza when a corte figure is missing and the remainder is positive', () => {
     expect(getFortnightStatusPill(2_150, { obligationGapCount: 1 })).toEqual({
-      tone: 'gap',
-      label: 'Falta el pago',
+      tone: 'surplus',
+      label: 'Alcanza',
     });
     expect(getFortnightRemainderCopy(2_150, { obligationGapCount: 1 })).toEqual({
-      tone: 'gap',
+      tone: 'surplus',
       rowLabel: 'Te queda',
-      gapNote: 'Falta el pago del corte',
+      gapNote: null,
     });
   });
 });

@@ -24,6 +24,10 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { createWalletForOwner, updateWalletMetadataForOwner } from '@/lib/finance/wallet.service';
 import { createExpense } from '@/lib/finance/expense.service';
+import {
+  paymentCategoryKindForWallet,
+  resolvePaymentCategoryId,
+} from '@/lib/finance/payment-category';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 
@@ -466,16 +470,26 @@ export async function createCreditCardPayment(
     if (
       !isExternal &&
       input.create_fortnight_expense === true &&
-      input.category_id != null &&
       sourceWallet
     ) {
-      const category = await tx.category.findFirst({
-        where: { id: input.category_id, kind: 'EXPENSE', ...ownerFilter },
-      });
-      if (!category) {
-        const error = new Error('Categoría no encontrada');
-        (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
-        throw error;
+      let categoryId = input.category_id ?? null;
+      if (categoryId == null) {
+        const kind = paymentCategoryKindForWallet(creditCardWallet.type);
+        if (kind == null) {
+          const error = new Error('Esta tarjeta no tiene categoría de pago');
+          (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
+          throw error;
+        }
+        categoryId = await resolvePaymentCategoryId(tx, ownerFilter, kind);
+      } else {
+        const category = await tx.category.findFirst({
+          where: { id: categoryId, kind: 'EXPENSE', ...ownerFilter },
+        });
+        if (!category) {
+          const error = new Error('Categoría no encontrada');
+          (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
+          throw error;
+        }
       }
 
       const paidAt = coerceToCalendarDate(input.paid_at);
@@ -522,7 +536,7 @@ export async function createCreditCardPayment(
         data: {
           fortnight_id: fortnight.id,
           wallet_id: sourceWallet.id,
-          category_id: input.category_id,
+          category_id: categoryId,
           description,
           amount: input.amount,
           is_paid: true,
