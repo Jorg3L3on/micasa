@@ -7,6 +7,7 @@ import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { FortnightBudgetProgress } from '@/components/monthly/FortnightBudgetProgress';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
@@ -195,9 +196,10 @@ function BudgetAllocationRow({
             ) : null}
           </div>
         </div>
-        <p className="shrink-0 font-mono text-xs font-bold tabular-nums text-foreground">
-          {formatCurrency(allocation.spent)}
-        </p>
+        <CurrencyTicker
+          value={allocation.spent}
+          className="shrink-0 text-xs font-bold text-foreground"
+        />
       </div>
       <div
         className="h-1.5 overflow-hidden rounded-full bg-muted/40"

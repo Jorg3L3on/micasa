@@ -2,7 +2,6 @@
 
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
@@ -13,7 +12,7 @@ import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
@@ -58,9 +57,6 @@ import {
   type ClientApiError,
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
-import {
-  getPlannerDuePayments,
-} from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
 import {
   createWalletIncome,
@@ -157,6 +153,8 @@ type FortnightColumnProps = {
   dualColumnLayout?: boolean;
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
+  /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
+  onPanelRefresh: () => Promise<void>;
 };
 
 export default function FortnightColumn({
@@ -176,6 +174,7 @@ export default function FortnightColumn({
   dualColumnLayout = false,
   budgetPanel = null,
   budgetOwnerQuery = '',
+  onPanelRefresh,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -183,7 +182,6 @@ export default function FortnightColumn({
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
-  const router = useRouter();
   const lastAppliedFundingNonceRef = useRef(0);
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
@@ -264,17 +262,6 @@ export default function FortnightColumn({
     },
     [context],
   );
-
-  const refreshCardDueItems = useCallback(async () => {
-    try {
-      const partitioned = await getPlannerDuePayments(year, month, context);
-      setCardDueItems(
-        period === 'FIRST' ? partitioned.first : partitioned.second,
-      );
-    } catch (error) {
-      console.error('Error refreshing card due items:', error);
-    }
-  }, [year, month, period, context]);
 
   useEffect(() => {
     setTransactions(initialTransactions);
@@ -378,30 +365,16 @@ export default function FortnightColumn({
   const refreshData = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      const ym = String(month).padStart(2, '0');
-      const planningQs = '&exclude_credit_installment=true';
-      const [transactionsData, summaryData] = await Promise.all([
-        clientFetchFromApi<TransactionRow[]>(
-          `/api/transactions?year=${year}&month=${ym}&period=${period}&type=expense${planningQs}`,
-          undefined,
-          context,
-        ),
-        clientFetchFromApi<Summary>(
-          `/api/reports?type=summary&year=${year}&month=${ym}&period=${period}${planningQs}`,
-          undefined,
-          context,
-        ),
-      ]);
-      setTransactions(transactionsData);
-      setSummary(summaryData);
-      await refreshCardDueItems();
-      router.refresh();
+      await onPanelRefresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
+      toast.error(
+        'No se pudo refrescar el panel. Recarga si los montos no cambiaron.',
+      );
     } finally {
       setIsRefreshing(false);
     }
-  }, [year, month, period, context, router, refreshCardDueItems]);
+  }, [onPanelRefresh]);
 
   const handleRegenerateFromTemplates = useCallback(async () => {
     const loadingToastId = 'fortnight-regenerating';
@@ -431,7 +404,6 @@ export default function FortnightColumn({
       );
 
       await refreshData();
-      router.refresh();
       const createdExpenses = result.expensesCreated.count;
       const createdIncomes = result.incomeCreated.count;
       if (createdExpenses === 0 && createdIncomes === 0) {
@@ -455,7 +427,7 @@ export default function FortnightColumn({
     } finally {
       setIsRegenerating(false);
     }
-  }, [fortnightId, context, refreshData, router]);
+  }, [fortnightId, context, refreshData]);
 
   const payrollOverflowIcon = useMemo(
     () => <Banknote className="h-4 w-4 shrink-0" aria-hidden />,
@@ -832,15 +804,9 @@ export default function FortnightColumn({
         );
       }
 
-      // Refresh data
-      await refreshData();
-
-      // If applied to both fortnights, refresh the server-side data to update both columns
-      if (data.isRecurring && data.applyToBothFortnights) {
-        router.refresh();
-      }
-
+      toast.success(data.isPaid ? 'Gasto registrado' : 'Gasto planificado');
       setAddExpenseDialogOpen(false);
+      await refreshData();
     } catch (err) {
       const base =
         err instanceof Error ? err.message : 'Error al crear el gasto';
@@ -977,28 +943,14 @@ export default function FortnightColumn({
         <Tabs
           value={columnTab}
           onValueChange={handleColumnTabChange}
+          variant="pill"
           className="w-full min-w-0"
         >
           <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-1.5 sm:p-1.5">
             <TabsList
-              variant="line"
-              className={cn(
-                'h-auto min-w-0 flex-1 justify-start gap-0.5 overflow-x-auto rounded-none bg-transparent p-0 scrollbar-hide sm:gap-1',
-                '[&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0',
-                '[&_[data-slot=tabs-trigger]]:rounded-full',
-                '[&_[data-slot=tabs-trigger]]:transition-all',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:from-primary/90',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:to-primary/75',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:text-primary-foreground',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:shadow-sm',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-1',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-primary/30',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:border-transparent',
-                '[&_[data-slot=tabs-trigger][data-state=inactive]]:text-foreground/70',
-                '[&_[data-slot=tabs-trigger][data-state=inactive]]:hover:text-foreground/90',
-                '[&_[data-slot=tabs-trigger]]:after:hidden',
-              )}
+              aria-label="Secciones de la quincena"
+              wrapperClassName="min-w-0 flex-1"
+              className="gap-0.5 bg-transparent p-0 sm:gap-1"
             >
               <TabsTrigger
                 value="expenses"

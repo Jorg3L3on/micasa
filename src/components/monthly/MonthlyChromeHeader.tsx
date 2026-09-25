@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { CalendarClock, CheckCircle2, Goal, Hourglass } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -46,15 +47,6 @@ type MonthlyChromeHeaderProps = {
 };
 
 const accentEmphasisClass = cn('font-semibold', MONTHLY_ACCENT_TEXT_CLASS);
-
-const fortnightSegmentClass = (active: boolean) =>
-  cn(
-    'relative min-h-8 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-xs font-semibold leading-none transition-all @min-[42rem]:flex-none @min-[42rem]:px-2.5',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-    active
-      ? 'bg-primary text-white shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35 dark:bg-[#3a37fc]'
-      : 'text-foreground/70 hover:text-foreground/90 active:scale-[0.98]',
-  );
 
 const ChromeDivider = ({ className }: { className?: string }) => (
   <div
@@ -297,36 +289,45 @@ export const MonthlyChromeHeader = ({
       aria-hidden
     />
   ) : (
-    <div
-      className={cn(
-        'flex w-full items-center gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:inline-flex @min-[42rem]:w-auto',
-        'bg-gradient-to-br from-muted/30 via-background to-muted/10',
-        'dark:from-muted/20 dark:via-card dark:to-muted/5',
-      )}
-      role="group"
-      aria-label="Quincena"
+    <Tabs
+      value={period}
+      onValueChange={(next) => {
+        if (next === 'FIRST' || next === 'SECOND') handlePeriodChange(next);
+      }}
+      variant="pill"
+      className="w-full @min-[42rem]:w-auto"
     >
-      <button
-        type="button"
-        onClick={() => handlePeriodChange('FIRST')}
-        className={fortnightSegmentClass(period === 'FIRST')}
-        aria-pressed={period === 'FIRST'}
-        aria-label={`Primera quincena: ${firstLabel}`}
-        title={firstLabel}
+      <TabsList
+        aria-label="Quincena"
+        wrapperClassName="w-full @min-[42rem]:w-auto"
+        className={cn(
+          'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
+          'bg-gradient-to-br from-muted/30 via-background to-muted/10',
+          'dark:from-muted/20 dark:via-card dark:to-muted/5',
+        )}
       >
-        1ª Quincena
-      </button>
-      <button
-        type="button"
-        onClick={() => handlePeriodChange('SECOND')}
-        className={fortnightSegmentClass(period === 'SECOND')}
-        aria-pressed={period === 'SECOND'}
-        aria-label={`Segunda quincena: ${secondLabel}`}
-        title={secondLabel}
-      >
-        2ª Quincena
-      </button>
-    </div>
+        <TabsTrigger
+          value="FIRST"
+          stretch
+          aria-label={`Primera quincena: ${firstLabel}`}
+          title={firstLabel}
+          indicatorClassName="shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35"
+          className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
+        >
+          1ª Quincena
+        </TabsTrigger>
+        <TabsTrigger
+          value="SECOND"
+          stretch
+          aria-label={`Segunda quincena: ${secondLabel}`}
+          title={secondLabel}
+          indicatorClassName="shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35"
+          className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
+        >
+          2ª Quincena
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 
   const jumpToCurrent = !isCurrentMonth ? (

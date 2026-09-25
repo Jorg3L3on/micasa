@@ -18,6 +18,7 @@ import {
   updateExpenseAmount,
   updateExpensePaidStatus,
 } from '@/lib/api/transactions';
+import { Checkbox } from '@/components/motion/checkbox';
 import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
 import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
@@ -673,39 +674,50 @@ export default function ExpenseTable({
                   >
                     {/* Status / pay toggle */}
                     <div className="shrink-0">
-                      {e.is_paid ? (
-                        <span
-                          className={cn(
-                            'inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 shadow-sm',
-                            isCardPay
-                              ? 'bg-green-500/15 ring-green-500/30 text-green-600 dark:text-green-400'
-                              : 'bg-emerald-500/15 ring-emerald-500/30 text-emerald-600 dark:text-emerald-400',
-                          )}
-                          aria-label="Pagado"
-                        >
-                          <CheckCircle2 className="h-5 w-5" data-icon="inline-start" />
-                        </span>
-                      ) : isIncomeRow || isCardPay || isLoanPay ? (
-                        <span
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-xs text-muted-foreground/50 ring-1 ring-border/40"
-                          aria-hidden
-                        >
-                          —
-                        </span>
+                      {isIncomeRow || isCardPay || isLoanPay ? (
+                        e.is_paid ? (
+                          <span
+                            className={cn(
+                              'inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 shadow-sm',
+                              isCardPay
+                                ? 'bg-green-500/15 ring-green-500/30 text-green-600 dark:text-green-400'
+                                : 'bg-emerald-500/15 ring-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+                            )}
+                            aria-label="Pagado"
+                          >
+                            <CheckCircle2 className="h-5 w-5" data-icon="inline-start" />
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-xs text-muted-foreground/50 ring-1 ring-border/40"
+                            aria-hidden
+                          >
+                            —
+                          </span>
+                        )
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'h-8 w-8 rounded-full border border-dashed bg-transparent text-muted-foreground/40 transition-colors',
-                            'border-border/60 hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400',
-                          )}
-                          onClick={() => handleOpenPayConfirm(e)}
+                        <Checkbox
+                          checked={e.is_paid}
                           disabled={isUpdating}
-                          aria-label={`Marcar ${e.description} como pagado`}
-                        >
-                          <CheckCircle2 className="h-4 w-4" data-icon="inline-start" />
-                        </Button>
+                          aria-label={
+                            e.is_paid
+                              ? `Deshacer pago de ${e.description}`
+                              : `Marcar ${e.description} como pagado`
+                          }
+                          boxClassName={cn(
+                            'h-8 w-8 rounded-full border',
+                            e.is_paid
+                              ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
+                              : 'border-dashed border-border/60 bg-transparent text-muted-foreground/40 hover:border-emerald-500/60 hover:text-emerald-600',
+                          )}
+                          onCheckedChange={(nextPaid) => {
+                            if (nextPaid) {
+                              handleOpenPayConfirm(e);
+                              return;
+                            }
+                            void handlePaidToggle(e, false);
+                          }}
+                        />
                       )}
                     </div>
 

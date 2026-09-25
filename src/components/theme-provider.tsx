@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { ThemeProvider as NextThemesProvider, useTheme } from 'next-themes';
+import { startThemeViewTransition } from '@/components/motion/theme-toggle';
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -33,7 +34,15 @@ const ThemeHotkey = () => {
       if (!isPlainD && !isCmdShiftD) return;
 
       event.preventDefault();
-      setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+      const reduce = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches;
+      startThemeViewTransition(
+        () => {
+          setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+        },
+        { variant: 'circle', start: 'center', reduceMotion: reduce },
+      );
     };
 
     window.addEventListener('keydown', handleHotkey);

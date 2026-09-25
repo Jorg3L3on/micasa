@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Banknote, Info, Wallet } from 'lucide-react';
 
@@ -273,13 +274,11 @@ const AccountMetric = ({
         {label}
       </span>
     </div>
-    <p
-      className={cn(
-        'font-mono text-lg font-bold tabular-nums whitespace-nowrap sm:text-xl',
-        amountClassName,
-      )}
-    >
-      {formatCurrency(amount)}
+    <p className="whitespace-nowrap">
+      <CurrencyTicker
+        value={amount}
+        className={cn('text-lg font-bold sm:text-xl', amountClassName)}
+      />
     </p>
     <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
       {subtitle}
@@ -311,9 +310,10 @@ const LegendItem = ({
           {label}
         </span>
       </span>
-      <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
-        {formatCurrency(amount)}
-      </span>
+      <CurrencyTicker
+        value={amount}
+        className="shrink-0 text-xs font-semibold text-foreground"
+      />
     </div>
     <p className="mt-0.5 pl-3 text-[10px] text-muted-foreground">{subtitle}</p>
   </div>
@@ -449,8 +449,11 @@ export const FortnightSummaryHero = ({
           <dl className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-[13px] text-muted-foreground">Entra</dt>
-              <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
-                {formatCurrency(periodIncome)}
+              <dd>
+                <CurrencyTicker
+                  value={periodIncome}
+                  className="text-[13px] font-medium text-foreground"
+                />
               </dd>
             </div>
 
@@ -464,8 +467,11 @@ export const FortnightSummaryHero = ({
                 </span>
                 <DueToPayLabel compositionRows={compositionRows} />
               </dt>
-              <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
-                {formatCurrency(dueToPayCash)}
+              <dd>
+                <CurrencyTicker
+                  value={dueToPayCash}
+                  className="text-[13px] font-medium text-foreground"
+                />
               </dd>
             </div>
 
@@ -480,8 +486,11 @@ export const FortnightSummaryHero = ({
                   </span>
                   <span>Presupuesto</span>
                 </dt>
-                <dd className="font-mono text-[13px] font-medium tabular-nums text-foreground">
-                  {formatCurrency(leftoverAmount)}
+                <dd>
+                  <CurrencyTicker
+                    value={leftoverAmount}
+                    className="text-[13px] font-medium text-foreground"
+                  />
                 </dd>
               </div>
             ) : null}
@@ -507,14 +516,10 @@ export const FortnightSummaryHero = ({
               >
                 {copy.rowLabel}
               </span>
-              <span
-                className={cn(
-                  'font-mono text-lg font-bold tabular-nums',
-                  remainderClass,
-                )}
-              >
-                {formatCurrency(remainderAbs)}
-              </span>
+              <CurrencyTicker
+                value={remainderAbs}
+                className={cn('text-lg font-bold', remainderClass)}
+              />
             </div>
             {copy.gapNote ? (
               <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">

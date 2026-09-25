@@ -33,6 +33,22 @@ export const getFortnightRemainderCopy = (
 
 export type FortnightStatusPillTone = 'shortfall' | 'surplus' | 'even' | 'gap';
 
+export type FortnightStatusBadgeStatus =
+  | 'neutral'
+  | 'success'
+  | 'warning'
+  | 'danger';
+
+/** Maps the resumen chip tone onto the animated badge statuses. */
+export const getFortnightStatusBadgeStatus = (
+  tone: FortnightStatusPillTone,
+): FortnightStatusBadgeStatus => {
+  if (tone === 'surplus') return 'success';
+  if (tone === 'shortfall') return 'danger';
+  if (tone === 'gap') return 'warning';
+  return 'neutral';
+};
+
 export type FortnightStatusPill = {
   tone: FortnightStatusPillTone;
   label: string;

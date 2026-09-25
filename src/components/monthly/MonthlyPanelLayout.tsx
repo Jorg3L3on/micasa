@@ -1,7 +1,10 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import { PullToRefresh } from '@/components/motion/pull-to-refresh';
+import { useMonthlyPanelRefresh } from '@/components/monthly/monthly-panel-refresh';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import {
@@ -54,6 +57,17 @@ export const MonthlyPanelLayout = ({
 }: MonthlyPanelLayoutProps) => {
   const { context } = useFinanceContext();
   const ownerPending = isOwnerContextPending(context, ownerKey);
+  const refreshPanel = useMonthlyPanelRefresh();
+  const handlePullRefresh = useCallback(async () => {
+    try {
+      await refreshPanel();
+    } catch (error) {
+      console.error('Error refreshing panel data:', error);
+      toast.error(
+        'No se pudo refrescar el panel. Recarga si los montos no cambiaron.',
+      );
+    }
+  }, [refreshPanel]);
   const quickCapture = useOptionalQuickCapture();
   const primaryActionIcon = useMemo(
     () => <Plus data-icon="inline-start" />,
@@ -77,6 +91,15 @@ export const MonthlyPanelLayout = ({
       month={month}
       suggestedPeriod={suggestedPeriod}
     >
+      <PullToRefresh
+        onRefresh={handlePullRefresh}
+        ariaLabel="Panel financiero"
+        pullingLabel="Desliza para actualizar"
+        releaseLabel="Suelta para actualizar"
+        refreshingLabel="Actualizando"
+        className="bg-transparent"
+        contentClassName="bg-transparent"
+      >
       <div
         className={cn(
           '@container',
@@ -102,6 +125,7 @@ export const MonthlyPanelLayout = ({
       </div>
 
       {ownerPending ? <MonthlyOwnerSwitchFallback /> : children}
+      </PullToRefresh>
     </MonthlyPanelPreferencesProvider>
   );
 };
