@@ -47,7 +47,7 @@ Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** acce
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): original rooftop zigzag (five nodes) with Zigzag/Workia gradient `#3a37fc` → `#ee477a` and a light gloss. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): the official artwork in `public/brand/mark.png`. Do not redraw it. App icons place that file on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 

@@ -546,7 +546,10 @@ export const LandingPage = () => {
 
       <footer className="relative z-10 border-t border-white/[0.06]">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-white/40 sm:px-6 md:flex-row md:items-center md:justify-between md:px-8">
-          <p>© {new Date().getFullYear()} MiCasa. Hecho para quincenas en México.</p>
+          <p className="inline-flex items-center gap-2">
+            <MicasaMark className="h-5 w-5" />
+            <span>© {new Date().getFullYear()} MiCasa. Hecho para quincenas en México.</span>
+          </p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
             <Link className="transition-colors hover:text-white/80" href="/privacy">
               Aviso de privacidad
