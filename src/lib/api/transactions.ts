@@ -7,10 +7,16 @@ export async function updateExpensePaidStatus(
   id: number,
   paid: boolean,
   context?: FinanceContextType,
+  options?: { applyWalletDelta?: boolean },
 ) {
   return clientFetchFromApi(`/api/expenses/${id}/paid`, {
     method: 'PATCH',
-    body: JSON.stringify({ paid }),
+    body: JSON.stringify({
+      paid,
+      ...(options?.applyWalletDelta === false
+        ? { apply_wallet_delta: false }
+        : {}),
+    }),
   }, context);
 }
 

@@ -94,6 +94,11 @@ type TogglePaidInput = {
   id: number;
   paid: boolean;
   ownerFilter: OwnerFilter;
+  /**
+   * When marking paid, whether to apply the wallet debit/credit.
+   * Default true. Set false after the user confirms an over-balance catch-up.
+   */
+  applyWalletDelta?: boolean;
 };
 
 type DeleteExpenseInput = {
@@ -605,7 +610,8 @@ export async function updateExpense(input: UpdateExpenseInput) {
 }
 
 export async function toggleExpensePaid(input: TogglePaidInput) {
-  const { id, paid, ownerFilter } = input;
+  const { id, paid, ownerFilter, applyWalletDelta = true } = input;
+  const shouldApplyWalletDelta = applyWalletDelta !== false;
 
   const updated = await prisma.$transaction(async (tx) => {
     const existing = await tx.expense.findFirst({
@@ -659,7 +665,8 @@ export async function toggleExpensePaid(input: TogglePaidInput) {
     if (
       existing.wallet_id != null &&
       existing.wallet?.type != null &&
-      wasPaid !== willBePaid
+      wasPaid !== willBePaid &&
+      shouldApplyWalletDelta
     ) {
       if (willBePaid) {
         const w = await tx.wallet.findUnique({
