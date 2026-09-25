@@ -25,6 +25,7 @@ import {
   type StatementImportRow,
 } from '@/lib/finance/credit-card-statement.service';
 import { derivePlannerStatus } from '@/lib/finance/card-planner-obligation';
+import type { PlannerCardPaymentStatusUi } from '@/lib/finance/card-statement-obligation';
 import {
   getEffectiveCreditLimit,
   isFundingWalletType,
@@ -88,7 +89,7 @@ export type LiquidityObligationItem = {
   planned_fortnight_payment?: number | null;
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
-  planner_status?: 'pagado' | 'por_pagar' | 'vencido' | 'sin_cargo';
+  planner_status?: PlannerCardPaymentStatusUi;
 };
 
 export type LiquidityMilestone = {
