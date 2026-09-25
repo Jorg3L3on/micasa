@@ -359,14 +359,6 @@ const FortnightCardPaymentsPanel = ({
                         </span>
                       </>
                     ) : null}
-                    {isMissingPayment ? (
-                      <>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="font-medium text-amber-700 dark:text-amber-300">
-                          Falta el pago del corte
-                        </span>
-                      </>
-                    ) : null}
                     {item.declaredZero ? (
                       <>
                         <span className="text-muted-foreground/30">·</span>

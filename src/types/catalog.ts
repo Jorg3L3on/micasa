@@ -434,6 +434,11 @@ export type LiquidityProjectionObligationItem = {
   payment_source?: string;
   is_estimate?: boolean;
   fortnight_id?: number;
+  /** Custom amount the household set for the fortnight that contains the due date. */
+  planned_fortnight_payment?: number | null;
+  payments_applied_to_fortnight?: number;
+  remaining_planner_amount?: number;
+  planner_status?: PlannerCardPaymentStatusUi;
 };
 
 export type LiquidityProjectionMilestone = {

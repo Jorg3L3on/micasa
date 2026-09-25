@@ -175,8 +175,45 @@ describe('planInputFromLiquidity', () => {
     expect(input.dataGaps?.map((gap) => gap.code)).toContain('undated_obligation');
     expect(input.obligations.some((obligation) => obligation.kind === 'card_msi')).toBe(false);
     expect(input.obligations.some((obligation) => obligation.labelSynthetic === 'Netflix')).toBe(false);
-    expect(input.obligations.some((obligation) => obligation.labelSynthetic === 'Renta')).toBe(true);
+    expect(input.obligations.some((obligation) => obligation.labelSynthetic === 'Renta')).toBe(false);
     expect(input.obligations.some((obligation) => obligation.labelSynthetic === 'Tarjeta A')).toBe(true);
+    const summed = input.gapLines.reduce((sum, line) => sum + line.amount, 0);
+    expect(summed).toBeCloseTo(input.gapAmount, 2);
+  });
+
+  it('drops a plantilla and a card already paid this fortnight from the quincena hueco', () => {
+    const source = projection();
+    const card = source.milestones[0]?.obligations[0];
+    if (card && card.source === 'credit_card_statement') {
+      card.planner_status = 'pagado';
+      card.planned_fortnight_payment = 100;
+      card.payments_applied_to_fortnight = 100;
+      card.remaining_planner_amount = 0;
+    }
+    source.milestones[0]?.obligations.push({
+      source: 'unpaid_expense',
+      wallet_id: 1,
+      wallet_name: 'Efectivo sintético',
+      wallet_type: 'CASH',
+      statement_start: '',
+      statement_end: '',
+      statement_due_date: '2026-09-10',
+      last_statement_balance: 0,
+      payments_applied_to_statement: 0,
+      next_due_payment: 250,
+      expense_id: 9,
+      expense_description: 'Transporte',
+    });
+    const input = planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon: 'quincena',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+    expect(input.obligations.map((obligation) => obligation.labelSynthetic)).toEqual(['Transporte']);
+    expect(input.gapAmount).toBeCloseTo(250 - 1000, 2);
+    expect(input.gapLines.map((line) => line.label)).toEqual(['Transporte', 'Efectivo disponible']);
   });
 
   it('maps a real card minimum into pay_minimum and does not copy a loan installment', () => {
@@ -200,6 +237,7 @@ describe('planInputFromLiquidity', () => {
       loan_id: 3,
       loan_payment_id: 8,
       loan_name: 'Préstamo A',
+      lender: 'Mercado Libre',
     });
     const input = planInputFromLiquidity({
       projection: source,
@@ -217,6 +255,17 @@ describe('planInputFromLiquidity', () => {
     expect(loan?.statementDue).toBe(500);
     expect(loan?.minimumDue).toBeUndefined();
     expect(revolving?.minimumDue).not.toBe(revolving?.statementDue);
+    const fortnight = planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon: 'quincena',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T12:00:00.000Z',
+    });
+    expect(fortnight.gapLines.find((line) => line.label === 'Préstamo A')?.group).toEqual({
+      id: 'Mercado Libre',
+      label: 'Mercado Libre',
+    });
     expect(input.prefs?.missingAprPolicy).toBe('exclude_from_apr_rank');
     const result = buildCashPlan(input);
     const plans = [result.primary, ...result.alternatives];

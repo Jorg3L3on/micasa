@@ -22,6 +22,7 @@ export const PLAN_COPY = {
   emptyTitle: 'Todavía no hay cuentas u obligaciones para armar un plan',
   emptyBody: 'Cuando tengas efectivo o pagos en este periodo, aquí ves qué hacer con el hueco o con el extra.',
   emptyCta: 'Ir a cuentas',
+  gapHow: 'Cómo sale este número',
   gapLabel: 'Hueco',
   extraLabel: 'Extra',
   tieTitle: 'Estas dos rutas salen parecidas',
