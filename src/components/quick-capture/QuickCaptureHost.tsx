@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -18,6 +19,7 @@ import type {
   QuickExpenseFormValues,
   QuickIncomeFormValues,
 } from '@/schemas/transaction.schema';
+import { MonthlyPanelRefreshRegisterProvider } from '@/components/monthly/monthly-panel-refresh';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
@@ -59,6 +61,26 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   const [incomeError, setIncomeError] = useState<string | null>(null);
   const router = useRouter();
   const { context } = useFinanceContext();
+  const panelRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  const registerPanelRefresh = useCallback(
+    (refresh: (() => Promise<void>) | null) => {
+      panelRefreshRef.current = refresh;
+    },
+    [],
+  );
+
+  const refreshAfterMutation = useCallback(async () => {
+    const refresh = panelRefreshRef.current;
+    if (!refresh) {
+      router.refresh();
+      return;
+    }
+    try {
+      await refresh();
+    } catch (error) {
+      console.error('Error refreshing panel data:', error);
+    }
+  }, [router]);
 
   const open = useCallback(() => {
     setExpenseError(null);
@@ -105,7 +127,7 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
       );
       setExpenseOpen(false);
       toast.success(values.isPaid ? 'Gasto registrado' : 'Gasto planificado');
-      router.refresh();
+      await refreshAfterMutation();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'No se pudo guardar el gasto';
@@ -133,7 +155,7 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
       );
       setIncomeOpen(false);
       toast.success('Ingreso de la quincena registrado');
-      router.refresh();
+      await refreshAfterMutation();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'No se pudo guardar el ingreso';
@@ -144,7 +166,9 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   return (
     <QuickCaptureContext.Provider value={value}>
-      {children}
+      <MonthlyPanelRefreshRegisterProvider register={registerPanelRefresh}>
+        {children}
+      </MonthlyPanelRefreshRegisterProvider>
       <QuickCaptureChooser
         open={chooserOpen}
         onOpenChange={setChooserOpen}

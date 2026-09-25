@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
+import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
+import { useRegisterMonthlyPanelRefresh } from '@/components/monthly/monthly-panel-refresh';
+import {
+  MONTHLY_PANEL_CONTENT_GRID_CLASS,
+  MONTHLY_PANEL_MAIN_COLUMN_CLASS,
+  MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS,
+} from '@/components/monthly/MonthlyPanelLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import { useFinanceContext } from '@/context/finance-context';
@@ -11,6 +18,7 @@ import {
   clientFetchFromApi,
   isOwnerContextPending,
 } from '@/lib/api/client-fetch';
+import { fetchMonthlyPanelSnapshot } from '@/lib/api/monthly-panel';
 import type {
   DuePaymentItem,
   PlannerCardChargesSummary,
@@ -127,6 +135,8 @@ export default function MonthlyFortnightView({
 
   const [firstBundle, setFirstBundle] = useState(first);
   const [secondBundle, setSecondBundle] = useState(second);
+  const [panelWallets, setPanelWallets] = useState(wallets);
+  const [panelBudget, setPanelBudget] = useState(budgetPanel);
   const [loadingPeriod, setLoadingPeriod] = useState<FortnightPeriod | null>(
     null,
   );
@@ -137,7 +147,35 @@ export default function MonthlyFortnightView({
   useEffect(() => {
     setFirstBundle(first);
     setSecondBundle(second);
-  }, [first, second, ownerKey]);
+    setPanelWallets(wallets);
+    setPanelBudget(budgetPanel);
+  }, [first, second, wallets, budgetPanel, ownerKey]);
+
+  const refreshPanelData = useCallback(async () => {
+    const snapshot = await fetchMonthlyPanelSnapshot<FortnightSummary>(
+      year,
+      month,
+      context,
+    );
+    setFirstBundle((current) => ({
+      ...current,
+      transactions: snapshot.first.transactions,
+      summary: snapshot.first.summary,
+      cardDueItems: snapshot.cardDues.first,
+      loanDueItems: snapshot.loanDues.first,
+    }));
+    setSecondBundle((current) => ({
+      ...current,
+      transactions: snapshot.second.transactions,
+      summary: snapshot.second.summary,
+      cardDueItems: snapshot.cardDues.second,
+      loanDueItems: snapshot.loanDues.second,
+    }));
+    setPanelBudget(snapshot.budgetPanel);
+    setPanelWallets(snapshot.wallets);
+  }, [context, month, year]);
+
+  useRegisterMonthlyPanelRefresh(loading ? null : refreshPanelData);
 
   const prefetchInactivePeriod = useCallback(
     async (inactivePeriod: FortnightPeriod) => {
@@ -227,8 +265,8 @@ export default function MonthlyFortnightView({
 
   /** Goals live under Metas — panel strip is billeteras only. */
   const stripWallets = useMemo(
-    () => wallets.filter((w) => !isGoalWalletType(w.type)),
-    [wallets],
+    () => panelWallets.filter((w) => !isGoalWalletType(w.type)),
+    [panelWallets],
   );
 
   const walletStripSection =
@@ -243,55 +281,77 @@ export default function MonthlyFortnightView({
       </div>
     ) : null;
 
-  const columnLoading =
-    loading ||
-    ownerPending ||
-    loadingPeriod === period ||
-    activeBundle.summary == null;
+  const columnSkeleton = (
+    <div
+      className="space-y-3"
+      role="status"
+      aria-busy="true"
+      aria-label="Cargando quincena"
+    >
+      <div className="space-y-4">
+        <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
+        <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
+      </div>
+    </div>
+  );
 
-  if (columnLoading || activeBundle.summary == null) {
+  if (loading) {
     return (
       <div className="space-y-4">
         {walletStripSection}
-        <div
-          className="space-y-3"
-          role="status"
-          aria-busy="true"
-          aria-label="Cargando quincena"
-        >
-          <div className="space-y-4">
-            <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
-            <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
-          </div>
-        </div>
+        {columnSkeleton}
       </div>
     );
   }
 
+  const budgetSidebar = (
+    <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
+      {panelBudget ? (
+        <MonthlyBudgetSidebar
+          panel={panelBudget}
+          ownerQuery={budgetOwnerQuery}
+        />
+      ) : (
+        <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+      )}
+    </div>
+  );
+
   const activeSummary = activeBundle.summary;
+  const columnReady =
+    !ownerPending && activeSummary != null && loadingPeriod !== period;
 
   return (
-    <div className="space-y-4">
-      {walletStripSection}
-
-      <FortnightColumn
-        key={`${ownerKey}-${year}-${month}-${period}-${activeBundle.fortnightId}`}
-        label={activeBundle.label}
-        transactions={activeBundle.transactions}
-        summary={activeSummary}
-        fortnightId={activeBundle.fortnightId}
-        year={year}
-        month={month}
-        period={period}
-        cardDueItems={activeBundle.cardDueItems}
-        loanDueItems={activeBundle.loanDueItems}
-        wallets={wallets}
-        summaryFundingRefreshNonce={summaryFundingRefreshNonce}
-        preferenceScope={preferenceScope}
-        dualColumnLayout={false}
-        budgetPanel={budgetPanel}
-        budgetOwnerQuery={budgetOwnerQuery}
-      />
+    <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
+      <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
+        <div className="space-y-4">
+          {walletStripSection}
+          {columnReady && activeSummary ? (
+            <FortnightColumn
+              key={`${ownerKey}-${year}-${month}-${period}-${activeBundle.fortnightId}`}
+              label={activeBundle.label}
+              transactions={activeBundle.transactions}
+              summary={activeSummary}
+              fortnightId={activeBundle.fortnightId}
+              year={year}
+              month={month}
+              period={period}
+              cardDueItems={activeBundle.cardDueItems}
+              loanDueItems={activeBundle.loanDueItems}
+              wallets={panelWallets}
+              summaryFundingRefreshNonce={summaryFundingRefreshNonce}
+              preferenceScope={preferenceScope}
+              dualColumnLayout={false}
+              budgetPanel={panelBudget}
+              budgetOwnerQuery={budgetOwnerQuery}
+              onPanelRefresh={refreshPanelData}
+            />
+          ) : (
+            columnSkeleton
+          )}
+        </div>
+      </div>
+      {budgetSidebar}
     </div>
   );
 }

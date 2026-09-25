@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import {
   MONTHLY_PANEL_CONTENT_GRID_CLASS,
@@ -93,44 +92,34 @@ export const MonthlyPanelContentSection = async ({
   const loanDueSecond = shell.plannerLoanDue.second;
 
   return (
-    <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
-      <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
-        <MonthlyFortnightView
-          key={ownerKey}
-          ownerKey={ownerKey}
-          year={year}
-          month={month}
-          wallets={shell.wallets}
-          paidWalletIds={paidWalletIds}
-          isCurrentMonth={isCurrentMonth}
-          budgetPanel={content.budgetPanel}
-          budgetOwnerQuery={ownerQuery}
-          serverLoadedPeriod={content.loadedPeriod}
-          first={buildFortnightBundle({
-            label: firstLabel,
-            fortnightId: firstFortnightId,
-            transactions: content.firstTransactions,
-            summary: content.firstSummary,
-            cardDueItems: cardDueFirst,
-            loanDueItems: loanDueFirst,
-          })}
-          second={buildFortnightBundle({
-            label: secondLabel,
-            fortnightId: secondFortnightId,
-            transactions: content.secondTransactions,
-            summary: content.secondSummary,
-            cardDueItems: cardDueSecond,
-            loanDueItems: loanDueSecond,
-          })}
-        />
-      </div>
-      <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-        <MonthlyBudgetSidebar
-          panel={content.budgetPanel}
-          ownerQuery={ownerQuery}
-        />
-      </div>
-    </div>
+    <MonthlyFortnightView
+      key={ownerKey}
+      ownerKey={ownerKey}
+      year={year}
+      month={month}
+      wallets={shell.wallets}
+      paidWalletIds={paidWalletIds}
+      isCurrentMonth={isCurrentMonth}
+      budgetPanel={content.budgetPanel}
+      budgetOwnerQuery={ownerQuery}
+      serverLoadedPeriod={content.loadedPeriod}
+      first={buildFortnightBundle({
+        label: firstLabel,
+        fortnightId: firstFortnightId,
+        transactions: content.firstTransactions,
+        summary: content.firstSummary,
+        cardDueItems: cardDueFirst,
+        loanDueItems: loanDueFirst,
+      })}
+      second={buildFortnightBundle({
+        label: secondLabel,
+        fortnightId: secondFortnightId,
+        transactions: content.secondTransactions,
+        summary: content.secondSummary,
+        cardDueItems: cardDueSecond,
+        loanDueItems: loanDueSecond,
+      })}
+    />
   );
 };
 

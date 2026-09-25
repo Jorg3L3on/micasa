@@ -2,7 +2,6 @@
 
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
@@ -58,9 +57,6 @@ import {
   type ClientApiError,
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
-import {
-  getPlannerDuePayments,
-} from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
 import {
   createWalletIncome,
@@ -157,6 +153,8 @@ type FortnightColumnProps = {
   dualColumnLayout?: boolean;
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
+  /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
+  onPanelRefresh: () => Promise<void>;
 };
 
 export default function FortnightColumn({
@@ -176,6 +174,7 @@ export default function FortnightColumn({
   dualColumnLayout = false,
   budgetPanel = null,
   budgetOwnerQuery = '',
+  onPanelRefresh,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
@@ -183,7 +182,6 @@ export default function FortnightColumn({
     const s = q.toString();
     return s ? `?${s}` : '';
   }, [context]);
-  const router = useRouter();
   const lastAppliedFundingNonceRef = useRef(0);
   const [transactions, setTransactions] =
     useState<TransactionRow[]>(initialTransactions);
@@ -264,17 +262,6 @@ export default function FortnightColumn({
     },
     [context],
   );
-
-  const refreshCardDueItems = useCallback(async () => {
-    try {
-      const partitioned = await getPlannerDuePayments(year, month, context);
-      setCardDueItems(
-        period === 'FIRST' ? partitioned.first : partitioned.second,
-      );
-    } catch (error) {
-      console.error('Error refreshing card due items:', error);
-    }
-  }, [year, month, period, context]);
 
   useEffect(() => {
     setTransactions(initialTransactions);
@@ -378,30 +365,13 @@ export default function FortnightColumn({
   const refreshData = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      const ym = String(month).padStart(2, '0');
-      const planningQs = '&exclude_credit_installment=true';
-      const [transactionsData, summaryData] = await Promise.all([
-        clientFetchFromApi<TransactionRow[]>(
-          `/api/transactions?year=${year}&month=${ym}&period=${period}&type=expense${planningQs}`,
-          undefined,
-          context,
-        ),
-        clientFetchFromApi<Summary>(
-          `/api/reports?type=summary&year=${year}&month=${ym}&period=${period}${planningQs}`,
-          undefined,
-          context,
-        ),
-      ]);
-      setTransactions(transactionsData);
-      setSummary(summaryData);
-      await refreshCardDueItems();
-      router.refresh();
+      await onPanelRefresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [year, month, period, context, router, refreshCardDueItems]);
+  }, [onPanelRefresh]);
 
   const handleRegenerateFromTemplates = useCallback(async () => {
     const loadingToastId = 'fortnight-regenerating';
@@ -431,7 +401,6 @@ export default function FortnightColumn({
       );
 
       await refreshData();
-      router.refresh();
       const createdExpenses = result.expensesCreated.count;
       const createdIncomes = result.incomeCreated.count;
       if (createdExpenses === 0 && createdIncomes === 0) {
@@ -455,7 +424,7 @@ export default function FortnightColumn({
     } finally {
       setIsRegenerating(false);
     }
-  }, [fortnightId, context, refreshData, router]);
+  }, [fortnightId, context, refreshData]);
 
   const payrollOverflowIcon = useMemo(
     () => <Banknote className="h-4 w-4 shrink-0" aria-hidden />,
@@ -832,13 +801,7 @@ export default function FortnightColumn({
         );
       }
 
-      // Refresh data
       await refreshData();
-
-      // If applied to both fortnights, refresh the server-side data to update both columns
-      if (data.isRecurring && data.applyToBothFortnights) {
-        router.refresh();
-      }
 
       setAddExpenseDialogOpen(false);
     } catch (err) {
