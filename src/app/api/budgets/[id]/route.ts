@@ -41,6 +41,7 @@ export async function PATCH(
         'CURRENT_FORTNIGHT_NOT_FOUND',
         'OWNER_MISMATCH_WALLET',
         'OWNER_MISMATCH_CATEGORY',
+        'ALLOCATION_OVERLAP',
       ].includes(
         (error as ErrorWithCode).code ?? '',
       )

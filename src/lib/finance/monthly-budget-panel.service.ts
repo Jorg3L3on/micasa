@@ -20,6 +20,7 @@ import {
   startOfCalendarDay,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import { ANY_WALLET_LABEL } from '@/schemas/budget.schema';
 
 export type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
@@ -49,7 +50,7 @@ type AllocationAgg = {
   categoryId: number;
   categoryName: string;
   categoryIcon: string | null;
-  walletId: number;
+  walletId: number | null;
   walletName: string;
   walletProviderIconKey: string | null;
   walletAssignee: { id: number; name: string } | null;
@@ -57,8 +58,29 @@ type AllocationAgg = {
   spent: number;
 };
 
-const allocationKey = (walletId: number, categoryId: number) =>
-  `${walletId}:${categoryId}`;
+const allocationKey = (walletId: number | null, categoryId: number) =>
+  `${walletId ?? 'any'}:${categoryId}`;
+
+function walletDisplay(
+  walletId: number | null,
+  wallet: {
+    name: string;
+    provider_icon_key: string | null;
+    assignee: { id: number; name: string } | null;
+  } | null,
+): Pick<
+  AllocationAgg,
+  'walletId' | 'walletName' | 'walletProviderIconKey' | 'walletAssignee'
+> {
+  return {
+    walletId,
+    walletName: wallet?.name ?? ANY_WALLET_LABEL,
+    walletProviderIconKey: wallet?.provider_icon_key ?? null,
+    walletAssignee: wallet?.assignee
+      ? { id: wallet.assignee.id, name: wallet.assignee.name }
+      : null,
+  };
+}
 
 async function getMonthlyBudgetPanelImpl(
   ownerFilter: OwnerFilter,
@@ -274,15 +296,7 @@ async function buildBudgetScope(
         categoryId: allocation.category_id,
         categoryName: allocation.category.name,
         categoryIcon: allocation.category.icon ?? null,
-        walletId: allocation.wallet_id,
-        walletName: allocation.wallet.name,
-        walletProviderIconKey: allocation.wallet.provider_icon_key ?? null,
-        walletAssignee: allocation.wallet.assignee
-          ? {
-              id: allocation.wallet.assignee.id,
-              name: allocation.wallet.assignee.name,
-            }
-          : null,
+        ...walletDisplay(allocation.wallet_id, allocation.wallet),
         budgeted,
       });
     }
@@ -299,15 +313,7 @@ async function buildBudgetScope(
         categoryId: allocation.category_id,
         categoryName: allocation.category.name,
         categoryIcon: allocation.category.icon ?? null,
-        walletId: allocation.wallet_id,
-        walletName: allocation.wallet.name,
-        walletProviderIconKey: allocation.wallet.provider_icon_key ?? null,
-        walletAssignee: allocation.wallet.assignee
-          ? {
-              id: allocation.wallet.assignee.id,
-              name: allocation.wallet.assignee.name,
-            }
-          : null,
+        ...walletDisplay(allocation.wallet_id, allocation.wallet),
         spent: amount,
       });
     }

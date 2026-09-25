@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   fortnight: {
     findFirst: vi.fn(),
   },
+  category: {
+    findMany: vi.fn(),
+  },
   transaction: vi.fn(),
   generatePeriodsOnCreate: vi.fn(),
   syncBudgetPeriodsAfterTemplateUpdate: vi.fn(),
@@ -31,6 +34,7 @@ vi.mock('@/lib/prisma', () => ({
     budget: mocks.budget,
     budgetAllocation: mocks.budgetAllocation,
     fortnight: mocks.fortnight,
+    category: mocks.category,
     $transaction: mocks.transaction,
   },
 }));
@@ -191,6 +195,61 @@ describe('createBudget', () => {
         ],
       }),
     ).rejects.toMatchObject({ code: 'EMPTY_ALLOCATION' });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it('stores a null wallet for Cualquier cartera and keeps a specific wallet id', async () => {
+    mocks.fortnight.findFirst.mockResolvedValue({
+      start_date: parseCalendarDate('2026-06-01'),
+      end_date: parseCalendarDate('2026-06-14'),
+      year: 2026,
+      month: 6,
+      period: 'FIRST' as const,
+    });
+    mocks.category.findMany.mockResolvedValue([
+      { id: 2, parent_id: null },
+      { id: 3, parent_id: null },
+    ]);
+    mocks.budget.create.mockResolvedValue({ ...budgetFixture, id: 13 });
+
+    await createBudget('user', 1, {
+      name: 'Despensa',
+      allocated_amount: 500,
+      frequency: 'BIWEEKLY',
+      recurrent: true,
+      allocations: [
+        { wallet_id: null, category_id: 2, amount: 300 },
+        { wallet_id: 1, category_id: 3, amount: 200 },
+      ],
+    });
+
+    expect(mocks.budgetAllocation.createMany).toHaveBeenCalledWith({
+      data: [
+        { budget_id: 13, wallet_id: null, category_id: 2, amount: 300 },
+        { budget_id: 13, wallet_id: 1, category_id: 3, amount: 200 },
+      ],
+    });
+  });
+
+  it('rejects overlapping Cualquier cartera allocations', async () => {
+    mocks.category.findMany.mockResolvedValue([
+      { id: 10, parent_id: null },
+      { id: 11, parent_id: 10 },
+    ]);
+
+    await expect(
+      createBudget('user', 1, {
+        name: 'Comida',
+        allocated_amount: 500,
+        frequency: 'BIWEEKLY',
+        recurrent: true,
+        allocations: [
+          { wallet_id: null, category_id: 10, amount: 300 },
+          { wallet_id: 1, category_id: 11, amount: 200 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'ALLOCATION_OVERLAP' });
 
     expect(mocks.transaction).not.toHaveBeenCalled();
   });

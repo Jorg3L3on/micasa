@@ -29,6 +29,26 @@ describe('groupAllocationsByWallet', () => {
     expect(groups.every((g) => g.kind === 'solo')).toBe(true);
   });
 
+  it('does not pool Cualquier cartera rows into a shared wallet', () => {
+    const groups = groupAllocationsByWallet([
+      alloc({
+        id: 1,
+        wallet_id: null,
+        wallet_name: 'Cualquier cartera',
+        category_name: 'Comida',
+      }),
+      alloc({
+        id: 2,
+        wallet_id: null,
+        wallet_name: 'Cualquier cartera',
+        category_name: 'Despensa',
+      }),
+    ]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((group) => group.kind === 'solo')).toBe(true);
+  });
+
   it('pools shared wallet allocations across categories', () => {
     const groups = groupAllocationsByWallet([
       alloc({ id: 1, wallet_id: 20, wallet_name: 'Banorte', category_name: 'Comida', amount: 500, spent_amount: 600 }),

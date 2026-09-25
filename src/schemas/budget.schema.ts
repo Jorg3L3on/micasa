@@ -13,8 +13,33 @@ export const BUDGET_FREQUENCY_LABELS: Record<BudgetFrequency, string> = {
   CUSTOM: 'Personalizado',
 };
 
+/** Sentinel for the cartera select. Stored as `wallet_id` null. */
+export const ANY_WALLET_SELECT_VALUE = 'any';
+
+/** Shown when an allocation matches every wallet. */
+export const ANY_WALLET_LABEL = 'Cualquier cartera';
+
+export const allocationWalletIdSchema = z.union([positiveIntSchema, z.null()]).optional();
+
+export function walletIdToSelectValue(walletId: number | null | undefined): string {
+  if (walletId === null) return ANY_WALLET_SELECT_VALUE;
+  if (typeof walletId === 'number' && walletId > 0) return String(walletId);
+  return '';
+}
+
+export function selectValueToWalletId(value: string): number | null {
+  if (value === ANY_WALLET_SELECT_VALUE) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+/** Unset (0 / empty) still needs a choice. Null is Cualquier cartera. */
+export function isWalletSelectionMissing(walletId: number | null | undefined): boolean {
+  return walletId !== null && !(typeof walletId === 'number' && walletId > 0);
+}
+
 export const allocationSchema = z.object({
-  wallet_id: positiveIntSchema,
+  wallet_id: allocationWalletIdSchema,
   category_id: positiveIntSchema,
   amount: positiveAmountSchema.refine(
     (amount) => amount > 0,

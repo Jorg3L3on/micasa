@@ -41,7 +41,8 @@ export async function PUT(
         code === 'ALLOC_NOT_EQUAL_BUDGET' ||
         code === 'EMPTY_ALLOCATION' ||
         code === 'OWNER_MISMATCH_WALLET' ||
-        code === 'OWNER_MISMATCH_CATEGORY'
+        code === 'OWNER_MISMATCH_CATEGORY' ||
+        code === 'ALLOCATION_OVERLAP'
       ) {
         return NextResponse.json({ error: errorWithCode.message }, { status: 422 });
       }

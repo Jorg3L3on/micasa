@@ -45,38 +45,71 @@ function buildWalletPool(
 export function groupAllocationsByWallet(
   allocations: BudgetAllocationItem[],
 ): WalletAllocationGroup[] {
-  const byWallet = new Map<number, BudgetAllocationItem[]>();
-  const walletNames = new Map<number, string>();
+  type WalletBucket = {
+    kind: 'wallet';
+    wallet_id: number;
+    wallet_name: string;
+    allocations: BudgetAllocationItem[];
+  };
+  type AnyWalletBucket = {
+    kind: 'any';
+    allocation: BudgetAllocationItem;
+  };
+
+  const order: Array<WalletBucket | AnyWalletBucket> = [];
+  const byWallet = new Map<number, WalletBucket>();
 
   for (const allocation of allocations) {
-    const list = byWallet.get(allocation.wallet_id) ?? [];
-    list.push(allocation);
-    byWallet.set(allocation.wallet_id, list);
-    walletNames.set(allocation.wallet_id, allocation.wallet_name);
+    if (allocation.wallet_id == null) {
+      order.push({ kind: 'any', allocation });
+      continue;
+    }
+    const existing = byWallet.get(allocation.wallet_id);
+    if (existing) {
+      existing.allocations.push(allocation);
+      continue;
+    }
+    const bucket: WalletBucket = {
+      kind: 'wallet',
+      wallet_id: allocation.wallet_id,
+      wallet_name: allocation.wallet_name,
+      allocations: [allocation],
+    };
+    byWallet.set(allocation.wallet_id, bucket);
+    order.push(bucket);
   }
 
   const groups: WalletAllocationGroup[] = [];
   let globalIndex = 0;
 
-  for (const [wallet_id, walletAllocations] of byWallet) {
-    const items = walletAllocations.map((allocation) => ({
+  for (const bucket of order) {
+    if (bucket.kind === 'any') {
+      groups.push({
+        kind: 'solo',
+        allocation: bucket.allocation,
+        globalIndex: globalIndex++,
+      });
+      continue;
+    }
+
+    const items = bucket.allocations.map((allocation) => ({
       allocation,
       globalIndex: globalIndex++,
     }));
 
-    if (walletAllocations.length === 1) {
+    if (bucket.allocations.length === 1) {
       groups.push({
         kind: 'solo',
-        allocation: walletAllocations[0],
+        allocation: bucket.allocations[0],
         globalIndex: items[0].globalIndex,
       });
     } else {
       groups.push({
         kind: 'shared',
         pool: buildWalletPool(
-          wallet_id,
-          walletNames.get(wallet_id) ?? '',
-          walletAllocations,
+          bucket.wallet_id,
+          bucket.wallet_name,
+          bucket.allocations,
         ),
         items,
       });

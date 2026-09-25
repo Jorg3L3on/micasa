@@ -30,13 +30,23 @@ const allocationInputSchema = z.object({
   amount: z.number().positive(),
 });
 
+const resolveOptionalWalletId = async (
+  ownerFilter: Parameters<typeof resolveWalletRef>[0],
+  walletId: number | undefined,
+  walletName: string | undefined,
+): Promise<number | null> => {
+  if (walletId == null && !walletName?.trim()) return null;
+  const wallet = await resolveWalletRef(ownerFilter, walletId, walletName);
+  return wallet.id;
+};
+
 const resolveAllocationRows = async (
   agent: { ownerFilter: Parameters<typeof resolveWalletRef>[0] },
   allocations: z.infer<typeof allocationInputSchema>[],
 ) => {
   const rows = [];
   for (const allocation of allocations) {
-    const wallet = await resolveWalletRef(
+    const walletId = await resolveOptionalWalletId(
       agent.ownerFilter,
       allocation.wallet_id,
       allocation.wallet_name,
@@ -48,7 +58,7 @@ const resolveAllocationRows = async (
       { required: true },
     );
     rows.push({
-      wallet_id: wallet.id,
+      wallet_id: walletId,
       category_id: categoryId!,
       amount: allocation.amount,
     });
@@ -97,7 +107,7 @@ export function registerBudgetTools(server: McpServer) {
     {
       title: 'Crear o actualizar presupuesto',
       description:
-        'Crea o actualiza un presupuesto con una o varias asignaciones (billetera + categoría). La suma de allocations debe igualar amount.',
+        'Crea o actualiza un presupuesto con una o varias asignaciones (categoría y, si quieres acotar, billetera). Omite wallet_id y wallet_name para Cualquier cartera. La suma de allocations debe igualar amount.',
       inputSchema: z.object({
         ...ownerArgs,
         budget_id: z.number().int().positive().optional(),
@@ -112,7 +122,7 @@ export function registerBudgetTools(server: McpServer) {
           .min(1)
           .optional()
           .describe(
-            'Varias asignaciones billetera+categoría. La suma debe igualar amount. Si se omite, usa una sola asignación con wallet/category.',
+            'Varias asignaciones categoría y billetera opcional. Omite la billetera para Cualquier cartera. La suma debe igualar amount. Si se omite, usa una sola asignación con wallet/category.',
           ),
       }),
       annotations: { destructiveHint: false, idempotentHint: true },
@@ -124,9 +134,9 @@ export function registerBudgetTools(server: McpServer) {
             ? await resolveAllocationRows(agent, args.allocations)
             : null;
 
-        const wallet = allocationRows
+        const walletId = allocationRows
           ? null
-          : await resolveWalletRef(
+          : await resolveOptionalWalletId(
               agent.ownerFilter,
               args.wallet_id,
               args.wallet_name,
@@ -144,7 +154,7 @@ export function registerBudgetTools(server: McpServer) {
           allocationRows ??
           [
             {
-              wallet_id: wallet!.id,
+              wallet_id: walletId,
               category_id: categoryId!,
               amount: args.amount,
             },
@@ -234,7 +244,7 @@ export function registerBudgetTools(server: McpServer) {
     {
       title: 'Actualizar asignaciones de presupuesto',
       description:
-        'Reemplaza las asignaciones (billetera + categoría + monto) de un presupuesto existente. Mismo PUT /api/budgets/[id]/allocations de la UI.',
+        'Reemplaza las asignaciones (categoría, monto y billetera opcional) de un presupuesto existente. Omite la billetera para Cualquier cartera. Mismo PUT /api/budgets/[id]/allocations de la UI.',
       inputSchema: z.object({
         ...ownerArgs,
         budget_id: z.number().int().positive(),

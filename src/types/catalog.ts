@@ -165,7 +165,7 @@ export type IncomeTemplateListItem = {
 
 export type BudgetAllocationItem = {
   id: number;
-  wallet_id: number;
+  wallet_id: number | null;
   wallet_name: string;
   category_id: number;
   category_name: string;
