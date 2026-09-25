@@ -7,7 +7,7 @@ import {
 } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd, getNextCalendarFortnight } from '@/lib/fortnight-calendar';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-import type { BudgetFrequency } from '@/schemas/budget.schema';
+import { ANY_WALLET_LABEL, type BudgetFrequency } from '@/schemas/budget.schema';
 import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
 import {
   computePeriodSpendByAllocations,
@@ -43,7 +43,7 @@ type SnapshotBudget = {
   name: string;
   total_amount: unknown;
   allocations: Array<{
-    wallet: { id: number; name: string };
+    wallet: { id: number; name: string } | null;
     category: { id: number; name: string; icon: string | null };
     amount: unknown;
   }>;
@@ -72,7 +72,7 @@ type SnapshotTx = {
     createMany: (args: {
       data: Array<{
         snapshot_id: number;
-        wallet_id: number;
+        wallet_id: number | null;
         wallet_name: string;
         category_id: number;
         category_name: string;
@@ -128,8 +128,8 @@ async function writePeriodSnapshot(
     await tx.budgetPeriodSnapshotAllocation.createMany({
       data: budget.allocations.map((allocation) => ({
         snapshot_id: snapshot.id,
-        wallet_id: allocation.wallet.id,
-        wallet_name: allocation.wallet.name,
+        wallet_id: allocation.wallet?.id ?? null,
+        wallet_name: allocation.wallet?.name ?? ANY_WALLET_LABEL,
         category_id: allocation.category.id,
         category_name: allocation.category.name,
         category_icon: allocation.category.icon ?? null,
@@ -608,6 +608,26 @@ export async function ensureBudgetPeriodsForMonth(
 }
 
 /**
+ * Rewrite snapshots for periods that have not ended: the one covering today
+ * and any that start later. Closed history (`end_date` before today) stays frozen.
+ */
+export async function refreshFuturePeriodSnapshots(
+  budgetId: number,
+  asOf: Date = new Date(),
+): Promise<void> {
+  if (!prisma.budgetPeriod || typeof prisma.budgetPeriod.findMany !== 'function') return;
+  const todayStart = startOfCalendarDay(todayCalendarDate(asOf));
+  const periods = await prisma.budgetPeriod.findMany({
+    where: {
+      budget_id: budgetId,
+      end_date: { gte: todayStart },
+    },
+    select: { id: true },
+  });
+  await Promise.all(periods.map((period) => syncPeriodSnapshot(period.id, budgetId)));
+}
+
+/**
  * After a template schedule/amount change: drop future periods and any period
  * that still covers "today", then regenerate from the new template window.
  *
@@ -647,22 +667,6 @@ export async function syncBudgetPeriodsAfterTemplateUpdate(
     ownerFilter,
     { recurrent: options.recurrent, now: asOf },
   );
-}
-
-export async function refreshFuturePeriodSnapshots(
-  budgetId: number,
-  asOf: Date = new Date(),
-): Promise<void> {
-  if (!prisma.budgetPeriod || typeof prisma.budgetPeriod.findMany !== 'function') return;
-  const todayEnd = endOfCalendarDay(todayCalendarDate(asOf));
-  const periods = await prisma.budgetPeriod.findMany({
-    where: {
-      budget_id: budgetId,
-      start_date: { gt: todayEnd },
-    },
-    select: { id: true },
-  });
-  await Promise.all(periods.map((period) => syncPeriodSnapshot(period.id, budgetId)));
 }
 
 /** Drop periods that start after today (used when deactivating a template). */
@@ -740,10 +744,10 @@ type BudgetPeriodWithBudget = {
     recurrent: boolean;
     allocations?: Array<{
       id: number;
-      wallet_id: number;
+      wallet_id: number | null;
       category_id: number;
       amount: unknown;
-      wallet: { name: string };
+      wallet: { name: string } | null;
       category: { name: string; icon: string | null };
     }>;
   };
@@ -753,7 +757,7 @@ type BudgetPeriodWithBudget = {
     total_amount: unknown;
     allocations: Array<{
       id: number;
-      wallet_id: number;
+      wallet_id: number | null;
       wallet_name: string;
       category_id: number;
       category_name: string;
@@ -772,7 +776,7 @@ async function mapBudgetPeriodItem(
     budget.allocations?.map((allocation) => ({
       id: allocation.id,
       wallet_id: allocation.wallet_id,
-      wallet_name: allocation.wallet.name,
+      wallet_name: allocation.wallet?.name ?? ANY_WALLET_LABEL,
       category_id: allocation.category_id,
       category_name: allocation.category.name,
       category_icon: allocation.category.icon ?? null,
@@ -916,7 +920,7 @@ export async function listHistoryPeriods(
         remaining_amount: number;
         allocations: Array<{
           id: number;
-          wallet_id: number;
+          wallet_id: number | null;
           wallet_name: string;
           category_id: number;
           category_name: string;
@@ -945,7 +949,7 @@ export async function listHistoryPeriods(
       budget.allocations.map((allocation) => ({
         id: allocation.id,
         wallet_id: allocation.wallet_id,
-        wallet_name: allocation.wallet.name,
+        wallet_name: allocation.wallet?.name ?? ANY_WALLET_LABEL,
         category_id: allocation.category_id,
         category_name: allocation.category.name,
         category_icon: allocation.category.icon ?? null,
@@ -1093,10 +1097,14 @@ export async function listBudgetPeriodExpensesByAllocation(
         gte: period.start_date,
         lte: period.end_date,
       },
-      OR: allocations.map((allocation) => ({
-        wallet_id: allocation.wallet_id,
-        category_id: allocation.category_id,
-      })),
+      OR: allocations.map((allocation) =>
+        allocation.wallet_id != null
+          ? {
+              wallet_id: allocation.wallet_id,
+              category_id: allocation.category_id,
+            }
+          : { category_id: allocation.category_id },
+      ),
     },
     include: {
       category: { select: { id: true, name: true, icon: true } },
@@ -1111,8 +1119,9 @@ export async function listBudgetPeriodExpensesByAllocation(
     allocation_id: allocation.id,
     expenses: mapped.filter(
       (expense) =>
-        expense.walletId === allocation.wallet_id &&
-        expense.categoryId === allocation.category_id,
+        expense.categoryId === allocation.category_id &&
+        (allocation.wallet_id == null ||
+          expense.walletId === allocation.wallet_id),
     ),
   }));
 }

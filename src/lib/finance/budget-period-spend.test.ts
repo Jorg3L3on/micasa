@@ -69,6 +69,17 @@ describe('buildBudgetSpendExpenseWhere', () => {
       { credit_installment_total: null },
     ]);
   });
+
+  it('omits wallet_id when the allocation is Cualquier cartera', () => {
+    const where = buildBudgetSpendExpenseWhere(
+      ownerFilter,
+      { wallet_id: null, category_id: 7 },
+      window,
+    );
+
+    expect(where.wallet_id).toBeUndefined();
+    expect(where.category_id).toBe(7);
+  });
 });
 
 describe('computePeriodSpendByAllocations', () => {
@@ -159,5 +170,49 @@ describe('computePeriodSpendByAllocations', () => {
     expect(groupBy.mock.calls[0][0].where.category_id).toEqual({
       in: [10, 11],
     });
+  });
+
+  it('counts Despensa from another wallet when the allocation has no wallet', async () => {
+    const groupBy = vi.fn().mockResolvedValue([
+      { wallet_id: 1, category_id: 10, _sum: { amount: 40 } },
+      { wallet_id: 2, category_id: 10, _sum: { amount: 25 } },
+      { wallet_id: 9, category_id: 20, _sum: { amount: 999 } },
+    ]);
+    const db = { expense: { groupBy } } as unknown as Parameters<
+      typeof computePeriodSpendByAllocations
+    >[0];
+
+    const result = await computePeriodSpendByAllocations(
+      db,
+      [{ wallet_id: null, category_id: 10, amount: 500 }],
+      window,
+      ownerFilter,
+    );
+
+    expect(result.total_spent).toBe(65);
+    expect(result.by_allocation).toEqual([{ spent_amount: 65 }]);
+    expect(groupBy.mock.calls[0][0].where.wallet_id).toBeUndefined();
+    expect(groupBy.mock.calls[0][0].where.category_id).toEqual({ in: [10] });
+  });
+
+  it('keeps a specific wallet from counting Despensa paid on another wallet', async () => {
+    const groupBy = vi.fn().mockResolvedValue([
+      { wallet_id: 1, category_id: 10, _sum: { amount: 40 } },
+      { wallet_id: 2, category_id: 10, _sum: { amount: 25 } },
+    ]);
+    const db = { expense: { groupBy } } as unknown as Parameters<
+      typeof computePeriodSpendByAllocations
+    >[0];
+
+    const result = await computePeriodSpendByAllocations(
+      db,
+      [{ wallet_id: 1, category_id: 10, amount: 500 }],
+      window,
+      ownerFilter,
+    );
+
+    expect(result.total_spent).toBe(40);
+    expect(result.by_allocation).toEqual([{ spent_amount: 40 }]);
+    expect(groupBy.mock.calls[0][0].where.wallet_id).toEqual({ in: [1] });
   });
 });

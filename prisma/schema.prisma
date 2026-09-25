@@ -803,7 +803,8 @@ model BudgetPeriodSnapshot {
 model BudgetPeriodSnapshotAllocation {
   id                Int     @id @default(autoincrement())
   snapshot_id       Int
-  wallet_id         Int
+  /// Null means the allocation matches any wallet (Cualquier cartera).
+  wallet_id         Int?
   wallet_name       String  @db.VarChar(100)
   category_id       Int
   category_name     String  @db.VarChar(100)
@@ -821,7 +822,8 @@ model BudgetPeriodSnapshotAllocation {
 model BudgetAllocation {
   id          Int     @id @default(autoincrement())
   budget_id   Int
-  wallet_id   Int
+  /// Null means the allocation matches any wallet (Cualquier cartera).
+  wallet_id   Int?
   category_id Int
   amount      Decimal @db.Decimal(10, 2)
 
@@ -829,7 +831,7 @@ model BudgetAllocation {
 
   // Relationships
   budget   Budget   @relation(fields: [budget_id], references: [id], onDelete: Cascade)
-  wallet   Wallet   @relation(fields: [wallet_id], references: [id])
+  wallet   Wallet?  @relation(fields: [wallet_id], references: [id])
   category Category @relation(fields: [category_id], references: [id])
 
   @@index([budget_id])

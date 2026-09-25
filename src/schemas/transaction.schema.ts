@@ -80,6 +80,8 @@ export const updateTransactionSchema = z.object({
 
 export const updatePaidSchema = z.object({
   paid: z.boolean(),
+  /** When marking paid, whether to debit the wallet. Default true. */
+  apply_wallet_delta: optionalBooleanSchema,
 });
 
 /** Empty / unset wallet → null (quick-capture forms may use 0 / null before selection). */

@@ -401,6 +401,28 @@ describe('registered budget allocation tools', () => {
     ]);
     expect(parseResult(result)).toMatchObject({ budget_id: 7, updated: true });
   });
+
+  it('upsert_budget omits the wallet for Cualquier cartera', async () => {
+    budgetFindFirst.mockResolvedValue(null);
+    createBudget.mockResolvedValue({ id: 15 });
+
+    const result = await invokeTool('upsert_budget', {
+      ...houseArgs,
+      name: 'Despensa',
+      amount: 300,
+      category_id: 10,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(resolveWalletRef).not.toHaveBeenCalled();
+    expect(createBudget).toHaveBeenCalledWith(
+      'house',
+      3,
+      expect.objectContaining({
+        allocations: [{ wallet_id: null, category_id: 10, amount: 300 }],
+      }),
+    );
+  });
 });
 
 describe('registered report tools', () => {

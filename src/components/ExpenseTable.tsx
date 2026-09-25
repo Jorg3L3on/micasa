@@ -19,10 +19,12 @@ import {
   updateExpensePaidStatus,
 } from '@/lib/api/transactions';
 import { Checkbox } from '@/components/motion/checkbox';
+import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
 import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { InsufficientWalletExpenseDialog } from '@/components/expenses/insufficient-wallet-expense';
 import { CategoryIcon } from '@/components/categories/CategoryIcon';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
@@ -132,7 +134,35 @@ const ExpenseWalletLabel = ({
   );
 };
 
-type ThrownApiError = Error & { status?: number };
+type ThrownApiError = Error & { status?: number; code?: string };
+
+const isInsufficientWalletError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+  const code = 'code' in error ? (error as ThrownApiError).code : undefined;
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return (
+    code === 'INSUFFICIENT_WALLET_BALANCE' ||
+    message.includes('saldo insuficiente')
+  );
+};
+
+const resolveExpenseWallet = (
+  expense: TransactionRow,
+  walletsById: Map<number, WalletListItem>,
+) => (expense.wallet_id != null ? walletsById.get(expense.wallet_id) : undefined);
+
+const paidFortnightExpenseExceedsWallet = (
+  expense: TransactionRow,
+  wallet: WalletListItem | undefined,
+) => {
+  if (!wallet) return false;
+  return paidExpenseExceedsWalletBalance({
+    walletType: wallet.type,
+    balance: wallet.amount,
+    amount: toDisplayAmount(expense.amount),
+    isPaid: true,
+  });
+};
 
 /** Map `clientFetchFromApi` errors to user copy; avoid console noise for expected 4xx (e.g. saldo). */
 const getApiErrorFeedback = (
@@ -205,6 +235,7 @@ export default function ExpenseTable({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [payingExpense, setPayingExpense] = useState<TransactionRow | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [insufficientPayOpen, setInsufficientPayOpen] = useState(false);
   const walletsById = useMemo(
     () => new Map(wallets.map((wallet) => [wallet.id, wallet])),
     [wallets],
@@ -215,7 +246,27 @@ export default function ExpenseTable({
     setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
   }, [expenses, sortMode, sortDir]);
 
-  const handlePaidToggle = useCallback(async (expense: TransactionRow, newPaidStatus: boolean) => {
+  useEffect(() => {
+    if (!payDialogOpen && !insufficientPayOpen) {
+      setPayingExpense(null);
+    }
+  }, [payDialogOpen, insufficientPayOpen]);
+
+  const handleOpenPayConfirm = useCallback((expense: TransactionRow) => {
+    setPayingExpense(expense);
+    const wallet = resolveExpenseWallet(expense, walletsById);
+    if (paidFortnightExpenseExceedsWallet(expense, wallet)) {
+      setInsufficientPayOpen(true);
+      return;
+    }
+    setPayDialogOpen(true);
+  }, [walletsById]);
+
+  const handlePaidToggle = useCallback(async (
+    expense: TransactionRow,
+    newPaidStatus: boolean,
+    options?: { applyWalletDelta?: boolean },
+  ) => {
     if (isPlanningDerivedExpenseRow(expense)) {
       return;
     }
@@ -239,17 +290,27 @@ export default function ExpenseTable({
     setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
 
     try {
-      await updateExpensePaidStatus(expenseId, newPaidStatus, context);
+      await updateExpensePaidStatus(expenseId, newPaidStatus, context, {
+        applyWalletDelta: options?.applyWalletDelta,
+      });
       if (onExpenseUpdate) {
         onExpenseUpdate(expenseId, newPaidStatus);
       }
       toast.success(
         newPaidStatus
-          ? 'Gasto marcado como pagado.'
+          ? options?.applyWalletDelta === false
+            ? 'Gasto marcado como pagado sin descontar la billetera.'
+            : 'Gasto marcado como pagado.'
           : 'Gasto marcado como no pagado.',
       );
     } catch (error) {
       setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
+      if (newPaidStatus && isInsufficientWalletError(error)) {
+        setPayDialogOpen(false);
+        setPayingExpense(expense);
+        setInsufficientPayOpen(true);
+        return;
+      }
       const { userMessage, logToConsole } = getApiErrorFeedback(
         error,
         'Error al actualizar el estado de pago. Por favor, intenta de nuevo.',
@@ -651,8 +712,7 @@ export default function ExpenseTable({
                           )}
                           onCheckedChange={(nextPaid) => {
                             if (nextPaid) {
-                              setPayingExpense(e);
-                              setPayDialogOpen(true);
+                              handleOpenPayConfirm(e);
                               return;
                             }
                             void handlePaidToggle(e, false);
@@ -927,16 +987,10 @@ export default function ExpenseTable({
       {payingExpense && (
         <ConfirmDeleteDialog
           open={payDialogOpen}
-          onOpenChange={(open) => {
-            setPayDialogOpen(open);
-            if (!open) {
-              setPayingExpense(null);
-            }
-          }}
+          onOpenChange={setPayDialogOpen}
           onConfirm={async () => {
             await handlePaidToggle(payingExpense, true);
             setPayDialogOpen(false);
-            setPayingExpense(null);
           }}
           title="Pagar gasto"
           description="¿Quieres marcar este gasto como pagado? Esta acción actualizará tus totales de la quincena."
@@ -946,6 +1000,27 @@ export default function ExpenseTable({
           tone="default"
         />
       )}
+
+      {payingExpense ? (
+        <InsufficientWalletExpenseDialog
+          open={insufficientPayOpen}
+          onOpenChange={setInsufficientPayOpen}
+          walletName={
+            resolveExpenseWallet(payingExpense, walletsById)?.name ||
+            payingExpense.paymentMethod ||
+            'la billetera'
+          }
+          balance={resolveExpenseWallet(payingExpense, walletsById)?.amount ?? 0}
+          amount={toDisplayAmount(payingExpense.amount)}
+          busy={updatingIds.has(payingExpense.id)}
+          onAccept={async () => {
+            await handlePaidToggle(payingExpense, true, {
+              applyWalletDelta: false,
+            });
+            setInsufficientPayOpen(false);
+          }}
+        />
+      ) : null}
 
     </>
   );

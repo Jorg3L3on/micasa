@@ -13,6 +13,7 @@ import type {
   PlannerWalletLoanDueSummary,
   ReportsSummaryFundingFields,
   TransactionRow,
+  WalletListItem,
 } from '@/types/catalog';
 
 type Summary = {
@@ -138,10 +139,11 @@ export default async function FortnightPage({
   const month = parseInt(monthParam, 10);
   const period = periodParam.toUpperCase() as 'FIRST' | 'SECOND';
 
-  const [fortnightInfo, transactions, summary] = await Promise.all([
+  const [fortnightInfo, transactions, summary, wallets] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, periodParam, ownerContext),
     getTransactions(yearParam, monthParam, periodParam, ownerContext),
     getSummary(yearParam, monthParam, periodParam, ownerContext),
+    fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext).catch(() => []),
   ]);
   const fortnightLabel = fortnightInfo.label;
   const fortnightId = fortnightInfo.id;
@@ -221,6 +223,7 @@ export default async function FortnightPage({
                 year={year}
                 month={month}
                 period={period}
+                wallets={wallets}
               />
             ))
           )}

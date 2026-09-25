@@ -129,7 +129,7 @@ export const MonthlyBudgetSidebar = ({
           <ul className="space-y-2.5" role="list">
             {allocations.map((row) => (
               <BudgetAllocationRow
-                key={`${row.walletId}-${row.categoryId}`}
+                key={`${row.walletId ?? 'any'}-${row.categoryId}`}
                 allocation={row}
               />
             ))}
@@ -176,12 +176,14 @@ function BudgetAllocationRow({
             iconClassName="h-4 w-4"
           />
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-            <WalletProviderIcon
-              providerIconKey={allocation.walletProviderIconKey}
-              className="h-4 w-4 border-border/40"
-              iconClassName="h-2.5 w-2.5"
-              showTooltipLabel={false}
-            />
+            {allocation.walletId != null ? (
+              <WalletProviderIcon
+                providerIconKey={allocation.walletProviderIconKey}
+                className="h-4 w-4 border-border/40"
+                iconClassName="h-2.5 w-2.5"
+                showTooltipLabel={false}
+              />
+            ) : null}
             <p className="truncate text-[10px] text-muted-foreground">
               {allocation.walletName}
             </p>

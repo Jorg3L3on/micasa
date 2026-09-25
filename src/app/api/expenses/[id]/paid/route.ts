@@ -57,6 +57,7 @@ export async function PATCH(
       id: expenseId,
       paid: validatedData.paid,
       ownerFilter,
+      applyWalletDelta: validatedData.apply_wallet_delta,
     });
 
     return NextResponse.json(
@@ -174,6 +175,7 @@ export async function PATCH(
         {
           error:
             error instanceof Error ? error.message : 'No se puede marcar como pagado',
+          code: error.code,
         },
         { status: 400 },
       );

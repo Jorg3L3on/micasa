@@ -2,7 +2,7 @@ export type MonthlyBudgetAllocationRow = {
   categoryId: number;
   categoryName: string;
   categoryIcon: string | null;
-  walletId: number;
+  walletId: number | null;
   walletName: string;
   walletProviderIconKey: string | null;
   walletAssignee: { id: number; name: string } | null;
