@@ -363,7 +363,12 @@ export async function updateWalletMetadataForOwner(
 
   let assignee_user_id: number | null | undefined;
   if (assigneePatch !== undefined) {
-    assignee_user_id = await resolveWalletAssignee(ownerType, ownerId, assigneePatch);
+    assignee_user_id = await resolveWalletAssignee(
+      ownerType,
+      ownerId,
+      assigneePatch,
+      existing.assignee_user_id,
+    );
   }
 
   const effectiveType = (data.type ?? existing.type) as PaymentMethodType;

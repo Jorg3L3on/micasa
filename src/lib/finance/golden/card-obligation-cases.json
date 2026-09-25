@@ -108,7 +108,7 @@
   {
     "id": "future-calendar-installment",
     "query": {
-      "outstandingBalance": 0,
+      "outstandingBalance": 2000,
       "dueInPeriod": true,
       "statementPayoff": null,
       "scheduledAmount": 650
@@ -188,6 +188,194 @@
       "countsAsPending": true,
       "entersAlcanza": true,
       "knownCashAmount": 2200
+    }
+  },
+  {
+    "id": "this-cycle-utc-midnight-anchor",
+    "query": {
+      "outstandingBalance": 4000,
+      "dueInPeriod": true,
+      "statementPayoff": null,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-09-15",
+        "statementDueDate": "2026-09-20"
+      },
+      "planWrites": [
+        {
+          "amount": 0,
+          "declaredZero": true,
+          "scope": "this_cycle",
+          "anchorStatementEnd": "2026-09-15T00:00:00.000Z",
+          "updatedAt": "2026-09-16T00:00:00.000Z"
+        }
+      ]
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 0,
+      "basis": "none_declared",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "sin_cargo",
+      "countsAsGap": false,
+      "countsAsPending": false,
+      "entersAlcanza": true,
+      "knownCashAmount": 0
+    }
+  },
+  {
+    "id": "n-cycles-two-from-utc-midnight-anchor",
+    "query": {
+      "outstandingBalance": 4000,
+      "dueInPeriod": true,
+      "statementPayoff": 3000,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-10-15",
+        "statementDueDate": "2026-10-20"
+      },
+      "planWrites": [
+        {
+          "amount": 250,
+          "scope": "n_cycles",
+          "cycleCount": 2,
+          "anchorStatementEnd": "2026-09-15T00:00:00.000Z",
+          "updatedAt": "2026-09-16T00:00:00.000Z"
+        }
+      ]
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 250,
+      "basis": "planned_override",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 250
+    }
+  },
+  {
+    "id": "until-date-equals-due-utc-midnight",
+    "query": {
+      "outstandingBalance": 4000,
+      "dueInPeriod": true,
+      "statementPayoff": 3000,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-10-15",
+        "statementDueDate": "2026-10-20"
+      },
+      "planWrites": [
+        {
+          "amount": 180,
+          "scope": "until_date",
+          "validUntil": "2026-10-20T00:00:00.000Z",
+          "anchorStatementEnd": "2026-09-15T00:00:00.000Z",
+          "updatedAt": "2026-09-16T00:00:00.000Z"
+        }
+      ]
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 180,
+      "basis": "planned_override",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 180
+    }
+  },
+  {
+    "id": "legacy-plan-without-anchor",
+    "query": {
+      "outstandingBalance": 5000,
+      "dueInPeriod": true,
+      "statementPayoff": null,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-09-15",
+        "statementDueDate": "2026-09-20"
+      },
+      "planWrites": [
+        {
+          "amount": 700,
+          "scope": "this_cycle",
+          "fortnightYear": 2026,
+          "fortnightMonth": 9,
+          "updatedAt": "2026-09-02T12:00:00.000Z"
+        }
+      ]
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 700,
+      "basis": "planned_override",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 700
+    }
+  },
+  {
+    "id": "zero-debt-is-zero",
+    "query": {
+      "outstandingBalance": 0,
+      "dueInPeriod": true,
+      "statementPayoff": 1500
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 0,
+      "basis": "none_declared",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "sin_cargo",
+      "countsAsGap": false,
+      "countsAsPending": false,
+      "entersAlcanza": true,
+      "knownCashAmount": 0
+    }
+  },
+  {
+    "id": "zero-debt-with-scheduled-and-msi-is-zero",
+    "query": {
+      "outstandingBalance": 0,
+      "dueInPeriod": true,
+      "statementPayoff": null,
+      "scheduledAmount": 650,
+      "msiInstallmentDue": 400,
+      "cutoffDay": 15,
+      "dueDay": 20,
+      "cycle": {
+        "statementEnd": "2026-09-15",
+        "statementDueDate": "2026-09-20"
+      }
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 0,
+      "basis": "none_declared",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "sin_cargo",
+      "countsAsGap": false,
+      "countsAsPending": false,
+      "entersAlcanza": true,
+      "knownCashAmount": 0
     }
   }
 ]

@@ -1,4 +1,8 @@
-import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
+import {
+  formatCalendarDate,
+  formatStoredDateOnly,
+  parseCalendarDate,
+} from '@/lib/calendar-dates';
 import {
   lastPlannedOverrideDecision,
   type PlannedOverrideStamp,
@@ -132,8 +136,8 @@ export type PaymentPlanRowLike = {
   declared_zero: boolean;
   scope?: string | null;
   cycle_count?: number | null;
-  valid_until?: Date | null;
-  anchor_statement_end?: Date | null;
+  valid_until?: Date | string | null;
+  anchor_statement_end?: Date | string | null;
   updated_at?: Date | null;
   created_at?: Date | null;
   fortnight?: { year: number; month: number } | null;
@@ -146,9 +150,9 @@ export const toStoredPaymentPlanWrite = (
   declaredZero: plan.declared_zero === true,
   scope: plan.scope == null ? 'this_cycle' : normalizePlanScope(plan.scope),
   cycleCount: plan.cycle_count ?? null,
-  validUntil: plan.valid_until ? formatCalendarDate(plan.valid_until) : null,
+  validUntil: plan.valid_until ? formatStoredDateOnly(plan.valid_until) : null,
   anchorStatementEnd: plan.anchor_statement_end
-    ? formatCalendarDate(plan.anchor_statement_end)
+    ? formatStoredDateOnly(plan.anchor_statement_end)
     : null,
   fortnightYear: plan.fortnight?.year ?? null,
   fortnightMonth: plan.fortnight?.month ?? null,

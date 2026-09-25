@@ -1,5 +1,6 @@
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { describe, expect, it } from 'vitest';
+import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import {
   buildCardStatementObligation,
   computeNextDuePayment,
@@ -8,6 +9,7 @@ import {
   getRemainingPlannedAmount,
   mergeScheduledCalendarWithStatementDue,
   resolveCreditCardStatementWindow,
+  paymentAppliesToStatementPeriod,
   resolveStatementPayoff,
 } from '@/lib/finance/card-statement-obligation';
 
@@ -389,5 +391,54 @@ describe('mergeScheduledCalendarWithStatementDue', () => {
       dueDateYmd: '2026-08-10',
       usedScheduledCalendar: false,
     });
+  });
+});
+
+describe('paymentAppliesToStatementPeriod', () => {
+  it('applies a payment recorded after the due date to that cycle', () => {
+    const window = resolveCreditCardStatementWindow(
+      parseCalendarDate('2026-09-25'),
+      15,
+      20,
+    );
+    const late = parseCalendarDate('2026-09-25');
+    expect(window.statementDueDate < late).toBe(true);
+    expect(
+      paymentAppliesToStatementPeriod(
+        late,
+        window.statementEnd,
+        window.statementDueDate,
+        window.currentCycleEnd,
+      ),
+    ).toBe(true);
+    expect(
+      paymentAppliesToStatementPeriod(
+        parseCalendarDate('2026-10-16'),
+        window.statementEnd,
+        window.statementDueDate,
+        window.currentCycleEnd,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('zero debt statement payoff', () => {
+  it('keeps the ledger figure but the period obligation is 0 when debt is 0', () => {
+    const payoff = resolveStatementPayoff({
+      lastStatementBalance: 900,
+      paymentsAppliedToStatement: 0,
+      importedTotalDue: null,
+      outstandingBalance: 0,
+      dueDay: 20,
+      cutoffDay: 15,
+    });
+    expect(payoff).toEqual({ amount: 900, source: 'ledger' });
+    expect(
+      getCardPeriodObligation({
+        outstandingBalance: 0,
+        dueInPeriod: true,
+        statementPayoff: payoff.amount,
+      }).amount,
+    ).toBe(0);
   });
 });

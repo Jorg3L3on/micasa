@@ -51,6 +51,9 @@ vi.mock('@/lib/prisma', () => ({
     creditCardPayment: { findMany: findManyCreditCardPayment },
     creditCardInstallmentPlan: { findMany: findManyCreditCardInstallmentPlan },
     creditCardPaymentPlan: { findMany: findManyCreditCardPaymentPlan },
+    creditCardScheduledPayment: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   },
 }));
 
@@ -202,7 +205,7 @@ describe('getLiquidityProjection', () => {
   });
 
   it('loads ledger once and builds CC milestone from purchases in closed statement', async () => {
-    setupWalletMock([fundingRow], [visaRow]);
+    setupWalletMock([fundingRow], [{ ...visaRow, amount: '300' }]);
     queryRaw
       .mockResolvedValueOnce([
         {

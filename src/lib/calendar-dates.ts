@@ -80,6 +80,39 @@ export function ymdForDayInMonth(monthKey: string, day: number): string | null {
   return isValidCalendarDateString(ymd) ? ymd : null;
 }
 
+/**
+ * Postgres `DATE` columns come back as UTC midnight. Format with UTC parts so
+ * America/Mexico_City does not shift the civil day backward.
+ */
+export function formatDateOnly(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * YYYY-MM-DD → UTC midnight `Date` for a Postgres `DATE` column.
+ * Do not use {@link parseCalendarDate} (UTC noon) for these columns.
+ */
+export function parseDateOnly(ymd: string): Date {
+  if (!isValidCalendarDateString(ymd)) {
+    throw new Error(`Invalid calendar date: ${ymd}`);
+  }
+  const [year, month, day] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/** DATE column or YYYY-MM-DD string → civil day, never Mexico City wall time. */
+export function formatStoredDateOnly(value: Date | string): string {
+  if (typeof value === 'string') {
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+    if (match) return match[1]!;
+    return formatDateOnly(new Date(value));
+  }
+  return formatDateOnly(value);
+}
+
 /** Parse YYYY-MM-DD → UTC noon on that civil day (stable for UTC−6 display). */
 export function parseCalendarDate(ymd: string): Date {
   if (!isValidCalendarDateString(ymd)) {

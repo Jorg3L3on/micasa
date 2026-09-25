@@ -260,7 +260,11 @@ export const CreditCardPlannedPaymentSection = ({
                         item.periodObligation?.amount == null
                           ? '—'
                           : formatCurrency(item.periodObligation.amount)}
-                        {hasCustomPlan ? ' · monto planeado' : null}
+                        {hasCustomPlan
+                          ? ' · monto planeado'
+                          : item.periodObligation?.basis === 'minimum'
+                            ? ' · pago mínimo'
+                            : null}
                       </>
                     )}
                     {isStalePlan ? (

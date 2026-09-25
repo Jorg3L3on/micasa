@@ -611,7 +611,7 @@ export const getLiquidityProjection = async (
   const includeUnpaid = input.includeUnpaidExpenses ?? true;
   const includeTemplates = input.includeExpenseTemplates ?? false;
 
-  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth, paymentPlans] = await Promise.all([
+  const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth, scheduledCardPayments, paymentPlans] = await Promise.all([
     prisma.wallet.findMany({
       where: {
         ...input.ownerFilter,
@@ -672,6 +672,14 @@ export const getLiquidityProjection = async (
       orderBy: { name: 'asc' },
     }),
     collectExpectedIncomeByMonth(input.ownerFilter, asOf, input.until),
+    prisma.creditCardScheduledPayment.findMany({
+      where: { ...input.ownerFilter, status: 'SCHEDULED' },
+      select: {
+        credit_card_wallet_id: true,
+        due_date: true,
+        amount: true,
+      },
+    }),
     prisma.creditCardPaymentPlan.findMany({
       where: { ...input.ownerFilter },
       select: {
@@ -850,10 +858,22 @@ export const getLiquidityProjection = async (
                 source === 'projection'
               ? row.next_due_payment
               : null;
+        const scheduledForCycle = scheduledCardPayments.find(
+          (payment) =>
+            payment.credit_card_wallet_id === id &&
+            toUtcDateOnlyString(payment.due_date) === dueStr,
+        );
+        const scheduledAmount =
+          scheduledForCycle == null ? null : Number(scheduledForCycle.amount);
+        const useScheduled =
+          scheduledAmount != null &&
+          scheduledAmount > 0 &&
+          (statementPayoff == null || statementPayoff <= 0);
         const periodObligation = getCardPeriodObligation({
           outstandingBalance: cardOutstandingById.get(id) ?? 0,
           dueInPeriod: true,
-          statementPayoff,
+          statementPayoff: useScheduled ? null : statementPayoff,
+          scheduledAmount: useScheduled ? scheduledAmount : null,
           statementIsEstimate:
             source === 'ledger' ||
             source === 'projection' ||
