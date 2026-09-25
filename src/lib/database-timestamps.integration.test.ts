@@ -55,6 +55,7 @@ const roundTripDateColumns = async (timeZone: string) => {
       data: {
         name: 'Tarjeta sintetica',
         type: 'CREDIT_CARD',
+        credit_limit: 1000,
         cutoff_day: 12,
         due_day: 20,
         user_id: user.id,
