@@ -224,7 +224,11 @@ describe('createLoanForOwner', () => {
       }),
     );
     expect(loan.payments).toHaveLength(6);
-    expect(loan.nextPayment?.dueDate).toBe('2026-06-01');
+    const surfaced = loan.overduePayment ?? loan.nextPayment;
+    expect(surfaced?.dueDate).toBe('2026-06-01');
+    if (loan.overduePayment && loan.nextPayment) {
+      expect(loan.overduePayment.dueDate < loan.nextPayment.dueDate).toBe(true);
+    }
   });
 });
 

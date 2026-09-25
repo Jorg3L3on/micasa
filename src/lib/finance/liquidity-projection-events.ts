@@ -1,4 +1,5 @@
-import { parseCalendarDate, ymdForDayInMonth } from '@/lib/calendar-dates';
+import { formatCalendarDate, parseCalendarDate, ymdForDayInMonth } from '@/lib/calendar-dates';
+import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 import { resolveCreditCardStatementWindow } from '@/lib/finance/credit-card-statement.service';
 import {
   compareUtcDateOnly,
@@ -161,9 +162,9 @@ const collectLoanTimeline = async (
     let finishesInHorizon = false;
 
     for (const loan of groupLoans) {
-      const firstDue = toUtcDateOnlyString(loan.payments[0]!.due_date);
+      const firstDue = formatLoanDueYmd(loan.payments[0]!.due_date);
       const lastPayment = loan.payments[loan.payments.length - 1]!;
-      const lastDue = toUtcDateOnlyString(lastPayment.due_date);
+      const lastDue = formatLoanDueYmd(lastPayment.due_date);
       const lastMonth = toMonthKey(lastDue);
       const loanStart =
         compareMonthKeys(toMonthKey(firstDue), horizonStart) < 0
@@ -179,8 +180,9 @@ const collectLoanTimeline = async (
       if (compareMonthKeys(loanStart, horizonEnd) > 0) continue;
       if (compareMonthKeys(loanEnd, horizonStart) < 0) continue;
 
+      const asOfYmd = formatCalendarDate(asOf);
       const remainingPayments = loan.payments.filter(
-        (payment) => payment.due_date >= asOf,
+        (payment) => formatLoanDueYmd(payment.due_date) >= asOfYmd,
       );
       remainingCount += remainingPayments.length;
       monthlyAmount += Number(loan.payment_amount);
@@ -196,7 +198,7 @@ const collectLoanTimeline = async (
 
       const isPayroll = loan.payment_source === 'PAYROLL_DEDUCTION';
       for (const payment of remainingPayments) {
-        const monthKey = toMonthKey(toUtcDateOnlyString(payment.due_date));
+        const monthKey = toMonthKey(formatLoanDueYmd(payment.due_date));
         const amount = Number(payment.amount);
         scheduleByMonth.set(monthKey, (scheduleByMonth.get(monthKey) ?? 0) + amount);
         if (isPayroll && monthKeySet.has(monthKey)) {

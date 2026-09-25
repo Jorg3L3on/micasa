@@ -50,6 +50,7 @@ const loan = (
   remainingAmount: 8000,
   paidPayments: 2,
   remainingPayments: 8,
+  overduePayment: null,
   nextPayment: null,
   ...overrides,
 });

@@ -31,7 +31,7 @@ function createPrismaClient(): PrismaClient {
           const result = await query(
             transformPrismaWriteArgs(args, operation, model) as typeof args,
           )
-          return transformPrismaReadResult(result, operation)
+          return transformPrismaReadResult(result, operation, model)
         },
       },
     },

@@ -2,8 +2,11 @@
  * Realigns SCHEDULED due dates for FORTNIGHTLY loans to calendar-quincena anchors.
  * PAID, SKIPPED, and CANCELLED installments are left unchanged.
  */
-import { formatCalendarDate } from '../src/lib/calendar-dates';
-import { generateLoanPaymentSchedule } from '../src/lib/finance/loan-schedule';
+import {
+  formatLoanDueYmd,
+  generateLoanPaymentSchedule,
+  loanDueDateForStorage,
+} from '../src/lib/finance/loan-schedule';
 import prisma from '../src/lib/prisma';
 
 async function main() {
@@ -46,13 +49,13 @@ async function main() {
       const nextDueDate = scheduleBySequence.get(payment.sequence);
       if (!nextDueDate) continue;
 
-      const currentYmd = formatCalendarDate(payment.due_date);
-      const nextYmd = formatCalendarDate(nextDueDate);
+      const currentYmd = formatLoanDueYmd(payment.due_date);
+      const nextYmd = formatLoanDueYmd(nextDueDate);
       if (currentYmd === nextYmd) continue;
 
       await prisma.loanPayment.update({
         where: { id: payment.id },
-        data: { due_date: nextDueDate },
+        data: { due_date: loanDueDateForStorage(nextDueDate) },
       });
 
       loanChanged = true;

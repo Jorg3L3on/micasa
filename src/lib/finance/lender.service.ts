@@ -9,6 +9,7 @@ import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import {
   deriveLoanStatusFromPayments,
   formatDateYmd,
+  loanDueDateForStorage,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
 import { listLoansByOwner } from '@/lib/finance/loan.service';
@@ -498,7 +499,7 @@ export async function payLenderForOwner(
         data: {
           loan_id: split.loanId,
           sequence: (maxSequence._max.sequence ?? 0) + 1,
-          due_date: parseYmdAsUtcDate(source?.dueDate ?? todayCalendarDate()),
+          due_date: loanDueDateForStorage(source?.dueDate ?? todayCalendarDate()),
           amount: split.paidAmount.toString(),
           status: 'PAID',
           paid_at: paidAt,
