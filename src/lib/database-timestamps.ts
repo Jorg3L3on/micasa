@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 import { formatZonedParts } from '@/lib/calendar-dates'
 
 const WRITE_OPERATIONS = new Set([
@@ -33,9 +30,17 @@ const DATE_COLUMN_RE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s+DateTime\??\s[^\n]*@db\.D
 
 /**
  * Every `@db.Date` column in `prisma/schema.prisma`. Prisma 7 does not expose
- * `Prisma.dmmf`; the schema (also inlined in the generated client) is the
- * metadata. A hand list would miss the next DATE column.
+ * `Prisma.dmmf`, so the parser below is the source of truth for tests.
+ * The runtime set is a static constant: the Next server bundle does not ship
+ * `prisma/schema.prisma`, and a missing file must not become an empty set
+ * (that re-shifts DATE columns a day early).
+ *
+ * `database-timestamps.test.ts` asserts this set equals
+ * `dateOnlyFieldNamesFromSchema(schema)`. Add the new column here in the same
+ * change that adds `@db.Date`.
  */
+export const DATE_ONLY_FIELDS = new Set(['valid_until', 'anchor_statement_end'])
+
 export const dateOnlyFieldNamesFromSchema = (schema: string): Set<string> => {
   const names = new Set<string>()
   for (const match of schema.matchAll(DATE_COLUMN_RE)) {
@@ -44,21 +49,7 @@ export const dateOnlyFieldNamesFromSchema = (schema: string): Set<string> => {
   return names
 }
 
-const loadDateOnlyFieldNames = (): Set<string> => {
-  try {
-    const schema = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8')
-    return dateOnlyFieldNamesFromSchema(schema)
-  } catch {
-    return new Set()
-  }
-}
-
-let dateOnlyFieldsCache: Set<string> | null = null
-
-export const dateOnlyFieldNames = (): Set<string> => {
-  if (!dateOnlyFieldsCache) dateOnlyFieldsCache = loadDateOnlyFieldNames()
-  return dateOnlyFieldsCache
-}
+export const dateOnlyFieldNames = (): Set<string> => DATE_ONLY_FIELDS
 
 /**
  * TIMESTAMPTZ OAuth fields must keep real UTC instants through the Prisma

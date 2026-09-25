@@ -179,7 +179,6 @@ export async function getCreditCardPaymentPlanViews(
         month: fortnight.month,
         cutoffDay: card.cutoff_day!,
         dueDay,
-        today: now,
       });
       const statement = await getCreditCardStatementByOwner(
         walletId,

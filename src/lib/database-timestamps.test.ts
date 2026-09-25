@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import {
+  DATE_ONLY_FIELDS,
   dateOnlyFieldNames,
   dateOnlyFieldNamesFromSchema,
   toDatabaseTimestamp,
@@ -84,12 +85,11 @@ describe('database timestamp conversion', () => {
     )
   })
 
-  it('derives every @db.Date column from the schema and does not shift it', () => {
+  it('keeps DATE_ONLY_FIELDS equal to every @db.Date column and does not shift them', () => {
     const schema = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8')
     const fromSchema = dateOnlyFieldNamesFromSchema(schema)
-    expect(fromSchema.has('anchor_statement_end')).toBe(true)
-    expect(fromSchema.has('valid_until')).toBe(true)
-    expect(dateOnlyFieldNames()).toEqual(fromSchema)
+    expect(DATE_ONLY_FIELDS).toEqual(fromSchema)
+    expect(dateOnlyFieldNames()).toBe(DATE_ONLY_FIELDS)
 
     const anchor = new Date('2026-09-12T00:00:00.000Z')
     const createdAt = new Date('2026-06-04T06:46:25.681Z')

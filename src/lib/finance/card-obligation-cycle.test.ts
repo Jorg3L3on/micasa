@@ -42,10 +42,8 @@ describe('planner cycle selection', () => {
       month: 6,
       cutoffDay: 15,
       dueDay: 8,
-      today,
     });
-    expect(asOf).not.toBeNull();
-    const selected = resolveCreditCardStatementWindow(asOf!, 15, 8);
+    const selected = resolveCreditCardStatementWindow(asOf, 15, 8);
     const live = resolveCreditCardStatementWindow(today, 15, 8);
     expect(formatCalendarDate(selected.statementEnd)).toBe(
       formatCalendarDate(live.statementEnd),

@@ -30,11 +30,8 @@ export const plannerAsOfForCardMonth = (input: {
   month: number;
   cutoffDay: number;
   dueDay: number;
-  today?: Date;
-}): Date => {
-  void input.today;
-  return asOfForDueInMonth(input.year, input.month, input.cutoffDay, input.dueDay);
-};
+}): Date =>
+  asOfForDueInMonth(input.year, input.month, input.cutoffDay, input.dueDay);
 
 /**
  * The corte is past due and statement/Liquidez have already moved to a later
