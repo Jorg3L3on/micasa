@@ -8,8 +8,24 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      # Throwaway database for the DATE-column round-trip. Generate, validators,
+      # isolation tests, and the Next build keep the placeholder URL below.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      # prisma.config.ts loads this via env(); not required to be reachable for generate/tests/build on CI.
+      # prisma.config.ts loads this via env(); not required to be reachable for generate or build.
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +51,12 @@ jobs:
         run: npm run validate:calendar-dates
 
       - name: Unit tests with finance coverage gate
-        run: npm run test:coverage
+        env:
+          # Local service only. 127.0.0.1 avoids localhost resolving to IPv6.
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          npx prisma migrate deploy
+          npm run test:coverage
 
       - name: Cross-tenant isolation tests
         run: npm run test:isolation
