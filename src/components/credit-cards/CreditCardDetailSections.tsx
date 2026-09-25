@@ -19,6 +19,7 @@ import {
   creditCardSegmentedTabChromeClass,
   creditCardSegmentedTabListClass,
 } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { canAdvanceToNextCreditCardCycle } from '@/lib/finance/credit-card-cycle-types';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -443,7 +444,7 @@ export const CreditCardCycleSummary = ({
           size="icon"
           className="h-9 w-9 shrink-0 rounded-full"
           onClick={onNextCycle}
-          disabled={isCurrentCycle}
+          disabled={!canAdvanceToNextCreditCardCycle(statement.current_cycle_end)}
           aria-label="Ciclo siguiente"
         >
           <ChevronRight className="h-4 w-4" data-icon="inline-end" />

@@ -164,6 +164,34 @@ describe('planned override validity', () => {
     }
   });
 
+  it('removing your own declaration leaves the corte missing, not $0', () => {
+    const active = selectActivePlannedOverride([], cycle(2026, 9), card);
+    expect(active.explicitZero).toBe(false);
+    expect(active.plannedOverride).toBeNull();
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 2_000,
+        dueInPeriod: true,
+        statementPayoff: null,
+        plannedOverride: active.plannedOverride,
+        explicitZero: active.explicitZero,
+      }),
+    ).toMatchObject({ amount: null, confidence: 'missing', gaps: ['missing_statement_payoff'] });
+  });
+
+  it('reading the same plan again keeps the last amount', () => {
+    const writes = [
+      write({ amount: 400, updatedAt: 1 }),
+      write({ amount: 900, updatedAt: 2 }),
+    ];
+    const september = cycle(2026, 9);
+    const first = selectActivePlannedOverride(writes, september, card);
+    const again = selectActivePlannedOverride(writes, september, card);
+    expect(first.plannedOverride).toBe(900);
+    expect(again.plannedOverride).toBe(900);
+    expect(again.explicitZero).toBe(false);
+  });
+
   it('keeps a later declared zero distinct from deleting the amount', () => {
     const active = selectActivePlannedOverride(
       [

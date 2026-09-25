@@ -12,11 +12,13 @@ import {
 } from '@/lib/finance/card-statement-obligation';
 import {
   formatCalendarDate,
-  formatStoredDateOnly,
-  parseCalendarDate,
   parseDateOnly,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
+import {
+  isStalePastDueGap,
+  plannerAsOfForCardMonth,
+} from '@/lib/finance/card-obligation-cycle';
 import {
   selectActivePlannedOverride,
   statementCycleForMonth,
@@ -46,14 +48,6 @@ type PlannerFortnightKey = {
 
 const fortnightKey = (key: PlannerFortnightKey) =>
   `${key.year}-${key.month}-${key.period}`;
-
-const clampDayToMonth = (year: number, month: number, day: number) =>
-  Math.min(day, new Date(Date.UTC(year, month, 0)).getUTCDate());
-
-const createCalendarDate = (year: number, month: number, day: number) =>
-  parseCalendarDate(
-    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-  );
 
 const planSelect = {
   id: true,
@@ -180,11 +174,12 @@ export async function getCreditCardPaymentPlanViews(
 
   const views = await Promise.all(
     fortnights.map(async (fortnight) => {
-      const asOf = createCalendarDate(
-        fortnight.year,
-        fortnight.month,
-        clampDayToMonth(fortnight.year, fortnight.month, dueDay),
-      );
+      const asOf = plannerAsOfForCardMonth({
+        year: fortnight.year,
+        month: fortnight.month,
+        cutoffDay: card.cutoff_day!,
+        dueDay,
+      });
       const statement = await getCreditCardStatementByOwner(
         walletId,
         ownerFilter,
@@ -250,7 +245,22 @@ export async function getCreditCardPaymentPlanViews(
     }),
   );
 
-  return views.sort((a, b) => {
+  return views
+    .filter(
+      (view) =>
+        !isStalePastDueGap({
+          statementDueDate: view.statementDueDate,
+          cutoffDay: card.cutoff_day!,
+          dueDay,
+          plannerStatus: view.plannerStatus,
+          paymentsAppliedToStatement: view.paymentsAppliedToStatement,
+          paymentsAppliedToFortnight: view.paymentsAppliedToFortnight,
+          nextDuePayment: view.effectiveAmount,
+          periodObligation: view.periodObligation,
+          today: now,
+        }),
+    )
+    .sort((a, b) => {
     if (a.year !== b.year) return a.year - b.year;
     if (a.month !== b.month) return a.month - b.month;
     if (a.period === b.period) return 0;

@@ -377,5 +377,31 @@
       "entersAlcanza": true,
       "knownCashAmount": 0
     }
+  },
+  {
+    "id": "past-due-statement-next-cycle-already-open",
+    "query": {
+      "outstandingBalance": 3200,
+      "dueInPeriod": true,
+      "statementPayoff": 640,
+      "cutoffDay": 15,
+      "dueDay": 8,
+      "cycle": {
+        "statementEnd": "2026-09-15",
+        "statementDueDate": "2026-10-08"
+      }
+    },
+    "paymentsApplied": 0,
+    "expect": {
+      "amount": 640,
+      "basis": "statement_no_interest",
+      "confidence": "exact",
+      "gaps": [],
+      "plannerStatus": "por_pagar",
+      "countsAsGap": false,
+      "countsAsPending": true,
+      "entersAlcanza": true,
+      "knownCashAmount": 640
+    }
   }
 ]
