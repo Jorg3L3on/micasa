@@ -14,6 +14,24 @@ const MonthlyPanelRefreshRegisterContext = createContext<
   (refresh: PanelRefresh | null) => void
 >(() => {});
 
+const MonthlyPanelRefreshContext = createContext<PanelRefresh>(async () => {});
+
+export const MonthlyPanelRefreshProvider = ({
+  refresh,
+  children,
+}: {
+  refresh: PanelRefresh;
+  children: ReactNode;
+}) => (
+  <MonthlyPanelRefreshContext.Provider value={refresh}>
+    {children}
+  </MonthlyPanelRefreshContext.Provider>
+);
+
+/** In-place panel refetch registered by the open Panel financiero. */
+export const useMonthlyPanelRefresh = () =>
+  useContext(MonthlyPanelRefreshContext);
+
 export const MonthlyPanelRefreshRegisterProvider = ({
   register,
   children,

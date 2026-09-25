@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
+import { BouncyAccordion } from '@/components/motion/bouncy-accordion';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Wallet,
   CheckCircle2,
   Clock,
-  ChevronRight,
   Pencil,
   BarChart3,
   CreditCard,
@@ -27,6 +28,7 @@ import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentM
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import {
   getDueToPayComposition,
+  getFortnightStatusBadgeStatus,
   getFortnightStatusPill,
   getFortnightSummaryHeader,
 } from '@/components/monthly/fortnight-summary-header';
@@ -200,10 +202,6 @@ export default function SummaryBlock({
       ? formatFortnightDateRangeCompact(year, month, period)
       : null;
 
-  const handleToggleExpanded = () => {
-    setIsExpanded((current) => !current);
-  };
-
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
@@ -231,21 +229,15 @@ export default function SummaryBlock({
               </p>
             ) : null}
           </div>
-          <span
-            className={cn(
-              'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-              statusPill.tone === 'shortfall' &&
-                'border-destructive/40 text-destructive',
-              statusPill.tone === 'surplus' &&
-                'border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
-              statusPill.tone === 'even' &&
-                'border-border/50 text-muted-foreground',
-              statusPill.tone === 'gap' &&
-                'border-amber-500/40 text-amber-700 dark:text-amber-300',
-            )}
+          <AnimatedBadge
+            status={getFortnightStatusBadgeStatus(statusPill.tone)}
+            size="sm"
+            pulse={false}
+            contentKey={statusPill.tone}
+            className="h-5 gap-1 px-2 text-[10px] font-semibold uppercase tracking-wider"
           >
             {statusPill.label}
-          </span>
+          </AnimatedBadge>
         </div>
 
         <FortnightSummaryHero
@@ -268,25 +260,16 @@ export default function SummaryBlock({
           obligationGapCount={obligationGapCount}
         />
 
-        <button
-          type="button"
-          onClick={handleToggleExpanded}
-          className="flex w-full items-center justify-between gap-2 rounded-lg py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-          aria-expanded={isExpanded}
-          aria-label={isExpanded ? 'Ocultar desglose' : 'Ver desglose'}
-        >
-          <span>{isExpanded ? 'Ocultar desglose' : 'Ver desglose'}</span>
-          <ChevronRight
-            className={cn(
-              'h-4 w-4 shrink-0 transition-transform duration-200',
-              isExpanded && 'rotate-90',
-            )}
-            aria-hidden
-            data-icon="inline-end"
-          />
-        </button>
-
-        {isExpanded ? (
+        <BouncyAccordion
+          value={isExpanded ? 'desglose' : null}
+          onValueChange={(next) => {
+            setIsExpanded(next === 'desglose');
+          }}
+          items={[
+            {
+              id: 'desglose',
+              title: isExpanded ? 'Ocultar desglose' : 'Ver desglose',
+              description: (
           <>
             <Separator className="bg-border/50" />
 
@@ -722,7 +705,19 @@ export default function SummaryBlock({
               </div>
             ) : null}
           </>
-        ) : null}
+              ),
+            },
+          ]}
+          classNames={{
+            item: 'bg-transparent',
+            trigger:
+              'min-h-0 gap-2 rounded-lg px-0 py-0.5 text-sm text-muted-foreground hover:text-foreground focus-visible:bg-transparent',
+            title: 'text-sm font-normal text-muted-foreground',
+            chevron: 'h-4 w-4',
+            body: 'px-0 pb-0 pt-3',
+            description: 'text-foreground',
+          }}
+        />
       </CardContent>
     </Card>
   );

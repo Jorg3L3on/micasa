@@ -19,7 +19,10 @@ import type {
   QuickExpenseFormValues,
   QuickIncomeFormValues,
 } from '@/schemas/transaction.schema';
-import { MonthlyPanelRefreshRegisterProvider } from '@/components/monthly/monthly-panel-refresh';
+import {
+  MonthlyPanelRefreshProvider,
+  MonthlyPanelRefreshRegisterProvider,
+} from '@/components/monthly/monthly-panel-refresh';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
@@ -81,6 +84,12 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
       console.error('Error refreshing panel data:', error);
     }
   }, [router]);
+
+  const refreshPanel = useCallback(async () => {
+    const refresh = panelRefreshRef.current;
+    if (!refresh) return;
+    await refresh();
+  }, []);
 
   const open = useCallback(() => {
     setExpenseError(null);
@@ -166,9 +175,11 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   return (
     <QuickCaptureContext.Provider value={value}>
-      <MonthlyPanelRefreshRegisterProvider register={registerPanelRefresh}>
-        {children}
-      </MonthlyPanelRefreshRegisterProvider>
+      <MonthlyPanelRefreshProvider refresh={refreshPanel}>
+        <MonthlyPanelRefreshRegisterProvider register={registerPanelRefresh}>
+          {children}
+        </MonthlyPanelRefreshRegisterProvider>
+      </MonthlyPanelRefreshProvider>
       <QuickCaptureChooser
         open={chooserOpen}
         onOpenChange={setChooserOpen}

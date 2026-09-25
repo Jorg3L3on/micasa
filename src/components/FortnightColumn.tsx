@@ -12,7 +12,7 @@ import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
@@ -943,28 +943,14 @@ export default function FortnightColumn({
         <Tabs
           value={columnTab}
           onValueChange={handleColumnTabChange}
+          variant="pill"
           className="w-full min-w-0"
         >
           <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-1.5 sm:p-1.5">
             <TabsList
-              variant="line"
-              className={cn(
-                'h-auto min-w-0 flex-1 justify-start gap-0.5 overflow-x-auto rounded-none bg-transparent p-0 scrollbar-hide sm:gap-1',
-                '[&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0',
-                '[&_[data-slot=tabs-trigger]]:rounded-full',
-                '[&_[data-slot=tabs-trigger]]:transition-all',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:bg-gradient-to-br',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:from-primary/90',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:to-primary/75',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:text-primary-foreground',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:shadow-sm',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-1',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:ring-primary/30',
-                '[&_[data-slot=tabs-trigger][data-state=active]]:border-transparent',
-                '[&_[data-slot=tabs-trigger][data-state=inactive]]:text-foreground/70',
-                '[&_[data-slot=tabs-trigger][data-state=inactive]]:hover:text-foreground/90',
-                '[&_[data-slot=tabs-trigger]]:after:hidden',
-              )}
+              aria-label="Secciones de la quincena"
+              wrapperClassName="min-w-0 flex-1"
+              className="gap-0.5 bg-transparent p-0 sm:gap-1"
             >
               <TabsTrigger
                 value="expenses"

@@ -208,7 +208,7 @@ export default function MonthlyFortnightView({
     }
   }, [context, month, period, year]);
 
-  useRegisterMonthlyPanelRefresh(loading ? null : refreshPanelData);
+  useRegisterMonthlyPanelRefresh(refreshPanelData);
 
   const prefetchInactivePeriod = useCallback(
     async (inactivePeriod: FortnightPeriod) => {

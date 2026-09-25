@@ -2,9 +2,8 @@
 
 import { animate, motion, useInView, useReducedMotion } from 'framer-motion';
 import { useEffect, useMemo, useRef } from 'react';
+import { EASE_OUT } from '@/components/motion/ease';
 import { cn, formatCurrency, toDisplayAmount } from '@/lib/utils';
-
-const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 export type NumberTickerProps = {
   value: number;

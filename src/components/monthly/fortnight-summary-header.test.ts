@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDueToPayComposition,
   getFortnightRemainderCopy,
+  getFortnightStatusBadgeStatus,
   getFortnightStatusPill,
   getFortnightSummaryHeader,
 } from './fortnight-summary-header';
@@ -78,6 +79,15 @@ describe('getFortnightStatusPill', () => {
       rowLabel: 'Te queda',
       gapNote: null,
     });
+  });
+});
+
+describe('getFortnightStatusBadgeStatus', () => {
+  it('maps remainder tones onto badge statuses', () => {
+    expect(getFortnightStatusBadgeStatus('surplus')).toBe('success');
+    expect(getFortnightStatusBadgeStatus('shortfall')).toBe('danger');
+    expect(getFortnightStatusBadgeStatus('gap')).toBe('warning');
+    expect(getFortnightStatusBadgeStatus('even')).toBe('neutral');
   });
 });
 
